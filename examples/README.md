@@ -84,7 +84,7 @@ target also compiles both programs for Go, C/Web, and portable ZX.
 `c_string` module for safe C string arguments. It handles shapes, text, and
 path-backed PNG images. Texture handles and other image formats remain open.
 
-`make -C examples time-picker` builds `time_picker_demo.zi`, Kryon's
+`make -C examples time-picker` builds `demo/time_picker_demo.zi`, Kryon's
 `TimePicker` without a time, with one, disabled and in a small form, with a
 Light and Dark switch. Run `../build/examples/time-picker-desktop` from
 `examples/` to try it with the mouse, touch and keyboard.

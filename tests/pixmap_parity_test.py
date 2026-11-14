@@ -64,8 +64,11 @@ class Program:
     def module(self):
         return self.entry.split(":")[0]
 
-    def source(self):
-        return self.ir / f"{self.module}.zir"
+    def sources(self):
+        """Every saved module, as Kryon's build rules pass them: a module bound
+        to a host capability, such as the app's Frame, is not imported by the
+        entry, so naming only the entry would leave its provider out."""
+        return sorted(self.ir.glob("*.zir"))
 
 
 def template_program(work, name, env):
@@ -115,12 +118,11 @@ main :: () -> s32 {{
 }}
 ''')
     ir = directory / "ir"
-    run([ZIRAN, "ir", "--root", directory,
-         "--module-path", ROOT / "examples", "--module-path", ROOT / "tests/pixmap_parity",
-         *UI_MODULE_ARGS,
-         "--module-path", ROOT / "src/backend", "--module-path", ZIRAN_ROOT / "std",
+    # The examples import Kryon's packages by name, which the project resolves.
+    run([ZIRAN, "ir", "--project", "--root", directory,
+         "--module-path", ROOT / "examples/demo", "--module-path", ROOT / "tests/pixmap_parity",
          "--entry", f"{name}_shot:main", "-o", ir, directory / f"{name}_shot.zi"],
-        directory, env)
+        ROOT, env)
     return Program(name, ir, f"{name}_shot:main", ["pixmap", f"{name}_shot"])
 
 
@@ -134,17 +136,17 @@ def render(program, target, work, env):
         binds += ["--bind-host", host]
     common = ["--root", program.ir, "--entry", program.entry]
     if target == "c":
-        run([ZIRAN, "build", "--target=c", "--exe", *common, "-o", out, program.source()],
+        run([ZIRAN, "build", "--target=c", "--exe", *common, "-o", out, *program.sources()],
             work, env)
         image = run([out / program.module], work, env)
     elif target == "go":
         run([ZIRAN, "build", "--target=go", "--pkg", "main", "--exe", *binds, *common,
-             "-o", out, program.source()], work, env)
+             "-o", out, *program.sources()], work, env)
         run(["go", "build", "-o", "program", "."], out, {**env, "GO111MODULE": "off"})
         image = run([out / "program"], work, env)
     elif target == "zx":
         bundle = work / f"{program.name}.zx"
-        run([ZIRAN, "bundle", *binds, *common, "-o", bundle, program.source()], work, env)
+        run([ZIRAN, "bundle", *binds, *common, "-o", bundle, *program.sources()], work, env)
         image = run([ZIRAN, "run", bundle], work, env)
         # The runner prints the entry's result after the program's output.
         image = image[:image.rstrip(b"\n").rfind(b"\n") + 1]
@@ -181,7 +183,11 @@ def main():
     selected = set(filter(None, arguments.only.split(",")))
     assert "c" in targets, "C is the reference target"
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="kryon-pixmap-parity-") as directory:
+    # Example runners are built as part of this project, which only accepts
+    # sources inside the checkout; the templates keep their own projects.
+    (ROOT / "build").mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="kryon-pixmap-parity-") as directory, \
+            tempfile.TemporaryDirectory(prefix="pixmap-parity-", dir=ROOT / "build") as inside:
         work = Path(directory)
         env = environment(work)
         env["PATH"] = f"{Path(ZIRAN).parent}:{env['PATH']}"
@@ -191,7 +197,7 @@ def main():
                 programs.append(template_program(work, name, env))
         for name in EXAMPLES + TEXT_CASES:
             if not selected or name in selected:
-                programs.append(example_program(work, name, env))
+                programs.append(example_program(Path(inside), name, env))
         results = {}
         failures = []
         with ThreadPoolExecutor(max_workers=4) as pool:

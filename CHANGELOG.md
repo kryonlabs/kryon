@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- The time picker and desktop image examples build again. Their shared demo
+  modules moved to `examples/demo/`, which the desktop hosts name as a module
+  path; `examples/` itself cannot be one because `window.zi` shares a name
+  with a project module. The time picker demo uses the current `Text.Props`
+  size field and imports `time_picker_behavior` for `TimePickerText`.
+- The pixmap parity test builds the image example as part of the project and
+  passes every saved module when it builds from saved IR, so an app module
+  bound to the host's `ProjectFrame` capability is loaded.
 - The project tool builds a program entry: when a project's entry module
   declares `main` (a `kryon/app` program such as `examples/window.zi`),
   `kryon build` generates a host that calls it, so the same file becomes a

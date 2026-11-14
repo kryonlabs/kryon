@@ -3,6 +3,9 @@
 ZIRAN_BIN ?= ziran
 # Resolve the maintained examples through the ordinary package graph.
 KRYON_MODULE_ARGS := --project
+# The demos that the desktop hosts import live in demo/, apart from the
+# programs here whose names other project modules also use.
+DEMO_MODULE_ARGS := --module-path demo
 KRYON_SOURCES := $(shell find ../src/ui ../src/backend -type f -name '*.zi' -print)
 BUILD_DIR ?= ../build/examples
 NATIVE_LIB := ../build/ziran/libkryon.a
@@ -18,14 +21,14 @@ all: $(NATIVE_PROGRAMS)
 $(NATIVE_LIB): ../Makefile ../src/ui/modules.txt $(KRYON_SOURCES)
 	$(MAKE) -C .. all
 
-$(BUILD_DIR)/image.zx: image_demo.zi $(KRYON_SOURCES) ../ziran.toml Makefile
+$(BUILD_DIR)/image.zx: demo/image_demo.zi $(KRYON_SOURCES) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)
-	$(ZIRAN_BIN) bundle --root . $(KRYON_MODULE_ARGS) \
-		--entry image_demo:Frame -o $@ image_demo.zi
+	$(ZIRAN_BIN) bundle --root demo $(KRYON_MODULE_ARGS) \
+		--entry image_demo:Frame -o $@ demo/image_demo.zi
 
 $(BUILD_DIR)/image-saved.zx: $(BUILD_DIR)/image.zx
-	$(ZIRAN_BIN) ir --root . $(KRYON_MODULE_ARGS) \
-		-o $(BUILD_DIR)/image-ir image_demo.zi
+	$(ZIRAN_BIN) ir --root demo $(KRYON_MODULE_ARGS) \
+		-o $(BUILD_DIR)/image-ir demo/image_demo.zi
 	$(ZIRAN_BIN) bundle --root $(BUILD_DIR)/image-ir \
 		--module-path $(BUILD_DIR)/image-ir --entry image_demo:Frame \
 		-o $@ $(BUILD_DIR)/image-ir/image_demo.zir
@@ -33,15 +36,15 @@ $(BUILD_DIR)/image-saved.zx: $(BUILD_DIR)/image.zx
 
 # Kryon's ziran.toml [package] links names the desktop host's system
 # libraries, so every project C build below links without caller LDLIBS.
-$(BUILD_DIR)/image-desktop: desktop_image.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi image_demo.zi $(KRYON_SOURCES) ../ziran.toml Makefile
+$(BUILD_DIR)/image-desktop: desktop_image.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi demo/image_demo.zi $(KRYON_SOURCES) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)/desktop-image-native
-	$(ZIRAN_BIN) build --target=c --exe --root . $(KRYON_MODULE_ARGS) \
+	$(ZIRAN_BIN) build --target=c --exe --root . $(KRYON_MODULE_ARGS) $(DEMO_MODULE_ARGS) \
 		--entry desktop_image:main -o $(BUILD_DIR)/desktop-image-native desktop_image.zi
 	cp $(BUILD_DIR)/desktop-image-native/desktop_image $@
 
-$(BUILD_DIR)/time-picker-desktop: desktop_time_picker.zi time_picker_demo.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi $(KRYON_SOURCES) ../ziran.toml Makefile
+$(BUILD_DIR)/time-picker-desktop: desktop_time_picker.zi demo/time_picker_demo.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi $(KRYON_SOURCES) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)/desktop-time-picker-native
-	$(ZIRAN_BIN) build --target=c --exe --root . $(KRYON_MODULE_ARGS) \
+	$(ZIRAN_BIN) build --target=c --exe --root . $(KRYON_MODULE_ARGS) $(DEMO_MODULE_ARGS) \
 		--entry desktop_time_picker:main -o $(BUILD_DIR)/desktop-time-picker-native desktop_time_picker.zi
 	cp $(BUILD_DIR)/desktop-time-picker-native/desktop_time_picker $@
 
