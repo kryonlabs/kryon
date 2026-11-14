@@ -21,7 +21,6 @@ command = [
     "-j4",
     "-C",
     str(source),
-    "BOOTSTRAP=1",
     "BUILD_DIR=" + str(output),
     "CC=" + a.cc,
     "AR=" + a.ar,

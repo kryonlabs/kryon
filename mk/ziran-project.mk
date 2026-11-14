@@ -187,11 +187,11 @@ include $(KRYON_DIR)/mk/emcc.mk
 # Ordinary Canvas applications may embed portable Ziran bundles through
 # std/bundle_host. Build that target's canonical runtime only when needed.
 CANVAS_RUNTIME := $(abspath $(GEN_DIR)/runtime/libziran.a)
-CANVAS_RUNTIME_SOURCES := $(ZIRAN_DIR)/Makefile $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/include/*.h $(ZIRAN_DIR)/bootstrap/compiler_*/*.[ch])
+CANVAS_RUNTIME_SOURCES := $(ZIRAN_DIR)/Makefile $(wildcard $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/include/*.h)
 CANVAS_RUNTIME_CACHE := $(KRYON_DIR)/build/emscripten-cache/canvas
 
 $(CANVAS_RUNTIME): $(CANVAS_RUNTIME_SOURCES) $(KRYON_DIR)/mk/ziran-project.mk
-	EM_CACHE=$(CANVAS_RUNTIME_CACHE) $(MAKE) -B -C $(ZIRAN_DIR) BOOTSTRAP=1 \
+	EM_CACHE=$(CANVAS_RUNTIME_CACHE) $(MAKE) -B -C $(ZIRAN_DIR) \
 		BUILD_DIR=$(abspath $(GEN_DIR)/runtime) CC=$(EMCC) AR=$(dir $(EMCC))emar \
 		OBJCOPY=true CFLAGS=-O2 $(CANVAS_RUNTIME)
 endif

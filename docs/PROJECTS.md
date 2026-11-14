@@ -384,8 +384,8 @@ All four project templates include this profile.
 After downloading that file, `ziran run app.zx` works without the app's source,
 manifest, lock, or compiler-generated native code. Install the player with
 `make install-user` in Kryon; this also registers the provider with Ziran.
-The player needs SDL2, Cairo and FreeType. `ziran run --vm app.zx` selects
-portable execution. `kryon run app.zx` forwards to the same Ziran runner.
+The player needs SDL2, Cairo and FreeType. `kryon run app.zx` forwards to the
+same Ziran runner.
 For a custom install prefix, add its `share/ziran/hosts` directory to
 `ZIRAN_HOST_PATH` or its `share` directory to `XDG_DATA_DIRS`.
 

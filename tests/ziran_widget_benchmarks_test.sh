@@ -12,7 +12,7 @@ for form in source saved; do
     if test "$form" = saved; then root=$work/ir; input=$root/widget_benchmarks.zir; fi
     "$ziran" bundle --root "$root" --project --module-path "$root" "$@" \
         --entry widget_benchmarks:main -o "$work/$form.zx" "$input"
-    test "$("$ziran" run --vm "$work/$form.zx")" = 0
+    test "$("$ziran" run "$work/$form.zx")" = 0
     "$ziran" build --target=c --exe --entry widget_benchmarks:main \
         --root "$root" --project --module-path "$root" "$@" -o "$work/c-$form" "$input"
     "$work/c-$form/widget_benchmarks"

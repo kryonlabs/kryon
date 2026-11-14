@@ -160,7 +160,7 @@ backend = "desktop"
                for x in range(40, 350)), "text did not render"
 
     portable_vm = OUTPUT / "portable-vm.png"
-    run(["xvfb-run", "-a", ZIRAN, "run", "--vm", downloaded], ROOT,
+    run(["xvfb-run", "-a", ZIRAN, "run", downloaded], ROOT,
         {**env, "KRYON_CAPTURE_PATH": str(portable_vm)})
     assert png_pixels(portable_vm) == png, "portable VM rendering differs"
     # Install a reusable package provider, then discover it through XDG data.

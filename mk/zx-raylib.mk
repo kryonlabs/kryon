@@ -47,8 +47,8 @@ $(ZX_RAYLIB_GENERATED)/.complete: $(ZX_RAYLIB_SOURCES) $(ZX_RAYLIB_COMPILER) $(K
 		-o $(ZX_RAYLIB_GENERATED)/c $(ZX_RAYLIB_GENERATED)/ir/*.zir
 	touch $@
 
-$(ZX_RAYLIB_RUNTIME): $(wildcard $(ZIRAN_DIR)/cmd/zir/*.[ch] $(ZIRAN_DIR)/include/*.h) $(ZX_RAYLIB_DIR)/config $(KRYON_DIR)/mk/zx-raylib.mk $(ZX_RAYLIB_PRIVATE_STAMP)
-	$(MAKE) -B -j4 -C $(ZIRAN_DIR) BOOTSTRAP=1 BUILD_DIR=$(ZX_RAYLIB_DIR)/runtime \
+$(ZX_RAYLIB_RUNTIME): $(wildcard $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/include/*.h) $(ZX_RAYLIB_DIR)/config $(KRYON_DIR)/mk/zx-raylib.mk $(ZX_RAYLIB_PRIVATE_STAMP)
+	$(MAKE) -B -j4 -C $(ZIRAN_DIR) BUILD_DIR=$(ZX_RAYLIB_DIR)/runtime \
 		CC="$(ZX_RAYLIB_CC)" AR="$(ZX_RAYLIB_AR)" OBJCOPY="$(ZX_RAYLIB_OBJCOPY)" \
 		WASM_PRIVATE_HEADERS="$(ZX_RAYLIB_PRIVATE_HEADERS)" CFLAGS="$(ZX_RAYLIB_CFLAGS)" $@
 

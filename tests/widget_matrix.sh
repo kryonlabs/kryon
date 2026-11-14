@@ -12,10 +12,10 @@ widget_test=${widget_test%.zi}
     --entry "$widget_test:main" -o "$work/saved.zx" \
     "$work/ir/$widget_test.zir"
 cmp "$work/source.zx" "$work/saved.zx"
-test "$("$ziran_root/build/bin/zi2zx" run --vm "$work/source.zx")" = 0
+test "$("$ziran_root/build/bin/zi2zx" run "$work/source.zx")" = 0
 
 if test "${widget_run_saved:-0}" = 1; then
-    test "$("$ziran_root/build/bin/zi2zx" run --vm "$work/saved.zx")" = 0
+    test "$("$ziran_root/build/bin/zi2zx" run "$work/saved.zx")" = 0
 fi
 
 if test "${widget_native:-0}" = 1; then

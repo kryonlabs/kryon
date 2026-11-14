@@ -12,7 +12,7 @@ ZX_CANVAS_RUNTIME := $(ZX_CANVAS_DIR)/runtime/libziran.a
 ZX_CANVAS_SOURCES := $(KRYON_DIR)/tools/zx_canvas.zi $(wildcard $(KRYON_DIR)/src/backend/*.zi $(ZIRAN_DIR)/std/*.zi) $(shell find $(KRYON_DIR)/src/ui -name '*.zi')
 ZX_CANVAS_SOURCES += $(KRYON_DIR)/ziran.toml $(KRYON_DIR)/ziran.lock $(wildcard ziran.toml ziran.lock ziran.local.toml)
 ZX_CANVAS_COMPILER := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/include/*.h $(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bin/zi2c)
-ZX_CANVAS_RUNTIME_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir/*.[ch] $(ZIRAN_DIR)/include/*.h)
+ZX_CANVAS_RUNTIME_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/include/*.h)
 
 .PHONY: zx-canvas zx-canvas-config
 zx-canvas: $(ZX_CANVAS_PROGRAM)
@@ -39,7 +39,7 @@ $(ZX_CANVAS_GENERATED)/.complete: $(ZX_CANVAS_SOURCES) $(ZX_CANVAS_COMPILER) $(K
 	touch $@
 
 $(ZX_CANVAS_RUNTIME): $(ZX_CANVAS_RUNTIME_SOURCES) $(ZX_CANVAS_DIR)/toolchain
-	EM_CACHE=$(ZX_CANVAS_CACHE) $(MAKE) -B -C $(ZIRAN_DIR) BOOTSTRAP=1 \
+	EM_CACHE=$(ZX_CANVAS_CACHE) $(MAKE) -B -C $(ZIRAN_DIR) \
 		BUILD_DIR=$(ZX_CANVAS_DIR)/runtime CC=$(ZX_CANVAS_CC) AR=$(ZX_CANVAS_AR) \
 		OBJCOPY=true CFLAGS=-O2 $(ZX_CANVAS_RUNTIME)
 

@@ -35,7 +35,7 @@ def main():
     emcc = emscripten_compiler() if args.browser else None
     if args.browser:
         ENV['EM_CACHE']=str(ROOT/'build/emscripten-cache')
-        run(['make','-j1','-C',ZIRAN_ROOT,'BOOTSTRAP=1','BUILD_DIR='+str(WORK/'runtime'),'CC='+emcc,'AR='+str(Path(emcc).with_name('emar')),'OBJCOPY=true','CFLAGS=-O2',WORK/'runtime/libziran.a'])
+        run(['make','-j1','-C',ZIRAN_ROOT,'BUILD_DIR='+str(WORK/'runtime'),'CC='+emcc,'AR='+str(Path(emcc).with_name('emar')),'OBJCOPY=true','CFLAGS=-O2',WORK/'runtime/libziran.a'])
     common=['--project','--root',ROOT/'tests','--module-path',ROOT/'tests']
     guest=ROOT/'tests/document_storage_guest.zi'
     source=ROOT/'tests/document_storage_test.zi'
