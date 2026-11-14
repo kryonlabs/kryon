@@ -47,7 +47,7 @@ redirects after catalog migration and its old implementation/assets are deleted.
 
 The first gate is upstream Ziran, not widget count. Ziran already supports
 verified bundles, explicit foreign calls, opaque host handles, and module
-composition. Standalone portable VM instances already have independent state;
+composition. Standalone bundle instances already have independent state;
 the composed library/add-on path currently has one independent global-state
 instance, which cannot host multiple independently replaced UI components.
 Browser linked code also has one-instance and scalar-subset

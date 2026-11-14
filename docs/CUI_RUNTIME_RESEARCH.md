@@ -184,8 +184,9 @@ Verified current Ziran behavior in `/mnt/storage/Projects/ziranlang/ziran/docs/Z
 - Partial modules can compose disjoint declarations, but composed library and
   add-on code execute with one independent global-state instance
   (`docs/ZX.md:173`).
-- Linux/Android native execution currently uses checked generated C plus a
-  TinyCC cache (`docs/ZX.md:217`).
+- ~~Linux/Android native execution currently uses checked generated C plus a
+  TinyCC cache (`docs/ZX.md:217`).~~ Removed with TinyCC: native execution
+  runs `.zx` on the instruction engine.
 - Browser linked code and the wasm tier have important one-instance and scalar
   subset restrictions (`docs/ZX.md:255`).
 
@@ -205,8 +206,9 @@ General upstream work required, with no Kryon widget names or UI special cases:
    resume, and first-frame timings.
 9. A production wasm/linking story that removes the current one-instance and
    scalar-subset barriers for multi-component UIs.
-10. Explicit dev-runtime/runtime split so TinyCC and compiler machinery are not
-    shipped with a minimal production player.
+10. ~~Explicit dev-runtime/runtime split so TinyCC and compiler machinery are
+    not shipped with a minimal production player.~~ Removed with TinyCC; a
+    production player links `libziran` with the instruction engine.
 
 Likely Ziran owners are `zir_bundle.c/h`, `zir_zx_host.c/h`,
 `zir_zx_native.c/h`, `zir_zx_wasm.c/h`, `std/bundle_host.zi`, and the existing
@@ -261,8 +263,9 @@ These are evidence-backed structural risks, not measured hotspots:
 - **Dependencies:** codecs, audio, optional GPU, and the CSS parser can all be
   decoupled. Font/image support and platform capability definitions are the
   actual functional tradeoffs.
-- **Development payload:** TinyCC/compiler-inclusive players dwarf the claimed
-  production app target. Production and development outputs need separate size
+- **Development payload:** ~~TinyCC/compiler-inclusive players dwarf the
+  claimed production app target.~~ TinyCC is removed; players link the
+  instruction engine. Production and development outputs need separate size
   gates.
 
 ## Smallest coherent Ziran-first architecture
@@ -347,7 +350,7 @@ goals after minimal runtime and reload measurements exist.
 - CSS parser package; compiled style packs remain.
 - AVIF/WebP/AOM/Opus/audio/image dependencies when the corresponding optional
   capability is absent.
-- TinyCC/compiler-inclusive player components in production artifacts.
+- ~~TinyCC/compiler-inclusive player components~~ (removed with TinyCC).
 - Legacy compatibility wrappers, if any are found during implementation; the
   owner accepts breaking changes.
 

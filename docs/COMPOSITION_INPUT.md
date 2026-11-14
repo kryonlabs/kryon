@@ -16,7 +16,6 @@ numbers as the platform input phases: start 1, update 2, commit 3, cancel 4.
 to 16 pending events. `BeginCompositionFrame`, `SubmitComposition`, and
 `TakeComposition` manage ordering, owned byte copies, and UTF-8 truncation.
 The queue is tested from source and saved `.zir` on C and Go targets.
-Its pointer parameters are not yet supported by the portable VM.
 
 Portable applications bind `composition_input:PollComposition` to an ordinary
 Ziran provider with `ziran bundle --bind`; the checked test uses this route for
