@@ -91,14 +91,14 @@ with tempfile.TemporaryDirectory(prefix="program-entry-", dir=ROOT / "build") as
 
     run([ZIRAN, "tool", "kryon", "build", "--profile", "desktop"], project)
     run(["xvfb-run", "-a", sys.executable, "driver.py"], project)
-    # An empty window edits no text, draws no image, sets no cursor and is not
-    # under test, so it carries none of the code behind those: the Unicode
-    # tables, the image decoders and the test driver come with their users.
+    # An empty window edits no text and is not under test, so it carries
+    # neither the Unicode tables nor the test driver: those come with the
+    # editing widgets and with a build made for a test.
     def generated():
         return sorted(path.name for path in (project / "build/generated/desktop/c").glob("*.c"))
     plain = generated()
     assert plain, "the desktop profile kept no generated C to inspect"
-    for part in ("grapheme", "image_decode", "avif_decode", "test_driver_engine"):
+    for part in ("grapheme", "test_driver_engine"):
         assert not [name for name in plain if part in name], \
             f"an empty window carries {part}: {plain}"
 

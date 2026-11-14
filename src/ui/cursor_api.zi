@@ -1,4 +1,0 @@
-// What applications import as kryon/cursor: the cursor requests, with the
-// host's decoder for picture cursors registered.
-using Cursor :: #import "cursor";
-#import "cursor_picture"

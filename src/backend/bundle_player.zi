@@ -191,7 +191,15 @@ PlayerLoad :: (player: *Player, data: []u8, platform: HostCall, context: *void) 
 #program_export
 PlayerStart :: (player: *Player) -> bool {
     if player.bundle == null || player.instance != null { return false }
-    player.instance = InstantiateBundle(player.bundle,*player.bindings[0],BundleCapabilities(player.bundle))
+    // A page's WebAssembly tier runs only s64 -> s64 host capabilities and no
+    // longer hands other bundles to the VM. This player's capabilities carry
+    // strings and records, so on the web it selects the portable VM itself;
+    // elsewhere the host's configured engine runs the bundle.
+    #if OS == .WEB {
+        player.instance = InstantiateBundlePortable(player.bundle,*player.bindings[0],BundleCapabilities(player.bundle))
+    } else {
+        player.instance = InstantiateBundle(player.bundle,*player.bindings[0],BundleCapabilities(player.bundle))
+    }
     if player.instance==null { PlayerClose(player); return false }
     LimitBundleSteps(player.instance,10000000); return true
 }

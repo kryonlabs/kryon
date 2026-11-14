@@ -1578,18 +1578,6 @@ PixmapImageTransformedRange :: (start: s32, end: s32, data: PixmapImageRowsData)
     }
 }
 
-// This host shows no picture cursors; a request for one decodes nothing.
-#program_export
-CursorPictureHost :: (asset_path: string, width: s32, height: s32,
-    pixels: []u32, premultiplied: bool) -> bool {
-    unused asset_path
-    unused width
-    unused height
-    unused pixels
-    unused premultiplied
-    return false
-}
-
 #program_export
 ImageWidth :: (asset_path: string) -> s32 {
     slot := PixmapImageIndex(asset_path); if slot >= 0 { return pixmap_image_widths[slot] }

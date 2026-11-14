@@ -301,7 +301,7 @@ check: all ziran-test header-check docs-check project-test public-surface-check 
 # CI runs make test as parallel jobs on separate machines. The hosts shard takes
 # every test target not named here, so a new one cannot miss CI.
 CI_SHARD_ZX := renderer-consumer-test zx-test zx-reload-test zx-services-test zx-hosted-test \
-	zx-headless-test native-text-test native-accessibility-test bundle-preload-test
+	zx-headless-test native-text-test native-accessibility-test
 CI_SHARD_CHECK := check
 CI_SHARD_WEB := canvas-test canvas-project-test program-entry-project-test zx-canvas-test zx-raylib-test \
 	page-route-project-test dom-project-test raylib-web-project-test
@@ -319,7 +319,9 @@ test-shard-hosts:
 .PHONY: push-check
 push-check:
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
-		$(MAKE) --no-print-directory source-check public-surface-check docs-check zx-player desktop-project-test pixmap-gpu-test gamepad-test text-hook-hosts-ir-test
+		$(MAKE) --no-print-directory source-check public-surface-check docs-check zx-player desktop-project-test gamepad-test text-hook-hosts-ir-test
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
+		$(MAKE) --no-print-directory test-focus TEST=ziran_pixmap_gpu_test
 .PHONY: text-hook-hosts-ir-test
 text-hook-hosts-ir-test:
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/text_hook_hosts_ir_test.sh
@@ -412,14 +414,12 @@ dom-project-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		YUE_DESKTOP_RECOVERY=0 KRYON_DOM_IMAGE_DECODE=1 python3 tests/dom_project_test.py
 
-.PHONY: native-text-test native-accessibility-test bundle-preload-test
+.PHONY: native-text-test native-accessibility-test
 native-text-test:
 	@sh tests/native_text_test.sh
 native-accessibility-test:
 	@sh tests/native_accessibility_test.sh
-bundle-preload-test:
-	@ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran sh tests/ziran_bundle_preload_test.sh
-test: native-text-test native-accessibility-test bundle-preload-test
+test: native-text-test native-accessibility-test
 
 .PHONY: typeface-source-test
 typeface-source-test: $(ZI2C_BIN)
@@ -534,6 +534,10 @@ mime-clipboard-linux-test:
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/mime_clipboard_linux_test.py
 test: mime-clipboard-linux-test
 
+.PHONY: drag-source-linux-test
+drag-source-linux-test:
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/drag_source_linux_test.py
+test: drag-source-linux-test
 
 .PHONY: window-test
 window-test: build/bin/kryon
@@ -632,75 +636,20 @@ pixmap-mesh-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/pixmap_mesh_test.sh
 test: pixmap-mesh-test
 
-.PHONY: pixmap-parallel-test
-pixmap-parallel-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_pixmap_parallel_test.sh
-test: pixmap-parallel-test
-
-.PHONY: pixmap-gpu-test
-pixmap-gpu-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_pixmap_gpu_test.sh
-test: pixmap-gpu-test
-
 # Opt-in SDL3 SDK and real GPU-renderer parity on a private display.
 .PHONY: sdl3-test
 sdl3-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		YUE_DESKTOP_RECOVERY=0 ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/sdl3_test.py
 
-.PHONY: style-cache-test
-style-cache-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_style_cache_test.sh
-test: style-cache-test
-
-.PHONY: tree-style-metadata-test
-tree-style-metadata-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER sh tests/ziran_tree_style_metadata_test.sh
-test: tree-style-metadata-test
-
 .PHONY: css-dom-test
 css-dom-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER YUE_DESKTOP_RECOVERY=0 python3 tests/css_dom_browser.py
 test: css-dom-test
 
-.PHONY: component-host-test
-component-host-test: project-toolchain
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/ziran_component_host_test.sh
-test: component-host-test
-
-.PHONY: theme-test theme-token-export-test button-theme-raster-test cui-inputs-test cui-overlays-test
-theme-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_theme_test.sh
-test: theme-test
-
-theme-token-export-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_theme_tokens_test.sh
-test: theme-token-export-test
-
-button-theme-raster-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_button_theme_raster_test.sh
-test: button-theme-raster-test
-
-cui-inputs-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER sh tests/ziran_cui_inputs_test.sh
-test: cui-inputs-test
-
-cui-overlays-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER YUE_DESKTOP_RECOVERY=0 sh tests/ziran_cui_overlays_test.sh
-test: cui-overlays-test
-
 .PHONY: style-cache-benchmark
 style-cache-benchmark: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/style_cache_cost.sh
-
-.PHONY: video-test
-video-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER sh tests/ziran_video_linux_test.sh
-
-.PHONY: image-decode-test
-image-decode-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER sh tests/ziran_image_decode_linux_test.sh
-test: image-decode-test
 
 # Android NDK link of the WebP decoder for every ABI; needs ANDROID_NDK.
 .PHONY: android-webp-link-test
@@ -724,10 +673,7 @@ raylib-webp-decode-test: project-toolchain $(RAYLIB_ARCHIVES)
 		RAYLIB_LIBS="$(RAYLIB_PLATFORM_LIBS) -lm" sh tests/raylib_webp_decode_test.sh
 test: raylib-webp-decode-test
 
-.PHONY: scene-test scene-image-material-test
-scene-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_scene_test.sh
-test: scene-test
+.PHONY: scene-image-material-test
 
 scene-image-material-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS HARMONY_DESKTOP_RECOVERY=0 sh tests/scene_image_material_test.sh
@@ -778,7 +724,6 @@ image-preview-web-test: project-toolchain
 	sh tests/image_preview_web_test.sh
 test: image-preview-web-test
 
-
 .PHONY: android-surface-test android-rotation-pixels-test
 android-surface-test: project-toolchain
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS python3 tests/android_surface_test.py
@@ -806,16 +751,12 @@ test: asset-audio-test
 document-storage-test:
 	@ZIRAN_ROOT="$(abspath $(ZIRAN_DIR))" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/document_storage_test.py --browser
 
-.PHONY: app-files-test
-app-files-test:
-	@ZIRAN_ROOT="$(abspath $(ZIRAN_DIR))" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/ziran_app_files_test.sh
-
 .PHONY: pcm-audio-test
 pcm-audio-test: $(RAYLIB_A)
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" \
 		ZIRAN_BUILD_DIR="$(ZIRAN_BUILD_DIR)" python3 tests/media_audio_test.py --browser --pcm
 
-test: pcm-audio-test document-storage-test app-files-test
+test: pcm-audio-test document-storage-test
 
 .PHONY: android-notification-jvm-test
 android-notification-jvm-test:
@@ -841,7 +782,6 @@ test: android-launch-uri-test
 play-billing-test:
 	@python3 tests/play_billing_test.py
 
-
 # Optional extensions on the compiled canvas runner retain the bare defaults.
 .PHONY: canvas-app-hooks-test
 canvas-app-hooks-test:
@@ -856,18 +796,13 @@ rotated-text-test: project-toolchain $(RAYLIB_ARCHIVES)
 	@python3 tests/rotated_text_web_test.py
 test: rotated-text-test
 
-.PHONY: cairo-scaled-image-test
-cairo-scaled-image-test: project-toolchain
-	@sh tests/ziran_cairo_scaled_image_test.sh
-test: cairo-scaled-image-test
-
 # Smooth images draw their shared Lanczos copies the same as Pillow on the
 # pixmap host, Raylib in a private Xvfb window and Canvas in private headless
-# Firefox; cairo-scaled-image-test checks Cairo's, and
+# Firefox; the behavior tests check the pixmap host's and Cairo's
+# (ziran_pixmap_lanczos_test, ziran_cairo_scaled_image_test), and
 # tests/lanczos_backend_goldens.sh runs all four.
 .PHONY: lanczos-goldens-test
 lanczos-goldens-test: project-toolchain $(RAYLIB_ARCHIVES)
-	@sh tests/ziran_pixmap_lanczos_test.sh
 	@RAYLIB_A="$(RAYLIB_A)" WEBP_A="$(WEBP_A)" AVIF_A="$(AVIF_A)" AOM_A="$(AOM_A)" sh tests/raylib_lanczos_test.sh
 	@python3 tests/canvas_lanczos_test.py
 test: lanczos-goldens-test
@@ -917,7 +852,6 @@ avif-benchmark: project-toolchain
 avif-render-test: project-toolchain $(RAYLIB_ARCHIVES) $(AVIF_SO) $(ZX_RAYLIB_RUNTIME)
 	@sh tests/avif_render_test.sh
 
-
 .PHONY: bitmap-image-test
 bitmap-image-test: project-toolchain
 	@ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran sh tests/bitmap_store_test.sh
@@ -960,11 +894,6 @@ test: file-date-linux-test
 android-surface-platform-test: project-toolchain
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS python3 tests/android_surface_platform_test.py
 test: android-surface-platform-test
-
-.PHONY: cui-motion-test
-cui-motion-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER YUE_DESKTOP_RECOVERY=0 sh tests/ziran_cui_motion_test.sh
-test: cui-motion-test
 
 .PHONY: android-source-generation-test
 android-source-generation-test: project-toolchain

@@ -5,7 +5,7 @@ using the optional GStreamer service exported as `kryon/Video` and
 `kryon/VideoLinux`. Display the returned frame with `Image.Draw(Image.Props)`.
 Applications own playback controls and access checks; an optional expiring lease
 revokes both audio and decoded frames when authorization is no longer renewed.
-`make video-test` checks synthetic moving frames, paused seeking, speed, volume,
+`make test-focus TEST=ziran_video_linux_test` checks synthetic moving frames, paused seeking, speed, volume,
 replay and lease revocation with a silent audio sink and no display access.
 
 Kryon is a UI library written in Ziran. Its source lives under `src/ui/` and

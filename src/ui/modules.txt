@@ -40,8 +40,6 @@ composition_input.zi
 contextmenu/contextmenu.zi
 control_props.zi
 cursor.zi
-cursor_api.zi
-cursor_picture.zi
 dialog.zi
 dpi.zi
 drawing_props.zi

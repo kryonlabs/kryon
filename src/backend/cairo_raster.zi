@@ -564,14 +564,6 @@ RasterTextClipped :: (value: string, x: s32, y: s32,
     Restore(paint)
 }
 
-// The desktop's decoder for cursor pictures. The cursor module calls it once a
-// program requests a cursor, so programs without one never link the decoders.
-#program_export
-CursorPictureHost :: (asset_path: string, width: s32, height: s32,
-    pixels: []u32, premultiplied: bool) -> bool {
-    return CairoImagePixels(asset_path, width, height, pixels, premultiplied)
-}
-
 // Render an asset into caller-owned ARGB pixels, premultiplied as Cairo keeps
 // them or straight. Scaling happens in premultiplied space, so transparent
 // edges never pick up colour from fully transparent pixels. The image cache

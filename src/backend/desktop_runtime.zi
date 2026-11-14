@@ -305,9 +305,7 @@ DesktopBitmapCursor :: (props: CursorProps) -> *void {
     if hot_x >= width { hot_x = width - 1 }
     if hot_y >= height { hot_y = height - 1 }
     pixels: [16384]u32
-    // The decoder arrives with the first cursor request; see cursor_picture.
-    if cursor_picture == null ||
-        !cursor_picture(props.asset_path, width, height, pixels[:], DesktopCursorPremultiplied()) { return null }
+    if !RasterCursor.CairoImagePixels(props.asset_path, width, height, pixels[:], DesktopCursorPremultiplied()) { return null }
     surface := CursorSurface(cast(*u8)*pixels[0], width, height, 32,
         width * 4, cast(u32)0xff0000, cast(u32)0xff00,
         cast(u32)0xff, cast(u32)0xff000000)

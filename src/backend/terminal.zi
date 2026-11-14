@@ -13,18 +13,6 @@ terminal_buffer: [1920]Cell;
 terminal_columns: s32;
 terminal_rows: s32;
 
-// This host shows no picture cursors; a request for one decodes nothing.
-#program_export
-CursorPictureHost :: (asset_path: string, width: s32, height: s32,
-    pixels: []u32, premultiplied: bool) -> bool {
-    unused asset_path
-    unused width
-    unused height
-    unused pixels
-    unused premultiplied
-    return false
-}
-
 // Terminal widgets have no raster asset dimensions.
 #program_export
 ImageWidth :: (asset_path: string) -> s32 {

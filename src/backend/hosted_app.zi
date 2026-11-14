@@ -92,7 +92,13 @@ HostedAppStart :: (app: *HostedApp, allows: HostedAppAllows, call: HostCall, con
         bindings[index].context = cast(*void)app.replay
         index += 1
     }
-    app.instance = InstantiateBundle(app.bundle, *bindings[0], count)
+    // As in bundle_player: a page's WebAssembly tier runs only s64 -> s64
+    // host capabilities, and a hosted app's carry strings and records.
+    #if OS == .WEB {
+        app.instance = InstantiateBundlePortable(app.bundle, *bindings[0], count)
+    } else {
+        app.instance = InstantiateBundle(app.bundle, *bindings[0], count)
+    }
     if app.instance == null {
         return false
     }

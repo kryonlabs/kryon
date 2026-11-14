@@ -35,9 +35,13 @@ def main():
             print(test.relative_to(repo))
         return 0
 
+    # No script may reach the person's desktop, session bus or session manager.
     env = os.environ.copy()
-    env.pop("DISPLAY", None)
-    env.pop("WAYLAND_DISPLAY", None)
+    for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS",
+                 "SESSION_MANAGER", "GDK_DISPLAY"):
+        env.pop(name, None)
+    env["YUE_DESKTOP_RECOVERY"] = "0"
+    env["HARMONY_DESKTOP_RECOVERY"] = "0"
 
     def run(test):
         started = time.monotonic()

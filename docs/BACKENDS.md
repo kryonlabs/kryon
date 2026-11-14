@@ -433,7 +433,7 @@ still; `ImageCompress` keeps animated originals unchanged.
   (`libwebpdemux.so.2`) on first use, like its other optional codecs.
 - The canvas and DOM hosts use the browser's own WebP decoder.
 
-`make raylib-webp-decode-test` and `make image-decode-test` decode the
+`make raylib-webp-decode-test` and `make test-focus TEST=ziran_image_decode_linux_test` decode the
 `tests/fixtures/webp` pictures natively, `tests/webp_browser_test.py` does the
 same in headless Chromium, and `make android-webp-link-test` links the
 decoder for every Android ABI.

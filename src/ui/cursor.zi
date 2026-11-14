@@ -187,18 +187,6 @@ CursorPackedPath :: (path: string) -> bool {
     // Slot zero is never a session; it holds the application default.
     cursor_requests: [9]CursorStorage;
 
-    // A picture cursor needs the host's image decoder. cursor_picture
-    // registers it here when a program imports the cursor API, so a program
-    // that requests no cursor carries no decoder; without one a host shows
-    // its plain cursor for a picture request.
-    CursorPicture :: #type (asset_path: string, width: s32, height: s32,
-        pixels: []u32, premultiplied: bool) -> bool;
-    cursor_picture: CursorPicture;
-    CursorPictureUse :: (decode: CursorPicture) -> bool {
-        cursor_picture = decode
-        return true
-    }
-
     CursorStore :: (storage: *CursorStorage, props: CursorProps) {
         if CursorPropsEmpty(props) { storage.requested = false; return }
         for index: 0..cast(s32)props.asset_path.count - 1 {

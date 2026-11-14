@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Browser bundles run again. Ziran's WebAssembly tier runs only `s64 -> s64`
+  host capabilities and no longer hands other bundles to the VM, so the ZX
+  Canvas player and hosted apps, whose capabilities carry strings and records,
+  failed to start in a page. `bundle_player` and `hosted_app` now select the
+  portable VM themselves on the web with `InstantiateBundlePortable`.
+- `make test` runs 70 targets instead of 86. Sixteen targets, and `video-test`
+  outside the suite, only reran one `tests/ziran_*_test.sh` that the behavior
+  test runner already runs; they are removed, and `make test-focus TEST=NAME`
+  runs one such script. The runner now also clears `XAUTHORITY`, the session
+  bus, the session manager and `GDK_DISPLAY`, as those targets did.
 - The test driver is no longer part of an ordinary build. `kryon/test_driver`
   keeps its procedures, which now pass input through unchanged, and the driver
   itself (`test_driver_engine`) is compiled in only when a build defines
@@ -9,16 +19,11 @@
   variable set in the environment of `kryon build`. A test that drives an app
   must build it that way. An app built without the driver and started with
   the variable set stops at once and says so.
-- Programs that request no cursor no longer link the image decoders. The
-  desktop host decoded cursor pictures directly, which kept PNG, WebP and AVIF
-  decoding in every desktop program. `kryon/cursor` now registers the decoder
-  when a program imports it, through the new `CursorPictureHost` host
-  capability; the cursor module the hosts import has no such reference.
-  Kryon's hosts export the capability, and a custom host linked with a
-  program that imports `kryon/cursor` needs it too.
-- With the two changes above and the text change below, an empty window
-  generates 43 C files and 370 KB instead of 64 and 748 KB, and its executable
-  is 196 KB instead of 346 KB.
+- With the test driver change above and the text change below, an empty
+  window generates 62 C files and 545 KB instead of 64 and 748 KB, and its
+  executable is 265 KB instead of 346 KB. The image decoders stay: the desktop
+  host decodes cursor pictures itself, and moving that behind a host
+  capability broke the Go backend check and hosts that do not provide it.
 - Seven failing test targets pass again. The Canvas backend, audio, text,
   Lanczos, asset cache, bitmap image and document storage tests name the web
   target when they build a page, as the `OS == .WEB` host selection needs.
