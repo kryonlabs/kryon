@@ -80,6 +80,8 @@ GetWindowFlags :: (window: *void) -> u32 #foreign sdl_library "SDL_GetWindowFlag
 SetHint :: (name: *u8, value: *u8) -> s32 #foreign sdl_library "SDL_SetHint";
 GetClipboardText :: () -> *u8 #foreign sdl_library "SDL_GetClipboardText";
 SetClipboardText :: (text: *u8) -> s32 #foreign sdl_library "SDL_SetClipboardText";
+GetPrimarySelectionText :: () -> *u8 #foreign sdl_library "SDL_GetPrimarySelectionText";
+SetPrimarySelectionText :: (text: *u8) -> s32 #foreign sdl_library "SDL_SetPrimarySelectionText";
 FreeSdlMemory :: (memory: *void) #foreign sdl_library "SDL_free";
 GetDefaultCursor :: () -> *void #foreign sdl_library "SDL_GetDefaultCursor";
 GetCurrentVideoDriver :: () -> *u8 #foreign sdl_library "SDL_GetCurrentVideoDriver";
@@ -1165,6 +1167,8 @@ PollPointer :: () -> PointerFrame {
 // hands to SDL, which needs it NUL-terminated.
 desktop_clipboard: [65536]u8;
 desktop_clipboard_length: s32;
+desktop_primary: [65536]u8;
+desktop_primary_length: s32;
 
 // Snapshots the text, cut on a whole character to fit.
 #program_export
@@ -1203,6 +1207,44 @@ SystemClipboardWriteHost :: (text: string) -> bool {
     }
     desktop_clipboard[length] = cast(u8)0
     return SetClipboardText(*desktop_clipboard[0]) == 0
+}
+
+#program_export
+SystemPrimaryOpenHost :: () -> s32 {
+    desktop_primary_length = 0
+    text: *u8 = GetPrimarySelectionText()
+    if text == null { return -1 }
+    length: s32 = 0
+    while text[length] != cast(u8)0 && length < 65535 {
+        desktop_primary[length] = text[length]
+        length += 1
+    }
+    if text[length] != cast(u8)0 {
+        while length > 0 && (cast(s32)desktop_primary[length - 1] & 192) == 128 { length -= 1 }
+        if length > 0 && (cast(s32)desktop_primary[length - 1] & 192) == 192 { length -= 1 }
+    }
+    FreeSdlMemory(cast(*void)text)
+    desktop_primary_length = length
+    return length
+}
+
+#program_export
+SystemPrimaryByteHost :: (index: s32) -> s32 {
+    if index < 0 || index >= desktop_primary_length { return -1 }
+    return desktop_primary[index]
+}
+
+#program_export
+SystemPrimaryWriteHost :: (text: string) -> bool {
+    length: s32 = cast(s32)text.count
+    if length > 65535 { length = 65535 }
+    index: s32 = 0
+    while index < length {
+        desktop_primary[index] = text[index]
+        index += 1
+    }
+    desktop_primary[length] = cast(u8)0
+    return SetPrimarySelectionText(*desktop_primary[0]) == 0
 }
 
 #program_export

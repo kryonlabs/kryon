@@ -91,6 +91,12 @@
   `Heading` and `ParagraphText`, `ListBox` its navigation keys and
   `transition` `TransitionFadeColor`. Core, hosts, generated codecs,
   examples, templates and tests use the package names.
+- Native SDL desktop and Linux Raylib hosts expose the distinct PRIMARY text
+  selection through the public system clipboard API; unsupported hosts report
+  it unavailable instead of aliasing the ordinary clipboard.
+- Raylib keys keep a Control, Alt or Super press that was released again
+  within the same poll, so the quickest Control+C tap still reaches the app as
+  Control+C instead of a lost plain C.
 - Reuse identical GTK cell measurements, retain native raster caches across
   unrelated GLib events, and composite clipped opaque pixels efficiently.
 - Detect unchanged GTK painter surfaces by exact byte comparison instead of

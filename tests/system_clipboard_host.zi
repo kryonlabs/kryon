@@ -1,6 +1,8 @@
 // A fake host clipboard for the portable runner.
 stored: [64]u8;
 stored_length: s32 = -1;
+primary: [64]u8;
+primary_length: s32 = -1;
 
 #program_export
 SystemClipboardOpenHost :: () -> s32 {
@@ -22,5 +24,28 @@ SystemClipboardWriteHost :: (text: string) -> bool {
         index += 1
     }
     stored_length = cast(s32)text.count
+    return true
+}
+
+#program_export
+SystemPrimaryOpenHost :: () -> s32 {
+    return primary_length
+}
+
+#program_export
+SystemPrimaryByteHost :: (index: s32) -> s32 {
+    if index < 0 || index >= primary_length { return -1 }
+    return cast(s32)primary[index]
+}
+
+#program_export
+SystemPrimaryWriteHost :: (text: string) -> bool {
+    if text.count > 63 { return false }
+    index: s32 = 0
+    while index < cast(s32)text.count {
+        primary[index] = text[index]
+        index += 1
+    }
+    primary_length = cast(s32)text.count
     return true
 }

@@ -106,4 +106,13 @@ AndroidClipboardWrite :: (text: string) -> bool {
     SystemClipboardWriteHost :: (text: string) -> bool {
         return AndroidClipboardWrite(text)
     }
+
+    #program_export
+    SystemPrimaryOpenHost :: () -> s32 { return -1 }
+
+    #program_export
+    SystemPrimaryByteHost :: (index: s32) -> s32 { unused index; return -1 }
+
+    #program_export
+    SystemPrimaryWriteHost :: (text: string) -> bool { unused text; return false }
 }

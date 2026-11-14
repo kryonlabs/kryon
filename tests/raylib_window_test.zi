@@ -94,6 +94,14 @@ main :: () -> s32 {
     if regained_input.elapsed_ms != 2250 || regained_input.delta_ms != 250 ||
     regained_input.keys[65] != cast(u8)FrameKeyHeld { return 21 }
     FrameInputEnd(input_session)
+    key, modifiers = Runtime.RaylibInputTake(input_session)
+    while key != 0 { key, modifiers = Runtime.RaylibInputTake(input_session) }
+    // Control pressed and released inside one poll, as a script's quickest
+    // Control+B tap is, still applies to the key pressed after it.
+    Probe.fresh_key = 341; Probe.next_key = 66
+    if !Runtime.PollRaylib() { return 29 }
+    key, modifiers = Runtime.RaylibInputTake(input_session)
+    if key != 66 || (modifiers & KeyModifierControl) == 0 { return 29 }
     Runtime.WindowQuitHost()
     if Runtime.PollRaylib() { return 9 }
     Runtime.CloseRaylib()

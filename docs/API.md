@@ -491,6 +491,29 @@ contract. Standard hosted widget policy continues to reject all guest runtime
 texture IDs and does not advertise bitmap lifecycle capabilities; an embedding
 must provide a separate authenticated ownership policy to grant those effects.
 
+### System text clipboard and PRIMARY
+
+Import `kryon/system_clipboard` for the ordinary UTF-8 text clipboard. The
+existing `SystemClipboardText(buffer)`, `SystemClipboardAvailable()`,
+`SystemClipboardHasText()`, and `SystemClipboardSet(text)` calls keep their
+ordinary CLIPBOARD semantics.
+
+On hosts with a distinct selection clipboard, use
+`SystemPrimaryText(buffer) -> string`, `SystemPrimaryAvailable() -> bool`, and
+`SystemPrimarySet(text) -> bool`. `SystemPrimaryText` returns a caller-owned,
+whole-UTF-8 prefix borrowed from `buffer`; an empty result can mean either an
+empty selection or an unsupported host, so use `SystemPrimaryAvailable` when
+that distinction matters. SDL desktop and Linux Raylib hosts connect these
+calls to the platform PRIMARY selection. Android, Canvas, terminal, pixmap,
+bundle and unsupported desktop hosts return unavailable rather than falling
+back to CLIPBOARD.
+
+Custom hosts implement the snapshot functions `SystemPrimaryOpenHost() -> s32`
+and `SystemPrimaryByteHost(index) -> s32`, plus
+`SystemPrimaryWriteHost(text) -> bool`. Open returns the byte count, including
+zero for an available empty selection, or -1 when unavailable. The snapshot
+remains valid until the next open call; write copies the text during the call.
+
 ### Optional native MIME clipboard on Linux
 
 Import `kryon/MimeClipboardLinux` in an X11/XWayland native app and link

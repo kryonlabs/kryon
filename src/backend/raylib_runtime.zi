@@ -2434,6 +2434,13 @@ RaylibInputPoll :: () {
         HostRaylibIsKeyReleased(343) || HostRaylibIsKeyReleased(347)
     key := HostRaylibGetKeyPressed()
     while key != 0 {
+        // A modifier pressed and released within this poll is neither down
+        // nor released now; its press still applies to the keys after it.
+        bit := RaylibModifierBit(key)
+        modifiers |= bit
+        if (bit & (KeyModifierControl | KeyModifierAlt)) != 0 || key == 343 || key == 347 {
+            shortcut = true
+        }
         RaylibInputKey(key, modifiers, shortcut)
         key = HostRaylibGetKeyPressed()
     }
@@ -3815,6 +3822,14 @@ WindowQuitHost :: () {
 // hands to the host, which needs it NUL-terminated.
 raylib_clipboard: [65536]u8;
 raylib_clipboard_length: s32;
+raylib_primary: [65536]u8;
+raylib_primary_length: s32;
+#if !#defined(ANDROID_BUILD) && !#defined(PLATFORM_WEB) && !#defined(_WIN32) && !#defined(__APPLE__) {
+    primary_sdl :: #system_library "SDL2";
+    HostSdlGetPrimarySelectionText :: () -> *u8 #foreign primary_sdl "SDL_GetPrimarySelectionText";
+    HostSdlSetPrimarySelectionText :: (text: *u8) -> s32 #foreign primary_sdl "SDL_SetPrimarySelectionText";
+    HostSdlFree :: (memory: *void) #foreign primary_sdl "SDL_free";
+}
 
 // Snapshots the text, cut on a whole character to fit.
 #program_export
@@ -3860,6 +3875,53 @@ SystemClipboardWriteHost :: (text: string) -> bool {
     raylib_clipboard[length] = cast(u8)0
     HostRaylibSetClipboardText(*raylib_clipboard[0])
     return true
+}
+
+#program_export
+SystemPrimaryOpenHost :: () -> s32 {
+    #if #defined(ANDROID_BUILD) || #defined(PLATFORM_WEB) || #defined(_WIN32) || #defined(__APPLE__) {
+        return -1
+    } else {
+        raylib_primary_length = 0
+        text: *u8 = HostSdlGetPrimarySelectionText()
+        if text == null { return -1 }
+        length: s32 = 0
+        while text[length] != cast(u8)0 && length < 65535 {
+            raylib_primary[length] = text[length]
+            length += 1
+        }
+        if text[length] != cast(u8)0 {
+            while length > 0 && (cast(s32)raylib_primary[length - 1] & 192) == 128 { length -= 1 }
+            if length > 0 && (cast(s32)raylib_primary[length - 1] & 192) == 192 { length -= 1 }
+        }
+        HostSdlFree(cast(*void)text)
+        raylib_primary_length = length
+        return length
+    }
+}
+
+#program_export
+SystemPrimaryByteHost :: (index: s32) -> s32 {
+    if index < 0 || index >= raylib_primary_length { return -1 }
+    return raylib_primary[index]
+}
+
+#program_export
+SystemPrimaryWriteHost :: (text: string) -> bool {
+    #if #defined(ANDROID_BUILD) || #defined(PLATFORM_WEB) || #defined(_WIN32) || #defined(__APPLE__) {
+        unused text
+        return false
+    } else {
+        length: s32 = cast(s32)text.count
+        if length > 65535 { length = 65535 }
+        index: s32 = 0
+        while index < length {
+            raylib_primary[index] = text[index]
+            index += 1
+        }
+        raylib_primary[length] = cast(u8)0
+        return HostSdlSetPrimarySelectionText(*raylib_primary[0]) == 0
+    }
 }
 
 #program_export

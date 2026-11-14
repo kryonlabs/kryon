@@ -12,6 +12,12 @@ SystemClipboardByteHost :: (index: s32) -> s32 #foreign host_api;
 // host copies the text during the call (#reads).
 SystemClipboardWriteHost :: (text: string) -> bool #reads #foreign host_api;
 
+// X11/Wayland PRIMARY selection. Hosts without a distinct PRIMARY selection
+// report it unavailable instead of aliasing it to the ordinary clipboard.
+SystemPrimaryOpenHost :: () -> s32 #foreign host_api;
+SystemPrimaryByteHost :: (index: s32) -> s32 #foreign host_api;
+SystemPrimaryWriteHost :: (text: string) -> bool #reads #foreign host_api;
+
 // The text on the system clipboard, read into buffer (which holds at most
 // buffer.count bytes; longer text is cut on a whole character). It is "" when
 // the clipboard is empty or the host has none.
@@ -58,4 +64,41 @@ SystemClipboardAvailable :: () -> bool {
 #program_export
 SystemClipboardSet :: (text: string) -> bool {
     return SystemClipboardWriteHost(text)
+}
+
+// The PRIMARY selection text, copied into buffer. Empty text and an
+// unavailable host both read as ""; use SystemPrimaryAvailable to distinguish
+// them when a local fallback is needed.
+#program_export
+SystemPrimaryText :: (buffer: []u8) -> string {
+    size: s32 = SystemPrimaryOpenHost()
+    if size <= 0 || buffer.count < 2 { return "" }
+    length: s32 = size
+    limit: s32 = cast(s32)buffer.count
+    if length > limit { length = limit }
+    index: s32 = 0
+    while index < length {
+        byte: s32 = SystemPrimaryByteHost(index)
+        if byte < 0 {
+            length = index
+            break
+        }
+        buffer[index] = cast(u8)byte
+        index += 1
+    }
+    if length < size {
+        while length > 0 && (cast(s32)buffer[length - 1] & 192) == 128 { length -= 1 }
+        if length > 0 && (cast(s32)buffer[length - 1] & 192) == 192 { length -= 1 }
+    }
+    return TextView(buffer[0:cast(s64)length])
+}
+
+#program_export
+SystemPrimaryAvailable :: () -> bool {
+    return SystemPrimaryOpenHost() >= 0
+}
+
+#program_export
+SystemPrimarySet :: (text: string) -> bool {
+    return SystemPrimaryWriteHost(text)
 }

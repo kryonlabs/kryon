@@ -338,6 +338,15 @@ SystemClipboardWriteHost :: (text: string) -> bool {
     return false
 }
 
+#program_export
+SystemPrimaryOpenHost :: () -> s32 { return -1 }
+
+#program_export
+SystemPrimaryByteHost :: (index: s32) -> s32 { unused index; return -1 }
+
+#program_export
+SystemPrimaryWriteHost :: (text: string) -> bool { unused text; return false }
+
 // Terminal layout uses cells: rotate each glyph's cell position. The terminal
 // still owns the appearance of each character, as for ordinary terminal text.
 #program_export

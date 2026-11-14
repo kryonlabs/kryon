@@ -108,6 +108,18 @@ RaylibBundlePlatform :: (context: *void, module: *u8, function: *u8,
         result.* = HostScalar("bool", ifx SystemClipboardWriteHost(Player.TextValue(args[0])) then 1 else 0)
         return 1
     }
+    if name == "SystemPrimaryOpenHost" && count == 0 {
+        result.* = HostScalar("s32", cast(s64)SystemPrimaryOpenHost())
+        return 1
+    }
+    if name == "SystemPrimaryByteHost" && count == 1 {
+        result.* = HostScalar("s32", cast(s64)SystemPrimaryByteHost(cast(s32)args[0].integer))
+        return 1
+    }
+    if name == "SystemPrimaryWriteHost" && count == 1 {
+        result.* = HostScalar("bool", ifx SystemPrimaryWriteHost(Player.TextValue(args[0])) then 1 else 0)
+        return 1
+    }
     return 0
 }
 

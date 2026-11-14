@@ -16,5 +16,10 @@ main :: () -> s32 {
     if !SystemClipboardSet("") { return 6 }
     if !SystemClipboardAvailable() || SystemClipboardHasText() ||
        SystemClipboardText(buffer[:]) != "" { return 7 }
+    if SystemPrimaryAvailable() || SystemPrimaryText(buffer[:]) != "" { return 8 }
+    if !SystemPrimarySet("selected") { return 9 }
+    if !SystemPrimaryAvailable() || SystemPrimaryText(buffer[:]) != "selected" { return 10 }
+    if !SystemPrimarySet("") || !SystemPrimaryAvailable() ||
+       SystemPrimaryText(buffer[:]) != "" { return 11 }
     return 0
 }

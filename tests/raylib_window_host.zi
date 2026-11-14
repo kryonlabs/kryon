@@ -20,6 +20,8 @@ middle_down: bool;
 middle_pressed: bool;
 middle_released: bool;
 fresh_key: s32;
+// A second press in the same poll, after fresh_key.
+next_key: s32;
 repeated_key: s32;
 
 CopyTitle :: (value: *u8) {
@@ -145,7 +147,7 @@ IsMouseButtonReleased :: (button: s32) -> bool { return button == 2 && middle_re
 #program_export
 GetMouseWheelMove :: () -> float32 { return 0.0 }
 #program_export
-GetKeyPressed :: () -> s32 { key := fresh_key; fresh_key = 0; return key }
+GetKeyPressed :: () -> s32 { key := fresh_key; fresh_key = next_key; next_key = 0; return key }
 #program_export
 GetCharPressed :: () -> s32 { return 0 }
 // A Dvorak position (scancode 12, I, types c) and a non-Latin one (5, B).

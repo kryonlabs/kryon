@@ -514,3 +514,12 @@ SystemClipboardWriteHost :: (text: string) -> bool {
     for index: 0..CANVAS_CLIPBOARD_SIZE - 1 { previous[index] = cast(u8)0 }
     return copied
 }
+
+#program_export
+SystemPrimaryOpenHost :: () -> s32 { return -1 }
+
+#program_export
+SystemPrimaryByteHost :: (index: s32) -> s32 { unused index; return -1 }
+
+#program_export
+SystemPrimaryWriteHost :: (text: string) -> bool { unused text; return false }

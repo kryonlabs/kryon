@@ -510,6 +510,14 @@ system-clipboard-linux-test: build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		python3 tests/system_clipboard_linux_test.py
 
+# The portable clipboard and PRIMARY API against a bound fixture host.
+.PHONY: system-clipboard-test
+system-clipboard-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY ZIRAN_ROOT="$(ZIRAN_DIR)" \
+		ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/system_clipboard_test.sh
+	@echo 'System clipboard and PRIMARY: fixture host, unavailable PRIMARY and buffer limits passed'
+test: system-clipboard-test
+
 .PHONY: mime-clipboard-linux-test
 mime-clipboard-linux-test:
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/mime_clipboard_linux_test.py
