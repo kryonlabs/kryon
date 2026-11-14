@@ -103,6 +103,13 @@ PrepareInput :: (player: *Player) -> bool {
                 cast(s32)args[0].integer, TextValue(args[1]))
             return 1
         }
+        // A bundle that draws its own interface keeps its cursor requests to
+        // itself, so the player decodes no picture for it.
+        if function == "CursorPictureHost" && count == 5 {
+            result.kind = HostInteger
+            result.integer = 0
+            return 1
+        }
         if (function == "ImageWidth" || function == "ImageHeight") && count == 1 &&
         args[0].kind == HostString {
             result.kind = HostInteger

@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- The test driver is no longer part of an ordinary build. `kryon/test_driver`
+  keeps its procedures, which now pass input through unchanged, and the driver
+  itself (`test_driver_engine`) is compiled in only when a build defines
+  `KRYON_TEST_DRIVER`: `--define KRYON_TEST_DRIVER` on a direct build, or the
+  variable set in the environment of `kryon build`. A test that drives an app
+  must build it that way. An app built without the driver and started with
+  the variable set stops at once and says so.
+- Programs that request no cursor no longer link the image decoders. The
+  desktop host decoded cursor pictures directly, which kept PNG, WebP and AVIF
+  decoding in every desktop program. `kryon/cursor` now registers the decoder
+  when a program imports it, through the new `CursorPictureHost` host
+  capability; the cursor module the hosts import has no such reference.
+  Kryon's hosts export the capability, and a custom host linked with a
+  program that imports `kryon/cursor` needs it too.
+- With the two changes above and the text change below, an empty window
+  generates 43 C files and 370 KB instead of 64 and 748 KB, and its executable
+  is 196 KB instead of 346 KB.
 - Seven failing test targets pass again. The Canvas backend, audio, text,
   Lanczos, asset cache, bitmap image and document storage tests name the web
   target when they build a page, as the `OS == .WEB` host selection needs.

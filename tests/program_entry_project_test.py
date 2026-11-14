@@ -91,12 +91,26 @@ with tempfile.TemporaryDirectory(prefix="program-entry-", dir=ROOT / "build") as
 
     run([ZIRAN, "tool", "kryon", "build", "--profile", "desktop"], project)
     run(["xvfb-run", "-a", sys.executable, "driver.py"], project)
-    # An empty window has no editable text. The Unicode tables come with the
-    # editing widgets, which register grapheme segmentation when imported.
-    generated = sorted(path.name for path in (project / "build/generated/desktop/c").glob("*.c"))
-    assert generated, "the desktop profile kept no generated C to inspect"
-    assert not [name for name in generated if "grapheme" in name], \
-        f"an empty window carries the Unicode grapheme tables: {generated}"
+    # An empty window edits no text, draws no image, sets no cursor and is not
+    # under test, so it carries none of the code behind those: the Unicode
+    # tables, the image decoders and the test driver come with their users.
+    def generated():
+        return sorted(path.name for path in (project / "build/generated/desktop/c").glob("*.c"))
+    plain = generated()
+    assert plain, "the desktop profile kept no generated C to inspect"
+    for part in ("grapheme", "image_decode", "avif_decode", "test_driver_engine"):
+        assert not [name for name in plain if part in name], \
+            f"an empty window carries {part}: {plain}"
+
+    # A build made for a test asks for the driver and gets it; the same project
+    # built again without the variable drops it.
+    tested = dict(ENV, KRYON_TEST_DRIVER="1")
+    subprocess.run([str(ZIRAN), "tool", "kryon", "build", "--profile", "desktop"],
+                   cwd=project, env=tested, check=True)
+    assert [name for name in generated() if "test_driver_engine" in name], \
+        "KRYON_TEST_DRIVER did not include the test driver"
+    run([ZIRAN, "tool", "kryon", "build", "--profile", "desktop"], project)
+    assert generated() == plain, "the test driver stayed after an ordinary rebuild"
 
     # A portable bundle has no window host, so the tool names the mismatch.
     portable = subprocess.run(

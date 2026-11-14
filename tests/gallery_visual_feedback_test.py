@@ -35,7 +35,9 @@ def build():
         'PROJECT_HOST=src/desktop.zi', 'PROJECT_ASSETS=assets',
         'PROJECT_EXTRA_SOURCES=build/catalog/catalog.zi', 'ZIRAN_PACKAGE_ID=gallery',
         'KRYON_DIR=' + str(ROOT), 'ZIRAN_DIR=' + str(ZIRAN_ROOT),
-        'PROGRAM=' + str(BINARY), 'GEN_DIR=' + str(OUTPUT / 'generated')]
+        'PROGRAM=' + str(BINARY), 'GEN_DIR=' + str(OUTPUT / 'generated'),
+        # This build is driven by the test driver, which only a build that asks for it includes.
+        'KRYON_TEST_DRIVER=1']
     subprocess.run(command, cwd=ROOT / 'examples/gallery', check=True)
     assert sha(OWNER_BINARY) == previous, 'The running gallery executable changed'
     print('Production gallery test host built; owner executable preserved', flush=True)

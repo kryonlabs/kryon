@@ -1,4 +1,8 @@
-"""Drive the stable native gallery shell on an owned private X display."""
+"""Drive the stable native gallery shell on an owned private X display.
+
+The gallery must be built with the test driver, which an ordinary build leaves
+out: run `KRYON_TEST_DRIVER=1 make -C examples widget-catalog` first.
+"""
 import ctypes as C
 import json
 import os

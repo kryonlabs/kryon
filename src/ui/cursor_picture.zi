@@ -1,0 +1,22 @@
+// The host's decoder for cursor pictures. Importing this module registers it
+// with the cursor module before main, and asks the host for the
+// CursorPictureHost capability. The cursor API that applications import and
+// the hosted-widget host import it; the cursor module itself does not, so a
+// program that requests no cursor links no image decoder.
+#if #defined(KRYON_HOSTED_UI) {
+    // A hosted guest's cursors belong to its host, which decodes their pictures.
+    CURSOR_PICTURE_HOSTED :: true;
+} else {
+    #import "cursor"
+
+    host_api :: #system_library "host_api";
+    CursorPictureHost :: (asset_path: string, width: s32, height: s32,
+        pixels: []u32, premultiplied: bool) -> bool #foreign host_api;
+
+    CursorPictureDecode :: (asset_path: string, width: s32, height: s32,
+        pixels: []u32, premultiplied: bool) -> bool {
+        return CursorPictureHost(asset_path, width, height, pixels, premultiplied)
+    }
+
+    cursor_picture_registered: bool = CursorPictureUse(CursorPictureDecode);
+}

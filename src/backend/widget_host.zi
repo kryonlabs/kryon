@@ -60,6 +60,8 @@ ToggleMeasure :: #import "toggle_measure";
 #import "media_audio_host"
 #import "media_audio_codec"
 #import "cursor"
+// Hosted guests may request picture cursors, which this host decodes.
+#import "cursor_picture"
 
 using HostValueKind;
 

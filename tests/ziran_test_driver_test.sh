@@ -11,7 +11,8 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_test_driver_test.zi
 
 for target in c; do
-    "$ziran" build --target="$target" --no-main \
+    # The driver is test code and only a build that defines it includes it.
+    "$ziran" build --target="$target" --no-main --define KRYON_TEST_DRIVER \
         --root "$repo/tests" $kryon_project_args \
         -o "$work/$target" "$source"
     suffix=c

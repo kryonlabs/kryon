@@ -88,7 +88,11 @@ PAGE_SHELL_SOURCE := $(KRYON_DIR)/mk/raylib-shell.html
 endif
 HOST_ID := $(ZIRAN_PACKAGE_ID)_$(HOST_MODULE)
 PROJECT_CONFIG_FILES := ziran.toml ziran.lock
-ZIRAN_MODULE_ARGS := --project
+# The test driver is test code: a build includes it only when
+# KRYON_TEST_DRIVER is set in its environment, as it is when the program runs
+# under a test. Saved IR folds the choice, so each setting has its own stamp.
+TEST_DRIVER_STATE := $(if $(KRYON_TEST_DRIVER),on,off)
+ZIRAN_MODULE_ARGS := --project $(if $(KRYON_TEST_DRIVER),--define KRYON_TEST_DRIVER)
 HOST := $(KRYON_DIR)/src/backend/$(HOST_MODULE).zi
 ifneq ($(PROJECT_HOST),)
 PROJECT_HOST_PATH := $(realpath $(PROJECT_HOST))
@@ -380,7 +384,12 @@ $(PROGRAM_HOST): $(PROJECT_ENTRY) $(KRYON_DIR)/mk/ziran-project.mk
 		'$(PROJECT_ENTRY_MODULE)' "$$parameters" "$$body" > $@
 endif
 
-$(IR_STAMP): $(PROJECT_SOURCE_DEPS) $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
+$(GEN_DIR)/test-driver.$(TEST_DRIVER_STATE):
+	@mkdir -p $(GEN_DIR)
+	@rm -f $(GEN_DIR)/test-driver.on $(GEN_DIR)/test-driver.off
+	@touch $@
+
+$(IR_STAMP): $(GEN_DIR)/test-driver.$(TEST_DRIVER_STATE) $(PROJECT_SOURCE_DEPS) $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
 	mkdir -p $(IR_DIR)
 	rm -f $(IR_DIR)/*.zir $(IR_STAMP)
 	$(IR_COMMAND)
