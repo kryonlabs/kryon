@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- The project tool builds a program entry: when a project's entry module
+  declares `main` (a `kryon/app` program such as `examples/window.zi`),
+  `kryon build` generates a host that calls it, so the same file becomes a
+  desktop executable or a Canvas page. A portable `zx` profile still needs a
+  `Frame` entry and is refused with that reason.
+- Browser profiles name their target again. Canvas, DOM and raylib-web project
+  builds and the ZX canvas player pass `--target=c --target-os web
+  --target-cpu wasm32` when saving IR, which the `OS == .WEB` host selection
+  needs; with only `PLATFORM_WEB` defined every browser project failed on
+  unresolved Canvas functions.
+- Kryon's manifest names the desktop host's system libraries in `[package]
+  links`, so `ziran build --project --target=c --exe` of a program in this
+  checkout links without caller `LDLIBS`. The examples Makefile no longer
+  injects pkg-config link flags or compiles the desktop examples itself.
 - The Android `kryon:renderer-raylib` artifact builds raylib again: its
   CMake project (`cmake/renderer-artifact`) owns `kryon_android_raylib`,
   which the renderer-free native host helpers no longer define, so arm64 and

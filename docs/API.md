@@ -909,6 +909,20 @@ Draw :: (frame: App.Frame) {
 }
 ```
 
+Such a file is a *program*: it owns `main`, and `kryon/app` selects the desktop
+host for a Linux C build and the Canvas host for a web build. In this
+checkout, `ziran build --project --target=c --exe --entry hello:main hello.zi`
+builds it directly: Kryon's `[package] links` names the desktop host's system
+libraries, so no caller `LDLIBS` is needed. Ziran applies those links to the
+root manifest only; an application that depends on Kryon builds through the
+project tool, which supplies them.
+
+The project tool accepts a program as a project's entry. When the entry module
+declares `main`, `kryon build --profile NAME` generates a host that only calls
+that `main`, for a `desktop` profile and for a `canvas` page alike. A program
+entry needs `codegen = "c99"`; a portable `zx` profile needs a `Frame` entry
+and is refused otherwise.
+
 The selected host owns the process entry point, calls `BeginFrame` and
 `EndFrame`, supplies input to the session, and presents paint operations.
 Every host reports the same key codes through `KeyboardTake`: letters as

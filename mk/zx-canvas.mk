@@ -30,7 +30,8 @@ $(ZX_CANVAS_DIR)/toolchain: zx-canvas-config
 $(ZX_CANVAS_GENERATED)/.complete: $(ZX_CANVAS_SOURCES) $(ZX_CANVAS_COMPILER) $(KRYON_DIR)/mk/zx-canvas.mk $(ZX_CANVAS_DIR)/toolchain
 	mkdir -p $(ZX_CANVAS_GENERATED)/ir $(ZX_CANVAS_GENERATED)/c
 	rm -f $(ZX_CANVAS_GENERATED)/ir/*.zir $(ZX_CANVAS_GENERATED)/c/*.[ch]
-	$(ZIRAN_DIR)/build/bin/ziran ir --project --define PLATFORM_WEB --define BUNDLE_NATIVE_RENDERER \
+	$(ZIRAN_DIR)/build/bin/ziran ir --project --target=c --target-os web --target-cpu wasm32 \
+		--define PLATFORM_WEB --define BUNDLE_NATIVE_RENDERER \
 		-o $(ZX_CANVAS_GENERATED)/ir \
 		$(KRYON_DIR)/tools/zx_canvas.zi $(KRYON_DIR)/src/backend/canvas_raster.zi
 	$(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB --define BUNDLE_NATIVE_RENDERER --root $(ZX_CANVAS_GENERATED)/ir \

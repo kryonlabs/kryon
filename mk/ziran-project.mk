@@ -118,8 +118,25 @@ PROJECT_ENTRY_MODULE := $(basename $(notdir $(PROJECT_ENTRY)))
 ifeq ($(PROJECT_ENTRY_MODULE),module)
 PROJECT_ENTRY_MODULE := $(notdir $(patsubst %/,%,$(dir $(PROJECT_ENTRY))))
 endif
+# A program entry owns `main` and opens its window through kryon/app, which
+# selects the host for the compiled target. A frame entry declares Frame and
+# the profile's host owns main.
+PROJECT_PROGRAM := $(shell grep -Eqs '^main[[:space:]]*::' '$(PROJECT_ENTRY)' && echo program)
+ifneq ($(PROJECT_PROGRAM),)
+ifneq ($(PROJECT_CODEGEN),c99)
+$(error a program entry ($(PROJECT_ENTRY) declares main) needs codegen c99; a portable profile needs a Frame entry)
+endif
+# The generated host is the process entry; it only calls the program's main.
+PROGRAM_HOST := $(GEN_DIR)/program-host/kryon_program_host.zi
+HOST := $(PROGRAM_HOST)
+HOST_ID := kryon_program_host
+# Its folder is a module path, so the host is saved under its own name.
+PROJECT_FRAME_BIND := --module-path $(dir $(PROGRAM_HOST))
+HOST_ROOT_SOURCES := $(PROGRAM_HOST) $(PROJECT_ENTRY)
+else
 PROJECT_FRAME_BIND := --bind $(ZIRAN_PACKAGE_ID)_frame_entry:ProjectFrame=$(PROJECT_ENTRY_MODULE):Frame
 HOST_ROOT_SOURCES += $(PROJECT_ENTRY) $(KRYON_DIR)/src/backend/frame_entry.zi
+endif
 endif
 ifeq ($(PROJECT_CODEGEN)/$(PROJECT_BACKEND),zx/canvas)
 # Portable app IR is identical on desktop and web. Only the renderer shell
@@ -131,23 +148,28 @@ ZX_CANVAS_SHELL := $(PAGE_SHELL)
 include $(KRYON_DIR)/mk/zx-canvas.mk
 BROWSER_PROGRAM := $(ZX_CANVAS_PROGRAM)
 endif
+# Saved IR folds `#if OS == .WEB` when it is written, so browser IR names its
+# target; untargeted IR is portable and selects no web host.
+WEB_TARGET := --target=c --target-os web --target-cpu wasm32
 ifneq ($(if $(filter c99,$(PROJECT_CODEGEN)),$(BROWSER_BACKEND)),)
 HOST_ROOT_SOURCES += $(KRYON_DIR)/src/backend/canvas_raster.zi
 # Browser hosts resolve the app's packages like native ones; every saved
 # module is lowered because the browser runtime calls into the page.
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) --define PLATFORM_WEB \
+IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) $(WEB_TARGET) --define PLATFORM_WEB \
 	--entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
 C_COMMAND := $(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
 else ifneq ($(RAYLIB_WEB),)
 # The page has no POSIX threads: PLATFORM_WEB selects the single-threaded
 # image, Lanczos and file paths the browser runtime provides.
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) --define PLATFORM_WEB \
+IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) $(WEB_TARGET) --define PLATFORM_WEB \
 	--entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
 C_COMMAND := $(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB --entry $(HOST_ID):main \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
 else
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) $(if $(filter c99,$(PROJECT_CODEGEN)),--define POSIX_THREADS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
+# A program selects its kryon/app host by compiled target, so its IR names
+# the native C target; frame IR stays portable.
+IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) $(if $(PROJECT_PROGRAM),--target=c) $(if $(filter c99,$(PROJECT_CODEGEN)),--define POSIX_THREADS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
 C_COMMAND := $(ZIRAN) build --target=c --entry $(HOST_ID):main \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
 endif
@@ -347,6 +369,17 @@ $(PROGRAM): $(IR_STAMP) $(ASSET_DEPENDENCY) $(ZIRAN_DIR)/build/bin/zi2zx
 		-o $@ $(IR_DIR)/*.zir
 endif
 
+ifneq ($(PROJECT_PROGRAM),)
+# main takes nothing or (argc, argv) and returns nothing or its exit status.
+$(PROGRAM_HOST): $(PROJECT_ENTRY) $(KRYON_DIR)/mk/ziran-project.mk
+	@mkdir -p $(dir $@)
+	@signature=$$(grep -E -m1 '^main[[:space:]]*::' '$(PROJECT_ENTRY)'); \
+	case "$$signature" in *argc*) parameters='argc: s32, argv: **u8'; arguments='argc, argv';; *) parameters=; arguments=;; esac; \
+	case "$$signature" in *'->'*) body="return Program.main($$arguments)";; *) body="Program.main($$arguments)\n    return 0";; esac; \
+	printf 'Program :: #import "%s";\n\n#program_export\nmain :: (%s) -> s32 {\n    %b\n}\n' \
+		'$(PROJECT_ENTRY_MODULE)' "$$parameters" "$$body" > $@
+endif
+
 $(IR_STAMP): $(PROJECT_SOURCE_DEPS) $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
 	mkdir -p $(IR_DIR)
 	rm -f $(IR_DIR)/*.zir $(IR_STAMP)
@@ -435,8 +468,8 @@ endif
 endif
 
 # Check the complete bound graph through the same IR route as a build.
-check: toolchain
-	$(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) -o $(GEN_DIR)/check-ir --entry $(HOST_ID):main $(if $(filter c99,$(PROJECT_CODEGEN)),$(if $(BROWSER_BACKEND)$(RAYLIB_WEB),--define PLATFORM_WEB)) $(HOST_ROOT_SOURCES)
+check: toolchain $(PROGRAM_HOST)
+	$(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) -o $(GEN_DIR)/check-ir --entry $(HOST_ID):main $(if $(filter c99,$(PROJECT_CODEGEN)),$(if $(BROWSER_BACKEND)$(RAYLIB_WEB),$(WEB_TARGET) --define PLATFORM_WEB,$(if $(PROJECT_PROGRAM),--target=c))) $(HOST_ROOT_SOURCES)
 
 # `ziran install` copies the built program to PREFIX/bin and describes it to
 # the desktop. The KRYON_INSTALL_* values come from [tool.kryon.install] and

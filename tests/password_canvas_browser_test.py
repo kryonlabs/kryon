@@ -292,7 +292,8 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX)
         generated = WORK / 'generated'
         shutil.rmtree(generated, ignore_errors=True)
-        run([ZIRAN, 'build', '--project', '--module-path', ROOT / 'tests', '--target=c', '--no-main', '--define', 'PLATFORM_WEB',
+        run([ZIRAN, 'build', '--project', '--module-path', ROOT / 'tests', '--target=c', '--target-os', 'web',
+             '--target-cpu', 'wasm32', '--no-main', '--define', 'PLATFORM_WEB',
              '--root', ROOT / 'tests', '-o', generated,
              ROOT / 'tests/password_canvas_browser_behavior.zi'])
         shell = WORK / 'shell.html'

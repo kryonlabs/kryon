@@ -303,8 +303,8 @@ check: all ziran-test header-check docs-check project-test public-surface-check 
 CI_SHARD_ZX := renderer-consumer-test zx-test zx-reload-test zx-services-test zx-hosted-test \
 	zx-headless-test native-text-test native-accessibility-test bundle-preload-test
 CI_SHARD_CHECK := check
-CI_SHARD_WEB := canvas-test canvas-project-test zx-canvas-test zx-raylib-test page-route-project-test dom-project-test \
-	raylib-web-project-test
+CI_SHARD_WEB := canvas-test canvas-project-test program-entry-project-test zx-canvas-test zx-raylib-test \
+	page-route-project-test dom-project-test raylib-web-project-test
 .PHONY: test-shard-zx test-shard-check test-shard-web test-shard-hosts
 test-shard-zx: $(CI_SHARD_ZX)
 test-shard-check: $(CI_SHARD_CHECK)
@@ -388,6 +388,13 @@ canvas-test: canvas-frame-input-test web-js-boundary-test canvas-events-test min
 canvas-project-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/canvas_project_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/web_simd_page_test.py
+
+# A program entry (main plus App.Run) built by the project tool for the page
+# and for the desktop.
+.PHONY: program-entry-project-test
+program-entry-project-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/program_entry_project_test.py
+test: program-entry-project-test
 
 .PHONY: page-route-project-test
 page-route-project-test:

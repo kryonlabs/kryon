@@ -35,10 +35,12 @@ def main():
     common = ['--project', '--root', ROOT / 'tests',
               '--module-path', ROOT / 'tests/host_frame_snapshot']
     define = ['--define', 'PLATFORM_WEB'] if args.platform == 'canvas' else []
+    # The Canvas host is selected by OS == .WEB, so the page names its target.
+    target = ['--target-os', 'web', '--target-cpu', 'wasm32'] if args.platform == 'canvas' else []
     ir = WORK / (args.platform + '-ir')
     gen = WORK / (args.platform + '-c')
     shutil.rmtree(ir, ignore_errors=True)
-    run([ZIRAN, 'ir', *common, *define, '--entry', 'host_frame_snapshot_test:main', '-o', ir, ROOT / 'tests/host_frame_snapshot_test.zi',
+    run([ZIRAN, 'ir', *common, *(['--target=c', *target] if target else []), *define, '--entry', 'host_frame_snapshot_test:main', '-o', ir, ROOT / 'tests/host_frame_snapshot_test.zi',
          ROOT / 'tests/host_frame_snapshot/snapshot_app.zi'])
     for form in ('source', 'saved'):
         print(args.platform + ' ' + form, flush=True)
@@ -46,7 +48,7 @@ def main():
         paths = common if form == 'source' else ['--root', ir]
         input_file = source if form == 'source' else ir / 'host_frame_snapshot_test.zir'
         shutil.rmtree(gen, ignore_errors=True)
-        run([ZIRAN, 'build', '--target=c', *paths, *define,
+        run([ZIRAN, 'build', '--target=c', *target, *paths, *define,
              '--entry', 'host_frame_snapshot_test:main', '-o', gen, input_file,
              *([ROOT / 'tests/host_frame_snapshot/snapshot_app.zi'] if form == 'source' else [ir / 'snapshot_app.zir'])])
         if args.platform == 'desktop':

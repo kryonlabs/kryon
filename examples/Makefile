@@ -1,8 +1,6 @@
 .DEFAULT_GOAL := all
 
-CC ?= cc
 ZIRAN_BIN ?= ziran
-ZIRAN_INCLUDE ?= $(if $(ZIRAN_ROOT),$(ZIRAN_ROOT),$(shell $(ZIRAN_BIN) pkg path ziran))/include
 # Resolve the maintained examples through the ordinary package graph.
 KRYON_MODULE_ARGS := --project
 KRYON_SOURCES := $(shell find ../src/ui ../src/backend -type f -name '*.zi' -print)
@@ -33,25 +31,24 @@ $(BUILD_DIR)/image-saved.zx: $(BUILD_DIR)/image.zx
 		-o $@ $(BUILD_DIR)/image-ir/image_demo.zir
 	cmp $(BUILD_DIR)/image.zx $@
 
-$(BUILD_DIR)/desktop-image-native/desktop_image.c: desktop_image.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi image_demo.zi $(KRYON_SOURCES) Makefile
+# Kryon's ziran.toml [package] links names the desktop host's system
+# libraries, so every project C build below links without caller LDLIBS.
+$(BUILD_DIR)/image-desktop: desktop_image.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi image_demo.zi $(KRYON_SOURCES) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)/desktop-image-native
-	$(RM) $(BUILD_DIR)/desktop-image-native/*.c $(BUILD_DIR)/desktop-image-native/*.h
-	$(ZIRAN_BIN) build --target=c --root . $(KRYON_MODULE_ARGS) \
+	$(ZIRAN_BIN) build --target=c --exe --root . $(KRYON_MODULE_ARGS) \
 		--entry desktop_image:main -o $(BUILD_DIR)/desktop-image-native desktop_image.zi
+	cp $(BUILD_DIR)/desktop-image-native/desktop_image $@
 
-$(BUILD_DIR)/desktop-time-picker-native/desktop_time_picker.c: desktop_time_picker.zi time_picker_demo.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi $(KRYON_SOURCES) Makefile
+$(BUILD_DIR)/time-picker-desktop: desktop_time_picker.zi time_picker_demo.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi $(KRYON_SOURCES) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)/desktop-time-picker-native
-	$(RM) $(BUILD_DIR)/desktop-time-picker-native/*.c $(BUILD_DIR)/desktop-time-picker-native/*.h
-	$(ZIRAN_BIN) build --target=c --root . $(KRYON_MODULE_ARGS) \
+	$(ZIRAN_BIN) build --target=c --exe --root . $(KRYON_MODULE_ARGS) \
 		--entry desktop_time_picker:main -o $(BUILD_DIR)/desktop-time-picker-native desktop_time_picker.zi
-
-# The desktop host draws with Cairo and Pango and finds fonts with Fontconfig.
-DESKTOP_LIBS = $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig gio-2.0 glib-2.0 x11) -lm -lpthread
+	cp $(BUILD_DIR)/desktop-time-picker-native/desktop_time_picker $@
 
 define PROGRAM_RULES
 $(BUILD_DIR)/$(1): $(1).zi $(KRYON_SOURCES) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)/$(1)-native
-	LDLIBS='$(DESKTOP_LIBS)' $(ZIRAN_BIN) build --target=c --exe --root . $(KRYON_MODULE_ARGS) \
+	$(ZIRAN_BIN) build --target=c --exe --root . $(KRYON_MODULE_ARGS) \
 		--entry $(1):main -o $(BUILD_DIR)/$(1)-native $(1).zi
 	cp $(BUILD_DIR)/$(1)-native/$(1) $$@
 
@@ -82,18 +79,6 @@ widget-catalog:
 
 widget-catalog-web:
 	python3 ../scripts/build-gallery.py
-
-$(BUILD_DIR)/image-desktop: $(BUILD_DIR)/desktop-image-native/desktop_image.c Makefile
-	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
-		-I$(BUILD_DIR)/desktop-image-native \
-		$(BUILD_DIR)/desktop-image-native/*.c \
-		$(DESKTOP_LIBS) -o $@
-
-$(BUILD_DIR)/time-picker-desktop: $(BUILD_DIR)/desktop-time-picker-native/desktop_time_picker.c Makefile
-	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
-		-I$(BUILD_DIR)/desktop-time-picker-native \
-		$(BUILD_DIR)/desktop-time-picker-native/*.c \
-		$(DESKTOP_LIBS) -o $@
 
 desktop: $(BUILD_DIR)/hello
 
