@@ -13,9 +13,6 @@ using Host :: #import "Canvas";
 #import "tree"
 #import "tree_draw"
 #import "canvas_frame"
-#import "dom_tree"
-#import "dom_host"
-#import "dom_paint"
 #import "tree_input"
 #import "scroll_device"
 #import "key_input"
@@ -56,7 +53,6 @@ canvas_app_unsaved: bool;
 
 // A page embedded with ?mini runs the app in mini mode.
 canvas_app_mini: bool;
-canvas_app_semantic_dom: bool;
 canvas_app_dark: bool;
 canvas_app_reduced_motion: bool;
 canvas_app_theme_changed: bool;
@@ -222,7 +218,6 @@ CanvasAppFrame :: (session: Session, viewport: Rectangle) -> bool {
     pointer: PointerFrame = TestDriverPointer(session, PollPointer())
     TreePointerUpdate(session, pointer)
     TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
-    if canvas_app_semantic_dom { DomHostFrame(session) }
     wheel := TestDriverWheel(CanvasWheelMove())
     PointerWheelSend(session, pointer.x, pointer.y, wheel)
     // Scrolls take their wheel, drags and flings from the sampled device;
@@ -240,33 +235,22 @@ CanvasAppFrame :: (session: Session, viewport: Rectangle) -> bool {
         canvas_app_modifiers, CanvasAppFieldInput())
     if replacement < 0 { EndCanvasFrame(); return false }
     if replacement == 0 { unused CanvasAppMain() }
-    commit_status: FrameStatus
-    if canvas_app_semantic_dom { commit_status = DomPaintFrame(session) }
-    else { commit_status = EndCanvasUiFrame(session) }
-    if commit_status != cast(FrameStatus)FrameOk {
+    if EndCanvasUiFrame(session) != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
         return false
     }
     CanvasCursor(session)
-    if canvas_app_semantic_dom {
-        if !DomReconcile(session, viewport) {
-            EndCanvasFrame()
-            return false
-        }
-    }
     drawn := EndCanvasFrame()
     TestDriverFrame(session)
     return drawn
 }
 
 #program_export
-CanvasAppMainLoop :: (semantic_dom: bool) -> s32 {
-    canvas_app_semantic_dom = semantic_dom
+CanvasAppMainLoop :: () -> s32 {
     if !OpenCanvas() {
         CloseCanvas()
         return CanvasAppError("kryon: could not open the browser canvas")
     }
-    page_native_dom = semantic_dom
     canvas_app_mode = APP_IDENTIFY
     canvas_app_dark = CanvasAppThemeWatch("(prefers-color-scheme: dark)", 0)
     canvas_app_reduced_motion = CanvasAppThemeWatch("(prefers-reduced-motion: reduce)", 1)
@@ -324,7 +308,6 @@ CanvasAppMainLoop :: (semantic_dom: bool) -> s32 {
     unused BundleStorageSync(false)
     AppFilesClose(*canvas_app_files)
     CloseSession(session)
-    if semantic_dom { DomPaintClose(); DomClose() }
     CanvasAppThemeClose()
     CloseCanvas()
     if ok { return 0 }
@@ -332,4 +315,4 @@ CanvasAppMainLoop :: (semantic_dom: bool) -> s32 {
 }
 
 #program_export
-main :: () -> s32 { return CanvasAppMainLoop(false) }
+main :: () -> s32 { return CanvasAppMainLoop() }

@@ -414,7 +414,7 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
                 return config
             }
             if profile.codegen != "" && profile.codegen != "c99" ||
-            profile.backend == "canvas" || profile.backend == "dom" || profile.backend == "android" {
+            profile.backend == "canvas" || profile.backend == "android" {
                 config.error = "native artifacts require a native c99 profile"
                 return config
             }

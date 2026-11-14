@@ -46,7 +46,7 @@ ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c \
 
 SOURCE := $(addprefix src/ui/,$(shell cat src/ui/modules.txt))
 
-.PHONY: all backends-check check laws test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test templates-test pixmap-parity-test pixmap-font pixmap-emoji install-user dom-project-test host-keys-test
+.PHONY: all backends-check check laws test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test templates-test pixmap-parity-test pixmap-font pixmap-emoji install-user host-keys-test
 all: source-check $(BUILD_DIR)/libkryon.a backends-check
 
 # Project command. Its implementation and platform integration are Ziran.
@@ -304,7 +304,7 @@ CI_SHARD_ZX := renderer-consumer-test zx-test zx-reload-test zx-services-test zx
 	zx-headless-test native-text-test native-accessibility-test
 CI_SHARD_CHECK := check
 CI_SHARD_WEB := canvas-test canvas-project-test program-entry-project-test zx-canvas-test zx-raylib-test \
-	page-route-project-test dom-project-test raylib-web-project-test
+	page-route-project-test raylib-web-project-test
 .PHONY: test-shard-zx test-shard-check test-shard-web test-shard-hosts
 test-shard-zx: $(CI_SHARD_ZX)
 test-shard-check: $(CI_SHARD_CHECK)
@@ -340,13 +340,6 @@ test: cursor-api-test
 canvas-audio-engine-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_audio_engine_zi_test.sh
 
-.PHONY: dom-spec-test
-dom-spec-test:
-	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/dom_spec_zi_test.sh
-	@mkdir -p build/scratch/dom-pixels
-	@'$(ZIRAN_BIN)' bundle --root tests $(KRYON_UI_PATHS) --module-path src/backend --module-path '$(ZIRAN_DIR)/std' --entry dom_pixels_test:main -o build/scratch/dom-pixels/pixels.zx tests/dom_pixels_test.zi
-	@test "$$('$(ZIRAN_BIN)' run build/scratch/dom-pixels/pixels.zx)" = 0
-
 .PHONY: desktop-frame-input-test canvas-frame-input-test
 desktop-frame-input-test:
 	@python3 tests/host_frame_snapshot_test.py desktop
@@ -373,7 +366,7 @@ page-geometry-test: project-toolchain
 test: page-geometry-test
 
 .PHONY: canvas-test
-canvas-test: canvas-frame-input-test web-js-boundary-test canvas-events-test mini-mode-test dom-spec-test canvas-audio-engine-test page-geometry-test
+canvas-test: canvas-frame-input-test web-js-boundary-test canvas-events-test mini-mode-test canvas-audio-engine-test page-geometry-test
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_backend_test.sh
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/file_picker_browser_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/http_transfer_browser_test.py
@@ -401,18 +394,6 @@ test: program-entry-project-test
 .PHONY: page-route-project-test
 page-route-project-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/page_route_project_test.py
-
-.PHONY: dom-project-test
-dom-project-test:
-	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/dom_project_test.py
-	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-		YUE_DESKTOP_RECOVERY=0 KRYON_DOM_INTERACTION=1 python3 tests/dom_project_test.py
-	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-		YUE_DESKTOP_RECOVERY=0 KRYON_DOM_PRESS=1 python3 tests/dom_project_test.py
-	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-		YUE_DESKTOP_RECOVERY=0 KRYON_DOM_PRESS_MOVE=1 python3 tests/dom_project_test.py
-	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-		YUE_DESKTOP_RECOVERY=0 KRYON_DOM_IMAGE_DECODE=1 python3 tests/dom_project_test.py
 
 .PHONY: native-text-test native-accessibility-test
 native-text-test:
@@ -570,7 +551,7 @@ sanitize-test: project-toolchain
 # so write permission comes back first.
 BUILD_OUTPUTS := ziran project bin tools test examples sanitize raylib-ziran webp-ziran avif-ziran zx-reload-test zx-raylib zx-native-test zx-android-test \
 	emscripten-cache android-surface-check text-input-platform-test zx-player zx-test zx-canvas zx-canvas-test gallery-zx \
-	accessibility text-shaping performance frame-replay frame-inspect frame-input-replay dom-project
+	accessibility text-shaping performance frame-replay frame-inspect frame-input-replay
 # Keep prior generated output while an installed or running app may use it.
 BUILD_OUTPUTS += zib-reload-test zib-raylib zib-native-test zib-android-test \
 	zib-player zib-test zib-canvas zib-canvas-test gallery-zib
@@ -604,7 +585,7 @@ pixmap-emoji: project-toolchain
 pixmap-surface-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY sh tests/pixmap_surface_test.sh
 
-test: check canvas-test canvas-project-test zx-canvas-test zx-raylib-test page-route-project-test dom-project-test typeface-source-test pixmap-surface-test program-title-test raylib-window-test system-clipboard-linux-test
+test: check canvas-test canvas-project-test zx-canvas-test zx-raylib-test page-route-project-test typeface-source-test pixmap-surface-test program-title-test raylib-window-test system-clipboard-linux-test
 
 clean:
 	rm -rf $(BUILD_DIR)
@@ -641,11 +622,6 @@ test: pixmap-mesh-test
 sdl3-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		YUE_DESKTOP_RECOVERY=0 ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/sdl3_test.py
-
-.PHONY: css-dom-test
-css-dom-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER YUE_DESKTOP_RECOVERY=0 python3 tests/css_dom_browser.py
-test: css-dom-test
 
 .PHONY: style-cache-benchmark
 style-cache-benchmark: project-toolchain

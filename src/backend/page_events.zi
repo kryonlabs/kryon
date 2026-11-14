@@ -6,7 +6,6 @@
 #import "page_core"
 #import "page_geometry"
 #import "page_files"
-#import "dom_host"
 #import "canvas_events"
 #import "input_protocol"
 #import "byte_text_linux"
@@ -285,7 +284,6 @@ PageEventHandle :: (context: s32, event: s32, second: s32, third: s32) {
     } else if context == PageEventFocus {
         unused PageEventSend(CanvasEventFocus, 0, 0, 0.0, 0.0, 0, 0, event)
     } else if context == PageEventBlur {
-        DomPageBlurred()
         unused PageEventSend(CanvasEventBlur, 0, 0, 0.0, 0.0, 0, 0, event)
     } else if context == PageEventPaste {
         PageEventPaste(event)
@@ -307,13 +305,9 @@ PageEventHandle :: (context: s32, event: s32, second: s32, third: s32) {
             PageEventPointY(event), 0, 0, event)
     } else if context == PageEventMouseDown {
         button: s32 = cast(s32)WebGetNumber(event, page_event_names.button)
-        DomPagePressed(button)
         flags: s32 = PageEventSend(CanvasEventMouseDown, button, 0,
             PageEventPointX(event), PageEventPointY(event), 0, 0, event)
-        // Document-layout pages are ordinary DOM documents: inputs own
-        // focus and text selection natively, and stealing it for the
-        // hidden canvas kills double-click selection.
-        if (flags & CanvasEventFocusCanvas) != 0 && !DomDocumentLayout() { PageFocusQuietly() }
+        if (flags & CanvasEventFocusCanvas) != 0 { PageFocusQuietly() }
         pointer: WebValue = WebGet(event, page_event_names.pointer_id)
         if (flags & CanvasEventCapturePointer) != 0 && !WebIsUndefined(pointer) &&
         WebTypeOf(WebGetObject(page_canvas, page_event_names.set_pointer_capture)) == WebTypeFunction {
@@ -321,16 +315,9 @@ PageEventHandle :: (context: s32, event: s32, second: s32, third: s32) {
         }
     } else if context == PageEventMouseUp {
         button: s32 = cast(s32)WebGetNumber(event, page_event_names.button)
-        DomPageReleased(button)
         unused PageEventSend(CanvasEventMouseUp, button, 0, PageEventPointX(event),
             PageEventPointY(event), 0, 0, event)
     } else if context == PageEventWheel {
-        if DomDocumentLayout() {
-            // Document-layout pages are ordinary scrolling documents: the
-            // browser owns the wheel and the hidden canvas never claims it.
-            WebEnd(scope)
-            return
-        }
         flags: s32 = PageEventSend(CanvasEventWheel,
             cast(s32)WebGetNumber(event, page_event_names.delta_mode), 0,
             WebGetNumber(event, page_event_names.delta_x),

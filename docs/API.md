@@ -37,7 +37,7 @@ retained controls from it while input continues using the committed tree.
 | `app` | `Window`, `Frame`, and `Run` for a small executable application |
 | `text`, `button`, `image`, `page`, ... | One named package per widget, with `Props`, `Draw`, and widget-specific results |
 | `semantic` | Semantic kinds for document-oriented applications |
-| `PageRoute` | Browser route path, hash, and history (`GetRoutePath`, `PushRoute`, `GetRouteOrigin`, ...) for Canvas and DOM profiles |
+| `PageRoute` | Browser route path, hash, and history (`GetRoutePath`, `PushRoute`, `GetRouteOrigin`, ...) for Canvas profiles |
 | `geometry`, `drawing_props`, `session`, `tree`, `surface`, `paint_queue`, `style`, `style_sheet`, `control_props`, `font_metrics`, `scroll`, `semantic`, `tree_input`, `widget_kind` | Building blocks for widget packages |
 
 ## Vector path coverage
@@ -1185,9 +1185,9 @@ The SDL/Cairo desktop host applies a real bitmap cursor scoped to its own
 windows, caches decoded cursors, and calls the system only when the resolved
 cursor changes, so switching between requests never flickers. X11 receives
 premultiplied pixels and other drivers straight alpha, so soft edges show no
-light fringe. It restores the system cursor on close. Canvas and DOM draw the
+light fringe. It restores the system cursor on close. Canvas draws the
 image into a CSS cursor (a 1x image plus an `image-set` density entry) with the
-same hotspot on the canvas or root, and DOM widgets inherit it. Other hosts
+same hotspot on the canvas. Other hosts
 retain their system pointer; touch feedback is drawn by the application. These
 requests never move, lock, grab or warp a pointer.
 
@@ -1251,8 +1251,8 @@ in logical units (56 by default). The app keeps its movement rules.
 `Text.Props.rotation` rotates text clockwise in degrees about `bounds` top left
 plus `Text.Props.origin` (logical units). Zero keeps horizontal text; `origin =
 Vector2.{bounds.width / 2.0, bounds.height / 2.0}` rotates about the box centre.
-Layout and font sizes stay unchanged. Native Raylib (including Android), Canvas
-and DOM preserve the same pivot; local text clipping rotates with the text,
+Layout and font sizes stay unchanged. Native Raylib (including Android) and Canvas
+preserve the same pivot; local text clipping rotates with the text,
 while ancestor clipping stays in its original coordinate space.
 
 ## Reading pages
@@ -1457,7 +1457,7 @@ phrase scheduling and any single-in-flight music transition policy.
 The existing `kryon/app_context` export provides `DocumentStorageReady() -> bool`
 and `DocumentFlush() -> bool`, bound to `app_context:DocumentStorageReadyHost`
 and `app_context:DocumentFlushHost` (both zero arguments, bool result).
-`AppLocal` and the direct Canvas/DOM app host implement them. Other hosts must
+`AppLocal` and the direct Canvas app host implement them. Other hosts must
 explicitly grant and dispatch these capabilities; importing them grants no access.
 
 Readiness is nonblocking: true requires an open private document namespace and,

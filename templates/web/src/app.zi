@@ -7,12 +7,10 @@ using Layout :: #import "layout";
 #import "kryon/semantic"
 #import "kryon/session"
 #import "std/number_text"
-// {{name}}: a web page written with Kryon. On the DOM host each widget
-// becomes a real HTML element: headings, paragraphs, links, and buttons
-// that screen readers and search engines understand.
+// {{name}}: a web page written with Kryon, drawn on a Canvas2D element:
+// headings, paragraphs, links, and buttons declared from your state.
 //
 //   kryon build          build/{{name}}-web.html (needs Emscripten)
-//   kryon run canvas     the same page drawn on a canvas
 //   kryon run desktop    the same page in a window
 
 likes: s32;
@@ -40,7 +38,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     Paragraph(session, 2, "This page is a Kryon application. The same Ziran source runs as semantic HTML, on a canvas, and in a desktop window.",
         NextRow(*page, 48.0), FontSize(*page, 17))
     Heading(session, 3, "Why Kryon", 2, NextRow(*page, 30.0), FontSize(*page, 22))
-    Paragraph(session, 4, "One interface, declared every frame from your state. No HTML templates, no JavaScript: the DOM host maps widgets to elements.",
+    Paragraph(session, 4, "One interface, declared every frame from your state. No HTML templates and no JavaScript.",
         NextRow(*page, 48.0), FontSize(*page, 17))
     WebLink(session, 5, "Kryon on GitHub", "https://github.com/kryonlabs/kryon",
         NextRow(*page, 24.0))

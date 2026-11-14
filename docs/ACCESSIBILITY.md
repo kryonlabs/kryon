@@ -34,8 +34,6 @@ and drives them through real libatspi on private Xvfb and DBus sessions. It
 checks discovery, identity after reorder, focus, Unicode text/selection,
 readonly and disabled controls, modal blocking and password redaction.
 
-The DOM host mounts native browser elements. Its private browser test checks
-an editor in Chromium's accessibility tree as well as editing and focus.
 These checks establish the implemented protocol paths, not complete Orca or
 other screen-reader usability. Text boundary/extents methods, list Selection,
 table interfaces, and Windows/macOS/mobile accessibility remain unverified

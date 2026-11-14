@@ -20,7 +20,7 @@ kryon run                    # the default profile; kryon run tui picks another
 | `app` (default) | counter with buttons, a step slider, and progress | `desktop`, `tui`, `web` (canvas) |
 | `tui` | keyboard-driven task list | `tui`, `desktop` |
 | `pages` | Home, Library, and Settings behind a tab row, sharing state | `desktop`, `tui`, `web` (canvas) |
-| `web` | semantic page: headings, paragraphs, links, a button | `web` (DOM), `canvas`, `desktop` |
+| `web` | page: headings, paragraphs, links, a button | `web` (Canvas2D), `desktop` |
 
 Each template's `src/layout.zi` stacks rows in pixels in a window or browser
 and in character cells on the terminal host, so one `Frame` serves every
@@ -96,7 +96,7 @@ packages: add `https://github.com/kryonlabs/css.git`,
 building blocks listed in `ziran.toml` for code that needs those primitives
 without importing the widget catalog. Native and browser profiles resolve
 imports the same way, so an app's Git dependencies and package-qualified
-named imports such as `kryon/text` work in Canvas and DOM builds too.
+named imports such as `kryon/text` work in Canvas builds too.
 
 From the app directory, run:
 
@@ -179,7 +179,7 @@ same descriptor. A dirty canonical provider deliberately cannot prove reuse.
 
 Define each profile under `[tool.kryon.profiles.NAME]`. It requires `backend`;
 `codegen` defaults to `c99`. Supported backends are `terminal`, `desktop`,
-`raylib`, `canvas`, `dom`, `pixmap`, and `android`. Set `default_profile` under `[tool.kryon]` when there
+`raylib`, `canvas`, `pixmap`, and `android`. Set `default_profile` under `[tool.kryon]` when there
 are several profiles. `--profile NAME` selects another. `run` asks for a
 profile when there are several, none is specified, and it runs in a
 terminal; otherwise it uses the default.
@@ -190,7 +190,6 @@ terminal; otherwise it uses the default.
 | `desktop` | SDL2 window with Cairo raster | SDL2, Cairo, and FreeType development libraries |
 | `raylib` | raylib SDL2/OpenGL ES 2 window | the locked raylib source package and SDL2, DRM, EGL, GLESv2 |
 | `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
-| `dom` | semantic DOM page | Emscripten with Asyncify; see [DOM host](dom.md) |
 | `pixmap` | headless 960 × 600 frame printed as a PPM image | nothing; `kryon run shot > frame.ppm` |
 | `android` | installable APK through a generated `droid/` Gradle project and direct NativeActivity host | a JDK, the Android SDK with NDK `28.2.13676358` and CMake `3.22.1`, the locked codec source packages, and `[tool.kryon.android] package`; see [Android host](BACKENDS.md#android-host) |
 
@@ -514,7 +513,7 @@ are saved in `build/generated/<profile>/ir/` as `.zir`; generated C is in
 `build/generated/<profile>/c/`. `ziran inspect FILE.zir` displays a saved
 module.
 
-Canvas and DOM projects resolve package-qualified hosts and bind the selected
+Canvas projects resolve package-qualified hosts and bind the selected
 source through the shared frame capability. Their generator also roots
 `canvas_raster.zi` and lowers every saved module, preserving raster adapters
 and browser callbacks. Native profiles select the package-qualified host
@@ -537,9 +536,7 @@ them to PNG, and lays out such grids.
 
 Kryon's `make desktop-project-test` and `make raylib-project-test` exercise the graphical hosts on private Xvfb
 displays, including keyboard and Unicode text input. `make canvas-project-test`
-builds a real Canvas2D project and loads it in private headless Chromium.
-`make dom-project-test` builds a real semantic DOM project and checks its
-mounted tags and attributes in another private headless Chromium process. Do
+builds a real Canvas2D project and loads it in private headless Chromium. Do
 not run graphical tests on the developer's live display.
 
 ### Application-owned hosts

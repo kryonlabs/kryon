@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- The semantic DOM backend is removed: the `dom` profile, `dom_host`,
+  `dom_tree`, `dom_paint`, `dom_run` and `dom_app_run`, their tests and
+  `docs/dom.md`. No project used it. The `web` template now builds a Canvas2D
+  page, `CanvasAppMainLoop` takes no argument, and the shared page event and
+  texture code loses its DOM branches. The tool refuses a profile with
+  `backend = "dom"`.
 - Browser bundles run again. Ziran's WebAssembly tier runs only `s64 -> s64`
   host capabilities and no longer hands other bundles to the VM, so the ZX
   Canvas player and hosted apps, whose capabilities carry strings and records,

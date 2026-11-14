@@ -107,8 +107,7 @@ full website from fixed source revisions before publishing.
 
 The [feature matrix](docs/FEATURE_MATRIX.md) records package and host coverage.
 The Canvas2D browser host is covered by private headless Chromium, WebAudio,
-and Wasm tests. Its semantic DOM profile is covered by a separate private
-headless Chromium document test. The [open-work plan](plan/README.md) lists
+and Wasm tests. The [open-work plan](plan/README.md) lists
 the remaining platform-accessibility work.
 
 Kryon commits land upstream first. Applications then update their

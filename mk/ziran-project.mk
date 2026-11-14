@@ -18,7 +18,7 @@ ifndef ZIRAN_PACKAGE_ID
 $(error ZIRAN_PACKAGE_ID is required; run this through ziran tool kryon)
 endif
 
-ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 raylib/c99 canvas/c99 dom/c99 pixmap/c99 desktop/zx pixmap/zx canvas/zx raylib/zx),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
+ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 raylib/c99 canvas/c99 pixmap/c99 desktop/zx pixmap/zx canvas/zx raylib/zx),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
 $(error backend $(PROJECT_BACKEND) with codegen $(PROJECT_CODEGEN) is not available)
 endif
 
@@ -43,7 +43,7 @@ ifneq ($(strip $(PROJECT_LIBRARY)$(PROJECT_STATIC_ARCHIVE)$(PROJECT_NATIVE_ARTIF
 $(error a Zx profile cannot link a native library or static archive)
 endif
 endif
-ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
+ifneq ($(filter $(PROJECT_BACKEND),canvas),)
 ifeq ($(PROJECT_CODEGEN),c99)
 PROGRAM := $(PROJECT_BUILD_DIR)/$(PROJECT_NAME)-$(PROJECT_PROFILE).html
 endif
@@ -71,7 +71,7 @@ HOST_MODULE := $(PROJECT_BACKEND)_run
 ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),desktop/zx canvas/zx raylib/zx),)
 HOST_MODULE := zx_run
 endif
-BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas dom)
+BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas)
 # The program's name for its window, page and menu entry: the install name or
 # else the package name. The kryon tool passes it as KRYON_PROGRAM_TITLE, read
 # only as a shell variable, so the text cannot change a recipe. Native and ZX
@@ -111,7 +111,7 @@ HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi $(KRY
 ifneq ($(filter $(PROJECT_BACKEND),desktop raylib),)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/app_asset_path.zi $(KRYON_DIR)/src/backend/app_asset.zi $(KRYON_DIR)/src/backend/program_title.zi
 endif
-ifneq ($(filter $(PROJECT_BACKEND),desktop canvas dom),)
+ifneq ($(filter $(PROJECT_BACKEND),desktop canvas),)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/frame_input_provider.zi
 endif
 HOST_ROOT_SOURCES := $(HOST)
@@ -181,7 +181,7 @@ ifeq ($(PROJECT_BACKEND),desktop)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi $(KRYON_DIR)/src/backend/image_decode_linux.zi $(KRYON_DIR)/src/backend/avif_decode.zi $(KRYON_DIR)/src/backend/accessibility_linux.zi $(KRYON_DIR)/src/backend/atspi_protocol.zi
 HOST_SOURCES += $(wildcard $(KRYON_DIR)/src/backend/gtk_*_linux.zi) $(KRYON_DIR)/src/backend/file_date_linux.zi
 endif
-ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
+ifneq ($(filter $(PROJECT_BACKEND),canvas),)
 CANVAS_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -lidbfs.js -sEXPORTED_RUNTIME_METHODS=FS
 include $(KRYON_DIR)/mk/emcc.mk
 # Ordinary Canvas applications may embed portable Ziran bundles through
@@ -253,7 +253,7 @@ ZX_RAYLIB_ARCHIVE := $(RAYLIB_ARCHIVES)
 include $(KRYON_DIR)/mk/zx-raylib.mk
 NATIVE_PLAYER := $(ZX_RAYLIB_PROGRAM)
 endif
-ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
+ifneq ($(filter $(PROJECT_BACKEND),canvas),)
 EM_CACHE ?= $(KRYON_DIR)/build/emscripten-cache
 WEB_PAGE_ASSET_ENTRIES := $(strip $(PROJECT_ASSETS) $(PROJECT_PRELOAD))
 WEB_PAGE_ASSET_SOURCES := $(foreach entry,$(WEB_PAGE_ASSET_ENTRIES),$(firstword $(subst @, ,$(entry))))
@@ -279,7 +279,7 @@ ifneq ($(PROJECT_LIBRARY),)
 HOST_LIBS += -l$(PROJECT_LIBRARY)
 endif
 ifneq ($(PROJECT_STATIC_ARCHIVE),)
-ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
+ifneq ($(filter $(PROJECT_BACKEND),canvas),)
 $(error static_archive requires a native profile)
 endif
 PROJECT_STATIC_ARCHIVE_PATH := $(shell realpath "$(PROJECT_STATIC_ARCHIVE)" 2>/dev/null)
@@ -422,7 +422,7 @@ WEB_LINK = EM_CACHE=$(EM_CACHE) $(EMCC) -O2 -I$(ZIRAN_DIR)/include -iquote $(C_D
 	-sALLOW_MEMORY_GROWTH=1
 
 $(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json $(HOST_DEPS) $(PAGE_SHELL) $(if $(PAGE_SHELL),$(KRYON_DIR)/mk/web-page.sh) $(CANVAS_RUNTIME_SOURCES) $(KRYON_DIR)/mk/ziran-project.mk
-ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
+ifneq ($(filter $(PROJECT_BACKEND),canvas),)
 	@runtime=; \
 		if test -f "$(C_DIR)/std_bundle_host.c"; then \
 			$(MAKE) --no-print-directory -f $(KRYON_DIR)/mk/ziran-project.mk $(CANVAS_RUNTIME) || exit $$?; \
@@ -469,7 +469,7 @@ endif
 else
 ifneq ($(RAYLIB_WEB),)
 	@echo "Kryon raylib browser app: serve ./$(WEB_PAGE_DIR) over HTTP and open index.html"
-else ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
+else ifneq ($(filter $(PROJECT_BACKEND),canvas),)
 	@echo "Kryon browser app: ./$@"
 else
 	$(RUN_ENV) ./$(PROGRAM)

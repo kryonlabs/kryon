@@ -239,13 +239,10 @@ backend = "desktop"
 [tool.kryon.profiles.web]
 backend = "canvas"
 assets = "assets"
-[tool.kryon.profiles.dom]
-backend = "dom"
-assets = "assets"
 ''')
     (OUTPUT/'ziran.local.toml').write_text(f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
     run([ZIRAN,'lock'],OUTPUT)
-    for profile in ('desktop','web','dom'):
+    for profile in ('desktop','web'):
         run([ZIRAN,'tool','kryon','check','--profile',profile],OUTPUT)
     common=['--project','--root',ROOT/'tests','--module-path',ROOT/'tests']
     source=ROOT/'tests/cursor_model_test.zi'
@@ -292,7 +289,7 @@ assets = "assets"
         run(['xvfb-run','-a','-s','-screen 0 1400x1000x24 -nolisten tcp','env','KRYON_PRIVATE_XVFB=1',sys.executable,Path(__file__).resolve(),'--drive',mode])
     # Canvas and DOM: the same requests as CSS cursors in a private headless
     # Chromium. The short profile path keeps its sockets below 108 bytes.
-    for profile in ('web','dom'):
+    for profile in ('web',):
         run([ZIRAN,'tool','kryon','build','--profile',profile],OUTPUT)
         run([sys.executable,ROOT/'tests/cursor_browser.py',OUTPUT/f'build/cursor_probe-{profile}.html',ROOT/f'build/scratch/cw-{profile}'])
     print('Cursor source/saved IR, C, Go and portable model passed',flush=True)

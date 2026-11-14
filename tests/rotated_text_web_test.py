@@ -15,7 +15,7 @@ short_temp.mkdir(parents=True,exist_ok=True)
 env['TMPDIR']=str(short_temp)
 env.setdefault('EM_CACHE',str(ROOT/'build/emscripten-cache'))
 projects=[]
-for backend in ('canvas','dom'):
+for backend in ('canvas',):
     project=ROOT/'build/scratch/rotated-text'/backend
     (project/'src').mkdir(parents=True,exist_ok=True)
     (project/'assets').mkdir(exist_ok=True)

@@ -67,7 +67,6 @@ in the application.
 | `raylib` | `src/backend/raylib_run.zi` | raylib SDL2/OpenGL ES 2 window |
 | `raylib` with `platform = "web"` | `src/backend/raylib_run.zi` | raylib WebGL 1 page with Emscripten and Asyncify; see [raylib in the browser](#raylib-in-the-browser) |
 | `canvas` | `src/backend/canvas_run.zi` | Canvas2D page with Emscripten and Asyncify |
-| `dom` | `src/backend/dom_run.zi` | Semantic DOM layer over the Canvas2D raster host |
 | `android` | app `src/main.zi` → `android_run.zi` | Android NativeActivity package with direct `ANativeWindow` pixel presentation |
 
 The small application surface selects the host from the compile-time target.
@@ -79,17 +78,9 @@ After `PollDesktop()`, custom loops call `DesktopInputTake(session)` to transfer
 the next ordered editing action or printable-key/text run into that session.
 The returned key uses shared codes, including 320–329 for numeric-keypad
 digits, and carries the modifiers held when that key arrived.
-The DOM host reuses
-the Canvas raster provider and adds [semantic DOM reconciliation](dom.md).
-Standalone `AppContext` applications can use the same two presentations with
-the compiled hosts `canvas_app_run.zi` and `dom_app_run.zi`; the DOM entry
-reuses the application frame lifecycle while emitting positioned native HTML
-text, images and buttons with CSS boxes, gradients and clipping. Custom drawing,
-meshes and texture effects use bounded Canvas tiles in paint order; the full-page
-Canvas bitmap is not presented in this mode. The ordinary document-layout DOM
-host remains available for browser flow layout.
-Polygon-clipped images use native Cairo/Canvas path clips; DOM keeps these
-custom image shapes in bounded Canvas tiles. Raylib caches bounded polygon triangulations and draws them directly on the
+Standalone `AppContext` applications use the compiled host
+`canvas_app_run.zi`.
+Polygon-clipped images use native Cairo/Canvas path clips. Raylib caches bounded polygon triangulations and draws them directly on the
 GPU, including all Jungle puzzle pieces. Complex polygons and pixel hosts use
 clipped spans while preserving the original source mapping.
 SDL pixel hosts prefer accelerated texture presentation without blocking on
@@ -379,7 +370,7 @@ dependency so application packaging tools carry it into their lib directory.
 Cairo also searches beside the executable and its `lib`/`../lib` directories;
 `KRYON_AVIF_LIBRARY` can select an explicit codec file for custom hosts.
 
-Canvas/DOM use the browser AVIF decoder through `PageImageDecode`; supported
+Canvas uses the browser AVIF decoder through `PageImageDecode`; supported
 browsers (Firefox 93+, Chromium 85+, Safari 16.4+) supply their native AVIF
 implementation. In a browser without AVIF, every AVIF decode fails cleanly:
 no pixels and zero size, so the image is treated like any undecodable file,
@@ -401,7 +392,7 @@ ABI's dav1d assembly. `make avif-cross-test [AVIF_CROSS_ROOT=...] [ANDROID_NDK=.
 runs the strict parity test for Linux AArch64 and static Android arm64-v8a
 under qemu-user (Cortex-A53 and every emulated feature) and Android x86/x86_64
 on the host; `AVIF_CROSS_ROOT` is a prefix holding the AArch64 GCC and
-qemu-aarch64. `make avif-browser-test` exercises the Canvas/DOM image
+qemu-aarch64. `make avif-browser-test` exercises the Canvas image
 boundary in private headless Firefox, reporting the AVIF capability, and repeats
 it as a browser without AVIF. `make avif-benchmark [ANDROID_SERIAL=ZE2223BQZT]
 [AVIF_BENCHMARK_BROWSER=1]` records ms/image, MP/s and peak RSS for libaom,
@@ -431,7 +422,7 @@ still; `ImageCompress` keeps animated originals unchanged.
   artifact lists `lib/libkryonwebp.a` in its archives.
 - The desktop (Cairo) host loads the system libwebp demuxer
   (`libwebpdemux.so.2`) on first use, like its other optional codecs.
-- The canvas and DOM hosts use the browser's own WebP decoder.
+- The canvas host uses the browser's own WebP decoder.
 
 `make raylib-webp-decode-test` and `make test-focus TEST=ziran_image_decode_linux_test` decode the
 `tests/fixtures/webp` pictures natively, `tests/webp_browser_test.py` does the
@@ -509,7 +500,6 @@ LRU budgets, so a large cover and its small marker do not evict each other.
 | Raylib | Uploaded texture; the CPU copy is freed after upload |
 | pixmap and SDL3 GPU | A copy slot drawn 1:1 (threaded builds only, `PIXMAP_LANCZOS`), so the CPU rows and GPU hosts show the same bytes |
 | Canvas | Ziran resampler in slices, from the texture's pixels read back, then uploaded |
-| DOM `<img>` | Scaled by the browser |
 
 Firefox has no `imageSmoothingQuality`. Canvas therefore does not rely on
 it, and still sets it to `high` for upright smooth draws that it does not

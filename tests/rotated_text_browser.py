@@ -94,40 +94,26 @@ try:
           return draw.call(this,text,...args);
         };
       }
-      new MutationObserver(()=> {
-        const root=document.getElementById('kryon-dom-paint');
-        if(root) globalThis.__rotationDom=[...root.querySelectorAll('span')].filter(n=>n.textContent==='Rotated')
-          .map(n=>({transform:n.style.transform,origin:n.style.transformOrigin,font:n.style.font,
-            clip:n.style.clipPath,outer:n.parentElement.style.overflow}));
-      }).observe(document,{childList:true,subtree:true,attributes:true});
     """)
     command("Page.navigate",url=html)
     command('Page.bringToFront')
     deadline=time.monotonic()+30
     while time.monotonic()<deadline:
-        value=evaluate("({calls:globalThis.__rotatedCalls||[],dom:globalThis.__rotationDom||[]})")
-        if (backend=='dom' and value['dom']) or (backend=='canvas' and
-            all(any(c['text']==label for c in value['calls']) for label in ('Rotated','Horizontal'))):
+        value=evaluate("({calls:globalThis.__rotatedCalls||[]})")
+        if all(any(c['text']==label for c in value['calls']) for label in ('Rotated','Horizontal')):
             break
         time.sleep(.05)
     assert not diagnostics,diagnostics
-    assert value['dom'] if backend=='dom' else value['calls'],(value,evaluate('({body:document.body.innerText.slice(0,1200),frames:globalThis.__fixtureFrames,paint:globalThis.__fixturePaint,visibility:document.visibilityState,ready:document.readyState,module:typeof Module,called:typeof Module!=="undefined"?Module.calledRun:null,main:typeof Module!=="undefined"?typeof Module._main:null,canvases:[...document.querySelectorAll("canvas")].map(n=>[n.width,n.height])})'))
-    if backend=='dom':
-        item=value['dom'][0]
-        assert item['transform']=='rotate(27.5deg)',item
-        assert item['origin']=='90px 20px',item
-        assert item['clip'].startswith('polygon(') and item['outer']=='hidden',item
-        assert float(re.search(r'([0-9.]+)px',item['font']).group(1))>=24,item
-    else:
-        import math
-        rotated=next(c for c in value['calls'] if c['text']=='Rotated')
-        flat=next(c for c in value['calls'] if c['text']=='Horizontal')
-        assert rotated['font']==flat['font'] and float(re.search(r'([0-9.]+)px',rotated['font']).group(1))>=24,(rotated,flat)
-        c=math.cos(math.radians(27.5));s=math.sin(math.radians(27.5))
-        for actual,expected in [(rotated['a'],c),(rotated['b'],s),(rotated['c'],-s),(rotated['d'],c),
-                                (rotated['e'],190-c*190+s*120),(rotated['f'],120-s*190-c*120),
-                                (flat['a'],1),(flat['b'],0),(flat['c'],0),(flat['d'],1)]:
-            assert abs(actual-expected)<.02,(rotated,flat,actual,expected)
+    assert value['calls'],(value,evaluate('({body:document.body.innerText.slice(0,1200),frames:globalThis.__fixtureFrames,paint:globalThis.__fixturePaint,visibility:document.visibilityState,ready:document.readyState,module:typeof Module,called:typeof Module!=="undefined"?Module.calledRun:null,main:typeof Module!=="undefined"?typeof Module._main:null,canvases:[...document.querySelectorAll("canvas")].map(n=>[n.width,n.height])})'))
+    import math
+    rotated=next(c for c in value['calls'] if c['text']=='Rotated')
+    flat=next(c for c in value['calls'] if c['text']=='Horizontal')
+    assert rotated['font']==flat['font'] and float(re.search(r'([0-9.]+)px',rotated['font']).group(1))>=24,(rotated,flat)
+    c=math.cos(math.radians(27.5));s=math.sin(math.radians(27.5))
+    for actual,expected in [(rotated['a'],c),(rotated['b'],s),(rotated['c'],-s),(rotated['d'],c),
+                            (rotated['e'],190-c*190+s*120),(rotated['f'],120-s*190-c*120),
+                            (flat['a'],1),(flat['b'],0),(flat['c'],0),(flat['d'],1)]:
+        assert abs(actual-expected)<.02,(rotated,flat,actual,expected)
     assert not diagnostics,diagnostics
     print(backend+': real renderer arbitrary angle, centre pivot, full font size and transform restoration PASS')
 finally:
