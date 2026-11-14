@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- GTK style queries notice a new default display. The style cache answered
+  from the previous display's settings after `gdk_display_manager_set_default_display`,
+  so theme values and the style generation went stale.
+
 - Native Linux apps can drag data out to other applications. The optional
   `kryon/DragSourceLinux` module is an XDND version 5 drag source on its own
   X connection: it follows the pointer while the toolkit keeps its implicit
