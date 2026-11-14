@@ -1,0 +1,55 @@
+#import "drag_source_linux"
+#import "std/byte_text_linux"
+#import "std/number_text"
+
+c :: #system_library "c";
+Write :: (arg0: s32, arg1: *u8, arg2: u64) -> s64 #foreign c "write";
+Sleep :: (arg0: u32) -> s32 #foreign c "usleep";
+Env :: (arg0: *u8) -> *u8 #foreign c "getenv";
+
+Number :: (value: s64) {
+    digits: [32]u8
+    text: string = FormatInteger(value, digits[:])
+    output: [33]u8
+    for i: 0..cast(s64)text.count - 1 { output[i] = text[i] }
+    output[text.count] = 32
+    unused Write(1, *output[0], cast(u64)text.count + 1)
+}
+Line :: (text: string) {
+    output: [256]u8
+    for i: 0..cast(s64)text.count - 1 { output[i] = text[i] }
+    output[text.count] = 10
+    unused Write(1, *output[0], cast(u64)text.count + 1)
+}
+
+// Drags one payload set while the private display's button is held, then
+// reports: status performed success local-seen accepted-seen.
+#program_export
+main :: () -> s32 {
+    uri: Text = TextCopy("file:///tmp/kryon%20drag/a.txt\r\n")
+    text: Text = TextCopy("/tmp/kryon drag/a.txt")
+    payloads := DragSourcePayload.[
+        .{.mime = "text/uri-list", .bytes = uri.bytes[:uri.bytes.count]},
+        .{.mime = "text/plain;charset=utf-8", .bytes = text.bytes[:text.bytes.count]}]
+    rgba: [1024]u8
+    for i: 0..255 { rgba[i * 4] = 30; rgba[i * 4 + 1] = 120; rgba[i * 4 + 2] = 210; rgba[i * 4 + 3] = ifx (i % 16) < 12 then cast(u8)255 else cast(u8)0 }
+    icon := DragSourceIcon.{16, 16, rgba[:], 0, 0}
+    if !DragSourceBegin(payloads[:], DRAG_ACTION_COPY | DRAG_ACTION_MOVE | DRAG_ACTION_LINK, icon) { return 20 }
+    Line("ready")
+    local_seen := false
+    accepted_seen := false
+    state: DragSourceState
+    for frame: 0..3000 {
+        state = DragSourceUpdate()
+        local_seen = local_seen || state.local
+        accepted_seen = accepted_seen || state.accepted
+        if !DragSourceActive() { break }
+        unused Sleep(5000)
+    }
+    Number(cast(s64)state.status); Number(cast(s64)state.performed)
+    Number(ifx state.success then 1 else 0); Number(ifx local_seen then 1 else 0)
+    Number(ifx accepted_seen then 1 else 0)
+    Line("")
+    DragSourceEnd()
+    return 0
+}

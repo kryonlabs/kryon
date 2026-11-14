@@ -1,0 +1,753 @@
+// Optional native X11/XWayland drag source (XDND version 5). An application
+// starts a drag while its primary button is held; this module then follows the
+// pointer, talks XDND to the window under it, serves the XdndSelection data
+// and reports when the pointer is over one of the application's own windows,
+// so the application can perform internal drops itself. It owns a separate
+// X connection and never grabs the pointer: the button press that started the
+// drag keeps the toolkit's implicit grab, so the toolkit also sees the release.
+#import "std/byte_text_linux"
+
+DragSourceStatus :: enum { Idle; Dragging; Local; Dropped; Finished; Cancelled; Failed; }
+DragSourcePayload :: struct { mime: string; bytes: []u8; }
+// Straight (non-premultiplied) RGBA; the hot spot is the pointer's position
+// inside the icon. Pixels at least half opaque are shown.
+DragSourceIcon :: struct { width: s32; height: s32; rgba: []u8; hot_x: s32; hot_y: s32; }
+DragSourceState :: struct {
+    status: DragSourceStatus
+    // Pointer position on the root window.
+    root_x: s32
+    root_y: s32
+    // KeyModifier-style bits: 1 Shift, 2 Control, 4 Alt.
+    modifiers: s32
+    // The action this drag currently suggests, a DRAG_ACTION_* bit.
+    action: u32
+    // A foreign XDND target under the pointer accepts the drop.
+    accepted: bool
+    // The pointer is over a window that belongs to this process.
+    local: bool
+    // After Finished: the action the target reports, and whether it succeeded.
+    performed: u32
+    success: bool
+}
+DRAG_ACTION_COPY :: 1;
+DRAG_ACTION_MOVE :: 2;
+DRAG_ACTION_LINK :: 4;
+DRAG_ACTION_ASK :: 8;
+
+#scope_file
+c :: #system_library "c";
+xcb :: #system_library "xcb";
+Cookie :: struct { sequence: u32; }
+Iterator :: struct { data: *u32; remaining: s32; index: s32; }
+Property :: struct {
+    response: u8; format: u8; sequence: u16; length: u32
+    kind: u32; after: u32; count: u32; pad: [12]u8
+}
+PointerReply :: struct {
+    response: u8; same_screen: u8; sequence: u16; length: u32
+    root: u32; child: u32; root_x: s16; root_y: s16; win_x: s16; win_y: s16
+    mask: u16; pad: [2]u8
+}
+TreeReply :: struct {
+    response: u8; pad0: u8; sequence: u16; length: u32
+    root: u32; parent: u32; children_len: u16; pad1: [14]u8
+}
+AttributesReply :: struct {
+    response: u8; backing_store: u8; sequence: u16; length: u32
+    visual: u32; class: u16; bit_gravity: u8; win_gravity: u8
+    backing_planes: u32; backing_pixel: u32; save_under: u8; map_installed: u8
+    map_state: u8; override_redirect: u8; colormap: u32; all_masks: u32
+    your_mask: u32; do_not_propagate: u16; pad: [2]u8
+}
+GeometryReply :: struct {
+    response: u8; depth: u8; sequence: u16; length: u32
+    root: u32; x: s16; y: s16; width: u16; height: u16; border: u16; pad: [2]u8
+}
+TranslateReply :: struct {
+    response: u8; same_screen: u8; sequence: u16; length: u32
+    child: u32; x: s16; y: s16
+}
+ExtensionReply :: struct {
+    response: u8; pad: u8; sequence: u16; length: u32
+    present: u8; major: u8; first_event: u8; first_error: u8
+}
+IoVector :: struct { base: *void; length: u64; }
+ProtocolRequest :: struct { count: u64; extension: *void; opcode: u8; is_void: u8; }
+Rect16 :: struct { x: s16; y: s16; width: u16; height: u16; }
+
+Connect :: (arg0: *u8, arg1: *s32) -> *void #foreign xcb "xcb_connect";
+Disconnect :: (arg0: *void) #foreign xcb "xcb_disconnect";
+ConnectionError :: (arg0: *void) -> s32 #foreign xcb "xcb_connection_has_error";
+Setup :: (arg0: *void) -> *u8 #foreign xcb "xcb_get_setup";
+Roots :: (arg0: *u8) -> Iterator #foreign xcb "xcb_setup_roots_iterator";
+ScreenNext :: (arg0: *Iterator) #foreign xcb "xcb_screen_next";
+GenerateId :: (arg0: *void) -> u32 #foreign xcb "xcb_generate_id";
+CreateWindow :: (arg0: *void, arg1: u8, arg2: u32, arg3: u32, arg4: s16, arg5: s16, arg6: u16, arg7: u16, arg8: u16, arg9: u16, arg10: u32, arg11: u32, arg12: *u32) -> Cookie #foreign xcb "xcb_create_window_checked";
+DestroyWindow :: (arg0: *void, arg1: u32) -> Cookie #foreign xcb "xcb_destroy_window";
+MapWindow :: (arg0: *void, arg1: u32) -> Cookie #foreign xcb "xcb_map_window";
+ConfigureWindow :: (arg0: *void, arg1: u32, arg2: u16, arg3: *u32) -> Cookie #foreign xcb "xcb_configure_window";
+CreatePixmap :: (arg0: *void, arg1: u8, arg2: u32, arg3: u32, arg4: u16, arg5: u16) -> Cookie #foreign xcb "xcb_create_pixmap_checked";
+FreePixmap :: (arg0: *void, arg1: u32) -> Cookie #foreign xcb "xcb_free_pixmap";
+CreateGc :: (arg0: *void, arg1: u32, arg2: u32, arg3: u32, arg4: *u32) -> Cookie #foreign xcb "xcb_create_gc_checked";
+FreeGc :: (arg0: *void, arg1: u32) -> Cookie #foreign xcb "xcb_free_gc";
+PutImage :: (arg0: *void, arg1: u8, arg2: u32, arg3: u32, arg4: u16, arg5: u16, arg6: s16, arg7: s16, arg8: u8, arg9: u8, arg10: u32, arg11: *u8) -> Cookie #foreign xcb "xcb_put_image_checked";
+Intern :: (arg0: *void, arg1: u8, arg2: u16, arg3: *u8) -> Cookie #foreign xcb "xcb_intern_atom";
+InternReply :: (arg0: *void, arg1: Cookie, arg2: **void) -> *u32 #foreign xcb "xcb_intern_atom_reply";
+GetOwner :: (arg0: *void, arg1: u32) -> Cookie #foreign xcb "xcb_get_selection_owner";
+OwnerReply :: (arg0: *void, arg1: Cookie, arg2: **void) -> *u32 #foreign xcb "xcb_get_selection_owner_reply";
+SetOwner :: (arg0: *void, arg1: u32, arg2: u32, arg3: u32) -> Cookie #foreign xcb "xcb_set_selection_owner_checked";
+ChangeProperty :: (arg0: *void, arg1: u8, arg2: u32, arg3: u32, arg4: u32, arg5: u8, arg6: u32, arg7: *void) -> Cookie #foreign xcb "xcb_change_property_checked";
+GetProperty :: (arg0: *void, arg1: u8, arg2: u32, arg3: u32, arg4: u32, arg5: u32, arg6: u32) -> Cookie #foreign xcb "xcb_get_property";
+PropertyReply :: (arg0: *void, arg1: Cookie, arg2: **void) -> *Property #foreign xcb "xcb_get_property_reply";
+PropertyValue :: (arg0: *Property) -> *u8 #foreign xcb "xcb_get_property_value";
+PropertyLength :: (arg0: *Property) -> s32 #foreign xcb "xcb_get_property_value_length";
+SendEvent :: (arg0: *void, arg1: u8, arg2: u32, arg3: u32, arg4: *u8) -> Cookie #foreign xcb "xcb_send_event";
+QueryPointer :: (arg0: *void, arg1: u32) -> Cookie #foreign xcb "xcb_query_pointer";
+QueryPointerReply :: (arg0: *void, arg1: Cookie, arg2: **void) -> *PointerReply #foreign xcb "xcb_query_pointer_reply";
+QueryTree :: (arg0: *void, arg1: u32) -> Cookie #foreign xcb "xcb_query_tree";
+QueryTreeReply :: (arg0: *void, arg1: Cookie, arg2: **void) -> *TreeReply #foreign xcb "xcb_query_tree_reply";
+TreeChildren :: (arg0: *TreeReply) -> *u32 #foreign xcb "xcb_query_tree_children";
+TreeChildrenLength :: (arg0: *TreeReply) -> s32 #foreign xcb "xcb_query_tree_children_length";
+GetAttributes :: (arg0: *void, arg1: u32) -> Cookie #foreign xcb "xcb_get_window_attributes";
+AttributesReplyGet :: (arg0: *void, arg1: Cookie, arg2: **void) -> *AttributesReply #foreign xcb "xcb_get_window_attributes_reply";
+GetGeometry :: (arg0: *void, arg1: u32) -> Cookie #foreign xcb "xcb_get_geometry";
+GeometryReplyGet :: (arg0: *void, arg1: Cookie, arg2: **void) -> *GeometryReply #foreign xcb "xcb_get_geometry_reply";
+Translate :: (arg0: *void, arg1: u32, arg2: u32, arg3: s16, arg4: s16) -> Cookie #foreign xcb "xcb_translate_coordinates";
+TranslateReplyGet :: (arg0: *void, arg1: Cookie, arg2: **void) -> *TranslateReply #foreign xcb "xcb_translate_coordinates_reply";
+QueryExtension :: (arg0: *void, arg1: u16, arg2: *u8) -> Cookie #foreign xcb "xcb_query_extension";
+QueryExtensionReply :: (arg0: *void, arg1: Cookie, arg2: **void) -> *ExtensionReply #foreign xcb "xcb_query_extension_reply";
+SendRequest :: (arg0: *void, arg1: s32, arg2: *IoVector, arg3: *ProtocolRequest) -> u32 #foreign xcb "xcb_send_request";
+RequestCheck :: (arg0: *void, arg1: Cookie) -> *void #foreign xcb "xcb_request_check";
+PollEvent :: (arg0: *void) -> *u8 #foreign xcb "xcb_poll_for_event";
+Flush :: (arg0: *void) -> s32 #foreign xcb "xcb_flush";
+Allocate :: (arg0: usize, arg1: usize) -> *u8 #foreign c "calloc";
+Free :: (arg0: *void) #foreign c "free";
+Copy :: (arg0: *void, arg1: *void, arg2: usize) -> *void #foreign c "memcpy";
+Clock :: (arg0: s32, arg1: *s64) -> s32 #foreign c "clock_gettime";
+Pause :: (arg0: u32) -> s32 #foreign c "usleep";
+Thread :: () -> u64 #foreign c "pthread_self";
+ProcessId :: () -> s32 #foreign c "getpid";
+
+LIMIT :: 4194304;
+VERSION :: 5;
+Entry :: struct { atom: u32; data: *u8; count: s64; }
+Atoms :: struct {
+    aware: u32; proxy: u32; enter: u32; position: u32; status: u32; leave: u32
+    drop: u32; finished: u32; selection: u32; type_list: u32; action_list: u32
+    action_description: u32; copy: u32; move: u32; link: u32; ask: u32; private: u32
+    pid: u32; targets: u32; stamp: u32
+}
+connection: *void;
+thread: u64;
+root: u32;
+root_depth: u8;
+lsb_image: bool;
+atoms: Atoms;
+source: u32;
+icon_window: u32;
+icon_pixmap: u32;
+icon_hot_x: s32;
+icon_hot_y: s32;
+shape_major: u8;
+entries: [32]Entry;
+entry_count: s32;
+state: DragSourceState;
+offered: u32;
+server_time: u32;
+started_ms: s64;
+target: u32;
+target_proxy: u32;
+target_version: u32;
+target_local: bool;
+entered: bool;
+waiting_status: bool;
+position_pending: bool;
+drop_pending: bool;
+last_x: s32;
+last_y: s32;
+last_action: u32;
+deadline: s64;
+
+Now :: () -> s64 {
+    time: [2]s64
+    if Clock(1, *time[0]) != 0 { return 0 }
+    return time[0] * 1000 + time[1] / 1000000
+}
+Ready :: () -> bool {
+    return connection != null && thread == Thread() && ConnectionError(connection) == 0
+}
+Checked :: (cookie: Cookie) -> bool {
+    error: *void = RequestCheck(connection, cookie)
+    if error == null { return ConnectionError(connection) == 0 }
+    Free(error)
+    return false
+}
+ValidName :: (name: string) -> bool {
+    if name.count < 1 || name.count > 255 { return false }
+    for i: 0..cast(s32)name.count - 1 { if name[i] == cast(u8)0 { return false } }
+    return true
+}
+Atom :: (name: string) -> u32 {
+    bytes: [256]u8
+    for i: 0..cast(s64)name.count - 1 { bytes[i] = name[i] }
+    reply: *u32 = InternReply(connection, Intern(connection, 0,
+        cast(u16)name.count, *bytes[0]), null)
+    if reply == null { return 0 }
+    atom: u32 = reply[2]
+    Free(cast(*void)reply)
+    return atom
+}
+Owner :: (selection: u32) -> u32 {
+    reply: *u32 = OwnerReply(connection, GetOwner(connection, selection), null)
+    if reply == null { return 0 }
+    result: u32 = reply[2]
+    Free(cast(*void)reply)
+    return result
+}
+// One 32-bit value of a property, or zero when absent/mistyped.
+Word :: (window: u32, property: u32, kind: u32) -> u32 {
+    value: *Property = PropertyReply(connection, GetProperty(connection, 0, window,
+        property, kind, 0, 1), null)
+    if value == null { return 0 }
+    result: u32 = 0
+    if value.format == cast(u8)32 && PropertyLength(value) >= 4 &&
+        (kind == 0 || value.kind == kind) {
+        result = (cast(*u32)PropertyValue(value)).*
+    }
+    Free(cast(*void)value)
+    return result
+}
+PropertyWrite :: (window: u32, prop: u32, kind: u32, format: u8,
+    count: u32, data: *void) -> bool {
+    return Checked(ChangeProperty(connection, 0, window, prop, kind, format, count, data))
+}
+DropEntries :: () {
+    for i: 0..31 {
+        if entries[i].data != null { Free(cast(*void)entries[i].data) }
+        entries[i] = Entry.{}
+    }
+    entry_count = 0
+}
+ServerTime :: () -> u32 {
+    elapsed: s64 = Now() - started_ms
+    if elapsed < 0 { elapsed = 0 }
+    return server_time + cast(u32)elapsed
+}
+ActionAtom :: (action: u32) -> u32 {
+    if action == DRAG_ACTION_MOVE { return atoms.move }
+    if action == DRAG_ACTION_LINK { return atoms.link }
+    if action == DRAG_ACTION_ASK { return atoms.ask }
+    if action == DRAG_ACTION_COPY { return atoms.copy }
+    return 0
+}
+ActionBit :: (atom: u32) -> u32 {
+    if atom == atoms.copy { return DRAG_ACTION_COPY }
+    if atom == atoms.move { return DRAG_ACTION_MOVE }
+    if atom == atoms.link { return DRAG_ACTION_LINK }
+    if atom == atoms.ask { return DRAG_ACTION_ASK }
+    return 0
+}
+// GTK's rules: Control+Shift links, Control copies, Shift moves, Alt asks,
+// and an unmodified drag suggests the first offered of copy, move and link.
+SuggestedAction :: (mask: u16) -> u32 {
+    shift := (mask & cast(u16)1) != 0
+    control := (mask & cast(u16)4) != 0
+    alt := (mask & cast(u16)8) != 0
+    if shift && control { return ifx (offered & DRAG_ACTION_LINK) != 0 then DRAG_ACTION_LINK else 0 }
+    if control { return ifx (offered & DRAG_ACTION_COPY) != 0 then DRAG_ACTION_COPY else 0 }
+    if shift { return ifx (offered & DRAG_ACTION_MOVE) != 0 then DRAG_ACTION_MOVE else 0 }
+    if alt && (offered & DRAG_ACTION_ASK) != 0 { return DRAG_ACTION_ASK }
+    if (offered & DRAG_ACTION_COPY) != 0 { return DRAG_ACTION_COPY }
+    if (offered & DRAG_ACTION_MOVE) != 0 { return DRAG_ACTION_MOVE }
+    if (offered & DRAG_ACTION_LINK) != 0 { return DRAG_ACTION_LINK }
+    return 0
+}
+Message :: (destination: u32, window: u32, kind: u32, l0: u32, l1: u32, l2: u32, l3: u32, l4: u32) {
+    event: [8]u32
+    event[0] = 33 | (32 << 8)  // ClientMessage, format 32
+    event[1] = window
+    event[2] = kind
+    event[3] = l0; event[4] = l1; event[5] = l2; event[6] = l3; event[7] = l4
+    unused SendEvent(connection, 0, destination, 0, cast(*u8)*event[0])
+}
+SendEnter :: () {
+    types: [3]u32
+    for i: 0..2 { if i < entry_count { types[i] = entries[i].atom } }
+    more: u32 = ifx entry_count > 3 then cast(u32)1 else cast(u32)0
+    Message(ifx target_proxy != 0 then target_proxy else target, target, atoms.enter,
+        source, (target_version << 24) | more, types[0], types[1], types[2])
+    entered = true
+    waiting_status = false
+    state.accepted = false
+}
+SendLeave :: () {
+    if target != 0 && entered {
+        Message(ifx target_proxy != 0 then target_proxy else target, target, atoms.leave, source, 0, 0, 0, 0)
+    }
+    entered = false
+    waiting_status = false
+    position_pending = false
+    state.accepted = false
+}
+SendPosition :: () {
+    x: u32 = cast(u32)cast(u16)cast(s16)last_x
+    y: u32 = cast(u32)cast(u16)cast(s16)last_y
+    Message(ifx target_proxy != 0 then target_proxy else target, target, atoms.position,
+        source, 0, (x << 16) | y, ServerTime(), ActionAtom(last_action))
+    waiting_status = true
+    position_pending = false
+}
+SendDrop :: () {
+    Message(ifx target_proxy != 0 then target_proxy else target, target, atoms.drop,
+        source, 0, ServerTime(), 0, 0)
+    state.status = DragSourceStatus.Dropped
+    deadline = Now() + 15000
+}
+// Top-level XDND target under a root point, skipping this module's own icon.
+Lookup :: (x: s32, y: s32) {
+    target_local = false
+    found: u32 = 0
+    proxy: u32 = 0
+    version: u32 = 0
+    tree: *TreeReply = QueryTreeReply(connection, QueryTree(connection, root), null)
+    if tree == null { target = 0; return }
+    children: *u32 = TreeChildren(tree)
+    count: s32 = TreeChildrenLength(tree)
+    if count > 4096 { count = 4096 }
+    attributes: Vec(Cookie)
+    geometry: Vec(Cookie)
+    candidate: u32 = 0
+    if VecResize(attributes, cast(s64)count) && VecResize(geometry, cast(s64)count) {
+        for i: 0..count - 1 {
+            attributes[i] = GetAttributes(connection, children[i])
+            geometry[i] = GetGeometry(connection, children[i])
+        }
+        // Collect every reply, top of the stack first, so none stays queued.
+        index: s32 = count - 1
+        while index >= 0 {
+            a: *AttributesReply = AttributesReplyGet(connection, attributes[index], null)
+            g: *GeometryReply = GeometryReplyGet(connection, geometry[index], null)
+            if candidate == 0 && a != null && g != null && a.map_state == cast(u8)2 &&
+                children[index] != icon_window && children[index] != source {
+                border: s32 = cast(s32)g.border
+                left: s32 = cast(s32)g.x
+                top: s32 = cast(s32)g.y
+                if x >= left && y >= top && x < left + cast(s32)g.width + border * 2 &&
+                    y < top + cast(s32)g.height + border * 2 { candidate = children[index] }
+            }
+            if a != null { Free(cast(*void)a) }
+            if g != null { Free(cast(*void)g) }
+            index -= 1
+        }
+    }
+    VecFree(attributes); VecFree(geometry)
+    Free(cast(*void)tree)
+    current: u32 = candidate
+    depth: s32 = 0
+    own: u32 = cast(u32)ProcessId()
+    while current != 0 && depth < 16 {
+        if Word(current, atoms.pid, 6) == own { target_local = true; break }
+        aware: u32 = Word(current, atoms.aware, 4)
+        if aware != 0 {
+            found = current
+            version = aware
+            forward: u32 = Word(current, atoms.proxy, 33)
+            if forward != 0 && Word(forward, atoms.proxy, 33) == forward { proxy = forward }
+            break
+        }
+        reply: *TranslateReply = TranslateReplyGet(connection,
+            Translate(connection, root, current, cast(s16)x, cast(s16)y), null)
+        next: u32 = 0
+        if reply != null { next = reply.child; Free(cast(*void)reply) }
+        current = next
+        depth += 1
+    }
+    if version > VERSION { version = VERSION }
+    if found != 0 && version < 3 { found = 0 }
+    target = found
+    target_proxy = proxy
+    target_version = version
+}
+Notify :: (request: *u32, prop: u32) {
+    event: [8]u32
+    event[0] = 31
+    event[1] = request[1]
+    event[2] = request[3]
+    event[3] = request[4]
+    event[4] = request[5]
+    event[5] = prop
+    unused SendEvent(connection, 0, request[3], 0, cast(*u8)*event[0])
+}
+Serve :: (event: *u8) {
+    words: *u32 = cast(*u32)event
+    if words[2] != source || source == 0 || words[4] != atoms.selection || words[3] == 0 { return }
+    prop: u32 = words[6]
+    if prop == 0 { prop = words[5] }
+    if prop == 0 || Owner(atoms.selection) != source { Notify(words, 0); return }
+    if words[5] == atoms.targets {
+        list: [33]u32
+        list[0] = atoms.targets
+        for i: 0..entry_count - 1 { list[i + 1] = entries[i].atom }
+        if PropertyWrite(words[3], prop, 4, 32, cast(u32)(entry_count + 1), cast(*void)*list[0]) {
+            Notify(words, prop)
+        } else { Notify(words, 0) }
+        return
+    }
+    for i: 0..entry_count - 1 {
+        if words[5] == entries[i].atom {
+            if PropertyWrite(words[3], prop, entries[i].atom, 8, cast(u32)entries[i].count,
+                cast(*void)entries[i].data) { Notify(words, prop) } else { Notify(words, 0) }
+            return
+        }
+    }
+    Notify(words, 0)
+}
+Dispatch :: (event: *u8) {
+    kind: u8 = event[0] & cast(u8)127
+    words: *u32 = cast(*u32)event
+    if kind == cast(u8)30 { Serve(event); return }
+    if kind != cast(u8)33 || words[1] != source { return }
+    if words[2] == atoms.status && words[3] == target && target != 0 {
+        waiting_status = false
+        state.accepted = (words[4] & cast(u32)1) != 0
+        accepted_action: u32 = ActionBit(words[7])
+        if target_version < 2 { accepted_action = DRAG_ACTION_COPY }
+        if state.accepted && accepted_action == 0 { state.accepted = false }
+        if state.accepted { state.action = accepted_action }
+    }
+    if words[2] == atoms.finished && words[3] == target && state.status == DragSourceStatus.Dropped {
+        state.status = DragSourceStatus.Finished
+        state.success = target_version < 5 || (words[4] & cast(u32)1) != 0
+        state.performed = ActionBit(words[5])
+        if target_version < 5 || state.performed == 0 { state.performed = state.action }
+    }
+}
+Pump :: () {
+    count: s32 = 0
+    while count < 256 {
+        event: *u8 = PollEvent(connection)
+        if event == null { break }
+        Dispatch(event)
+        Free(cast(*void)event)
+        count += 1
+    }
+}
+Shape :: (window: u32, kind: u8, rectangles: *Rect16, count: s32) -> bool {
+    if shape_major == cast(u8)0 { return false }
+    header: [16]u8
+    header[1] = 1   // ShapeRectangles
+    header[4] = 0   // ShapeSet
+    header[5] = kind
+    header[6] = 0   // Unsorted
+    (cast(*u32)*header[8]).* = window
+    parts: [6]IoVector
+    parts[2] = IoVector.{cast(*void)*header[0], 16}
+    parts[3] = IoVector.{null, 0}
+    parts[4] = IoVector.{cast(*void)rectangles, cast(u64)count * 8}
+    parts[5] = IoVector.{null, 0}
+    request: ProtocolRequest
+    request.count = 4
+    request.opcode = shape_major
+    request.is_void = 1
+    sequence: u32 = SendRequest(connection, 1, *parts[2], *request)
+    return sequence != 0 && Checked(Cookie.{sequence})
+}
+DestroyIcon :: () {
+    if icon_window != 0 { unused DestroyWindow(connection, icon_window) }
+    if icon_pixmap != 0 { unused FreePixmap(connection, icon_pixmap) }
+    icon_window = 0
+    icon_pixmap = 0
+}
+// A shaped override-redirect window shows the icon; its empty input shape
+// keeps it out of pointer hit testing, and Lookup skips it explicitly.
+MakeIcon :: (icon: DragSourceIcon) {
+    if icon.width < 1 || icon.height < 1 || icon.width > 256 || icon.height > 256 ||
+        icon.rgba.count != cast(s64)icon.width * cast(s64)icon.height * 4 || root_depth != cast(u8)24 { return }
+    pixels: Vec(u8)
+    rects: Vec(Rect16)
+    if !VecResize(pixels, cast(s64)icon.width * cast(s64)icon.height * 4) { return }
+    defer { VecFree(pixels); VecFree(rects) }
+    for y: 0..icon.height - 1 {
+        run: s32 = -1
+        for x: 0..icon.width {
+            opaque: bool = false
+            if x < icon.width {
+                at: s64 = (cast(s64)y * cast(s64)icon.width + cast(s64)x) * 4
+                opaque = icon.rgba[at + 3] >= cast(u8)128
+                out: s64 = at
+                if lsb_image {
+                    pixels[out] = icon.rgba[at + 2]; pixels[out + 1] = icon.rgba[at + 1]
+                    pixels[out + 2] = icon.rgba[at]; pixels[out + 3] = 0
+                } else {
+                    pixels[out] = 0; pixels[out + 1] = icon.rgba[at]
+                    pixels[out + 2] = icon.rgba[at + 1]; pixels[out + 3] = icon.rgba[at + 2]
+                }
+            }
+            if opaque && run < 0 { run = x }
+            if !opaque && run >= 0 {
+                if !VecPush(rects, Rect16.{cast(s16)run, cast(s16)y, cast(u16)(x - run), 1}) { return }
+                run = -1
+            }
+        }
+    }
+    pixmap: u32 = GenerateId(connection)
+    if !Checked(CreatePixmap(connection, 24, pixmap, root, cast(u16)icon.width, cast(u16)icon.height)) { return }
+    gc: u32 = GenerateId(connection)
+    if !Checked(CreateGc(connection, gc, pixmap, 0, null)) { unused FreePixmap(connection, pixmap); return }
+    ok := Checked(PutImage(connection, 2, pixmap, gc, cast(u16)icon.width, cast(u16)icon.height,
+        0, 0, 0, 24, cast(u32)pixels.count, *pixels[0]))
+    unused FreeGc(connection, gc)
+    if !ok { unused FreePixmap(connection, pixmap); return }
+    window: u32 = GenerateId(connection)
+    values: [3]u32
+    values[0] = pixmap   // back pixmap
+    values[1] = 1        // override redirect
+    values[2] = 0        // no events
+    if !Checked(CreateWindow(connection, 0, window, root, 0, 0, cast(u16)icon.width,
+        cast(u16)icon.height, 0, 1, 0, 1 | 512 | 2048, *values[0])) {
+        unused FreePixmap(connection, pixmap); return
+    }
+    icon_window = window
+    icon_pixmap = pixmap
+    icon_hot_x = icon.hot_x
+    icon_hot_y = icon.hot_y
+    if rects.count > 0 { unused Shape(window, 0, *rects[0], cast(s32)rects.count) }
+    else { unused Shape(window, 0, null, 0) }
+    unused Shape(window, 2, null, 0)
+}
+MoveIcon :: (x: s32, y: s32) {
+    if icon_window == 0 { return }
+    values: [3]u32
+    values[0] = cast(u32)(x - icon_hot_x)
+    values[1] = cast(u32)(y - icon_hot_y)
+    values[2] = 0  // Above
+    unused ConfigureWindow(connection, icon_window, cast(u16)(1 | 2 | 64), *values[0])
+}
+Release :: () {
+    DestroyIcon()
+    if source != 0 { unused DestroyWindow(connection, source) }
+    source = 0
+    DropEntries()
+    target = 0; target_proxy = 0; target_version = 0; target_local = false
+    entered = false; waiting_status = false; position_pending = false; drop_pending = false
+    unused Flush(connection)
+}
+Open :: () -> bool {
+    if connection != null { return Ready() }
+    thread = Thread()
+    screen: s32 = 0
+    connection = Connect(null, *screen)
+    if connection == null || ConnectionError(connection) != 0 { Close(); return false }
+    setup: *u8 = Setup(connection)
+    lsb_image = setup[30] == cast(u8)0
+    roots: Iterator = Roots(setup)
+    while screen > 0 && roots.remaining > 0 { ScreenNext(*roots); screen -= 1 }
+    if roots.remaining <= 0 || roots.data == null { Close(); return false }
+    root = roots.data[0]
+    root_depth = (cast(*u8)roots.data)[38]
+    atoms.aware = Atom("XdndAware"); atoms.proxy = Atom("XdndProxy")
+    atoms.enter = Atom("XdndEnter"); atoms.position = Atom("XdndPosition")
+    atoms.status = Atom("XdndStatus"); atoms.leave = Atom("XdndLeave")
+    atoms.drop = Atom("XdndDrop"); atoms.finished = Atom("XdndFinished")
+    atoms.selection = Atom("XdndSelection"); atoms.type_list = Atom("XdndTypeList")
+    atoms.action_list = Atom("XdndActionList"); atoms.action_description = Atom("XdndActionDescription")
+    atoms.copy = Atom("XdndActionCopy"); atoms.move = Atom("XdndActionMove")
+    atoms.link = Atom("XdndActionLink"); atoms.ask = Atom("XdndActionAsk")
+    atoms.private = Atom("XdndActionPrivate"); atoms.pid = Atom("_NET_WM_PID")
+    atoms.targets = Atom("TARGETS"); atoms.stamp = Atom("_KRYON_DRAG_TIME")
+    if atoms.aware == 0 || atoms.selection == 0 || atoms.stamp == 0 { Close(); return false }
+    name: [5]u8
+    name[0] = #char "S"; name[1] = #char "H"; name[2] = #char "A"; name[3] = #char "P"; name[4] = #char "E"
+    extension: *ExtensionReply = QueryExtensionReply(connection,
+        QueryExtension(connection, 5, *name[0]), null)
+    if extension != null {
+        if extension.present != cast(u8)0 { shape_major = extension.major }
+        Free(cast(*void)extension)
+    }
+    return true
+}
+Close :: () {
+    if connection == null || thread != Thread() { return }
+    Disconnect(connection)
+    connection = null
+    icon_window = 0; icon_pixmap = 0; source = 0
+    DropEntries()
+    thread = 0
+}
+// The server time at which the drag starts, from our own property change.
+Timestamp :: () -> u32 {
+    marker: u8 = 0
+    if !PropertyWrite(source, atoms.stamp, 31, 8, 0, cast(*void)*marker) { return 0 }
+    unused Flush(connection)
+    limit: s64 = Now() + 500
+    while Now() < limit && ConnectionError(connection) == 0 {
+        event: *u8 = PollEvent(connection)
+        if event == null { unused Pause(1000); continue }
+        words: *u32 = cast(*u32)event
+        stamp: u32 = 0
+        if (event[0] & cast(u8)127) == cast(u8)28 && words[1] == source && words[2] == atoms.stamp { stamp = words[3] }
+        else { Dispatch(event) }
+        Free(cast(*void)event)
+        if stamp != 0 { return stamp }
+    }
+    return 0
+}
+
+#scope_export
+
+// Starts a drag of the given data while the primary button is held. Calls
+// belong to the thread that started the drag; payloads are copied.
+DragSourceBegin :: (payloads: []DragSourcePayload, actions: u32, icon: DragSourceIcon) -> bool {
+    if state.status == DragSourceStatus.Dragging || state.status == DragSourceStatus.Dropped { return false }
+    if !Open() { return false }
+    Release()
+    state = DragSourceState.{}
+    if payloads.count < 1 || payloads.count > 32 || (actions & cast(u32)15) == 0 { return false }
+    total: s64 = 0
+    for i: 0..cast(s32)payloads.count - 1 {
+        value: DragSourcePayload = payloads[i]
+        if !ValidName(value.mime) || value.bytes.count < 0 || value.bytes.count > LIMIT - total { DropEntries(); return false }
+        atom: u32 = Atom(value.mime)
+        if atom == 0 || atom == atoms.targets { DropEntries(); return false }
+        data: *u8 = Allocate(cast(usize)(value.bytes.count + 1), 1)
+        if data == null { DropEntries(); return false }
+        if value.bytes.count > 0 { unused Copy(cast(*void)data, cast(*void)*value.bytes[0], cast(usize)value.bytes.count) }
+        entries[i] = Entry.{atom, data, value.bytes.count}
+        entry_count = i + 1
+        total += value.bytes.count
+    }
+    window: u32 = GenerateId(connection)
+    mask: u32 = 4194304  // PropertyChangeMask
+    if !Checked(CreateWindow(connection, 0, window, root, 0, 0, 1, 1, 0, 2, 0, 2048, *mask)) {
+        DropEntries(); return false
+    }
+    source = window
+    server_time = Timestamp()
+    started_ms = Now()
+    if server_time == 0 || !Checked(SetOwner(connection, source, atoms.selection, server_time)) ||
+        Owner(atoms.selection) != source { Release(); return false }
+    list: [32]u32
+    for i: 0..entry_count - 1 { list[i] = entries[i].atom }
+    unused PropertyWrite(source, atoms.type_list, 4, 32, cast(u32)entry_count, cast(*void)*list[0])
+    offered = actions & cast(u32)15
+    action_atoms: [4]u32
+    description: [32]u8
+    names: [4]string = .["Copy", "Move", "Link", "Ask"]
+    action_count: s32 = 0
+    description_length: s32 = 0
+    for bit: 0..3 {
+        if (offered & (cast(u32)1 << cast(u32)bit)) == 0 { continue }
+        action_atoms[action_count] = ActionAtom(cast(u32)1 << cast(u32)bit)
+        action_count += 1
+        for byte: names[bit] { description[description_length] = byte; description_length += 1 }
+        description[description_length] = 0; description_length += 1
+    }
+    unused PropertyWrite(source, atoms.action_list, 4, 32, cast(u32)action_count, cast(*void)*action_atoms[0])
+    unused PropertyWrite(source, atoms.action_description, 31, 8, cast(u32)description_length, cast(*void)*description[0])
+    MakeIcon(icon)
+    reply: *PointerReply = QueryPointerReply(connection, QueryPointer(connection, root), null)
+    if reply == null { Release(); return false }
+    last_x = cast(s32)reply.root_x
+    last_y = cast(s32)reply.root_y
+    Free(cast(*void)reply)
+    if icon_window != 0 {
+        MoveIcon(last_x, last_y)
+        unused MapWindow(connection, icon_window)
+    }
+    state.status = DragSourceStatus.Dragging
+    state.root_x = last_x; state.root_y = last_y
+    last_action = 0
+    unused Flush(connection)
+    return true
+}
+
+DragSourceActive :: () -> bool {
+    return state.status == DragSourceStatus.Dragging || state.status == DragSourceStatus.Dropped
+}
+
+// Follows the pointer and serves requests. Call once per frame while a drag
+// is active and once more to read its final status; then call DragSourceEnd.
+DragSourceUpdate :: () -> DragSourceState {
+    if !Ready() {
+        if DragSourceActive() { state.status = DragSourceStatus.Failed }
+        return state
+    }
+    Pump()
+    if state.status == DragSourceStatus.Dropped && Now() >= deadline {
+        state.status = DragSourceStatus.Finished
+        state.success = false
+    }
+    if state.status != DragSourceStatus.Dragging { unused Flush(connection); return state }
+    reply: *PointerReply = QueryPointerReply(connection, QueryPointer(connection, root), null)
+    if reply == null { SendLeave(); state.status = DragSourceStatus.Failed; return state }
+    x: s32 = cast(s32)reply.root_x
+    y: s32 = cast(s32)reply.root_y
+    mask: u16 = reply.mask
+    Free(cast(*void)reply)
+    state.root_x = x; state.root_y = y
+    state.modifiers = 0
+    if (mask & cast(u16)1) != 0 { state.modifiers |= 1 }
+    if (mask & cast(u16)4) != 0 { state.modifiers |= 2 }
+    if (mask & cast(u16)8) != 0 { state.modifiers |= 4 }
+    action: u32 = SuggestedAction(mask)
+    moved := x != last_x || y != last_y || action != last_action || target == 0 && !target_local
+    if moved {
+        MoveIcon(x, y)
+        previous: u32 = target
+        previous_proxy: u32 = target_proxy
+        previous_local := target_local
+        Lookup(x, y)
+        if target != previous || target_local != previous_local {
+            saved: u32 = target; saved_proxy: u32 = target_proxy
+            target = previous; target_proxy = previous_proxy
+            SendLeave()
+            target = saved; target_proxy = saved_proxy
+            if target != 0 { SendEnter() }
+        }
+        last_x = x; last_y = y; last_action = action
+        if target != 0 { position_pending = true }
+    }
+    state.local = target_local
+    if target_local { state.action = action; state.accepted = false }
+    if target == 0 && !target_local { state.accepted = false; state.action = action }
+    if target != 0 && position_pending && !waiting_status { SendPosition() }
+    released := (mask & cast(u16)256) == 0
+    if released {
+        if target_local {
+            state.status = DragSourceStatus.Local
+            state.action = action
+        } else if target != 0 && waiting_status {
+            // Wait for the status that answers the final position.
+            limit: s64 = Now() + 1000
+            while waiting_status && Now() < limit && ConnectionError(connection) == 0 {
+                event: *u8 = PollEvent(connection)
+                if event == null { unused Flush(connection); unused Pause(1000); continue }
+                Dispatch(event)
+                Free(cast(*void)event)
+            }
+            if state.accepted && !waiting_status { SendDrop() } else { SendLeave(); state.status = DragSourceStatus.Cancelled }
+        } else if target != 0 && state.accepted {
+            SendDrop()
+        } else {
+            SendLeave()
+            state.status = DragSourceStatus.Cancelled
+        }
+    }
+    unused Flush(connection)
+    return state
+}
+
+// Abandons the drag, for example on Escape.
+DragSourceCancel :: () {
+    if !Ready() { return }
+    if state.status == DragSourceStatus.Dragging { SendLeave(); state.status = DragSourceStatus.Cancelled }
+    unused Flush(connection)
+}
+
+// Releases the selection, icon and data after the final status was read.
+DragSourceEnd :: () {
+    if !Ready() { state = DragSourceState.{}; return }
+    if state.status == DragSourceStatus.Dragging { SendLeave() }
+    Release()
+    state = DragSourceState.{}
+}

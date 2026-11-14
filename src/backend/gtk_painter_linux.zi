@@ -337,6 +337,7 @@ GtkPainterPaint :: (p: *GtkPainter, nodes: []GtkStyleNode, bounds: Rectangle,
         else if kind == 6 { bitmap = GtkSerializedIconRaster(text,w,1,nodes) }
         else if kind == 7 { bitmap = GtkIconRaster(text,w,1,nodes,false,true) }
         else if kind == 8 { bitmap = GtkTextRaster(nodes,text,w,h,1,align,"",false,false,true) }
+        else if kind >= 9 && kind <= 11 { bitmap = GtkStyleIndicatorRaster(nodes,w,h,1,kind-9) }
         while p.tile_bytes+bitmap.rgba.count > 33554432 {
             evict := p.next_tile; p.next_tile=(p.next_tile+1)%256
             p.tile_bytes-=p.tiles[evict].bitmap.rgba.count

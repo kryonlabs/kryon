@@ -204,6 +204,9 @@ RenderBackground :: (context: *void, draw: *void, x: float64, y: float64, width:
 NativeWidgetDraw :: (widget: *void, draw: *void) #foreign gtk "gtk_widget_draw";
 RenderFrame :: (context: *void, draw: *void, x: float64, y: float64, width: float64, height: float64) #foreign gtk "gtk_render_frame";
 RenderIconSurface :: (context: *void, draw: *void, surface: *void, x: float64, y: float64) #foreign gtk "gtk_render_icon_surface";
+RenderCheck :: (context: *void, draw: *void, x: float64, y: float64, width: float64, height: float64) #foreign gtk "gtk_render_check";
+RenderOption :: (context: *void, draw: *void, x: float64, y: float64, width: float64, height: float64) #foreign gtk "gtk_render_option";
+RenderArrow :: (context: *void, draw: *void, angle: float64, x: float64, y: float64, size: float64) #foreign gtk "gtk_render_arrow";
 PixbufSurface :: (pixbuf: *void, scale: s32, window: *void) -> *void #foreign gdk "gdk_cairo_surface_create_from_pixbuf";
 ContextDirection :: (context: *void) -> s32 #foreign gtk "gtk_style_context_get_direction";
 Allocate :: (count: usize, size: usize) -> *u8 #foreign libc "calloc";
@@ -1067,6 +1070,37 @@ GtkStyleRasterRegionOver :: (nodes: []GtkStyleNode, width: s32, height: s32, sca
     RenderFrame(context, draw, 0.0-cast(float64)x, 0.0-cast(float64)y, cast(float64)width, cast(float64)height)
     if DrawStatus(draw) != 0 || SurfaceStatus(surface) != 0 { return .{} }
     return NativeRasterBitmap(surface,w,h)
+}
+
+// A theme indicator drawn by GTK itself: 0 a check box, 1 a radio option
+// and 2 a submenu arrow pointing right (left in right-to-left contexts).
+// The last node carries the indicator's CSS element and state, for example
+// menuitem > check:checked. The arrow is a square of the smaller side.
+GtkStyleIndicatorRaster :: (nodes: []GtkStyleNode, width: s32, height: s32, scale: s32, indicator: s32) -> GtkStyleBitmap {
+    if scale < 1 || scale > 4 || width < 1 || height < 1 || indicator < 0 || indicator > 2 ||
+        width > 1024 / scale || height > 1024 / scale { return .{} }
+    w:=width * scale; h:=height * scale
+    context := MakeContext(nodes,scale)
+    if context == null { return .{} }
+    defer Unref(context)
+    surface := SurfaceNew(0,w,h)
+    if surface == null { return .{} }
+    defer SurfaceFree(surface)
+    if SurfaceStatus(surface) != 0 { return .{} }
+    draw := DrawNew(surface)
+    if draw == null { return .{} }
+    defer DrawFree(draw)
+    if DrawStatus(draw) != 0 { return .{} }
+    DrawScale(draw,cast(float64)scale,cast(float64)scale)
+    if indicator == 0 { RenderCheck(context,draw,0.0,0.0,cast(float64)width,cast(float64)height) }
+    else if indicator == 1 { RenderOption(context,draw,0.0,0.0,cast(float64)width,cast(float64)height) }
+    else {
+        size: s32 = ifx width < height then width else height
+        angle: float64 = ifx ContextDirection(context) == 2 then 4.71238898038469 else 1.5707963267948966
+        RenderArrow(context,draw,angle,cast(float64)(width-size)/2.0,cast(float64)(height-size)/2.0,cast(float64)size)
+    }
+    if DrawStatus(draw) != 0 { return .{} }
+    return SurfaceBitmap(surface,w,h)
 }
 
 GtkTextMeasure :: (nodes: []GtkStyleNode, text: string, width: s32, scale: s32, font: string = "", markup: bool = false) -> GtkTextMetrics {

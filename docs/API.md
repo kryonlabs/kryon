@@ -552,6 +552,48 @@ an authorization or a trustworthy content generation identifier.
 Run `make mime-clipboard-linux-test` for source and saved-IR native tests against
 independent Xlib fixtures and installed `xclip`, under private HOME/XDG/D-Bus/Xvfb.
 
+### Optional native drag source on Linux
+
+Import `kryon/DragSourceLinux` in an X11/XWayland native app and link `-lxcb`
+to drag data out of the app with XDND version 5, for example files onto a web
+browser's upload area, a file manager, the desktop or an editor. The module
+owns its own connection, an unmapped source window and an optional icon
+window; it never grabs the pointer or changes the toolkit's connection.
+
+Call `DragSourceBegin(payloads: []DragSourcePayload, actions: u32, icon: DragSourceIcon) -> bool`
+while the primary button is still held, typically once the pointer has moved
+past the platform drag threshold from the press. Each payload is a
+`{mime: string, bytes: []u8}` pair copied during the call (at most 32 targets
+and 4 MiB in total). `actions` combines `DRAG_ACTION_COPY`, `DRAG_ACTION_MOVE`,
+`DRAG_ACTION_LINK` and `DRAG_ACTION_ASK`. `icon` is straight RGBA up to
+256×256 with a hot spot; pixels at least half opaque are shown in a shaped
+override-redirect window that follows the pointer. A zero-sized icon shows none.
+
+While `DragSourceActive()` is true, call `DragSourceUpdate() -> DragSourceState`
+once per frame on the same thread and keep frames coming (on the Desktop host,
+`DesktopRequestFrame()`). Update follows the pointer, finds the top-level window
+under it (honouring `XdndProxy`), sends Enter/Position/Leave/Drop, answers
+`XdndStatus`, and serves the `XdndSelection` conversions, including `TARGETS`.
+The suggested action follows GTK: Control+Shift links, Control copies, Shift
+moves, Alt asks, otherwise the first offered of copy, move and link. The state
+reports `status`, the root pointer position, `modifiers` (1 Shift, 2 Control,
+4 Alt), the current `action`, whether a foreign target `accepted` it, and
+`local` when the pointer is over a window of this process (identified by
+`_NET_WM_PID`). Over its own windows the module sends no XDND messages, so the
+app performs internal drops itself.
+
+`status` is `Dragging` until the button is released. A release over this
+process gives `Local`; over an accepting target the drop is sent and the status
+is `Dropped` until the target's `XdndFinished` (or a 15 second timeout) gives
+`Finished` with `performed` and `success`; anywhere else gives `Cancelled`.
+`DragSourceCancel()` abandons a drag, for example on Escape. After reading a
+final status, call `DragSourceEnd()` to release the selection, icon and copied
+data. The application performs no file operation for a foreign drop: the
+target does, as with any XDND source.
+
+Run `make drag-source-linux-test` for source and saved-IR tests that drop onto
+an independent python-xlib XDND target on a private Xvfb.
+
 ### Optional GTK3 theme rendering on Linux
 
 Import `kryon/GtkStyleLinux` only in a Linux native application that links GTK3.
@@ -581,6 +623,10 @@ so first/middle/last CSS borders affect its real child allocations. State consta
   `horizontal_separator` style properties.
 - `GtkStyleRaster(nodes, width, height, scale)` paints the CSS background and frame.
   Its bounds are the CSS border box; callers lay out CSS margins separately.
+- `GtkStyleIndicatorRaster(nodes, width, height, scale, indicator)` asks GTK to draw
+  the last node's check box (0), radio option (1) or submenu arrow (2, pointing
+  right, or left in a right-to-left context) with `gtk_render_check`,
+  `gtk_render_option` or `gtk_render_arrow`.
 - `GtkStyleRasterRegion(nodes, width, height, scale, x, y, crop_width, crop_height)`
   renders a crop of the original logical CSS box, preserving gradients and borders.
   Logical boxes can reach 8192 pixels per axis; the allocated crop retains the
@@ -746,8 +792,9 @@ no ownership into the tile cache; the caller can release or reuse the bitmap
 immediately. Invalid dimensions/buffer lengths return false without painting.
 Kinds are CSS surface (0),
 ellipsized text (1), themed icon (2), local file icon (3), image thumbnail (4),
-Pango markup (5), serialized GIcon (6), styled naturally sized themed icon (7), and
-wrapped text (8).
+Pango markup (5), serialized GIcon (6), styled naturally sized themed icon (7),
+wrapped text (8), and the theme's own check box (9), radio option (10) and
+submenu arrow (11) for the last node, such as `menuitem > check:checked`.
 Text snaps to integer positions; thumbnails and natural icons center their
 actual bitmap within the allocation. Cached RGBA layers follow Cairo's 8-bit
 premultiplied OVER rounding. `revision` invalidates cached file pixels

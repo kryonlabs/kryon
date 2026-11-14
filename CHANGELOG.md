@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Native Linux apps can drag data out to other applications. The optional
+  `kryon/DragSourceLinux` module is an XDND version 5 drag source on its own
+  X connection: it follows the pointer while the toolkit keeps its implicit
+  grab, talks XDND to the window under the pointer (including proxies), serves
+  the dragged MIME data, shows a shaped drag icon and reports when the pointer
+  is over the app's own windows so the app can handle internal drops.
+- `GtkStyleIndicatorRaster` and GtkPainter kinds 9–11 draw the GTK theme's own
+  check box, radio option and submenu arrow, so native menus can show check,
+  radio and submenu rows exactly as GTK draws them.
 - The semantic DOM backend is removed: the `dom` profile, `dom_host`,
   `dom_tree`, `dom_paint`, `dom_run` and `dom_app_run`, their tests and
   `docs/dom.md`. No project used it. The `web` template now builds a Canvas2D
