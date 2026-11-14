@@ -14,8 +14,9 @@ mkdir -p "$work"
 for target in c go; do
     set --
     if [ "$target" = go ]; then set -- --pkg main --exe; fi
-    "$ziran" build "$@" --target="$target" --root "$repo/tests" \
-        --module-path "$repo/src/backend" --entry $test_module:main \
+    # The key modules import widgets by name, which the project resolves.
+    "$ziran" build "$@" --project --target="$target" --root "$repo/tests" \
+        --entry $test_module:main \
         -o "$work/$target" "$repo/tests/$test_module.zi"
     case "$target" in
         c) cc -std=c99 -I"$ziran_root/include" "$work/c"/*.c -o "$work/run-c"; "$work/run-c" ;;
@@ -24,7 +25,7 @@ for target in c go; do
             ;;
     esac
 done
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/backend" \
+"$ziran" bundle --project --root "$repo/tests" \
     --entry $test_module:main -o "$work/keys.zx" "$repo/tests/$test_module.zi"
 test "$("$ziran" run "$work/keys.zx")" = 0
 done

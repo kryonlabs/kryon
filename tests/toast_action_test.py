@@ -14,7 +14,9 @@ guard.mkdir()
 try:
     project = work / 'project'
     package_id = kryon_test_project(project)
-    for name in ('toast_action_test', 'ziran_test_driver_host', 'text_input_platform_host'):
+    # A toast has no editable text, so the program never calls the platform
+    # keyboard capability and binds no provider for it.
+    for name in ('toast_action_test', 'ziran_test_driver_host'):
         source = (ROOT / f'tests/{name}.zi').read_text()
         for module in ('session', 'drawing_props', 'geometry'):
             source = source.replace(chr(35)+'import "'+module+'"', chr(35)+'import "kryon/'+module+'"')
@@ -31,7 +33,6 @@ try:
     bindings = []
     for module, effect in effects:
         bindings += ['--bind', f'{package_id}_{module}:{effect}=ziran_test_driver_host:{effect}']
-    bindings += ['--bind', f'{package_id}_text_input_platform:SetPlatformTextKeyboardVisible=text_input_platform_host:SetPlatformTextKeyboardVisible']
     for form, fixture in [('source', source), ('saved', ir / 'toast_action_test.zir')]:
         options = ['--project', '--offline'] if form == 'source' else ['--root', ir, '--module-path', ir]
         output = work / ('c-' + form)

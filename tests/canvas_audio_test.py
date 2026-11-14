@@ -21,7 +21,7 @@ def run(command):
 with tempfile.TemporaryDirectory(prefix='canvas-audio-', dir=ROOT / 'build') as directory:
     work = Path(directory)
     generated = work / 'generated'
-    run([*RUNNER, BIN / 'zi2c', '--no-main',
+    run([*RUNNER, BIN / 'zi2c', '--no-main', '--target-os', 'web', '--target-cpu', 'wasm32',
          '--define', 'PLATFORM_WEB', '--root', ROOT, *UI_MODULE_ARGS,
          '--module-path', ROOT / 'src/backend', '--module-path', ZIRAN / 'std',
          '-o', generated, ROOT / 'tests/canvas_audio_behavior.zi'])

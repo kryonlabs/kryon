@@ -14,7 +14,8 @@ run_compiler() {
         "$@"
     fi
 }
-run_compiler "$bin/zi2c" --no-main --define PLATFORM_WEB --root "$root" \
+run_compiler "$bin/zi2c" --no-main --target-os web --target-cpu wasm32 \
+    --define PLATFORM_WEB --root "$root" \
     --module-path "$root/tests/page_texture_fake" --module-path "$root/src/backend" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/c" "$root/tests/canvas_text_os_behavior.zi"
 cat > "$work/fixture.js" <<'JS'

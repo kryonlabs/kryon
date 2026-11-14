@@ -48,10 +48,11 @@ def main():
             gen=WORK/'c'
             shutil.rmtree(gen,ignore_errors=True)
             define=['--define','PLATFORM_WEB'] if web else []
-            run([ZIRAN,'ir',*common,*define,'-o',WORK/'ir',source])
+            target=['--target-os','web','--target-cpu','wasm32'] if web else []
+            run([ZIRAN,'ir',*common,*(['--target=c',*target] if web else []),*define,'-o',WORK/'ir',source])
             paths=common if form=='source' else ['--root',WORK/'ir']
             file=source if form=='source' else WORK/'ir/document_storage_test.zir'
-            run([ZIRAN,'build','--target=c',*paths,*define,'--entry','document_storage_test:main','-o',gen,file])
+            run([ZIRAN,'build','--target=c',*target,*paths,*define,'--entry','document_storage_test:main','-o',gen,file])
             flags=['-O1','-ffunction-sections','-fdata-sections','-I'+str(gen),'-I'+str(ZIRAN_ROOT/'include'),*sorted(gen.glob('*.c'))]
             if not web:
                 run([os.environ.get('CC','cc'),*flags,ZIRAN_ROOT/'build/libziran.a','-Wl,--gc-sections','-lm','-lpthread','-o',WORK/'test'])

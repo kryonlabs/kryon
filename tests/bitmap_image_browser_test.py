@@ -28,11 +28,12 @@ def main():
     WORK.mkdir(parents=True)
     ir=WORK/'ir';source=ROOT/'tests/bitmap_image_test.zi'
     common=['--project','--root',ROOT/'tests','--define','PLATFORM_WEB']
-    run([ZIRAN,'ir',*common,'-o',ir,source])
+    web=['--target-os','web','--target-cpu','wasm32']
+    run([ZIRAN,'ir',*common,'--target=c',*web,'-o',ir,source])
     for form in ('source','saved'):
         generated=WORK/form
         inputs=common if form=='source' else ['--root',ir,'--define','PLATFORM_WEB']
-        run([ZIRAN,'build',*inputs,'--target=c','--no-main','-o',generated,source if form=='source' else ir/'bitmap_image_test.zir'])
+        run([ZIRAN,'build',*inputs,'--target=c',*web,'--no-main','-o',generated,source if form=='source' else ir/'bitmap_image_test.zir'])
         shell=WORK/'shell.html'
         shell.write_text('<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0"><div id="canvas-frame" style="width:16px;height:16px"><canvas id="canvas" width="16" height="16" style="width:16px;height:16px"></canvas></div><pre id="result">pending</pre>{{{ SCRIPT }}}</body></html>')
         run([EMCC,'-O1','-I'+str(ZIRAN_ROOT/'include'),'-iquote',generated,*sorted(generated.rglob('*.c')),'--js-library',ZIRAN_ROOT/'web/ziran_web.js','-sASYNCIFY','-sALLOW_MEMORY_GROWTH=1','-sSTACK_SIZE=16777216','-sSINGLE_FILE=1','-sENVIRONMENT=web','--shell-file',shell,'-o',WORK/'test.html'])

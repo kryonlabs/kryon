@@ -19,7 +19,8 @@ def run(args, **options):
 def build_behavior(work, name, module_paths=()):
     generated = work / 'generated'
     extra = [argument for path in module_paths for argument in ('--module-path', path)]
-    run([BIN / 'zi2c', '--no-main', '--define', 'PLATFORM_WEB', '--root', ROOT / 'tests',
+    run([BIN / 'zi2c', '--no-main', '--target-os', 'web', '--target-cpu', 'wasm32',
+         '--define', 'PLATFORM_WEB', '--root', ROOT / 'tests',
          '--module-path', ROOT / 'src/backend', '--module-path', ZIRAN / 'std', *extra,
          '-o', generated, ROOT / 'tests' / (name + '_browser_behavior.zi')])
     shell = work / 'shell.html'

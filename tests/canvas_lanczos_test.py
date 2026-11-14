@@ -29,7 +29,7 @@ def build():
     subprocess.run([sys.executable, '-I', str(GOLDENS), 'fixtures', str(FIXTURES)], check=True)
     generated = WORK / 'generated'
     run([ZIRAN, 'build', '--project', '--root', ROOT / 'tests', '--define', 'PLATFORM_WEB',
-         '--target=c', '--no-main', '-o', generated, ROOT / 'tests/canvas_lanczos_test.zi'])
+         '--target=c', '--target-os', 'web', '--target-cpu', 'wasm32', '--no-main', '-o', generated, ROOT / 'tests/canvas_lanczos_test.zi'])
     shell = WORK / 'shell.html'
     shell.write_text('<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">'
                      '<div id="canvas-frame" style="width:128px;height:128px"><canvas id="canvas" width="128" '

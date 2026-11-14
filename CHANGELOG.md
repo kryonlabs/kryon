@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Seven failing test targets pass again. The Canvas backend, audio, text,
+  Lanczos, asset cache, bitmap image and document storage tests name the web
+  target when they build a page, as the `OS == .WEB` host selection needs.
+  The host keys test builds as part of the project, because the key modules
+  import widgets by name. The toast test no longer binds the platform
+  keyboard capability, which a toast program never calls.
 - Programs without a text field or text area no longer carry Unicode's grapheme
   tables. Text requests check their cut points through a procedure that the
   editing widgets register when imported (`text_boundary`), so

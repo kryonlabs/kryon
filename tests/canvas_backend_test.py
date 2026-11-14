@@ -27,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix='canvas-browser-', dir=ROOT / 'build') a
     compiler = [BIN/'zi2c']
     if os.environ.get('ZIRAN_RUNNER'):
         compiler = ['sh', os.environ['ZIRAN_RUNNER'], *compiler]
-    run([*compiler,'--no-main','--define','PLATFORM_WEB','--root',ROOT/'tests',
+    run([*compiler,'--no-main','--target-os','web','--target-cpu','wasm32','--define','PLATFORM_WEB','--root',ROOT/'tests',
          *UI_MODULE_ARGS,'--module-path',ROOT/'src/backend','--module-path',ZIRAN/'std',
          '-o',gen,ROOT/'tests/canvas_backend_behavior.zi'])
     shell=work/'shell.html'
