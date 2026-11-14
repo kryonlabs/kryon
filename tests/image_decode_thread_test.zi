@@ -1,5 +1,6 @@
 // CPU job ownership and completion without a graphics library or display.
 Pixels :: #import "raylib_image_decode";
+Exporter :: #import "image_export";
 #import "std/byte_text_linux"
 #import "webp_codec_stub"
 c :: #system_library "c";
@@ -24,10 +25,16 @@ failed: bool;
 file_reads: s32;
 file_frees: s32;
 pixel_frees: s32;
+exports: s32;
 
 #program_export
 LoadImageFromMemory :: (extension: *u8, bytes: *u8, count: s32) -> Pixels.RaylibGlyphImage {
     unused extension
+    if count == 4 && bytes[0] == 9 {
+        pixels := Allocate(4)
+        for index: 0..3 { pixels[index] = bytes[index] }
+        return Pixels.RaylibGlyphImage.{cast(*void)pixels, 1, 1, 1, 7}
+    }
     if Self() == owner { failed = true }
     unused Lock(cast(*void)*mutex[0])
     started = true
@@ -41,6 +48,16 @@ LoadImageFromMemory :: (extension: *u8, bytes: *u8, count: s32) -> Pixels.Raylib
 }
 #program_export
 UnloadImage :: (image: Pixels.RaylibGlyphImage) { Free(cast(*u8)image.data); pixel_frees += 1 }
+#program_export
+ExportImage :: (image: Pixels.RaylibGlyphImage, path: *u8) -> bool {
+    if image.data == null || image.width != 1 || image.height != 1 ||
+    TextFromCString(path) != "tray-icon.png" {
+        failed = true
+        return false
+    }
+    exports += 1
+    return true
+}
 #program_export
 LoadFileData :: (path: *u8, count: *s32) -> *u8 {
     unused path
@@ -110,6 +127,11 @@ Check :: () -> s32 {
     Pixels.RaylibImageClose(*job)
     Pixels.RaylibImageClose(*job)
     if failed || file_reads != 1 || file_frees != 1 || pixel_frees != 2 { return 7 }
+    export_bytes: [4]u8 = .[9, 8, 7, 6]
+    if !Exporter.EncodedImageExport(TextFromBytes(export_bytes[:]), ".png", "tray-icon.png") ||
+    exports != 1 || pixel_frees != 3 || failed {
+        return 11
+    }
     if Pixels.RaylibImageStart(*job, "empty.png", "") { return 8 }
     unused ConditionDestroy(cast(*void)*condition[0])
     unused MutexDestroy(cast(*void)*mutex[0])

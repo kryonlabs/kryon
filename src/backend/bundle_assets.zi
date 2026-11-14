@@ -1,5 +1,8 @@
 // Extract only the resources carried by the opened bundle, into a private
 // host-owned directory. The same paths work in native and browser filesystems.
+// The files are a copy of the bundle, not documents: one that already holds
+// its asset is kept, so reopening an app writes nothing, and a new copy is not
+// forced to disk, since the next open compares it again.
 #import "std/bundle_host"
 #import "std/byte_text_linux"
 #import "app_files"
@@ -10,7 +13,7 @@ BundleWriteAssets :: (bundle: *void, files: *AppFiles) -> bool {
         name := TextFromCString(BundleAssetPath(bundle, index))
         data := TextFromBytes(BytesFromPointer(BundleAssetBytes(bundle, index),
             BundleAssetLength(bundle, index)))
-        if !AppFileWrite(files, name, data) { return false }
+        if !AppFileSame(files, name, data) && !AppFileWrite(files, name, data, false) { return false }
         index += 1
     }
     return true

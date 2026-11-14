@@ -15,6 +15,11 @@ AsyncHash :: (image: *Image)->u64 {
  for at:0..image.pixels.count-1 {h=(h^cast(u64)image.pixels[at])*cast(u64)1099511628211}
  return h
 }
+AsyncImage :: (pixels: []u8,width: s32,height: s32)->Image {
+ image:=NewImage(width,height)
+ for at:0..image.pixels.count-1 {image.pixels[at]=pixels[at]}
+ return image
+}
 AsyncWait :: (gpu: *SceneGpuContext,image: *Image)->SceneGpuAsyncResult {
  for at:0..4999 {
   result:=SceneGpuPoll(gpu,image)
@@ -36,7 +41,8 @@ AsyncTests :: ()->bool {
  uniforms: [1]ShaderValue=.[.{0.7,0.4,0.1,1}]
  material:=UnlitMaterial(.{255,255,255,255});material.shader=*program;material.shader_uniforms=uniforms[:]
  texels: [16]u8=.[255,100,40,255,80,220,100,255,50,100,230,255,190,140,70,255]
- material.texture=AddTexture(*scene,texels[:],2,2)
+ texture:=AsyncImage(texels[:],2,2);defer VecFree(texture.pixels)
+ material=ImageMaterial(*scene,*texture,material)
  a:=RoundedBox(*scene,0.9,0.9,0.4,0.05,material);SetPosition(*scene,a,-0.3,0,0)
  material.transparent=true;material.color.a=110
  unused RoundedBox(*scene,0.8,0.8,0.5,0.05,material)
@@ -54,7 +60,6 @@ AsyncTests :: ()->bool {
    cameras[slot]=camera
    uniforms[0].x=0.1+cast(float64)(batch*2+slot)*0.02
    program.code[2].a=ifx slot==0 then 5 else 4
-   scene.texels[0]=cast(u8)(100+batch*5+slot*20)
    SetPosition(*scene,a,-0.3+cast(float64)slot*0.1,0,0)
    scene.meshes[0].material.double_sided=slot==0
    if !SceneGpuRender(*reference,*scene,camera,*expected).ok {return false}
@@ -134,7 +139,7 @@ AsyncTests :: ()->bool {
  if !SceneGpuProbe(*gpu).available {return false}
  gpu.capabilities.async_available=false;gpu.capabilities.async_diagnostic="test lacks PBO mapping"
  if SceneGpuSubmit(*gpu,*scene,camera,80,50,1).ok||!SceneGpuRender(*gpu,*scene,camera,*image).ok {return false}
- print("Async exact camera/material/geometry/texture/program frames, sync interleave, two-slot backpressure, cancellation, loss, fallback and 24 releases passed; unready polls %\n",unready)
+ print("Async exact camera/material/geometry/owned-texture/program frames, sync interleave, two-slot backpressure, cancellation, loss, fallback and 24 releases passed; unready polls %\n",unready)
  return true
 }
 #program_export

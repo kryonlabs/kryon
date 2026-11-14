@@ -1,6 +1,7 @@
 #import "gamepad_navigation"
 #import "canvas_types"
 #import "canvas_events"
+#import "input_delivery"
 #import "c_string"
 #import "geometry"
 #import "drawing_props"
@@ -25,6 +26,17 @@
                 cast(float32)PageGamepadAxis(pad, 1))
         }
         GamepadNavigationPoll(*canvas_gamepad_navigation, buttons, canvas_focused, canvas_snapshot_focus_lost)
+        CanvasGamepadDeliver()
+    }
+
+    // Navigation presses join the page's keys in order while it has focus.
+    CanvasGamepadDeliver :: () {
+        if !canvas_focused || canvas_snapshot_focus_lost { return }
+        key := GamepadNavigationTake(*canvas_gamepad_navigation)
+        while key != 0 {
+            InputDeliveryKey(*canvas_input, key, 0, false)
+            key = GamepadNavigationTake(*canvas_gamepad_navigation)
+        }
     }
 
     canvas_gamepad_names: [512]u8;

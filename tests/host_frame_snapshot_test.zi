@@ -166,13 +166,15 @@ RunProbe :: () -> s32 {
     if !Focus(false) || !Step(session, cast(u8)4, false) { return 115 + Probe.failure }
     if !Step(session, cast(u8)0, false) { return 130 + Probe.failure }
     if !Focus(true) || !Key(true) || !Step(session, cast(u8)1, true, 65) { return 145 + Probe.failure }
-    // Shared named codes and modifier observations survive the widget drain.
+    // Shared named codes and modifier observations survive ordered delivery.
     for code: cast(s32)0..2 {
         named: s32 = ifx code == 0 then 263 else ifx code == 1 then 340 else 327
         Probe.expected_named_code = named
         Probe.expected_named_flags = cast(u8)3
         Probe.expected_modifiers = ifx named == 340 then 1 else 0
-        if !NamedKey(named, true) || !Step(session, cast(u8)1, true, named) { return 150 + Probe.failure }
+        // A modifier key is an observation, never a delivered widget key.
+        delivered: s32 = ifx named == 340 then 0 else named
+        if !NamedKey(named, true) || !Step(session, cast(u8)1, true, delivered) { return 150 + Probe.failure }
         Probe.expected_named_flags = cast(u8)4
         Probe.expected_modifiers = 0
         if !NamedKey(named, false) || !Step(session, cast(u8)1) { return 151 + Probe.failure }

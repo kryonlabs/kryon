@@ -11,13 +11,16 @@ G :: #import, file "../src/backend/scene_gpu_gl.zi";
 libc :: #system_library "c";
 Flush :: (stream: *void)->s32 #foreign libc "fflush";
 Pause :: (microseconds: u32)->s32 #foreign libc "usleep";
+TestImage :: (pixels: []u8,width: s32,height: s32)->Image {
+ image:=NewImage(width,height)
+ for at:0..image.pixels.count-1 {image.pixels[at]=pixels[at]}
+ return image
+}
 ReleaseCycles :: ()->bool {
  scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
- pixels: Vec(u8)
- if !VecResize(pixels,1024*1024*4) {return false}
- for at:0..pixels.count-1 {pixels[at]=255}
+ texture:=NewImage(1024,1024,255,255,255,255);defer VecFree(texture.pixels)
  material:=UnlitMaterial(.{120,80,30,255})
- material.texture=AddTexture(*scene,pixels[:],1024,1024)
+ material=ImageMaterial(*scene,*texture,material)
  unused RoundedBox(*scene,1,1,1,0.1,material)
  camera:=PerspectiveCamera(45,1,0.1,20);camera.position=.{0,0,3}
  image:=NewImage(64,64)
@@ -117,7 +120,8 @@ FeatureVariants :: ()->bool {
  material:=LitMaterial(.{180,100,40,255},0.65)
  material.shader=*program;material.shader_uniforms=uniforms[:]
  pixels: [8]u8=.[255,255,255,255,150,220,100,100]
- material.texture=AddTexture(*scene,pixels[:],2,1)
+ texture:=TestImage(pixels[:],2,1);defer VecFree(texture.pixels)
+ material=ImageMaterial(*scene,*texture,material)
  left:=RoundedBox(*scene,0.9,0.9,0.4,0.12,material);SetPosition(*scene,left,-0.55,0,0)
  right:=RoundedBox(*scene,0.9,0.9,0.4,0.12,material);SetPosition(*scene,right,0.55,0,0)
  for at:0..scene.colors.count-1 {scene.colors[at]=.{0.4,0.8,0.6}}
@@ -260,13 +264,22 @@ Quality :: (kind: s32)->bool {
  if kind==1 {material.flat=true}
  if kind==2 {material=UnlitMaterial(.{130,220,80,255});material.transparent=true;material.opacity=0.45}
  pixels: [16]u8=.[255,30,0,255,0,255,0,180,0,0,255,64,255,255,0,0]
+ texture:=TestImage(pixels[:],2,2);defer VecFree(texture.pixels)
  program: ShaderProgram;samplers: [1]ShaderSampler=.[.{2,2,pixels[:],true}]
  code: [2]ShaderInstruction=.[.{op=.ShaderSample,dest=4,a=3,slot=0},.{op=.ShaderOutput,a=4}]
  if kind==3 {
   if !ShaderCompile(*program,code[:]).ok {return false}
   material.shader=*program;material.shader_samplers=samplers[:]
  }
- if kind==4 {material.texture=AddTexture(*scene,pixels[:],2,2);material.alpha_test=0.3;material.transparent=true}
+ if kind==4 {
+  material=ImageMaterial(*scene,*texture,material)
+  material.alpha_test=0.3;material.transparent=true
+ }
+ if kind==13 {
+  options: SceneTextureOptions=.{projection=.SceneTextureBox,filter=.SceneTextureLinear,
+   wrap=.SceneTextureRepeat,scale=.{2.3,1.7},offset=.{0.2,-0.1}}
+  material=ImageMaterial(*scene,*texture,material,options)
+ }
  if kind==6 {
   discard_code: [3]ShaderInstruction=.[
    .{op=.ShaderLiteral,dest=4,value=.{0.45,0,0,0}},
@@ -276,6 +289,12 @@ Quality :: (kind: s32)->bool {
   material.shader=*program
  }
  if kind==11 {material.exact_color=true}
+ if kind==14 {
+  // The sun's beam carries a repeating two-by-two cookie across its box.
+  holder:=ImageMaterial(*scene,*texture,UnlitMaterial(.{255,255,255,255}))
+  LightCookie(*scene,sun,holder.texture,.{3.0,2.5},.{0.1,0.2})
+  if scene.failed||!scene.lights[sun].cookie {return false}
+ }
  node:=RoundedBox(*scene,1,1,0.6,0.1,material)
  mesh:=scene.meshes[scene.nodes[node].mesh]
  for at:mesh.first_vertex..mesh.first_vertex+mesh.vertex_count-1 {
@@ -311,15 +330,18 @@ Quality :: (kind: s32)->bool {
  }
  print("quality % mae % fraction_over_16 %\n",kind,cast(float64)error/cast(float64)image.pixels.count,cast(float64)large/cast(float64)image.pixels.count)
  if error>image.pixels.count||large>image.pixels.count/200 {return false}
- if kind==3||kind==4 {
+ if kind==13&&(gpu.resources.texture_uploads!=1||gpu.textures.count!=1||gpu.textures[0].bytes.count!=0) {
+  print("immutable image cache retained duplicate bytes or upload count % % %\n",
+   gpu.resources.texture_uploads,gpu.textures.count,gpu.textures[0].bytes.count)
+  return false
+ }
+ if kind==3||kind==4||kind==13 {
   old:=gpu.resources.texture_uploads;pixels[0]=0;pixels[1]=255
   if !SceneGpuRender(*gpu,*scene,camera,*image).ok {return false}
-  // AddTexture copies its source; custom samplers borrow it.
+  // ImageMaterial owns an immutable copy; custom samplers borrow their bytes.
   if kind==3&&gpu.resources.texture_uploads!=old+1 {return false}
-  if kind==4 {
-   scene.texels[0]=0
-   if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.texture_uploads!=old+1 {return false}
-  }
+  if kind==4&&gpu.resources.texture_uploads!=old {return false}
+  if kind==13&&gpu.resources.texture_uploads!=old {return false}
  }
  if kind==3 {
   code[0]=.{op=.ShaderLiteral,dest=4,value=.{0.1,0.3,0.7,1}}
@@ -371,6 +393,32 @@ main :: ()->s32 {
  if !HostCheck(host)||SceneGpuMemoryUsage(*gpu).pending_frames!=0 {return 75}
  SetPosition(*scene,node,0.2,0.0,0.0)
  if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.geometry_uploads!=2 {return 7}
+ // A node that only moves sends its own triangles, not the whole scene's:
+ // a second box joins, then turns.
+ second:=RoundedBox(*scene,0.4,0.4,0.2,0.0,material)
+ unused SetPosition(*scene,second,-0.6,0.5,0.0)
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok {return 76}
+ sent:=gpu.resources.geometry_vertices;uploads:=gpu.resources.geometry_uploads
+ unused SetRotation(*scene,second,0.0,0.0,0.5)
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok {return 77}
+ turned:=gpu.resources.geometry_vertices-sent
+ if turned<=0||turned>=gpu.vertices.count||gpu.resources.geometry_uploads!=uploads+1 {print("a moved node sent % of % vertices\n",turned,gpu.vertices.count);return 78}
+ // The picture is the one a fresh upload of the same scene gives.
+ fresh: SceneGpuContext;again:=NewImage(128,128)
+ if !SceneGpuRender(*fresh,*scene,camera,*again).ok {return 79}
+ for at: 0..image.pixels.count-1 {if image.pixels[at]!=again.pixels[at] {print("partial update differs at byte %\n",at);return 80}}
+ // A frozen scene still follows its nodes; a call that changes geometry takes
+ // the promise back and the change is drawn.
+ FreezeGeometry(*scene)
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok {return 81}
+ sent=gpu.resources.geometry_vertices
+ unused SetPosition(*scene,second,-0.5,0.4,0.0)
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.geometry_vertices-sent!=turned {return 82}
+ SetVertexPosition(*scene,second,0,.{-0.3,-0.3,0.2})
+ if scene.geometry_frozen {return 83}
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||!SceneGpuRender(*fresh,*scene,camera,*again).ok {return 84}
+ for at: 0..image.pixels.count-1 {if image.pixels[at]!=again.pixels[at] {print("unfrozen change differs at byte %\n",at);return 85}}
+ SceneGpuRelease(*fresh);VecFree(again.pixels)
  // A rejected mutation must not make the previous snapshot appear valid with
  // partially rebuilt draw commands.
  previous_mesh:=scene.nodes[node].mesh;scene.nodes[node].mesh=99999
@@ -409,7 +457,7 @@ main :: ()->s32 {
  for at:0..image.pixels.count-1 {if image.pixels[at]!=reference.pixels[at] {return 43}}
  SceneGpuRelease(*gpu);SceneFree(*scene);RenderSceneRelease()
  print("Scene GPU lifecycle, mutation, resize, retention and fallback passed\n")
- for kind:0..12 {if !Quality(cast(s32)kind) {return 50+cast(s32)kind};if !HostCheck(host) {return 36}}
+ for kind:0..14 {if !Quality(cast(s32)kind) {return 50+cast(s32)kind};if !HostCheck(host) {return 36}}
  if !FeatureVariants()||!HostCheck(host) {return 48}
  if !ReleaseCycles()||!HostCheck(host) {return 41}
  if !PrecisionFallback()||!HostCheck(host) {return 44}

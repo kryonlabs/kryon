@@ -2,10 +2,36 @@
 
 ## Unreleased
 
+- ZX apps run on Ziran's one executable format everywhere. Players and hosted
+  apps call `InstantiateBundle` on every target, including the browser; the
+  `--vm` option of `zx` and `ziran run` is gone, and the web, Raylib and
+  Android runtimes build `libziran` with its instruction engine instead of the
+  bootstrap subset.
+- Opening a bundle app no longer rewrites all of its assets. `BundleWriteAssets`
+  keeps every extracted file that already holds its asset (`AppFileSame`
+  compares in place) and writes a changed one without waiting for the disk
+  (`AppFileWrite(..., durable = false)`): the files are a copy of the bundle,
+  checked again on the next open. Before, every open synced each asset and its
+  directories; for an app with 557 assets that was about a third of a second
+  on every open, measured. `AppFileRead` sizes its buffer once instead of
+  growing it byte by byte.
+
 - GTK style queries notice a new default display. The style cache answered
   from the previous display's settings after `gdk_display_manager_set_default_display`,
   so theme values and the style generation went stale.
 
+- The native GPU scene renderer (`kryon/scene_gpu`) no longer rebuilds and
+  re-uploads a whole scene when one node moves, turns, or scales. It now
+  re-makes and sends only the moved nodes' triangles, so an animated door or
+  leaf in a large scene costs a fraction of a millisecond per frame instead
+  of a full rebuild (about 9 ms for an 88,000-vertex room, measured). The
+  rebuild path also leaked its per-node matrices on every rebuild; they are
+  now kept and reused. `SceneGpuResources.geometry_vertices` counts the
+  vertices sent, so tests can tell a partial update from a full one.
+- `FreezeGeometry(scene)` promises that a scene's meshes, materials and
+  vertices stay as they are, so the GPU renderer stops comparing them with
+  what it last drew on every frame; nodes may still move, show and hide. Any
+  Scene call that adds or changes geometry takes the promise back.
 - Native Linux apps can drag data out to other applications. The optional
   `kryon/DragSourceLinux` module is an XDND version 5 drag source on its own
   X connection: it follows the pointer while the toolkit keeps its implicit
@@ -15,6 +41,11 @@
 - `GtkStyleIndicatorRaster` and GtkPainter kinds 9–11 draw the GTK theme's own
   check box, radio option and submenu arrow, so native menus can show check,
   radio and submenu rows exactly as GTK draws them.
+- Scene lights can carry a projected texture: `LightCookie` sends a scene
+  texture through a light's beam over its shadow box, multiplying direct
+  irradiance in linear light, identically in the CPU and GLES renderers, for
+  dappled sun through leaves and similar patterns. The GLES host now needs 15
+  texture units.
 - The semantic DOM backend is removed: the `dom` profile, `dom_host`,
   `dom_tree`, `dom_paint`, `dom_run` and `dom_app_run`, their tests and
   `docs/dom.md`. No project used it. The `web` template now builds a Canvas2D
@@ -97,6 +128,11 @@
 - Raylib keys keep a Control, Alt or Super press that was released again
   within the same poll, so the quickest Control+C tap still reaches the app as
   Control+C instead of a lost plain C.
+- Context-menu rows can show right-aligned accelerator labels and checked state,
+  with aligned check columns and portable hosted-widget fields.
+- Replace host-global key/text reads with one shared ordered per-session
+  delivery path across Desktop, Canvas and Raylib, preserving layout-aware
+  shortcuts, repeats, IME text, gamepad navigation and focus-loss handling.
 - Reuse identical GTK cell measurements, retain native raster caches across
   unrelated GLib events, and composite clipped opaque pixels efficiently.
 - Detect unchanged GTK painter surfaces by exact byte comparison instead of

@@ -59,8 +59,8 @@ and portable loader must never recognize Kryon widget names specially. An
 application that does not import Kryon needs no Kryon code or graphical host.
 Keep app-specific screens, assets, copy, workflows, and state in the app repo.
 
-One widget concept has one public implementation. `Text(TextProps)` and
-`Image(ImageProps)` are the intended text and image widget surfaces. Do not
+One widget concept has one public implementation. `Text.Draw(Text.Props)` and
+`Image.Draw(Image.Props)` are the intended text and image widget surfaces. Do not
 add parallel wrappers or expose raw texture draw calls as app widget APIs.
 
 ## Testing and desktop safety

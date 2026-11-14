@@ -16,6 +16,7 @@
 #import "std/math"
 #import "std/vec"
 #import "std/option"
+#import "std/image"
 #import "drawing_props"
 #import "shader"
 
@@ -30,6 +31,34 @@ MaterialKind :: enum {
     MaterialShadow :: 2  // only the shadows falling on it, like ShadowMaterial
 }
 
+SceneTextureProjection :: enum {
+    SceneTextureUV :: 0
+    SceneTextureBox :: 1
+}
+
+SceneTextureFilter :: enum {
+    SceneTextureNearest :: 0
+    SceneTextureLinear :: 1
+}
+
+SceneTextureWrap :: enum {
+    SceneTextureClamp :: 0
+    SceneTextureRepeat :: 1
+}
+
+// Image material mapping. A zero scale component means one texture repeat per
+// mesh unit, which also makes the zero value a useful default. MIP_LEVEL is an
+// explicit, deterministic box-filtered level prepared once when the material
+// is made; CPU and GPU render the same selected image.
+SceneTextureOptions :: struct {
+    projection: SceneTextureProjection
+    filter: SceneTextureFilter
+    wrap: SceneTextureWrap
+    scale: ShapePoint
+    offset: ShapePoint
+    mip_level: s32
+}
+
 SceneMaterial :: struct {
     kind: MaterialKind
     color: Color             // sRGB; its alpha is ignored
@@ -42,7 +71,12 @@ SceneMaterial :: struct {
     double_sided: bool
     flat: bool               // one normal per face
     vertex_colors: bool      // multiply by each vertex's linear colour
-    texture: s32             // AddTexture's number, or -1
+    texture: s32             // ImageMaterial's owned scene resource, or -1
+    texture_projection: SceneTextureProjection
+    texture_filter: SceneTextureFilter
+    texture_wrap: SceneTextureWrap
+    texture_scale: ShapePoint
+    texture_offset: ShapePoint
     alpha_test: float64      // texels below this alpha are not drawn
     exact_color: bool        // written without tone mapping
     shader: *ShaderProgram  // borrowed; null uses the standard material
@@ -69,7 +103,14 @@ SceneMesh :: struct {
     material: SceneMaterial
 }
 
-SceneTexture :: struct { width: s32; height: s32; first_texel: s64; }
+SceneTexture :: struct {
+    width: s32
+    height: s32
+    first_texel: s64
+    // Nonzero only for immutable ImageMaterial storage. The native renderer
+    // can then reuse an upload without rescanning every texel each frame.
+    cache_key: u64
+}
 
 SceneLight :: struct {
     color: Color
@@ -85,6 +126,10 @@ SceneLight :: struct {
     shadow_bias: float64
     shadow_normal_bias: float64
     shadow_radius: float64
+    cookie: bool             // LightCookie projects cookie_texture
+    cookie_texture: s32      // a scene texture, such as an ImageMaterial's
+    cookie_scale: ShapePoint // repeats across the shadow box
+    cookie_offset: ShapePoint
 }
 
 Scene :: struct {
@@ -106,6 +151,10 @@ Scene :: struct {
     exposure: float64
     tone_mapping: bool       // three.js's neutral tone mapping
     failed: bool
+    // FreezeGeometry's promise: meshes and vertices stay as they are, so a
+    // renderer need not look for changes in them on every frame. Nodes may
+    // still move, show and hide. Calls that change geometry take it back.
+    geometry_frozen: bool
 }
 
 // A flat outline drawn with moves, lines, curves and arcs, as three.js's
@@ -154,6 +203,16 @@ SceneClear :: (scene: *Scene) {
     scene.exposure = 1.0
     scene.tone_mapping = false
     scene.failed = false
+    scene.geometry_frozen = false
+}
+
+// Promises that meshes, materials and vertices stay as they are from now on,
+// so renderers stop comparing them with what they last drew. Nodes may still
+// move, turn, scale, show and hide. Any Scene call that adds or changes
+// geometry takes the promise back; after writing into the scene's vertex
+// arrays directly, clear scene.geometry_frozen yourself.
+FreezeGeometry :: (scene: *Scene) {
+    scene.geometry_frozen = true
 }
 
 SceneFree :: (scene: *Scene) {
@@ -187,15 +246,72 @@ ShadowMaterial :: (color: Color, opacity: float64) -> SceneMaterial {
         transparent = true, texture = -1}
 }
 
-// Copies straight-alpha RGBA8 pixels for materials to use.
-AddTexture :: (scene: *Scene, pixels: []u8, width: s32, height: s32) -> s32 {
-    if width <= 0 || height <= 0 || pixels.count < cast(s64)width * height * 4 { scene.failed = true; return -1 }
-    texture: SceneTexture = .{width, height, scene.texels.count}
-    for at: 0..cast(s64)width * height * 4 - 1 {
-        if !VecPush(scene.texels, pixels[at]) { scene.failed = true; return -1 }
+// Copies IMAGE into SCENE once and returns BASE with an image-backed texture.
+// Equal prepared images share one scene resource. IMAGE may be released as
+// soon as this returns. Use SceneTextureBox + SceneTextureRepeat for stable
+// object-space wood grain on boxes without authoring mesh UVs.
+ImageMaterial :: (scene: *Scene, image: *Image, base: SceneMaterial,
+    options: SceneTextureOptions = .{}) -> SceneMaterial {
+    material := base
+    material.texture = -1
+    if scene == null || !ImageValid(image) || options.mip_level < 0 ||
+        !Finite64(options.scale.x) || !Finite64(options.scale.y) ||
+        !Finite64(options.offset.x) || !Finite64(options.offset.y) ||
+        cast(s32)options.projection < 0 || cast(s32)options.projection > 1 ||
+        cast(s32)options.filter < 0 || cast(s32)options.filter > 1 ||
+        cast(s32)options.wrap < 0 || cast(s32)options.wrap > 1 {
+        if scene != null { scene.failed = true }
+        return material
     }
-    if !VecPush(scene.textures, texture) { scene.failed = true; return -1 }
-    return cast(s32)(scene.textures.count - 1)
+    material.texture_projection = options.projection
+    material.texture_filter = options.filter
+    material.texture_wrap = options.wrap
+    material.texture_scale = .{
+        ifx options.scale.x == 0.0 then 1.0 else options.scale.x,
+        ifx options.scale.y == 0.0 then 1.0 else options.scale.y,
+    }
+    material.texture_offset = options.offset
+    width := image.width
+    height := image.height
+    level := options.mip_level
+    while level > 0 {
+        if width > 1 { width = (width + 1) / 2 }
+        if height > 1 { height = (height + 1) / 2 }
+        level -= 1
+    }
+    if width != image.width || height != image.height {
+        prepared := ResizeBox(image, width, height)
+        if !ImageValid(*prepared) {
+            VecFree(prepared.pixels)
+            scene.failed = true
+            return material
+        }
+        material.texture = AddImageTexture(scene, *prepared)
+        VecFree(prepared.pixels)
+        return material
+    }
+    material.texture = AddImageTexture(scene, image)
+    return material
+}
+
+// The exact coordinate transform used by both native renderers. Box mapping
+// uses the dominant object-space normal, so transforms never make the texture
+// swim and every generated box face has one stable planar projection.
+SceneTextureCoordinate :: (material: SceneMaterial, position: Vector3,
+    normal: Vector3, uv: ShapePoint) -> ShapePoint {
+    coordinate := uv
+    if material.texture_projection == .SceneTextureBox {
+        ax := ifx normal.x < 0.0 then -normal.x else normal.x
+        ay := ifx normal.y < 0.0 then -normal.y else normal.y
+        az := ifx normal.z < 0.0 then -normal.z else normal.z
+        if ax >= ay && ax >= az { coordinate = .{position.z, position.y} }
+        else if ay >= az { coordinate = .{position.x, position.z} }
+        else { coordinate = .{position.x, position.y} }
+    }
+    sx := ifx material.texture_scale.x == 0.0 then 1.0 else material.texture_scale.x
+    sy := ifx material.texture_scale.y == 0.0 then 1.0 else material.texture_scale.y
+    return .{coordinate.x * sx + material.texture_offset.x,
+        coordinate.y * sy + material.texture_offset.y}
 }
 
 // ---------------------------------------------------------------- lights
@@ -231,6 +347,25 @@ CastLightShadow :: (scene: *Scene, light: s32, half_width: float64, half_height:
     kept.shadow_bias = bias
     kept.shadow_normal_bias = normal_bias
     kept.shadow_radius = radius
+}
+
+// LIGHT carries TEXTURE through its beam like a gobo: the texel's linear RGB
+// scales the light's direct irradiance on every lit surface, whether or not
+// it receives shadows. The texture spans the light's shadow box (set by
+// CastLightShadow) SCALE times, shifted by OFFSET, filtered bilinearly and
+// repeated. Only the first light with a cookie projects one.
+LightCookie :: (scene: *Scene, light: s32, texture: s32, scale: ShapePoint, offset: ShapePoint) {
+    if light < 0 || light >= cast(s32)scene.lights.count || texture < 0 ||
+        texture >= cast(s32)scene.textures.count || !Finite64(scale.x) || !Finite64(scale.y) ||
+        !Finite64(offset.x) || !Finite64(offset.y) {
+        scene.failed = true
+        return
+    }
+    kept := *scene.lights[light]
+    kept.cookie = true
+    kept.cookie_texture = texture
+    kept.cookie_scale = scale
+    kept.cookie_offset = offset
 }
 
 // ---------------------------------------------------------------- nodes
@@ -310,6 +445,7 @@ NodeScale :: (scene: *Scene, node: s32) -> Vector3 {
 
 // Changes the material of every mesh at or below NODE.
 SetMaterial :: (scene: *Scene, node: s32, material: SceneMaterial) -> s32 {
+    scene.geometry_frozen = false
     if !ValidNode(scene, node) { return node }
     for at: 0..scene.nodes.count - 1 {
         if scene.nodes[at].mesh >= 0 && Descends(scene, cast(s32)at, node) {
@@ -339,12 +475,14 @@ VertexPosition :: (scene: *Scene, node: s32, vertex: s32) -> Vector3 {
 }
 
 SetVertexPosition :: (scene: *Scene, node: s32, vertex: s32, position: Vector3) {
+    scene.geometry_frozen = false
     at := VertexAt(scene, node, vertex)
     if at >= 0 { scene.positions[at] = position }
 }
 
 // A linear colour, used by materials with vertex_colors.
 SetVertexColor :: (scene: *Scene, node: s32, vertex: s32, color: Vector3) {
+    scene.geometry_frozen = false
     at := VertexAt(scene, node, vertex)
     if at >= 0 { scene.colors[at] = color }
 }
@@ -352,6 +490,7 @@ SetVertexColor :: (scene: *Scene, node: s32, vertex: s32, color: Vector3) {
 // Normals from the faces, as three.js's computeVertexNormals: shared by
 // the faces meeting at an indexed vertex, one per face otherwise.
 ComputeNormals :: (scene: *Scene, node: s32) {
+    scene.geometry_frozen = false
     if !ValidNode(scene, node) || scene.nodes[node].mesh < 0 { return }
     mesh := scene.meshes[scene.nodes[node].mesh]
     first := mesh.first_vertex
@@ -734,6 +873,45 @@ Extrude :: (scene: *Scene, shape: *Shape, depth: float64, material: SceneMateria
 
 #scope_file
 
+ImageFingerprint :: (image: *Image) -> u64 {
+    hash: u64 = 1469598103934665603
+    hash = (hash ^ cast(u64)cast(u32)image.width) * 1099511628211
+    hash = (hash ^ cast(u64)cast(u32)image.height) * 1099511628211
+    for at: 0..image.pixels.count - 1 {
+        hash = (hash ^ cast(u64)image.pixels[at]) * 1099511628211
+    }
+    return ifx hash == 0 then 1 else hash
+}
+
+AddImageTexture :: (scene: *Scene, image: *Image) -> s32 {
+    key := ImageFingerprint(image)
+    bytes := cast(s64)image.width * image.height * 4
+    for at: 0..scene.textures.count - 1 {
+        texture := scene.textures[at]
+        if texture.cache_key != key || texture.width != image.width || texture.height != image.height { continue }
+        same := true
+        for byte: 0..bytes - 1 {
+            if scene.texels[texture.first_texel + byte] != image.pixels[byte] { same = false; break }
+        }
+        if same { return cast(s32)at }
+    }
+    texture: SceneTexture = .{image.width, image.height, scene.texels.count, key}
+    first := scene.texels.count
+    for at: 0..bytes - 1 {
+        if !VecPush(scene.texels, image.pixels[at]) {
+            scene.failed = true
+            while scene.texels.count > first { unused VecPop(scene.texels) }
+            return -1
+        }
+    }
+    if !VecPush(scene.textures, texture) {
+        scene.failed = true
+        while scene.texels.count > first { unused VecPop(scene.texels) }
+        return -1
+    }
+    return cast(s32)(scene.textures.count - 1)
+}
+
 SCENE_PI :: 3.141592653589793
 SCENE_TAU :: 6.283185307179586
 
@@ -814,6 +992,7 @@ FinishMesh :: (scene: *Scene, first: s32, first_index: s32, indexed: bool, mater
     mesh: SceneMesh = .{first_vertex = first, vertex_count = cast(s32)scene.positions.count - first,
         first_index = first_index, material = material}
     if indexed { mesh.index_count = cast(s32)scene.indices.count - first_index }
+    scene.geometry_frozen = false
     if !VecPush(scene.meshes, mesh) { scene.failed = true; return -1 }
     return AddNode(scene, cast(s32)(scene.meshes.count - 1))
 }

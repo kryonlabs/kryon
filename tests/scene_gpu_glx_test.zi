@@ -2,6 +2,7 @@
 #import, file "../src/backend/scene_gpu.zi";
 G :: #import, file "../src/backend/scene_gpu_gl.zi";
 #import "std/image"
+#import "std/vec"
 #import "std/text_tools"
 #import "kryon/scene"
 #import "kryon/scene_render"
@@ -46,13 +47,32 @@ main :: ()->s32 {
  print("Private GLX host renderer %\n",TextView(label[:]))
  if !Check(display,context,drawable) {return 6}
  scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
- unused RoundedBox(*scene,1,1,1,0.1,UnlitMaterial(.{150,80,40,255}))
+ source:=NewImage(4,4)
+ for y:0..3 {for x:0..3 {
+  at:=(y*4+x)*4;source.pixels[at]=cast(u8)(60+x*50);source.pixels[at+1]=cast(u8)(25+y*35)
+  source.pixels[at+2]=cast(u8)(10+(x+y)*20);source.pixels[at+3]=255
+ }}
+ options: SceneTextureOptions=.{projection=.SceneTextureBox,filter=.SceneTextureLinear,
+  wrap=.SceneTextureRepeat,scale=.{2.5,2.5}}
+ material:=ImageMaterial(*scene,*source,UnlitMaterial(.{255,255,255,255}),options)
+ VecFree(source.pixels)
+ unused RoundedBox(*scene,1,1,1,0.1,material)
  camera:=PerspectiveCamera(45,1,0.1,20);camera.position=.{0,0,3}
- image:=NewImage(128,128)
+ image:=NewImage(128,128);reference:=NewImage(128,128)
+ defer VecFree(image.pixels);defer VecFree(reference.pixels);defer RenderSceneRelease()
  gpu: SceneGpuContext;caps:=SceneGpuProbe(*gpu);defer SceneGpuRelease(*gpu)
  if !caps.available {print("GPU probe %\n",caps.diagnostic);return 7}
  if !Check(display,context,drawable) {return 8}
  if !SceneGpuRender(*gpu,*scene,camera,*image).ok||!Check(display,context,drawable) {return 9}
+ if !RenderScene(*scene,camera,*reference) {return 18}
+ error: s64
+ for at:0..image.pixels.count-1 {
+  d:=cast(s32)image.pixels[at]-cast(s32)reference.pixels[at]
+  error+=ifx d<0 then -d else d
+ }
+ if error>image.pixels.count*2 {return 19}
+ uploads:=gpu.resources.texture_uploads
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.texture_uploads!=uploads||!Check(display,context,drawable) {return 20}
  if !SceneGpuSubmit(*gpu,*scene,camera,128,128,1).queued||!Check(display,context,drawable) {return 14}
  if !SceneGpuSubmit(*gpu,*scene,camera,128,128,2).queued||!Check(display,context,drawable) {return 15}
  if !SceneGpuRender(*gpu,*scene,camera,*image).ok||!Check(display,context,drawable) {return 16}
@@ -63,7 +83,7 @@ main :: ()->s32 {
  if !Check(display,context,drawable) {return 11}
  if !SceneGpuRender(*gpu,*scene,camera,*image).ok||!Check(display,context,drawable) {return 12}
  SceneGpuRelease(*gpu)
- print("Foreign GLX context, draw/read pbuffers and pixels preserved through probe/render/async/sync-interleave/resize/release/recreate\n")
+ print("Private-Xvfb image material CPU/GPU parity and foreign GLX context lifecycle passed\n")
  unused G.GLXMakeCurrent(display,0,0,null)
  return 0
 }

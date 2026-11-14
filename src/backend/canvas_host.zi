@@ -376,14 +376,7 @@ PollCanvas :: () -> bool {
         return false
     }
     CanvasGamepadPoll()
-    // Gamepad navigation and test input join the page's keys in order.
-    if canvas_focused && !canvas_snapshot_focus_lost {
-        navigation := GamepadNavigationTake(*canvas_gamepad_navigation)
-        while navigation != 0 {
-            InputDeliveryKey(*canvas_input, navigation, 0, false)
-            navigation = GamepadNavigationTake(*canvas_gamepad_navigation)
-        }
-    }
+    // A test driver types through the same ordered delivery.
     TestDriverInput(*canvas_input)
     canvas_pointer.x = cast(float32)GetMouseX()
     canvas_pointer.y = cast(float32)GetMouseY()

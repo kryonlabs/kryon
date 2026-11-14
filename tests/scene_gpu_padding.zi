@@ -17,6 +17,11 @@ MaterialFillPadding :: (material: *SceneMaterial,pattern: u8) {
  material.flat=saved.flat
  material.vertex_colors=saved.vertex_colors
  material.texture=saved.texture
+ material.texture_projection=saved.texture_projection
+ material.texture_filter=saved.texture_filter
+ material.texture_wrap=saved.texture_wrap
+ material.texture_scale=saved.texture_scale
+ material.texture_offset=saved.texture_offset
  material.alpha_test=saved.alpha_test
  material.exact_color=saved.exact_color
  material.shader=saved.shader

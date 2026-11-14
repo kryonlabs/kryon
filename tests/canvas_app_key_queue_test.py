@@ -21,68 +21,96 @@ SOURCE = '''#import "page_core"
 #import "canvas_events"
 #import "page_input"
 #import "canvas_input"
+#import "input_delivery"
+#import "key_input"
 #import "tree_input"
 #import "session"
 
+app_session: Session;
+
+Take :: () -> (key: s32, modifiers: s32) {
+    key, modifiers := InputDeliveryTake(*canvas_input, app_session, CanvasHeldModifiers())
+    return key, modifiers
+}
+
 main :: () -> s32 {
     CanvasEventsReset()
-    session := SessionOpen()
+    app_session = SessionOpen()
+    if !SessionValid(app_session) { return 40 }
     if KeyF3 != 292 { return 32 }
     unused CanvasKeyDown("F3", "F3", false, 0)
-    key := CanvasAppKeyTake()
-    unused KeyboardSend(session, key)
-    if key != KeyF3 || KeyboardTake(session) != KeyF3 || KeyboardTake(session) != 0 { return 33 }
+    key, modifiers := Take()
+    unused KeyboardSend(app_session, key)
+    if key != KeyF3 || KeyboardTake(app_session) != KeyF3 || KeyboardTake(app_session) != 0 { return 33 }
     unused CanvasKeyUp("F3", "F3")
-    unused SessionClose(session)
     CanvasEventsReset()
     unused CanvasKeyDown("Home", "Home", false, 0)
     unused CanvasKeyUp("Home", "Home")
     unused CanvasKeyDown("Digit4", "4", false, 0)
     unused CanvasKeyUp("Digit4", "4")
-    // CanvasAppMainLoop takes one AppKey before CanvasAppFrame begins drawing.
-    first := CanvasAppKeyTake()
+    // The app loop takes its input before the frame begins drawing.
+    key, modifiers = Take()
     CanvasEventsBeginFrame()
-    if first != 268 { return 1 }
+    if key != 268 { return 1 }
     if !IsKeyPressed(52) { return 2 }
     CanvasEventsEndFrame()
     if canvas_keys_pressed_count != 0 || canvas_keys_released_count != 0 { return 3 }
-    second := CanvasAppKeyTake()
+    key, modifiers = Take()
     CanvasEventsBeginFrame()
-    if second != 52 { return 4 }
+    if key != 52 { return 4 }
     // Delivering an unread event must not replay its pressed/released flags.
     if canvas_keys_pressed_count != 0 || canvas_keys_released_count != 0 { return 5 }
     CanvasEventsEndFrame()
-    if CanvasAppKeyTake() != 0 { return 6 }
+    key, modifiers = Take()
+    if key != 0 { return 6 }
     // Events arriving while drawing yields survive cleanup, with no duplication.
     unused CanvasKeyDown("KeyA", "a", false, 0)
     CanvasEventsBeginFrame()
-    if CanvasAppKeyTake() != 65 { return 7 }
+    key, modifiers = Take()
+    if key != 65 { return 7 }
     unused CanvasKeyDown("KeyB", "b", false, 0)
     CanvasEventsEndFrame()
     if !CanvasQueueHas(*canvas_keys_pressed[0], canvas_keys_pressed_count, 66) { return 8 }
-    if CanvasAppKeyTake() != 66 { return 9 }
+    key, modifiers = Take()
+    if key != 66 { return 9 }
     CanvasEventsBeginFrame()
     CanvasEventsEndFrame()
-    if CanvasAppKeyTake() != 0 || canvas_keys_pressed_count != 0 { return 10 }
+    key, modifiers = Take()
+    if key != 0 || canvas_keys_pressed_count != 0 { return 10 }
+    // Raylib's GetKeyPressed reads this frame's presses beside session delivery.
     unused CanvasKeyDown("KeyC", "c", false, 0)
-    if GetKeyPressed() != 67 || CanvasAppKeyTake() != 0 { return 16 }
+    if GetKeyPressed() != 67 || GetKeyPressed() != 0 { return 16 }
+    key, modifiers = Take()
+    if key != 67 { return 17 }
     CanvasEventsBeginFrame()
     CanvasEventsEndFrame()
-    // Repeats also survive frames and retain the existing fresh-key priority.
-    unused CanvasKeyDown("KeyA", "a", true, 0)
-    unused CanvasKeyDown("KeyB", "b", true, 0)
-    if CanvasAppKeyTake() != 65 { return 11 }
+    if GetKeyPressed() != 0 { return 18 }
+    CanvasEventsReset()
+    // Repeats keep their place after the fresh press, edit by edit.
+    unused CanvasKeyDown("ArrowLeft", "ArrowLeft", false, 0)
+    unused CanvasKeyDown("ArrowRight", "ArrowRight", false, 0)
+    unused CanvasKeyDown("ArrowLeft", "ArrowLeft", true, 1)
+    expected: [3]s32 = .[263, 262, 263]
+    expected_modifiers: [3]s32 = .[0, 0, 1]
+    for index: 0..2 {
+        key, modifiers = Take()
+        if key != expected[index] || modifiers != expected_modifiers[index] { return 11 }
+    }
     CanvasEventsBeginFrame()
     CanvasEventsEndFrame()
     if canvas_keys_repeated_count != 0 { return 12 }
-    if CanvasAppKeyTake() != 66 || CanvasAppKeyTake() != 0 { return 13 }
+    key, modifiers = Take()
+    if key != 0 { return 13 }
     unused CanvasKeyDown("KeyC", "c", false, 0)
     CanvasEventsReset()
-    if CanvasAppKeyTake() != 0 { return 14 }
-    // A focus change cancels pending shortcuts instead of replaying them later.
-    unused CanvasKeyDown("KeyD", "d", false, 0)
+    key, modifiers = Take()
+    if key != 0 { return 14 }
+    // A focus change cancels pending shortcuts and keeps typed text.
+    unused CanvasKeyDown("KeyD", "d", false, 2)
+    CanvasTyped(100)
     unused CanvasEvent(CanvasEventBlur, 0, 0, 0.0, 0.0, null, null)
-    if CanvasAppKeyTake() != 0 { return 15 }
+    key, modifiers = Take()
+    if key != 0 || TypedCodepointTake(app_session) != 100 { return 15 }
     // Complete shortcuts retain event flags after every physical key is up.
     CanvasEventsReset()
     unused CanvasKeyDown("ControlLeft", "Control", false, 2)
@@ -91,15 +119,13 @@ main :: () -> s32 {
     unused CanvasKeyUp("ControlLeft", "Control")
     unused CanvasKeyDown("KeyB", "b", false, 0)
     unused CanvasKeyUp("KeyB", "b")
-    if CanvasHeldModifiers() != 0 || IsKeyDown(341) { return 17 }
-    if CanvasAppKeyTake() != 341 || canvas_key_event.modifiers != 2 { return 18 }
-    CanvasEventsBeginFrame()
-    CanvasEventsEndFrame()
-    if CanvasAppKeyTake() != 65 || canvas_key_event.modifiers != 2 { return 19 }
-    if CanvasHeldModifiers() != 0 { return 20 }
-    // The same fresh queue backs the legacy GetKeyPressed consumer.
-    if GetKeyPressed() != 66 || canvas_key_event.modifiers != 0 { return 21 }
-    if CanvasAppKeyTake() != 0 || canvas_key_event.modifiers != 0 { return 22 }
+    if CanvasHeldModifiers() != 0 || IsKeyDown(341) { return 19 }
+    key, modifiers = Take()
+    if key != 65 || modifiers != 2 || !TextFieldInputFor(key, modifiers, "").select_all { return 20 }
+    key, modifiers = Take()
+    if key != 66 || modifiers != 0 { return 21 }
+    key, modifiers = Take()
+    if key != 0 || modifiers != 0 { return 22 }
     // Repeats carry their own flags, even when the modifier changes while held.
     CanvasEventsReset()
     unused CanvasKeyDown("KeyA", "a", false, 2)
@@ -110,27 +136,47 @@ main :: () -> s32 {
     unused CanvasKeyUp("KeyA", "a")
     unused CanvasKeyUp("KeyB", "b")
     CanvasEventsEndFrame()
-    if CanvasAppKeyTake() != 65 || canvas_key_event.modifiers != 2 { return 23 }
-    if CanvasAppKeyTake() != 66 || canvas_key_event.modifiers != 4 { return 24 }
-    if CanvasAppKeyTake() != 65 || canvas_key_event.modifiers != 3 { return 25 }
-    if CanvasAppKeyTake() != 65 || canvas_key_event.modifiers != 0 { return 26 }
-    if CanvasAppKeyTake() != 0 || canvas_key_event.modifiers != 0 { return 27 }
-    // Bounded queues drop a whole event, never just its key or modifiers.
-    for at: cast(s32)0..CANVAS_QUEUE_LIMIT {
-        unused CanvasKeyDown("KeyC", "c", false, at % 8)
-        unused CanvasKeyUp("KeyC", "c")
+    keys: [5]s32 = .[65, 65, 65, 66, 0]
+    flags: [5]s32 = .[2, 3, 0, 4, 0]
+    for index: cast(s32)0..4 {
+        key, modifiers = Take()
+        if key != keys[index] || modifiers != flags[index] { return 23 + index }
     }
-    for at: cast(s32)0..CANVAS_QUEUE_LIMIT - 1 {
-        if CanvasAppKeyTake() != 67 || canvas_key_event.modifiers != at % 8 { return 28 }
-    }
-    if CanvasAppKeyTake() != 0 { return 29 }
-    unused CanvasKeyDown("KeyA", "a", false, 7)
+    // Typed text and the Enter after it commit together; Space types a space.
     CanvasEventsReset()
-    if canvas_key_event.modifiers != 0 || CanvasAppKeyTake() != 0 { return 30 }
+    CanvasTyped(104)
+    unused CanvasKeyDown("Space", " ", false, 0)
+    unused CanvasKeyDown("Enter", "Enter", false, 0)
+    key, modifiers = Take()
+    bytes: [8]u8
+    if key != KeyEnter || TypedTextTake(app_session, bytes[:]) != "h " { return 34 }
+    // Raylib's GetCharPressed takes this frame's characters; later ones survive.
+    if GetCharPressed() != 104 || GetCharPressed() != 32 || GetCharPressed() != 0 { return 35 }
+    CanvasTyped(120)
+    CanvasEventsBeginFrame()
+    CanvasTyped(121)
+    CanvasEventsEndFrame()
+    if GetCharPressed() != 121 || GetCharPressed() != 0 { return 36 }
+    while TypedCodepointTake(app_session) != 0 {}
+    // A bounded queue drops whole events, never just a key or its modifiers.
+    CanvasEventsReset()
+    for at: cast(s32)0..INPUT_DELIVERY_CAPACITY {
+        unused CanvasKeyDown("ArrowUp", "ArrowUp", false, at % 8)
+        unused CanvasKeyUp("ArrowUp", "ArrowUp")
+    }
+    if canvas_input.count != INPUT_DELIVERY_CAPACITY { return 28 }
+    for at: cast(s32)0..INPUT_DELIVERY_CAPACITY - 1 {
+        key, modifiers = Take()
+        if key != 265 || modifiers != at % 8 { return 29 }
+    }
+    key, modifiers = Take()
+    if key != 0 { return 30 }
     unused CanvasKeyDown("KeyA", "a", false, 7)
-    unused CanvasAppKeyTake()
     unused CanvasEvent(CanvasEventBlur, 0, 0, 0.0, 0.0, null, null)
-    if canvas_key_event.modifiers != 0 || CanvasAppKeyTake() != 0 { return 31 }
+    key, modifiers = Take()
+    if key != 0 || modifiers != 0 { return 31 }
+    TreeInputReset(app_session)
+    unused SessionClose(app_session)
     return 0
 }
 '''
@@ -162,7 +208,7 @@ def main():
             run([ZIRAN, 'build', '--target=c', '--exe', '--entry', 'app_keys:main',
                  *modules, *target, *define, '-o', WORK / 'native', source])
             run([WORK / 'native/app_keys'])
-            print(f'{form}: native Canvas AppKey delivery passed', flush=True)
+            print(f'{form}: native Canvas ordered key delivery passed', flush=True)
 
 
 if __name__ == '__main__':

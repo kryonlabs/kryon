@@ -64,6 +64,7 @@ uniform vec4 material; // roughness, metalness, alpha_test, kind
 uniform vec4 flags; // vertex colors, flat, double sided, receive
 uniform vec4 settings; // tone mapping, exact color, exposure, perspective
 uniform vec2 albedoSize;
+uniform vec2 albedoSampling; // filter (nearest/linear), wrap (clamp/repeat)
 uniform sampler2D albedo;
 uniform sampler2D dfg;
 uniform sampler2DShadow shadow0;
@@ -74,6 +75,11 @@ uniform mat4 shadowMatrix[4];
 uniform vec4 shadowSettings[4]; // enabled, bias, normal bias, radius/size
 uniform vec3 lightColor[4];
 uniform vec3 lightDirection[4];
+uniform sampler2D cookie;
+uniform mat4 cookieMatrix;
+uniform vec4 cookieTransform; // scale xy, offset zw
+uniform vec2 cookieSize;
+uniform int cookieLight; // the one light whose beam carries the cookie, or -1
 uniform vec3 sky;
 uniform vec3 ground;
 uniform vec3 up;
@@ -82,6 +88,21 @@ uniform int transparent;
 float sat(float a){return clamp(a,0.0,1.0);}
 vec3 unit(vec3 a){float n=length(a);return n>0.0?a/n: vec3(0.0);}
 vec3 linearColor(vec3 c){return mix(c/12.92,pow((c+0.055)/1.055,vec3(2.4)),step(vec3(0.04045),c));}
+ivec2 albedoCoordinate(ivec2 p){
+ ivec2 size=ivec2(albedoSize);
+ if(albedoSampling.y>0.5){return ivec2((p.x%size.x+size.x)%size.x,(p.y%size.y+size.y)%size.y);}
+ return clamp(p,ivec2(0),size-1);
+}
+vec4 albedoTexel(ivec2 p){
+ p=albedoCoordinate(p);p.y=int(albedoSize.y)-1-p.y;
+ vec4 t=texelFetch(albedo,p,0);return vec4(linearColor(t.rgb),t.a);
+}
+vec4 albedoAt(vec2 uv){
+ if(albedoSampling.x<0.5){return albedoTexel(ivec2(floor(uv*albedoSize)));}
+ vec2 p=uv*albedoSize-0.5;ivec2 a=ivec2(floor(p)),b=a+1;vec2 f=fract(p);
+ return mix(mix(albedoTexel(a),albedoTexel(ivec2(b.x,a.y)),f.x),
+  mix(albedoTexel(ivec2(a.x,b.y)),albedoTexel(b),f.x),f.y);
+}
 vec3 encode(vec3 c){c=clamp(c,0.0,1.0);return mix(c*12.92,1.055*pow(c,vec3(0.41666))-0.055,step(vec3(0.0031308),c));}
 vec3 neutral(vec3 c){
  c*=settings.z;float x=min(c.r,min(c.g,c.b));
@@ -120,6 +141,18 @@ float lightShadow(int i){
  if(i==2)return shadowAt(shadow2,2);
  return shadowAt(shadow3,3);
 }
+vec3 cookieTexel(ivec2 p){
+ ivec2 size=ivec2(cookieSize);
+ p=ivec2((p.x%size.x+size.x)%size.x,(p.y%size.y+size.y)%size.y);p.y=size.y-1-p.y;
+ return linearColor(texelFetch(cookie,p,0).rgb);
+}
+vec3 lightCookie(int i){
+ if(i!=cookieLight)return vec3(1.0);
+ vec2 uv=(cookieMatrix*vec4(world,1.0)).xy*cookieTransform.xy+cookieTransform.zw;
+ vec2 p=uv*cookieSize-0.5;ivec2 a=ivec2(floor(p)),b=a+1;vec2 f=fract(p);
+ return mix(mix(cookieTexel(a),cookieTexel(ivec2(b.x,a.y)),f.x),
+  mix(cookieTexel(ivec2(a.x,b.y)),cookieTexel(b),f.x),f.y);
+}
 GLSL
 GpuFragmentMain :: #string GLSL
 void main(){
@@ -133,9 +166,7 @@ void main(){
  vec4 color=base;
  if(KRYON_VERTEX>0.5)color.rgb*=vertexColor;
  if(albedoSize.x>0.0){
-  vec2 p=clamp(floor(texcoord*albedoSize),vec2(0),albedoSize-1.0);
-  vec4 t=texture(albedo,vec2(p.x+0.5,albedoSize.y-p.y-0.5)/albedoSize);
-  color*=vec4(linearColor(t.rgb),t.a);
+  color*=albedoAt(texcoord);
  }
  if(KRYON_KIND<1.5)color=kryonMaterial(color,vec4(world,1.0),vec4(unit(worldNormal),0.0),vec4(texcoord,0.0,0.0));
  if(KRYON_KIND>1.5){
@@ -162,7 +193,7 @@ void main(){
    vec3 direction=lightDirection[i].xyz;
    float nl=sat(dot(n,direction));
    if(nl==0.0&&bounded&&all(lessThanEqual(abs(direction),vec3(1.001)))&&all(lessThanEqual(abs(lightColor[i]),vec3(1e20))))continue;
-   vec3 irradiance=lightColor[i].rgb*nl*lightShadow(i);
+   vec3 irradiance=lightColor[i].rgb*nl*lightShadow(i)*lightCookie(i);
    vec3 halfVector=unit(direction+eye);float nh=sat(dot(n,halfVector)),vh=sat(dot(eye,halfVector));
    float fresnel=exp2((-5.55473*vh-6.98316)*vh);
    vec3 f=mix(spec,vec3(1.0),fresnel);

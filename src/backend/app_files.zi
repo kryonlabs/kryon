@@ -22,6 +22,7 @@ AppFiles :: struct {
 
 libc :: #system_library "libc";
 AppFreeBytes :: (bytes: *u8) #foreign libc "free";
+AppCompareBytes :: (first: *void, second: *void, bytes: usize) -> s32 #foreign libc "memcmp";
 
 AppFileFree :: (value: string) {
     if value.count > 0 {
@@ -209,11 +210,11 @@ AppFileRead :: (files: *AppFiles, name: string) -> string {
     if size < 0 || size > APP_DOCUMENT_LIMIT {
         return ""
     }
+    // Sized once: a large document is read without growing byte by byte.
     bytes: Vec(u8)
-    for index: 0..size - 1 {
-        if !VecPush(bytes, cast(u8)0) {
-            return ""
-        }
+    if !VecResize(bytes, size) {
+        VecFree(bytes)
+        return ""
     }
     read: s64
     {
@@ -228,7 +229,47 @@ AppFileRead :: (files: *AppFiles, name: string) -> string {
     return BuilderFinish(bytes)
 }
 
-AppFileWrite :: (files: *AppFiles, name: string, value: string) -> bool {
+// Does NAME already hold exactly VALUE? Compared in place, a piece at a time,
+// without copying the file.
+AppFileSame :: (files: *AppFiles, name: string, value: string) -> bool {
+    if !AppFilesAvailable(files) {
+        return false
+    }
+    path := AppFilePath(files, name, false)
+    defer { AppFileFree(path) }
+    if path == "" {
+        return false
+    }
+    file := OpenRead(path)
+    if !file.valid {
+        return false
+    }
+    defer { unused CloseFile(file) }
+    if FileSize(file) != value.count {
+        return false
+    }
+    piece: [8192]u8
+    offset: s64 = 0
+    while offset < value.count {
+        count := value.count - offset
+        if count > 8192 {
+            count = 8192
+        }
+        part := value[offset:offset + count]
+        expected := cast(*TextDescriptor)(*part)
+        if ReadAt(file, piece[:count], offset) != count ||
+            AppCompareBytes(cast(*void)(*piece[0]), cast(*void)expected.data, cast(usize)count) != 0 {
+            return false
+        }
+        offset += count
+    }
+    return true
+}
+
+// Replace NAME with VALUE atomically. A DURABLE write (documents) also reaches
+// the disk before it returns; a copy that can be made again, such as a
+// bundle's extracted assets, need not wait for that.
+AppFileWrite :: (files: *AppFiles, name: string, value: string, durable: bool = true) -> bool {
     if !AppFilesAvailable(files) || value.count > APP_DOCUMENT_LIMIT || name == ".lock" {
         return false
     }
@@ -261,7 +302,7 @@ AppFileWrite :: (files: *AppFiles, name: string, value: string) -> bool {
     }
     ok := WriteTextAt(file, value, 0) == value.count
     #if !#defined(PLATFORM_WEB) {
-        ok = ok && SyncFile(file)
+        ok = ok && (!durable || SyncFile(file))
     }
     // Browser hosts flush their mounted filesystem as a batch. Emscripten's
     // fsync synchronizes the entire IndexedDB mount, so doing it for each
@@ -287,7 +328,7 @@ AppFileWrite :: (files: *AppFiles, name: string, value: string) -> bool {
         // Persist the rename and any newly created ancestors, leaf first, down
         // to the root itself. AppPrivateDirectory persisted the root's own entry.
         index := path.count - 1
-        while index >= files.root.count {
+        while durable && index >= files.root.count {
             if path[index] == cast(u8)47 && !AppSyncDirectory(path[:index]) {
                 return false
             }

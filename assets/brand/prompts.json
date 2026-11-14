@@ -1,0 +1,91 @@
+{
+  "project": "Kryon",
+  "request": "One original friendly full-body dragon mascot for the Kryon UI toolkit, in the Ziran capybara's flat warm illustration feel, followed by a pastel-only color revision that preserves the accepted character.",
+  "pastel_follow_up_request": "okay but the colors should be more pastel — for the mascot",
+  "generation_mode": "built-in image_gen",
+  "generation_calls_planned": 1,
+  "conditional_retry_allowed": 1,
+  "generation_calls_completed": 3,
+  "attempt_count": 3,
+  "pastel_edit_calls_planned": 1,
+  "pastel_edit_calls_completed": 1,
+  "retry_reason": "The first attempt had extra body shading and tighter margins, a clear style/composition mismatch; the one permitted retry fixed the flat-ink direction.",
+  "proposals": [
+    {
+      "id": "01-dragon-v1",
+      "version": "v1",
+      "attempt_count": 2,
+      "animal": "Dragon",
+      "direction": "Rounded approachable full-body dragon in three-quarter view, facing right, with a calm warm personality and strong small-icon silhouette.",
+      "prompt": "Use case: logo-brand\nAsset type: final original mascot bitmap for Kryon, a UI toolkit and Ziran sister project; exactly one finished character.\nPrimary request: Create one entirely original friendly cartoon dragon mascot for Kryon. KDE inspiration is limited only to the broad idea of a rounded, approachable open-source cartoon dragon body and shape. This must not copy or trace Konqi and must not reuse Konqi's exact face, anatomy, pose, or proportions.\nScene/backdrop: None. A genuinely transparent square canvas with no background pixels, ground, shadow, border, or decoration.\nSubject: One full-body dragon in three-quarter view, facing right, standing in a relaxed welcoming pose. Big friendly head, short rounded snout, small rounded horns, small wings, a soft row of rounded back spines, four simple grounded feet without claws, and one clear tapering tail. Calm warm expression, small gentle eyes rendered only with earth-brown marks, closed mouth, no teeth. Nothing in its hands.\nStyle/medium: Confident hand-drawn flat illustration in the same visual family as Ziran's capybara mascot: bold deep earth-brown outline of consistent apparent weight, large quiet solid color areas, minimal interior marks, slight purposeful hand-drawn irregularity, calm warm character, strong sticker-like silhouette readable as a tiny website icon. Absolutely flat ink fills: no lighting, highlights, shadows, secondary shades, gray, cream, white fill, texture, or tonal modeling.\nComposition/framing: Center the single complete dragon on a 1:1 square canvas. The entire silhouette should occupy about 72–76% of the canvas width and height, leaving a clean 12–15% transparent border on every side. Every horn, wing, spine, foot, and tail is wholly visible and comfortably clear of the edge. Three-quarter view faces right.\nColor palette: Exactly four visual ink colors and no others except edge antialiasing between them and transparency: jade green #63B190 for the entire body and wings; exactly one continuous lake-blue underside/belly plane #77B7EA; deep earth-brown #502511 for every outline, eye, nostril, and minimal interior mark; one restrained muted light-orange #A48B62 used only on the small horn tips. Do not create light and dark variants of any color. Do not use orange on wings or elsewhere.\nText: NONE.\nConstraints: One original approachable rounded dragon; one character only; genuine alpha transparency; strong readable silhouette; generous clear margins; four flat source-family inks only; exactly one lake-blue belly plane; orange limited to horn tips; eyes use brown with no white eye fill.\nAvoid: Konqi likeness, KDE logo, gear, fire, smoke, teeth, aggressive claws, K monogram, letter-shaped body, props, clothing, scenery, borders, frames, solid or patterned background, gradients, glow, glossy 3D, textures, shading, highlights, drop shadows, extra characters, extra limbs, cropped anatomy. Absolutely no text, letters, numbers, labels, signatures, logos, or watermark anywhere.",
+      "file": null,
+      "transparent_background": true,
+      "status": "removed-at-owner-request",
+      "retained": false,
+      "actual": {
+        "dimensions": [1254, 1254],
+        "mode": "RGBA",
+        "alpha_extrema": [0, 255],
+        "content_bbox_alpha_gt_1": [107, 63, 1125, 1197],
+        "bytes": 877306,
+        "sha256": "aa041bbfe0fa60b97736fff724be5922f6b178607cfab5514b6cc4a17295da89"
+      },
+      "visual_review": {
+        "no_text_verified": true,
+        "transparent_background_verified": true,
+        "not_konqi_copy": true,
+        "style_matches_ziran": true,
+        "original_character": true
+      }
+    },
+    {
+      "id": "02-dragon-v2-pastel",
+      "version": "v2",
+      "attempt_count": 1,
+      "animal": "Dragon",
+      "direction": "Pastel-only color revision of the accepted v1 dragon, preserving the same friendly character, pose, proportions, framing, linework, expression, wings, spines, and transparent background.",
+      "prompt": "Use case: precise-object-edit\nAsset type: pastel color revision of the accepted Kryon dragon mascot bitmap.\nInput images: Image 1 is the sole edit target, the accepted v1 Kryon dragon mascot.\nPrimary request: Change ONLY the four flat ink colors of Image 1 to a softer pastel palette. Do not redraw, reinterpret, restyle, simplify, or add anything.\nColor palette: body pastel mint/jade approximately #A9DCC5; the single existing belly/underside plane pastel sky blue approximately #BCDDF6; the existing horn-tip accents pastel peach approximately #F5C7A1; all existing outline, eye, nostril, and interior marks deep earth-brown/warm cocoa approximately #6B4434. Use at most these four flat visual inks plus edge antialiasing and transparency.\nTransparency: Preserve the genuinely transparent background and all current alpha edges. No background pixels, ground, or shadow.\nInvariants: Preserve the exact same original character, pose, anatomy, proportions, framing, silhouette, linework geometry and apparent weight, expression, gaze, wings, rounded back spines, horns, feet, tail, belly-plane shape, detail placement, canvas dimensions, and transparent margins. Change only colors. Keep every existing element in the exact same position and size. No added or removed details.\nAvoid: gradients, extra shades, texture, highlights, shadows, glow, glossy rendering, new marks, altered outlines, altered anatomy, text, letters, numbers, logos, signatures, or watermark. Do not introduce a Konqi likeness, KDE logo, gear, props, clothing, scenery, border, fire, teeth, or claws.",
+      "file": "mascot-dragon.png",
+      "transparent_background": true,
+      "status": "complete",
+      "actual": {
+        "dimensions": [1254, 1254],
+        "mode": "RGBA",
+        "alpha_extrema": [0, 255],
+        "content_bbox_alpha_gt_1": [107, 64, 1127, 1197],
+        "bytes": 867648,
+        "sha256": "9537921d73713caccd9c991b4998224207f5ad21a079dcebc2f57cfc111daae4"
+      },
+      "target_palette": {
+        "body_pastel_mint_jade": "#A9DCC5",
+        "belly_pastel_sky_blue": "#BCDDF6",
+        "horn_tips_pastel_peach": "#F5C7A1",
+        "outline_warm_cocoa": "#6B4434"
+      },
+      "visual_review": {
+        "exact_character_preserved": true,
+        "pixel_identical_to_v1": false,
+        "transparent_background_verified": true,
+        "no_text_verified": true,
+        "not_konqi_copy": true,
+        "style_matches_ziran": true,
+        "pastel_palette_verified": true,
+        "at_most_four_visual_inks": true,
+        "original_character": true,
+        "notes": "The same accepted character, pose, anatomy, expression, linework design, and framing are preserved. Built-in image editing re-antialiased some edge pixels: the alpha>128 silhouette IoU is 99.53710%, ink-region agreement is 99.69063%, and the content bounding box moved by at most two pixels; v2 is therefore not claimed to be pixel-identical to v1."
+      }
+    }
+  ],
+  "validation": {
+    "local_tests": "passed",
+    "tests": [
+      "The retained pastel mascot is a decodable 1254x1254 8-bit RGBA PNG with alpha extrema [0, 255].",
+      "The retained pastel mascot SHA-256 is 9537921d73713caccd9c991b4998224207f5ad21a079dcebc2f57cfc111daae4 and matches its proposal record.",
+      "Visible content above alpha 1 has bounding box [107, 64, 1127, 1197], wholly inside the canvas with transparent clearance on every side.",
+      "OCR returned no text; visual review found no text, letters, numbers, labels, signatures, or watermark.",
+      "Visual and palette review confirmed the same accepted original dragon, no Konqi copy, the Ziran flat warm style, and the requested pastel mint, sky-blue, peach, and warm-cocoa direction."
+    ],
+    "scope": "Local validation of the sole retained asset assets/brand/mascot-dragon.png and assets/brand/prompts.json.",
+    "notes": "The earlier darker bitmap was removed at the owner's request; its prompt and digest remain as provenance only. The retained pastel mascot used one built-in image_gen edit call and its generated binary was copied without retouching."
+  }
+}

@@ -337,8 +337,11 @@ VisibilityBuild :: (scene: *Scene, p: *ShaderProgram, extra: bool, variant: s32)
     if variant==2 { front.alpha_test=0.5 }
     if variant==3 {
         texels: [16]u8=.[255,255,255,0, 255,255,255,255, 255,255,255,128, 255,255,255,64]
+        texture:=NewImage(2,2)
+        for at:0..15 {texture.pixels[at]=texels[at]}
         front.shader=null
-        front.texture=AddTexture(scene,texels[:],2,2)
+        front=ImageMaterial(scene,*texture,front)
+        VecFree(texture.pixels)
         front.alpha_test=0.5
     }
     unused SetPosition(scene,Plane(scene,0.8,0.8,front),0.0,0.0,0.5)

@@ -87,6 +87,16 @@ SyncScope :: (base: string) -> s32 {
     value := AppFileRead(*files, "file.json")
     if value != "three" { return 38 }
     AppFileFree(value)
+    // A copy that can be made again (a bundle's extracted asset) is replaced
+    // atomically but never waits for the disk: neither the file nor any
+    // directory is synced, so a failing sync cannot stop it.
+    Watch(root, true)
+    if !AppFileWrite(*files, "copy/asset.avif", "asset", false) || watched_hits != 0 { return 39 }
+    Watch(Under(root, "copy/asset.avif.new"), true)
+    if !AppFileWrite(*files, "copy/asset.avif", "again", false) || watched_hits != 0 { return 43 }
+    value = AppFileRead(*files, "copy/asset.avif")
+    if value != "again" { return 44 }
+    AppFileFree(value)
     Watch("", false)
     AppFilesClose(*files)
     return 0
@@ -139,6 +149,18 @@ main :: (argc: s32, argv: **u8) -> s32 {
     value = AppFileRead(*files, "documents/day.json")
     if value != text || files.status != DOCUMENT_READY { return 8 }
     AppFileFree(value)
+    // Compared in pieces: a match across several pieces, a difference in the
+    // very last byte, another length and a missing file.
+    if !AppFileSame(*files, "documents/day.json", text) { return 12 }
+    other_end: Vec(u8)
+    for index: 0..131070 { unused VecPush(other_end, cast(u8)97) }
+    unused VecPush(other_end, cast(u8)98)
+    changed := BuilderFinish(other_end)
+    if AppFileSame(*files, "documents/day.json", changed) ||
+    AppFileSame(*files, "documents/day.json", "a") ||
+    AppFileSame(*files, "documents/missing.json", "") { return 13 }
+    if !AppFileSame(*files, "empty.json", "") { return 14 }
+    AppFileFree(changed)
     AppFileFree(text)
     if AppFileWrite(*files, "../outside", "wrong") ||
     AppFileWrite(*files, "escape", "wrong") || AppFileWrite(*files, ".lock", "wrong") { return 9 }

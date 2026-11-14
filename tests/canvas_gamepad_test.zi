@@ -3,15 +3,24 @@
 #import "canvas_events"
 #import "canvas_input"
 #import "gamepad_navigation"
+#import "session"
+#import "input_delivery"
+#import "tree_input"
 
 Step :: () { CanvasGamepadPoll() }
-Take :: () -> s32 { return CanvasAppKeyTake() }
+gamepad_session: Session;
+Take :: () -> s32 {
+    key, modifiers := InputDeliveryTake(*canvas_input, gamepad_session, CanvasHeldModifiers())
+    return key
+}
 Focus :: (focused: bool) {
     unused CanvasEvent(ifx focused then CanvasEventFocus else CanvasEventBlur, 0, 0, 0.0, 0.0, null, null)
 }
 #program_export
 main :: () -> s32 {
     CanvasEventsReset()
+    gamepad_session = SessionOpen()
+    if !SessionValid(gamepad_session) { return 2 }
     available[0] = true
     Step()
     if Take() != 0 { return 1 }

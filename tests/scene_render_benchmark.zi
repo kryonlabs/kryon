@@ -41,11 +41,11 @@ Run :: (width: s32, height: s32, kind: s32, motion: bool = false) -> bool {
         texture.pixels[at+3]=255
     } }
     material:=UnlitMaterial(.{205,177,137,255})
-    if kind>=2 { material.texture=AddTexture(*scene,texture.pixels[:],1024,1024) }
+    if kind>=2 { material=ImageMaterial(*scene,*texture,material) }
     if kind==3 { material.shader=*program; material.shader_uniforms=uniforms[:] }
     if kind>=4 {
         material=LitMaterial(.{205,177,137,255})
-        material.texture=AddTexture(*scene,texture.pixels[:],1024,1024)
+        material=ImageMaterial(*scene,*texture,material)
         AddHemisphereLight(*scene,.{255,245,225,255},.{80,65,55,255},1.0)
         light := AddDirectionalLight(*scene,.{255,235,210,255},2.0,.{2.0,4.0,5.0})
         if kind==5 {

@@ -216,6 +216,11 @@ RenderLight :: struct {
     radius: float64
     size: s32
     first_texel: s64
+    cookie: bool
+    cookie_matrix: Matrix    // world to cookie coordinates over the shadow box
+    cookie_texture: SceneTexture
+    cookie_scale: ShapePoint
+    cookie_offset: ShapePoint
 }
 
 RenderVertex :: struct {
@@ -608,20 +613,24 @@ PrepareLights :: (work: *Renderer, scene: *Scene) {
     work.up = Normalize(Direction(work.view, .{0.0, 1.0, 0.0}))
     work.light_count = 0
     VecClear(work.shadow_depth)
+    cookie_used := false
     for at: 0..scene.lights.count - 1 {
         if work.light_count >= MAX_LIGHTS { break }
         source := scene.lights[at]
         light: RenderLight
         light.color = Times(LinearColor(source.color), source.intensity)
         light.direction = Normalize(Direction(work.view, Sub(source.position, source.target)))
+        if source.cookie && !cookie_used && LightCookieValid(scene, source) {
+            cookie_used = true
+            light.cookie = true
+            light.cookie_matrix = LightBoxMatrix(source)
+            light.cookie_texture = scene.textures[source.cookie_texture]
+            light.cookie_scale = source.cookie_scale
+            light.cookie_offset = source.cookie_offset
+        }
         if source.shadow && source.shadow_size > 0 {
-            eye := LookAt(source.position, source.target, .{0.0, 1.0, 0.0})
-            lens := Orthographic(-source.shadow_half_width, source.shadow_half_width,
-                source.shadow_half_height, -source.shadow_half_height, source.shadow_near, source.shadow_far)
-            bias := Identity()
-            bias.m[0] = 0.5; bias.m[3] = 0.5; bias.m[5] = 0.5; bias.m[7] = 0.5; bias.m[10] = 0.5; bias.m[11] = 0.5
             light.shadow = true
-            light.shadow_matrix = Multiply(bias, Multiply(lens, eye))
+            light.shadow_matrix = LightBoxMatrix(source)
             light.bias = source.shadow_bias
             light.normal_bias = source.shadow_normal_bias
             light.radius = source.shadow_radius
@@ -632,6 +641,50 @@ PrepareLights :: (work: *Renderer, scene: *Scene) {
         work.lights[work.light_count] = light
         work.light_count += 1
     }
+}
+
+// World to 0..1 coordinates across the light's shadow box, depth in Z.
+LightBoxMatrix :: (source: SceneLight) -> Matrix {
+    eye := LookAt(source.position, source.target, .{0.0, 1.0, 0.0})
+    lens := Orthographic(-source.shadow_half_width, source.shadow_half_width,
+        source.shadow_half_height, -source.shadow_half_height, source.shadow_near, source.shadow_far)
+    bias := Identity()
+    bias.m[0] = 0.5; bias.m[3] = 0.5; bias.m[5] = 0.5; bias.m[7] = 0.5; bias.m[10] = 0.5; bias.m[11] = 0.5
+    return Multiply(bias, Multiply(lens, eye))
+}
+
+// A cookie needs a shadow box and a complete scene texture.
+LightCookieValid :: (scene: *Scene, source: SceneLight) -> bool {
+    if source.cookie_texture < 0 || source.cookie_texture >= cast(s32)scene.textures.count { return false }
+    if source.shadow_half_width <= 0.0 || source.shadow_half_height <= 0.0 || source.shadow_far == source.shadow_near { return false }
+    texture := scene.textures[source.cookie_texture]
+    bytes := cast(s64)texture.width * texture.height * 4
+    return texture.width > 0 && texture.height > 0 && texture.first_texel >= 0 &&
+        texture.first_texel + bytes <= scene.texels.count
+}
+
+// The cookie's linear RGB at WORLD: bilinear, repeating, top row first.
+CookieAt :: (scene: *Scene, light: RenderLight, world: Vector3) -> Vector3 {
+    coord := Point(light.cookie_matrix, world)
+    texture := light.cookie_texture
+    x := (coord.x * light.cookie_scale.x + light.cookie_offset.x) * cast(float64)texture.width - 0.5
+    y := (coord.y * light.cookie_scale.y + light.cookie_offset.y) * cast(float64)texture.height - 0.5
+    x0 := cast(s32)Floor(x); y0 := cast(s32)Floor(y)
+    fx := x - Floor(x); fy := y - Floor(y)
+    ax := TextureCoordinate(x0, texture.width, .SceneTextureRepeat)
+    bx := TextureCoordinate(x0 + 1, texture.width, .SceneTextureRepeat)
+    ay := TextureCoordinate(y0, texture.height, .SceneTextureRepeat)
+    by := TextureCoordinate(y0 + 1, texture.height, .SceneTextureRepeat)
+    a := CookieTexel(scene, texture, ax, ay); b := CookieTexel(scene, texture, bx, ay)
+    c := CookieTexel(scene, texture, ax, by); d := CookieTexel(scene, texture, bx, by)
+    low := Add(a, Times(Sub(b, a), fx))
+    high := Add(c, Times(Sub(d, c), fx))
+    return Add(low, Times(Sub(high, low), fy))
+}
+
+CookieTexel :: (scene: *Scene, texture: SceneTexture, tx: s32, ty: s32) -> Vector3 {
+    at := texture.first_texel + (cast(s64)(texture.height - 1 - ty) * texture.width + tx) * 4
+    return .{Linear(scene.texels[at]), Linear(scene.texels[at + 1]), Linear(scene.texels[at + 2])}
 }
 
 MeshDrawn :: (work: *Renderer, scene: *Scene, node: s32) -> bool {
@@ -799,7 +852,8 @@ DrawMesh :: (work: *Renderer, scene: *Scene, node: s32) {
         vertex.world = Point(world, scene.positions[source])
         vertex.world_normal = Normalize(BackDirection(work.view, vertex.normal))
         vertex.color = scene.colors[source]
-        vertex.uv = scene.uvs[source]
+        vertex.uv = SceneTextureCoordinate(mesh.material, scene.positions[source],
+            scene.normals[source], scene.uvs[source])
         if !PushRenderVertex(work, vertex) { work.failed = true; return }
     }
     corners := Corners(mesh)
@@ -1260,8 +1314,14 @@ Shade :: (work: *Renderer, state: *DrawState, a: *RenderVertex, b: *RenderVertex
     if material.kind == .MaterialUnlit { return Output(work, state, diffuse, alpha) }
     view := Add(Add(Times(a.view, la), Times(b.view, lb)), Times(c.view, lc))
     shadow: [MAX_LIGHTS]float64
+    cookie: [MAX_LIGHTS]Vector3
     for light: 0..work.light_count - 1 {
         shadow[light] = 1.0
+        cookie[light] = .{1.0, 1.0, 1.0}
+        if work.lights[light].cookie && material.kind != .MaterialShadow {
+            world := Add(Add(Times(a.world, la), Times(b.world, lb)), Times(c.world, lc))
+            cookie[light] = CookieAt(state.scene, work.lights[light], world)
+        }
         if work.lights[light].shadow && state.receive {
             world := Add(Add(Times(a.world, la), Times(b.world, lb)), Times(c.world, lc))
             world_normal := Add(Add(Times(a.world_normal, la), Times(b.world_normal, lb)), Times(c.world_normal, lc))
@@ -1294,7 +1354,7 @@ Shade :: (work: *Renderer, state: *DrawState, a: *RenderVertex, b: *RenderVertex
     for light: 0..work.light_count - 1 {
         source := work.lights[light]
         dot_nl := Saturate(Dot(normal, source.direction))
-        irradiance := Times(source.color, dot_nl * shadow[light])
+        irradiance := Mul(Times(source.color, dot_nl * shadow[light]), cookie[light])
         half := Normalize(Add(source.direction, eye))
         dot_nh := Saturate(Dot(normal, half))
         dot_vh := Saturate(Dot(eye, half))
@@ -1330,10 +1390,41 @@ Output :: (work: *Renderer, state: *DrawState, color: Vector3, alpha: float64) -
 
 Texel :: (work: *Renderer, state: *DrawState, u: float64, v: float64) -> Fragment {
     texture := state.texture
-    tx := cast(s32)Floor(u * cast(float64)texture.width)
-    ty := cast(s32)Floor(v * cast(float64)texture.height)
-    tx = ifx tx < 0 then 0 else ifx tx >= texture.width then texture.width - 1 else tx
-    ty = ifx ty < 0 then 0 else ifx ty >= texture.height then texture.height - 1 else ty
+    if state.material.texture_filter == .SceneTextureNearest {
+        tx := TextureCoordinate(cast(s32)Floor(u * cast(float64)texture.width),
+            texture.width, state.material.texture_wrap)
+        ty := TextureCoordinate(cast(s32)Floor(v * cast(float64)texture.height),
+            texture.height, state.material.texture_wrap)
+        return TextureTexel(state, tx, ty)
+    }
+    x := u * cast(float64)texture.width - 0.5
+    y := v * cast(float64)texture.height - 0.5
+    x0 := cast(s32)Floor(x); y0 := cast(s32)Floor(y)
+    fx := x - Floor(x); fy := y - Floor(y)
+    ax := TextureCoordinate(x0, texture.width, state.material.texture_wrap)
+    bx := TextureCoordinate(x0 + 1, texture.width, state.material.texture_wrap)
+    ay := TextureCoordinate(y0, texture.height, state.material.texture_wrap)
+    by := TextureCoordinate(y0 + 1, texture.height, state.material.texture_wrap)
+    a := TextureTexel(state, ax, ay); b := TextureTexel(state, bx, ay)
+    c := TextureTexel(state, ax, by); d := TextureTexel(state, bx, by)
+    low: Fragment = .{a.r + (b.r-a.r)*fx, a.g + (b.g-a.g)*fx,
+        a.b + (b.b-a.b)*fx, a.a + (b.a-a.a)*fx, false}
+    high: Fragment = .{c.r + (d.r-c.r)*fx, c.g + (d.g-c.g)*fx,
+        c.b + (d.b-c.b)*fx, c.a + (d.a-c.a)*fx, false}
+    return .{low.r + (high.r-low.r)*fy, low.g + (high.g-low.g)*fy,
+        low.b + (high.b-low.b)*fy, low.a + (high.a-low.a)*fy, false}
+}
+
+TextureCoordinate :: (coordinate: s32, size: s32, wrap: SceneTextureWrap) -> s32 {
+    if wrap == .SceneTextureRepeat {
+        result := coordinate % size
+        return ifx result < 0 then result + size else result
+    }
+    return ifx coordinate < 0 then 0 else ifx coordinate >= size then size - 1 else coordinate
+}
+
+TextureTexel :: (state: *DrawState, tx: s32, ty: s32) -> Fragment {
+    texture := state.texture
     // Pictures are kept top row first; texture rows count from the bottom.
     at := texture.first_texel + (cast(s64)(texture.height - 1 - ty) * texture.width + tx) * 4
     scene := state.scene

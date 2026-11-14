@@ -1,0 +1,17 @@
+#import "kryon/session"
+Box :: #import "kryon/box";
+
+test_host :: #system_library "host_api";
+TestSessionHost :: () -> Session #foreign test_host;
+
+#program_export
+main :: () -> s32 {
+    session := TestSessionHost()
+    unused Box.Draw(session, Box.Props.{
+        .key = cast(u64)17,
+        .bounds = .{4.0, 6.0, 40.0, 24.0},
+        .fill = .{32, 64, 96, 255},
+        .radius = 3.0,
+    })
+    return 0
+}

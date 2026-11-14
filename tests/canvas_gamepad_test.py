@@ -61,7 +61,7 @@ def main():
             run([ZIRAN, 'build', '--target=c', '--exe', '--entry', 'canvas_gamepad_test:main',
                  *modules, *target, *define, '-o', WORK / 'native', entry])
             run([WORK / 'native/canvas_gamepad_test'])
-        # Link the real CanvasPressedKey entry against its production module
+        # Link the real CanvasInputTake entry against its production module
         # graph as native code too; do not mistake this for WASM execution.
         host_paths = ['--root', ROOT / 'tests', '--module-path', ROOT / 'src/backend',
                       *UI_MODULE_ARGS, '--module-path', ZIRAN_ROOT / 'std']

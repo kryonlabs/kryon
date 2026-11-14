@@ -1007,19 +1007,22 @@ four bytes guarantees progress. `tree_input.TypedCodepointPeek(session)` reads
 the next scalar without consuming it, and `TypedCodepointCapacity(session)`
 reports free slots in the bounded 32-scalar session queue.
 
-Custom SDL desktop hosts can call `DesktopInputEnable()` after `OpenDesktop()`
-to use ordered key/text delivery. Call `PollDesktop()` every frame, including
-while session text remains unread, then `DesktopInputTake(session)` to transfer
-one editing action or a printable-key/text run. Its `(key, modifiers)` result
-uses portable key and modifier codes. The bounded 256-record delivery queue
-backpressures SDL input; unread text delays later editing actions. Return can
-commit a text run delivered in the same call, while window
-lifecycle events continue to be pumped. Both standard desktop hosts use this
-path. Raw `DesktopPressedKey()` (last key), `DesktopNextKey()` (all keys),
-`DesktopTypedCodepoint()` and frame snapshots remain independent observations
-of the current poll; the ordered queue owns durable delivery. Run
+Every graphical host owns an ordered key/text queue and exposes one session
+delivery call: `DesktopInputTake(session)`, `CanvasInputTake(session)`, or
+`RaylibInputTake(session)`. Poll the host every frame, including while session
+text remains unread, then call its take once before composition. The take
+transfers one editing action or a printable-key/text run into that session and
+returns `(key, modifiers)` using portable key and modifier codes. Unread text
+delays later editing actions; Return can commit a text run delivered in the
+same call. Focus loss cancels queued keys so an old shortcut cannot fire after
+focus returns, while text already committed by the platform remains ordered.
+
+Desktop's bounded 256-record delivery queue backpressures SDL key and text
+events without blocking window lifecycle events. Run
 `build-queue -- make test-focus TEST=desktop_input_backpressure` for the native
 SDL source and saved-IR regression.
+Raylib fills its ordered queue from the platform key, repeat and text streams
+during `PollRaylib()`, applying the active keyboard layout before delivery.
 A Raylib app that has nothing to animate can call
 `RaylibWaitForActivity(descriptors, milliseconds)` between frames instead of
 drawing: it returns `RaylibActivityDescriptor`, `RaylibActivityInput` or
@@ -1028,16 +1031,16 @@ drawing. After `RaylibActivityInput` draw two frames, since a frame uses input
 the previous one read. `RaylibPrepareGlyphs(text)` readies many characters at
 once, so drawing them one at a time does not rebuild a font for each.
 
-Canvas and DOM app hosts retain unread key presses and repeats across drawing
-frames, taking one application key per frame. Pressed/released snapshot flags
-still expire at the frame boundary; delivery does not replay those flags.
-Focus loss and host reset cancel unread keys. Each queued press or repeat
-retains its DOM event's Shift, Control/Meta and Alt modifiers. Custom Canvas
-loops read `CanvasPressedKeyModifiers()` immediately after `CanvasPressedKey()`
-and submit those bits with `KeyboardModifiersSend(session, modifiers)`.
-An empty key take reports current held modifiers. `CanvasModifiers()` and
-`CaptureFrameInput(session).modifiers` still report held state at their own
-sampling time; consuming a shortcut never changes held keys or snapshot flags.
+The Canvas app host retains unread key presses, repeats, IME commits and
+gamepad navigation across drawing frames. Pressed/released snapshot flags still
+expire at the frame boundary; delivery does not replay them. Each queued press
+or repeat retains its browser event's Shift, Control/Meta and Alt modifiers.
+Custom loops call `CanvasInputTake(session)`; an empty take reports current held
+modifiers. `CanvasModifiers()` and `CaptureFrameInput(session).modifiers` still
+report held state at their own sampling time, so consuming a shortcut never
+changes held keys or snapshot flags. Canvas keeps raylib-named
+`GetKeyPressed`/`GetCharPressed` program exports only for raylib applications
+compiled for the browser; they are frame observations, not Kryon session input.
 
 Application code owns its product state and calls widgets within `Frame`.
 The complete manifest and build commands are in [PROJECTS.md](PROJECTS.md).
@@ -1144,6 +1147,7 @@ Other platform services an application may import:
 | Module | Surface |
 | --- | --- |
 | [`file_export`](../src/backend/file_export.zi) | `ExportBytes` and `ExportFile`: hand a finished file to the user as a browser download or through Android's share sheet |
+| [`pdf_export`](../src/backend/pdf_export.zi) | `PdfOpen`, `PdfImage`, `PdfText`, `PdfPage` and `PdfClose`: compose Linux-native PDF pages from full-resolution images and searchable UTF-8 text |
 | [`file_picker`](../src/backend/file_picker.zi) | `PickFile(FilePickerProps, output)`: zenity on Linux and BSD, Windows' common dialog, and the browser's chooser, which copies the file into the page's file system |
 | [`window_close`](../src/backend/window_close.zi) | `WindowCloseWatch(window)` and `WindowCloseTake()`: close requests for the application's own SDL or Win32 window, so it can ask first or hide to a tray |
 | [`idle_time`](../src/backend/idle_time.zi) | `IdleMilliseconds()` from the session's idle service over D-Bus, and `IsWaylandSession()` |
@@ -1775,8 +1779,8 @@ drawing. `SceneFree` never frees borrowed programs, uniforms or sampler pixels.
 `ShaderSampler.{width,height,pixels,repeat}` samples straight linear RGBA bytes,
 top row first. UV V=0 selects the bottom row. Sampling uses nearest-neighbor
 clamp-to-edge by default, or repeat including negative coordinates. Supply
-linear data when loading an sRGB image for a custom sampler. The standard
-`SceneMaterial.texture` path continues to decode sRGB automatically.
+linear data when loading an sRGB image for a custom sampler. `ImageMaterial`
+is the standard sRGB image path described below.
 
 Shader output replaces base RGBA before standard lighting and tone mapping.
 Use `UnlitMaterial` for direct colour, or `LitMaterial` for procedural surfaces
@@ -1914,7 +1918,7 @@ renders the existing `Scene`, materials and `SceneCamera` into a reusable
 Keep one `SceneGpuContext` at a stable address on its owning thread.
 `SceneGpuProbe(context)` reports availability, diagnostic, renderer labels,
 texture limits and MSAA support. The host requires highp fragment precision,
-14 texture units, four MSAA samples and bilinear depth comparisons; it reports
+15 texture units, four MSAA samples and bilinear depth comparisons; it reports
 unavailability when those requirements cannot be met.
 `SceneGpuRender(context, scene, camera, image)` preserves the requested image
 dimensions and returns `SceneGpuFrame` with `ok`, `accelerated`, `diagnostic`
@@ -1956,7 +1960,16 @@ claim that unchanged image pixels changed.
 
 Geometry, material programs, textures and render targets retain storage across
 frames. Scene and binding data are borrowed during the call; mutate them only
-on the owner between calls. `SceneGpuMemoryUsage` reports retained CPU/GPU
+on the owner between calls. When only nodes move, turn or scale between
+frames, the renderer re-makes and sends just those nodes' triangles; adding,
+removing, showing, hiding or re-parenting nodes, or changing meshes or
+vertices, uploads the scene again. `SceneGpuResources.geometry_uploads` counts
+both kinds of upload and `geometry_vertices` the vertices they sent.
+`FreezeGeometry(scene)` (in `kryon/scene`) promises that meshes, materials and
+vertices stay as they are, so the renderer stops comparing them with its last
+upload on every frame and compares only the nodes. Scene calls that add or
+change geometry take the promise back; after writing into the scene's vertex
+arrays directly, clear `scene.geometry_frozen` yourself. `SceneGpuMemoryUsage` reports retained CPU/GPU
 storage estimates, object counts, upload counts and completed GPU frames; this
 is separate from process RSS and presentation-host storage.
 The resource report includes live fences/pending frames, accepted submissions
@@ -1979,9 +1992,59 @@ a separate package consumer in native and portable forms without linking EGL.
 `ImageValid(*image)`; missing, invalid or unsupported files return an empty image.
 The caller owns `image.pixels` and releases it with `VecFree(image.pixels)`.
 Pixels are tightly packed, top-down, straight RGBA in the source's sRGB encoding.
-Use `AddTexture(scene, image.pixels[:], image.width, image.height)` for scene
-texture color decoding. Shader samplers accept linear RGBA; convert sRGB first
-when using those bindings.
+Use the single public scene-image surface:
+
+```zi
+wood := LoadImagePixels("assets/wood.png")
+options: SceneTextureOptions = .{
+    projection=.SceneTextureBox,
+    filter=.SceneTextureLinear,
+    wrap=.SceneTextureRepeat,
+    scale=.{3.0,3.0},
+}
+material := ImageMaterial(*scene, *wood,
+    LitMaterial(.{255,255,255,255}, 0.72, 0.0), options)
+VecFree(wood.pixels)
+unused RoundedBox(*scene, 1.8, 0.08, 0.32, 0.01, material)
+```
+
+`ImageMaterial(scene, image, base, options) -> SceneMaterial` validates and
+copies a complete `std/image.Image`; the source can be freed immediately.
+Equal images, including equal explicitly prepared mip levels, share one owned
+scene texture. The scene releases logical storage in `SceneClear`/`SceneFree`.
+Native GPU contexts upload the immutable copy once, reuse it without scanning
+the image every frame, and release/recreate the upload with context lifecycle.
+
+`SceneTextureOptions` contains `projection`, `filter`, `wrap`, `scale`, `offset`
+and `mip_level`. Projection is `SceneTextureUV` or `SceneTextureBox`; box mapping
+chooses a face from the dominant object-space normal, so moving, rotating or
+scaling a bookshelf part does not make its grain swim. Filtering is
+`SceneTextureNearest` or `SceneTextureLinear`, and wrapping is
+`SceneTextureClamp` or `SceneTextureRepeat`. A zero scale component defaults to
+1. `mip_level` is an explicit nonnegative level prepared once with a box filter;
+its fixed selection makes native CPU and GPU results deterministic. Both
+renderers filter sRGB texels in linear light and use the same clamp/repeat and
+top-row/V-bottom rules. `SceneTextureCoordinate` exposes the exact object-space
+coordinate transform for procedural geometry and tests.
+
+`ImageMaterial` replaces the old raw-pixel texture attachment API. Shader
+samplers remain the separate programmable linear-RGBA surface; convert sRGB
+first when using those bindings.
+
+### Light cookies
+
+`LightCookie(scene, light, texture, scale, offset)` projects a scene texture
+through a light's beam, like a gobo: dappled sun through leaves, window bars or
+stained glass. `texture` is an existing scene texture index, usually
+`ImageMaterial(...).texture`. The texel's linear RGB multiplies the light's
+direct irradiance on every lit surface, receiver or not; the hemisphere light,
+unlit and exact-colour materials are unaffected. The texture spans the light's
+shadow box from `CastLightShadow` `scale` times, shifted by `offset` (in
+repetitions), with bilinear filtering and repeat wrapping in linear light, so
+the CPU and GPU renderers agree. A light needs a shadow box to carry a cookie;
+`shadow_size` may be zero when no depth map is wanted. Only the first light
+with a cookie projects one. Change `SceneLight.cookie_offset` between renders
+to drift the pattern without rebuilding anything.
 
 Linux uses the existing system image loader and packaged WebP/AVIF adapters,
 copying the original straight pixels before Cairo premultiplies them. The

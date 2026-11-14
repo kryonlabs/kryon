@@ -1,0 +1,54 @@
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/file"
+#import "hosted_app"
+#import "hosted_values"
+#import "widget_codec"
+#import "widget_host"
+#import "session"
+
+app: HostedApp;
+session_codec: WidgetSessionCodec;
+box_codec: WidgetBoxPropsCodec;
+
+Allows :: (context: *void, module: string, function: string) -> bool {
+    unused context
+    return function == "TestSessionHost" || WidgetHostSupports(module, function)
+}
+
+Call :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    unused context
+    owner := TextFromCString(module)
+    name := TextFromCString(function)
+    if name == "TestSessionHost" && count == 0 {
+        result.* = WidgetEncodeSession(Session.{.slot = 4, .epoch = cast(u64)12}, *session_codec)
+        return 1
+    }
+    if WidgetHostSupports(owner, name) && name == "BoxHostedHost" && count == 2 &&
+        WidgetValidSession(arguments[0]) && WidgetValidBoxProps(arguments[1]) {
+        props := WidgetDecodeBoxProps(arguments[1], *box_codec)
+        if props.key != cast(u64)17 || props.bounds.width != 40.0 ||
+            props.fill.b != cast(u8)96 || props.radius != 3.0 {
+            return 0
+        }
+        result.* = HostScalar("s32", 0)
+        return 1
+    }
+    return 0
+}
+
+#program_export
+main :: () -> s32 {
+    bytes, read := ReadEntireFile("hosted-box.zx")
+    if !read || !HostedAppOpen(*app, bytes) ||
+        !HostedAppStart(*app, Allows, Call, null) {
+        return 1
+    }
+    answer: s64
+    if !HostedAppRun(*app, *answer) || answer != 0 {
+        return 2
+    }
+    HostedAppClose(*app)
+    return 0
+}

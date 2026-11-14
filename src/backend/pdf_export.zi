@@ -1,0 +1,196 @@
+// Native PDF pages with searchable UTF-8 text and full-resolution images.
+// Applications own their page design; this module owns Cairo/Pango resource
+// lifetimes and the conversion from Kryon's straight RGBA image pixels.
+#import "std/c_string"
+#import "std/byte_text_linux"
+Utf8 :: #import "std/utf8";
+#import "std/vec"
+ImagePixels :: #import "image_pixels";
+
+PdfBounds :: struct { x: float64; y: float64; width: float64; height: float64; }
+PdfDocument :: struct { surface: *void; paint: *void; width: float64; height: float64; }
+
+cairo :: #system_library "cairo";
+pango :: #system_library "pangocairo-1.0";
+objects :: #system_library "gobject-2.0";
+
+PdfSurfaceCreate :: (path: *u8, width: float64, height: float64) -> *void #foreign cairo "cairo_pdf_surface_create";
+PdfSurfaceStatus :: (surface: *void) -> s32 #foreign cairo "cairo_surface_status";
+PdfSurfaceFinish :: (surface: *void) #foreign cairo "cairo_surface_finish";
+PdfSurfaceDestroy :: (surface: *void) #foreign cairo "cairo_surface_destroy";
+PdfCreate :: (surface: *void) -> *void #foreign cairo "cairo_create";
+PdfDestroy :: (paint: *void) #foreign cairo "cairo_destroy";
+PdfStatus :: (paint: *void) -> s32 #foreign cairo "cairo_status";
+PdfShowPageNative :: (paint: *void) #foreign cairo "cairo_show_page";
+PdfSave :: (paint: *void) #foreign cairo "cairo_save";
+PdfRestore :: (paint: *void) #foreign cairo "cairo_restore";
+PdfRectangle :: (paint: *void, x: float64, y: float64, width: float64, height: float64) #foreign cairo "cairo_rectangle";
+PdfClip :: (paint: *void) #foreign cairo "cairo_clip";
+PdfSetSourceRGBA :: (paint: *void, red: float64, green: float64, blue: float64, alpha: float64) #foreign cairo "cairo_set_source_rgba";
+PdfFill :: (paint: *void) #foreign cairo "cairo_fill";
+PdfTranslate :: (paint: *void, x: float64, y: float64) #foreign cairo "cairo_translate";
+PdfScale :: (paint: *void, x: float64, y: float64) #foreign cairo "cairo_scale";
+PdfImageSurface :: (bytes: *u8, format: s32, width: s32, height: s32, stride: s32) -> *void #foreign cairo "cairo_image_surface_create_for_data";
+PdfSetSourceSurface :: (paint: *void, surface: *void, x: float64, y: float64) #foreign cairo "cairo_set_source_surface";
+PdfGetSource :: (paint: *void) -> *void #foreign cairo "cairo_get_source";
+PdfPatternFilter :: (pattern: *void, filter: s32) #foreign cairo "cairo_pattern_set_filter";
+PdfPaint :: (paint: *void) #foreign cairo "cairo_paint";
+PdfMoveTo :: (paint: *void, x: float64, y: float64) #foreign cairo "cairo_move_to";
+
+PdfLayoutNew :: (paint: *void) -> *void #foreign pango "pango_cairo_create_layout";
+PdfLayoutText :: (layout: *void, text: *u8, count: s32) #foreign pango "pango_layout_set_text";
+PdfLayoutWidth :: (layout: *void, width: s32) #foreign pango "pango_layout_set_width";
+PdfLayoutHeight :: (layout: *void, height: s32) #foreign pango "pango_layout_set_height";
+PdfLayoutWrap :: (layout: *void, wrap: s32) #foreign pango "pango_layout_set_wrap";
+PdfLayoutAlign :: (layout: *void, align: s32) #foreign pango "pango_layout_set_alignment";
+PdfLayoutFont :: (layout: *void, description: *void) #foreign pango "pango_layout_set_font_description";
+PdfLayoutSize :: (layout: *void, width: *s32, height: *s32) #foreign pango "pango_layout_get_pixel_size";
+PdfLayoutShow :: (paint: *void, layout: *void) #foreign pango "pango_cairo_show_layout";
+PdfFontNew :: () -> *void #foreign pango "pango_font_description_new";
+PdfFontFree :: (description: *void) #foreign pango "pango_font_description_free";
+PdfFontFamily :: (description: *void, family: *u8) #foreign pango "pango_font_description_set_family";
+PdfFontSize :: (description: *void, size: float64) #foreign pango "pango_font_description_set_absolute_size";
+PdfFontWeight :: (description: *void, weight: s32) #foreign pango "pango_font_description_set_weight";
+PdfObjectFree :: (object: *void) #foreign objects "g_object_unref";
+
+PdfOpen :: (document: *PdfDocument, path: string, width: float64 = 612.0, height: float64 = 792.0) -> bool {
+    if document.surface != null || path.count == 0 || width <= 0.0 || height <= 0.0 { return false }
+    name: [4096]u8
+    if !CopyCString(path, name[:]) { return false }
+    document.surface = PdfSurfaceCreate(*name[0], width, height)
+    if document.surface == null || PdfSurfaceStatus(document.surface) != 0 {
+        if document.surface != null { PdfSurfaceDestroy(document.surface) }
+        document.* = PdfDocument.{}
+        return false
+    }
+    document.paint = PdfCreate(document.surface)
+    if document.paint == null || PdfStatus(document.paint) != 0 {
+        if document.paint != null { PdfDestroy(document.paint) }
+        PdfSurfaceDestroy(document.surface)
+        document.* = PdfDocument.{}
+        return false
+    }
+    document.width = width; document.height = height
+    return true
+}
+
+PdfPageColor :: (document: *PdfDocument, color: u32) -> bool {
+    if document.paint == null { return false }
+    PdfSetSourceRGBA(document.paint, cast(float64)(color >> 24) / 255.0,
+        cast(float64)((color >> 16) & cast(u32)255) / 255.0,
+        cast(float64)((color >> 8) & cast(u32)255) / 255.0,
+        cast(float64)(color & cast(u32)255) / 255.0)
+    PdfRectangle(document.paint, 0.0, 0.0, document.width, document.height)
+    PdfFill(document.paint)
+    return PdfStatus(document.paint) == 0
+}
+
+// Draws every source pixel, contained inside bounds. Transparent assets keep
+// their alpha and can be layered over another full-resolution image.
+PdfImage :: (document: *PdfDocument, path: string, bounds: PdfBounds) -> bool {
+    if document.paint == null || path.count == 0 || bounds.width <= 0.0 || bounds.height <= 0.0 { return false }
+    image := ImagePixels.LoadImagePixels(path)
+    defer VecFree(image.pixels)
+    count := cast(s64)image.width * image.height
+    if image.width <= 0 || image.height <= 0 || count <= 0 || image.pixels.count != count * 4 { return false }
+    converted: Vec(u8)
+    defer VecFree(converted)
+    if !VecResize(converted, count * 4) { return false }
+    for at: cast(s64)0..count - 1 {
+        source := at * 4
+        alpha := cast(u32)image.pixels[source + 3]
+        red := (cast(u32)image.pixels[source] * alpha + 127) / 255
+        green := (cast(u32)image.pixels[source + 1] * alpha + 127) / 255
+        blue := (cast(u32)image.pixels[source + 2] * alpha + 127) / 255
+        // Cairo ARGB32 is native-endian; Linux's little-endian bytes are BGRA.
+        converted[at * 4] = cast(u8)blue
+        converted[at * 4 + 1] = cast(u8)green
+        converted[at * 4 + 2] = cast(u8)red
+        converted[at * 4 + 3] = cast(u8)alpha
+    }
+    surface := PdfImageSurface(*converted[0], 0, image.width, image.height, image.width * 4)
+    if surface == null || PdfSurfaceStatus(surface) != 0 {
+        if surface != null { PdfSurfaceDestroy(surface) }
+        return false
+    }
+    scale := bounds.width / cast(float64)image.width
+    if bounds.height / cast(float64)image.height < scale { scale = bounds.height / cast(float64)image.height }
+    width := cast(float64)image.width * scale
+    height := cast(float64)image.height * scale
+    PdfSave(document.paint)
+    PdfRectangle(document.paint, bounds.x, bounds.y, bounds.width, bounds.height)
+    PdfClip(document.paint)
+    PdfTranslate(document.paint, bounds.x + (bounds.width - width) / 2.0,
+        bounds.y + (bounds.height - height) / 2.0)
+    PdfScale(document.paint, scale, scale)
+    PdfSetSourceSurface(document.paint, surface, 0.0, 0.0)
+    PdfPatternFilter(PdfGetSource(document.paint), 4)
+    PdfPaint(document.paint)
+    PdfRestore(document.paint)
+    PdfSurfaceDestroy(surface)
+    return PdfStatus(document.paint) == 0
+}
+
+PdfStringData :: (value: string) -> *u8 {
+    descriptor := cast(*TextDescriptor)(*value)
+    return descriptor.data
+}
+
+// Text remains text in the PDF (including fallback fonts for CJK), so it can
+// be selected, searched and extracted. Pango wraps words inside bounds.
+PdfText :: (document: *PdfDocument, value: string, bounds: PdfBounds, size: float64,
+    color: u32 = 0x3e332aff, centered: bool = true, bold: bool = false) -> bool {
+    if document.paint == null || value.count == 0 || value.count > 2147483647 ||
+        !Utf8.Valid(value) || bounds.width <= 0.0 || bounds.height <= 0.0 || size <= 0.0 { return false }
+    layout := PdfLayoutNew(document.paint)
+    description := PdfFontNew()
+    if layout == null || description == null {
+        if layout != null { PdfObjectFree(layout) }
+        if description != null { PdfFontFree(description) }
+        return false
+    }
+    defer PdfObjectFree(layout)
+    defer PdfFontFree(description)
+    family: [32]u8
+    unused CopyCString("Noto Sans", family[:])
+    PdfFontFamily(description, *family[0])
+    PdfFontSize(description, size * 1024.0)
+    if bold { PdfFontWeight(description, 700) }
+    PdfLayoutFont(layout, description)
+    PdfLayoutText(layout, PdfStringData(value), cast(s32)value.count)
+    PdfLayoutWidth(layout, cast(s32)(bounds.width * 1024.0))
+    PdfLayoutHeight(layout, cast(s32)(bounds.height * 1024.0))
+    PdfLayoutWrap(layout, 2)
+    PdfLayoutAlign(layout, ifx centered then 1 else 0)
+    text_width: s32; text_height: s32
+    PdfLayoutSize(layout, *text_width, *text_height)
+    y := bounds.y
+    if cast(float64)text_height < bounds.height { y += (bounds.height - cast(float64)text_height) / 2.0 }
+    PdfSetSourceRGBA(document.paint, cast(float64)(color >> 24) / 255.0,
+        cast(float64)((color >> 16) & cast(u32)255) / 255.0,
+        cast(float64)((color >> 8) & cast(u32)255) / 255.0,
+        cast(float64)(color & cast(u32)255) / 255.0)
+    PdfMoveTo(document.paint, bounds.x, y)
+    PdfLayoutShow(document.paint, layout)
+    return PdfStatus(document.paint) == 0
+}
+
+PdfPage :: (document: *PdfDocument) -> bool {
+    if document.paint == null { return false }
+    PdfShowPageNative(document.paint)
+    return PdfStatus(document.paint) == 0
+}
+
+PdfClose :: (document: *PdfDocument) -> bool {
+    if document.surface == null { return false }
+    status: s32 = 0
+    if document.paint != null {
+        status = PdfStatus(document.paint)
+        PdfDestroy(document.paint)
+    }
+    PdfSurfaceFinish(document.surface)
+    if status == 0 { status = PdfSurfaceStatus(document.surface) }
+    PdfSurfaceDestroy(document.surface)
+    document.* = PdfDocument.{}
+    return status == 0
+}

@@ -89,6 +89,55 @@ Lighting :: () -> s32 {
     return failures
 }
 
+Near :: (a: s32, b: s32) -> s32 { return ifx a > b then a - b else b - a }
+
+// A floor seen from above under a sun whose beam carries a two-colour
+// cookie: the left half of the shadow box is dark, the right half bright,
+// and unlit materials ignore it.
+Cookie :: () -> s32 {
+    scene: Scene
+    SceneInit(*scene)
+    sun := AddDirectionalLight(*scene, .{255, 255, 255, 255}, 2.0, .{0.0, 6.0, 0.5})
+    scene.lights[sun].target = .{0.0, 0.0, 0.0}
+    CastLightShadow(*scene, sun, 1.0, 1.0, 0.1, 20.0, 0, 0.0, 0.0, 1.0)
+    pixels := NewImage(2, 1)
+    pixels.pixels[0] = 10; pixels.pixels[1] = 10; pixels.pixels[2] = 10; pixels.pixels[3] = 255
+    pixels.pixels[4] = 255; pixels.pixels[5] = 230; pixels.pixels[6] = 160; pixels.pixels[7] = 255
+    holder := ImageMaterial(*scene, *pixels, UnlitMaterial(.{255, 255, 255, 255}))
+    VecFree(pixels.pixels)
+    floor := SetRotation(*scene, Plane(*scene, 2.0, 2.0, LitMaterial(.{200, 200, 200, 255})), -1.5707963267948966, 0.0, 0.0)
+    camera := OrthographicCamera(-1.0, 1.0, 1.0, -1.0, 0.1, 20.0)
+    camera.position = .{0.0, 10.0, 0.0}
+    camera.target = .{0.0, 0.0, 0.0}
+    camera.up = .{0.0, 0.0, -1.0}
+    image: Image
+    image.width = 32
+    image.height = 32
+    failures: s32 = 0
+    failures += Check(RenderScene(*scene, camera, *image), "render without cookie")
+    plain_left := Pixel(*image, 4, 16, 0); plain_right := Pixel(*image, 27, 16, 0)
+    failures += Check(plain_left == plain_right, "uniform floor without a cookie")
+    LightCookie(*scene, sun, holder.texture, .{1.0, 1.0}, .{0.0, 0.0})
+    failures += Check(!scene.failed && scene.lights[sun].cookie, "cookie attached")
+    failures += Check(RenderScene(*scene, camera, *image), "render with cookie")
+    left := Pixel(*image, 4, 16, 0); right := Pixel(*image, 27, 16, 0)
+    bright: s32 = ifx right > left then 27 else 4
+    failures += Check(Near(left, right) > 60, "cookie halves differ")
+    failures += Check(Pixel(*image, bright, 16, 2) + 20 < Pixel(*image, bright, 16, 0), "cookie colour warms the light")
+    failures += Check(Near(Pixel(*image, 4, 4, 0), left) <= 2 && Near(Pixel(*image, 4, 28, 0), left) <= 2, "cookie spans the shadow box")
+    // Half a repeat of offset swaps the halves.
+    scene.lights[sun].cookie_offset = .{0.5, 0.0}
+    failures += Check(RenderScene(*scene, camera, *image), "render shifted cookie")
+    failures += Check(Near(Pixel(*image, 4, 16, 0), right) <= 2 && Near(Pixel(*image, 27, 16, 0), left) <= 2, "offset shifts the cookie")
+    scene.meshes[scene.nodes[floor].mesh].material = UnlitMaterial(.{200, 200, 200, 255})
+    failures += Check(RenderScene(*scene, camera, *image), "render unlit")
+    failures += Check(Pixel(*image, 4, 16, 0) == Pixel(*image, 27, 16, 0), "unlit ignores the cookie")
+    LightCookie(*scene, sun, 99, .{1.0, 1.0}, .{0.0, 0.0})
+    failures += Check(scene.failed, "missing cookie texture fails the scene")
+    SceneFree(*scene)
+    return failures
+}
+
 main :: () -> s32 {
-    return Shapes() + Lighting()
+    return Shapes() + Lighting() + Cookie()
 }

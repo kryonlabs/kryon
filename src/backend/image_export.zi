@@ -1,0 +1,21 @@
+// Decode encoded image bytes with Kryon's native image pipeline and export
+// them in the format selected by the destination path.
+#import "raylib_image_decode"
+#import "c_string"
+
+image_export_raylib :: #system_library "raylib";
+ImageExportNative :: (image: RaylibGlyphImage, path: *u8) -> bool #foreign image_export_raylib "ExportImage";
+
+#program_export
+EncodedImageExport :: (data: string, file_type: string, path: string) -> bool {
+    path_bytes: [4096]u8
+    if data.count == 0 || !CopyCString(path, path_bytes[:]) {
+        return false
+    }
+    image := RaylibDecodePixels(data, file_type)
+    if image.data == null {
+        return false
+    }
+    defer { RaylibImageRelease(image) }
+    return ImageExportNative(image, *path_bytes[0])
+}
