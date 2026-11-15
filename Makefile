@@ -682,6 +682,11 @@ scene-gpu-test: project-toolchain
 scene-camera-shift-test: project-toolchain
 	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/scene_camera_shift_test.py
 
+.PHONY: daylight-test
+daylight-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS HARMONY_DESKTOP_RECOVERY=0 sh tests/daylight_test.sh
+test: daylight-test
+
 .PHONY: shader-scene-test
 shader-scene-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS HARMONY_DESKTOP_RECOVERY=0 sh tests/shader_scene_test.sh

@@ -105,6 +105,8 @@ scene = "src/ui/scene.zi"
 scene_render = "src/ui/scene_render.zi"
 shader = "src/ui/shader.zi"
 shader_glsl = "src/ui/shader_glsl.zi"
+# Time of day: sun path, storybook sky shader and the matching SceneGrade.
+daylight = "src/ui/daylight.zi"
 scene_gpu = "src/backend/scene_gpu.zi"
 # Run portable app bundles inside a host app and draw their widgets.
 hosted_app = "src/backend/hosted_app.zi"

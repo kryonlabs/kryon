@@ -65,6 +65,8 @@ GpuLocations :: struct {
  shadow: [4]s32; shadow_settings: [4]s32; light_color: [4]s32; light_direction: [4]s32; shadow_matrix: [4]s32
  cookie: s32; cookie_matrix: s32; cookie_transform: s32; cookie_size: s32; cookie_light: s32
  sampler: [8]s32; sampler_size: [8]s32; sampler_repeat: [8]s32
+ graded: s32; grade_tint: s32; grade_lamp: [4]s32; grade_lamp_color: [4]s32; grade_beam_centre: s32; grade_beam_u: s32
+ grade_beam_v: s32; grade_beam_normal: s32; grade_beam_direction: s32; grade_beam_color: s32
 }
 GpuProgram :: struct { features: s32; key: *ShaderProgram; saved: ShaderProgram; id: u32; used: bool; locations: GpuLocations }
 GpuTexture :: struct { key: *u8; cache_key: u64; width: s32; height: s32; id: u32; used: bool; bytes: Vec(u8) }
@@ -865,6 +867,13 @@ CacheLocations :: (id: u32)->GpuLocations {
  l.light_count=G.Location(id,"lightCount");l.uniforms=G.Location(id,"kryonUniforms[0]")
  l.cookie=G.Location(id,"cookie");l.cookie_matrix=G.Location(id,"cookieMatrix");l.cookie_transform=G.Location(id,"cookieTransform")
  l.cookie_size=G.Location(id,"cookieSize");l.cookie_light=G.Location(id,"cookieLight")
+ l.graded=G.Location(id,"graded");l.grade_tint=G.Location(id,"gradeTint");l.grade_beam_centre=G.Location(id,"gradeBeamCentre")
+ l.grade_beam_u=G.Location(id,"gradeBeamU");l.grade_beam_v=G.Location(id,"gradeBeamV");l.grade_beam_normal=G.Location(id,"gradeBeamNormal")
+ l.grade_beam_direction=G.Location(id,"gradeBeamDirection");l.grade_beam_color=G.Location(id,"gradeBeamColor")
+ for at:0..3 {
+  lamp: Text=Name("gradeLamp[%]",at);l.grade_lamp[at]=G.Location(id,TextView(lamp))
+  lamp_color: Text=Name("gradeLampColor[%]",at);l.grade_lamp_color[at]=G.Location(id,TextView(lamp_color))
+ }
  for at:0..3 {
   shadow: Text=Name("shadow%",at);l.shadow[at]=G.Location(id,TextView(shadow))
   settings: Text=Name("shadowSettings[%]",at);l.shadow_settings[at]=G.Location(id,TextView(settings))
@@ -879,6 +888,20 @@ CacheLocations :: (id: u32)->GpuLocations {
  }
  return l
 }
+// The scene's SceneGrade for one draw, as PrepareGrade gives it to the CPU renderer.
+GradeUniforms :: (l: *GpuLocations,g: RenderGrade,material_graded: bool) {
+ G.Uniform1f(l.graded,ifx g.on&&material_graded then 1.0 else 0.0)
+ if !g.on||!material_graded {return}
+ G.Uniform4f(l.grade_tint,cast(float32)g.tint.x,cast(float32)g.tint.y,cast(float32)g.tint.z,cast(float32)g.saturation)
+ for at:0..3 {
+  p:=g.lamp_position[at];G.Uniform4f(l.grade_lamp[at],cast(float32)p.x,cast(float32)p.y,cast(float32)p.z,cast(float32)g.lamp_reach[at])
+  VectorAt(l.grade_lamp_color[at],g.lamp_color[at])
+ }
+ VectorAt(l.grade_beam_centre,g.beam_centre);VectorAt(l.grade_beam_u,g.beam_u);VectorAt(l.grade_beam_v,g.beam_v)
+ G.Uniform4f(l.grade_beam_normal,cast(float32)g.beam_normal.x,cast(float32)g.beam_normal.y,cast(float32)g.beam_normal.z,cast(float32)g.beam_reach)
+ VectorAt(l.grade_beam_direction,g.beam_direction)
+ c:=g.beam_color;G.Uniform4f(l.grade_beam_color,cast(float32)c.x,cast(float32)c.y,cast(float32)c.z,ifx g.beam then cast(float32)g.beam_sharp else 0.0)
+}
 Draw :: (gpu: *SceneGpuContext,scene: *Scene,d: GpuDraw,view: M.GpuMatrix,vp: M.GpuMatrix,perspective: bool)->bool {
  m:=scene.meshes[d.mesh].material;id:=ProgramFor(gpu,m.shader,MaterialFeatures(m,perspective));if id==0 {return false}
  locations: *GpuLocations
@@ -891,6 +914,7 @@ Draw :: (gpu: *SceneGpuContext,scene: *Scene,d: GpuDraw,view: M.GpuMatrix,vp: M.
  G.Uniform4f(locations.flags,ifx m.vertex_colors then 1.0 else 0.0,ifx m.flat then 1.0 else 0.0,ifx m.double_sided then 1.0 else 0.0,ifx d.receive then 1.0 else 0.0)
  G.Uniform4f(locations.settings,ifx scene.tone_mapping then 1.0 else 0.0,ifx m.exact_color then 1.0 else 0.0,cast(float32)scene.exposure,ifx perspective then 1.0 else 0.0)
  G.Uniform1i(locations.transparent,ifx m.transparent then 1 else 0)
+ GradeUniforms(locations,PrepareGrade(scene.grade),!m.ungraded)
  if m.double_sided {G.Disable(0x0b44)} else {G.Enable(0x0b44)}
  G.Uniform2f(locations.albedo_size,0.0,0.0);G.Uniform2f(locations.albedo_sampling,0.0,0.0);G.Uniform1i(locations.albedo,0)
  if m.texture>=0&&m.texture<scene.textures.count {

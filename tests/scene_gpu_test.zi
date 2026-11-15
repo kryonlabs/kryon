@@ -171,6 +171,46 @@ FeatureVariants :: ()->bool {
  print("Retained shader features match fresh contexts through kind/metal/flags/camera/program/binding mutations with bounded variants\n")
  return true
 }
+// SceneGrade: tint, saturation, lamps and a beam through an opening, on
+// unlit pictures and a lit box, with one ungraded material, as on the CPU.
+GradeParity :: ()->bool {
+ scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
+ scene.background=.{20,30,40,255}
+ AddHemisphereLight(*scene,.{180,220,255,255},.{100,70,40,255},1.0)
+ pixels: [16]u8=.[230,180,120,255,90,160,210,255,200,200,200,255,60,120,60,255]
+ texture:=TestImage(pixels[:],2,2);defer VecFree(texture.pixels)
+ wall:=ImageMaterial(*scene,*texture,UnlitMaterial(.{255,255,255,255}));wall.exact_color=true
+ unused Plane(*scene,3.2,2.0,wall)
+ box:=RoundedBox(*scene,0.6,0.6,0.4,0.1,LitMaterial(.{180,100,40,255},0.6));SetPosition(*scene,box,0.5,-0.3,0.4)
+ sky:=UnlitMaterial(.{120,170,230,255});sky.ungraded=true
+ patch:=Plane(*scene,0.5,0.4,sky);SetPosition(*scene,patch,-1.1,0.6,0.1)
+ grade:=SceneGradeNeutral()
+ grade.tint=.{140,150,200,255};grade.saturation=0.6
+ grade.lamps[0]=.{position=.{0.9,0.6,0.5},radius=0.5,color=.{255,200,140,255},strength=1.4}
+ grade.lamps[1]=.{position=.{-0.9,-0.5,0.4},radius=0.3,color=.{255,160,90,255},strength=0.8}
+ grade.beam=.{centre=.{-0.5,0.2,1.5},axis_u=.{0.35,0,0},axis_v=.{0,0.3,0},direction=.{-0.3,0.2,1.0},
+  color=.{255,230,190,255},strength=1.0,softness=0.25}
+ scene.grade=grade
+ image:=NewImage(160,100);reference:=NewImage(160,100)
+ defer {VecFree(image.pixels);VecFree(reference.pixels)}
+ gpu: SceneGpuContext;defer SceneGpuRelease(*gpu)
+ camera:=PerspectiveCamera(45,1.6,0.1,20);camera.position=.{0,0,3}
+ for state:0..2 {
+  if state==1 {scene.grade.beam.strength=0.0;scene.grade.tint=.{255,255,255,255};scene.grade.saturation=1.0}
+  if state==2 {scene.grade.enabled=false}
+  result:=SceneGpuRender(*gpu,*scene,camera,*image)
+  if !result.ok {print("Grade render failure % %\n",state,result.diagnostic);return false}
+  if !RenderScene(*scene,camera,*reference) {return false}
+  error: s64;large: s64
+  for at:0..image.pixels.count-1 {
+   d:=cast(s32)image.pixels[at]-cast(s32)reference.pixels[at];delta:=ifx d<0 then -d else d
+   error+=delta;if delta>16 {large+=1}
+  }
+  if error>image.pixels.count||large>image.pixels.count/200 {print("Grade CPU quality failure % % %\n",state,error,large);return false}
+ }
+ print("Scene grade tint, saturation, lamps and beam match the CPU renderer\n")
+ return true
+}
 ShadowCache :: ()->bool {
  scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
  scene.background=.{20,30,40,255}
@@ -461,6 +501,7 @@ main :: ()->s32 {
  if !FeatureVariants()||!HostCheck(host) {return 48}
  if !ReleaseCycles()||!HostCheck(host) {return 41}
  if !PrecisionFallback()||!HostCheck(host) {return 44}
+ if !GradeParity()||!HostCheck(host) {return 49}
  if !ShadowCache()||!HostCheck(host) {return 46}
  if !PaddingBatching()||!HostCheck(host) {return 47}
  print("Foreign EGL context, framebuffer, pixels and API preserved through render/resize/release\n")

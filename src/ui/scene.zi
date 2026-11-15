@@ -79,6 +79,7 @@ SceneMaterial :: struct {
     texture_offset: ShapePoint
     alpha_test: float64      // texels below this alpha are not drawn
     exact_color: bool        // written without tone mapping
+    ungraded: bool           // the scene's SceneGrade leaves it alone (skies, lamps)
     shader: *ShaderProgram  // borrowed; null uses the standard material
     shader_uniforms: []ShaderValue
     shader_samplers: []ShaderSampler
@@ -132,6 +133,47 @@ SceneLight :: struct {
     cookie_offset: ShapePoint
 }
 
+SCENE_GRADE_LAMPS :: 4
+
+// A lamp that lights graded surfaces around a point: their own colour times
+// COLOR (sRGB) times STRENGTH, falling off as 1/(1+(d/radius)²)².
+SceneGradeLamp :: struct {
+    position: Vector3
+    radius: float64
+    color: Color
+    strength: float64        // 0 for none
+}
+
+// Light through one elliptical opening, like sun through a round window. A
+// graded surface point is in the beam when the ray from it along DIRECTION
+// crosses the ellipse (CENTRE plus half axes AXIS_U and AXIS_V, world units).
+SceneGradeBeam :: struct {
+    centre: Vector3
+    axis_u: Vector3
+    axis_v: Vector3
+    direction: Vector3       // from surfaces towards the light
+    color: Color
+    strength: float64        // 0 for none
+    softness: float64        // the edge fades over this fraction of the radius
+}
+
+// A time-of-day look for scenes made of pictures. Every material that is not
+// `ungraded` keeps its colour C as (grey + (C - grey) * saturation) * tint,
+// plus C times the light of the lamps and the beam on that point. Disabled,
+// or with white tint, saturation 1 and no lamps or beam, colours are exact.
+SceneGrade :: struct {
+    enabled: bool
+    tint: Color
+    saturation: float64
+    lamps: [SCENE_GRADE_LAMPS]SceneGradeLamp
+    beam: SceneGradeBeam
+}
+
+// The neutral grade: enabled colours stay exactly as they are.
+SceneGradeNeutral :: () -> SceneGrade {
+    return .{enabled = true, tint = .{255, 255, 255, 255}, saturation = 1.0}
+}
+
 Scene :: struct {
     nodes: Vec(SceneNode)
     meshes: Vec(SceneMesh)
@@ -150,6 +192,7 @@ Scene :: struct {
     background: Color        // alpha 0 leaves the picture transparent
     exposure: float64
     tone_mapping: bool       // three.js's neutral tone mapping
+    grade: SceneGrade        // time-of-day look; can change every frame
     failed: bool
     // FreezeGeometry's promise: meshes and vertices stay as they are, so a
     // renderer need not look for changes in them on every frame. Nodes may
@@ -202,6 +245,7 @@ SceneClear :: (scene: *Scene) {
     scene.background = .{0, 0, 0, 0}
     scene.exposure = 1.0
     scene.tone_mapping = false
+    scene.grade = .{}
     scene.failed = false
     scene.geometry_frozen = false
 }

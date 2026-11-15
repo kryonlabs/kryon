@@ -2076,6 +2076,51 @@ the CPU and GPU renderers agree. A light needs a shadow box to carry a cookie;
 with a cookie projects one. Change `SceneLight.cookie_offset` between renders
 to drift the pattern without rebuilding anything.
 
+### Scene grade: a time-of-day look for pictures
+
+`Scene.grade` (`SceneGrade`) lights scenes made of painted pictures, whose
+unlit and exact-colour materials ignore scene lights and cookies. Every
+material without `SceneMaterial.ungraded` keeps its colour C as
+`(grey + (C - grey) * saturation) * tint`, plus C times the light of up to
+four `lamps` (`SceneGradeLamp`: position, radius, sRGB colour, strength,
+falling off as `1/(1+(d/radius)²)²`) and one `beam` (`SceneGradeBeam`): light
+through an elliptical opening such as a round window. A surface point is in
+the beam when the ray from it along `direction` crosses the ellipse `centre`
+plus half axes `axis_u` and `axis_v`; `softness` fades the edge over that
+fraction of the radius. Lit materials are graded after lighting. The grade
+applies before tone mapping. It is disabled by default; `SceneGradeNeutral()`
+is enabled with white tint and saturation 1, leaving every colour exactly as
+it was. Change it between renders: it never rebuilds geometry and keeps
+`FreezeGeometry`'s promise. The CPU and GPU renderers prepare it identically
+(`PrepareGrade`) and agree within the GPU tolerance (`make scene-gpu-test`).
+Mark skies and lamp glows `ungraded` so they keep their own colours.
+
+### Daylight: sun, sky and grade by the hour
+
+Import `kryon/daylight`. `DaylightAt(hour)` (local hours, wrapped to 0..24)
+returns `DaylightState`: the sun's direction (rising at 06:00 on -x, setting
+at 18:00 on +x, beyond the scene on -z), its height, day/full/golden weights,
+linear sky colours, the sRGB grade `tint` and `saturation`, and 0..1 weights for
+`lamps` (dusk to dawn), `beam` (low sun through windows) and `stars`. While
+the sun is high (`full == 1`) the tint is exactly white and the saturation
+exactly 1, so pictures keep their painted colours. `DaylightGrade(state)`
+turns it into a `SceneGrade`; the app adds its lamps and beam, scaled by
+`state.lamps` and `state.beam`. The app owns the clock, so it can follow the
+local time or let a debug build set, fast-forward or rewind the hour.
+
+`DaylightSky` is a storybook sky drawn by one material shader: a gradient from
+horizon to zenith, the sun's glow and disc, two drifting cloud layers and
+twinkling stars, from a 256-pixel tileable noise texture made in code at
+`DaylightSkyInit` (no image files). Each frame call
+`DaylightSkyUpdate(sky, state, seconds, aspect, horizon)` with the plane's
+width over height and the horizon's height (0..1) on it; seconds drive the
+clouds and stars. Draw it on a plane whose UV runs left to right and bottom to
+top with `DaylightSkyMaterial(*sky.program, sky.uniforms[:], sky.samplers[:])`
+(unlit, exact colour, ungraded); keep the sky at a stable address while it is
+drawn and release it with `DaylightSkyFree`. `tests/daylight_test.zi` covers
+the hours, the sky and the grade on native and portable builds (`make
+daylight-test`).
+
 Linux uses the existing system image loader and packaged WebP/AVIF adapters,
 copying the original straight pixels before Cairo premultiplies them. The
 Raylib WASM target reads files in the Emscripten filesystem and uses its existing

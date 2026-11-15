@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Scenes made of painted pictures can follow the time of day. `Scene.grade`
+  (`SceneGrade`) tints and desaturates every material not marked `ungraded`,
+  and lights it with up to four lamps and a beam through an elliptical opening
+  such as a round window, the same on the CPU and the GPU. The new
+  `kryon/daylight` module gives the sun's path and the grade for any hour, and
+  a storybook sky shader with drifting clouds and twinkling stars from noise
+  made in code. While the sun is high the grade is exactly neutral.
+
 - A secure `TextField` with a value and no `display_value` shows one `*` per
   character instead of an empty field. Before, an API key field looked empty
   until the app's show toggle. An explicit `display_value` still replaces the

@@ -1,0 +1,412 @@
+// Time of day for painted 3D scenes: the sun's path, a storybook sky drawn by
+// a material shader, and the SceneGrade that lights a room to match the hour.
+// Everything is a pure function of the local hour (0..24); the app owns the
+// clock, so a debug build can set, fast-forward or rewind it.
+#import "std/math"
+#import "std/vec"
+#import "drawing_props"
+#import "scene"
+#import "shader"
+
+DAYLIGHT_SUNRISE :: 6.0
+DAYLIGHT_SUNSET :: 18.0
+DAYLIGHT_NOISE :: 256
+
+// The look of one hour. Colours of the sky are linear RGB; `tint` is the sRGB
+// SceneGrade tint and is exactly white while the sun is high.
+DaylightState :: struct {
+    hour: float64
+    sun: Vector3             // towards the sun: -x where it rises, +x where it sets, y up, -z beyond the scene
+    height: float64          // sine of the sun's elevation, -1..1
+    day: float64             // 0 at night, 1 in daylight
+    full: float64            // 1 while the sun is high: the grade is neutral
+    golden: float64          // 0..1 around sunrise and sunset
+    zenith: ShaderValue
+    horizon: ShaderValue
+    sun_color: ShaderValue
+    tint: Color
+    saturation: float64
+    lamps: float64           // 0..1: lamps glow from dusk to dawn
+    beam: float64            // 0..1: sunlight through windows while the sun is low
+    stars: float64
+    moon: Vector3            // towards the moon, opposite the sun, above the horizon at night
+    moonlight: float64       // 0..1: moonlight through windows at night
+}
+
+DAYLIGHT_PI :: 3.141592653589793
+DaylightMin :: (a: float64, b: float64) -> float64 { return ifx a < b then a else b }
+DaylightMax :: (a: float64, b: float64) -> float64 { return ifx a > b then a else b }
+DaylightFloor :: (a: float64) -> float64 {
+    whole := cast(float64)cast(s64)a
+    return ifx whole > a then whole - 1.0 else whole
+}
+
+DaylightStep :: (edge0: float64, edge1: float64, x: float64) -> float64 {
+    t := DaylightMin(DaylightMax((x - edge0) / (edge1 - edge0), 0.0), 1.0)
+    return t * t * (3.0 - 2.0 * t)
+}
+
+DaylightMix :: (a: ShaderValue, b: ShaderValue, t: float64) -> ShaderValue {
+    return .{a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t}
+}
+
+DaylightByte :: (a: u8, b: u8, t: float64) -> u8 {
+    return cast(u8)DaylightFloor(cast(float64)a + (cast(float64)b - cast(float64)a) * t + 0.5)
+}
+
+DaylightColor :: (a: Color, b: Color, t: float64) -> Color {
+    return .{DaylightByte(a.r, b.r, t), DaylightByte(a.g, b.g, t), DaylightByte(a.b, b.b, t), 255}
+}
+
+// HOUR wraps into 0..24.
+DaylightAt :: (hour: float64) -> DaylightState {
+    out: DaylightState
+    h := hour - DaylightFloor(hour / 24.0) * 24.0
+    out.hour = h
+    angle := (h - DAYLIGHT_SUNRISE) / (DAYLIGHT_SUNSET - DAYLIGHT_SUNRISE) * DAYLIGHT_PI
+    out.height = Sin(angle) * 0.9
+    sun: Vector3 = .{-Cos(angle), out.height, -0.35}
+    length := Sqrt(sun.x * sun.x + sun.y * sun.y + sun.z * sun.z)
+    out.sun = .{sun.x / length, sun.y / length, sun.z / length}
+    out.day = DaylightStep(-0.10, 0.25, out.height)
+    out.full = DaylightStep(0.25, 0.55, out.height)
+    out.golden = (1.0 - out.full) * DaylightStep(-0.14, 0.04, out.height)
+    night_zenith: ShaderValue = .{0.004, 0.006, 0.026, 0.0}
+    night_horizon: ShaderValue = .{0.012, 0.018, 0.050, 0.0}
+    day_zenith: ShaderValue = .{0.20, 0.45, 0.86, 0.0}
+    day_horizon: ShaderValue = .{0.62, 0.80, 0.95, 0.0}
+    out.zenith = DaylightMix(DaylightMix(night_zenith, day_zenith, out.day), .{0.10, 0.10, 0.32, 0.0}, out.golden * 0.55)
+    out.horizon = DaylightMix(DaylightMix(night_horizon, day_horizon, out.day), .{1.0, 0.42, 0.18, 0.0}, out.golden * 0.85)
+    out.sun_color = DaylightMix(.{1.0, 0.50, 0.22, 0.0}, .{1.0, 0.93, 0.80, 0.0}, out.full)
+    night_tint: Color = .{88, 100, 150, 255}
+    golden_tint: Color = .{255, 212, 168, 255}
+    white: Color = .{255, 255, 255, 255}
+    out.tint = DaylightColor(DaylightColor(night_tint, golden_tint, out.day), white, out.full)
+    if out.full >= 1.0 { out.tint = white }
+    out.saturation = 0.55 + 0.45 * out.day
+    if out.full >= 1.0 { out.saturation = 1.0 }
+    out.lamps = 1.0 - DaylightStep(-0.05, 0.20, out.height)
+    out.beam = DaylightStep(0.0, 0.12, out.height) * (1.0 - DaylightStep(0.45, 0.70, out.height))
+    out.stars = 1.0 - DaylightStep(-0.25, -0.02, out.height)
+    moon: Vector3 = .{Cos(angle), -out.height, -0.35}
+    moon_length := Sqrt(moon.x * moon.x + moon.y * moon.y + moon.z * moon.z)
+    out.moon = .{moon.x / moon_length, moon.y / moon_length, moon.z / moon_length}
+    out.moonlight = (1.0 - out.day) * DaylightStep(0.05, 0.35, -out.height)
+    return out
+}
+
+// Light through one window opening (CENTRE and half axes, world units) at
+// STATE's hour: warm sun while it is low, cool moonlight at night, none at
+// midday or twilight. Add it to the grade as its beam.
+DaylightBeam :: (state: DaylightState, centre: Vector3, axis_u: Vector3, axis_v: Vector3) -> SceneGradeBeam {
+    beam: SceneGradeBeam = .{centre = centre, axis_u = axis_u, axis_v = axis_v, softness = 0.25}
+    if state.beam >= state.moonlight {
+        beam.direction = state.sun
+        beam.color = DaylightColor(.{255, 170, 110, 255}, .{255, 236, 200, 255}, DaylightStep(0.0, 0.4, state.height))
+        beam.strength = state.beam * 0.75
+    } else {
+        beam.direction = state.moon
+        beam.color = .{170, 192, 255, 255}
+        beam.strength = state.moonlight * 0.45
+    }
+    return beam
+}
+
+// A lamp at POSITION that glows with COLOR from dusk to dawn.
+DaylightLamp :: (state: DaylightState, position: Vector3, radius: float64, color: Color) -> SceneGradeLamp {
+    return .{position = position, radius = radius, color = color, strength = state.lamps * 1.6}
+}
+
+// The scene grade for STATE. Lamps and the beam are the app's; their
+// strengths follow the hour through state.lamps and state.beam.
+DaylightGrade :: (state: DaylightState) -> SceneGrade {
+    grade := SceneGradeNeutral()
+    grade.tint = state.tint
+    grade.saturation = state.saturation
+    return grade
+}
+
+// A storybook sky for a plane whose UV runs left to right and bottom to top:
+// gradient from horizon to zenith, the sun's glow and disc, two layers of
+// drifting cloud and twinkling stars, all from DaylightAt and the seconds.
+DaylightSky :: struct {
+    program: ShaderProgram
+    uniforms: [12]ShaderValue
+    samplers: [1]ShaderSampler
+    noise: Vec(u8)
+    ready: bool
+}
+
+DaylightHash :: (x: s32, y: s32, seed: s32) -> float64 {
+    h: u32 = cast(u32)x * 374761393 + cast(u32)y * 668265263 + cast(u32)seed * 2246822519
+    h = (h ^ (h >> 13)) * 1274126177
+    h = h ^ (h >> 16)
+    return cast(float64)(h & 16777215) / 16777215.0
+}
+
+// Smooth value noise on a FREQUENCY-cell lattice that wraps, so it tiles.
+DaylightValue :: (u: float64, v: float64, frequency: s32, seed: s32) -> float64 {
+    x := u * cast(float64)frequency
+    y := v * cast(float64)frequency
+    x0 := cast(s32)DaylightFloor(x)
+    y0 := cast(s32)DaylightFloor(y)
+    fx := x - DaylightFloor(x)
+    fy := y - DaylightFloor(y)
+    sx := fx * fx * (3.0 - 2.0 * fx)
+    sy := fy * fy * (3.0 - 2.0 * fy)
+    x1 := (x0 + 1) % frequency
+    y1 := (y0 + 1) % frequency
+    x0 = x0 % frequency
+    y0 = y0 % frequency
+    a := DaylightHash(x0, y0, seed)
+    b := DaylightHash(x1, y0, seed)
+    c := DaylightHash(x0, y1, seed)
+    d := DaylightHash(x1, y1, seed)
+    top := a + (b - a) * sx
+    bottom := c + (d - c) * sx
+    return top + (bottom - top) * sy
+}
+
+DaylightCloudNoise :: (u: float64, v: float64, frequency: s32, seed: s32) -> float64 {
+    total := 0.0
+    weight := 0.5
+    sum := 0.0
+    f := frequency
+    for octave: 0..3 {
+        total += DaylightValue(u, v, f, seed + cast(s32)octave * 17) * weight
+        sum += weight
+        weight *= 0.5
+        f *= 2
+    }
+    return total / sum
+}
+
+// R and G: two cloud noises, B: stars, A: opaque. Tileable, linear bytes.
+DaylightNoise :: (sky: *DaylightSky) {
+    VecClear(sky.noise)
+    for y: 0..DAYLIGHT_NOISE - 1 {
+        for x: 0..DAYLIGHT_NOISE - 1 {
+            u := cast(float64)x / cast(float64)DAYLIGHT_NOISE
+            v := cast(float64)y / cast(float64)DAYLIGHT_NOISE
+            r := DaylightCloudNoise(u, v, 4, 11)
+            g := DaylightCloudNoise(u, v, 6, 53)
+            star := DaylightHash(cast(s32)x, cast(s32)y, 97)
+            b := ifx star > 0.9965 then 0.55 + (star - 0.9965) / 0.0035 * 0.45 else 0.0
+            VecPush(sky.noise, cast(u8)DaylightFloor(r * 255.0 + 0.5))
+            VecPush(sky.noise, cast(u8)DaylightFloor(g * 255.0 + 0.5))
+            VecPush(sky.noise, cast(u8)DaylightFloor(b * 255.0 + 0.5))
+            VecPush(sky.noise, 255)
+        }
+    }
+}
+
+DaylightSkyCode :: struct { code: [SHADER_INSTRUCTIONS]ShaderInstruction; count: s32 }
+
+DaylightOp :: (c: *DaylightSkyCode, op: ShaderOp, dest: s32, a: s32 = 0, b: s32 = 0, k: s32 = 0) {
+    c.code[c.count] = .{op = op, dest = dest, a = a, b = b, c = k}
+    c.count += 1
+}
+
+DaylightLiteral :: (c: *DaylightSkyCode, dest: s32, value: ShaderValue) {
+    c.code[c.count] = .{op = .ShaderLiteral, dest = dest, value = value}
+    c.count += 1
+}
+
+DaylightUniform :: (c: *DaylightSkyCode, dest: s32, slot: s32) {
+    c.code[c.count] = .{op = .ShaderUniform, dest = dest, slot = slot}
+    c.count += 1
+}
+
+DaylightSample :: (c: *DaylightSkyCode, dest: s32, at: s32) {
+    c.code[c.count] = .{op = .ShaderSample, dest = dest, a = at, slot = 0}
+    c.count += 1
+}
+
+// Uniform slots of the sky program.
+DAYLIGHT_ZENITH :: 0
+DAYLIGHT_HORIZON :: 1
+DAYLIGHT_SUN_COLOR :: 2
+DAYLIGHT_SUN_AT :: 3        // u, v of the sun on the plane
+DAYLIGHT_ASPECT :: 4        // plane width over height, 1
+DAYLIGHT_SUN_SHAPE :: 5     // glow falloff, disc radius², disc sharpness
+DAYLIGHT_CLOUD_A :: 6       // drift of the first cloud layer
+DAYLIGHT_CLOUD_B :: 7       // drift of the second
+DAYLIGHT_CLOUD :: 8         // threshold, softness, opacity
+DAYLIGHT_STARS :: 9         // strength, twinkle phase, glow strength
+DAYLIGHT_CLOUD_LIT :: 10
+DAYLIGHT_CLOUD_SHADE :: 11
+
+// Sky program registers; 0-3 are the inputs (colour, position, normal, uv).
+DAYLIGHT_REG_Y :: 4
+DAYLIGHT_REG_ONE :: 5
+DAYLIGHT_REG_ZERO :: 6
+DAYLIGHT_REG_X :: 7
+DAYLIGHT_REG_Z :: 8
+DAYLIGHT_REG_SKY :: 9
+DAYLIGHT_REG_T :: 10
+DAYLIGHT_REG_P :: 11
+DAYLIGHT_REG_Q :: 12
+DAYLIGHT_REG_R :: 13
+DAYLIGHT_REG_S :: 14
+DAYLIGHT_REG_COVER :: 15
+DAYLIGHT_REG_N :: 16
+DAYLIGHT_REG_U :: 17
+DAYLIGHT_REG_V :: 18
+
+DaylightSkyProgram :: (c: *DaylightSkyCode) {
+    DaylightLiteral(c, DAYLIGHT_REG_Y, .{0.0, 1.0, 0.0, 0.0})
+    DaylightLiteral(c, DAYLIGHT_REG_ONE, .{1.0, 1.0, 1.0, 1.0})
+    DaylightLiteral(c, DAYLIGHT_REG_ZERO, .{0.0, 0.0, 0.0, 0.0})
+    DaylightLiteral(c, DAYLIGHT_REG_X, .{1.0, 0.0, 0.0, 0.0})
+    DaylightLiteral(c, DAYLIGHT_REG_Z, .{0.0, 0.0, 1.0, 0.0})
+    // Gradient: horizon colour rises quickly, then the zenith takes over.
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_T, 3, DAYLIGHT_REG_Y)
+    DaylightOp(c, .ShaderSubtract, DAYLIGHT_REG_T, DAYLIGHT_REG_ONE, DAYLIGHT_REG_T)
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_T, DAYLIGHT_REG_T, DAYLIGHT_REG_T)
+    DaylightOp(c, .ShaderSubtract, DAYLIGHT_REG_T, DAYLIGHT_REG_ONE, DAYLIGHT_REG_T)
+    DaylightUniform(c, DAYLIGHT_REG_P, DAYLIGHT_ZENITH)
+    DaylightUniform(c, DAYLIGHT_REG_Q, DAYLIGHT_HORIZON)
+    DaylightOp(c, .ShaderMix, DAYLIGHT_REG_SKY, DAYLIGHT_REG_Q, DAYLIGHT_REG_P, DAYLIGHT_REG_T)
+    // Sun: a soft glow 1/(1+k d²)² and a disc.
+    DaylightUniform(c, DAYLIGHT_REG_P, DAYLIGHT_SUN_AT)
+    DaylightUniform(c, DAYLIGHT_REG_Q, DAYLIGHT_ASPECT)
+    DaylightOp(c, .ShaderSubtract, DAYLIGHT_REG_R, 3, DAYLIGHT_REG_P)
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_R, DAYLIGHT_REG_R, DAYLIGHT_REG_Q)
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_R, DAYLIGHT_REG_R, DAYLIGHT_REG_R)
+    DaylightUniform(c, DAYLIGHT_REG_P, DAYLIGHT_SUN_SHAPE)
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_Q, DAYLIGHT_REG_P, DAYLIGHT_REG_X)
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_Q, DAYLIGHT_REG_R, DAYLIGHT_REG_Q)
+    DaylightOp(c, .ShaderAdd, DAYLIGHT_REG_Q, DAYLIGHT_REG_Q, DAYLIGHT_REG_ONE)
+    DaylightOp(c, .ShaderDivide, DAYLIGHT_REG_Q, DAYLIGHT_REG_ONE, DAYLIGHT_REG_Q)
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_Q, DAYLIGHT_REG_Q, DAYLIGHT_REG_Q)
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_S, DAYLIGHT_REG_P, DAYLIGHT_REG_Y)
+    DaylightOp(c, .ShaderSubtract, DAYLIGHT_REG_S, DAYLIGHT_REG_S, DAYLIGHT_REG_R)
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_T, DAYLIGHT_REG_P, DAYLIGHT_REG_Z)
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_S, DAYLIGHT_REG_S, DAYLIGHT_REG_T)
+    DaylightOp(c, .ShaderMax, DAYLIGHT_REG_S, DAYLIGHT_REG_S, DAYLIGHT_REG_ZERO)
+    DaylightOp(c, .ShaderMin, DAYLIGHT_REG_S, DAYLIGHT_REG_S, DAYLIGHT_REG_ONE)
+    DaylightUniform(c, DAYLIGHT_REG_P, DAYLIGHT_STARS)
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_T, DAYLIGHT_REG_P, DAYLIGHT_REG_Z)
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_Q, DAYLIGHT_REG_Q, DAYLIGHT_REG_T)
+    DaylightOp(c, .ShaderAdd, DAYLIGHT_REG_Q, DAYLIGHT_REG_Q, DAYLIGHT_REG_S)
+    DaylightUniform(c, DAYLIGHT_REG_T, DAYLIGHT_SUN_COLOR)
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_Q, DAYLIGHT_REG_Q, DAYLIGHT_REG_T)
+    DaylightOp(c, .ShaderAdd, DAYLIGHT_REG_SKY, DAYLIGHT_REG_SKY, DAYLIGHT_REG_Q)
+    // Clouds: two drifting layers of the noise, softly thresholded.
+    DaylightLiteral(c, DAYLIGHT_REG_Q, .{1.0, 0.7, 0.0, 0.0})
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_Q, 3, DAYLIGHT_REG_Q)
+    DaylightUniform(c, DAYLIGHT_REG_T, DAYLIGHT_CLOUD_A)
+    DaylightOp(c, .ShaderAdd, DAYLIGHT_REG_Q, DAYLIGHT_REG_Q, DAYLIGHT_REG_T)
+    DaylightSample(c, DAYLIGHT_REG_Q, DAYLIGHT_REG_Q)
+    DaylightLiteral(c, DAYLIGHT_REG_T, .{0.6, 0.0, 0.0, 0.0})
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_Q, DAYLIGHT_REG_Q, DAYLIGHT_REG_T)
+    DaylightLiteral(c, DAYLIGHT_REG_R, .{1.7, 1.1, 0.0, 0.0})
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_R, 3, DAYLIGHT_REG_R)
+    DaylightUniform(c, DAYLIGHT_REG_T, DAYLIGHT_CLOUD_B)
+    DaylightOp(c, .ShaderAdd, DAYLIGHT_REG_R, DAYLIGHT_REG_R, DAYLIGHT_REG_T)
+    DaylightSample(c, DAYLIGHT_REG_R, DAYLIGHT_REG_R)
+    DaylightLiteral(c, DAYLIGHT_REG_T, .{0.0, 0.4, 0.0, 0.0})
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_R, DAYLIGHT_REG_R, DAYLIGHT_REG_T)
+    DaylightOp(c, .ShaderAdd, DAYLIGHT_REG_N, DAYLIGHT_REG_Q, DAYLIGHT_REG_R)
+    DaylightUniform(c, DAYLIGHT_REG_U, DAYLIGHT_CLOUD)
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_T, DAYLIGHT_REG_U, DAYLIGHT_REG_X)
+    DaylightOp(c, .ShaderSubtract, DAYLIGHT_REG_COVER, DAYLIGHT_REG_N, DAYLIGHT_REG_T)
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_T, DAYLIGHT_REG_U, DAYLIGHT_REG_Y)
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_COVER, DAYLIGHT_REG_COVER, DAYLIGHT_REG_T)
+    DaylightOp(c, .ShaderMax, DAYLIGHT_REG_COVER, DAYLIGHT_REG_COVER, DAYLIGHT_REG_ZERO)
+    DaylightOp(c, .ShaderMin, DAYLIGHT_REG_COVER, DAYLIGHT_REG_COVER, DAYLIGHT_REG_ONE)
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_T, DAYLIGHT_REG_U, DAYLIGHT_REG_Z)
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_COVER, DAYLIGHT_REG_COVER, DAYLIGHT_REG_T)
+    DaylightUniform(c, DAYLIGHT_REG_Q, DAYLIGHT_CLOUD_LIT)
+    DaylightUniform(c, DAYLIGHT_REG_R, DAYLIGHT_CLOUD_SHADE)
+    DaylightOp(c, .ShaderMix, DAYLIGHT_REG_Q, DAYLIGHT_REG_R, DAYLIGHT_REG_Q, DAYLIGHT_REG_N)
+    DaylightOp(c, .ShaderMix, DAYLIGHT_REG_SKY, DAYLIGHT_REG_SKY, DAYLIGHT_REG_Q, DAYLIGHT_REG_COVER)
+    // Stars: sparse points that twinkle, hidden by cloud.
+    DaylightLiteral(c, DAYLIGHT_REG_Q, .{5.0, 3.0, 0.0, 0.0})
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_Q, 3, DAYLIGHT_REG_Q)
+    DaylightLiteral(c, DAYLIGHT_REG_R, .{0.37, 0.61, 0.0, 0.0})
+    DaylightOp(c, .ShaderAdd, DAYLIGHT_REG_R, DAYLIGHT_REG_Q, DAYLIGHT_REG_R)
+    DaylightSample(c, DAYLIGHT_REG_R, DAYLIGHT_REG_R)
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_R, DAYLIGHT_REG_R, DAYLIGHT_REG_X)
+    DaylightSample(c, DAYLIGHT_REG_Q, DAYLIGHT_REG_Q)
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_Q, DAYLIGHT_REG_Q, DAYLIGHT_REG_Z)
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_T, DAYLIGHT_REG_P, DAYLIGHT_REG_Y)
+    DaylightOp(c, .ShaderAdd, DAYLIGHT_REG_R, DAYLIGHT_REG_R, DAYLIGHT_REG_T)
+    DaylightLiteral(c, DAYLIGHT_REG_T, .{6.2831853, 6.2831853, 6.2831853, 6.2831853})
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_R, DAYLIGHT_REG_R, DAYLIGHT_REG_T)
+    DaylightOp(c, .ShaderSin, DAYLIGHT_REG_R, DAYLIGHT_REG_R)
+    DaylightLiteral(c, DAYLIGHT_REG_T, .{0.35, 0.35, 0.35, 0.35})
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_R, DAYLIGHT_REG_R, DAYLIGHT_REG_T)
+    DaylightLiteral(c, DAYLIGHT_REG_T, .{0.65, 0.65, 0.65, 0.65})
+    DaylightOp(c, .ShaderAdd, DAYLIGHT_REG_R, DAYLIGHT_REG_R, DAYLIGHT_REG_T)
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_Q, DAYLIGHT_REG_Q, DAYLIGHT_REG_R)
+    DaylightOp(c, .ShaderDot, DAYLIGHT_REG_T, DAYLIGHT_REG_P, DAYLIGHT_REG_X)
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_Q, DAYLIGHT_REG_Q, DAYLIGHT_REG_T)
+    DaylightOp(c, .ShaderSubtract, DAYLIGHT_REG_T, DAYLIGHT_REG_ONE, DAYLIGHT_REG_COVER)
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_Q, DAYLIGHT_REG_Q, DAYLIGHT_REG_T)
+    DaylightOp(c, .ShaderAdd, DAYLIGHT_REG_SKY, DAYLIGHT_REG_SKY, DAYLIGHT_REG_Q)
+    // Opaque.
+    DaylightLiteral(c, DAYLIGHT_REG_T, .{1.0, 1.0, 1.0, 0.0})
+    DaylightOp(c, .ShaderMultiply, DAYLIGHT_REG_SKY, DAYLIGHT_REG_SKY, DAYLIGHT_REG_T)
+    DaylightLiteral(c, DAYLIGHT_REG_T, .{0.0, 0.0, 0.0, 1.0})
+    DaylightOp(c, .ShaderAdd, DAYLIGHT_REG_SKY, DAYLIGHT_REG_SKY, DAYLIGHT_REG_T)
+    DaylightOp(c, .ShaderOutput, 0, DAYLIGHT_REG_SKY)
+}
+
+// Compiles the sky program and makes its noise. False on failure.
+DaylightSkyInit :: (sky: *DaylightSky) -> bool {
+    c: DaylightSkyCode
+    DaylightSkyProgram(*c)
+    if !ShaderCompile(*sky.program, c.code[:c.count]).ok { return false }
+    DaylightNoise(sky)
+    sky.samplers[0] = .{width = DAYLIGHT_NOISE, height = DAYLIGHT_NOISE, pixels = sky.noise[:], repeat = true}
+    sky.ready = true
+    return true
+}
+
+DaylightSkyFree :: (sky: *DaylightSky) {
+    ShaderFree(*sky.program)
+    VecFree(sky.noise)
+    sky.ready = false
+}
+
+// Sets the sky's uniforms for STATE. SECONDS drives the clouds and stars;
+// ASPECT is the plane's width over its height; HORIZON is the height (0..1)
+// of the horizon on the plane, where the sun rises and sets.
+DaylightSkyUpdate :: (sky: *DaylightSky, state: DaylightState, seconds: float64, aspect: float64, horizon: float64) {
+    u := sky.uniforms[:]
+    u[DAYLIGHT_ZENITH] = state.zenith
+    u[DAYLIGHT_HORIZON] = state.horizon
+    u[DAYLIGHT_SUN_COLOR] = state.sun_color
+    u[DAYLIGHT_SUN_AT] = .{0.5 + state.sun.x * 0.55, horizon + state.sun.y * (1.0 - horizon) * 1.15, 0.0, 0.0}
+    u[DAYLIGHT_ASPECT] = .{aspect, 1.0, 0.0, 0.0}
+    u[DAYLIGHT_SUN_SHAPE] = .{60.0, 0.0018, 900.0, 0.0}
+    a := seconds * 0.0035
+    b := seconds * 0.0060
+    drift_a := a - DaylightFloor(a)
+    drift_b := b - DaylightFloor(b)
+    u[DAYLIGHT_CLOUD_A] = .{drift_a, 0.0, 0.0, 0.0}
+    u[DAYLIGHT_CLOUD_B] = .{drift_b, 0.0, 0.0, 0.0}
+    opacity := 0.35 + 0.55 * state.day
+    u[DAYLIGHT_CLOUD] = .{0.52, 4.0, opacity, 0.0}
+    phase := seconds * 0.45
+    glow := 0.25 + 0.75 * state.day
+    twinkle := phase - DaylightFloor(phase)
+    u[DAYLIGHT_STARS] = .{state.stars, twinkle, glow, 0.0}
+    lit := DaylightMix(DaylightMix(.{0.018, 0.022, 0.045, 0.0}, .{1.0, 1.0, 1.0, 0.0}, state.day), .{1.0, 0.62, 0.48, 0.0}, state.golden)
+    shade := DaylightMix(DaylightMix(.{0.008, 0.010, 0.025, 0.0}, .{0.62, 0.68, 0.80, 0.0}, state.day), .{0.55, 0.32, 0.40, 0.0}, state.golden)
+    u[DAYLIGHT_CLOUD_LIT] = lit
+    u[DAYLIGHT_CLOUD_SHADE] = shade
+}
+
+// An unlit, ungraded material that draws a DaylightSky: pass its program,
+// sky.uniforms[:] and sky.samplers[:]; the sky must stay at its address.
+DaylightSkyMaterial :: (program: *ShaderProgram, uniforms: []ShaderValue, samplers: []ShaderSampler) -> SceneMaterial {
+    m := UnlitMaterial(.{255, 255, 255, 255})
+    m.ungraded = true
+    m.exact_color = true
+    m.shader = program
+    m.shader_uniforms = uniforms
+    m.shader_samplers = samplers
+    return m
+}
