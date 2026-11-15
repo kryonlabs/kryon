@@ -9,7 +9,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / 'work/renderer-artifacts'
-TOOL = '38710d1fd95b9b0e5253df57820f1c5fafe37295'
+TOOL = 'e813c847376f09dbf3400d0f37cec0a81822f7d1'
 
 
 def main():

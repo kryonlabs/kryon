@@ -175,6 +175,21 @@ jobs:
         with:
           node-version: '22'
 
+      # The pay-per-import test and the gallery build these examples as
+      # applications of this checkout, as ziran.local.toml does locally.
+      - name: Build the in-tree examples from this checkout
+        if: matrix.shard == 'hosts' || matrix.shard == 'site'
+        run: |
+          python3 - <<'PY'
+          import os, subprocess
+          from pathlib import Path
+          ziran = Path(os.environ['ZIRAN_ROOT'])
+          settings = f'[overrides]\nkryon = "{Path.cwd()}"\nziran = "{ziran}"\n'
+          for project in ('examples/box', 'examples/image', 'examples/gallery'):
+              (Path(project) / 'ziran.local.toml').write_text(settings)
+              subprocess.run([str(ziran / 'build/bin/ziran'), 'lock'], cwd=project, check=True)
+          PY
+
       - name: Keep Google libraries in the gplay edition
         run: python3 scripts/check-google-free.py --source .
 
@@ -333,7 +348,7 @@ jobs:
           packages: >-
             build-essential python3 pkg-config libsdl2-dev libcairo2-dev libglib2.0-dev
             libpango1.0-dev libdrm-dev libgbm-dev libegl-dev libgles-dev libegl-mesa0
-            libgl1-mesa-dri libx11-dev libxt-dev libxext-dev libfontconfig1-dev libfreetype-dev
+            libgl1-mesa-dri libx11-dev libxt-dev libxext-dev libxtst-dev libfontconfig1-dev libfreetype-dev
             libxkbcommon-x11-0
             fonts-dejavu-core fonts-wqy-zenhei xvfb xdotool x11-apps x11-utils imagemagick xfwm4
             dbus-x11 cmake nasm meson ninja-build libwebpdemux2 libopus-dev

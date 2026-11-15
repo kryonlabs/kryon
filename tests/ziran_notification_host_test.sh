@@ -26,7 +26,7 @@ done
 # Normalize the library through its real package graph before the native
 # scheduler fixture supplies the existing standalone recording module.
 "$ziran" ir --project --root "$repo/src/backend" -o "$work/native-ir" \
-    "$repo/src/backend/app_context_host.zi" "$ziran_root/std/file.zi"
+    "$repo/src/backend/app_context_host.zi" "$(cd "$repo" && "$ziran" pkg path ziran)/std/file.zi"
 cp "$repo/tests/notification_schedule_provider.zi" "$work/notification_schedule.zi"
 "$ziran" build --target=c --no-main --entry notification_schedule_host_test:main \
     --root "$repo/tests" --module-path "$work" --module-path "$work/native-ir" \

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Build with Ziran e813c847, which lowers host calls returning records with long names, so hosted widgets bundle to ZX again.
+
 - Let window beams cast real moving shadows on painted surfaces in both CPU
   and GPU rendering. Keep rooms readable at night, admit midday sunlight,
   and use a latitude-aware sun path with east on the right in a north-facing view.
