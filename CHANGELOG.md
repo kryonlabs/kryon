@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Let window beams cast real moving shadows on painted surfaces in both CPU
+  and GPU rendering. Keep rooms readable at night, admit midday sunlight,
+  and use a latitude-aware sun path with east on the right in a north-facing view.
+  Cutout textures cast their silhouettes, and hidden objects cast no shadow.
+
 - An empty desktop window no longer carries image decoding, smooth picture
   copies, video or threads: 39 generated C files and about 345 KB instead of
   62 and 546 KB. The desktop rasterizer registers its picture cache, its

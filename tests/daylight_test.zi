@@ -25,12 +25,13 @@ Hours :: () -> s32 {
     fail += Check(first.on && first.tint.z > 0.1 && first.tint.x > 0.05, "a grade prepared before any render keeps its colours")
     noon := DaylightAt(12.0)
     fail += Check(noon.tint.r == 255 && noon.tint.g == 255 && noon.tint.b == 255 && noon.saturation == 1.0, "noon grade is exactly neutral")
-    fail += Check(noon.beam == 0.0 && noon.lamps == 0.0 && noon.stars == 0.0, "noon has no beam, lamps or stars")
+    fail += Check(noon.beam > 0.95 && noon.lamps == 0.0 && noon.stars == 0.0, "noon has sunlight without lamps or stars")
     fail += Check(noon.height > 0.85 && noon.sun.y > 0.0, "the sun is high at noon")
     night := DaylightAt(0.0)
     fail += Check(night.lamps > 0.95 && night.stars > 0.95 && night.day < 0.05, "midnight has lamps and stars")
-    fail += Check(night.tint.b > night.tint.r && night.tint.r < 128, "night tint is dark blue")
-    fail += Check(DaylightAt(7.0).sun.x < 0.0 && DaylightAt(17.0).sun.x > 0.0, "the sun rises on -x and sets on +x")
+    fail += Check(night.tint.b > night.tint.r && night.tint.r >= 150, "night stays readable with a cool ambient fill")
+    fail += Check(DaylightAt(7.0).sun.x > 0.0 && DaylightAt(17.0).sun.x < 0.0, "a north-facing view has east on the right and west on the left")
+    fail += Check(noon.sun.z < -0.4 && DaylightAt(12.0, 25.0).sun.z > 0.4, "southern noon is north; northern noon is south")
     fail += Check(DaylightAt(18.0).golden > 0.3 && DaylightAt(6.0).golden > 0.3, "sunrise and sunset are golden")
     fail += Check(DaylightAt(8.0).beam > 0.3 && DaylightAt(16.0).beam > 0.3, "the low sun shines in through windows")
     fail += Check(DaylightAt(36.0).hour == 12.0 && DaylightAt(-6.0).hour == 18.0, "hours wrap")
@@ -40,7 +41,9 @@ Hours :: () -> s32 {
     fail += Check(morning.strength > 0.2 && morning.direction.y > 0.0 && morning.color.r > morning.color.b, "a warm morning sunbeam")
     moonbeam := DaylightBeam(night, window, .{0.5, 0.0, 0.0}, .{0.0, 0.5, 0.0})
     fail += Check(moonbeam.strength > 0.2 && moonbeam.color.b > moonbeam.color.r, "cool moonlight at night")
-    fail += Check(DaylightBeam(noon, window, .{0.5, 0.0, 0.0}, .{0.0, 0.5, 0.0}).strength == 0.0, "no beam at noon")
+    fail += Check(DaylightBeam(noon, window, .{0.5, 0.0, 0.0}, .{0.0, 0.5, 0.0}).strength > 0.2, "north window admits the southern midday sun")
+    fail += Check(DaylightBeam(DaylightAt(12.0, 25.0), window, .{0.5, 0.0, 0.0}, .{0.0, 0.5, 0.0}).strength == 0.0, "sun behind a north window cannot shine through it")
+    fail += Check(DaylightBeam(DaylightAt(6.0), window, .{0.5, 0.0, 0.0}, .{0.0, 0.5, 0.0}).strength < 0.001, "grazing sunrise does not pierce the north wall")
     fail += Check(DaylightLamp(noon, window, 1.0, .{255, 200, 140, 255}).strength == 0.0 && DaylightLamp(night, window, 1.0, .{255, 200, 140, 255}).strength > 1.0, "lamps glow at night only")
     g := DaylightGrade(night)
     fail += Check(g.enabled && g.tint.b == night.tint.b && g.saturation == night.saturation, "grade follows the hour")
@@ -132,8 +135,50 @@ Grade :: () -> s32 {
     return fail
 }
 
+// An object intercepts only the window's direct light. Moving it restores
+// that light while the ambient colour remains visible in the shadow.
+BeamShadows :: () -> s32 {
+    fail: s32
+    scene: Scene; SceneInit(*scene); defer SceneFree(*scene)
+    wall := UnlitMaterial(.{120, 120, 120, 255}); wall.exact_color = true; wall.double_sided = true
+    receiver := Plane(*scene, 2.0, 2.0, wall)
+    unused SetShadows(*scene, receiver, false, true)
+    blocker := Plane(*scene, 0.22, 0.6, wall)
+    unused SetPosition(*scene, blocker, 0.0, 0.0, 0.6)
+    unused SetShadows(*scene, blocker, true, false)
+    light := AddDirectionalLight(*scene, .{255,255,255,255}, 0.0, .{3.0,0.0,6.0})
+    CastLightShadow(*scene, light, 2.0, 2.0, 0.1, 20.0, 128, -0.001, 0.0, 0.5)
+    scene.grade = SceneGradeNeutral()
+    scene.grade.beam = .{centre=.{0.0,0.0,1.0}, axis_u=.{1.0,0.0,0.0}, axis_v=.{0.0,1.0,0.0},
+        direction=.{0.5,0.0,1.0}, color=.{255,230,190,255}, strength=0.8, softness=0.1, shadows=true, shadow_light=light}
+    image := NewImage(64,64); defer VecFree(image.pixels)
+    fail += Check(RenderScene(*scene, Camera(), *image), "render a shadowed painted surface")
+    blocked := Brightness(*image, 22,32)
+    fail += Check(blocked > 300, "ambient light keeps a cast shadow readable")
+    unused SetPosition(*scene, blocker, 1.5,0.0,0.6)
+    fail += Check(RenderScene(*scene, Camera(), *image), "move a beam occluder")
+    restored := Brightness(*image, 22,32)
+    if restored <= blocked + 60 { print("beam shadow brightness: blocked %, restored %\n", blocked, restored) }
+    fail += Check(restored > blocked + 60, "moving an object restores sunlight at its former shadow")
+    unused SetPosition(*scene, blocker, 0.0,0.0,0.6)
+    unused SetVisible(*scene, blocker, false)
+    fail += Check(RenderScene(*scene, Camera(), *image) && Brightness(*image,22,32) == restored,
+        "hidden objects do not cast shadows")
+    unused SetVisible(*scene, blocker, true)
+    transparent := NewImage(1,1); defer VecFree(transparent.pixels)
+    cutout := ImageMaterial(*scene, *transparent, wall)
+    cutout.alpha_test = 0.5
+    scene.meshes[scene.nodes[blocker].mesh].material = cutout
+    unused SetPosition(*scene, blocker, 0.0,0.0,0.6)
+    fail += Check(RenderScene(*scene, Camera(), *image) && Brightness(*image,22,32) == restored,
+        "transparent pixels in a cutout do not cast rectangular shadows")
+    scene.grade.beam.shadow_light = 99
+    fail += Check(RenderScene(*scene, Camera(), *image), "an absent shadow light leaves an unoccluded beam")
+    return fail
+}
+
 main :: () -> s32 {
-    fail := Hours() + Sky() + Grade()
+    fail := Hours() + Sky() + Grade() + BeamShadows()
     RenderSceneRelease()
     if fail == 0 { print("Daylight hours, sky and scene grade passed\n") }
     return fail

@@ -180,7 +180,7 @@ GradeParity :: ()->bool {
  pixels: [16]u8=.[230,180,120,255,90,160,210,255,200,200,200,255,60,120,60,255]
  texture:=TestImage(pixels[:],2,2);defer VecFree(texture.pixels)
  wall:=ImageMaterial(*scene,*texture,UnlitMaterial(.{255,255,255,255}));wall.exact_color=true
- unused Plane(*scene,3.2,2.0,wall)
+ receiver:=Plane(*scene,3.2,2.0,wall);SetShadows(*scene,receiver,false,true)
  box:=RoundedBox(*scene,0.6,0.6,0.4,0.1,LitMaterial(.{180,100,40,255},0.6));SetPosition(*scene,box,0.5,-0.3,0.4)
  sky:=UnlitMaterial(.{120,170,230,255});sky.ungraded=true
  patch:=Plane(*scene,0.5,0.4,sky);SetPosition(*scene,patch,-1.1,0.6,0.1)
@@ -191,13 +191,22 @@ GradeParity :: ()->bool {
  grade.beam=.{centre=.{-0.5,0.2,1.5},axis_u=.{0.35,0,0},axis_v=.{0,0.3,0},direction=.{-0.3,0.2,1.0},
   color=.{255,230,190,255},strength=1.0,softness=0.25}
  scene.grade=grade
+ light:=AddDirectionalLight(*scene,.{255,255,255,255},0.0,.{-1.5,1.0,5.0})
+ CastLightShadow(*scene,light,2.0,2.0,0.1,12.0,128,-0.001,0.0,0.5)
+ cutout_pixels: [16]u8=.[255,255,255,255,255,255,255,0,255,255,255,0,255,255,255,255]
+ cutout_image:=TestImage(cutout_pixels[:],2,2);defer VecFree(cutout_image.pixels)
+ cutout:=ImageMaterial(*scene,*cutout_image,wall);cutout.double_sided=true;cutout.alpha_test=0.5
+ blocker:=Plane(*scene,0.25,0.4,cutout);SetPosition(*scene,blocker,-0.5,0.2,0.7);SetShadows(*scene,blocker,true,false)
  image:=NewImage(160,100);reference:=NewImage(160,100)
  defer {VecFree(image.pixels);VecFree(reference.pixels)}
  gpu: SceneGpuContext;defer SceneGpuRelease(*gpu)
  camera:=PerspectiveCamera(45,1.6,0.1,20);camera.position=.{0,0,3}
- for state:0..2 {
-  if state==1 {scene.grade.beam.strength=0.0;scene.grade.tint=.{255,255,255,255};scene.grade.saturation=1.0}
-  if state==2 {scene.grade.enabled=false}
+ for state:0..5 {
+  if state==1 {scene.grade.beam.shadows=true;scene.grade.beam.shadow_light=light}
+  if state==2 {SetPosition(*scene,blocker,1.2,0.2,0.7)}
+  if state==3 {scene.grade.beam.shadow_light=99}
+  if state==4 {scene.grade.beam.strength=0.0;scene.grade.tint=.{255,255,255,255};scene.grade.saturation=1.0}
+  if state==5 {scene.grade.enabled=false}
   result:=SceneGpuRender(*gpu,*scene,camera,*image)
   if !result.ok {print("Grade render failure % %\n",state,result.diagnostic);return false}
   if !RenderScene(*scene,camera,*reference) {return false}

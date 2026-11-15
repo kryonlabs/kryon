@@ -2098,7 +2098,16 @@ through an elliptical opening such as a round window. A surface point is in
 the beam when the ray from it along `direction` crosses the ellipse `centre`
 plus half axes `axis_u` and `axis_v`; `softness` fades the edge over that
 fraction of the radius. Lit materials are graded after lighting. The grade
-applies before tone mapping. It is disabled by default; `SceneGradeNeutral()`
+beam can receive real cast shadows: set `beam.shadows = true` and
+`beam.shadow_light` to a directional light's index, configure its depth map
+with `CastLightShadow`, and align the light's position/target with the beam's
+direction. Nodes opt into casting and receiving with `SetShadows`. Only the
+direct beam is occluded; ambient tint and local lamp light stay readable.
+An absent shadow light leaves the beam unoccluded. This also works on unlit
+painted surfaces, in both CPU and GPU rendering. Shadow maps respect node
+visibility, material opacity and texture alpha/cutoff, so foliage cards cast
+their painted silhouettes instead of solid rectangles.
+The grade applies before tone mapping. It is disabled by default; `SceneGradeNeutral()`
 is enabled with white tint and saturation 1, leaving every colour exactly as
 it was, and the renderers skip such a grade entirely, so a neutral hour costs
 nothing per pixel. Change it between renders: it never rebuilds geometry and keeps
@@ -2108,11 +2117,17 @@ Mark skies and lamp glows `ungraded` so they keep their own colours.
 
 ### Daylight: sun, sky and grade by the hour
 
-Import `kryon/daylight`. `DaylightAt(hour)` (local hours, wrapped to 0..24)
-returns `DaylightState`: the sun's direction (rising at 06:00 on -x, setting
-at 18:00 on +x, beyond the scene on -z), its height, day/full/golden weights,
+Import `kryon/daylight`. `DaylightAt(hour, latitude = -25.0)` (local solar
+hours, wrapped to 0..24) returns `DaylightState`: the sun's direction for a
+north-facing view (rising at 06:00 on +x/east, setting at 18:00 on -x/west,
+north beyond the scene on -z), its height, day/full/golden weights,
 linear sky colours, the sRGB grade `tint` and `saturation`, and 0..1 weights for
-`lamps` (dusk to dawn), `beam` (low sun through windows) and `stars`. While
+`lamps` (dusk to dawn), `beam` (sunlight throughout the day) and `stars`. The
+path uses equinox declination and fixed 06:00/18:00 dawn/dusk, rather than
+date/location-specific ephemerides. Negative latitude places the noon sun
+in the northern sky; positive latitude places it south. `DaylightBeam`
+admits light only from the outward side of the opening (the cross product
+of its axes faces indoors), fading grazing rays. While
 the sun is high (`full == 1`) the tint is exactly white and the saturation
 exactly 1, so pictures keep their painted colours. `DaylightGrade(state)`
 turns it into a `SceneGrade`; the app adds its lamps and beam, scaled by

@@ -215,10 +215,12 @@ RenderGrade :: struct {
     beam_direction: Vector3
     beam_color: Vector3      // linear colour times strength
     beam_sharp: float64      // 1/softness
+    beam_shadow: s32         // scene light index, -1 for an unoccluded beam
 }
 
 PrepareGrade :: (grade: SceneGrade) -> RenderGrade {
     out: RenderGrade
+    out.beam_shadow = -1
     if !grade.enabled { return out }
     // The GPU prepares its grade without a CPU render filling the table first.
     PrepareColorTable()
@@ -253,6 +255,7 @@ PrepareGrade :: (grade: SceneGrade) -> RenderGrade {
             out.beam_direction = direction
             out.beam_color = Times(LinearColor(beam.color), beam.strength)
             out.beam_sharp = 1.0 / Max(beam.softness, 0.001)
+            if beam.shadows { out.beam_shadow = beam.shadow_light }
         }
     }
     // A grade that changes nothing costs nothing: white, full colour, no light.
@@ -813,33 +816,46 @@ DrawShadowMap :: (work: *Renderer, scene: *Scene, light: s32) {
     size := cast(float64)shadow.size
     for node: 0..scene.nodes.count - 1 {
         source := scene.nodes[node]
-        if source.mesh < 0 || !source.cast_shadow { continue }
+        if source.mesh < 0 || !work.shown[node] || !source.cast_shadow { continue }
         mesh := scene.meshes[source.mesh]
+        if mesh.material.opacity <= 0.0 || mesh.material.opacity < mesh.material.alpha_test { continue }
+        state: DrawState
+        state.material = mesh.material
+        state.scene = scene
+        if mesh.material.texture >= 0 && mesh.material.texture < cast(s32)scene.textures.count {
+            state.texture = scene.textures[mesh.material.texture]
+        } else { state.material.texture = -1 }
         world := work.world[node]
         flipped := Determinant3(world) < 0.0
         corners := Corners(mesh)
         at: s32 = 0
         while at + 2 < corners {
             points: [3]Vector3
+            uvs: [3]ShapePoint
             for k: 0..2 {
-                p := Point(shadow.shadow_matrix, Point(world, scene.positions[Corner(scene, mesh, at + cast(s32)k)]))
+                index := Corner(scene, mesh, at + cast(s32)k)
+                p := Point(shadow.shadow_matrix, Point(world, scene.positions[index]))
                 points[k] = .{p.x * size, p.y * size, p.z}
+                uvs[k] = SceneTextureCoordinate(mesh.material, scene.positions[index], scene.normals[index], scene.uvs[index])
             }
             area := (points[1].x - points[0].x) * (points[2].y - points[0].y) -
                 (points[1].y - points[0].y) * (points[2].x - points[0].x)
             front := (area > 0.0) != flipped
-            if mesh.material.double_sided || !front { ShadowTriangle(work, shadow, points[0], points[1], points[2]) }
+            if mesh.material.double_sided || !front { ShadowTriangle(work, shadow, *state, points[0], points[1], points[2], uvs[0], uvs[1], uvs[2]) }
             at += 3
         }
     }
 }
 
-ShadowTriangle :: (work: *Renderer, light: RenderLight, a: Vector3, b0: Vector3, c0: Vector3) {
+ShadowTriangle :: (work: *Renderer, light: RenderLight, state: *DrawState,
+    a: Vector3, b0: Vector3, c0: Vector3, ua: ShapePoint, ub0: ShapePoint, uc0: ShapePoint) {
     b := b0
     c := c0
+    ub := ub0
+    uc := uc0
     area := Edge(a.x, a.y, b.x, b.y, c.x, c.y)
     if area == 0.0 { return }
-    if area < 0.0 { b = c0; c = b0; area = -area }
+    if area < 0.0 { b = c0; c = b0; ub = uc0; uc = ub0; area = -area }
     size := light.size
     x0 := Max(Floor(Min(a.x, Min(b.x, c.x))), 0.0)
     x1 := Min(Floor(Max(a.x, Max(b.x, c.x))) + 1.0, cast(float64)size)
@@ -857,7 +873,17 @@ ShadowTriangle :: (work: *Renderer, light: RenderLight, a: Vector3, b0: Vector3,
             if Covers(e0, b, c) && Covers(e1, c, a) && Covers(e2, a, b) {
                 z := (e0 * a.z + e1 * b.z + e2 * c.z) / area
                 at := light.first_texel + cast(s64)y * size + x
-                if z >= 0.0 && z <= 1.0 && z <= cast(float64)work.shadow_depth[at] { work.shadow_depth[at] = cast(float32)z }
+                if z >= 0.0 && z <= 1.0 && z <= cast(float64)work.shadow_depth[at] {
+                    alpha := state.material.opacity
+                    if state.material.texture >= 0 {
+                        u := (e0 * ua.x + e1 * ub.x + e2 * uc.x) / area
+                        v := (e0 * ua.y + e1 * ub.y + e2 * uc.y) / area
+                        alpha *= Texel(work, state, u, v).a
+                    }
+                    // Cutout cards cast their painted silhouette, including
+                    // projected UVs and the material's filtering/wrap rules.
+                    if alpha > 0.0 && alpha >= state.material.alpha_test { work.shadow_depth[at] = cast(float32)z }
+                }
             }
             x += 1
         }
@@ -1246,7 +1272,7 @@ RasterRowsRange :: (work: *Renderer, start: s64, end: s64, rows: *TriangleRows,
                     if state.material.kind == .MaterialUnlit {
                         rgba = Surface(work, state, *a, *b, *c, la, lb, lc)
                         if !rgba.discard {
-                            rgba = Output(work, state, Graded(work, state, *a, *b, *c, la, lb, lc, .{rgba.r, rgba.g, rgba.b}), rgba.a)
+                            rgba = Output(work, state, Graded(work, state, *a, *b, *c, la, lb, lc, .{rgba.r, rgba.g, rgba.b}, x, y, patterns), rgba.a)
                         }
                     } else {
                         rgba = Shade(work, state, *a, *b, *c, la, lb, lc, face, side, turn, x, y, patterns)
@@ -1376,7 +1402,7 @@ Shade :: (work: *Renderer, state: *DrawState, a: *RenderVertex, b: *RenderVertex
     }
     diffuse: Vector3 = .{surface.r, surface.g, surface.b}
     alpha := surface.a
-    if material.kind == .MaterialUnlit { return Output(work, state, Graded(work, state, a, b, c, la, lb, lc, diffuse), alpha) }
+    if material.kind == .MaterialUnlit { return Output(work, state, Graded(work, state, a, b, c, la, lb, lc, diffuse, x, y, patterns), alpha) }
     view := Add(Add(Times(a.view, la), Times(b.view, lb)), Times(c.view, lc))
     shadow: [MAX_LIGHTS]float64
     cookie: [MAX_LIGHTS]Vector3
@@ -1444,11 +1470,11 @@ Shade :: (work: *Renderer, state: *DrawState, a: *RenderVertex, b: *RenderVertex
     multiple := single * average / (1.0 - (1.0 - energy) * average) * (1.0 - energy)
     indirect := Times(Mul(irradiance, diffuse_part), (1.0 - single - multiple) / RENDER_PI)
     light := Add(Add(Add(direct_diffuse, indirect), direct_specular), state.glow)
-    return Output(work, state, Graded(work, state, a, b, c, la, lb, lc, light), alpha)
+    return Output(work, state, Graded(work, state, a, b, c, la, lb, lc, light, x, y, patterns), alpha)
 }
 
 // COLOR graded at world point AT (see SceneGrade).
-GradeAt :: (grade: *RenderGrade, color: Vector3, at: Vector3) -> Vector3 {
+GradeAt :: (grade: *RenderGrade, color: Vector3, at: Vector3, beam_visibility: float64 = 1.0) -> Vector3 {
     grey := 0.2126 * color.x + 0.7152 * color.y + 0.0722 * color.z
     out := Mul(Add(.{grey, grey, grey}, Times(Sub(color, .{grey, grey, grey}), grade.saturation)), grade.tint)
     light: Vector3
@@ -1464,17 +1490,23 @@ GradeAt :: (grade: *RenderGrade, color: Vector3, at: Vector3) -> Vector3 {
             a := Dot(q, grade.beam_u)
             b := Dot(q, grade.beam_v)
             inside := Min(Max((1.0 - Sqrt(a * a + b * b)) * grade.beam_sharp, 0.0), 1.0)
-            light = Add(light, Times(grade.beam_color, inside))
+            light = Add(light, Times(grade.beam_color, inside * beam_visibility))
         }
     }
     return Add(out, Mul(color, light))
 }
 
 Graded :: (work: *Renderer, state: *DrawState, a: *RenderVertex, b: *RenderVertex, c: *RenderVertex,
-    la: float64, lb: float64, lc: float64, color: Vector3) -> Vector3 {
+    la: float64, lb: float64, lc: float64, color: Vector3, x: s32, y: s32, patterns: *ShadowPatterns) -> Vector3 {
     if !work.grade.on || state.material.ungraded { return color }
     at := Add(Add(Times(a.world, la), Times(b.world, lb)), Times(c.world, lc))
-    return GradeAt(*work.grade, color, at)
+    visibility := 1.0
+    light := work.grade.beam_shadow
+    if work.grade.beam && state.receive && light >= 0 && light < work.light_count && work.lights[light].shadow {
+        normal := Add(Add(Times(a.world_normal, la), Times(b.world_normal, lb)), Times(c.world_normal, lc))
+        visibility = ShadowAt(work, work.lights[light], at, normal, x, y, patterns)
+    }
+    return GradeAt(*work.grade, color, at, visibility)
 }
 
 Output :: (work: *Renderer, state: *DrawState, color: Vector3, alpha: float64) -> Fragment {

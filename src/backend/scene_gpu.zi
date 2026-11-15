@@ -66,7 +66,7 @@ GpuLocations :: struct {
  cookie: s32; cookie_matrix: s32; cookie_transform: s32; cookie_size: s32; cookie_light: s32
  sampler: [8]s32; sampler_size: [8]s32; sampler_repeat: [8]s32
  graded: s32; grade_tint: s32; grade_lamp: [4]s32; grade_lamp_color: [4]s32; grade_beam_centre: s32; grade_beam_u: s32
- grade_beam_v: s32; grade_beam_normal: s32; grade_beam_direction: s32; grade_beam_color: s32
+ grade_beam_v: s32; grade_beam_normal: s32; grade_beam_direction: s32; grade_beam_color: s32; grade_beam_shadow: s32
 }
 GpuProgram :: struct { features: s32; key: *ShaderProgram; saved: ShaderProgram; id: u32; used: bool; locations: GpuLocations }
 GpuTexture :: struct { key: *u8; cache_key: u64; width: s32; height: s32; id: u32; used: bool; bytes: Vec(u8) }
@@ -870,6 +870,7 @@ CacheLocations :: (id: u32)->GpuLocations {
  l.graded=G.Location(id,"graded");l.grade_tint=G.Location(id,"gradeTint");l.grade_beam_centre=G.Location(id,"gradeBeamCentre")
  l.grade_beam_u=G.Location(id,"gradeBeamU");l.grade_beam_v=G.Location(id,"gradeBeamV");l.grade_beam_normal=G.Location(id,"gradeBeamNormal")
  l.grade_beam_direction=G.Location(id,"gradeBeamDirection");l.grade_beam_color=G.Location(id,"gradeBeamColor")
+ l.grade_beam_shadow=G.Location(id,"gradeBeamShadow")
  for at:0..3 {
   lamp: Text=Name("gradeLamp[%]",at);l.grade_lamp[at]=G.Location(id,TextView(lamp))
   lamp_color: Text=Name("gradeLampColor[%]",at);l.grade_lamp_color[at]=G.Location(id,TextView(lamp_color))
@@ -901,6 +902,7 @@ GradeUniforms :: (l: *GpuLocations,g: RenderGrade,material_graded: bool) {
  G.Uniform4f(l.grade_beam_normal,cast(float32)g.beam_normal.x,cast(float32)g.beam_normal.y,cast(float32)g.beam_normal.z,cast(float32)g.beam_reach)
  VectorAt(l.grade_beam_direction,g.beam_direction)
  c:=g.beam_color;G.Uniform4f(l.grade_beam_color,cast(float32)c.x,cast(float32)c.y,cast(float32)c.z,ifx g.beam then cast(float32)g.beam_sharp else 0.0)
+ G.Uniform1i(l.grade_beam_shadow,g.beam_shadow)
 }
 Draw :: (gpu: *SceneGpuContext,scene: *Scene,d: GpuDraw,view: M.GpuMatrix,vp: M.GpuMatrix,perspective: bool)->bool {
  m:=scene.meshes[d.mesh].material;id:=ProgramFor(gpu,m.shader,MaterialFeatures(m,perspective));if id==0 {return false}
@@ -995,6 +997,10 @@ ShadowSpaceEqual :: (a: SceneLight,b: SceneLight)->bool {
 DropShadow :: (s: *GpuShadow) {G.DeleteTextures(1,*s.texture);G.DeleteFramebuffers(1,*s.framebuffer);s[0]=GpuShadow.{}}
 RenderShadows :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
  G.Disable(0x0b44);G.Disable(0x0be2);G.Enable(0x0b71);G.DepthMask(1);G.DepthFunc(0x0203);G.UseProgram(gpu.shadow_program)
+ alpha_settings:=G.Location(gpu.shadow_program,"alphaSettings")
+ albedo_size:=G.Location(gpu.shadow_program,"albedoSize")
+ albedo_sampling:=G.Location(gpu.shadow_program,"albedoSampling")
+ G.Uniform1i(G.Location(gpu.shadow_program,"albedo"),0)
  for at: 0..3 {
   s:=*gpu.shadows[at]
   if at>=scene.lights.count||!scene.lights[at].shadow||scene.lights[at].shadow_size<=0 {if s.texture!=0 {DropShadow(s)};continue}
@@ -1017,13 +1023,23 @@ RenderShadows :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
    G.BindFramebuffer(0x8d40,s.framebuffer);G.Viewport(0,0,s.size,s.size);G.ClearDepth(1.0);G.Clear(0x0100)
    MatrixUniform(gpu.shadow_program,"vp",ShadowVP(l))
    // The CPU reference casts back faces for one-sided materials, and both
-   // faces for double-sided materials. Material alpha is not a caster input.
+   // faces for double-sided materials. Cutout textures retain their silhouette.
    G.FrontFace(0x0901);G.CullFace(0x0404)
    double_sided:=true
    for draw: 0..gpu.draws.count-1 {
     d:=gpu.draws[draw];if !d.cast_shadow {continue}
-    both:=scene.meshes[d.mesh].material.double_sided
+    m:=scene.meshes[d.mesh].material
+    both:=m.double_sided
     if both!=double_sided {if both {G.Disable(0x0b44)} else {G.Enable(0x0b44)};double_sided=both}
+    G.Uniform2f(alpha_settings,cast(float32)m.opacity,cast(float32)m.alpha_test)
+    G.Uniform2f(albedo_size,0.0,0.0);G.Uniform2f(albedo_sampling,0.0,0.0)
+    if m.texture>=0&&m.texture<scene.textures.count {
+     t:=scene.textures[m.texture];bytes:=cast(s64)t.width*t.height*4
+     if t.first_texel<0||t.first_texel+bytes>scene.texels.count {return false}
+     texture:=TextureFor(gpu,*scene.texels[t.first_texel],t.width,t.height,t.cache_key);if texture==0 {return false}
+     BindTexture(0,texture);G.Uniform2f(albedo_size,cast(float32)t.width,cast(float32)t.height)
+     G.Uniform2f(albedo_sampling,cast(float32)cast(s32)m.texture_filter,cast(float32)cast(s32)m.texture_wrap)
+    }
     G.DrawArrays(4,d.first,d.count)
    }
    G.Disable(0x0b44)

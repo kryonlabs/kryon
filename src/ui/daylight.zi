@@ -16,7 +16,7 @@ DAYLIGHT_NOISE :: 256
 // SceneGrade tint and is exactly white while the sun is high.
 DaylightState :: struct {
     hour: float64
-    sun: Vector3             // towards the sun: -x where it rises, +x where it sets, y up, -z beyond the scene
+    sun: Vector3             // north-facing view: +x east, -x west, y up, -z north
     height: float64          // sine of the sun's elevation, -1..1
     day: float64             // 0 at night, 1 in daylight
     full: float64            // 1 while the sun is high: the grade is neutral
@@ -27,7 +27,7 @@ DaylightState :: struct {
     tint: Color
     saturation: float64
     lamps: float64           // 0..1: lamps glow from dusk to dawn
-    beam: float64            // 0..1: sunlight through windows while the sun is low
+    beam: float64            // 0..1: sunlight above the horizon, including noon
     stars: float64
     moon: Vector3            // towards the moon, opposite the sun, above the horizon at night
     moonlight: float64       // 0..1: moonlight through windows at night
@@ -58,14 +58,18 @@ DaylightColor :: (a: Color, b: Color, t: float64) -> Color {
     return .{DaylightByte(a.r, b.r, t), DaylightByte(a.g, b.g, t), DaylightByte(a.b, b.b, t), 255}
 }
 
-// HOUR wraps into 0..24.
-DaylightAt :: (hour: float64) -> DaylightState {
+// HOUR wraps into 0..24. An equinox solar-day path at LATITUDE (south is
+// negative), in a north-facing room. East is on the viewer's right. The sun
+// crosses the northern sky at southern latitudes, rather than remaining at
+// a fixed depth all day. The clock's dawn/dusk hours remain 06:00/18:00.
+DaylightAt :: (hour: float64, latitude: float64 = -25.0) -> DaylightState {
     out: DaylightState
     h := hour - DaylightFloor(hour / 24.0) * 24.0
     out.hour = h
     angle := (h - DAYLIGHT_SUNRISE) / (DAYLIGHT_SUNSET - DAYLIGHT_SUNRISE) * DAYLIGHT_PI
-    out.height = Sin(angle) * 0.9
-    sun: Vector3 = .{-Cos(angle), out.height, -0.35}
+    lat := DaylightMin(DaylightMax(latitude, -89.0), 89.0) * DAYLIGHT_PI / 180.0
+    out.height = Sin(angle) * Cos(lat)
+    sun: Vector3 = .{Cos(angle), out.height, Sin(angle) * Sin(lat)}
     length := Sqrt(sun.x * sun.x + sun.y * sun.y + sun.z * sun.z)
     out.sun = .{sun.x / length, sun.y / length, sun.z / length}
     out.day = DaylightStep(-0.10, 0.25, out.height)
@@ -78,17 +82,17 @@ DaylightAt :: (hour: float64) -> DaylightState {
     out.zenith = DaylightMix(DaylightMix(night_zenith, day_zenith, out.day), .{0.10, 0.10, 0.32, 0.0}, out.golden * 0.55)
     out.horizon = DaylightMix(DaylightMix(night_horizon, day_horizon, out.day), .{1.0, 0.42, 0.18, 0.0}, out.golden * 0.85)
     out.sun_color = DaylightMix(.{1.0, 0.50, 0.22, 0.0}, .{1.0, 0.93, 0.80, 0.0}, out.full)
-    night_tint: Color = .{112, 122, 170, 255}
-    golden_tint: Color = .{255, 212, 168, 255}
+    night_tint: Color = .{154, 164, 196, 255}
+    golden_tint: Color = .{244, 224, 210, 255}
     white: Color = .{255, 255, 255, 255}
     out.tint = DaylightColor(DaylightColor(night_tint, golden_tint, out.day), white, out.full)
     if out.full >= 1.0 { out.tint = white }
     out.saturation = 0.65 + 0.35 * out.day
     if out.full >= 1.0 { out.saturation = 1.0 }
     out.lamps = 1.0 - DaylightStep(-0.05, 0.20, out.height)
-    out.beam = DaylightStep(0.0, 0.12, out.height) * (1.0 - DaylightStep(0.45, 0.70, out.height))
+    out.beam = DaylightStep(0.0, 0.12, out.height)
     out.stars = 1.0 - DaylightStep(-0.25, -0.02, out.height)
-    moon: Vector3 = .{Cos(angle), -out.height, -0.35}
+    moon: Vector3 = .{-sun.x, -sun.y, -sun.z}
     moon_length := Sqrt(moon.x * moon.x + moon.y * moon.y + moon.z * moon.z)
     out.moon = .{moon.x / moon_length, moon.y / moon_length, moon.z / moon_length}
     out.moonlight = (1.0 - out.day) * DaylightStep(0.05, 0.35, -out.height)
@@ -96,19 +100,28 @@ DaylightAt :: (hour: float64) -> DaylightState {
 }
 
 // Light through one window opening (CENTRE and half axes, world units) at
-// STATE's hour: warm sun while it is low, cool moonlight at night, none at
-// midday or twilight. Add it to the grade as its beam.
+// STATE's hour: warm low sun, neutral daylight at noon and cool moonlight.
+// Light only enters from the outward side of the opening (U cross V faces
+// into the room). Grazing sunrise/sunset rays fade instead of piercing walls.
 DaylightBeam :: (state: DaylightState, centre: Vector3, axis_u: Vector3, axis_v: Vector3) -> SceneGradeBeam {
     beam: SceneGradeBeam = .{centre = centre, axis_u = axis_u, axis_v = axis_v, softness = 0.25}
     if state.beam >= state.moonlight {
         beam.direction = state.sun
         beam.color = DaylightColor(.{255, 170, 110, 255}, .{255, 236, 200, 255}, DaylightStep(0.0, 0.4, state.height))
-        beam.strength = state.beam * 0.55
+        beam.strength = state.beam * (0.28 + state.golden * 0.27)
     } else {
         beam.direction = state.moon
         beam.color = .{170, 192, 255, 255}
         beam.strength = state.moonlight * 0.5
     }
+    nx := axis_u.y * axis_v.z - axis_u.z * axis_v.y
+    ny := axis_u.z * axis_v.x - axis_u.x * axis_v.z
+    nz := axis_u.x * axis_v.y - axis_u.y * axis_v.x
+    normal_length := Sqrt(nx * nx + ny * ny + nz * nz)
+    if normal_length > 0.0 {
+        incidence := -(nx * beam.direction.x + ny * beam.direction.y + nz * beam.direction.z) / normal_length
+        beam.strength *= DaylightStep(0.0, 0.18, incidence)
+    } else { beam.strength = 0.0 }
     return beam
 }
 

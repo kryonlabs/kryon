@@ -155,6 +155,8 @@ SceneGradeBeam :: struct {
     color: Color
     strength: float64        // 0 for none
     softness: float64        // the edge fades over this fraction of the radius
+    shadows: bool           // occlude the beam with the selected scene light's depth map
+    shadow_light: s32        // index in Scene.lights; only used when shadows is true
 }
 
 // A time-of-day look for scenes made of pictures. Every material that is not
