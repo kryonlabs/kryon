@@ -59,7 +59,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     InstallGalleryPalette(dark)
     Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
     if embedded {
-        Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = GallerySceneName(scene), .font = 23})
+        Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = GallerySceneName(scene), .size = 23})
         DrawScene(session)
         return 0
     }

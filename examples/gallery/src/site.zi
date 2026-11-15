@@ -351,14 +351,14 @@ SiteHighlightCode :: (code: string) {
 }
 
 SiteText :: (session: Session, key: u64, bounds: Rectangle, text: string, font: s32) {
-    Text.Draw(session, Text.Props.{.key = key, .bounds = bounds, .text = text, .font = font,
+    Text.Draw(session, Text.Props.{.key = key, .bounds = bounds, .text = text, .size = font,
         .class_name = ifx font >= 20 then 11003 else 11001})
 }
 SiteMuted :: (session: Session, key: u64, bounds: Rectangle, text: string, font: s32) {
-    Text.Draw(session, Text.Props.{.key = key, .bounds = bounds, .text = text, .font = font, .class_name = 11002})
+    Text.Draw(session, Text.Props.{.key = key, .bounds = bounds, .text = text, .size = font, .class_name = 11002})
 }
 SiteCenter :: (session: Session, key: u64, bounds: Rectangle, text: string, font: s32) {
-    Text.Draw(session, Text.Props.{.key = key, .bounds = bounds, .text = text, .font = font,
+    Text.Draw(session, Text.Props.{.key = key, .bounds = bounds, .text = text, .size = font,
         .class_name = ifx font >= 20 then 11003 else 11002, .align = .TextAlignCenter})
 }
 SitePanel :: (session: Session, key: u64, bounds: Rectangle) {
@@ -477,7 +477,7 @@ SiteReading :: (session: Session, view: Rectangle) {
     SiteText(session, 10050, .{x, y + 48.0, width, 92.0}, title, 36)
     Box.Draw(session, Box.Props.{.key = 10402, .bounds = .{x, y + 162.0, width, 1.0}, .fill = SiteBorder()})
     Text.Draw(session, Text.Props.{.key = 10051, .bounds = .{x, y + 198.0, width, 640.0},
-        .text = body, .font = 17, .line_gap = 8, .class_name = 11002, .selectable = true})
+        .text = body, .size = 17, .line_gap = 8, .class_name = 11002, .selectable = true})
     if Button.Draw(session, Button.Props.{.key = 10052,
         .bounds = .{x, y + 900.0, width, 42.0}, .label = "Open source & API", .class_name = 11012}) != 0 {
         unused OpenUri("https://github.com/kryonlabs/kryon/blob/master/docs/API.md")

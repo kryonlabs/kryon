@@ -74,7 +74,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "CandleChart", .font = 23})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "CandleChart", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 4
     InstallStyles(example_input.theme == 2)

@@ -80,7 +80,7 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
         tour_steps[1].target = GalleryBounds(Rectangle.{168.0, 180.0, 144.0, 42.0})
     }
     if scene == 0 {
-        Text.Draw(session, Text.Props.{.key = 700, .bounds = anchor, .text = "Save source", .font = 17})
+        Text.Draw(session, Text.Props.{.key = 700, .bounds = anchor, .text = "Save source", .size = 17})
         props: Tooltip.Props = .{.key = 701, .anchor = anchor, .viewport = viewport,
             .text = "Save the maintained Ziran source", .shortcut = "Ctrl+S",
             .placement = .OverlayPlaceBottom, .gap = 8.0, .max_width = 240.0,
@@ -140,7 +140,7 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
         palette := CommandPalette.Draw(session, props, *palette_state)
         if palette.close_requested || palette.chosen_index >= 0 { palette_open = false }
     } else if scene == 3 {
-        Text.Draw(session, Text.Props.{.key = 730, .bounds = anchor, .text = "Hover source", .font = 17})
+        Text.Draw(session, Text.Props.{.key = 730, .bounds = anchor, .text = "Hover source", .size = 17})
         props: HoverCard.Props = .{.key = 731, .anchor = anchor, .viewport = viewport,
             .title = "Source preview", .body = "Every card opens from caller-owned state.",
             .action_label = "Open", .action = 31, .placement = .OverlayPlaceBottom,
@@ -161,7 +161,7 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
         card := HoverCard.Draw(session, props, *hover_state)
         hover_state_bounds = card.bounds
     } else if scene == 4 {
-        if !gallery_live { Text.Draw(session, Text.Props.{.key = 740, .bounds = anchor, .text = "Delete source", .font = 17}) }
+        if !gallery_live { Text.Draw(session, Text.Props.{.key = 740, .bounds = anchor, .text = "Delete source", .size = 17}) }
         props: ConfirmPopover.Props = .{.key = 741, .title = "Delete source?",
             .description = "This action cannot be undone.", .confirm_label = "Delete",
             .cancel_label = "Cancel", .anchor = anchor, .viewport = viewport,
@@ -180,7 +180,7 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
         confirmed := ConfirmPopover.Draw(session, props, *confirm_state)
         if gallery_live && (confirmed.closed || confirmed.confirmed || confirmed.cancelled) { live_confirm_open = false }
     } else {
-        Text.Draw(session, Text.Props.{.key = 750, .bounds = tour_steps[0].target, .text = "Catalog target", .font = 17})
+        Text.Draw(session, Text.Props.{.key = 750, .bounds = tour_steps[0].target, .text = "Catalog target", .size = 17})
         props: GuidedTour.Props = .{.key = 751, .steps = tour_steps[:], .step = 0,
             .width = 290.0, .padding = 12.0, .block_target = false,
             .next_label = "Next", .back_label = "Back", .done_label = "Done",

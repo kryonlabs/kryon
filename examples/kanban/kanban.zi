@@ -97,7 +97,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Kanban", .font = 23})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Kanban", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 1
     InstallStyles(example_input.theme == 2)
@@ -117,7 +117,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
             for index: cast(s32)0..2 {
                 if card_lanes[index] == lane {
                     card := Board.KanbanCard(session, *board_cell, frame, *column, index, cast(u64)(700 + index), 64.0)
-                    Text.Draw(session, Text.Props.{.bounds = .{card.x + 8.0, card.y + 8.0, card.width - 16.0, card.height - 16.0}, .text = labels[index], .font = 14})
+                    Text.Draw(session, Text.Props.{.bounds = .{card.x + 8.0, card.y + 8.0, card.width - 16.0, card.height - 16.0}, .text = labels[index], .size = 14})
                 }
             }
         }
