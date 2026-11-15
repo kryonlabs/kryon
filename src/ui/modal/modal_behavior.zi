@@ -219,15 +219,22 @@ ModalActionNextY :: (y: s32, button_height: s32, gap: s32) -> s32 {
 }
 #program_export
 ModalOutsideDismissalFor :: (released: bool, release_consumed: bool,
-    pointer_inside: bool) -> ModalDismissal {
+    dismiss_on_outside: bool, pointer_inside: bool) -> ModalDismissal {
     dismissal: ModalDismissal
-    if released && !release_consumed && !pointer_inside {
-        dismissal.dismissed = true
-        dismissal.release_consumed = true
-        return dismissal
-    }
     dismissal.release_consumed = release_consumed
+    if released && !release_consumed {
+        dismissal.release_consumed = true
+        if dismiss_on_outside && !pointer_inside {
+            dismissal.dismissed = true
+        }
+    }
     return dismissal
+}
+
+#program_export
+ModalOutsideDismissDisabledFor :: (dismiss_on_outside: bool,
+    dismiss_disabled: bool) -> bool {
+    return dismiss_disabled || !dismiss_on_outside
 }
 
 #program_export

@@ -20,11 +20,16 @@ Props :: struct {
     right_label: string
     has_left_action: bool
     has_right_action: bool
+    // Kept as an explicit override for callers that must prevent every
+    // dismissal route, including after opting into outside dismissal.
     dismiss_disabled: bool
     // The title drawn with emphasis, as Text's strong ranges, and at the
     // content's start instead of centred.
     strong_title: bool
     title_at_start: bool
+    // Modal backdrops consume outside presses without closing by default.
+    // Set this to opt into closing on a release outside the panel.
+    dismiss_on_outside: bool
 }
 
 ModalFrameResult :: struct {

@@ -6,8 +6,12 @@
 
 B :: (value: s32) -> bool { return value != 0 }
 
-// Only a release outside the panel that no one else took dismisses the
-// modal, and dismissing takes the release; otherwise the release is left
-// as it was.
-#law OutsideReleaseDismisses custom ModalOutsideDismissalFor(true, false, false).dismissed && ModalOutsideDismissalFor(true, false, false).release_consumed;
-#law OtherwiseStays forall released: 0..1, consumed: 0..1, inside: 0..1 => (B(released) && !B(consumed) && !B(inside)) || (!ModalOutsideDismissalFor(B(released), B(consumed), B(inside)).dismissed && ModalOutsideDismissalFor(B(released), B(consumed), B(inside)).release_consumed == B(consumed));
+// A modal consumes an outside release without closing by default. Outside
+// dismissal is an explicit opt-in, while an explicit disable still wins.
+#law DefaultOutsideStays custom !ModalOutsideDismissalFor(true, false, false, false).dismissed && ModalOutsideDismissalFor(true, false, false, false).release_consumed;
+#law OptInOutsideDismisses custom ModalOutsideDismissalFor(true, false, true, false).dismissed && ModalOutsideDismissalFor(true, false, true, false).release_consumed;
+#law OwnedReleaseConsumed forall consumed: 0..1, opt_in: 0..1, inside: 0..1 => ModalOutsideDismissalFor(true, B(consumed), B(opt_in), B(inside)).release_consumed;
+#law OtherwiseStays forall released: 0..1, consumed: 0..1, opt_in: 0..1, inside: 0..1 => (B(released) && !B(consumed) && B(opt_in) && !B(inside)) || (!ModalOutsideDismissalFor(B(released), B(consumed), B(opt_in), B(inside)).dismissed && ModalOutsideDismissalFor(B(released), B(consumed), B(opt_in), B(inside)).release_consumed == (B(released) || B(consumed)));
+#law OutsideDismissDefaultsOff custom ModalOutsideDismissDisabledFor(false, false);
+#law OutsideDismissOptIn custom !ModalOutsideDismissDisabledFor(true, false);
+#law ExplicitDisableWins custom ModalOutsideDismissDisabledFor(true, true);

@@ -1,0 +1,197 @@
+Overlay :: #import "overlay";
+using ModalBehavior :: #import "modal_behavior";
+#import "geometry"
+#import "key_input"
+#import "session"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+#import "ziran_overlay_widget_host"
+
+using WidgetKind;
+
+ROOT :: Rectangle.{0.0, 0.0, 300.0, 200.0};
+PANEL :: Rectangle.{90.0, 55.0, 120.0, 90.0};
+CHILD :: Rectangle.{120.0, 80.0, 60.0, 36.0};
+POPUP_PANEL :: Rectangle.{115.0, 72.0, 70.0, 56.0};
+
+OverlayFrame :: (session: Session, key: u64, dismiss_disabled: bool,
+    child: bool) -> Overlay.DismissibleOverlayResult {
+    TreeStart(session, cast(u64)1, ROOT)
+    page := TreeSubmit(session, cast(u64)2, 0, WidgetKindButton, ROOT)
+    TreeSetInteractive(session, page, false, false, 1)
+    props: Overlay.Props = .{.key = key, .bounds = PANEL,
+        .dismiss_disabled = dismiss_disabled}
+    result := Overlay.Draw(session, props)
+    if child && result.panel_node >= 0 {
+        control := TreeSubmit(session, cast(u64)3, result.panel_node,
+            WidgetKindButton, CHILD)
+        TreeSetInteractive(session, control, false, false, 3)
+        TreeSetDragCapture(session, control, true)
+    }
+    if !TreeFinish(session) { result.node = -99 }
+    return result
+}
+
+PopupFrame :: (session: Session, key: u64) -> Overlay.PopupResult {
+    TreeStart(session, cast(u64)1, ROOT)
+    page := TreeSubmit(session, cast(u64)2, 0, WidgetKindButton, ROOT)
+    TreeSetInteractive(session, page, false, false, 2)
+    result := Overlay.Popup(session,
+        Overlay.PopupProps.{.key = key, .bounds = POPUP_PANEL})
+    if !TreeFinish(session) { result.node = -99 }
+    return result
+}
+
+NestedResult :: struct {
+    outer: Overlay.DismissibleOverlayResult
+    inner: Overlay.DismissibleOverlayResult
+}
+
+NestedFrame :: (session: Session) -> NestedResult {
+    result: NestedResult
+    TreeStart(session, cast(u64)1, ROOT)
+    page := TreeSubmit(session, cast(u64)2, 0, WidgetKindButton, ROOT)
+    TreeSetInteractive(session, page, false, false, 2)
+    result.outer = Overlay.Draw(session, Overlay.Props.{
+        .key = cast(u64)10, .bounds = Rectangle.{40.0, 25.0, 220.0, 150.0},
+        .dismiss_disabled = true})
+    if result.outer.panel_node >= 0 &&
+    TreePushScope(session, result.outer.panel_node) {
+        result.inner = Overlay.Draw(session, Overlay.Props.{
+            .key = cast(u64)20, .bounds = PANEL,
+            .dismiss_disabled = true})
+        unused End(session)
+    }
+    if !TreeFinish(session) { result.outer.node = -99 }
+    return result
+}
+
+ModalPopupResult :: struct {
+    modal: Overlay.DismissibleOverlayResult
+    popup: Overlay.PopupResult
+}
+
+ModalPopupFrame :: (session: Session) -> ModalPopupResult {
+    result: ModalPopupResult
+    TreeStart(session, cast(u64)1, ROOT)
+    page := TreeSubmit(session, cast(u64)2, 0, WidgetKindButton, ROOT)
+    TreeSetInteractive(session, page, false, false, 2)
+    result.modal = Overlay.Draw(session, Overlay.Props.{
+        .key = cast(u64)30, .bounds = PANEL,
+        .dismiss_disabled = true})
+    if result.modal.panel_node >= 0 &&
+    TreePushScope(session, result.modal.panel_node) {
+        result.popup = Overlay.Popup(session, Overlay.PopupProps.{
+            .key = cast(u64)31, .bounds = POPUP_PANEL})
+        unused End(session)
+    }
+    if !TreeFinish(session) { result.modal.node = -99 }
+    return result
+}
+
+Click :: (session: Session, x: float32, y: float32) {
+    unused TreePointerUpdate(session,
+        PointerFrame.{x, y, true, true, true})
+}
+
+#program_export
+main :: () -> s32 {
+    // The Modal zero value is non-dismissible. The positive opt-in is the
+    // only way to enable outside dismissal, and the old disable wins.
+    if !ModalOutsideDismissDisabledFor(false, false) ||
+    ModalOutsideDismissDisabledFor(true, false) ||
+    !ModalOutsideDismissDisabledFor(true, true) { return 1 }
+    default_policy := ModalOutsideDismissalFor(true, false, false, false)
+    opt_in_policy := ModalOutsideDismissalFor(true, false, true, false)
+    if default_policy.dismissed || !default_policy.release_consumed ||
+    !opt_in_policy.dismissed || !opt_in_policy.release_consumed { return 2 }
+
+    // A retained non-dismissible scrim owns a click outside the panel.
+    session := SessionOpen()
+    first := OverlayFrame(session, cast(u64)10, true, true)
+    if first.node != 2 || TreeTopModalLayer(session) != 3 ||
+    !TreeFocusAt(session, 5) { return 3 }
+    Click(session, 20.0, 20.0)
+    outside := OverlayFrame(session, cast(u64)10, true, true)
+    if outside.closed || outside.outside_released ||
+    !outside.release_consumed || !outside.tapped ||
+    TreeTakeActivationAt(session, 1) || TreeFocusedAt(session, 1) ||
+    !TreeFocusedAt(session, 3) { return 4 }
+
+    // Press outside and release over a child: the retained scrim keeps the
+    // sequence, consumes it, and does not activate the child.
+    unused TreePointerUpdate(session,
+        PointerFrame.{20.0, 20.0, true, true, false})
+    unused TreePointerUpdate(session,
+        PointerFrame.{135.0, 90.0, true, false, false})
+    unused TreePointerUpdate(session,
+        PointerFrame.{135.0, 90.0, false, false, true})
+    crossed_in := OverlayFrame(session, cast(u64)10, true, true)
+    if crossed_in.closed || !crossed_in.release_consumed ||
+    TreeTakeActivationAt(session, 5) { return 5 }
+
+    // A captured child sequence that starts inside and ends outside remains
+    // the child's; it neither dismisses the modal nor activates the page.
+    unused TreePointerUpdate(session,
+        PointerFrame.{135.0, 90.0, true, true, false})
+    if !TreePointerCapturesDrag(session) { return 6 }
+    unused TreePointerUpdate(session,
+        PointerFrame.{20.0, 20.0, true, false, false})
+    if !TreePointerCapturesDrag(session) { return 7 }
+    unused TreePointerUpdate(session,
+        PointerFrame.{20.0, 20.0, false, false, true})
+    child_drag := TreeTakeDragAt(session, 5)
+    captured := OverlayFrame(session, cast(u64)10, true, true)
+    if !child_drag.ended || child_drag.x != 20.0 || child_drag.y != 20.0 ||
+    captured.closed || captured.release_consumed ||
+    TreeTakeActivationAt(session, 1) { return 8 }
+
+    // Escape belongs to the retained modal but the default modal consumes it
+    // without closing or leaving the key for application shortcuts.
+    if !KeyboardSend(session, KeyEscape) || !TreeKeyboardRoute(session) { return 9 }
+    escaped := OverlayFrame(session, cast(u64)10, true, true)
+    if escaped.closed || !TreeEscapeCaptured(session) ||
+    KeyboardTake(session) != 0 { return 10 }
+
+    // The explicitly dismissible overlay retains its documented close result.
+    dismissible := SessionOpen()
+    unused OverlayFrame(dismissible, cast(u64)40, false, false)
+    Click(dismissible, 20.0, 20.0)
+    dismissed := OverlayFrame(dismissible, cast(u64)40, false, false)
+    if !dismissed.closed || !dismissed.outside_released ||
+    !dismissed.release_consumed { return 11 }
+
+    // Popup press-outside dismissal is separate and still clicks through to
+    // the page under it.
+    popup_session := SessionOpen()
+    unused PopupFrame(popup_session, cast(u64)50)
+    Click(popup_session, 20.0, 20.0)
+    popup := PopupFrame(popup_session, cast(u64)50)
+    if !popup.closed || !TreeTakeActivationAt(popup_session, 1) { return 12 }
+    unused PopupFrame(popup_session, cast(u64)50)
+    if !KeyboardSend(popup_session, KeyEscape) ||
+    !TreeKeyboardRoute(popup_session) { return 13 }
+    popup = PopupFrame(popup_session, cast(u64)50)
+    if !popup.closed || !TreeEscapeCaptured(popup_session) { return 14 }
+
+    // Only the upper nested modal owns the backdrop sequence.
+    nested_session := SessionOpen()
+    unused NestedFrame(nested_session)
+    Click(nested_session, 20.0, 20.0)
+    nested := NestedFrame(nested_session)
+    if nested.outer.closed || nested.outer.release_consumed ||
+    nested.inner.closed || !nested.inner.release_consumed ||
+    TreeTakeActivationAt(nested_session, 1) { return 15 }
+
+    // A popup above a modal may close on the same outside press that the
+    // non-dismissible modal scrim consumes; the modal itself stays.
+    stack_session := SessionOpen()
+    unused ModalPopupFrame(stack_session)
+    Click(stack_session, 20.0, 20.0)
+    stack := ModalPopupFrame(stack_session)
+    if stack.modal.closed || !stack.modal.release_consumed ||
+    !stack.popup.closed || TreeTakeActivationAt(stack_session, 1) { return 16 }
+
+    return 0
+}

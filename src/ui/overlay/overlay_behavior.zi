@@ -12,12 +12,13 @@ DismissibleOverlayPolicyFor :: (released: bool, release_consumed: bool,
     dismiss_disabled: bool, pointer_inside: bool) -> DismissibleOverlayPolicy {
     policy: DismissibleOverlayPolicy
     policy.tapped = released && !release_consumed
-    if released && !release_consumed && !dismiss_disabled && !pointer_inside {
-        policy.closed = true
-        policy.outside_released = true
-        policy.release_consumed = true
-        return policy
-    }
     policy.release_consumed = release_consumed
+    if released && !release_consumed {
+        policy.release_consumed = true
+        if !dismiss_disabled && !pointer_inside {
+            policy.closed = true
+            policy.outside_released = true
+        }
+    }
     return policy
 }

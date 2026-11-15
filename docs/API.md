@@ -415,6 +415,14 @@ send `KeyEscape` with `KeyboardSend`, and application shortcuts check
 `TreeEscapeCaptured(session)` before handling that same Escape. `KeyF3` is the
 canonical F3 key code (292) for application shortcuts.
 
+`Modal.Props.dismiss_on_outside` defaults to false. Its full-viewport scrim
+owns pointer presses that start outside the panel and consumes their releases,
+including drags that cross the panel boundary, without reporting `dismissed`.
+Set `dismiss_on_outside = true` to opt into outside-release dismissal;
+`dismiss_disabled = true` remains an override that prevents dismissal.
+`Overlay.Popup` and context menus keep their separate press-outside dismissal
+and click-through behavior.
+
 ## Swipe rows
 
 `SwipeRow.Draw(session, props, state)` follows a horizontal drag, paints the revealed

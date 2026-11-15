@@ -88,9 +88,9 @@ mutate menu/menu_behavior.zi menu/menu_laws.zi 's/    if alt_required && !alt_do
 # Arrow keys skipping an item when they wrap.
 mutate menu/menu_behavior.zi menu/menu_laws.zi 's/    return (start + direction + item_count) % item_count/    return (start + direction + item_count + 1) % item_count/' DownFromLastWraps
 # A modal dismissed by a release someone else already took.
-mutate modal/modal_behavior.zi modal/modal_laws.zi 's/    if released && !release_consumed && !pointer_inside {/    if released \&\& !pointer_inside {/' OtherwiseStays
+mutate modal/modal_behavior.zi modal/modal_laws.zi 's/    if released && !release_consumed {/    if released {/' OtherwiseStays
 # An overlay that forbids dismissing closing anyway.
-mutate overlay/overlay_behavior.zi overlay/overlay_laws.zi 's/ && !dismiss_disabled//' OtherwiseStays
+mutate overlay/overlay_behavior.zi overlay/overlay_laws.zi 's/!dismiss_disabled && //' OtherwiseStays
 # An overlay that reports a release someone else already took as a tap.
 mutate overlay/overlay_behavior.zi overlay/overlay_laws.zi 's/policy.tapped = released && !release_consumed/policy.tapped = released/' ReleasesAreTaps
 # A reorder committed by a release that ended no drag.

@@ -2222,9 +2222,9 @@ WidgetValidDropdownOption :: (value: HostValue) -> bool {
     return true
 }
 
-// Widget codec schema: ["ModalFrameProps",[["key","u64"],["id","s32"],["class_name","s32"],["title","string"],["bounds","Rectangle"],["width","s32"],["height","s32"],["scale","float32"],["left_image","ImageProps"],["right_image","ImageProps"],["left_label","string"],["right_label","string"],["has_left_action","bool"],["has_right_action","bool"],["dismiss_disabled","bool"],["strong_title","bool"],["title_at_start","bool"]]]
+// Widget codec schema: ["ModalFrameProps",[["key","u64"],["id","s32"],["class_name","s32"],["title","string"],["bounds","Rectangle"],["width","s32"],["height","s32"],["scale","float32"],["left_image","ImageProps"],["right_image","ImageProps"],["left_label","string"],["right_label","string"],["has_left_action","bool"],["has_right_action","bool"],["dismiss_disabled","bool"],["strong_title","bool"],["title_at_start","bool"],["dismiss_on_outside","bool"]]]
 WidgetModalFramePropsCodec :: struct {
-    fields: [17]HostField
+    fields: [18]HostField
     bounds: WidgetRectangleCodec
     left_image: WidgetImagePropsCodec
     right_image: WidgetImagePropsCodec
@@ -2250,6 +2250,7 @@ WidgetDecodeModalFrameProps :: (value: HostValue, codec: *WidgetModalFramePropsC
     data.dismiss_disabled = HostFieldValue(*value, 14, "dismiss_disabled", *zero).integer != 0
     data.strong_title = HostFieldValue(*value, 15, "strong_title", *zero).integer != 0
     data.title_at_start = HostFieldValue(*value, 16, "title_at_start", *zero).integer != 0
+    data.dismiss_on_outside = HostFieldValue(*value, 17, "dismiss_on_outside", *zero).integer != 0
     return data
 }
 
@@ -2272,6 +2273,7 @@ WidgetValidModalFrameProps :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 14, "dismiss_disabled", "bool", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 15, "strong_title", "bool", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 16, "title_at_start", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 17, "dismiss_on_outside", "bool", cast(s32)HostInteger) { return false }
     return true
 }
 
