@@ -2090,7 +2090,8 @@ plus half axes `axis_u` and `axis_v`; `softness` fades the edge over that
 fraction of the radius. Lit materials are graded after lighting. The grade
 applies before tone mapping. It is disabled by default; `SceneGradeNeutral()`
 is enabled with white tint and saturation 1, leaving every colour exactly as
-it was. Change it between renders: it never rebuilds geometry and keeps
+it was, and the renderers skip such a grade entirely, so a neutral hour costs
+nothing per pixel. Change it between renders: it never rebuilds geometry and keeps
 `FreezeGeometry`'s promise. The CPU and GPU renderers prepare it identically
 (`PrepareGrade`) and agree within the GPU tolerance (`make scene-gpu-test`).
 Mark skies and lamp glows `ungraded` so they keep their own colours.

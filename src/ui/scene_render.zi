@@ -223,9 +223,11 @@ PrepareGrade :: (grade: SceneGrade) -> RenderGrade {
     out.on = true
     out.tint = LinearColor(grade.tint)
     out.saturation = grade.saturation
+    lit := false
     for at: 0..SCENE_GRADE_LAMPS - 1 {
         lamp := grade.lamps[at]
         if lamp.strength > 0.0 && lamp.radius > 0.0 {
+            lit = true
             out.lamp_position[at] = lamp.position
             out.lamp_reach[at] = 1.0 / (lamp.radius * lamp.radius)
             out.lamp_color[at] = Times(LinearColor(lamp.color), lamp.strength)
@@ -251,6 +253,9 @@ PrepareGrade :: (grade: SceneGrade) -> RenderGrade {
             out.beam_sharp = 1.0 / Max(beam.softness, 0.001)
         }
     }
+    // A grade that changes nothing costs nothing: white, full colour, no light.
+    white := grade.tint.r == 255 && grade.tint.g == 255 && grade.tint.b == 255
+    if white && grade.saturation == 1.0 && !lit && !out.beam { out.on = false }
     return out
 }
 
