@@ -162,8 +162,12 @@ BeamShadows :: () -> s32 {
     fail += Check(restored > blocked + 60, "moving an object restores sunlight at its former shadow")
     unused SetPosition(*scene, blocker, 0.0,0.0,0.6)
     unused SetVisible(*scene, blocker, false)
+    fail += Check(RenderScene(*scene, Camera(), *image) && Brightness(*image,22,32) == blocked,
+        "camera-hidden objects retain their window-beam shadows")
+    unused SetShadows(*scene, blocker, false, false)
     fail += Check(RenderScene(*scene, Camera(), *image) && Brightness(*image,22,32) == restored,
-        "hidden objects do not cast shadows")
+        "SetShadows controls whether a hidden object occludes the beam")
+    unused SetShadows(*scene, blocker, true, false)
     unused SetVisible(*scene, blocker, true)
     transparent := NewImage(1,1); defer VecFree(transparent.pixels)
     cutout := ImageMaterial(*scene, *transparent, wall)

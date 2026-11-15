@@ -2118,9 +2118,10 @@ with `CastLightShadow`, and align the light's position/target with the beam's
 direction. Nodes opt into casting and receiving with `SetShadows`. Only the
 direct beam is occluded; ambient tint and local lamp light stay readable.
 An absent shadow light leaves the beam unoccluded. This also works on unlit
-painted surfaces, in both CPU and GPU rendering. Shadow maps respect node
-visibility, material opacity and texture alpha/cutoff, so foliage cards cast
-their painted silhouettes instead of solid rectangles.
+painted surfaces, in both CPU and GPU rendering. Shadow maps respect material
+opacity and texture alpha/cutoff, so foliage cards cast their painted
+silhouettes instead of solid rectangles. `SetVisible` only affects the camera;
+hidden nodes still cast shadows when enabled with `SetShadows`.
 The grade applies before tone mapping. It is disabled by default; `SceneGradeNeutral()`
 is enabled with white tint and saturation 1, leaving every colour exactly as
 it was, and the renderers skip such a grade entirely, so a neutral hour costs

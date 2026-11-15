@@ -201,12 +201,13 @@ GradeParity :: ()->bool {
  defer {VecFree(image.pixels);VecFree(reference.pixels)}
  gpu: SceneGpuContext;defer SceneGpuRelease(*gpu)
  camera:=PerspectiveCamera(45,1.6,0.1,20);camera.position=.{0,0,3}
- for state:0..5 {
+ for state:0..6 {
   if state==1 {scene.grade.beam.shadows=true;scene.grade.beam.shadow_light=light}
-  if state==2 {SetPosition(*scene,blocker,1.2,0.2,0.7)}
-  if state==3 {scene.grade.beam.shadow_light=99}
-  if state==4 {scene.grade.beam.strength=0.0;scene.grade.tint=.{255,255,255,255};scene.grade.saturation=1.0}
-  if state==5 {scene.grade.enabled=false}
+  if state==2 {SetVisible(*scene,blocker,false)}
+  if state==3 {SetVisible(*scene,blocker,true);SetPosition(*scene,blocker,1.2,0.2,0.7)}
+  if state==4 {scene.grade.beam.shadow_light=99}
+  if state==5 {scene.grade.beam.strength=0.0;scene.grade.tint=.{255,255,255,255};scene.grade.saturation=1.0}
+  if state==6 {scene.grade.enabled=false}
   result:=SceneGpuRender(*gpu,*scene,camera,*image)
   if !result.ok {print("Grade render failure % %\n",state,result.diagnostic);return false}
   if !RenderScene(*scene,camera,*reference) {return false}

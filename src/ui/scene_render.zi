@@ -816,7 +816,7 @@ DrawShadowMap :: (work: *Renderer, scene: *Scene, light: s32) {
     size := cast(float64)shadow.size
     for node: 0..scene.nodes.count - 1 {
         source := scene.nodes[node]
-        if source.mesh < 0 || !work.shown[node] || !source.cast_shadow { continue }
+        if source.mesh < 0 || !source.cast_shadow { continue }
         mesh := scene.meshes[source.mesh]
         if mesh.material.opacity <= 0.0 || mesh.material.opacity < mesh.material.alpha_test { continue }
         state: DrawState

@@ -7,7 +7,8 @@
 - Let window beams cast real moving shadows on painted surfaces in both CPU
   and GPU rendering. Keep rooms readable at night, admit midday sunlight,
   and use a latitude-aware sun path with east on the right in a north-facing view.
-  Cutout textures cast their silhouettes, and hidden objects cast no shadow.
+  Cutout textures cast their silhouettes. Camera-hidden objects retain their
+  shadows, controlled separately with `SetShadows`.
 
 - A program carries only what it uses. `App.Show(window)` shows a window
   without frames through its own small loop (`desktop_window`: the window,
