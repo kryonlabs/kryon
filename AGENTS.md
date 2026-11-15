@@ -59,6 +59,13 @@ and portable loader must never recognize Kryon widget names specially. An
 application that does not import Kryon needs no Kryon code or graphical host.
 Keep app-specific screens, assets, copy, workflows, and state in the app repo.
 
+Nothing is imported by default. A program carries only the code for what it
+imports and uses. A bare window carries the window, its events and
+presenting; import a frame and you get a frame, import a rectangle and you get
+a rectangle. Optional features arrive through their import or first use, never
+through runtime flags. Make generated code smaller by cutting what isn't
+needed, never by merging files (owner, 2026-11-15).
+
 One widget concept has one public implementation. `Text.Draw(Text.Props)` and
 `Image.Draw(Image.Props)` are the intended text and image widget surfaces. Do not
 add parallel wrappers or expose raw texture draw calls as app widget APIs.
