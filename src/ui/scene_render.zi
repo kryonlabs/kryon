@@ -220,6 +220,8 @@ RenderGrade :: struct {
 PrepareGrade :: (grade: SceneGrade) -> RenderGrade {
     out: RenderGrade
     if !grade.enabled { return out }
+    // The GPU prepares its grade without a CPU render filling the table first.
+    PrepareColorTable()
     out.on = true
     out.tint = LinearColor(grade.tint)
     out.saturation = grade.saturation

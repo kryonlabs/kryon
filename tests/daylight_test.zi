@@ -20,6 +20,9 @@ Camera :: () -> SceneCamera {
 // The hour decides the sun, the sky and the room's grade.
 Hours :: () -> s32 {
     fail: s32
+    // Before anything is rendered, as on a GPU-only host: colours already convert.
+    first := PrepareGrade(DaylightGrade(DaylightAt(0.0)))
+    fail += Check(first.on && first.tint.z > 0.1 && first.tint.x > 0.05, "a grade prepared before any render keeps its colours")
     noon := DaylightAt(12.0)
     fail += Check(noon.tint.r == 255 && noon.tint.g == 255 && noon.tint.b == 255 && noon.saturation == 1.0, "noon grade is exactly neutral")
     fail += Check(noon.beam == 0.0 && noon.lamps == 0.0 && noon.stars == 0.0, "noon has no beam, lamps or stars")
