@@ -235,6 +235,34 @@ PageTextDraw :: (face_id: s32, text: string, x: s32, y: s32, size: s32,
     WebEnd(scope)
 }
 
+// TEXT at SIZE in the given colour, centred on a transparent WIDTH by HEIGHT
+// canvas in the same browser face as drawn text: straight RGBA into PIXELS
+// (at least WIDTH * HEIGHT * 4 bytes), for text used as a texture.
+PageTextPixels :: (face_id: s32, text: string, size: s32, r: s32, g: s32, b: s32, a: s32,
+    width: s32, height: s32, pixels: []u8) -> bool {
+    if size <= 0 || width <= 0 || height <= 0 || width > 4096 || height > 4096 ||
+        pixels.count < cast(s64)width * cast(s64)height * 4 { return false }
+    scope := WebScope()
+    defer WebEnd(scope)
+    canvas := PageMakeCanvas(width, height)
+    if canvas == 0 { return false }
+    context := PageContext2D(canvas)
+    if context == 0 { return false }
+    style := PageTextSizeFor(context, face_id, size)
+    WebSet(context, WebName("font"), WebText(PageFontSpec(style.hundredths, face_id)))
+    WebSet(context, WebName("textBaseline"), WebText("middle"))
+    WebSet(context, WebName("textAlign"), WebText("center"))
+    WebSet(context, page_names.fill_style, WebText(PageColor(r, g, b, a)))
+    unused WebCall3(context, WebName("fillText"), WebText(text),
+        WebNumber(cast(float64)width / 2.0), WebNumber(cast(float64)height / 2.0))
+    image := WebAsObject(WebCall4(context, WebName("getImageData"), WebNumber(0.0), WebNumber(0.0),
+        WebNumber(cast(float64)width), WebNumber(cast(float64)height)))
+    data := WebGetObject(image, WebName("data"))
+    if data == 0 { return false }
+    unused WebCopyOut(data, cast(*void)*pixels[0], width * height * 4)
+    return true
+}
+
 PageRound :: (value: float64) -> s32 {
     if value < 0.0 { return 0 - cast(s32)(0.5 - value) }
     return cast(s32)(value + 0.5)

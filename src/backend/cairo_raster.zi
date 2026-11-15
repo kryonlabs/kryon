@@ -476,6 +476,48 @@ CaptureConfigured :: () -> bool {
     return SurfaceWritePNG(surface, path) == 0
 }
 
+// VALUE at FONT size in COLOR, centred on a transparent WIDTH by HEIGHT
+// picture, shaped exactly as the window's text: straight RGBA into PIXELS
+// (at least WIDTH * HEIGHT * 4 bytes), for a host that needs text as a
+// texture, such as lettering on a 3D surface. False before the window's
+// raster exists or when the text cannot be shaped.
+#program_export
+RasterTextPixels :: (value: string, font: s32, color: Color, width: s32, height: s32, pixels: []u8) -> bool {
+    if paint == null || width <= 0 || height <= 0 || width > 4096 || height > 4096 ||
+        pixels.count < cast(s64)width * cast(s64)height * 4 { return false }
+    if !ShapedLayout(value, font, "") { return false }
+    target := ImageSurfaceCreate(0, width, height)
+    if target == null { return false }
+    context := Create(target)
+    if context == null { SurfaceDestroy(target); return false }
+    laid_width: s32; laid_height: s32
+    LayoutSize(layout, *laid_width, *laid_height)
+    MoveTo(context, cast(float64)(width - laid_width) / 2.0, cast(float64)(height - laid_height) / 2.0)
+    SetSourceRGBA(context, cast(float64)color.r / 255.0, cast(float64)color.g / 255.0,
+        cast(float64)color.b / 255.0, cast(float64)color.a / 255.0)
+    LayoutShow(context, layout)
+    Destroy(context)
+    SurfaceFlush(target)
+    // Cairo keeps premultiplied ARGB words; hand back straight RGBA.
+    data := ImageSurfaceData(target)
+    stride := ImageSurfaceStride(target)
+    for y: cast(s32)0..height - 1 {
+        for x: cast(s32)0..width - 1 {
+            word := cast(*u32)(*data[cast(s64)y * cast(s64)stride + cast(s64)x * 4])
+            pixel := word.*
+            alpha := pixel >> 24
+            at := (cast(s64)y * cast(s64)width + cast(s64)x) * 4
+            if alpha == cast(u32)0 { pixels[at] = 0; pixels[at + 1] = 0; pixels[at + 2] = 0; pixels[at + 3] = 0; continue }
+            pixels[at] = cast(u8)(((pixel >> 16) & cast(u32)255) * cast(u32)255 / alpha)
+            pixels[at + 1] = cast(u8)(((pixel >> 8) & cast(u32)255) * cast(u32)255 / alpha)
+            pixels[at + 2] = cast(u8)((pixel & cast(u32)255) * cast(u32)255 / alpha)
+            pixels[at + 3] = cast(u8)alpha
+        }
+    }
+    SurfaceDestroy(target)
+    return true
+}
+
 // Writes the finished frame to PATH as a PNG (a test driver's capture).
 #program_export
 RasterWritePNG :: (path: string) -> bool {

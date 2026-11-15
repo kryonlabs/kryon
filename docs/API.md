@@ -2011,6 +2011,17 @@ The caller owns `image.pixels` and releases it with `VecFree(image.pixels)`.
 Pixels are tightly packed, top-down, straight RGBA in the source's sRGB encoding.
 On the web the page decodes the file's bytes with the browser's own codecs
 (photos turned upright by Exif), so a canvas build links no image library.
+
+### Text as pixels
+
+`#import "kryon/text_pixels"` exposes `TextPixels(value, font, color, width,
+height, pixels) -> bool`: the host's own text raster letters VALUE at FONT
+size in COLOR, centred on a transparent WIDTH by HEIGHT picture of straight
+RGBA in PIXELS (at least WIDTH * HEIGHT * 4 bytes), shaped exactly as its text
+on screen. Use it where text must become a texture, such as lettering on a 3D
+surface. The desktop letters with Cairo and Pango (`RasterTextPixels`), the
+web with the page's canvas in its text face; it is false before the desktop
+raster exists and on Android.
 Use the single public scene-image surface:
 
 ```zi

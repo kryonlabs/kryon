@@ -1,5 +1,6 @@
 #import "cairo_raster"
 #import "font_metrics"
+#import "drawing_props"
 TextField :: #import "kryon/text_field";
 long_text: [2048]u8;
 
@@ -42,5 +43,21 @@ Run :: () -> s32 {
         }
     }
     if dark < 100 { return 8 }
+    // Text as pixels (kryon/text_pixels): centred on a transparent picture,
+    // inked in straight RGBA of the asked colour.
+    lettering: [200 * 64 * 4]u8
+    if !RasterTextPixels("Bedroom", 32, Color.{60, 30, 10, 255}, 200, 64, lettering[:]) { return 20 }
+    inked: s32 = 0; left: s32 = 200; right: s32 = -1; solid_red: s32 = -1
+    for y: cast(s32)0..63 {
+        for x: cast(s32)0..199 {
+            alpha := lettering[(y * 200 + x) * 4 + 3]
+            if alpha > cast(u8)128 { inked += 1; if x < left { left = x }; if x > right { right = x } }
+            if alpha == cast(u8)255 && solid_red < 0 { solid_red = cast(s32)lettering[(y * 200 + x) * 4] }
+        }
+    }
+    if inked < 100 || lettering[3] != cast(u8)0 || lettering[(63 * 200 + 199) * 4 + 3] != cast(u8)0 { return 21 }
+    middle := (left + right) / 2
+    if left < 4 || right > 195 || middle < 88 || middle > 112 { return 22 }
+    if solid_red < 52 || solid_red > 68 { return 23 }
     return 0
 }

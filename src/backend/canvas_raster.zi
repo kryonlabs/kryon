@@ -145,6 +145,17 @@ RasterTriangles :: (points: []Vector2, color: Color) {
         cast(s32)color.b, cast(s32)color.a)
 }
 
+// VALUE at FONT size in COLOR, centred on a transparent WIDTH by HEIGHT
+// picture in the page's text face: straight RGBA into PIXELS. The desktop
+// raster (cairo_raster) answers the same call.
+#program_export
+RasterTextPixels :: (value: string, font: s32, color: Color, width: s32, height: s32, pixels: []u8) -> bool {
+    face: s32 = 0
+    if canvas_font_loaded { face = CanvasFontFace(canvas_font) }
+    return PageTextPixels(face, value, font, cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a,
+        width, height, pixels)
+}
+
 #program_export
 RasterText :: (value: string, x: s32, y: s32,
     font: s32, color: Color) {

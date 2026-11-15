@@ -1,0 +1,27 @@
+// Text as pixels, drawn by the host's own text raster exactly as its text on
+// screen: lettering a host puts on a 3D surface or into a picture.
+//
+//     pixels: [64 * 256 * 4]u8
+//     TextPixels("Bedroom", 40, Color.{60, 34, 16, 255}, 256, 64, pixels[:])
+//
+// The text is centred on a transparent WIDTH by HEIGHT picture of straight
+// RGBA. False when the host has no text raster yet (before its window opens)
+// or on a host without one.
+#import "geometry"
+#import "drawing_props"
+// The canvas page on the web, Cairo on the desktop (also for untargeted
+// native IR, where OS is .NONE); Android has no text raster here.
+#if OS == .WEB {
+    Raster :: #import "canvas_raster";
+} else #if !#defined(ANDROID_BUILD) {
+    Raster :: #import "cairo_raster";
+}
+
+TextPixels :: (value: string, font: s32, color: Color, width: s32, height: s32, pixels: []u8) -> bool {
+    #if OS == .WEB || !#defined(ANDROID_BUILD) {
+        return Raster.RasterTextPixels(value, font, color, width, height, pixels)
+    } else {
+        unused value; unused font; unused color; unused width; unused height; unused pixels
+        return false
+    }
+}
