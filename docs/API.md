@@ -1273,6 +1273,16 @@ same hotspot on the canvas. Other hosts
 retain their system pointer; touch feedback is drawn by the application. These
 requests never move, lock, grab or warp a pointer.
 
+A picture cursor needs the host's image decoder. Importing `kryon/cursor`, as
+an application does to request a cursor, registers the decoder through the
+`CursorPictureHost(asset_path, width, height, pixels, premultiplied) -> bool`
+host capability; the cursor module the hosts themselves import does not, so a
+program that requests no cursor links no image decoder. A host that shows no
+picture cursors exports the capability and returns false, as the raylib,
+Canvas, terminal and pixmap hosts do, and a custom host linked with a program
+that imports `kryon/cursor` exports it too. An application that hosts widget
+bundles imports `kryon/cursor` for its guests' picture cursors.
+
 The test driver (`kryon/test_driver`) is test code and an ordinary build
 leaves it out: its procedures then pass the platform's input through
 unchanged. A build that a test drives defines `KRYON_TEST_DRIVER`, either with

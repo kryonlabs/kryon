@@ -1,7 +1,7 @@
 #import "byte_text_linux"
 #import "c_string"
 #import "cairo_raster"
-Lanczos :: #import "lanczos_cache";
+#import "raster_picture"
 #import "desktop_keys"
 #import "frame_input_provider"
 #import "input_protocol"
@@ -16,7 +16,9 @@ Timer :: #import "std/timer_linux";
 RasterCursor :: #import "cairo_raster";
 #import "utf8"
 Presenter :: #import "pixmap_sdl";
-Video :: #import "video_linux";
+// The desktop's video player: kryon/video's host capabilities link to it
+// only in programs that play a video.
+VideoHost :: #import "video_linux";
 Clock :: #import "frame_clock";
 
 sdl_library :: #system_library "SDL2";
@@ -307,7 +309,9 @@ DesktopBitmapCursor :: (props: CursorProps) -> *void {
     if hot_x >= width { hot_x = width - 1 }
     if hot_y >= height { hot_y = height - 1 }
     pixels: [16384]u32
-    if !RasterCursor.CairoImagePixels(props.asset_path, width, height, pixels[:], DesktopCursorPremultiplied()) { return null }
+    // The decoder arrives with the first cursor request; see cursor_picture.
+    if cursor_picture == null ||
+        !cursor_picture(props.asset_path, width, height, pixels[:], DesktopCursorPremultiplied()) { return null }
     surface := CursorSurface(cast(*u8)*pixels[0], width, height, 32,
         width * 4, cast(u32)0xff0000, cast(u32)0xff00,
         cast(u32)0xff, cast(u32)0xff000000)
@@ -403,9 +407,7 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     if width <= 0 || height <= 0 { return false }
     if size_of(Event) != 56 { return false }
     if Init(cast(u32)0x2020) != 0 { return false }
-    #if #defined(POSIX_THREADS) || #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS) {
-        Lanczos.LanczosSetWake(DesktopLanczosWake, null)
-    }
+    RasterUseWake(DesktopLanczosWake)
     FrameInputProviderReset(*desktop_frame_input)
     desktop_physical_buttons=0; desktop_physical_sampled=false
     desktop_frame_input_pending_carry = false
@@ -617,7 +619,7 @@ CloseDesktop :: () {
         if desktop_cursors[index] != null { FreeCursor(desktop_cursors[index]) }
         desktop_cursors[index] = null
     }
-    Video.VideoStopHost()
+    RasterPictureStop()
     StopTextInput()
     CloseRaster()
     if texture != null { DestroyTexture(texture) }
@@ -997,7 +999,7 @@ BeginDesktopFrame :: () {
 // paint, and a video pipeline can change pixels without changing widget props.
 #program_export
 DesktopFrameReusable :: () -> bool {
-    return desktop_pixels_valid && Video.pipeline == null
+    return desktop_pixels_valid && !RasterPictureChanging()
 }
 
 DesktopFrameInputNeutralize :: () {
@@ -1073,7 +1075,7 @@ EndDesktopFrame :: () -> bool {
 
 #program_export
 DesktopFrameUnchanged :: (unchanged: bool) {
-    desktop_frame_unchanged = unchanged && Video.pipeline == null
+    desktop_frame_unchanged = unchanged && !RasterPictureChanging()
 }
 
 // Requests aggregate for this frame. A later component cannot erase a request.

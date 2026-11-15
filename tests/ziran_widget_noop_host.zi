@@ -85,3 +85,15 @@ RasterImage :: (asset_path: string, texture_id: u32,
     unused radius
     unused tint
 }
+
+// This host shows no picture cursors; a request for one decodes nothing.
+#program_export
+CursorPictureHost :: (asset_path: string, width: s32, height: s32,
+    pixels: []u32, premultiplied: bool) -> bool {
+    unused asset_path
+    unused width
+    unused height
+    unused pixels
+    unused premultiplied
+    return false
+}

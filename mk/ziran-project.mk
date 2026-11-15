@@ -210,7 +210,7 @@ ifeq ($(PROJECT_BACKEND),desktop)
 include $(KRYON_DIR)/mk/raylib-library.mk
 HOST_DEPS := $(AVIF_SO)
 HOST_LIBS := -Wl,--no-as-needed $(AVIF_SO) -Wl,--as-needed -Wl,-rpath,$(AVIF_BUILD) -Wl,-rpath,'$$ORIGIN/../lib'
-HOST_LIBS += $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig gio-2.0)
+HOST_LIBS += $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig gio-2.0 x11)
 HOST_LIBS += $(RAYLIB_HTTP_LIBS)
 RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 endif

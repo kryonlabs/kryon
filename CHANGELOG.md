@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- An empty desktop window no longer carries image decoding, smooth picture
+  copies, video or threads: 39 generated C files and about 345 KB instead of
+  62 and 546 KB. The desktop rasterizer registers its picture cache, its
+  Lanczos copies and its font the first time a frame uses them; video
+  registers its frame as a named picture source (`raster_picture`) when it
+  opens. Picture cursors decode through `kryon/cursor` again (`cursor_picture`
+  and the `CursorPictureHost` capability), now that Ziran's Go target accepts
+  a module initializer that registers a procedure calling a host. A widget host
+  no longer imports the decoder; the application that embeds it imports
+  `kryon/cursor` for its guests' picture cursors. Native desktop project
+  builds link X11 explicitly.
 - Scenes made of painted pictures can follow the time of day. `Scene.grade`
   (`SceneGrade`) tints and desaturates every material not marked `ungraded`,
   and lights it with up to four lamps and a beam through an elliptical opening

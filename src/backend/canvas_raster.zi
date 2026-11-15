@@ -425,3 +425,15 @@ RasterTextRotated :: (value: string, x: s32, y: s32, font: s32,
     RasterText(value,x+stroke,y,font,color)
     unused WebCall0(ctx,WebName("restore")); WebEnd(scope)
 }
+
+// This host shows no picture cursors; a request for one decodes nothing.
+#program_export
+CursorPictureHost :: (asset_path: string, width: s32, height: s32,
+    pixels: []u32, premultiplied: bool) -> bool {
+    unused asset_path
+    unused width
+    unused height
+    unused pixels
+    unused premultiplied
+    return false
+}

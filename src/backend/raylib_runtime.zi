@@ -4669,3 +4669,15 @@ RasterTextRotated :: (value: string, x: s32, y: s32, font: s32,
             p.text_outer_clip,p.text_outer_clipped,p.emphasis,p.italic)
     }
 }
+
+// This host shows no picture cursors; a request for one decodes nothing.
+#program_export
+CursorPictureHost :: (asset_path: string, width: s32, height: s32,
+    pixels: []u32, premultiplied: bool) -> bool {
+    unused asset_path
+    unused width
+    unused height
+    unused pixels
+    unused premultiplied
+    return false
+}

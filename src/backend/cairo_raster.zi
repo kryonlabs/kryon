@@ -9,11 +9,39 @@ ImageSchema :: #import "image_props";
 Bitmaps :: #import "bitmap_store";
 #import "math"
 Utf8 :: #import "std/utf8";
-Video :: #import "video_linux";
-video_surface: *void;
-video_revision: u64;
-video_width: s32;
-video_height: s32;
+
+// Parts of the rasterizer register themselves the first time a frame uses
+// them, so a window that never draws text or a picture carries neither:
+// pictures (and their smooth copies) and text each leave a procedure that
+// CloseRaster runs once and forgets.
+RasterRelease :: #type () -> void;
+RasterPump :: #type () -> bool;
+raster_pictures_close: RasterRelease;
+raster_text_close: RasterRelease;
+// Smooth copies of pictures: pumped each frame, waited for by a capture.
+raster_smooth_pump: RasterPump;
+raster_smooth_wait: RasterPump;
+raster_smooth_close: RasterRelease;
+// Run when a smooth copy finishes on another thread; it must only wake.
+RasterWake :: #type (argument: *void) #c_call;
+raster_wake: RasterWake;
+RasterWakeWindow :: (argument: *void) {
+    if raster_wake != null { raster_wake(argument) }
+}
+
+#import "raster_picture"
+picture_surface: *void;
+picture_revision: u64;
+picture_width: s32;
+picture_height: s32;
+
+// The window's wake for finished smooth copies; see LanczosSetWake.
+RasterUseWake :: (wake: RasterWake) { raster_wake = wake }
+
+// True while a smooth copy a capture waits for was still being made.
+RasterSettle :: () -> bool {
+    return raster_smooth_wait != null && raster_smooth_wait()
+}
 
 libdl :: #system_library "dl";
 RasterLookup :: (handle: *void, symbol: *u8) -> *void #foreign libdl "dlsym";
@@ -175,7 +203,7 @@ shaped_next: s32;
 
 
 ShapedLayout :: (value: string, font: s32, typeface: string) -> bool {
-    if layout == null || font <= 0 || value.count > 2147483647 { return false }
+    if !CairoTextOpen() || font <= 0 || value.count > 2147483647 { return false }
     for index: cast(s32)0..SHAPED_LAYOUT_LIMIT - 1 {
         entry := shaped_entries[index]
         if entry.layout == null || entry.font != font || entry.length != value.count { continue }
@@ -251,13 +279,29 @@ CairoImageSerial :: (image: *void) -> u64 {
     for i: 0..127 { if cached_images[i].image == image { return cached_images[i].serial } }
     return 0
 }
+// A finished copy changes what unchanged widgets paint.
+CairoSmoothPump :: () -> bool {
+    if !Lanczos.LanczosPump() { return false }
+    PaintResourcesChanged()
+    return true
+}
+// The first smooth picture brings the Lanczos cache and its worker.
+CairoUseSmooth :: () {
+    if raster_smooth_pump != null { return }
+    raster_smooth_pump = CairoSmoothPump
+    raster_smooth_wait = Lanczos.LanczosWait
+    raster_smooth_close = Lanczos.LanczosClose
+    #if #defined(POSIX_THREADS) || #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS) {
+        Lanczos.LanczosSetWake(RasterWakeWindow, null)
+    }
+}
 // The copy to draw for a smooth picture, and in SNAPPED the device pixels
 // it covers, or null to draw the picture with Cairo's filter.
 ScaledImageFor :: (image: *void, source: Rectangle, destination: Rectangle, snapped: *Rectangle) -> *Lanczos.LanczosEntry {
     if !Finite32(destination.x) || !Finite32(destination.y) || !Finite32(destination.width) ||
         !Finite32(destination.height) || destination.width > 4096.0 || destination.height > 4096.0 ||
         destination.x < -1048576.0 || destination.x > 1048576.0 ||
-        destination.y < -1048576.0 || destination.y > 1048576.0 || image == video_surface { return null }
+        destination.y < -1048576.0 || destination.y > 1048576.0 || image == picture_surface { return null }
     format := ImageSurfaceFormat(image)
     serial := CairoImageSerial(image)
     if serial == 0 || (format != 0 && format != 1) { return null }
@@ -268,6 +312,7 @@ ScaledImageFor :: (image: *void, source: Rectangle, destination: Rectangle, snap
     snapped.* = Lanczos.LanczosSnap(destination)
     if !Lanczos.LanczosEligible(source, width, height, snapped.*) { return null }
     key: Lanczos.LanczosKey = .{serial, 0, 0, source, cast(s32)snapped.width, cast(s32)snapped.height}
+    CairoUseSmooth()
     SurfaceFlush(image)
     // Cairo's pixels are premultiplied already, in either format.
     entry := Lanczos.LanczosLookup(key, ImageSurfaceData(image), width, height,
@@ -367,7 +412,15 @@ OpenRaster :: (width: s32, height: s32) -> bool {
     surface = ImageSurfaceCreate(0, width, height)
     if surface == null || SurfaceStatus(surface) != 0 { return false }
     paint = Create(surface)
-    if paint == null || Status(paint) != 0 { return false }
+    return paint != null && Status(paint) == 0
+}
+
+// Kryon's font and the shaped layouts open with the first text the window
+// measures or draws. Every text entry opens them before saving paint state,
+// so the font options stay on the window's paint.
+CairoTextOpen :: () -> bool {
+    if layout != null { return true }
+    if paint == null { return false }
     UseKryonFont()
     CopyCString("Liberation Sans", font_family[:])
     key: [32]u8
@@ -392,18 +445,15 @@ OpenRaster :: (width: s32, height: s32) -> bool {
     layout = LayoutNew(paint)
     shaped_entries[0].layout = layout
     font_description = FontDescriptionNew()
-    if layout == null || font_description == null { CloseRaster(); return false }
+    raster_text_close = CairoTextClose
+    if layout == null || font_description == null { CairoTextClose(); return false }
     LayoutSingleParagraph(layout, 1)
     measure: CaretMeasure = ShapedCaret
     GlyphCaretInstall(measure)
     return Status(paint) == 0
 }
 
-#program_export
-CloseRaster :: () {
-    Lanczos.LanczosClose()
-    if video_surface != null { SurfaceDestroy(video_surface); video_surface = null }
-    video_revision = 0; video_width = 0; video_height = 0
+CairoTextClose :: () {
     GlyphCaretClear()
     if layout_bytes != null { LayoutFree(layout_bytes) }; layout_bytes = null; layout_capacity = 0
     for index: cast(s32)0..SHAPED_LAYOUT_LIMIT - 1 {
@@ -412,11 +462,26 @@ CloseRaster :: () {
     }
     layout = null
     if font_description != null { FontDescriptionFree(font_description) }; font_description = null
+}
+
+// Pictures, their smooth copies and a named source's surface.
+CairoPicturesClose :: () {
+    if raster_smooth_close != null { raster_smooth_close() }
+    if picture_surface != null { SurfaceDestroy(picture_surface); picture_surface = null }
+    picture_revision = 0; picture_width = 0; picture_height = 0
     for i: 0..127 {
         if cached_images[i].image != null { SurfaceDestroy(cached_images[i].image) }
         cached_images[i] = .{}
     }
     image_bytes = 0
+}
+
+#program_export
+CloseRaster :: () {
+    // Registered closers stay registered: a closed part closes again as a
+    // no-op, and the window reopens its raster on resize.
+    if raster_pictures_close != null { raster_pictures_close() }
+    if raster_text_close != null { raster_text_close() }
     if paint != null { Destroy(paint) }
     if surface != null { SurfaceDestroy(surface) }
     paint = null
@@ -425,8 +490,7 @@ CloseRaster :: () {
 
 #program_export
 BeginRasterFrame :: (retain: bool = false) {
-    // A finished Lanczos copy changes what unchanged widgets paint.
-    if Lanczos.LanczosPump() { PaintResourcesChanged() }
+    if raster_smooth_pump != null { unused raster_smooth_pump() }
     frame_pending = true
     image_error = false
     text_error = false
@@ -606,12 +670,21 @@ RasterText :: (value: string, x: s32, y: s32,
 RasterTextClipped :: (value: string, x: s32, y: s32,
     font: s32, color: Color, clip: Rectangle) {
     PrepareRasterPaint()
+    if !CairoTextOpen() { text_error = true; return }
     Save(paint)
     CanvasRectangle(paint, clip.x, clip.y,
         clip.width, clip.height)
     Clip(paint)
     RasterText(value, x, y, font, color)
     Restore(paint)
+}
+
+// The desktop's decoder for cursor pictures. kryon/cursor asks for it once a
+// program imports the cursor API, so programs without one link no decoder.
+#program_export
+CursorPictureHost :: (asset_path: string, width: s32, height: s32,
+    pixels: []u32, premultiplied: bool) -> bool {
+    return CairoImagePixels(asset_path, width, height, pixels, premultiplied)
 }
 
 // Render an asset into caller-owned ARGB pixels, premultiplied as Cairo keeps
@@ -668,19 +741,33 @@ CairoImagePixels :: (asset_path: string, width: s32, height: s32, pixels: []u32,
     return true
 }
 
+// The named source's current picture, borrowed without copying.
+CairoSourcePicture :: (picture: RasterPicture) -> *void {
+    if picture.pixels == null || picture.width <= 0 || picture.height <= 0 {
+        if picture_surface != null { SurfaceDestroy(picture_surface); picture_surface = null }
+        return null
+    }
+    if picture_surface == null || picture_width != picture.width || picture_height != picture.height {
+        if picture_surface != null { SurfaceDestroy(picture_surface) }
+        picture_surface = ImageSurfaceBorrow(picture.pixels, 0, picture.width, picture.height, picture.width * 4)
+        if picture_surface == null || SurfaceStatus(picture_surface) != 0 {
+            if picture_surface != null { SurfaceDestroy(picture_surface) }
+            picture_surface = null
+            return null
+        }
+        picture_width = picture.width; picture_height = picture.height; picture_revision = 0
+    }
+    if picture_revision != picture.revision {
+        picture_revision = picture.revision; SurfaceMarkDirty(picture_surface)
+    }
+    return picture_surface
+}
+
 LoadPNG :: (original_path: string) -> *void {
-    if original_path == Video.VideoAsset {
-        if Video.width <= 0 || Video.height <= 0 { if video_surface != null { SurfaceDestroy(video_surface); video_surface = null }; return null }
-        if video_surface == null || video_width != Video.width || video_height != Video.height {
-            if video_surface != null { SurfaceDestroy(video_surface) }
-            video_surface = ImageSurfaceBorrow(cast(*u8)*Video.pixels[0], 0, Video.width, Video.height, Video.width * 4)
-            if video_surface == null || SurfaceStatus(video_surface) != 0 { if video_surface != null { SurfaceDestroy(video_surface) }; video_surface = null; return null }
-            video_width = Video.width; video_height = Video.height; video_revision = 0
-        }
-        if video_revision != Video.revision {
-            video_revision = Video.revision; SurfaceMarkDirty(video_surface)
-        }
-        return video_surface
+    raster_pictures_close = CairoPicturesClose
+    if raster_picture_source != null {
+        picture: RasterPicture
+        if raster_picture_source(original_path, *picture) { return CairoSourcePicture(picture) }
     }
     resolved: [4096]u8
     asset_path := ResolveAppAsset(original_path, resolved[:])

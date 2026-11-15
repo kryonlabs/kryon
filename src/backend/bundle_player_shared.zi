@@ -88,6 +88,13 @@ PrepareInput :: (player: *Player) -> bool {
     // -1 preserves the caller's fallback for names and shapes not handled here.
     PlayerRasterCall :: (function: string, args: *HostValue, count: s32,
         result: *HostValue) -> s32 {
+        // A bundle that draws its own interface keeps its cursor requests to
+        // itself, so the player decodes no picture for it.
+        if function == "CursorPictureHost" && count == 5 {
+            result.kind = HostInteger
+            result.integer = 0
+            return 1
+        }
         if function == "MeasureGlyphWidth" && count == 3 &&
         args[0].kind == HostString && args[1].kind == HostInteger &&
         args[2].kind == HostString {

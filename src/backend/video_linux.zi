@@ -4,6 +4,7 @@
 #import "std/c_string"
 #import "std/byte_text_linux"
 #import "std/timer_linux"
+Raster :: #import "raster_picture";
 dl :: #system_library "dl";
 c :: #system_library "libc";
 CopyFunction :: (destination: *void, source: *void, count: usize) -> *void #foreign c "memcpy";
@@ -62,6 +63,16 @@ seek_target: s64;
 frame_time: s64 = -1;
 VideoAsset :: "kryon:video";
 
+// The raster host draws the playing frame wherever an image names
+// VideoAsset; opening a video registers it, so programs without video
+// carry none of this.
+VideoPicture :: (path: string, picture: *Raster.RasterPicture) -> bool {
+    if path != VideoAsset { return false }
+    picture.* = .{cast(*u8)*pixels[0], width, height, revision}
+    return true
+}
+VideoPlaying :: () -> bool { return pipeline != null }
+
 Lookup :: (library: *void, name: string) -> *void {
     bytes: [128]u8; if library == null || !CopyCString(name, bytes[:]) { return null }
     return Symbol(library, *bytes[0])
@@ -117,6 +128,7 @@ VideoStopHost :: () {
 }
 #program_export
 VideoOpenHost :: (path: string) -> bool {
+    unused Raster.RasterUsePictureSource(VideoPicture, VideoPlaying, VideoStopHost)
     VideoStopHost(); message = ""
     if path.count < 2 || path.count >= 4096 || path[0] != 47 { message = "Choose a local video original"; state = -1; return false }
     for byte: path { if byte == 0 { message = "Invalid video path"; state = -1; return false } }

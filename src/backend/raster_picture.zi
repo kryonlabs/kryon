@@ -1,0 +1,28 @@
+// A picture a module supplies under a name instead of a file, such as the
+// playing video's frame. The module registers its source when it starts, and
+// the raster host draws it wherever an image names it, so a program that
+// never starts one carries none of it.
+RasterPicture :: struct { pixels: *u8; width: s32; height: s32; revision: u64; }
+RasterPictureSource :: #type (path: string, picture: *RasterPicture) -> bool;
+RasterSourcePlaying :: #type () -> bool;
+RasterSourceStop :: #type () -> void;
+raster_picture_source: RasterPictureSource;
+// True while the source changes by itself, such as a playing video.
+raster_source_playing: RasterSourcePlaying;
+raster_source_stop: RasterSourceStop;
+
+RasterUsePictureSource :: (source: RasterPictureSource,
+    playing: RasterSourcePlaying, stop: RasterSourceStop) -> bool {
+    raster_picture_source = source
+    raster_source_playing = playing
+    raster_source_stop = stop
+    return true
+}
+
+RasterPictureChanging :: () -> bool {
+    return raster_source_playing != null && raster_source_playing()
+}
+
+RasterPictureStop :: () {
+    if raster_source_stop != null { raster_source_stop() }
+}
