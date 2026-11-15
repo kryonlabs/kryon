@@ -50,8 +50,10 @@ DrawFrame :: (session: Session, draw: FrameDraw, title: string = "",
     BeginDesktopFrame()
     viewport: Rectangle = DesktopViewport()
     pointer: PointerFrame = PollPointer()
+    if frame_test_pointer != null { pointer = frame_test_pointer(session, pointer) }
     secondary := PollSecondaryPointer()
     wheel := DesktopWheelMove()
+    if frame_test_wheel != null { wheel = frame_test_wheel(wheel) }
     active := keyboard_activity || pointer.down || pointer.pressed || pointer.released ||
         secondary.down || secondary.pressed || secondary.released || wheel != 0.0 ||
         pointer.x != last_pointer.x || pointer.y != last_pointer.y ||
@@ -119,6 +121,7 @@ RunTitled :: (draw: FrameDraw, width: s32, height: s32, title: string) -> s32 {
     } else {
         while ok {
             if !PollDesktop() { break }
+            if frame_test_input != null { frame_test_input(DesktopInputQueue()) }
             keyboard_activity := frame_keys != null &&
                 frame_keys(session, DesktopInputQueue(), DesktopModifiers())
             ok = DrawFrame(session, draw, title, keyboard_activity)

@@ -73,6 +73,9 @@ main :: () -> s32 {
         CloseRaylib()
         return RaylibError("kryon: could not open a UI session")
     }
+    // Synthetic pointer frames must be validated against this app's live
+    // session, just like the tree and frame replies below.
+    RaylibSetDriverSession(session)
     ok: bool = true
     // Ctrl and the wheel, or Ctrl with plus, minus, and zero, scale the whole
     // application. The session's ZoomProps decide whether that is on; the
