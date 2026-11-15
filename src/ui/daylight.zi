@@ -78,12 +78,12 @@ DaylightAt :: (hour: float64) -> DaylightState {
     out.zenith = DaylightMix(DaylightMix(night_zenith, day_zenith, out.day), .{0.10, 0.10, 0.32, 0.0}, out.golden * 0.55)
     out.horizon = DaylightMix(DaylightMix(night_horizon, day_horizon, out.day), .{1.0, 0.42, 0.18, 0.0}, out.golden * 0.85)
     out.sun_color = DaylightMix(.{1.0, 0.50, 0.22, 0.0}, .{1.0, 0.93, 0.80, 0.0}, out.full)
-    night_tint: Color = .{88, 100, 150, 255}
+    night_tint: Color = .{112, 122, 170, 255}
     golden_tint: Color = .{255, 212, 168, 255}
     white: Color = .{255, 255, 255, 255}
     out.tint = DaylightColor(DaylightColor(night_tint, golden_tint, out.day), white, out.full)
     if out.full >= 1.0 { out.tint = white }
-    out.saturation = 0.55 + 0.45 * out.day
+    out.saturation = 0.65 + 0.35 * out.day
     if out.full >= 1.0 { out.saturation = 1.0 }
     out.lamps = 1.0 - DaylightStep(-0.05, 0.20, out.height)
     out.beam = DaylightStep(0.0, 0.12, out.height) * (1.0 - DaylightStep(0.45, 0.70, out.height))
@@ -103,11 +103,11 @@ DaylightBeam :: (state: DaylightState, centre: Vector3, axis_u: Vector3, axis_v:
     if state.beam >= state.moonlight {
         beam.direction = state.sun
         beam.color = DaylightColor(.{255, 170, 110, 255}, .{255, 236, 200, 255}, DaylightStep(0.0, 0.4, state.height))
-        beam.strength = state.beam * 0.75
+        beam.strength = state.beam * 0.55
     } else {
         beam.direction = state.moon
         beam.color = .{170, 192, 255, 255}
-        beam.strength = state.moonlight * 0.45
+        beam.strength = state.moonlight * 0.5
     }
     return beam
 }
