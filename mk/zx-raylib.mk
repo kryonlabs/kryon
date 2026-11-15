@@ -18,7 +18,7 @@ ZX_RAYLIB_RUNTIME := $(ZX_RAYLIB_DIR)/runtime/libziran.a
 ZX_RAYLIB_FONT := $(dir $(ZX_RAYLIB_PROGRAM))kryon-font.ttf
 ZX_RAYLIB_DEFINE_ARGS := --define BUNDLE_NATIVE_RENDERER $(foreach define,$(ZX_RAYLIB_DEFINES),--define $(define))
 ZX_RAYLIB_SOURCES := $(KRYON_DIR)/tools/zx_raylib.zi $(wildcard $(KRYON_DIR)/src/backend/*.zi $(ZIRAN_DIR)/std/*.zi) $(shell find $(KRYON_DIR)/src/ui -name '*.zi')
-ZX_RAYLIB_COMPILER := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/include/*.h $(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bin/zi2c)
+ZX_RAYLIB_COMPILER := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/cmd/zi2*/*.[ch] $(ZIRAN_DIR)/cmd/zx2*/*.[ch] $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/include/*.h $(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bin/zi2c)
 ifneq ($(strip $(ZX_RAYLIB_PRIVATE_HEADERS)),)
 ZX_RAYLIB_PRIVATE_STAMP := $(ZX_RAYLIB_PRIVATE_HEADERS)/.complete
 $(ZX_RAYLIB_PRIVATE_STAMP): $(wildcard $(ZIRAN_DIR)/cmd/zir/zir_*_internal.h) $(ZIRAN_DIR)/scripts/private-symbols.py $(ZX_RAYLIB_DIR)/config
@@ -47,7 +47,7 @@ $(ZX_RAYLIB_GENERATED)/.complete: $(ZX_RAYLIB_SOURCES) $(ZX_RAYLIB_COMPILER) $(K
 		-o $(ZX_RAYLIB_GENERATED)/c $(ZX_RAYLIB_GENERATED)/ir/*.zir
 	touch $@
 
-$(ZX_RAYLIB_RUNTIME): $(wildcard $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/include/*.h) $(ZX_RAYLIB_DIR)/config $(KRYON_DIR)/mk/zx-raylib.mk $(ZX_RAYLIB_PRIVATE_STAMP)
+$(ZX_RAYLIB_RUNTIME): $(wildcard $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/cmd/zi2*/*.[ch] $(ZIRAN_DIR)/cmd/zx2*/*.[ch] $(ZIRAN_DIR)/include/*.h) $(ZX_RAYLIB_DIR)/config $(KRYON_DIR)/mk/zx-raylib.mk $(ZX_RAYLIB_PRIVATE_STAMP)
 	$(MAKE) -B -j4 -C $(ZIRAN_DIR) BUILD_DIR=$(ZX_RAYLIB_DIR)/runtime \
 		CC="$(ZX_RAYLIB_CC)" AR="$(ZX_RAYLIB_AR)" OBJCOPY="$(ZX_RAYLIB_OBJCOPY)" \
 		WASM_PRIVATE_HEADERS="$(ZX_RAYLIB_PRIVATE_HEADERS)" CFLAGS="$(ZX_RAYLIB_CFLAGS)" $@

@@ -11,8 +11,8 @@ ZX_CANVAS_GENERATED := $(ZX_CANVAS_DIR)/generated
 ZX_CANVAS_RUNTIME := $(ZX_CANVAS_DIR)/runtime/libziran.a
 ZX_CANVAS_SOURCES := $(KRYON_DIR)/tools/zx_canvas.zi $(wildcard $(KRYON_DIR)/src/backend/*.zi $(ZIRAN_DIR)/std/*.zi) $(shell find $(KRYON_DIR)/src/ui -name '*.zi')
 ZX_CANVAS_SOURCES += $(KRYON_DIR)/ziran.toml $(KRYON_DIR)/ziran.lock $(wildcard ziran.toml ziran.lock ziran.local.toml)
-ZX_CANVAS_COMPILER := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/include/*.h $(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bin/zi2c)
-ZX_CANVAS_RUNTIME_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/include/*.h)
+ZX_CANVAS_COMPILER := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/cmd/zi2*/*.[ch] $(ZIRAN_DIR)/cmd/zx2*/*.[ch] $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/include/*.h $(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bin/zi2c)
+ZX_CANVAS_RUNTIME_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/cmd/zi2*/*.[ch] $(ZIRAN_DIR)/cmd/zx2*/*.[ch] $(ZIRAN_DIR)/include/*.h)
 
 .PHONY: zx-canvas zx-canvas-config
 zx-canvas: $(ZX_CANVAS_PROGRAM)

@@ -40,8 +40,8 @@ KRYON_UI_PATHS := $(foreach directory,$(sort $(shell find src/ui -type d)),--mod
 ZIRAN_STD_PATH := --module-path $(ZIRAN_DIR)/std $(KRYON_UI_PATHS)
 KRYON_DIR := $(CURDIR)
 include mk/zx-player.mk
-ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c \
-    $(ZIRAN_DIR)/cmd/zir*/*.h $(ZIRAN_DIR)/include/*.h \
+ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c $(ZIRAN_DIR)/cmd/zi2*/*.c $(ZIRAN_DIR)/cmd/zx2*/*.c \
+    $(ZIRAN_DIR)/cmd/zir*/*.h $(ZIRAN_DIR)/cmd/zi2*/*.h $(ZIRAN_DIR)/cmd/zx2*/*.h $(ZIRAN_DIR)/include/*.h \
     $(ZIRAN_DIR)/scripts/* $(ZIRAN_DIR)/std/*.zi $(ZIRAN_DIR)/Makefile)
 
 SOURCE := $(addprefix src/ui/,$(shell cat src/ui/modules.txt))
