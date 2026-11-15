@@ -1,8 +1,9 @@
 using App :: #import "app_types";
 Desktop :: #import "desktop_loop";
-Title :: #import "program_title";
 using SessionModule :: #import "session";
 using Geometry :: #import "geometry";
+#import "tree_frame"
+#import "accessibility_tree_linux"
 
 active_draw: Draw;
 
@@ -12,12 +13,25 @@ DrawFrame :: (session: Session, bounds: Rectangle) -> s32 {
     return 0
 }
 
+// Runs the program's frames in the window until it closes.
 Run :: (window: Window, draw: Draw = Empty) -> s32 {
-    if window.title.count > 0 { unused Title.SetProgramTitle(window.title) }
+    unused TreeFrameUse()
+    unused AccessibilityTreeUse()
+    return Open(window, draw)
+}
+
+// Shows the window, cleared, until it closes: no frames, so none of the
+// widget tree.
+Show :: (window: Window) -> s32 {
+    return Open(window, Empty)
+}
+
+Open :: (window: Window, draw: Draw) -> s32 {
     width := window.width
     height := window.height
     if width <= 0 { width = 960 }
     if height <= 0 { height = 600 }
     active_draw = draw
-    return Desktop.Run(DrawFrame, width, height)
+    // The window's own title; a window without one opens untitled.
+    return Desktop.RunTitled(DrawFrame, width, height, window.title)
 }

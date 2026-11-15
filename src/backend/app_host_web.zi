@@ -55,3 +55,8 @@ Run :: (window: Window, draw: Draw = Empty) -> s32 {
     if ok { return 0 }
     return 1
 }
+
+// A page shows the window as an empty frame.
+Show :: (window: Window) -> s32 {
+    return Run(window, Empty)
+}

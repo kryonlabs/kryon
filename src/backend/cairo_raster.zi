@@ -268,7 +268,6 @@ cached_images: [128]CachedImage;
 // at the device pixels they cover (see lanczos_cache). A copy of another
 // size, kept while the new one is made, is drawn scaled in its place.
 Lanczos :: #import "lanczos_cache";
-Image :: #import "image";
 image_serial: u64;
 CairoLanczosRelease :: (argument: *void) {
     entry := cast(*Lanczos.LanczosEntry)argument

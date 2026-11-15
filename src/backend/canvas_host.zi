@@ -10,6 +10,7 @@
 #import "canvas_texture"
 #import "canvas_events"
 #import "input_delivery"
+#import "input_take"
 #import "test_driver"
 #import "canvas_frame"
 #import "page_core"

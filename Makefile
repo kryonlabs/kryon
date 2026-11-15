@@ -331,6 +331,14 @@ gamepad-test:
 	python3 tests/canvas_gamepad_test.py
 test: gamepad-test
 
+# An example's generated C holds only what it imports: an empty window is
+# the window, its event loop, clearing and presenting; images bring decoders.
+.PHONY: pay-per-import-test
+pay-per-import-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_BIN="$(ZIRAN_BIN)" \
+		"$(ZIRAN_BIN)" run --target=c --root tests tests/pay_per_import_test.zi
+test: pay-per-import-test
+
 .PHONY: cursor-api-test
 cursor-api-test:
 	python3 tests/cursor_api_test.py

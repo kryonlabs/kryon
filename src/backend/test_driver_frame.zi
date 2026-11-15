@@ -1,0 +1,15 @@
+// Connects the test driver to the widget tree's frame driver (see
+// frame_driver) in a native build. The driver passes the platform's input
+// through unless the build defines KRYON_TEST_DRIVER; it stops a program a
+// test tries to drive without one. desktop_runtime imports this module when
+// the build defines KRYON_TEST_DRIVER; another native host built for a test
+// imports kryon/test_driver_frame. Portable bundles and ordinary builds carry
+// none of it.
+#import "frame_driver"
+#import "frame_input_provider"
+#import "test_driver"
+
+test_driver_frame_registered: bool = FrameDriverUseTest(TestDriverPointer,
+    TestDriverWheel, TestDriverInput, TestDriverFrame, TestDriverCapturePath,
+    TestDriverCaptured);
+test_driver_frame_input_registered: bool = FrameInputProviderUseTest(TestDriverFrameInput);

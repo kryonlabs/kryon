@@ -1,25 +1,22 @@
-// The desktop frame loop every desktop host runs: input, the app's frame,
-// retained painting and accessibility. desktop_run is the default host; a
-// program can pass its frame directly to Run.
+// The desktop frame loop every desktop host runs: the window's events, the
+// app's frame and presenting. desktop_run is the default host; a program can
+// pass its frame directly to Run. A host that runs frames registers the
+// widget tree's frame driver first (TreeFrameUse, see frame_driver); without
+// one the window only clears and presents.
 #import "secondary_pointer"
-#import "frame_snapshot"
-#import "test_driver"
 A :: #import "accessibility_linux";
 #import "cairo_raster"
 #import "desktop_runtime"
+#import "frame_driver"
+#import "input_protocol"
+#import "input_delivery"
 using Geometry :: #import "geometry";
 #import "program_title"
 using SessionModule :: #import "session";
-#import "scroll_device"
-#import "tree"
-#import "tree_draw"
-#import "tree_input"
 Clock :: #import "frame_clock";
 Timer :: #import "std/timer_linux";
 #import "std/file_linux"
 #import "std/c_string"
-
-using FrameStatus;
 
 accessibility_attempted: bool;
 accessibility_enabled: bool;
@@ -30,7 +27,6 @@ libc :: #system_library "libc";
 DesktopWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
 DesktopChangeDirectory :: (path: *u8) -> s32 #foreign libc "chdir";
 
-Procedure :: #type (Session, Rectangle) -> s32;
 
 DesktopError :: (message: string) -> s32 {
     output: [256]u8
@@ -46,52 +42,44 @@ DesktopError :: (message: string) -> s32 {
     return 1
 }
 
-DrawFrame :: (session: Session, draw: Procedure,
+DrawFrame :: (session: Session, draw: FrameDraw, title: string = "",
     keyboard_activity: bool = false) -> bool {
     origin: Vector2 = DesktopOrigin()
     A.AccessibilityOrigin(cast(s32)origin.x, cast(s32)origin.y)
     A.AccessibilityPoll()
     BeginDesktopFrame()
     viewport: Rectangle = DesktopViewport()
-    pointer: PointerFrame = TestDriverPointer(session, PollPointer())
+    pointer: PointerFrame = PollPointer()
     secondary := PollSecondaryPointer()
-    wheel := TestDriverWheel(DesktopWheelMove())
+    wheel := DesktopWheelMove()
     active := keyboard_activity || pointer.down || pointer.pressed || pointer.released ||
         secondary.down || secondary.pressed || secondary.released || wheel != 0.0 ||
         pointer.x != last_pointer.x || pointer.y != last_pointer.y ||
         viewport.width != last_width || viewport.height != last_height
     last_pointer = .{pointer.x, pointer.y}
     last_width = viewport.width; last_height = viewport.height
-    TreePointerUpdate(session, pointer)
-    TreeSecondaryPointerUpdate(session, secondary)
-    PointerWheelSend(session, pointer.x, pointer.y, wheel)
-    BeginScrollFrame(session, .{pointer.x, pointer.y}, pointer.pressed,
-        pointer.down, pointer.released, wheel,
-        cast(float64)Timer.MonotonicMilliseconds() / 1000.0)
-    if !DesktopFrameInputBegin(session) { return false }
-    published_session := session
-    defer { FrameInputEnd(published_session) }
-    if BeginFrame(session, cast(u64)1, viewport) !=
-        cast(FrameStatus)FrameOk { return false }
-    if draw(session, viewport) != 0 {
-        TreeCancel(session)
-        return false
+    compare := Clock.Observe(*frame_activity, active)
+    if frame_run == null {
+        // No widgets: the window shows its cleared surface.
+        unused draw(session, viewport)
+        DesktopFrameUnchanged(DesktopFrameReusable() && compare)
+    } else {
+        input := FrameDriverInput.{.draw = draw, .viewport = viewport, .pointer = pointer,
+            .secondary = secondary, .wheel = wheel,
+            .seconds = cast(float64)Timer.MonotonicMilliseconds() / 1000.0,
+            .reusable = DesktopFrameReusable(), .compare = compare,
+            .frame_input = DesktopFrameInputPrepare()}
+        finished := frame_run(session, input)
+        if !finished.ok { return false }
+        unused DesktopCursorApply(finished.cursor)
+        DesktopFrameUnchanged(finished.paint_unchanged)
     }
-    finished := EndFrameRetained(session, DesktopFrameReusable(), Clock.Observe(*frame_activity, active))
-    if finished.status != cast(FrameStatus)FrameOk { return false }
-    unused DesktopCursor(session)
-    DesktopFrameUnchanged(finished.paint_unchanged)
     // Present before publishing accessibility changes: they never change
     // pixels, and assistive technology reads the same finished tree.
     presented := EndDesktopFrame()
     if !accessibility_attempted && !CaptureRequested() {
         accessibility_attempted = true
-        title: string = ProgramTitle()
-        for index: 0..TreeCount(session) - 1 {
-            node: TreeEntry = TreeNodeAt(session, index)
-            if cast(s32)node.semantic_kind == 1 && node.semantic_label.count > 0 { title = node.semantic_label; break }
-        }
-        accessibility_enabled = A.AccessibilityOpen(session, title)
+        accessibility_enabled = A.AccessibilityOpen(session, A.AccessibilityTitle(session, title))
     } else if accessibility_enabled && !A.AccessibilitySync() {
         A.AccessibilityClose()
         accessibility_enabled = false
@@ -101,9 +89,15 @@ DrawFrame :: (session: Session, draw: Procedure,
 }
 
 // Runs `draw` in a desktop window of `width` by `height` pixels until it
-// closes, and returns the program's exit status.
-Run :: (draw: Procedure, width: s32 = 960, height: s32 = 600) -> s32 {
-    if !OpenDesktopSized(width, height) {
+// closes, and returns the program's exit status. The window takes its title
+// from the file the project tool writes beside the program.
+Run :: (draw: FrameDraw, width: s32 = 960, height: s32 = 600) -> s32 {
+    return RunTitled(draw, width, height, ProgramTitle())
+}
+
+// Runs `draw` in a window titled `title`.
+RunTitled :: (draw: FrameDraw, width: s32, height: s32, title: string) -> s32 {
+    if !OpenDesktopTitled(width, height, title) {
         CloseDesktop()
         return DesktopError("kryon: could not open the desktop window")
     }
@@ -114,28 +108,26 @@ Run :: (draw: Procedure, width: s32 = 960, height: s32 = 600) -> s32 {
     }
     ok: bool = true
     if CaptureRequested() {
-        ok = PollDesktop() && DrawFrame(session, draw)
+        ok = PollDesktop() && DrawFrame(session, draw, title)
         // A capture shows smooth pictures' finished Lanczos copies.
         settled := 0
         while ok && settled < 64 && RasterSettle() {
-            ok = DrawFrame(session, draw)
+            ok = DrawFrame(session, draw, title)
             settled += 1
         }
         if ok { ok = CaptureConfigured() }
     } else {
         while ok {
             if !PollDesktop() { break }
-            key, modifiers := DesktopInputTake(session)
-            KeyboardModifiersSend(session, modifiers)
-            if key != 0 { KeyboardSend(session, key) }
-            keyboard_activity := key != 0 || TypedCodepointPeek(session) != 0
-            ok = DrawFrame(session, draw, keyboard_activity)
-            TestDriverFrame(session)
+            keyboard_activity := frame_keys != null &&
+                frame_keys(session, DesktopInputQueue(), DesktopModifiers())
+            ok = DrawFrame(session, draw, title, keyboard_activity)
+            if frame_after != null { frame_after(session) }
             if ok { PauseDesktop() }
         }
     }
     A.AccessibilityClose()
-    CloseSession(session)
+    if frame_session_end != null { unused frame_session_end(session) }
     CloseDesktop()
     if ok { return 0 }
     return DesktopError("kryon: desktop frame rendering failed")

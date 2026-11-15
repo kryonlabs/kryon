@@ -7,6 +7,27 @@
   and use a latitude-aware sun path with east on the right in a north-facing view.
   Cutout textures cast their silhouettes, and hidden objects cast no shadow.
 
+- A program carries only what it uses. `App.Show(window)` shows a window
+  without frames, and `examples/window.zi` now compiles to the window, its
+  event loop, clearing and presenting: 23 generated C files and 133 KB
+  instead of 62 and 546 KB, a 118 KB executable instead of 265 KB. Hosts
+  that run frames (`App.Run(window, Draw)` and the frame host) register the
+  widget tree's frame driver (`tree_frame`, through `frame_driver`): input
+  routing, the frame, cursor shapes, scrolling, gamepad navigation and the
+  test driver's hooks. Accessibility is split: the window keeps the AT-SPI
+  connection and the application object, and widget roles and nodes live in
+  `accessibility_tree_linux`, which those hosts register. The test driver is
+  in a build only when `KRYON_TEST_DRIVER` is defined; `desktop_runtime`
+  then connects it (`test_driver_frame`, exported for other native hosts),
+  and a desktop window started for a test without it stops and says how to
+  build it. `App.Run` passes the window's title straight to the window; a
+  window without a title opens untitled. `input_delivery`,
+  `frame_input_provider` and `gamepad_navigation` moved to `src/ui`, and
+  `InputDeliveryTake` to the new `input_take`. `kryon/desktop_loop` and
+  `kryon/test_driver_frame` are exported. The ZX player decodes its guests'
+  picture cursors again (it imports `cursor_picture`). `make
+  pay-per-import-test` checks which modules the window, hello, box and image
+  examples carry.
 - An empty desktop window no longer carries image decoding, smooth picture
   copies, video or threads: 39 generated C files and about 345 KB instead of
   62 and 546 KB. The desktop rasterizer registers its picture cache, its

@@ -12,6 +12,8 @@
 #import "std/vec"
 #import "std/timer_linux"
 #import "desktop_runtime"
+// Guests may request picture cursors, which this player decodes.
+#import "cursor_picture"
 #import "cairo_raster"
 #import "session"
 #import "geometry"

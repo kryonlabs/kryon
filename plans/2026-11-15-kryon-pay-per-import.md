@@ -12,7 +12,7 @@ window plus what it imports. This overrides the 2026-11-13 plan's choice to
 keep accessibility in every program: an empty window keeps only window-level
 accessibility, and widget roles and nodes come with the widget imports.
 
-Status: in progress.
+Status: in progress (step A pushed; frame driver and accessibility split in review).
 
 ## Measurement
 
@@ -25,7 +25,14 @@ ziran build --target=c --project --root examples --exe --entry window:main \
 | --- | --- | --- | --- | --- |
 | Before (Kryon 07d74f6d) | 62 | 545 965 | 77 | 265 304 |
 | Step A: pictures, video, Lanczos, fonts | 39 | 344 259 | 50 | 178 816 |
-| After | | | | |
+| After: frame driver, accessibility split, `App.Show` | 23 | 132 686 | 34 | 117 536 |
+
+After the change `examples/window.zi` holds: window, app, app_types,
+app_host_desktop, desktop_loop, desktop_runtime, desktop_keys, pixmap_sdl,
+cairo_raster, raster_picture, frame_clock, frame_driver, frame_input_provider,
+frame_snapshot, input_delivery, session, accessibility_linux (the application
+object), atspi_protocol, std byte text, C strings, timer and UTF-8, and the
+executable entry.
 
 The per-example table is below, filled in as the work lands.
 
@@ -85,26 +92,32 @@ it, through registration, never a run-time flag.
 
 ## Frame driver: where it registers
 
-Ziran's C startup runs a module's imports' initializers before its own and
-aborts on any import cycle that contains an initializer, so the tree cannot
-register a driver that imports `tree_draw` (which imports `tree`). No widget
-is in `tree_draw`'s import closure, and only four modules inside it import
-`tree` (`paint_queue`, `text_request`, `tree_draw`, `tree_input`). The node
-code therefore moves to `tree_nodes`; those four import it, and `tree`, which
-every widget and package imports, re-exports it and brings the frame driver.
+The first attempt registered the driver from `kryon/tree`'s module
+initializer. Two things broke: a module with an initializer turns any
+existing import cycle among the modules that import it (such as `modal` and
+`modal_frame`) into a fatal startup cycle, and test builds without `--entry`
+keep every `#program_export` of every imported module, so importing `tree`
+suddenly required a full raster host. The driver is therefore registered by
+an explicit call, `TreeFrameUse()`, from the hosts that run frames: the frame
+host `desktop_run` and `App.Run(window, Draw)`. `App.Show(window)` never
+makes that call, so an empty window carries none of it. Ziran has no
+overloading and no compile-time branch on a generic's type, so the
+window-only entry has its own name. Accessibility nodes are registered the
+same way (`AccessibilityTreeUse()`).
 
 ## Steps
 
 - [x] Ziran: Go startup check follows calls, not procedure values (test).
   Committed in Ziran; push waits for the Ziran integration lane.
 - [x] Lanczos, video and fonts register on first use.
-- [ ] Program title passed by `App.Run`.
+- [x] Program title passed by `App.Run`.
 - [x] Cursor pictures through `kryon/cursor`. A widget host no longer
   imports the decoder: the embedding application imports `kryon/cursor`.
-- [ ] Frame driver registered by `tree_draw`; desktop loop core.
-- [ ] Gamepad navigation, scroll devices and the test driver in the driver.
-- [ ] Accessibility: window-level host, portable node provider.
-- [ ] Ziran tests per example: generated C holds only the imports' modules.
+- [x] Frame driver registered by the hosts that run frames; desktop loop core.
+- [x] Gamepad navigation, scroll devices and the test driver in the driver.
+- [x] Accessibility: window-level host, node module the frame hosts register.
+- [x] Ziran test per example (`make pay-per-import-test`): window, hello, box
+  and image.
 - [ ] Measure every example (before and after table).
 - [ ] Every host: desktop, Canvas, raylib, Android, ZX players, Go.
 - [ ] `make check`, CHANGELOG, commit, push.

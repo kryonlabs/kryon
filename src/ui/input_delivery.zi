@@ -1,11 +1,10 @@
 // Ordered UI input for one host: keys and typed text in the order they
 // arrived. A host pushes what it observes while polling; its frame loop moves
-// that input into one session with InputDeliveryTake. Physical modifier
+// that input into one session with InputDeliveryTake (input_take). Physical modifier
 // transitions stay raw observations: each key carries the modifiers held
 // with it, as portable KeyModifier bits.
 #import "input_protocol"
 #import "session"
-#import "tree_input"
 
 INPUT_DELIVERY_CAPACITY :: 256;
 // Key presses wait once this many events are pending; text may fill the rest.
@@ -79,46 +78,4 @@ InputDeliveryBlur :: (queue: *InputDelivery) {
 // Forget all pending input, as a host does when it opens or closes.
 InputDeliveryReset :: (queue: *InputDelivery) {
     queue.* = .{}
-}
-
-// Move one editing action, or one run of printable keys and text, into the
-// session. Returns the key to send with KeyboardSend (0 for none) and its
-// KeyModifier bits; with nothing taken, the modifiers are held_modifiers.
-// Text the session has not read yet blocks the next editing action, so an
-// edit never overtakes the text typed before it. Enter ending a text run
-// delivered by this same call is the exception: it commits that text.
-// Text the application left entirely unread since the previous take, which
-// delivered none, is abandoned: it no longer holds edits back, and new text
-// that finds no room behind it is dropped instead of stalling every key.
-InputDeliveryTake :: (queue: *InputDelivery, session: Session,
-    held_modifiers: s32) -> (key: s32, modifiers: s32) {
-    if !SessionValid(session) { return 0, 0 }
-    key: s32 = 0
-    modifiers: s32 = 0
-    unread := TypedCodepointPeek(session) != 0
-    abandoned := unread && !queue.delivered && queue.session.slot == session.slot &&
-        queue.session.epoch == session.epoch && TypedCodepointCapacity(session) == queue.capacity
-    consumed: bool = unread && !abandoned
-    delivered_text := false
-    while queue.count > 0 {
-        item := queue.events[queue.head]
-        submit_text_run := item.code == KeyEnter && !item.text && !unread && delivered_text
-        if item.editing && consumed && !submit_text_run { break }
-        if item.text {
-            if TypedCodepointSend(session, item.code) { delivered_text = true }
-            else if !abandoned { break }
-        } else {
-            key = item.code
-            modifiers = item.modifiers
-        }
-        queue.head = (queue.head + 1) % INPUT_DELIVERY_CAPACITY
-        queue.count -= 1
-        consumed = true
-        if item.editing { break }
-    }
-    queue.session = session
-    queue.delivered = delivered_text
-    queue.capacity = TypedCodepointCapacity(session)
-    if !consumed { return 0, ifx unread then 0 else held_modifiers }
-    return key, modifiers
 }

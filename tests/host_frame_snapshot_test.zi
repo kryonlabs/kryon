@@ -6,6 +6,7 @@
 #import "tree"
 #import "tree_draw"
 #import "frame_input_provider"
+#import "tree_frame"
 Probe :: #import "snapshot_app";
 #if #defined(PLATFORM_WEB) {
     Host :: #import "canvas_run";
@@ -151,6 +152,8 @@ RunProbe :: () -> s32 {
         CanvasSetExitKey(0)
     } else {
         if !OpenDesktopSized(160, 120) { return 91 }
+        // A desktop host that runs frames registers the tree's driver.
+        unused TreeFrameUse()
     }
     defer { Close() }
     session := SessionOpen()

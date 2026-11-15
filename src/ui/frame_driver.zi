@@ -1,0 +1,114 @@
+// The widget tree's part of a host's frame loop. A host runs its window:
+// events, clearing and presenting. Each frame it hands what it observed to
+// the registered driver, which routes it to the widgets, runs the app's
+// frame and says which cursor to show. kryon/tree registers the tree's
+// driver (tree_frame) from its module initializer, and every widget imports
+// kryon/tree, so a program that draws no widget runs its window without a
+// driver and carries no tree, input routing, cursor, scroll, gamepad or
+// test-driver code.
+#import "geometry"
+#import "input_protocol"
+#import "session"
+#import "input_delivery"
+#import "frame_input_provider"
+
+FrameDraw :: #type (Session, Rectangle) -> s32;
+
+// What the host observed before this frame, and the app's frame to run.
+FrameDriverInput :: struct {
+    draw: FrameDraw
+    viewport: Rectangle
+    pointer: PointerFrame
+    secondary: SecondaryPointerFrame
+    wheel: float32
+    // Monotonic seconds, for scrolling momentum.
+    seconds: float64
+    // The host still shows the last frame, so an unchanged frame keeps it.
+    reusable: bool
+    // Compare this frame's paint with the last one: the window has been
+    // quiet for a while (see frame_clock).
+    compare: bool
+    // The input the host gathered for this frame's widgets, or null.
+    frame_input: *FrameInputProvider
+}
+
+// The cursor a frame asks for. The host applies it only when it changes.
+FrameCursor :: struct {
+    asset_path: string
+    width: s32
+    height: s32
+    hotspot_x: s32
+    hotspot_y: s32
+    hidden: bool
+    shape: s32
+}
+
+FrameDriverResult :: struct {
+    ok: bool
+    paint_unchanged: bool
+    cursor: FrameCursor
+}
+
+FrameRun :: #type (session: Session, input: FrameDriverInput) -> FrameDriverResult;
+// Moves the host's queued keys and typed text into the session. True when a
+// key or text reached it.
+FrameKeys :: #type (session: Session, queue: *InputDelivery, held_modifiers: s32) -> bool;
+// Ends the session when the window closes.
+FrameSessionEnd :: #type (session: Session) -> bool;
+// The navigation key a standard gamepad button stands for, or 0.
+FrameGamepadKey :: #type (button: s32) -> s32;
+// A test driver (native builds only, see test_driver_frame): the pointer and
+// wheel it moves, the text and keys it types into the host's queue, its
+// reply after each frame and the frame it asks the host to capture.
+FrameTestPointer :: #type (session: Session, real: PointerFrame) -> PointerFrame;
+FrameTestWheel :: #type (real: float32) -> float32;
+FrameTestInput :: #type (queue: *InputDelivery) -> void;
+FrameAfter :: #type (session: Session) -> void;
+FrameCapturePath :: #type () -> string;
+FrameCaptured :: #type (ok: bool) -> void;
+// Decodes a cursor picture into ARGB pixels; kryon/cursor registers it.
+FrameCursorPicture :: #type (asset_path: string, width: s32, height: s32,
+    pixels: []u32, premultiplied: bool) -> bool;
+
+frame_run: FrameRun;
+frame_keys: FrameKeys;
+frame_session_end: FrameSessionEnd;
+frame_test_pointer: FrameTestPointer;
+frame_test_wheel: FrameTestWheel;
+frame_after: FrameAfter;
+frame_gamepad_key: FrameGamepadKey;
+frame_test_input: FrameTestInput;
+frame_capture_path: FrameCapturePath;
+frame_captured: FrameCaptured;
+frame_cursor_picture: FrameCursorPicture;
+
+FrameDriverUse :: (run: FrameRun, keys: FrameKeys, session_end: FrameSessionEnd,
+    gamepad_key: FrameGamepadKey) -> bool {
+    frame_run = run
+    frame_keys = keys
+    frame_session_end = session_end
+    frame_gamepad_key = gamepad_key
+    return true
+}
+
+FrameDriverUseTest :: (pointer: FrameTestPointer, wheel: FrameTestWheel,
+    input: FrameTestInput, after: FrameAfter, capture_path: FrameCapturePath,
+    captured: FrameCaptured) -> bool {
+    frame_test_pointer = pointer
+    frame_test_wheel = wheel
+    frame_test_input = input
+    frame_after = after
+    frame_capture_path = capture_path
+    frame_captured = captured
+    return true
+}
+
+FrameCursorPictureUse :: (decode: FrameCursorPicture) -> bool {
+    frame_cursor_picture = decode
+    return true
+}
+
+FrameGamepadNavigationKey :: (button: s32) -> s32 {
+    if frame_gamepad_key == null { return 0 }
+    return frame_gamepad_key(button)
+}

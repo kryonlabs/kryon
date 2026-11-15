@@ -8,6 +8,13 @@ using Types :: #import "app_types";
     Host :: #import "app_unsupported";
 }
 
+// Runs the program's frames: `draw` builds each frame's widgets.
 Run :: (window: Window, draw: Draw = Empty) -> s32 {
     return Host.Run(window, draw)
+}
+
+// Shows the window until it closes, without frames. A program that draws
+// nothing carries no widget tree.
+Show :: (window: Window) -> s32 {
+    return Host.Show(window)
 }

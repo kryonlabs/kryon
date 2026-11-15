@@ -5,6 +5,7 @@
 #import "gamepad_navigation"
 #import "session"
 #import "input_delivery"
+#import "input_take"
 #import "tree_input"
 
 Step :: () { CanvasGamepadPoll() }

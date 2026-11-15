@@ -3,7 +3,15 @@
 #import "frame_snapshot"
 #import "session"
 #import "input_protocol"
-#import "test_driver"
+
+// A test driver adds its key to each frame's input; test_driver_frame
+// registers it in native builds.
+FrameInputTest :: #type (input: *FrameInputSnapshot) -> void;
+frame_input_test: FrameInputTest;
+FrameInputProviderUseTest :: (test: FrameInputTest) -> bool {
+    frame_input_test = test
+    return true
+}
 
 FrameInputProvider :: struct {
     sample: FrameInputSnapshot
@@ -59,7 +67,7 @@ FrameInputProviderGather :: (provider: *FrameInputProvider, raw: FrameInputSnaps
 FrameInputProviderBegin :: (provider: *FrameInputProvider, session: Session) -> bool {
     if !provider.sample.available || SessionValid(provider.owner) { return false }
     sample := provider.sample
-    TestDriverFrameInput(*sample)
+    if frame_input_test != null { frame_input_test(*sample) }
     if !FrameInputBegin(session, sample) { return false }
     provider.owner = session
     return true

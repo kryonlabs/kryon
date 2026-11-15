@@ -68,9 +68,14 @@ DesktopKeyWithModifiers :: (sdl: s32, modifiers: s32) -> s32 {
 // Other buttons and axes retain no runtime UI policy.
 #program_export
 DesktopGamepadKey :: (button: s32) -> s32 {
-    if button == 0 || button == 1 { return GamepadNavigationKey(button) }
-    if button == 4 { return GamepadNavigationKey(8) }
-    if button == 6 { return GamepadNavigationKey(9) }
-    if button >= 11 && button <= 14 { return GamepadNavigationKey(button + 1) }
-    return 0
+    return GamepadNavigationKey(DesktopGamepadButton(button))
+}
+
+// The standard gamepad button an SDL controller button is, or -1.
+DesktopGamepadButton :: (button: s32) -> s32 {
+    if button == 0 || button == 1 { return button }
+    if button == 4 { return 8 }
+    if button == 6 { return 9 }
+    if button >= 11 && button <= 14 { return button + 1 }
+    return -1
 }

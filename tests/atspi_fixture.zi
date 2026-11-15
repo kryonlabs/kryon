@@ -10,6 +10,7 @@ Button :: #import "kryon/button";
 TextField :: #import "kryon/text_field";
 #import "text_input"
 #import "accessibility_linux"
+#import "accessibility_tree_linux"
 Clock :: #import "std/timer_linux";
 using FrameStatus;
 using WidgetKind;
@@ -39,6 +40,7 @@ Editor :: (session: Session, length: s32, cursor: s32, anchor: s32) -> TextField
 Run :: () -> s32 {
     session: Session = SessionOpen()
     if !SessionValid(session) { return 1 }
+    unused AccessibilityTreeUse()
     defer { AccessibilityClose(); CloseSession(session); PixmapCloseWorkers() }
     initial: string = "AéZ"
     for i: 0..4 { value[i] = initial[i] }

@@ -112,7 +112,7 @@ ifneq ($(filter $(PROJECT_BACKEND),desktop raylib),)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/app_asset_path.zi $(KRYON_DIR)/src/backend/app_asset.zi $(KRYON_DIR)/src/backend/program_title.zi
 endif
 ifneq ($(filter $(PROJECT_BACKEND),desktop canvas),)
-HOST_SOURCES += $(KRYON_DIR)/src/backend/frame_input_provider.zi
+HOST_SOURCES += $(KRYON_DIR)/src/ui/frame_input_provider.zi
 endif
 HOST_ROOT_SOURCES := $(HOST)
 ifeq ($(PROJECT_HOST),)

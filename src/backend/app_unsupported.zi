@@ -5,3 +5,7 @@ Run :: (window: Window, draw: Draw = Empty) -> s32 {
     unused draw
     return 1
 }
+
+Show :: (window: Window) -> s32 {
+    return Run(window, Empty)
+}

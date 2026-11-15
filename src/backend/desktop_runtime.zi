@@ -6,7 +6,13 @@
 #import "frame_input_provider"
 #import "input_protocol"
 #import "input_delivery"
-#import "test_driver"
+#import "input_take"
+#import "frame_driver"
+// A build made for a test connects the test driver to every desktop host,
+// the stock ones and an application's own (see test_driver_frame).
+#if #defined(KRYON_TEST_DRIVER) {
+    #import "test_driver_frame"
+}
 Timer :: #import "std/timer_linux";
 #import "geometry"
 #import "program_title"
@@ -23,6 +29,9 @@ Clock :: #import "frame_clock";
 
 sdl_library :: #system_library "SDL2";
 GetEnvironment :: (name: *u8) -> *u8 #foreign sdl_library "SDL_getenv";
+desktop_libc :: #system_library "c";
+DesktopReport :: (descriptor: s32, text: *u8, count: usize) -> s64 #foreign desktop_libc "write";
+DesktopStop :: (status: s32) #foreign desktop_libc "exit";
 
 // SDL_Event is 56 bytes on the supported SDL2 ABI. SDL_MouseButtonEvent's
 // button byte is at offset 16; the remaining union storage is opaque.
@@ -146,7 +155,7 @@ DesktopControllerHeld :: (button: s32) -> bool {
 DesktopControllerRelease :: (slot: s32) {
     desktop_controllers[slot].buttons = cast(u32)0
     for button: cast(s32)0..14 {
-        key := DesktopGamepadKey(button)
+        key := DesktopPadKey(button)
         if key != 0 && !DesktopControllerHeld(button) &&
         (desktop_gamepad_keys[key] & cast(u8)FrameKeyHeld) != cast(u8)0 {
             desktop_gamepad_keys[key] &= cast(u8)(FrameKeyPressed | FrameKeyRepeated)
@@ -221,7 +230,7 @@ desktop_cursors: [11]*void;
 DESKTOP_CUSTOM_CURSORS :: 8
 DesktopCustomCursor :: struct {
     cursor: *void
-    props: CursorProps
+    props: FrameCursor
     used: u64
     length: s32
     path: [4096]u8
@@ -275,21 +284,23 @@ DesktopCursorPremultiplied :: () -> bool {
     return driver != null && TextFromCString(driver) == "x11"
 }
 
-DesktopCursorKey :: (entry: *DesktopCustomCursor, props: CursorProps) -> bool {
-    return CursorPropsSame(entry.props, CursorProps.{.width = props.width, .height = props.height,
-        .hotspot_x = props.hotspot_x, .hotspot_y = props.hotspot_y, .hidden = props.hidden,
-        .shape = props.shape}) && TextFromBytes(entry.path[:entry.length]) == props.asset_path
+DesktopCursorKey :: (entry: *DesktopCustomCursor, props: FrameCursor) -> bool {
+    kept := entry.props
+    return kept.width == props.width && kept.height == props.height &&
+        kept.hotspot_x == props.hotspot_x && kept.hotspot_y == props.hotspot_y &&
+        kept.hidden == props.hidden && kept.shape == props.shape &&
+        TextFromBytes(entry.path[:entry.length]) == props.asset_path
 }
 
-DesktopCursorRemember :: (entry: *DesktopCustomCursor, props: CursorProps) {
+DesktopCursorRemember :: (entry: *DesktopCustomCursor, props: FrameCursor) {
     unused CopyCString(props.asset_path, entry.path[:])
     entry.length = cast(s32)props.asset_path.count
-    entry.props = CursorProps.{.width = props.width, .height = props.height,
+    entry.props = FrameCursor.{.width = props.width, .height = props.height,
         .hotspot_x = props.hotspot_x, .hotspot_y = props.hotspot_y, .hidden = props.hidden,
         .shape = props.shape}
 }
 
-DesktopBitmapCursor :: (props: CursorProps) -> *void {
+DesktopBitmapCursor :: (props: FrameCursor) -> *void {
     oldest: s32 = 0
     for index: cast(s32)0..DESKTOP_CUSTOM_CURSORS - 1 {
         entry := *desktop_custom[index]
@@ -310,8 +321,8 @@ DesktopBitmapCursor :: (props: CursorProps) -> *void {
     if hot_y >= height { hot_y = height - 1 }
     pixels: [16384]u32
     // The decoder arrives with the first cursor request; see cursor_picture.
-    if cursor_picture == null ||
-        !cursor_picture(props.asset_path, width, height, pixels[:], DesktopCursorPremultiplied()) { return null }
+    if frame_cursor_picture == null ||
+        !frame_cursor_picture(props.asset_path, width, height, pixels[:], DesktopCursorPremultiplied()) { return null }
     surface := CursorSurface(cast(*u8)*pixels[0], width, height, 32,
         width * 4, cast(u32)0xff0000, cast(u32)0xff00,
         cast(u32)0xff, cast(u32)0xff000000)
@@ -359,6 +370,13 @@ DesktopCursorRelease :: () {
 DesktopCursor :: (session: Session) -> bool {
     if window == null || !SessionValid(session) { return false }
     props := CursorResolve(session, TreeCursor(session))
+    return DesktopCursorApply(FrameCursor.{props.asset_path, props.width, props.height,
+        props.hotspot_x, props.hotspot_y, props.hidden, props.shape})
+}
+
+// Shows the cursor a frame resolved (see frame_driver).
+DesktopCursorApply :: (props: FrameCursor) -> bool {
+    if window == null { return false }
     if desktop_cursor_applied_valid && DesktopCursorKey(*desktop_cursor_applied, props) {
         return desktop_cursor_applied_loaded
     }
@@ -386,6 +404,12 @@ DesktopCursor :: (session: Session) -> bool {
     return loaded
 }
 
+// A controller button navigates widgets only once kryon/tree registered its
+// gamepad navigation (see frame_driver).
+DesktopPadKey :: (button: s32) -> s32 {
+    return FrameGamepadNavigationKey(DesktopGamepadButton(button))
+}
+
 // SDL_PIXELFORMAT_ARGB8888, which matches Cairo's image surface.
 DESKTOP_PIXEL_FORMAT :: 0x16362004
 
@@ -401,9 +425,31 @@ DesktopLanczosWake :: (argument: *void) {
     unused PushEvent(*event)
 }
 
-// Opens the window with a drawing area of `width` by `height` pixels.
+// Opens the window with a drawing area of `width` by `height` pixels, titled
+// as the project tool names the program.
 #program_export
 OpenDesktopSized :: (width: s32, height: s32) -> bool {
+    return OpenDesktopTitled(width, height, ProgramTitle())
+}
+
+// Opens the window titled `title`.
+// A test asked to drive this window (KRYON_TEST_DRIVER names its directory)
+// but the build has no test driver: stop with the reason at once, so the
+// test fails instead of waiting for a reply that cannot come.
+DesktopTestDriverMissing :: () {
+    if frame_test_input != null { return }
+    name: [32]u8
+    if !CopyCString("KRYON_TEST_DRIVER", name[:]) { return }
+    value := GetEnvironment(*name[0])
+    if value == null || value.* == cast(u8)0 { return }
+    message: string = "kryon: KRYON_TEST_DRIVER is set, but this build has no test driver.\nBuild it with KRYON_TEST_DRIVER set in the environment, or with --define KRYON_TEST_DRIVER.\n"
+    bytes: [256]u8
+    if CopyCString(message, bytes[:]) { unused DesktopReport(2, *bytes[0], cast(usize)message.count) }
+    DesktopStop(2)
+}
+
+OpenDesktopTitled :: (width: s32, height: s32, title_text: string) -> bool {
+    DesktopTestDriverMissing()
     if width <= 0 || height <= 0 { return false }
     if size_of(Event) != 56 { return false }
     if Init(cast(u32)0x2020) != 0 { return false }
@@ -429,7 +475,7 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     !CopyCString("1", enabled[:]) { return false }
     unused SetHint(*hint[0], *enabled[0])
     title: [512]u8
-    if !CopyCString(ProgramTitle(), title[:]) { return false }
+    if !CopyCString(title_text, title[:]) { return false }
     window_flags := cast(u32)0x28 // RESIZABLE | HIDDEN until transport is ready
     window = CreateWindow(*title[0], cast(s32)0x2fff0000,
         cast(s32)0x2fff0000, width, height, window_flags)
@@ -695,7 +741,7 @@ DesktopEventBackpressured :: (event: *Event) -> bool {
     if event.kind == cast(u32)0x651 {
         slot := DesktopControllerFind(cast(s32)event.window_id)
         button := cast(s32)(event.which & cast(u32)255)
-        code := DesktopGamepadKey(button)
+        code := DesktopPadKey(button)
         mask := cast(u32)1 << cast(u32)button
         held := slot >= 0 && code != 0 &&
             (desktop_controllers[slot].buttons & mask) != cast(u32)0
@@ -780,7 +826,7 @@ PollDesktop :: () -> bool {
         if event.kind == cast(u32)0x651 || event.kind == cast(u32)0x652 {
             slot := DesktopControllerFind(cast(s32)event.window_id)
             button := cast(s32)(event.which & cast(u32)255)
-            code := DesktopGamepadKey(button)
+            code := DesktopPadKey(button)
             if slot >= 0 && code != 0 && desktop_input_focused {
                 mask := cast(u32)1 << cast(u32)button
                 held := (desktop_controllers[slot].buttons & mask) != cast(u32)0
@@ -938,7 +984,7 @@ PollDesktop :: () -> bool {
         }
     }
     // A test driver types through the same ordered delivery (KRYON_TEST_DRIVER).
-    TestDriverInput(*desktop_input)
+    if frame_test_input != null { frame_test_input(*desktop_input) }
     raw.focused = desktop_input_focused
     raw.pointer = pointer
     raw.secondary = secondary
@@ -952,12 +998,21 @@ PollDesktop :: () -> bool {
 // Publish the observations frozen by PollDesktop, never a consumed widget queue.
 #program_export
 DesktopFrameInputBegin :: (session: Session) -> bool {
+    return FrameInputProviderBegin(DesktopFrameInputPrepare(), session)
+}
+
+// The frame input PollDesktop gathered, carried forward when the last frame
+// was presented without a new poll; a frame driver publishes it.
+DesktopFrameInputPrepare :: () -> *FrameInputProvider {
     if desktop_frame_input_pending_carry {
         DesktopFrameInputAdvance()
         desktop_frame_input_pending_carry = false
     }
-    return FrameInputProviderBegin(*desktop_frame_input, session)
+    return *desktop_frame_input
 }
+
+// The keys and text this window queued for the frame driver.
+DesktopInputQueue :: () -> *InputDelivery { return *desktop_input }
 
 #program_export
 DesktopWheelMove :: () -> float32 { return desktop_wheel }
@@ -1041,8 +1096,10 @@ EndDesktopFrame :: () -> bool {
     if !FinishRasterFrame(desktop_frame_unchanged && desktop_pixels_valid) { return false }
     desktop_pixels_valid = true
     // A test driver's capture gets this finished frame (KRYON_TEST_DRIVER).
-    capture := TestDriverCapturePath()
-    if capture != "" { TestDriverCaptured(RasterWritePNG(capture)) }
+    if frame_capture_path != null {
+        capture := frame_capture_path()
+        if capture != "" && frame_captured != null { frame_captured(RasterWritePNG(capture)) }
+    }
     if !desktop_frame_unchanged { desktop_texture_dirty = true }
     // A hidden window keeps running the app's frames without presenting.
     if !WindowVisibleHost() && !desktop_first_frame { return true }

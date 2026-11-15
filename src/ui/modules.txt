@@ -56,10 +56,13 @@ flow/flow.zi
 focus.zi
 font_metrics.zi
 frame_capture.zi
+frame_driver.zi
+frame_input_provider.zi
 frame_input.zi
 frame_snapshot.zi
 frame_pacing.zi
 frame_transition.zi
+gamepad_navigation.zi
 geometry.zi
 grid.zi
 grid_props.zi
@@ -79,7 +82,9 @@ image/image_raster.zi
 image/image.zi
 input.zi
 input_props.zi
+input_delivery.zi
 input_protocol.zi
+input_take.zi
 inspect.zi
 inlineedit/inlineedit.zi
 instance.zi
@@ -238,6 +243,7 @@ transition.zi
 transition_widget.zi
 tree.zi
 tree_draw.zi
+tree_frame.zi
 tree_input.zi
 typeface_source.zi
 widget_key.zi

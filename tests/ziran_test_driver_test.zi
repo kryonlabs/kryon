@@ -11,6 +11,8 @@ Text :: #import "kryon/text";
 #import "tree_input"
 #import "test_driver"
 #import "frame_input_provider"
+// Connects the driver to the published frame input, as a test build does.
+#import "test_driver_frame"
 #import "frame_snapshot"
 #import "input_protocol"
 #import "ziran_test_driver_host"

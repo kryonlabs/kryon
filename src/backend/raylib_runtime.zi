@@ -19,6 +19,7 @@ RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #import "math"
 #import "test_driver"
 #import "input_delivery"
+#import "input_take"
 #import "session"
 #import "image_behavior"
 #import "program_title"

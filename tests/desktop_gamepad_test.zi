@@ -2,6 +2,8 @@
 #import "desktop_keys"
 #import "frame_snapshot"
 #import "session"
+// Controller buttons navigate widgets once a host registers the frame driver.
+#import "tree_frame"
 
 sdl :: #system_library "SDL2";
 TestInit :: (flags: u32) -> s32 #foreign sdl "SDL_Init";
@@ -55,6 +57,7 @@ main :: () -> s32 {
     // Virtual controllers are created inside this process, before and after
     // the host opens. Only synthetic events go to this private SDL queue.
     if TestInit(cast(u32)0x2000) != 0 { return 1 }
+    unused TreeFrameUse()
     indices: [5]s32
     instances: [5]s32
     indices[0] = Attach(1, 0, 15, 0)

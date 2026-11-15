@@ -1,0 +1,67 @@
+// The widget tree's frame driver (see frame_driver): what a host loop does
+// around the app's frame when the program draws. A host that runs frames
+// calls TreeFrameUse before its first frame; the call, not an import,
+// brings the driver, so a program that only opens a window carries none.
+#import "frame_driver"
+#import "geometry"
+#import "input_protocol"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "cursor"
+#import "frame_snapshot"
+#import "input_delivery"
+#import "input_take"
+#import "frame_input_provider"
+#import "gamepad_navigation"
+Scroll :: #import "scroll_device";
+
+using FrameStatus;
+
+// Routes the host's pointer and wheel to the widgets, publishes its frame
+// input, runs the app's frame and resolves the cursor it asks for.
+TreeFrameRun :: (session: Session, input: FrameDriverInput) -> FrameDriverResult {
+    result: FrameDriverResult
+    pointer := input.pointer
+    wheel := input.wheel
+    if frame_test_pointer != null { pointer = frame_test_pointer(session, pointer) }
+    if frame_test_wheel != null { wheel = frame_test_wheel(wheel) }
+    unused TreePointerUpdate(session, pointer)
+    TreeSecondaryPointerUpdate(session, input.secondary)
+    unused PointerWheelSend(session, pointer.x, pointer.y, wheel)
+    Scroll.BeginScrollFrame(session, .{pointer.x, pointer.y}, pointer.pressed,
+        pointer.down, pointer.released, wheel, input.seconds)
+    if input.frame_input != null && !FrameInputProviderBegin(input.frame_input, session) { return result }
+    published := session
+    defer { FrameInputEnd(published) }
+    if BeginFrame(session, cast(u64)1, input.viewport) != cast(FrameStatus)FrameOk { return result }
+    if input.draw(session, input.viewport) != 0 {
+        TreeCancel(session)
+        return result
+    }
+    finished := EndFrameRetained(session, input.reusable, input.compare)
+    if finished.status != cast(FrameStatus)FrameOk { return result }
+    props := CursorResolve(session, TreeCursor(session))
+    result.cursor = .{props.asset_path, props.width, props.height,
+        props.hotspot_x, props.hotspot_y, props.hidden, props.shape}
+    result.paint_unchanged = finished.paint_unchanged
+    result.ok = true
+    return result
+}
+
+// The host's queued keys and text, in order, then a test driver's.
+TreeFrameKeys :: (session: Session, queue: *InputDelivery, held_modifiers: s32) -> bool {
+    key, modifiers := InputDeliveryTake(queue, session, held_modifiers)
+    unused KeyboardModifiersSend(session, modifiers)
+    if key != 0 { unused KeyboardSend(session, key) }
+    return key != 0 || TypedCodepointPeek(session) != 0
+}
+
+TreeFrameClose :: (session: Session) -> bool {
+    return CloseSession(session)
+}
+
+TreeFrameUse :: () -> bool {
+    return FrameDriverUse(TreeFrameRun, TreeFrameKeys, TreeFrameClose, GamepadNavigationKey)
+}

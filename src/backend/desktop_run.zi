@@ -1,6 +1,12 @@
 // The default desktop host: the app's frames in a 960x600 window.
 Desktop :: #import "desktop_loop";
 #import "frame_entry"
+#import "tree_frame"
+#import "accessibility_tree_linux"
 
 #program_export
-main :: () -> s32 { return Desktop.Run(Frame) }
+main :: () -> s32 {
+    unused TreeFrameUse()
+    unused AccessibilityTreeUse()
+    return Desktop.Run(Frame)
+}

@@ -1,0 +1,150 @@
+// Pay per import: an example's generated C holds only what it imports.
+// Each case builds an example to C the way an application does, then checks
+// which modules the output carries. A module counts as present when a
+// generated file is named after it (packages prefix their modules, as in
+// p1f51d1621a97ce31_riff.c) or when the C says it was generated from it, so
+// the check holds for one file per module and for one file per program.
+//
+// Run from the Kryon root: ziran run --target=c tests/pay_per_import_test.zi
+// ZIRAN_BIN names the ziran command (default ziran).
+#import "std/process_run_linux"
+#import "std/file_tree_linux"
+#import "std/file"
+#import "std/text_tools"
+#import "std/environment_linux"
+using Vectors :: #import "vec";
+
+// What an empty window must never carry: widgets, input routing, text,
+// pictures, video, threads, the test driver, asset paths and title files.
+not_in_a_window: [26]string = .["tree", "tree_draw", "tree_input", "tree_frame", "paint_queue",
+    "text_request", "text_input_platform", "cursor", "scroll_device",
+    "gamepad_navigation", "input_take", "test_driver", "test_driver_frame",
+    "bitmap_store", "image_decode_linux", "avif_decode", "lanczos_cache",
+    "ziran_image_decode", "riff", "bmff", "video_linux", "std_thread_linux",
+    "std_parallel_linux", "program_title", "app_asset_path", "accessibility_tree_linux"];
+
+// What no example that shows no picture or video carries.
+not_without_pictures: [10]string = .["image_decode_linux", "avif_decode", "lanczos_cache",
+    "ziran_image_decode", "riff", "bmff", "video_linux", "std_thread_linux",
+    "std_parallel_linux", "app_asset_path"];
+
+failures: s32;
+
+Fail :: (example: string, message: string, module: string) {
+    print("pay per import: % % %\n", example, message, module)
+    failures += 1
+}
+
+EndsWith :: (text: string, suffix: string) -> bool {
+    return text.count >= suffix.count && text[text.count - suffix.count:] == suffix
+}
+
+// FILE is MODULE's own generated C: MODULE.c, or PACKAGE_MODULE.c.
+NamedFor :: (file: string, module: string) -> bool {
+    if !EndsWith(file, ".c") { return false }
+    stem := file[:file.count - 2]
+    if stem == module { return true }
+    return stem.count > module.count && EndsWith(stem, module) &&
+        stem[stem.count - module.count - 1] == #char "_"
+}
+
+// TEXT says it was generated from MODULE.zi.
+MarkedFor :: (text: string, module: string) -> bool {
+    at := TextFind(text, module)
+    while at >= 0 {
+        after := at + module.count
+        if at >= 5 && text[at - 5:at] == "from " && after + 3 <= text.count &&
+            text[after:after + 3] == ".zi" { return true }
+        at = TextFind(text, module, at + 1)
+    }
+    return false
+}
+
+Carries :: (directory: string, module: string) -> bool {
+    files: Vec(string)
+    if !ListDirectory(directory, *files) { return false }
+    found := false
+    for file: files {
+        if found || !EndsWith(file, ".c") { continue }
+        if NamedFor(file, module) { found = true; continue }
+        text, ok := ReadEntireFile(JoinPath(directory, file))
+        found = ok && MarkedFor(text, module)
+    }
+    FreeDirectoryNames(*files)
+    return found
+}
+
+Expect :: (example: string, directory: string, present: []string, absent: []string) {
+    files: Vec(string)
+    if !ListDirectory(directory, *files) {
+        Fail(example, "has no generated C in", directory)
+        return
+    }
+    FreeDirectoryNames(*files)
+    for module: present {
+        if !Carries(directory, module) { Fail(example, "lacks", module) }
+    }
+    for module: absent {
+        if Carries(directory, module) { Fail(example, "carries", module) }
+    }
+}
+
+Run :: (arguments: []string, directory: string) -> bool {
+    options: ProcessOptions = .{.arguments = arguments, .directory = directory}
+    run: ProcessRun
+    return RunProcess(options, *run) && run.code == 0
+}
+
+// A program entry, built as `ziran build` builds an application's main.
+BuildProgram :: (ziran: string, entry: string, source: string, output: string) -> bool {
+    arguments: [12]string = .[ziran, "build", "--target=c", "--project", "--root",
+        "examples", "--exe", "--entry", entry, "-o", output, source]
+    return Run(arguments[:], "")
+}
+
+// A frame example, built by the project tool's desktop profile into
+// build/examples/NAME/generated/desktop/c.
+BuildFrame :: (ziran: string, directory: string) -> bool {
+    arguments: [6]string = .[ziran, "tool", "kryon", "build", "--profile", "desktop"]
+    return Run(arguments[:], directory)
+}
+
+main :: () -> s32 {
+    ziran := EnvironmentText("ZIRAN_BIN")
+    if ziran == "" { ziran = "ziran" }
+
+    window_present: [6]string = .["window", "app_host_desktop", "desktop_loop",
+        "desktop_runtime", "cairo_raster", "pixmap_sdl"]
+    if !BuildProgram(ziran, "window:main", "examples/window.zi", "build/test/pay-per-import/window") {
+        Fail("window", "does not build", "examples/window.zi")
+    } else {
+        Expect("window", "build/test/pay-per-import/window", window_present[:], not_in_a_window[:])
+    }
+
+    hello_present: [4]string = .["tree", "tree_frame", "text", "paint_queue"]
+    if !BuildProgram(ziran, "hello:main", "examples/hello.zi", "build/test/pay-per-import/hello") {
+        Fail("hello", "does not build", "examples/hello.zi")
+    } else {
+        Expect("hello", "build/test/pay-per-import/hello", hello_present[:], not_without_pictures[:])
+    }
+
+    box_present: [3]string = .["box", "tree", "tree_frame"]
+    if !BuildFrame(ziran, "examples/box") {
+        Fail("box", "does not build", "examples/box")
+    } else {
+        Expect("box", "build/examples/box/generated/desktop/c", box_present[:], not_without_pictures[:])
+    }
+
+    image_present: [6]string = .["image", "image_decode_linux", "avif_decode",
+        "lanczos_cache", "riff", "bmff"]
+    image_absent: [1]string = .["video_linux"]
+    if !BuildFrame(ziran, "examples/image") {
+        Fail("image", "does not build", "examples/image")
+    } else {
+        Expect("image", "build/examples/image/generated/desktop/c", image_present[:], image_absent[:])
+    }
+
+    if failures > 0 { return 1 }
+    print("pay per import: window, hello, box and image carry only what they import\n")
+    return 0
+}
