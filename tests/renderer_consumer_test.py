@@ -56,6 +56,15 @@ class RendererConsumerTest(unittest.TestCase):
     def consume(self):
         return renderer.renderer_metadata(VerifiedArtifact(self.root, self.meta))
 
+    def test_local_provider_identity_uses_the_root_locked_kryon_edges(self):
+        first = dict(id='old', name='kryon', dependencies={'raylib': 'old-raylib'})
+        selected = dict(id='selected', name='kryon', dependencies={'raylib': 'raylib'})
+        lock = dict(packages=[first, selected], root=dict(dependencies={'kryon': 'selected'}))
+        self.assertIs(renderer.locked_provider(lock, 'selected'), selected)
+        self.assertIs(renderer.locked_provider(lock, 'local-override', local=True), selected)
+        with self.assertRaisesRegex(ValueError, 'absent'):
+            renderer.locked_provider(lock, 'local-override')
+
     def test_native_order_resources_and_compile_options(self):
         result = self.consume()
         self.assertEqual(renderer.renderer_link(result), [str(self.root / 'lib/second.a'),

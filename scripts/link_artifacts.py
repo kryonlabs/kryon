@@ -30,6 +30,10 @@ def link(args):
     artifacts = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(artifacts)
     env = dict(os.environ, CC=command[0])
+    # This variable selects test-only application code at compile time. It
+    # must not alter dependency artifact identities or their build outputs,
+    # and the generated C already contains the selected code at link time.
+    env.pop('KRYON_TEST_DRIVER', None)
     flags = []
     for selection in selections:
         artifact = artifacts.request(selection, args.platform, project=args.project,

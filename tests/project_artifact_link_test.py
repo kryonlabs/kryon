@@ -62,6 +62,14 @@ class ProjectArtifactTest(unittest.TestCase):
             self.assertEqual(link_artifacts.link(self.args),0)
         subprocess.run([str(self.root/'consumer')],check=True)
 
+    def test_test_driver_selection_does_not_rebuild_dependency_artifacts(self):
+        with patch.dict(link_artifacts.os.environ,{'KRYON_TEST_DRIVER':'1'}),\
+             patch.object(link_artifacts.subprocess,'check_output',return_value=str(self.descriptor)) as request,\
+             patch.object(link_artifacts.subprocess,'run',return_value=SimpleNamespace(returncode=0)) as compiler:
+            self.assertEqual(link_artifacts.link(self.args),0)
+        self.assertNotIn('KRYON_TEST_DRIVER',request.call_args.kwargs['env'])
+        self.assertNotIn('KRYON_TEST_DRIVER',compiler.call_args.kwargs['env'])
+
     def test_corrupt_output_never_invokes_compiler(self):
         (self.root/'support.a').write_bytes(b'corrupt')
         with patch.object(link_artifacts.subprocess,'check_output',return_value=str(self.descriptor)),\

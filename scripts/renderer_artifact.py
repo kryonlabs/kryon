@@ -95,6 +95,24 @@ def options():
                 Path(os.environ['ZIRAN_TOOL_OPTIONS']).read_text().splitlines() if '=' in line)
 
 
+def locked_provider(lock, package_id, local=False):
+    """Find Kryon's saved dependency edges when a local override changes its ID."""
+    exact = [package for package in lock['packages'] if package['id'] == package_id]
+    if len(exact) == 1:
+        return exact[0]
+    if not local:
+        raise ValueError('resolved provider identity is absent from ziran.lock')
+    root_ids = set(lock.get('root', {}).get('dependencies', {}).values())
+    rooted = [package for package in lock['packages']
+              if package.get('name') == 'kryon' and package['id'] in root_ids]
+    if len(rooted) == 1:
+        return rooted[0]
+    candidates = [package for package in lock['packages'] if package.get('name') == 'kryon']
+    if len(candidates) == 1:
+        return candidates[0]
+    raise ValueError('local Kryon provider is ambiguous in ziran.lock')
+
+
 def copy(source, output):
     output.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source, output)
@@ -127,7 +145,8 @@ def build(name, target, stage, root):
         project = Path(os.environ['ZIRAN_PROJECT_ROOT'])
         toolchain = Path(os.environ['ZIRAN_TOOLCHAIN_ROOT'])
         lock = json.loads((project / 'ziran.lock').read_text())
-        provider = next(p for p in lock['packages'] if p['id'] == os.environ['ZIRAN_PACKAGE_ID'])
+        provider = locked_provider(lock, os.environ['ZIRAN_PACKAGE_ID'],
+                                   (project / 'ziran.local.toml').exists())
         dependency = next(p for p in lock['packages']
                           if p['id'] == provider['dependencies']['sdl3'])
         locked = [] if (project / 'ziran.local.toml').exists() else ['--locked']
@@ -153,7 +172,8 @@ def build(name, target, stage, root):
     # potentially shadowing top-level alias. pkg path remains the public API.
     project = Path(os.environ['ZIRAN_PROJECT_ROOT'])
     lock = json.loads((project / 'ziran.lock').read_text())
-    provider = next(p for p in lock['packages'] if p['id'] == os.environ['ZIRAN_PACKAGE_ID'])
+    provider = locked_provider(lock, os.environ['ZIRAN_PACKAGE_ID'],
+                               (project / 'ziran.local.toml').exists())
     # pkg path selects names; reject an ambiguous/shadowed result explicitly.
     locked = [] if (project / 'ziran.local.toml').exists() else ['--locked']
     def locked_source(name, owner=None):
