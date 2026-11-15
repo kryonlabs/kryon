@@ -188,6 +188,20 @@ Theme :: #import "theme";
         return nearest
     }
 
+    // A secure field paints the caller's explicit mask, or one star per
+    // scalar of its value in the caller's mask bytes, so a nonempty secret
+    // never reads as an empty field and never paints its own bytes.
+    #program_export
+    TextFieldSecureDisplay :: (value: string, explicit_display: string,
+        mask: []u8) -> string {
+        if explicit_display != "" { return explicit_display }
+        count: s64 = cast(s64)TextFieldCodepoints(value)
+        if count > mask.count { count = mask.count }
+        index: s64 = 0
+        while index < count { mask[index] = 42; index += 1 }
+        return TextView(mask[:count])
+    }
+
     #program_export
     TextFieldDisplayByteFor :: (value: string, display: string,
         cursor: s32, secure: bool) -> s32 {
@@ -275,7 +289,11 @@ Theme :: #import "theme";
             if clear_size > props.bounds.width { clear_size = props.bounds.width }
         }
         display: string = props.value
-        if props.secure { display = props.display_value }
+        secure_mask: [256]u8
+        if props.secure {
+            display = TextFieldSecureDisplay(props.value, props.display_value,
+                secure_mask[:])
+        }
         text_width: s32 = GlyphWidth(display, font,
             face.value.typeface)
         scroll: TextFieldScroll = TextFieldScrollFor(

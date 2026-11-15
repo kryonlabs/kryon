@@ -496,6 +496,8 @@ main :: () -> s32 {
     if owned != 0 { return 60 + owned }
     password := PasswordKeyboard()
     if password != 0 { return 80 + password }
+    masked := SecureDefaultMask()
+    if masked != 0 { return 100 + masked }
     placed := PlacedField()
     if placed != 0 { return 50 + placed }
     return 0
@@ -549,6 +551,44 @@ OwnedField :: () -> s32 {
     unused SessionClose(session)
     return 0
 }
+
+// A secure field without an explicit display_value paints one star per
+// scalar of its value; an explicit mask still wins, an empty value still shows
+// its placeholder, and the secret never reaches paint or semantics.
+SecureDefaultMask :: () -> s32 {
+    session := SessionOpen()
+    step: s32 = 0
+    while step < 3 {
+        props: TextField.Props = .{.key = 993, .bounds = .{20.0, 20.0, 220.0, 36.0},
+            .label = "Key", .placeholder = "Enter key", .secure = true,
+            .value = "Aé🔑z", .cursor = 8, .anchor = 8, .focused = true}
+        expected := "****"
+        if step == 1 { props.display_value = "••"; expected = "••" }
+        if step == 2 { props.value = ""; props.cursor = 0; props.anchor = 0; expected = "Enter key" }
+        BeginFrame(session, 1, .{0.0, 0.0, 300.0, 100.0})
+        result := TextField.Draw(session, props)
+        painted := false
+        for index: cast(s32)0..PendingPaintCount(session) - 1 {
+            paint := PendingPaintAt(session, index)
+            if paint.value == expected { painted = true }
+            if paint.value == "Aé🔑z" { return 1 }
+            if step == 0 && paint.value == "Enter key" { return 2 }
+        }
+        if !painted { return 3 + step }
+        if EndFrame(session) != cast(FrameStatus)FrameOk { return 6 }
+        if !TreeNodeAt(session, result.node).secure { return 7 }
+        hidden: [32]u8
+        if TreeTextRange(session, result.node, 0, 8, hidden[:]) != "" { return 8 }
+        step += 1
+    }
+    if TextField.TextFieldSecureDisplay("Aé🔑z", "", mask_bytes[:]) != "****" { return 9 }
+    if TextField.TextFieldSecureDisplay("abc", "#", mask_bytes[:]) != "#" { return 10 }
+    if TextField.TextFieldSecureDisplay("abc", "", mask_bytes[:2]) != "**" { return 11 }
+    unused SessionClose(session)
+    return 0
+}
+
+mask_bytes: [8]u8;
 
 // Exercise the public key decoder, retained widget and caller-owned state
 // together. Secure fields keep byte selection for editing without publishing

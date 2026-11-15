@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A secure `TextField` with a value and no `display_value` shows one `*` per
+  character instead of an empty field. Before, an API key field looked empty
+  until the app's show toggle. An explicit `display_value` still replaces the
+  mask, and the secret still never reaches paint, semantics or the clipboard.
+
 - ZX apps run on Ziran's one executable format everywhere. Players and hosted
   apps call `InstantiateBundle` on every target, including the browser; the
   `--vm` option of `zx` and `ziran run` is gone, and the web, Raylib and
