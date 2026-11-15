@@ -1,0 +1,89 @@
+// A desktop window with nothing in it, as App.Show opens one: the window,
+// its events, clearing and presenting. It reaches none of the widget frame,
+// input routing, raster, cursor or accessibility code, so a program that
+// only shows a window carries none of it.
+Sdl :: #import "desktop_runtime";
+Presenter :: #import "pixmap_sdl";
+#import "std/c_string"
+
+sdl :: #system_library "SDL2";
+Init :: (flags: u32) -> s32 #foreign sdl "SDL_Init";
+Quit :: () #foreign sdl "SDL_Quit";
+CreateWindow :: (title: *u8, x: s32, y: s32, width: s32, height: s32, flags: u32) -> *void #foreign sdl "SDL_CreateWindow";
+DestroyWindow :: (window: *void) #foreign sdl "SDL_DestroyWindow";
+ShowWindow :: (window: *void) #foreign sdl "SDL_ShowWindow";
+GetWindowID :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowID";
+DestroyRenderer :: (renderer: *void) #foreign sdl "SDL_DestroyRenderer";
+RenderPresent :: (renderer: *void) #foreign sdl "SDL_RenderPresent";
+WaitEventTimeout :: (event: *Sdl.Event, milliseconds: s32) -> s32 #foreign sdl "SDL_WaitEventTimeout";
+SetRenderDrawColor :: (renderer: *void, red: u8, green: u8, blue: u8, alpha: u8) -> s32 #foreign sdl "SDL_SetRenderDrawColor";
+RenderClear :: (renderer: *void) -> s32 #foreign sdl "SDL_RenderClear";
+
+libc :: #system_library "libc";
+WindowWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
+
+// SDL_INIT_VIDEO and SDL_INIT_EVENTS.
+WINDOW_SDL_INIT :: 0x4020
+// SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN: shown after its first picture.
+WINDOW_FLAGS :: 0x28
+WINDOW_CENTERED :: 0x2fff0000
+
+WindowError :: (message: string) -> s32 {
+    bytes: [256]u8
+    if CopyCString(message, bytes[:]) {
+        unused WindowWrite(2, *bytes[0], cast(u64)message.count)
+    }
+    return 1
+}
+
+// The empty window's colour, the same as an empty Kryon frame.
+WindowClear :: (renderer: *void) -> bool {
+    return SetRenderDrawColor(renderer, 248, 250, 252, 255) == 0 && RenderClear(renderer) == 0
+}
+
+// Shows a window of `width` by `height` pixels titled `title` until it closes.
+ShowDesktopWindow :: (width: s32, height: s32, title: string) -> s32 {
+    if width <= 0 || height <= 0 { return WindowError("kryon: the window needs a size\n") }
+    if Init(cast(u32)WINDOW_SDL_INIT) != 0 {
+        return WindowError("kryon: could not open the desktop window\n")
+    }
+    name: [512]u8
+    if !CopyCString(title, name[:]) { name[0] = 0 }
+    window := CreateWindow(*name[0], cast(s32)WINDOW_CENTERED, cast(s32)WINDOW_CENTERED,
+        width, height, cast(u32)WINDOW_FLAGS)
+    if window == null {
+        Quit()
+        return WindowError("kryon: could not open the desktop window\n")
+    }
+    renderer := Presenter.CreatePixmapRenderer(window)
+    if renderer == null || !WindowClear(renderer) {
+        if renderer != null { DestroyRenderer(renderer) }
+        DestroyWindow(window)
+        Quit()
+        return WindowError("kryon: could not draw the desktop window\n")
+    }
+    RenderPresent(renderer)
+    ShowWindow(window)
+    id := GetWindowID(window)
+    event: Sdl.Event
+    open := true
+    while open {
+        if WaitEventTimeout(*event, 1000) == 0 { continue }
+        // SDL_QUIT: the last window closed or the session ended.
+        if event.kind == cast(u32)0x100 { open = false }
+        if event.kind == cast(u32)0x200 && event.window_id == id {
+            detail := event.which & cast(u32)255
+            // SDL_WINDOWEVENT_CLOSE.
+            if detail == cast(u32)14 { open = false }
+            // Shown, exposed, resized, size changed or restored: draw again.
+            if detail == cast(u32)1 || detail == cast(u32)3 || detail == cast(u32)5 ||
+                detail == cast(u32)6 || detail == cast(u32)9 {
+                if WindowClear(renderer) { RenderPresent(renderer) }
+            }
+        }
+    }
+    DestroyRenderer(renderer)
+    DestroyWindow(window)
+    Quit()
+    return 0
+}

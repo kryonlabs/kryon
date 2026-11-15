@@ -1000,9 +1000,10 @@ before the first one the host registers the widget tree's frame driver
 (`TreeFrameUse`, see `frame_driver`), which routes input to the widgets,
 runs `Draw` and picks the cursor, and on Linux the tree's accessibility nodes
 (`AccessibilityTreeUse`). `App.Show(window)` only shows the window, cleared,
-until it closes; it reaches none of the widget tree, so `examples/window.zi`
-compiles to the window, its event loop, clearing and presenting (23 generated
-C files). The desktop raster host registers its picture cache, smooth copies
+until it closes, through its own small loop (`desktop_window`); it reaches
+none of the frame loop, desktop runtime, raster, accessibility or widget tree,
+so `examples/window.zi` compiles to the window, its event loop, clearing and
+presenting. The desktop raster host registers its picture cache, smooth copies
 and font the first time a frame draws a picture or text, video registers its
 frame source when it opens, and the test driver is in a build only when
 `KRYON_TEST_DRIVER` is defined. `make pay-per-import-test` checks which

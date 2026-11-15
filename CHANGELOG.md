@@ -8,9 +8,11 @@
   Cutout textures cast their silhouettes, and hidden objects cast no shadow.
 
 - A program carries only what it uses. `App.Show(window)` shows a window
-  without frames, and `examples/window.zi` now compiles to the window, its
-  event loop, clearing and presenting: 23 generated C files and 133 KB
-  instead of 62 and 546 KB, a 118 KB executable instead of 265 KB. Hosts
+  without frames through its own small loop (`desktop_window`: the window,
+  its events, clearing and presenting), so `examples/window.zi` reaches only
+  the program, `kryon/app`, the desktop app host, that loop, the SDL presenter
+  and C strings: a 17 KB executable instead of 265 KB, with none of the frame
+  loop, desktop runtime, raster, sessions, input or accessibility. Hosts
   that run frames (`App.Run(window, Draw)` and the frame host) register the
   widget tree's frame driver (`tree_frame`, through `frame_driver`): input
   routing, the frame, cursor shapes, scrolling, gamepad navigation and the

@@ -1,5 +1,6 @@
 using App :: #import "app_types";
 Desktop :: #import "desktop_loop";
+Bare :: #import "desktop_window";
 using SessionModule :: #import "session";
 using Geometry :: #import "geometry";
 #import "tree_frame"
@@ -23,7 +24,11 @@ Run :: (window: Window, draw: Draw = Empty) -> s32 {
 // Shows the window, cleared, until it closes: no frames, so none of the
 // widget tree.
 Show :: (window: Window) -> s32 {
-    return Open(window, Empty)
+    width := window.width
+    height := window.height
+    if width <= 0 { width = 960 }
+    if height <= 0 { height = 600 }
+    return Bare.ShowDesktopWindow(width, height, window.title)
 }
 
 Open :: (window: Window, draw: Draw) -> s32 {
