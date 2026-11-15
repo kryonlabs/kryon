@@ -429,6 +429,17 @@ DriverWheel :: (driver: *TestDriverClient, x: float64, y: float64, wheel: float6
     return true
 }
 
+// Writes the app's next finished frame to PATH as a PNG. False when the host
+// cannot capture (only hosts that draw into a raster, such as the desktop,
+// can) or the file could not be written.
+DriverCapture :: (driver: *TestDriverClient, path: string) -> bool {
+    fields: Vec(u8)
+    DriverField(*fields, "path", path)
+    if !DriverSend(driver, "capture", BuilderFinish(fields), 15000) { return false }
+    if !driver.ok { return DriverFail(driver, Joined("capture: ", driver.error, "")) }
+    return true
+}
+
 // A press and release at X, Y, as a person's tap.
 DriverTap :: (driver: *TestDriverClient, x: float64, y: float64) -> bool {
     return DriverPointer(driver, x, y, true) && DriverPointer(driver, x, y, false)

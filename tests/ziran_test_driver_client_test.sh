@@ -21,4 +21,4 @@ if [ "$status" -ne 0 ]; then
     echo "test driver client failed with $status" >&2
     exit 1
 fi
-echo 'Test driver client finds, presses, types, sends keys and waits for settled frames'
+echo 'Test driver client finds, presses, types, sends keys, captures frames and waits for settled frames'

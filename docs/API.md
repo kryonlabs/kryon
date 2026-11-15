@@ -1282,6 +1282,13 @@ directory the same variable names when it runs. A program built without the
 driver and started with the variable set stops at once and says how to build
 it, so a test fails with the reason instead of waiting for a reply.
 
+A test captures what the app draws with `DriverCapture(driver, path)` (the
+`capture path=` command): the desktop host writes its next finished frame to
+that file as a PNG, the same raster it shows. Hosts without a raster to read
+reply "this host does not capture frames". A custom host captures by writing
+its next finished frame to `TestDriverCapturePath()` when that is not "" and
+reporting with `TestDriverCaptured(written)`.
+
 Portable hosted apps use `CursorSet` and `CursorHover` with `KRYON_HOSTED_UI`
 (the application cursors belong to their host). Their only effects are
 `cursor.CursorSetHostedHost` and `cursor.CursorHoverHostedHost`, which marks
@@ -1921,7 +1928,9 @@ Native applications can explicitly import `kryon/scene_gpu` and link
 `-lEGL -lGLESv2 -lGLX -lm`. This optional host is separate from the core UI, portable
 CPU renderer and WebAssembly path. It owns a surfaceless EGL/GLES3 context and
 renders the existing `Scene`, materials and `SceneCamera` into a reusable
-`std/image.Image` for ordinary Kryon Image presentation.
+`std/image.Image` for ordinary Kryon Image presentation. A web build (`OS ==
+.WEB`) links none of EGL or GL: `SceneGpuProbe` reports the GPU unavailable,
+and `SceneGpuRenderOrCPU` draws with `RenderScene`.
 
 Keep one `SceneGpuContext` at a stable address on its owning thread.
 `SceneGpuProbe(context)` reports availability, diagnostic, renderer labels,
@@ -2000,6 +2009,8 @@ a separate package consumer in native and portable forms without linking EGL.
 `ImageValid(*image)`; missing, invalid or unsupported files return an empty image.
 The caller owns `image.pixels` and releases it with `VecFree(image.pixels)`.
 Pixels are tightly packed, top-down, straight RGBA in the source's sRGB encoding.
+On the web the page decodes the file's bytes with the browser's own codecs
+(photos turned upright by Exif), so a canvas build links no image library.
 Use the single public scene-image surface:
 
 ```zi

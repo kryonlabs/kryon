@@ -9,7 +9,10 @@
 #import "std/format"
 #import "std/math"
 #import "drawing_props"
-G :: #import "scene_gpu_gl";
+// The GPU path is desktop EGL/GLES3; the web draws scenes with RenderScene.
+#if OS != .WEB {
+    G :: #import "scene_gpu_gl";
+}
 M :: #import "scene_gpu_math";
 #import "scene_gpu_sources"
 #import "scene_gpu_dfg"
@@ -90,6 +93,7 @@ SceneGpuContext :: struct {
  log: [2048]u8
 }
 
+#if OS != .WEB {
 // Probe creates only a surfaceless context. No host window/display is queried.
 // Calling again after Release retries detection, including after device loss.
 SceneGpuProbe :: (gpu: *SceneGpuContext)->SceneGpuCapabilities {
@@ -166,7 +170,9 @@ SceneGpuRender :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,image
 }
 
 // Draw and resolve only; both public paths use precisely the same quality math.
+}
 #scope_file
+#if OS != .WEB {
 RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->SceneGpuFrame {
  start:=Now()
  if !PrepareGeometry(gpu,scene) { return .{diagnostic="invalid geometry or allocation failure"} }
@@ -243,7 +249,9 @@ ConvertReadback :: (gpu: *SceneGpuContext,image: *Image,opaque: bool)->bool {
  return true
 }
 
+}
 #scope_export
+#if OS != .WEB {
 // Submit snapshots camera metadata and enqueues all Scene reads before return.
 // Public Scene, shader and texture storage can then be mutated on this thread.
 SceneGpuSubmit :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,width: s32,height: s32,request_id: u64)->SceneGpuAsyncResult {
@@ -399,7 +407,40 @@ SceneGpuMemoryUsage :: (gpu: *SceneGpuContext)->SceneGpuResources {
  return r
 }
 
+} else {
+// No surfaceless EGL context on the web: probing reports the GPU unavailable,
+// rendering asks RenderScene, and nothing GPU-side is ever held.
+SceneGpuProbe :: (gpu: *SceneGpuContext)->SceneGpuCapabilities {
+ gpu.attempted=true
+ gpu.capabilities.diagnostic="no GPU scene renderer on the web"
+ gpu.capabilities.async_diagnostic=gpu.capabilities.diagnostic
+ return gpu.capabilities
+}
+SceneGpuResize :: (gpu: *SceneGpuContext,width: s32,height: s32)->bool { unused gpu; unused width; unused height; return false }
+SceneGpuRender :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,image: *Image)->SceneGpuFrame {
+ unused scene; unused camera; unused image
+ return SceneGpuFrame.{.diagnostic=SceneGpuProbe(gpu).diagnostic}
+}
+SceneGpuSubmit :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,width: s32,height: s32,request_id: u64)->SceneGpuAsyncResult {
+ unused scene; unused camera; unused width; unused height; unused request_id
+ return SceneGpuAsyncResult.{.diagnostic=SceneGpuProbe(gpu).diagnostic}
+}
+SceneGpuPoll :: (gpu: *SceneGpuContext,image: *Image)->SceneGpuAsyncResult {
+ unused image
+ return SceneGpuAsyncResult.{.diagnostic=SceneGpuProbe(gpu).diagnostic}
+}
+SceneGpuCancel :: (gpu: *SceneGpuContext) { unused gpu }
+SceneGpuRenderOrCPU :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,image: *Image)->SceneGpuFrame {
+ unused gpu
+ result: SceneGpuFrame
+ result.ok=RenderScene(scene,camera,image)
+ return result
+}
+SceneGpuRelease :: (gpu: *SceneGpuContext) { gpu.attempted=false }
+SceneGpuMemoryUsage :: (gpu: *SceneGpuContext)->SceneGpuResources { return gpu.resources }
+}
 #scope_file
+#if OS != .WEB {
 clocklib :: #system_library "c";
 ClockTime :: struct {seconds: s64;nanoseconds: s64}
 ClockGet :: (id: s32,time: *ClockTime)->s32 #foreign clocklib "clock_gettime";
@@ -968,4 +1009,5 @@ RenderShadows :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
  }
  gpu.shadow_geometry=gpu.resources.geometry_uploads
  return G.GetError()==0
+}
 }

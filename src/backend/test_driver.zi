@@ -19,6 +19,10 @@
 //     down := TestDriverKeyDown(key) || PlatformKeyDown(key)
 //     TestDriverFrame(session)                       // after the frame ends
 //
+// A host that can capture writes its next finished frame to
+// TestDriverCapturePath() when that is not "", then calls
+// TestDriverCaptured(written).
+//
 // The test writes one command at a time to DIR/command (written elsewhere in
 // DIR and renamed into place), then waits for DIR/reply, a JSON object, and
 // removes it. A command is one line of tab-separated fields: a serial number,
@@ -37,6 +41,10 @@
 //                               right
 //     type text=                typed text, at most 8 codepoints a frame
 //     key code= control= shift= one key press, raylib's key codes
+//     capture path=             the next finished frame as a PNG at path, on
+//                               hosts that draw into a raster (the desktop);
+//                               others reply "this host does not capture
+//                               frames"
 //
 // A selector has any of label= (exact), contains= (ASCII case-insensitive),
 // role= (a widget kind such as button or text_field, or a semantic role such
@@ -91,6 +99,12 @@
     // After each frame: answers the test and starts its next command.
     #program_export
     TestDriverFrame :: (session: Session) { Engine.TestDriverFrame(session) }
+    // A host that can capture writes its next finished frame to this file
+    // when it is not "", then reports whether that worked.
+    #program_export
+    TestDriverCapturePath :: () -> string { return Engine.TestDriverCapturePath() }
+    #program_export
+    TestDriverCaptured :: (ok: bool) { Engine.TestDriverCaptured(ok) }
 } else {
     // A test asked to drive this program, but the build left the driver out.
     // Stop with the reason at once, so the test fails instead of waiting for
@@ -139,4 +153,8 @@
     TestDriverFrameInput :: (input: *FrameInputSnapshot) { unused input }
     #program_export
     TestDriverFrame :: (session: Session) { unused session; TestDriverRequired() }
+    #program_export
+    TestDriverCapturePath :: () -> string { return "" }
+    #program_export
+    TestDriverCaptured :: (ok: bool) { unused ok }
 }

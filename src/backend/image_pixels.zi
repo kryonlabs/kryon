@@ -13,20 +13,24 @@
     PixelRelease :: (pixels: *void) #foreign pixels_c "free";
     Jni :: #import "android_jni";
     Orientation :: #import "image_orientation";
-} else #if #defined(PLATFORM_WEB) {
-    Decode :: #import "raylib_image_decode";
+} else #if OS == .WEB {
+    // The page decodes with the browser's codecs (photos upright by Exif)
+    // and copies straight RGBA into Wasm memory; no raylib is linked.
+    Page :: #import "page_texture";
+    page_pixels_c :: #system_library "c";
+    PagePixelRelease :: (pixels: *void) #foreign page_pixels_c "free";
 } else {
     Decode :: #import "image_decode_linux";
 }
 
-#if #defined(PLATFORM_WEB) || #defined(ANDROID_BUILD) {
+#if OS == .WEB || #defined(ANDROID_BUILD) {
     #import "std/file_linux"
     #import "std/byte_text_linux"
 }
 
 // Empty means missing, unsupported or invalid. Caller frees image.pixels.
 LoadImagePixels :: (path: string) -> Image {
-    #if #defined(PLATFORM_WEB) || #defined(ANDROID_BUILD) {
+    #if OS == .WEB || #defined(ANDROID_BUILD) {
         encoded:=ReadPixelsFile(path)
         defer VecFree(encoded)
         if encoded.count==0 { return .{} }
@@ -58,10 +62,12 @@ LoadImagePixels :: (path: string) -> Image {
             }
             return result
         } else {
-        decoded:=Decode.RaylibDecodeImage(path,TextView(encoded[:]))
-        defer Decode.RaylibImageRelease(decoded)
-        if decoded.data==null || decoded.format!=7 { return .{} }
-        return CopyRgba(cast(*u8)decoded.data,decoded.width,decoded.height,decoded.width*4,4)
+        if encoded.count>2147483647 { return .{} }
+        width: s32; height: s32
+        pixels:=Page.PageImageDecode(*encoded[0],cast(s32)encoded.count,*width,*height)
+        if pixels==null { return .{} }
+        defer PagePixelRelease(cast(*void)pixels)
+        return CopyRgba(pixels,width,height,width*4,4)
         }
     } else {
         // The packaged WebP/AVIF adapters already produce straight RGBA.
@@ -98,7 +104,7 @@ CopyRgba :: (pixels: *u8,width: s32,height: s32,stride: s32,channels: s32) -> Im
     return result
 }
 
-#if #defined(PLATFORM_WEB) || #defined(ANDROID_BUILD) {
+#if OS == .WEB || #defined(ANDROID_BUILD) {
 ReadPixelsFile :: (path: string) -> Vec(u8) {
     #if #defined(ANDROID_BUILD) {
         if path.count>0 && path[0]!=cast(u8)47 { return ReadAssetPixels(path) }

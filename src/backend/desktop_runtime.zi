@@ -1038,6 +1038,9 @@ EndDesktopFrame :: () -> bool {
     desktop_wheel = 0.0
     if !FinishRasterFrame(desktop_frame_unchanged && desktop_pixels_valid) { return false }
     desktop_pixels_valid = true
+    // A test driver's capture gets this finished frame (KRYON_TEST_DRIVER).
+    capture := TestDriverCapturePath()
+    if capture != "" { TestDriverCaptured(RasterWritePNG(capture)) }
     if !desktop_frame_unchanged { desktop_texture_dirty = true }
     // A hidden window keeps running the app's frames without presenting.
     if !WindowVisibleHost() && !desktop_first_frame { return true }

@@ -12,6 +12,7 @@ Text :: #import "kryon/text";
 #import "test_driver_client"
 #import "ziran_test_driver_host"
 #import "environment_linux"
+#import "file"
 
 using FrameStatus;
 
@@ -20,6 +21,8 @@ clicks: s32;
 enter_presses: s32;
 typed: [256]u8;
 typed_count: s32;
+// Whether this host captures frames for the test driver, as the desktop does.
+host_captures: bool;
 
 Frame :: () -> bool {
     real: PointerFrame
@@ -45,6 +48,8 @@ Frame :: () -> bool {
     }
     if TestDriverKeyPressed(DRIVER_KEY_ENTER) { enter_presses += 1 }
     if CommitFrame(session) != cast(FrameStatus)FrameOk { return false }
+    capture := TestDriverCapturePath()
+    if capture != "" && host_captures { TestDriverCaptured(WriteEntireFile(capture, "frame")) }
     TestDriverFrame(session)
     return true
 }
@@ -72,5 +77,16 @@ main :: () -> s32 {
     if !DriverTap(*driver, 70.0, 40.0) || clicks != 2 { return 13 }
     // A press on nothing fails with the app's reason and what it showed.
     if DriverSend(*driver, "press", "\tlabel=Missing", 2000) && driver.ok { return 14 }
+    // A capturing host writes its next frame where the test asks; a host
+    // that cannot capture says so instead of leaving the test waiting.
+    picture := Joined(directory, "/frame.png", "")
+    host_captures = true
+    if !DriverCapture(*driver, picture) { return 15 }
+    written, found := ReadEntireFile(picture)
+    if !found || written != "frame" { return 16 }
+    host_captures = false
+    if !DriverSend(*driver, "capture", Joined("\tpath=", picture, ""), 15000) || driver.ok ||
+        driver.error != "this host does not capture frames" { return 17 }
+    if DriverSend(*driver, "capture", "", 2000) && driver.ok { return 18 }
     return 0
 }

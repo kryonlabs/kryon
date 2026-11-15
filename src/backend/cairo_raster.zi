@@ -475,6 +475,14 @@ CaptureConfigured :: () -> bool {
     if path == null { return false }
     return SurfaceWritePNG(surface, path) == 0
 }
+
+// Writes the finished frame to PATH as a PNG (a test driver's capture).
+#program_export
+RasterWritePNG :: (path: string) -> bool {
+    name: [4096]u8
+    if !CopyCString(path, name[:]) { return false }
+    return SurfaceWritePNG(surface, *name[0]) == 0
+}
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {

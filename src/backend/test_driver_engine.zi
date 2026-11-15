@@ -67,6 +67,8 @@ TestDriverCommand :: struct {
     control: bool
     shift: bool
     real: bool
+    // A capture's destination file.
+    path: string
     error: string
 }
 
@@ -123,6 +125,14 @@ TestDriverState :: struct {
     typed_taken_frame: s64
     typed_taken_this_frame: s32
     typed_idle_frames: s32
+    // A capture in progress: the host writes its next finished frame to
+    // capture_path (TestDriverCapturePath), then reports with TestDriverCaptured.
+    capture_path: [TEST_DRIVER_PATH_LIMIT]u8
+    capture_count: s32
+    capture_pending: bool
+    capture_done: bool
+    capture_ok: bool
+    capture_since: s64
     command: [TEST_DRIVER_COMMAND_LIMIT]u8
     read_mode: [4]u8
     write_mode: [4]u8
@@ -585,7 +595,9 @@ TestDriverFieldRange :: struct {
 }
 
 TestDriverField :: (command: *TestDriverCommand, name: string, value: string) {
-    if name == "label" {
+    if name == "path" {
+        command.path = value
+    } else if name == "label" {
         command.selector.label = value
         command.selector.has_label = true
     } else if name == "contains" {
@@ -996,16 +1008,59 @@ TestDriverStart :: (session: Session, command: TestDriverCommand) {
         test_driver.key_frame = next
         test_driver.key_queued = false
         test_driver.waiting = true
+    } else if command.verb == "capture" {
+        if command.path.count == 0 || command.path.count >= TEST_DRIVER_PATH_LIMIT {
+            TestDriverReply(session, "capture needs a path", -1, false, empty)
+            return
+        }
+        count: s32 = 0
+        while count < cast(s32)command.path.count {
+            test_driver.capture_path[count] = command.path[count]
+            count += 1
+        }
+        test_driver.capture_count = count
+        test_driver.capture_pending = true
+        test_driver.capture_done = false
+        test_driver.capture_ok = false
+        test_driver.capture_since = test_driver.frames_done
+        test_driver.waiting = true
     } else {
         TestDriverReply(session, "unknown verb", -1, false, empty)
     }
 }
+
+// The file a host writes its next finished frame to, or "" when no test
+// asked for one. The host reports the result with TestDriverCaptured.
+TestDriverCapturePath :: () -> string {
+    if !test_driver.capture_pending || test_driver.capture_done { return "" }
+    return TextView(test_driver.capture_path[0:test_driver.capture_count])
+}
+
+TestDriverCaptured :: (ok: bool) {
+    if !test_driver.capture_pending { return }
+    test_driver.capture_done = true
+    test_driver.capture_ok = ok
+}
+
+// Hosts get this many frames to write a capture before the test hears that
+// this host cannot capture.
+TEST_DRIVER_CAPTURE_FRAMES :: 30
 
 // Replies to the command in progress once its input has been delivered and
 // the frame that received it has ended.
 TestDriverFinish :: (session: Session) {
     empty: TestDriverSelector
     done := test_driver.frames_done
+    if test_driver.capture_pending {
+        if !test_driver.capture_done && done - test_driver.capture_since < TEST_DRIVER_CAPTURE_FRAMES { return }
+        error := ""
+        if !test_driver.capture_done { error = "this host does not capture frames" }
+        else if !test_driver.capture_ok { error = "the frame could not be written" }
+        test_driver.capture_pending = false
+        test_driver.waiting = false
+        TestDriverReply(session, error, -1, false, empty)
+        return
+    }
     if test_driver.queue_count > 0 || test_driver.queue_frame > done { return }
     if test_driver.key_frame > done || test_driver.wheel_frame > done { return }
     if test_driver.typed_offset < test_driver.typed_count {
