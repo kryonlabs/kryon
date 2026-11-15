@@ -179,7 +179,7 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
             if module.get('styles'): setup += f'    {module["styles"]}(example_input.theme == 2)\n'
             code = template.replace('// @declarations', declarations.rstrip()).replace('// @title', name).replace('    // @example', setup + textwrap.indent(textwrap.dedent(preamble).strip(), '    ') + '\n' + textwrap.indent(textwrap.dedent(fragment).strip(), '    ') + '\n')
             slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
-            slug = {'cui-style':'stylepicker', 'button-emphasis':'button', 'dropdown-open':'dropdown', 'circle-ring-triangle-line':'shape', 'page-section-heading-paragraphtext':'page', 'text-selection':'text', 'transition-fade':'transition', 'listboxmulti':'listbox', 'plot-bars':'plotbars', 'plot-lines':'plotlines', 'separator-and-bullet':'separator'}.get(slug, slug)
+            slug = {'modern-style':'stylepicker', 'button-emphasis':'button', 'dropdown-open':'dropdown', 'circle-ring-triangle-line':'shape', 'page-section-heading-paragraphtext':'page', 'text-selection':'text', 'transition-fade':'transition', 'listboxmulti':'listbox', 'plot-bars':'plotbars', 'plot-lines':'plotlines', 'separator-and-bullet':'separator'}.get(slug, slug)
             example = examples_root / slug
             entry = example / (slug + '.zi')
             if not entry.exists():

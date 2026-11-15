@@ -1,6 +1,6 @@
 # Theme customization
 
-Kryon uses one modern CUI-inspired style. Light and dark are color modes of
+Kryon uses one modern style. Light and dark are color modes of
 that style; applications do not need a style-pack registry or selector.
 
 Import `kryon/Theme` for theme tokens. `InstallDefaultTheme(dark)` installs

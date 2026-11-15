@@ -1,7 +1,7 @@
-# CUI input components
+# Input components
 
-These six Ziran components cover the selected CUI input families without a CUI
-compatibility layer. Each render entry is `(Session, Props, *State) -> Result`;
+These six Ziran components cover the selected modern input families without an
+external compatibility layer. Each render entry is `(Session, Props, *State) -> Result`;
 each `Apply` function has the same behavior without requiring a building frame.
 Caller-owned state is plain fixed-size data, including text bytes, so it can be
 copied or serialized. No component owns global text, focus, clipboard, or
@@ -133,16 +133,3 @@ The state owns the key, modifier mask, focus/recording flags, and its fixed
 label buffer. Width, height, and font size have explicit metrics; animation
 uses the current theme motion duration and installed style cascade.
 
-## Verification
-
-`tests/ziran_cui_inputs_test.sh` builds identical source and saved-IR bundles,
-runs both, generates native C and Go, and checks behavior across all six
-families. Rendering assertions inspect the retained tree and actual raster
-providers, including custom one-time-code slot metrics, shortcut font metrics,
-and inline-edit IME preedit. The command is:
-
-```sh
-build-queue -- env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY \
-  -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
-  sh tests/ziran_cui_inputs_test.sh
-```

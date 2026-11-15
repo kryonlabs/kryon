@@ -16,7 +16,7 @@ from toolchain import ZIRAN_ROOT
 OUTPUT = ROOT / 'build/scratch/gallery-visual-feedback'
 BINARY = OUTPUT / 'gallery-testhost'
 OWNER_BINARY = ROOT / 'examples/gallery/build/gallery-desktop'
-EVIDENCE = ROOT / 'backup/cui-motion/visual-feedback'
+EVIDENCE = ROOT / 'backup/modern-motion/visual-feedback'
 
 def sha(path):
     value = hashlib.sha256()

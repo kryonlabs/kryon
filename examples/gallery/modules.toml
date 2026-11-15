@@ -70,7 +70,7 @@ category = "Controls"
 "50" = "Selectable wrapped text."
 "51" = "An out-transition color over labeled content."
 "52" = "A discrete ten-step slider with a readout."
-"53" = "One modern CUI style with customizable colors and light/dark modes."
+"53" = "One modern style with customizable colors and light/dark modes."
 "54" = "Filled, elevated, and outlined card variants."
 
 [[modules]]

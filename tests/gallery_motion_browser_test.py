@@ -9,7 +9,7 @@ from site_browser_test import Browser, SITE, serve, select_example, mouse, node_
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'build/scratch/gallery-motion-browser'
-EVIDENCE = Path(os.environ.get('KRYON_MOTION_EVIDENCE', ROOT / 'backup/cui-motion/visual-feedback'))
+EVIDENCE = Path(os.environ.get('KRYON_MOTION_EVIDENCE', ROOT / 'backup/modern-motion/visual-feedback'))
 
 def difference(a,b):
     return sum(ImageStat.Stat(ImageChops.difference(a,b)).mean)
