@@ -69,6 +69,9 @@ Test :: () -> s32 {
     tints: [4]Color = .[.{255, 255, 255, 255}, .{255, 255, 255, 255}, .{255, 255, 255, 255}, .{255, 255, 255, 128}]
     for kind: cast(s32)0..1 {
         text: Vec(u8); BuilderPrint(*text, "/lanczos/%.png", sources[kind]); path := BuilderFinish(text)
+        // A widget lays a picture out from its size before drawing it, which
+        // is what brings the page its smooth copies.
+        unused ImageWidth(path)
         for index: cast(s32)0..3 {
             if !Draw(path, boxes[index], targets[index], tints[index], true) { return 10 + kind * 4 + index }
             if !Lanczos.LanczosPending() { return 20 + kind * 4 + index }
