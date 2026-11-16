@@ -30,7 +30,9 @@ def main():
     source = ROOT / 'tests/file_date_linux_test.zi'
     ir = OUT / 'ir'
     common = ['--module-path', ROOT / 'src/backend']
-    run(['build-queue', '--', compiler, 'ir', '--root', ROOT / 'tests', *common,
+    # Developer machines share builds through build-queue; CI runs them directly.
+    queue = ['build-queue', '--'] if shutil.which('build-queue') else []
+    run([*queue, compiler, 'ir', '--root', ROOT / 'tests', *common,
          '--entry', 'file_date_linux_test:main', '-o', ir, source], env=env)
     locale.setlocale(locale.LC_ALL, 'C.UTF-8')
     available_locales = subprocess.check_output(['locale', '-a'], text=True).splitlines()
@@ -45,7 +47,7 @@ def main():
         target = OUT / form
         input_ = source if form == 'source' else ir / 'file_date_linux_test.zir'
         root = ROOT / 'tests' if form == 'source' else ir
-        run(['build-queue', '--', compiler, 'build', '--target=c', '--exe',
+        run([*queue, compiler, 'build', '--target=c', '--exe',
              '--entry', 'file_date_linux_test:main', '--root', root, *common,
              '-o', target, input_], env=env)
         executable = target / 'file_date_linux_test'
