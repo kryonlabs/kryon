@@ -78,12 +78,15 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import shutil, subprocess
+          import json, shutil, subprocess
           site = Path('docs/site')
           output = Path('build/scratch/website-deploy')
           paths = {Path(p) for p in subprocess.check_output(['git', 'ls-files', '-z', '--', str(site)]).decode().split('\0') if p}
           paths.add(site / 'gallery-data.js')
           paths.update((site / 'gallery-sources').rglob('*.zi'))
+          # The build numbers runtime assets; stage every one it lists, since
+          # a newly bundled asset is not tracked yet.
+          paths.update(site / name for _, name in json.loads((site / 'runtime/assets.json').read_text()))
           for source in paths:
               destination = output / source.relative_to(site)
               destination.parent.mkdir(parents=True, exist_ok=True)
