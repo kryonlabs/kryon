@@ -27,8 +27,7 @@ try:
     source = project / 'src/toast_action_test.zi'
     ir = work / 'ir'
     run([ZIRAN, 'ir', '--project', '--offline', '-o', ir, source])
-    effects = [('font_metrics', 'MeasureGlyphWidth'), ('font_metrics', 'MeasureGlyphLineHeight'),
-               ('image_raster', 'ImageWidth'), ('image_raster', 'ImageHeight')]
+    effects = [('font_metrics', 'MeasureGlyphWidth'), ('font_metrics', 'MeasureGlyphLineHeight')]
     effects += [(module, effect) for module, names in {'paint_queue': ['RasterImage', 'RasterImageMesh'], 'raster': ['RasterLine'], 'raster_shape': ['RasterRoundedRectangle', 'RasterRoundedRectangleOutline'], 'raster_text': ['RasterText', 'RasterTextClipped', 'RasterTextRotated'], 'raster_triangles': ['RasterTriangles']}.items() for effect in names]
     bindings = []
     for module, effect in effects:
