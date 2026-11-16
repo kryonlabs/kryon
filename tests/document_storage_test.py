@@ -65,7 +65,9 @@ var storageTestMode=Number(new URLSearchParams(location.search).get('reload')||0
 var Module={preRun:[()=>{Date.now=()=>1700000000000; if(storageTestMode===2) indexedDB.open=()=>{throw new Error('initial IDB unavailable')};const sync=FS.syncfs; FS.syncfs=(p,cb)=>sync(p,e=>setTimeout(()=>cb(e),40));}],onExit:c=>document.getElementById('result').textContent=c?'FAIL '+c:'PASS',onAbort:e=>document.getElementById('result').textContent='ABORT '+e};
 function storageTestFail(){FS.filesystems.IDBFS.dbs['/kryon-apps'].close()}
 </script>{{{ SCRIPT }}}''')
-                run([emcc,*flags,WORK/'runtime/libziran.a','--js-library',ZIRAN_ROOT/'web/ziran_web.js','-lidbfs.js','-sASYNCIFY','-sSTACK_SIZE=16777216','-sASYNCIFY_STACK_SIZE=1048576','-g2','-sASSERTIONS=1','-sALLOW_MEMORY_GROWTH=1','-sINITIAL_MEMORY=134217728','-sSINGLE_FILE=1','-sEXIT_RUNTIME=1','-sEXPORTED_RUNTIME_METHODS=FS','-sENVIRONMENT=web','--embed-file',str(WORK/'guest.zx')+'@work/document-storage/guest.zx','--shell-file',shell,'-o',WORK/'test.html'])
+                # The hosted guest runs on Ziran's Wasm tier, whose call import
+                # unwinds through the page's stack.
+                run([emcc,*flags,WORK/'runtime/libziran.a','--js-library',ZIRAN_ROOT/'web/ziran_web.js','-lidbfs.js','-sASYNCIFY',"-sASYNCIFY_IMPORTS=['zx_wasm_web_call']",'-sSTACK_SIZE=16777216','-sASYNCIFY_STACK_SIZE=1048576','-g2','-sASSERTIONS=1','-sALLOW_MEMORY_GROWTH=1','-sINITIAL_MEMORY=134217728','-sSINGLE_FILE=1','-sEXIT_RUNTIME=1','-sEXPORTED_RUNTIME_METHODS=FS','-sENVIRONMENT=web','--embed-file',str(WORK/'guest.zx')+'@work/document-storage/guest.zx','--shell-file',shell,'-o',WORK/'test.html'])
                 shutil.rmtree(WORK/'browser-profile',ignore_errors=True)
                 run([JS_RUNTIME,ROOT/'tests/document_storage_test.mjs',(WORK/'test.html').as_uri(),WORK/'browser-profile'])
             print(f'document storage {form} {"browser IDBFS + hosted VM" if web else "native + hosted VM"}: passed',flush=True)
