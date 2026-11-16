@@ -422,21 +422,22 @@ DragSelection :: (secure: bool) -> s32 {
     TreePointerUpdate(drag_session, PointerFrame.{40.0, 38.0, true, true, false})
     if !DragFrame() || !drag_focused || drag_anchor != drag_cursor || drag_anchor <= 0 { return 51 }
     pressed := drag_anchor
-    TreePointerUpdate(drag_session, PointerFrame.{110.0, 38.0, true, false, false})
+    TreePointerUpdate(drag_session, PointerFrame.{80.0, 38.0, true, false, false})
     if !DragFrame() || drag_anchor != pressed || drag_cursor <= pressed { return 52 }
     held := drag_cursor
-    TreePointerUpdate(drag_session, PointerFrame.{110.0, 38.0, false, false, true})
+    TreePointerUpdate(drag_session, PointerFrame.{80.0, 38.0, false, false, true})
     if !DragFrame() || drag_anchor != pressed || drag_cursor != held { return 53 }
     // A click in one frame, and one pressed and released over two.
     TreePointerUpdate(drag_session, PointerFrame.{60.0, 38.0, true, true, false})
     TreePointerUpdate(drag_session, PointerFrame.{60.0, 38.0, false, false, true})
     if !DragFrame() || drag_anchor != drag_cursor || drag_cursor == held { return 54 }
     clicked := drag_cursor
-    TreePointerUpdate(drag_session, PointerFrame.{110.0, 38.0, true, true, false})
+    TreePointerUpdate(drag_session, PointerFrame.{80.0, 38.0, true, true, false})
     if !DragFrame() || drag_anchor != held || drag_cursor != held { return 55 }
-    TreePointerUpdate(drag_session, PointerFrame.{110.0, 38.0, false, false, true})
+    TreePointerUpdate(drag_session, PointerFrame.{80.0, 38.0, false, false, true})
     if !DragFrame() || drag_anchor != held || drag_cursor != held || held == clicked { return 56 }
-    // Shift+Right still extends from the caret.
+    // Shift+Right still extends from the caret, which the drag left inside
+    // the text.
     drag_shift_right = true
     if !DragFrame() || drag_anchor != held || drag_cursor != held + 1 { return 57 }
     drag_shift_right = false
