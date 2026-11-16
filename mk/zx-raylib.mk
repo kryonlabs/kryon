@@ -23,7 +23,7 @@ ifneq ($(strip $(ZX_RAYLIB_PRIVATE_HEADERS)),)
 ZX_RAYLIB_PRIVATE_STAMP := $(ZX_RAYLIB_PRIVATE_HEADERS)/.complete
 $(ZX_RAYLIB_PRIVATE_STAMP): $(wildcard $(ZIRAN_DIR)/cmd/zir/zir_*_internal.h) $(ZIRAN_DIR)/scripts/private-symbols.py $(ZX_RAYLIB_DIR)/config
 	mkdir -p $(ZX_RAYLIB_PRIVATE_HEADERS)
-	@for group in parse check emit vm; do \
+	@for group in parse check emit; do \
 		python3 $(ZIRAN_DIR)/scripts/private-symbols.py $(ZIRAN_DIR)/cmd/zir/zir_$${group}_internal.h $(ZX_RAYLIB_PRIVATE_HEADERS)/$${group}.txt && \
 		sed "s/.*/#define & private_$${group}_&/" $(ZX_RAYLIB_PRIVATE_HEADERS)/$${group}.txt > $(ZX_RAYLIB_PRIVATE_HEADERS)/$${group}.h || exit 1; \
 	done
