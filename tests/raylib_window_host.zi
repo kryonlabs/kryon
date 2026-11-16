@@ -164,6 +164,14 @@ SDL_AtomicSet :: (value: *s32, replacement: s32) -> s32 { previous := value.*; v
 PollInputEvents :: () { input_polls += 1 }
 SendEvent :: () { unused event_watch(null, null) }
 SendPollSentinel :: () { kind: u32 = cast(u32)0x7F00; unused event_watch(null, cast(*void)*kind) }
+// Requests for a linear framebuffer, which must come before the window opens.
+linear_framebuffer_requests: s32;
+#program_export
+SDL_SetHint :: (name: *u8, value: *u8) -> s32 {
+    if !window_ready && TextFromCString(name) == "SDL_OPENGL_FORCE_SRGB_FRAMEBUFFER" &&
+        TextFromCString(value) == "0" { linear_framebuffer_requests += 1 }
+    return 1
+}
 #program_export
 SDL_GetKeyFromScancode :: (scancode: s32) -> s32 {
     if scancode == 12 { return 99 }

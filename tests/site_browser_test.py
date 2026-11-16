@@ -145,7 +145,18 @@ class Browser:
 
     def open(self, url):
         self.command('Page.navigate', url=url)
-        self.until("document.readyState === 'complete'", 'load ' + url)
+        self.loaded("document.readyState === 'complete'", 'load ' + url)
+
+    # Page.reload answers before the new document has run its scripts, so an
+    # evaluation can still reach the old page or a new one without Module.
+    # Only the new document lacks this mark.
+    def reload(self):
+        self.evaluate('window.testReloading = true')
+        self.command('Page.reload')
+        self.loaded("!window.testReloading && document.readyState === 'complete'", 'reload')
+
+    def loaded(self, expression, what):
+        self.until(expression, what)
         self.evaluate('''(async () => {
           await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
           return true;
@@ -640,7 +651,7 @@ def check_live(browser, base, scenes, shots):
     browser.until('Module.siteCount === 1', 'real counter click')
     mouse(browser, node_for(browser, key=10003))
     browser.until('Module.siteDark', 'theme toggle')
-    browser.command('Page.reload')
+    browser.reload()
     browser.until('Module.galleryReady && Module.siteDark', 'persisted theme', 60)
     ready(browser, base)
     assert sum(n['label'] == 'Continue' and n['interactive'] for n in tree(browser)) == 12, 'default web differs from maintained Button'

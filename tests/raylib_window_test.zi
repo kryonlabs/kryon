@@ -21,6 +21,12 @@ main :: () -> s32 {
         Probe.window_flags != cast(u32)12 || Text.TextFromCString(*Probe.window_title[0]) != "Document" {
         return 2
     }
+    // Only raylib's SDL platform, the Linux host's, takes the framebuffer hint.
+    #if #defined(_WIN32) || #defined(__APPLE__) {
+        if Probe.linear_framebuffer_requests != 0 { return 30 }
+    } else {
+        if Probe.linear_framebuffer_requests != 1 { return 30 }
+    }
     Runtime.RaylibExitKey(0)
     if Probe.exit_key != 0 || !Runtime.RaylibFrameRate(30) || Probe.frame_rate != 30 ||
         Runtime.RaylibFrameRate(-1) || Runtime.RaylibFrameRate(1001) || Probe.frame_rate != 30 { return 3 }
