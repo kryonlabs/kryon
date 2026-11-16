@@ -107,7 +107,7 @@ About 13,000 tracked lines (~0.5 MB): 7,169 host-module lines, 5,168 test lines,
 ### Entity and other packages
 
 - Entity (`waozixyz/modules/entity`), auth, dew, gamekit: lock-only raylib entries - resolve automatically when Kryon drops the dependency.
-- Harmony clients: `harness/harmony/plugins/jobs/kryon` is the legacy C "Kryon" (raylib-style `kryon.h` support library) with a full vendored `vendor/raylib` submodule, `mk/raylib.mk`, generated compat wrappers, and a raylib conformance matrix. Separate codebase and repository from Ziran Kryon; removing its raylib is an independent Harmony-side decision, not a step of this plan.
+- Harmony clients: `harness/harmony/plugins/jobs/kryon` is the legacy C "Kryon" (raylib-style `kryon.h` support library) with its own vendored raylib submodule, `mk/raylib.mk`, generated compat wrappers, and a raylib conformance matrix. Separate codebase and repository from Ziran Kryon; removing its raylib is an independent Harmony-side decision, not a step of this plan.
 - Archived (`ARCHIVE/*`, `harmony-legacy`) and doc-only mentions (`ziranlang/packages/audio/README.md`): no open work.
 
 ## 3. Platform status and gaps
