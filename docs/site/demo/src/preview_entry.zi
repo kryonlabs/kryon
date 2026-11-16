@@ -6,7 +6,6 @@ Scroll :: #import "kryon/scroll";
 #import "kryon/tree_input"
 #import "kryon/tree_draw"
 #import "kryon/frame_snapshot"
-#import "kryon/cursor"
 GuestTheme :: #import "kryon/Theme";
 #import "app"
 #import "preview_protocol"
