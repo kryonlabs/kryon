@@ -207,6 +207,10 @@ Refill :: (voice: *Voice) -> bool {
                 rewinds += 1
                 continue
             }
+            // Silence after the last frame, so the last frame plays too.
+            for channel: 0..channels - 1 { voice.window[start + channel] = 0.0 }
+            voice.window_frames += 1
+            voice.decoded += 1
             voice.ended = true
             break
         }

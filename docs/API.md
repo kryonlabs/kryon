@@ -1636,8 +1636,11 @@ directly:
   `AudioSinkClose()`. With `SDL_AUDIODRIVER=disk` SDL writes the device's
   blocks to `SDL_DISKAUDIOFILE`.
 - Decoders join by import: `kryon/audio_decode_opus` (Ogg Opus, streamed,
-  links libopus) and `kryon/audio_decode_wav` (PCM16 or float32 WAV). A
-  decoder registers `AudioUseDecoder(probe, open)` over an `AudioSource`.
+  links libopus), `kryon/audio_decode_wav` (PCM16 or float32 WAV) and
+  `kryon/audio_decode_mp3` (MP3 and MPEG Layers I and II at the stream's own
+  rate, streamed through `audio/mp3`; links the audio package's
+  `libziran_mp3.a`, which `make` builds as `$(MP3_A)`). A decoder registers
+  `AudioUseDecoder(probe, open)` over an `AudioSource`.
 
 `make desktop-audio-test` renders into its own buffer and plays through SDL's
 disk driver.

@@ -359,6 +359,27 @@ desktop-audio-test:
 		"$(ZIRAN_BIN)" run --target=c tests/desktop_audio_test.zi -- build/test/desktop-audio
 test: desktop-audio-test
 
+# The static dr_mp3 archive that programs importing audio_decode_mp3 link,
+# built from the audio package's native/ and its pinned dr_libs source.
+AUDIO_PACKAGE = $$("$(ZIRAN_BIN)" pkg path audio --offline)
+MP3_DIR := $(BUILD_DIR)/mp3
+MP3_A := $(MP3_DIR)/libziran_mp3.a
+$(MP3_A): ziran.lock
+	@mkdir -p $(MP3_DIR)
+	@cmake -S "$(AUDIO_PACKAGE)/native" -B $(MP3_DIR) -DCMAKE_BUILD_TYPE=Release \
+		-DDR_LIBS_DIR="$$("$(ZIRAN_BIN)" pkg path dr_libs --offline)" > $(MP3_DIR)/configure.log
+	@cmake --build $(MP3_DIR) --target ziran_mp3 > $(MP3_DIR)/build.log
+
+# MPEG audio streamed through the mixer equals audio/mp3's own decode of the
+# audio package's fixtures, and plays as asset audio, with no audio device.
+.PHONY: desktop-audio-mp3-test
+desktop-audio-mp3-test: $(MP3_A)
+	@rm -rf build/test/desktop-audio-mp3
+	@env -u DISPLAY -u WAYLAND_DISPLAY LDLIBS="-L$(MP3_DIR) -lziran_mp3 -lopus -lm" \
+		"$(ZIRAN_BIN)" run --target=c tests/desktop_audio_mp3_test.zi -- \
+		"$(AUDIO_PACKAGE)/tests/fixtures/mp3" build/test/desktop-audio-mp3
+test: desktop-audio-mp3-test
+
 .PHONY: cursor-api-test
 cursor-api-test:
 	python3 tests/cursor_api_test.py

@@ -1,0 +1,161 @@
+// MPEG audio on the desktop mixer: audio package fixtures stream through
+// audio_decode_mp3 into the tap and must equal audio/mp3's own decode, a
+// 44.1 kHz stream plays at the mixer's 48 kHz, and Kryon's asset audio plays
+// an MP3 through SDL's disk driver, with no audio device.
+//     ziran run --target=c tests/desktop_audio_mp3_test.zi -- FIXTURES FOLDER
+// FIXTURES is the audio package's tests/fixtures/mp3.
+#import "c_string"
+#import "byte_text_linux"
+#import "format"
+#import "file"
+#import "file_tree_linux"
+#import "timer_linux"
+using Vectors :: #import "vec";
+#import "audio_mixer"
+#import "audio_decode_mp3"
+#import "media_audio"
+#import "media_audio_host"
+#import "media_audio_desktop"
+#import "session"
+Types :: #import "audio/types";
+Mp3 :: #import "audio/mp3";
+
+#scope_file
+libc :: #system_library "libc";
+SetEnvironment :: (name: *u8, value: *u8, overwrite: s32) -> s32 #foreign libc "setenv";
+
+TAPPED :: 40000 * 2
+tapped: [TAPPED]float32;
+tapped_count: s64;
+Tap :: (samples: []float32, frames: s64) {
+    for index: 0..frames * 2 - 1 {
+        if tapped_count < TAPPED { tapped[tapped_count] = samples[index]; tapped_count += 1 }
+    }
+}
+
+Fail :: (code: s32, message: string) -> s32 {
+    print("desktop audio mp3: %\n", message)
+    return code
+}
+
+Fixture :: (folder: string, name: string) -> string {
+    path: Vec(u8)
+    BuilderPrint(*path, "%/%", folder, name)
+    bytes, found := ReadEntireFile(BuilderFinish(path))
+    if !found { return "" }
+    return bytes
+}
+
+// audio/mp3's own decode of BYTES as interleaved stereo, a mono stream on both sides.
+Reference :: (bytes: string, pcm: *Types.PCM) -> bool {
+    view := BytesFromPointer((cast(*TextDescriptor)(*bytes)).data, cast(u64)bytes.count)
+    return Mp3.Mp3Decode(view, Types.MaxFrames, pcm) == Types.OK
+}
+
+Clamp :: (value: float32) -> float32 {
+    if value > 1.0 { return 1.0 }
+    if value < -1.0 { return -1.0 }
+    return value
+}
+
+Env :: (name: string, value: string) {
+    key: [64]u8
+    text: [4096]u8
+    unused CopyCString(name, key[:])
+    unused CopyCString(value, text[:])
+    unused SetEnvironment(*key[0], *text[0], 1)
+}
+
+clip: string;
+Allowed :: (path: string) -> bool { return path == "assets/test/tone.mp3" }
+Read :: (context: *void, path: string) -> string { unused context; unused path; return clip }
+Call :: (owner: *MediaAudioOwner, session: Session, command: MediaAudioCommand) -> MediaAudioResult {
+    command.voice = 1
+    return MediaAudioOwnerCall(owner, session, command)
+}
+
+#scope_export
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc < 3 { print("usage: desktop_audio_mp3_test FIXTURES FOLDER\n"); return 2 }
+    fixtures := TextFromCString(argv[1])
+    folder := TextFromCString(argv[2])
+    unused CreateDirectories(folder)
+    output: [2048]float32
+    AudioUseTap(Tap)
+
+    // Layer II at 48 kHz: the mixer's frames are the decoder's, exactly.
+    layer2 := Fixture(fixtures, "layer2.mp2")
+    expected: Types.PCM
+    if layer2 == "" || !Reference(layer2, *expected) || expected.rate != 48000 || expected.channels != 2 {
+        return Fail(10, "the Layer II fixture did not decode")
+    }
+    frames := expected.samples.count / 2
+    voice := AudioLoad(layer2, true)
+    if voice.slot < 0 { return Fail(11, "the Layer II stream did not load") }
+    length := AudioLength(voice)
+    if length < 0.3119 || length > 0.3121 { print("length %\n", length); return Fail(12, "the stream's length is wrong") }
+    tapped_count = 0
+    if !AudioPlay(voice) { return Fail(13, "the stream did not play") }
+    while AudioState(voice) == .Playing && tapped_count < TAPPED - 2048 { AudioRender(output[:], 1000) }
+    if AudioState(voice) != .Finished { return Fail(14, "the stream did not finish") }
+    if tapped_count < frames * 2 { return Fail(15, "the stream played too little") }
+    for index: 0..frames * 2 - 1 {
+        if tapped[index] != Clamp(expected.samples[index]) {
+            print("sample %: % expected %\n", index, tapped[index], expected.samples[index])
+            return Fail(16, "the mixed stream differs from audio/mp3's decode")
+        }
+    }
+    for index: frames * 2..tapped_count - 1 { if tapped[index] != 0.0 { return Fail(17, "the stream played past its end") } }
+    AudioUnload(voice)
+
+    // Layer III at 44.1 kHz plays its 13230 frames over 14400 mixer frames;
+    // at 48/44.1 pitch the mixer's frames are the decoder's again.
+    cbr := Fixture(fixtures, "cbr.mp3")
+    reference: Types.PCM
+    if cbr == "" || !Reference(cbr, *reference) || reference.rate != 44100 { return Fail(20, "the MP3 fixture did not decode") }
+    music := AudioLoad(cbr, true)
+    if music.slot < 0 { return Fail(21, "the MP3 did not load") }
+    unused AudioPlay(music)
+    for round: 0..13 { AudioRender(output[:], 1000) }
+    if AudioState(music) != .Playing { return Fail(22, "the MP3 ended before its time") }
+    AudioRender(output[:], 1000)
+    if AudioState(music) != .Finished { return Fail(23, "the MP3 played past its time") }
+    AudioSetPitch(music, cast(float32)(48000.0 / 44100.0))
+    tapped_count = 0
+    unused AudioPlay(music)
+    while AudioState(music) == .Playing && tapped_count < TAPPED - 2048 { AudioRender(output[:], 1000) }
+    compared := reference.samples.count - 4
+    for index: 0..compared - 1 {
+        difference := tapped[index] - Clamp(reference.samples[index])
+        if difference > 0.002 || difference < -0.002 {
+            print("sample %: % expected %\n", index, tapped[index], reference.samples[index])
+            return Fail(24, "the resampled MP3 differs from audio/mp3's decode")
+        }
+    }
+    AudioUnload(music)
+    if AudioLoad("plain text, not MPEG audio", true).slot >= 0 { return Fail(25, "text loaded as MPEG audio") }
+
+    // Kryon's asset audio plays an MP3 voice through the SDL sink.
+    raw: Vec(u8)
+    BuilderPrint(*raw, "%/sink.raw", folder)
+    Env("SDL_AUDIODRIVER", "disk")
+    Env("SDL_DISKAUDIOFILE", BuilderFinish(raw))
+    clip = cbr
+    MediaAudioUseDesktop()
+    session := SessionOpen()
+    owner: MediaAudioOwner
+    MediaAudioOwnerBind(*owner, session, Allowed, Read, null)
+    loaded := Call(*owner, session, .{.operation = .Load, .asset = "assets/test/tone.mp3", .music = true, .gain = 0.5})
+    if loaded.code != .Ok || loaded.state != .Ready { print("load %\n", loaded.message); return Fail(30, "the MP3 asset did not load") }
+    if Call(*owner, session, .{.operation = .Play}).state != .Playing { return Fail(31, "the MP3 asset did not play") }
+    unused SleepMilliseconds(100)
+    status := Call(*owner, session, .{.operation = .Status})
+    if status.state != .Playing || !status.has_position || status.position_seconds <= 0.0 { return Fail(32, "the MP3 asset's position did not move") }
+    unused SleepMilliseconds(500)
+    if Call(*owner, session, .{.operation = .Status}).state != .Finished { return Fail(33, "the MP3 asset did not finish") }
+    if Call(*owner, session, .{.operation = .Unload}).state != .Unloaded { return Fail(34, "the MP3 asset did not unload") }
+    MediaAudioOwnerClose(*owner)
+    print("desktop audio mp3: passed\n")
+    return 0
+}

@@ -83,6 +83,7 @@ audio_mixer = "src/backend/audio_mixer.zi"
 audio_sink_sdl = "src/backend/audio_sink_sdl.zi"
 audio_decode_opus = "src/backend/audio_decode_opus.zi"
 audio_decode_wav = "src/backend/audio_decode_wav.zi"
+audio_decode_mp3 = "src/backend/audio_decode_mp3.zi"
 media_audio_desktop = "src/backend/media_audio_desktop.zi"
 test_driver_frame = "src/backend/test_driver_frame.zi"
 Cairo = "src/backend/cairo_raster.zi"
@@ -439,4 +440,4 @@ ref = "02145a00a1f0df2a111da04a75f3fef260883897"
 
 [dependencies.audio]
 git = "https://github.com/ziranlang/audio.git"
-ref = "f5eed1e6c817997d51508f9c3c7b948a0bb4ad0b"
+ref = "5ea3f6f1ae7f5bbefa72dfac2058d5c40ac29d5c"

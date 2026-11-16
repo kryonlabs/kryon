@@ -15,6 +15,8 @@
   pitch, loops and a mix tap, `kryon/audio_sink_sdl` plays it through SDL2,
   `kryon/audio_decode_opus` and `kryon/audio_decode_wav` add formats, and
   `kryon/media_audio_desktop` runs asset audio on it.
+- `kryon/audio_decode_mp3` streams MP3 and MPEG Layer I and II audio through
+  the desktop mixer, and a stream's last frame now plays before it finishes.
 - A drag in a TextField keeps the selection it made when the pointer is
   released; a click still places the caret.
 - Renderer artifact builds accept dependencies resolved through a local
