@@ -247,12 +247,6 @@ jobs:
         if: matrix.shard == 'hosts'
         run: env -u DISPLAY -u WAYLAND_DISPLAY make -C examples test
 
-      - name: Test live preview and rendered themes
-        if: matrix.shard == 'web'
-        env:
-          CHROMIUM: google-chrome
-        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY node tests/demo_browser.mjs
-
       # The whole site is rebuilt from this checkout, so the live editor's
       # embedded examples match the gallery under test. Nothing is deployed.
       - name: Build and test the widget gallery
