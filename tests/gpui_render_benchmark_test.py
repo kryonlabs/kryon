@@ -36,15 +36,36 @@ class GpuiRenderBenchmarkTest(unittest.TestCase):
         scratch = ROOT / 'build/scratch'
         scratch.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=scratch) as temporary:
+            fixture = Path(temporary) / 'libxkbcommon-x11.so.0'
+            fixture.write_bytes(b'')
             saved_build = BENCHMARK.BUILD
+            saved_xkb = BENCHMARK.XKB_LIBRARY
             BENCHMARK.BUILD = Path(temporary) / 'gpui-render-benchmark'
+            BENCHMARK.XKB_LIBRARY = fixture
             try:
                 sysroot = BENCHMARK.write_project()
                 BENCHMARK.write_project()
                 self.assertTrue((sysroot / 'libxkbcommon-x11.so').is_symlink())
+                self.assertEqual((sysroot / 'libxkbcommon-x11.so').resolve(), fixture.resolve())
                 self.assertTrue((BENCHMARK.BUILD / 'Cargo.toml').is_file())
             finally:
                 BENCHMARK.BUILD = saved_build
+                BENCHMARK.XKB_LIBRARY = saved_xkb
+
+    def test_generated_project_rejects_missing_xkb_library(self):
+        scratch = ROOT / 'build/scratch'
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch) as temporary:
+            saved_build = BENCHMARK.BUILD
+            saved_xkb = BENCHMARK.XKB_LIBRARY
+            BENCHMARK.BUILD = Path(temporary) / 'gpui-render-benchmark'
+            BENCHMARK.XKB_LIBRARY = Path(temporary) / 'missing-libxkbcommon-x11.so.0'
+            try:
+                with self.assertRaisesRegex(ValueError, 'missing system library'):
+                    BENCHMARK.write_project()
+            finally:
+                BENCHMARK.BUILD = saved_build
+                BENCHMARK.XKB_LIBRARY = saved_xkb
 
     def test_parses_one_benchmark_record_per_trial(self):
         record = BENCHMARK.parse_benchmark(
