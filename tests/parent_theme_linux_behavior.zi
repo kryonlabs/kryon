@@ -1,0 +1,94 @@
+// An embedded app takes its host's palette through SystemPaletteRead, follows
+// a change, and ignores a host that is not its parent. Runs on a private X
+// display; the test plays the host by creating the host's window and the
+// container it embeds the app in.
+#import "byte_text_linux"
+#import "c_string"
+#import "system_theme"
+#import "system_theme_linux"
+#import "parent_theme_linux"
+
+x11 :: #system_library "X11";
+libc :: #system_library "libc";
+GetEnvironment :: (name: *u8) -> *u8 #foreign libc "getenv";
+SetEnvironment :: (name: *u8, value: *u8, replace: s32) -> s32 #foreign libc "setenv";
+ParentPid :: () -> s32 #foreign libc "getppid";
+OpenDisplay :: (name: *u8) -> *void #foreign x11 "XOpenDisplay";
+RootWindow :: (display: *void) -> u64 #foreign x11 "XDefaultRootWindow";
+CreateWindow :: (display: *void, parent: u64, x: s32, y: s32, width: u32, height: u32,
+    border: u32, border_color: u64, background: u64) -> u64 #foreign x11 "XCreateSimpleWindow";
+InternAtom :: (display: *void, name: *u8, existing: s32) -> u64 #foreign x11 "XInternAtom";
+ChangeProperty :: (display: *void, window: u64, property: u64, kind: u64, format: s32,
+    mode: s32, data: *u8, count: s32) -> s32 #foreign x11 "XChangeProperty";
+Sync :: (display: *void, discard: s32) -> s32 #foreign x11 "XSync";
+
+display: *void;
+
+SetText :: (name: string, value: string) {
+    key: [64]u8; text: [64]u8
+    unused CopyCString(name, key[:]); unused CopyCString(value, text[:])
+    unused SetEnvironment(*key[0], *text[0], 1)
+}
+
+Property :: (window: u64, name: string, values: []u64) {
+    bytes: [64]u8
+    unused CopyCString(name, bytes[:])
+    atom := InternAtom(display, *bytes[0], 0)
+    unused ChangeProperty(display, window, atom, 6, 32, 0, cast(*u8)*values[0], cast(s32)values.count)
+    unused Sync(display, 0)
+}
+
+#program_export
+main :: () -> s32 {
+    key: [16]u8
+    unused CopyCString("SCENARIO", key[:])
+    scenario := GetEnvironment(*key[0])
+    if scenario == null { return 90 }
+    which := TextFromCString(scenario)
+    display = OpenDisplay(null)
+    if display == null { return 91 }
+    host := CreateWindow(display, RootWindow(display), 0, 0, 200, 200, 0, 0, 0)
+    container := CreateWindow(display, host, 0, 0, 100, 100, 0, 0, 0)
+    owner := cast(u64)ParentPid()
+    if which == "spoofed" { owner = 1 }
+    pid: [1]u64 = .[owner]
+    Property(host, "_NET_WM_PID", pid[:])
+    dark: [8]u64 = .[1, 0x101418ff, 0x1a2026ff, 0xe8ecf0ff, 0x8090a0ff, 0x6ab0f0ff, 0x303840ff, 0x204060ff]
+    Property(container, "_HARMONY_APP_THEME", dark[:])
+    SetText("HARMONY_APP_HOST_PID", R(cast(u64)ParentPid()))
+    SetText("HARMONY_APP_CONTAINER", R(container))
+    palette := SystemPaletteRead()
+    if which == "spoofed" {
+        // A host that is not this process's parent gives no theme.
+        if ParentThemeActive() || palette.background == cast(u32)0x101418ff { return 1 }
+        return 0
+    }
+    if !ParentThemeActive() || !palette.found || !palette.dark { return 2 }
+    if palette.background != cast(u32)0x101418ff || palette.base != cast(u32)0x1a2026ff ||
+        palette.text != cast(u32)0xe8ecf0ff || palette.selected != cast(u32)0x6ab0f0ff ||
+        palette.border != cast(u32)0x303840ff { return 3 }
+    // The host changes its theme; the next read follows it.
+    light: [8]u64 = .[1, 0xfbf1e2ff, 0xe8dccaff, 0x302820ff, 0x706050ff, 0x704020ff, 0xe0d0baff, 0xd0b898ff]
+    Property(container, "_HARMONY_APP_THEME", light[:])
+    palette = SystemPaletteRead()
+    if palette.dark || palette.background != cast(u32)0xfbf1e2ff || palette.text != cast(u32)0x302820ff { return 4 }
+    // An unknown palette version is ignored.
+    light[0] = 2
+    Property(container, "_HARMONY_APP_THEME", light[:])
+    if ParentThemeActive() { return 5 }
+    return 0
+}
+
+// Decimal text of a number, in a buffer kept for the environment.
+number_text: [32]u8;
+R :: (value: u64) -> string {
+    digits: [32]u8; count: s32
+    if value == 0 { digits[0] = 48; count = 1 }
+    while value > 0 {
+        digits[count] = cast(u8)(48 + value % 10)
+        value /= 10
+        count += 1
+    }
+    for i: 0..count - 1 { number_text[i] = digits[count - 1 - i] }
+    return TextFromBytes(number_text[:count])
+}

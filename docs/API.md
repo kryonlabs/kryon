@@ -1221,6 +1221,18 @@ implementation. Existing `tree_input` imports retain that surface.
 `kryon/file_picker` exposes the native file chooser; `kryon/app_theme` reads
 optional host theme colours from a portable app.
 
+An app embedded by a supervising host, such as Harmony's app host, draws in
+the host's theme by default on Linux. The host names its process and the
+window it embeds the app in (`HARMONY_APP_HOST_PID`, `HARMONY_APP_CONTAINER`)
+and keeps its palette on that window (`_HARMONY_APP_THEME`).
+`SystemThemeLinux.SystemPaletteRead()` returns that palette after checking
+that the host is the app's parent and owns the window; started on its own, an
+app gets the desktop's GTK palette as before. Each call reads the host's
+current palette, so an app that reads it again follows a theme change.
+`ParentThemeLinux.ParentThemeActive()` says whether a host supplies the theme,
+and `ParentPaletteRead(*palette)` reads only the host's palette. libX11 is
+loaded at run time and only when a host is named.
+
 ## Cover carousels
 
 `kryon/carousel` provides `Carousel.Draw(session, props, items, state)` for a

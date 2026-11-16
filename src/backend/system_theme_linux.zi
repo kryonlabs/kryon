@@ -2,6 +2,7 @@
 // theme in xfconf; other desktops use GTK's settings.ini or GTK_THEME.
 #import "byte_text_linux"
 #import "system_theme"
+#import "parent_theme_linux"
 #import "text_buffer"
 
 #scope_file
@@ -162,9 +163,18 @@ SystemThemeName :: () -> string {
 }
 
 // The desktop's palette: the configured GTK theme's own colors, or the light
-// or dark fallback when the theme has none we can read.
+// or dark fallback when the theme has none we can read. An app that a
+// supervising host embeds takes the host's palette instead.
 #program_export
 SystemPaletteRead :: () -> SystemPalette {
+    hosted: SystemPalette = SystemPaletteFallback(false)
+    if ParentPaletteRead(*hosted) {
+        status: SystemPalette = SystemPaletteFallback(hosted.dark)
+        hosted.danger = status.danger
+        hosted.warning = status.warning
+        hosted.success = status.success
+        return hosted
+    }
     name: string = SystemThemeName()
     hint: bool = LowerContains(name, "dark") || LowerContains(Environment("GTK_THEME"), ":dark")
     ini: string = ConfigFile("gtk-3.0/settings.ini", file_buffer[:])

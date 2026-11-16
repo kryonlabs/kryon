@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- An app that Harmony embeds draws in Harmony's theme by default on Linux:
+  `SystemThemeLinux.SystemPaletteRead` returns the verified host's palette
+  and reads it again on each call, so apps follow a theme change; on its own
+  an app keeps the desktop palette. `ParentThemeLinux` says whether a host
+  supplies the theme.
 - Raylib desktop windows on Linux show their exact colours where SDL 2 runs
   on SDL 3 through sdl2-compat. SDL 3 could give the OpenGL ES context an
   sRGB-capable framebuffer that encoded Kryon's sRGB colours a second time

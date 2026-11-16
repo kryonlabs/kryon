@@ -1,0 +1,157 @@
+// An app that a supervising host embeds draws in the host's theme by default.
+// The host, such as Harmony's app host, keeps its palette on the window it
+// embeds the app in and names that window and its own process in the
+// environment. The palette is read only after checking that the named host
+// started this process and owns that window. Started on its own, an app has
+// no parent theme. libX11 is opened at run time and only when a host is
+// named, so apps that are never embedded never load it.
+#import "byte_text_linux"
+#import "c_string"
+using Palette :: #import "system_theme";
+
+#scope_file
+PARENT_THEME_X11 :: !#defined(_WIN32) && !#defined(__APPLE__) &&
+    !#defined(ANDROID_BUILD) && !#defined(PLATFORM_WEB) && !#defined(__EMSCRIPTEN__)
+
+#if PARENT_THEME_X11 {
+    libc :: #system_library "libc";
+    ParentEnvironment :: (name: *u8) -> *u8 #foreign libc "getenv";
+    ParentProcess :: () -> s32 #foreign libc "getppid";
+    ParentOpenLibrary :: (name: *u8, flags: s32) -> *void #foreign libc "dlopen";
+    ParentSymbol :: (handle: *void, name: *u8) -> *void #foreign libc "dlsym";
+    ParentCopy :: (target: *void, source: *void, count: usize) -> *void #foreign libc "memcpy";
+
+    FnOpenDisplay :: #type (name: *u8) -> *void #c_call;
+    FnCloseDisplay :: #type (display: *void) -> s32 #c_call;
+    FnInternAtom :: #type (display: *void, name: *u8, existing: s32) -> u64 #c_call;
+    FnGetProperty :: #type (display: *void, window: u64, property: u64, offset: s64, length: s64,
+        remove: s32, wanted: u64, actual: *u64, format: *s32, count: *u64, after: *u64, data: **u8) -> s32 #c_call;
+    FnQueryTree :: #type (display: *void, window: u64, root: *u64, parent: *u64,
+        children: **u64, count: *u32) -> s32 #c_call;
+    FnFree :: #type (data: *void) -> s32 #c_call;
+
+    x_open_display: FnOpenDisplay;
+    x_close_display: FnCloseDisplay;
+    x_intern_atom: FnInternAtom;
+    x_get_property: FnGetProperty;
+    x_query_tree: FnQueryTree;
+    x_free: FnFree;
+
+    checked: bool;
+    connection: *void;
+    container: u64;
+    theme_atom: u64;
+
+    Number :: (name: string) -> u64 {
+        key: [64]u8
+        if !CopyCString(name, key[:]) { return 0 }
+        raw := ParentEnvironment(*key[0])
+        if raw == null { return 0 }
+        value := TextFromCString(raw)
+        result: u64
+        for i: cast(s64)0..value.count - 1 {
+            if value[i] < 48 || value[i] > 57 { return 0 }
+            digit := cast(u64)(value[i] - 48)
+            if result > (cast(u64)0xffffffffffffffff - digit) / 10 { return 0 }
+            result = result * 10 + digit
+        }
+        return result
+    }
+
+    Resolve :: (handle: *void, slot: *void, name: string) -> bool {
+        bytes: [64]u8
+        if !CopyCString(name, bytes[:]) { return false }
+        symbol := ParentSymbol(handle, *bytes[0])
+        if symbol == null { return false }
+        unused ParentCopy(slot, cast(*void)*symbol, size_of(*void))
+        return true
+    }
+
+    LoadX11 :: () -> bool {
+        name: [32]u8
+        if !CopyCString("libX11.so.6", name[:]) { return false }
+        handle := ParentOpenLibrary(*name[0], 1)
+        if handle == null { return false }
+        return Resolve(handle, cast(*void)*x_open_display, "XOpenDisplay") &&
+            Resolve(handle, cast(*void)*x_close_display, "XCloseDisplay") &&
+            Resolve(handle, cast(*void)*x_intern_atom, "XInternAtom") &&
+            Resolve(handle, cast(*void)*x_get_property, "XGetWindowProperty") &&
+            Resolve(handle, cast(*void)*x_query_tree, "XQueryTree") &&
+            Resolve(handle, cast(*void)*x_free, "XFree")
+    }
+
+    Atom :: (name: string) -> u64 {
+        bytes: [64]u8
+        if !CopyCString(name, bytes[:]) { return 0 }
+        return x_intern_atom(connection, *bytes[0], 0)
+    }
+
+    // Exactly output.count 32-bit values of a property, or false.
+    Read :: (window: u64, atom: u64, output: []u64) -> bool {
+        actual: u64; format: s32; count: u64; after: u64; data: *u8
+        status := x_get_property(connection, window, atom, 0, output.count, 0, 6,
+            *actual, *format, *count, *after, *data)
+        defer { if data != null { unused x_free(cast(*void)data) } }
+        if status != 0 || actual != 6 || format != 32 || count != cast(u64)output.count ||
+            after != 0 || data == null { return false }
+        words := cast(*u64)data
+        for i: 0..cast(s32)output.count - 1 { output[i] = words[i] & cast(u64)0xffffffff }
+        return true
+    }
+
+    // Finds the host's window once: the host must be this process's parent
+    // and own the window that contains the named one.
+    Connect :: () {
+        checked = true
+        owner := Number("HARMONY_APP_HOST_PID")
+        target := Number("HARMONY_APP_CONTAINER")
+        if owner == 0 || target == 0 || owner != cast(u64)ParentProcess() { return }
+        if !LoadX11() { return }
+        connection = x_open_display(null)
+        if connection == null { return }
+        root: u64; parent: u64; children: *u64; count: u32; pid: [1]u64
+        valid := x_query_tree(connection, target, *root, *parent, *children, *count) != 0
+        if children != null { unused x_free(cast(*void)children) }
+        if valid { valid = Read(parent, Atom("_NET_WM_PID"), pid[:]) && pid[0] == owner }
+        if !valid {
+            unused x_close_display(connection)
+            connection = null
+            return
+        }
+        container = target
+        theme_atom = Atom("_HARMONY_APP_THEME")
+    }
+}
+
+#scope_export
+// Fills palette with the host's colours and returns true when a verified
+// host embeds this app and keeps a valid palette; otherwise leaves palette
+// as it is and returns false. Each call reads the host's current palette.
+ParentPaletteRead :: (palette: *SystemPalette) -> bool {
+    #if PARENT_THEME_X11 {
+        if !checked { Connect() }
+        if connection == null || container == 0 { return false }
+        values: [8]u64
+        if !Read(container, theme_atom, values[:]) || values[0] != 1 { return false }
+        for i: 1..7 {
+            if (values[i] & 255) != 255 { return false }
+        }
+        palette.background = cast(u32)values[1]
+        palette.base = cast(u32)values[2]
+        palette.text = cast(u32)values[3]
+        palette.selected = cast(u32)values[5]
+        palette.selected_text = palette.text
+        palette.border = cast(u32)values[6]
+        palette.dark = CssLuminance(palette.background) < 128
+        palette.found = true
+        return true
+    }
+    unused palette
+    return false
+}
+
+// Whether a verified host embeds this app and supplies its theme.
+ParentThemeActive :: () -> bool {
+    palette: SystemPalette
+    return ParentPaletteRead(*palette)
+}

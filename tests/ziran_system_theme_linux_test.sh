@@ -48,3 +48,16 @@ GTK_THEME=Missing:dark env -u DISPLAY HOME="$work/home" XDG_CONFIG_HOME="$config
     XDG_DATA_HOME="$data" SCENARIO=env-dark "$work/theme-test"
 
 run none
+
+# An embedded app takes its host's palette; the test plays the host on a
+# private X display.
+"$ziran" build --target=c --root "$repo/tests" \
+    $kryon_ui_args --module-path "$repo/src/backend" \
+    --module-path "$ziran_root/std" -o "$work/parent-c" "$repo/tests/parent_theme_linux_behavior.zi"
+"${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$work/parent-c" \
+    "$work/parent-c"/*.c -lX11 -o "$work/parent-theme-test"
+for scenario in hosted spoofed; do
+    env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u GTK_THEME HOME="$work/home" \
+        XDG_CONFIG_HOME="$config" XDG_DATA_HOME="$data" SCENARIO="$scenario" \
+        timeout 30s xvfb-run -a -s '-screen 0 320x240x24 -nolisten tcp' "$work/parent-theme-test"
+done
