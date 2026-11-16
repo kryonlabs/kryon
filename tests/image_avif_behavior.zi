@@ -51,7 +51,11 @@ main :: () -> s32 {
         if encoded.data.count != 0 || encoded.is_ok { return 3 }
         preview := ImagePreviewRGBA(data,".png",1,1)
         if !preview.is_ok { print("1x1 preview failed: error %\n", preview.error.code); return 4 }
-        if preview.width != 1 || preview.height != 1 || preview.pixels[0] != cast(u8)0 || preview.pixels[2] != cast(u8)255 || preview.pixels[3] != cast(u8)128 {
+        // Half the 2x1 source is transparent, so the alpha is exactly 127.5:
+        // a last-bit difference in the Lanczos sums rounds it either way
+        // (CI's runner gives 127, this compiler 128).
+        if preview.width != 1 || preview.height != 1 || preview.pixels[0] != cast(u8)0 || preview.pixels[2] != cast(u8)255 ||
+            preview.pixels[3] < cast(u8)127 || preview.pixels[3] > cast(u8)128 {
             print("1x1 preview: %x% rgba % % % %\n", preview.width, preview.height, preview.pixels[0], preview.pixels[1], preview.pixels[2], preview.pixels[3])
             return 4
         }
