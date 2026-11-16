@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Test-driver key commands retry after ordered-input backpressure instead of
+  reporting success before an application can receive them.
 - Hosted widgets bundle to ZX again with the updated Ziran compiler.
 - Window beams cast moving shadows on CPU and GPU renderers. Daylight follows
   latitude and time of day. Cutout textures cast silhouettes, and hidden

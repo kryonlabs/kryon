@@ -15,6 +15,8 @@ Text :: #import "kryon/text";
 #import "test_driver_frame"
 #import "frame_snapshot"
 #import "input_protocol"
+#import "input_delivery"
+#import "input_take"
 #import "ziran_test_driver_host"
 #import "c_string"
 #import "byte_text_linux"
@@ -37,6 +39,10 @@ control_held: bool;
 pointer_seen: PointerFrame;
 input_provider: FrameInputProvider;
 input_seen: FrameInputSnapshot;
+ordered_delivery: bool;
+consume_ordered_delivery: bool;
+delivery: InputDelivery;
+ordered_enter_presses: s32;
 typed: [256]u8;
 typed_count: s32;
 label: string = "Hello";
@@ -106,6 +112,13 @@ Frame :: () -> bool {
     real: PointerFrame
     pointer_seen = TestDriverPointer(session, real)
     unused TreePointerUpdate(session, pointer_seen)
+    if ordered_delivery {
+        TestDriverInput(*delivery)
+        if consume_ordered_delivery {
+            delivered, unused_modifiers := InputDeliveryTake(*delivery, session, 0)
+            if delivered == 257 { ordered_enter_presses += 1 }
+        }
+    }
     if BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0}) !=
     cast(FrameStatus)FrameOk { return false }
     if Button.Draw(session, Button.Props.{.id = 7, .label = "Save",
@@ -128,7 +141,7 @@ Frame :: () -> bool {
         }
         codepoint = TestDriverCodepoint()
     }
-    if TestDriverKeyPressed(257) { enter_presses += 1 }
+    if !ordered_delivery && TestDriverKeyPressed(257) { enter_presses += 1 }
     raw: FrameInputSnapshot
     FrameInputProviderGather(*input_provider, raw)
     if !FrameInputProviderBegin(*input_provider, session) { return false }
@@ -149,6 +162,22 @@ Run :: (command: string) -> s32 {
         if Receive() { return frames }
     }
     return -1
+}
+
+// Leave an ordered key queue full for the command's first delivery frame.
+// The driver must keep the command pending, then deliver it after room opens.
+RunBackpressuredKey :: (command: string) -> bool {
+    if !Send(command) || !Frame() { return false }
+    for queued: 0..31 { InputDeliveryKey(*delivery, 65, 0, false) }
+    ordered_delivery = true
+    consume_ordered_delivery = false
+    if !Frame() || Receive() { return false }
+    InputDeliveryReset(*delivery)
+    consume_ordered_delivery = true
+    if !Frame() || !Receive() { return false }
+    ordered_delivery = false
+    consume_ordered_delivery = false
+    return true
 }
 
 #program_export
@@ -242,5 +271,9 @@ main :: () -> s32 {
     label = "Say \"hi\"\\now"
     if Run("18\tfind\tlabel=Say \"hi\"\\\\now") != 1 ||
     !Has("\"label\":\"Say \\\"hi\\\"\\\\now\"") { return 72 }
+    // A full ordered-input queue cannot make a key command report success
+    // before that key has actually been accepted on a later frame.
+    if !RunBackpressuredKey("19\tkey\tcode=257") || ordered_enter_presses != 1 ||
+    !Has("\"serial\":19,\"ok\":true") { return 80 }
     return 0
 }

@@ -117,7 +117,9 @@ TestDriverState :: struct {
     key_control: bool
     key_shift: bool
     key_frame: s64
+    key_delivery_attempted: bool
     key_queued: bool
+    key_observed: bool
     typed: [TEST_DRIVER_TYPED_LIMIT]u8
     typed_count: s32
     typed_offset: s32
@@ -259,8 +261,10 @@ TestDriverCodepoint :: () -> s32 {
 // Whether a test presses this key in this frame.
 TestDriverKeyPressed :: (key: s32) -> bool {
     if !TestDriverActive() { return false }
-    return key != 0 && test_driver.key == key &&
-    test_driver.key_frame == TestDriverCurrentFrame()
+    pressed := key != 0 && test_driver.key == key &&
+        test_driver.key_frame == TestDriverCurrentFrame()
+    if pressed { test_driver.key_observed = true }
+    return pressed
 }
 
 // Queue this frame's test text and then its key into a host's ordered input,
@@ -273,7 +277,9 @@ TestDriverInput :: (queue: *InputDelivery) {
         InputDeliveryText(queue, codepoint)
     }
     if test_driver.key <= 0 || test_driver.key_queued ||
-    test_driver.key_frame != TestDriverCurrentFrame() || !InputDeliveryAccepts(queue, 1, 0) { return }
+    test_driver.key_frame != TestDriverCurrentFrame() { return }
+    test_driver.key_delivery_attempted = true
+    if !InputDeliveryAccepts(queue, 1, 0) { return }
     test_driver.key_queued = true
     modifiers: s32 = 0
     if test_driver.key_control { modifiers |= KeyModifierControl }
@@ -287,9 +293,9 @@ TestDriverKeyDown :: (key: s32) -> bool {
     if !TestDriverActive() || test_driver.key_frame != TestDriverCurrentFrame() {
         return false
     }
-    if key == test_driver.key && key != 0 { return true }
-    if test_driver.key_control && (key == 341 || key == 345) { return true }
-    if test_driver.key_shift && (key == 340 || key == 344) { return true }
+    if key == test_driver.key && key != 0 { test_driver.key_observed = true; return true }
+    if test_driver.key_control && (key == 341 || key == 345) { test_driver.key_observed = true; return true }
+    if test_driver.key_shift && (key == 340 || key == 344) { test_driver.key_observed = true; return true }
     return false
 }
 
@@ -1006,7 +1012,9 @@ TestDriverStart :: (session: Session, command: TestDriverCommand) {
         test_driver.key_control = command.control
         test_driver.key_shift = command.shift
         test_driver.key_frame = next
+        test_driver.key_delivery_attempted = false
         test_driver.key_queued = false
+        test_driver.key_observed = false
         test_driver.waiting = true
     } else if command.verb == "capture" {
         if command.path.count == 0 || command.path.count >= TEST_DRIVER_PATH_LIMIT {
@@ -1062,6 +1070,16 @@ TestDriverFinish :: (session: Session) {
         return
     }
     if test_driver.queue_count > 0 || test_driver.queue_frame > done { return }
+    // An ordered-input host may have no queue room in the scheduled frame.
+    // Keep the command pending and try the following frame instead of
+    // acknowledging a key that never reached the application. Hosts using
+    // TestDriverKeyPressed/Down directly still finish after observing it.
+    if test_driver.key > 0 && test_driver.key_delivery_attempted &&
+    !test_driver.key_queued && !test_driver.key_observed {
+        test_driver.key_frame = done + 1
+        test_driver.key_delivery_attempted = false
+        return
+    }
     if test_driver.key_frame > done || test_driver.wheel_frame > done { return }
     if test_driver.typed_offset < test_driver.typed_count {
         if test_driver.typed_frame > done { return }
