@@ -185,7 +185,7 @@ jobs:
           from pathlib import Path
           ziran = Path(os.environ['ZIRAN_ROOT'])
           settings = f'[overrides]\nkryon = "{Path.cwd()}"\nziran = "{ziran}"\n'
-          for project in ('examples/box', 'examples/image', 'examples/gallery'):
+          for project in ('examples/box', 'examples/button', 'examples/image', 'examples/textfield', 'examples/gallery'):
               (Path(project) / 'ziran.local.toml').write_text(settings)
               subprocess.run([str(ziran / 'build/bin/ziran'), 'lock'], cwd=project, check=True)
           PY

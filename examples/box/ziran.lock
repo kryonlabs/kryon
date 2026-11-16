@@ -151,8 +151,8 @@
     "name": "box"
   },
   "toolchain": {
-    "commit": "e813c847376f09dbf3400d0f37cec0a81822f7d1",
-    "ref": "e813c847376f09dbf3400d0f37cec0a81822f7d1",
+    "commit": "f9f92b46db88b48cede41a6feb560915972b2ce6",
+    "ref": "f9f92b46db88b48cede41a6feb560915972b2ce6",
     "url": "https://github.com/ziranlang/ziran.git"
   }
 }

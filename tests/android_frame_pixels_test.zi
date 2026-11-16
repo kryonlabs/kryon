@@ -51,6 +51,39 @@ Ortho :: (left: float64, right: float64, bottom: float64, top: float64, near: fl
 ReadTexture :: (texture: Texture2D) -> ImagePixels.RaylibGlyphImage #foreign raylib "LoadImageFromTexture";
 FormatImage :: (image: *ImagePixels.RaylibGlyphImage, format: s32) #foreign raylib "ImageFormat";
 UnloadImage :: (image: ImagePixels.RaylibGlyphImage) #foreign raylib "UnloadImage";
+// raylib exposes CORE as a global. This prefix matches its Window record
+// through screenScale; the test sizes a pbuffer surface through it, and later
+// raylib fields are never read or written here.
+RaylibWindowSize :: struct {
+    width: u32
+    height: u32
+}
+RaylibWindowPoint :: struct {
+    x: s32
+    y: s32
+}
+RaylibWindowState :: struct {
+    title: *u8
+    flags: u32
+    ready: bool
+    should_close: bool
+    resized_last_frame: bool
+    event_waiting: bool
+    using_fbo: bool
+    display: RaylibWindowSize
+    screen: RaylibWindowSize
+    position: RaylibWindowPoint
+    previous_screen: RaylibWindowSize
+    previous_position: RaylibWindowPoint
+    render: RaylibWindowSize
+    render_offset: RaylibWindowPoint
+    current_fbo: RaylibWindowSize
+    screen_min: RaylibWindowSize
+    screen_max: RaylibWindowSize
+    screen_scale: [16]float32
+}
+// Its unused fields are ABI padding and must survive executable field pruning.
+#assert size_of(RaylibWindowState) >= 160
 Lookup :: (scope: *void, name: *u8) -> *RaylibWindowState #foreign dl "dlsym";
 Allocate :: (bytes: usize) -> *u8 #foreign c "malloc";
 Release :: (bytes: *u8) #foreign c "free";
