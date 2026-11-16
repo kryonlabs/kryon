@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Kryon builds with Ziran 0.6.0, so native ZX apps get its faster machine
+  code: the widget scenarios run natively in 8.6 µs (Button), 9.6 µs (Text)
+  and 13.1 µs (Input) per two frames, 121–185× faster than with Ziran 0.5.0.
 - An app that Harmony embeds draws in Harmony's theme by default on Linux:
   `SystemThemeLinux.SystemPaletteRead` returns the verified host's palette
   and reads it again on each call, so apps follow a theme change; on its own
