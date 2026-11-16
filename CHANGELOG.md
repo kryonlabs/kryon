@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Kryon's renderer and SDL3 artifacts no longer list the top-level `Makefile`
+  as a recipe input. Their providers never read it, and Ziran refuses an
+  artifact whose inputs change while it builds, so an edit there failed a
+  downstream project's native build under a local Kryon override.
 - `App.Show` opens its window from a portable bundle: `ziran run window.zx`
   runs the bundle's `main` as native code in the desktop zx player, which
   supplies only the window, its events, clearing and presenting; the bundle

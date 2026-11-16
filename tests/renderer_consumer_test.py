@@ -4,6 +4,7 @@ import importlib.util
 from pathlib import Path
 import subprocess
 import tempfile
+import tomllib
 import unittest
 
 
@@ -130,6 +131,35 @@ class RendererConsumerTest(unittest.TestCase):
         (self.root / 'include').rmdir()
         with self.assertRaisesRegex(ValueError, 'directory'):
             self.consume()
+
+    def test_recipe_inputs_are_the_files_the_provider_reads(self):
+        # Ziran refuses to publish an artifact whose inputs changed while it
+        # built, so an input the provider never reads only fails downstream
+        # builds whenever another change touches it.
+        manifest = tomllib.loads((ROOT / 'ziran.toml').read_text())
+        for name in (*renderer.SUPPORTED_RENDERERS, 'native-sdl3'):
+            inputs = manifest['artifacts'][name]['inputs']
+            with self.subTest(artifact=name):
+                self.assertNotIn('Makefile', inputs)
+                self.assertTrue(all((ROOT / path).is_file() for path in inputs))
+        # The Linux raylib recipe runs mk/renderer-artifact.mk; every make
+        # fragment it includes outside a conditional is an input.
+        inputs = manifest['artifacts']['renderer-raylib']['inputs']
+        pending, read = ['mk/renderer-artifact.mk'], set()
+        while pending:
+            path = pending.pop()
+            read.add(path)
+            depth = 0
+            for line in (ROOT / path).read_text().splitlines():
+                word = line.split(maxsplit=1)[0] if line.strip() else ''
+                depth += word in ('ifeq', 'ifneq', 'ifdef', 'ifndef')
+                depth -= word == 'endif'
+                if depth == 0 and word == 'include':
+                    included = line.split()[1].replace('$(KRYON_DIR)/', '')
+                    if included not in read:
+                        pending.append(included)
+        self.assertEqual(read, {'mk/renderer-artifact.mk', 'mk/raylib-library.mk'})
+        self.assertLessEqual(read, set(inputs))
 
     def test_invalid_virtual_mounts_are_rejected(self):
         for mount in ('relative', '/../outside', '/first/../outside', '/first/./second',
