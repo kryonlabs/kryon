@@ -2,6 +2,7 @@
 #import "android_native"
 #import "android_native_test_host"
 #import "render_dispatch"
+#import "std/byte_text_linux"
 
 test_libc :: #system_library "c";
 TestThread :: () -> usize #foreign test_libc "pthread_self";
@@ -21,6 +22,12 @@ env: JniEnv;
 activity: NativeActivity;
 app: NativeAndroidApp;
 test_failure: s32;
+// The fake JNIEnv's pending exception, live local references and calls.
+pending: bool;
+local_refs: s32;
+calls: s32;
+throw_call: bool;
+described: s32;
 
 ThreadIndex :: () -> s32 { return ifx TestThread() == owner then 0 else 1 }
 
@@ -53,7 +60,24 @@ Pop :: (input: *JniEnv, result: *void) -> *void {
     local_frames[ThreadIndex()] -= 1
     return result
 }
-Exception :: (input: *JniEnv) -> u8 { unused input; return 0 }
+Exception :: (input: *JniEnv) -> u8 { unused input; return ifx pending then cast(u8)1 else cast(u8)0 }
+Clear :: (input: *JniEnv) { unused input; pending = false }
+Describe :: (input: *JniEnv) { unused input; described += 1 }
+ObjectClass :: (input: *JniEnv, object: *void) -> *void { unused input; unused object; local_refs += 1; return cast(*void)cast(usize)2 }
+DeleteRef :: (input: *JniEnv, reference: *void) { unused input; unused reference; local_refs -= 1 }
+NewString :: (input: *JniEnv, value: *u8) -> *void { unused input; unused value; local_refs += 1; return cast(*void)cast(usize)4 }
+// Only "present" exists, as on an activity without Kryon's Java callbacks.
+MethodID :: (input: *JniEnv, klass: *void, name: *u8, signature: *u8) -> *void {
+    unused input; unused klass; unused signature
+    if TextFromCString(name) == "present" { return cast(*void)cast(usize)3 }
+    pending = true
+    return null
+}
+CallVoid :: (input: *JniEnv, object: *void, method: *void, arguments: *JniValue) {
+    unused input; unused object; unused method; unused arguments
+    calls += 1
+    if throw_call { pending = true }
+}
 Keep :: (argument: *void) { unused argument; AndroidJniKeepHostThread() }
 Release :: (argument: *void) { unused argument; AndroidJniReleaseHostThread() }
 CallJava :: (argument: *void) {
@@ -61,6 +85,26 @@ CallJava :: (argument: *void) {
     session: AndroidJniSession
     if AndroidJniAttachCurrent(*session) != 1 { test_failure = 1; return }
     AndroidJniDetachCurrent(*session)
+}
+
+// A Java-free NativeActivity has none of Kryon's optional callbacks. Each
+// absent lookup clears its NoSuchMethodError and releases its class, so the
+// calls after it on the same JNIEnv still work; a present method that throws
+// still reports failure.
+AbsentMethods :: () -> s32 {
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) != 1 { return 20 }
+    defer AndroidJniDetachCurrent(*session)
+    if AndroidJniCallVoid(*session, "onNativeFirstFrame", null) || pending || local_refs != 0 { return 21 }
+    if AndroidJniCallVoidInteger(*session, "setSoftKeyboardVisible", "(Z)V", 1) || pending || local_refs != 0 { return 22 }
+    if AndroidJniMethod(*session, "setTextInputState", "(JJ[BIIZZZ)V") != null || pending || local_refs != 0 { return 23 }
+    if calls != 0 || described != 0 { return 24 }
+    text: [2]u8 = .[120, 0]
+    if !AndroidJniCallVoid(*session, "present", *text[0]) || calls != 1 || local_refs != 0 { return 25 }
+    throw_call = true
+    if AndroidJniCallVoidInteger(*session, "present", "(Z)V", 1) || !pending || calls != 2 { return 26 }
+    throw_call = false
+    return 0
 }
 
 #program_export
@@ -73,6 +117,13 @@ Check :: () -> s32 {
     env_functions.PushLocalFrame = Push
     env_functions.PopLocalFrame = Pop
     env_functions.ExceptionCheck = Exception
+    env_functions.ExceptionClear = Clear
+    env_functions.ExceptionDescribe = Describe
+    env_functions.GetObjectClass = ObjectClass
+    env_functions.DeleteLocalRef = DeleteRef
+    env_functions.NewStringUTF = NewString
+    env_functions.GetMethodID = MethodID
+    env_functions.CallVoidMethodA = CallVoid
     vm.functions = *vm_functions
     env.functions = *env_functions
     activity.vm = *vm
@@ -106,6 +157,10 @@ Check :: () -> s32 {
     if attachments[0] != 1 || detachments[0] != 1 || local_frames[0] != 0 { return 11 }
     unused TestKeySet(attached_key, null)
     if native_test_unexpected_effects != 0 || native_test_finish_calls != 0 { return 12 }
+    absent := AbsentMethods()
+    if absent != 0 { return absent }
+    // The throwing call's exception is described and cleared once, at detach.
+    if described != 1 || pending || local_refs != 0 { return 29 }
     unused TestKeyDelete(attached_key)
     return test_failure
 }

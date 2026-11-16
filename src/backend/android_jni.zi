@@ -389,21 +389,36 @@ AndroidJniDetachCurrent :: (session: *AndroidJniSession) {
     session.attached = 0
 }
 
+// Clears the exception a failed lookup left pending. An absent optional
+// method is expected, so it is not described; AndroidJniDetachCurrent still
+// describes and clears exceptions that Java methods throw.
+AndroidJniClearLookup :: (env: *JniEnv) {
+    if env.functions.ExceptionCheck(env) != 0 { env.functions.ExceptionClear(env) }
+}
+
+// The activity's method `name` with `signature`, or null when the activity
+// has none: a Java-free NativeActivity lacks the optional callbacks a Kryon
+// activity defines. The lookup's NoSuchMethodError is cleared and its class
+// reference released, so an absent method never poisons later calls.
 AndroidJniMethod :: (session: *AndroidJniSession, name: string,
     signature: string) -> *void {
     env := session.env
-    klass := env.functions.GetObjectClass(env, session.activity)
-    if klass == null {
-        return null
-    }
     method_name: [96]u8
     method_signature: [192]u8
     if !CopyCString(name, method_name[:]) ||
     !CopyCString(signature, method_signature[:]) {
         return null
     }
-    return env.functions.GetMethodID(env, klass, *method_name[0],
+    klass := env.functions.GetObjectClass(env, session.activity)
+    if klass == null {
+        AndroidJniClearLookup(env)
+        return null
+    }
+    method := env.functions.GetMethodID(env, klass, *method_name[0],
         *method_signature[0])
+    env.functions.DeleteLocalRef(env, klass)
+    if method == null { AndroidJniClearLookup(env) }
+    return method
 }
 
 AndroidJniString :: (env: *JniEnv, value: *u8) -> *void {
@@ -434,6 +449,7 @@ AndroidJniCallVoid :: (session: *AndroidJniSession, name: string,
     }
     env.functions.CallVoidMethodA(env, session.activity, method,
         *arguments[0])
+    if text != null { env.functions.DeleteLocalRef(env, arguments[0].reference) }
     return env.functions.ExceptionCheck(env) == 0
 }
 

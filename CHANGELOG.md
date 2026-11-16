@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- On Android, an activity without Kryon's optional Java callbacks, such as a
+  Java-free NativeActivity without `onNativeFirstFrame`, `setTextInputState`
+  or `setSoftKeyboardVisible`, no longer leaves a pending
+  `NoSuchMethodError` that broke the JNI calls after it: a method the
+  activity lacks counts as absent, and its lookup releases its class
+  reference.
 - A hosted widget's slice parameter (TabBar, SegmentedControl, Dropdown,
   TitleBar, Modal actions, ContextMenu) is accepted whether the bundle names
   its element type through the package (`[]TabBar.Tab`) or bare (`[]Tab`),
