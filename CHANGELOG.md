@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A drag in a TextField keeps the selection it made when the pointer is
+  released; a click still places the caret.
 - Renderer artifact builds accept dependencies resolved through a local
   override instead of failing the locked-edge commit check; locked builds
   still require the exact commit.

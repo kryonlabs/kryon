@@ -319,7 +319,10 @@ Theme :: #import "theme";
                     0, selected))
                 selected = Grapheme.Boundary(props.value, TextFieldByteAfter(props.value, count))
             }
-            if drag.started || activated {
+            // The press places the anchor. A release ends a drag with its
+            // selection kept (a click releases where it pressed, so it stays
+            // a caret); an activation without a release places it too.
+            if drag.started || (activated && !drag.ended) {
                 result.anchor = selected
             }
             result.cursor = selected

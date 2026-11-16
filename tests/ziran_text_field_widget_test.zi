@@ -391,6 +391,59 @@ NumberTap :: () -> s32 {
     return 0
 }
 
+drag_session: Session;
+drag_cursor: s32;
+drag_anchor: s32;
+drag_focused: bool;
+drag_secure: bool;
+drag_shift_right: bool;
+
+DragFrame :: () -> bool {
+    props: TextField.Props = .{.key = cast(u64)79, .bounds = Rectangle.{20.0, 20.0, 220.0, 36.0},
+        .value = "abcdefghij", .cursor = drag_cursor, .anchor = drag_anchor,
+        .focused = drag_focused, .focus_id = 79, .secure = drag_secure}
+    props.input.shift = drag_shift_right
+    props.input.right = drag_shift_right
+    BeginFrame(drag_session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
+    result := TextField.Draw(drag_session, props)
+    drag_cursor = result.cursor
+    drag_anchor = result.anchor
+    drag_focused = result.focused
+    return EndFrame(drag_session) == cast(FrameStatus)FrameOk
+}
+
+// A drag selects from its press to the pointer and keeps that selection on
+// release; a click, released where it pressed, places a caret.
+DragSelection :: (secure: bool) -> s32 {
+    drag_session = SessionOpen()
+    drag_secure = secure
+    drag_cursor = 0; drag_anchor = 0; drag_focused = false
+    if !DragFrame() { return 50 }
+    TreePointerUpdate(drag_session, PointerFrame.{40.0, 38.0, true, true, false})
+    if !DragFrame() || !drag_focused || drag_anchor != drag_cursor || drag_anchor <= 0 { return 51 }
+    pressed := drag_anchor
+    TreePointerUpdate(drag_session, PointerFrame.{110.0, 38.0, true, false, false})
+    if !DragFrame() || drag_anchor != pressed || drag_cursor <= pressed { return 52 }
+    held := drag_cursor
+    TreePointerUpdate(drag_session, PointerFrame.{110.0, 38.0, false, false, true})
+    if !DragFrame() || drag_anchor != pressed || drag_cursor != held { return 53 }
+    // A click in one frame, and one pressed and released over two.
+    TreePointerUpdate(drag_session, PointerFrame.{60.0, 38.0, true, true, false})
+    TreePointerUpdate(drag_session, PointerFrame.{60.0, 38.0, false, false, true})
+    if !DragFrame() || drag_anchor != drag_cursor || drag_cursor == held { return 54 }
+    clicked := drag_cursor
+    TreePointerUpdate(drag_session, PointerFrame.{110.0, 38.0, true, true, false})
+    if !DragFrame() || drag_anchor != held || drag_cursor != held { return 55 }
+    TreePointerUpdate(drag_session, PointerFrame.{110.0, 38.0, false, false, true})
+    if !DragFrame() || drag_anchor != held || drag_cursor != held || held == clicked { return 56 }
+    // Shift+Right still extends from the caret.
+    drag_shift_right = true
+    if !DragFrame() || drag_anchor != held || drag_cursor != held + 1 { return 57 }
+    drag_shift_right = false
+    unused SessionClose(drag_session)
+    return 0
+}
+
 // Layout moves the hit target and paint together, including drag selection.
 PlacedField :: () -> s32 {
     session := SessionOpen()
@@ -468,6 +521,10 @@ main :: () -> s32 {
     }
     number_result := NumberTap()
     if number_result != 0 { return number_result }
+    drag_result := DragSelection(false)
+    if drag_result != 0 { return drag_result }
+    secure_drag_result := DragSelection(true)
+    if secure_drag_result != 0 { return secure_drag_result + 10 }
     // An opt-in clear button appears for text, returns one complete edit and
     // disappears when the caller applies it. The field keeps keyboard focus.
     clear_session := SessionOpen()
