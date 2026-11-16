@@ -131,11 +131,19 @@ MARKDOWN_TEST_BINDINGS = \
 	--bind kryon/system_clipboard:SystemClipboardByteHost=system_clipboard_host:SystemClipboardByteHost \
 	--bind kryon/system_clipboard:SystemClipboardWriteHost=system_clipboard_host:SystemClipboardWriteHost
 markdown-editor-test:
-	ziran build --project --module-path tests $(MARKDOWN_TEST_BINDINGS) --target=c --root tests --entry markdown_editor_behavior:Main --exe -o build/markdown-editor tests/markdown_editor_behavior.zi
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER HARMONY_DESKTOP_RECOVERY=0 build/markdown-editor/markdown_editor_behavior
-	ziran bundle --project --module-path tests $(MARKDOWN_TEST_BINDINGS) --root tests --entry markdown_editor_behavior:Main -o build/markdown-editor/editor.zx tests/markdown_editor_behavior.zi
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER HARMONY_DESKTOP_RECOVERY=0 ziran run build/markdown-editor/editor.zx
-
+	$(ZIRAN_BIN) ir --project --module-path $(CURDIR)/tests --root $(CURDIR)/tests -o $(CURDIR)/build/markdown-editor/ir $(CURDIR)/tests/markdown_editor_behavior.zi
+	@set -eu; unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS SESSION_MANAGER; export HARMONY_DESKTOP_RECOVERY=0; \
+	for form in source saved; do \
+	  input=$(CURDIR)/tests/markdown_editor_behavior.zi; root=$(CURDIR)/tests; \
+	  if test "$$form" = saved; then input=$(CURDIR)/build/markdown-editor/ir/markdown_editor_behavior.zir; root=$(CURDIR)/build/markdown-editor/ir; fi; \
+	  $(ZIRAN_BIN) build --project --module-path "$$root" $(MARKDOWN_TEST_BINDINGS) --target=c --root "$$root" --entry markdown_editor_behavior:Main --exe -o build/markdown-editor/$$form-c "$$input"; \
+	  build/markdown-editor/$$form-c/markdown_editor_behavior; \
+	  $(ZIRAN_BIN) build --project --module-path "$$root" $(MARKDOWN_TEST_BINDINGS) --target=go --pkg main --root "$$root" --entry markdown_editor_behavior:Main --exe -o build/markdown-editor/$$form-go "$$input"; \
+	  GO111MODULE=off go run build/markdown-editor/$$form-go/*.go; \
+	  $(ZIRAN_BIN) bundle --project --module-path "$$root" $(MARKDOWN_TEST_BINDINGS) --root "$$root" --entry markdown_editor_behavior:Main -o build/markdown-editor/$$form.zx "$$input"; \
+	  test "$$($(ZIRAN_BIN) run build/markdown-editor/$$form.zx)" = 0; \
+	done
+	cmp build/markdown-editor/source.zx build/markdown-editor/saved.zx
 
 behavior-tests:
 	@env -u CC -u CXX "$(abspath $(ZIRAN_BUILD_DIR))/bin/ziran" fetch
