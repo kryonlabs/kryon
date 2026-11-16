@@ -226,7 +226,7 @@ ShapedLayout :: (value: string, font: s32, typeface: string) -> bool {
     }
     layout = shaped_entries[slot].layout
     if !Utf8.Valid(value) { return false }
-    FontFamily(font_description, *font_family[0])
+    FontFamily(font_description, ifx raster_family != null then raster_family else *font_family[0])
     // Text paint effects carry the host font, so measurement uses it too.
     SetFontSize(paint, cast(float64)font)
     extents: FontExtents
@@ -260,6 +260,26 @@ surface: *void;
 paint: *void;
 image_error: bool;
 frame_pending: bool;
+
+// The surface and paint frames draw into. A secondary window swaps its own in
+// for its frame and gives the previous back after (see
+// desktop_secondary_window); once text is open each paint takes Kryon's font.
+RasterTarget :: struct { surface: *void; paint: *void; pending: bool; }
+RasterUseTarget :: (next: RasterTarget) -> RasterTarget {
+    previous := RasterTarget.{surface, paint, frame_pending}
+    surface = next.surface; paint = next.paint; frame_pending = next.pending
+    if layout != null && paint != null { UseKryonFont() }
+    return previous
+}
+
+// Layout units to pixels for the window's paint (see cairo_render_scale).
+raster_scale: float64 = 1.0;
+// A program's asset reader (see cairo_assets): the path an embedded asset's
+// decoders read, ahead of the files on disk.
+RasterAssetPath :: #type (path: string, output: []u8) -> string;
+raster_asset_path: RasterAssetPath;
+// A typeface the program selected (see cairo_typefaces), else Kryon's font.
+raster_family: *u8;
 Decode :: #import "image_decode_linux";
 CachedImage :: struct { path: [4096]u8; length: s32; image: *void; used: u64; bytes: s64; serial: u64; }
 cached_images: [128]CachedImage;
@@ -432,6 +452,7 @@ OpenRaster :: (width: s32, height: s32) -> bool {
     surface = ImageSurfaceCreate(0, width, height)
     if surface == null || SurfaceStatus(surface) != 0 { return false }
     paint = Create(surface)
+    if paint != null && raster_scale != 1.0 { Scale(paint, raster_scale, raster_scale) }
     return paint != null && Status(paint) == 0
 }
 
@@ -791,6 +812,11 @@ LoadPNG :: (original_path: string) -> *void {
     }
     resolved: [4096]u8
     asset_path := ResolveAppAsset(original_path, resolved[:])
+    embedded: [64]u8
+    if raster_asset_path != null {
+        found := raster_asset_path(original_path, embedded[:])
+        if found != "" { asset_path = found }
+    }
     length: s32 = cast(s32)asset_path.count
     if length == 0 || length >= 4096 { return null }
     image_clock += 1

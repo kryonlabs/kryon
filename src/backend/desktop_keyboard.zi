@@ -1,0 +1,30 @@
+// The keyboard as the desktop window's last poll left it, by Kryon key code:
+// letters as uppercase ASCII and named keys from 256 (Escape) upward, as
+// desktop_keys maps SDL's. A key is held, first pressed, repeated by the
+// keyboard's auto-repeat, or released during that poll. Only keys this
+// window received while it had the keyboard count; a secondary window keeps
+// its own (see desktop_secondary_window).
+#import "input_protocol"
+Desktop :: #import "desktop_runtime";
+
+DesktopKeyBits :: (key: s32) -> u8 {
+    if key <= 0 || key >= 512 { return 0 }
+    return Desktop.desktop_raw_keys[key]
+}
+
+DesktopKeyDown :: (key: s32) -> bool {
+    return (DesktopKeyBits(key) & cast(u8)FrameKeyHeld) != cast(u8)0
+}
+
+// The first press only; a key the keyboard repeats reports DesktopKeyRepeated.
+DesktopKeyPressed :: (key: s32) -> bool {
+    return (DesktopKeyBits(key) & cast(u8)FrameKeyPressed) != cast(u8)0
+}
+
+DesktopKeyRepeated :: (key: s32) -> bool {
+    return (DesktopKeyBits(key) & cast(u8)FrameKeyRepeated) != cast(u8)0
+}
+
+DesktopKeyReleased :: (key: s32) -> bool {
+    return (DesktopKeyBits(key) & cast(u8)FrameKeyReleased) != cast(u8)0
+}

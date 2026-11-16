@@ -1,0 +1,105 @@
+// The desktop window among the desktop's windows: minimize, maximize,
+// restore, raise and keep above others, the state its window manager
+// reports, and the monitor it is on. Only the window desktop_runtime opened
+// is touched. The window manager decides; a desktop without one leaves the
+// state as it was, and the queries say so.
+Desktop :: #import "desktop_runtime";
+#import "geometry"
+
+#scope_file
+sdl :: #system_library "SDL2";
+MinimizeWindow :: (window: *void) #foreign sdl "SDL_MinimizeWindow";
+MaximizeWindow :: (window: *void) #foreign sdl "SDL_MaximizeWindow";
+RestoreWindow :: (window: *void) #foreign sdl "SDL_RestoreWindow";
+RaiseWindow :: (window: *void) #foreign sdl "SDL_RaiseWindow";
+SetAlwaysOnTop :: (window: *void, on_top: s32) #foreign sdl "SDL_SetWindowAlwaysOnTop";
+WindowFlags :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowFlags";
+WindowDisplay :: (window: *void) -> s32 #foreign sdl "SDL_GetWindowDisplayIndex";
+DisplayArea :: struct { x: s32; y: s32; width: s32; height: s32; }
+DisplayBounds :: (display: s32, area: *DisplayArea) -> s32 #foreign sdl "SDL_GetDisplayBounds";
+DisplayUsable :: (display: s32, area: *DisplayArea) -> s32 #foreign sdl "SDL_GetDisplayUsableBounds";
+DisplayDPI :: (display: s32, diagonal: *float32, horizontal: *float32,
+    vertical: *float32) -> s32 #foreign sdl "SDL_GetDisplayDPI";
+
+// SDL_WINDOW_MINIMIZED, SDL_WINDOW_MAXIMIZED and SDL_WINDOW_ALWAYS_ON_TOP.
+MINIMIZED :: 0x40
+MAXIMIZED :: 0x80
+ON_TOP :: 0x8000
+
+Flagged :: (flag: u32) -> bool {
+    window := Desktop.DesktopWindow()
+    return window != null && (WindowFlags(window) & flag) != cast(u32)0
+}
+
+Area :: (usable: bool) -> Rectangle {
+    window := Desktop.DesktopWindow()
+    if window == null { return .{} }
+    display := WindowDisplay(window)
+    if display < 0 { return .{} }
+    area: DisplayArea
+    found := ifx usable then DisplayUsable(display, *area) else DisplayBounds(display, *area)
+    if found != 0 { return .{} }
+    return .{cast(float32)area.x, cast(float32)area.y, cast(float32)area.width, cast(float32)area.height}
+}
+
+#scope_export
+// Asks the window manager to minimize the window; DesktopMinimized reports
+// it once the window manager has.
+DesktopMinimize :: () -> bool {
+    window := Desktop.DesktopWindow()
+    if window == null { return false }
+    MinimizeWindow(window)
+    return true
+}
+
+DesktopMaximize :: () -> bool {
+    window := Desktop.DesktopWindow()
+    if window == null { return false }
+    MaximizeWindow(window)
+    return true
+}
+
+// Back from minimized or maximized to the window's normal size and place.
+DesktopRestore :: () -> bool {
+    window := Desktop.DesktopWindow()
+    if window == null { return false }
+    RestoreWindow(window)
+    return true
+}
+
+// Above the desktop's other windows, with the keyboard.
+DesktopRaise :: () -> bool {
+    window := Desktop.DesktopWindow()
+    if window == null { return false }
+    RaiseWindow(window)
+    return true
+}
+
+DesktopSetAlwaysOnTop :: (enabled: bool) -> bool {
+    window := Desktop.DesktopWindow()
+    if window == null { return false }
+    SetAlwaysOnTop(window, ifx enabled then 1 else 0)
+    return true
+}
+
+DesktopMinimized :: () -> bool { return Flagged(MINIMIZED) }
+DesktopMaximized :: () -> bool { return Flagged(MAXIMIZED) }
+DesktopAlwaysOnTop :: () -> bool { return Flagged(ON_TOP) }
+
+// The monitor the window is on, in desktop pixels; empty before it opens.
+DesktopMonitorBounds :: () -> Rectangle { return Area(false) }
+
+// That monitor less the desktop's panels and docks.
+DesktopMonitorUsable :: () -> Rectangle { return Area(true) }
+
+// The monitor's density over 96 dots per inch: X11's Xft.dpi when the
+// desktop sets it, else the screen's measured density; 1 when SDL cannot say.
+DesktopDisplayScale :: () -> float32 {
+    window := Desktop.DesktopWindow()
+    if window == null { return 1.0 }
+    display := WindowDisplay(window)
+    diagonal: float32; horizontal: float32; vertical: float32
+    if display < 0 || DisplayDPI(display, *diagonal, *horizontal, *vertical) != 0 { return 1.0 }
+    if !(horizontal > 0.0) { return 1.0 }
+    return horizontal / 96.0
+}

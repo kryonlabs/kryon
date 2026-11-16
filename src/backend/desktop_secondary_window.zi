@@ -1,0 +1,589 @@
+// Secondary windows of a desktop program, such as a floating timer or a
+// reminder over other windows. Each one is an SDL window owned by this
+// process with its own Cairo surface and presenter: between
+// BeginSecondaryWindow and EndSecondaryWindow, Kryon draws into that
+// window's surface, and EndSecondaryWindow presents it. The main window is
+// desktop_runtime's and must be open first. Only handles created here are
+// accepted; up to three are open at a time.
+//
+// flags are NativeWindowFlags from window_flags: borderless, always on top,
+// skip the taskbar, place from the top right, or center. Resizable gives a
+// 160x196 minimum, and a left click then reports on release instead of
+// dragging the window. Sticky is not applied here. A window draws in its own
+// pixels, so `scale` is not applied either.
+//
+// desktop_runtime hands each window the SDL events that name it, so its
+// pointer, wheel and keys are its own and the main window never sees them.
+// SecondaryWindowInput gives a window's pointer to its session before
+// BeginSecondaryFrame, so buttons, sliders and menus drawn there answer that
+// window's pointer.
+#import "c_string"
+#import "drawing_props"
+#import "geometry"
+#import "input_protocol"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "desktop_keys"
+Sdl :: #import "sdl_event";
+Desktop :: #import "desktop_runtime";
+Raster :: #import "cairo_raster";
+Presenter :: #import "pixmap_sdl";
+
+SecondaryWindow :: struct {
+    handle: *void
+}
+
+#scope_file
+libc :: #system_library "c";
+Allocate :: (count: usize, size: usize) -> *void #foreign libc "calloc";
+Free :: (value: *void) #foreign libc "free";
+sdl :: #system_library "SDL2";
+CreateWindow :: (title: *u8, x: s32, y: s32, width: s32, height: s32,
+    flags: u32) -> *void #foreign sdl "SDL_CreateWindow";
+DestroyWindow :: (window: *void) #foreign sdl "SDL_DestroyWindow";
+ShowWindow :: (window: *void) #foreign sdl "SDL_ShowWindow";
+WindowId :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowID";
+WindowSize :: (window: *void, width: *s32, height: *s32) #foreign sdl "SDL_GetWindowSize";
+WindowPosition :: (window: *void, x: *s32, y: *s32) #foreign sdl "SDL_GetWindowPosition";
+MoveWindow :: (window: *void, x: s32, y: s32) #foreign sdl "SDL_SetWindowPosition";
+MinimumSize :: (window: *void, width: s32, height: s32) #foreign sdl "SDL_SetWindowMinimumSize";
+WindowDisplay :: (window: *void) -> s32 #foreign sdl "SDL_GetWindowDisplayIndex";
+DisplayUsable :: (display: s32, area: *Area) -> s32 #foreign sdl "SDL_GetDisplayUsableBounds";
+KeyboardGrabbed :: (window: *void) -> s32 #foreign sdl "SDL_GetWindowKeyboardGrab";
+GrabKeyboard :: (window: *void, grabbed: s32) #foreign sdl "SDL_SetWindowKeyboardGrab";
+DestroyRenderer :: (renderer: *void) #foreign sdl "SDL_DestroyRenderer";
+CreateTexture :: (renderer: *void, format: u32, access: s32, width: s32,
+    height: s32) -> *void #foreign sdl "SDL_CreateTexture";
+DestroyTexture :: (texture: *void) #foreign sdl "SDL_DestroyTexture";
+UpdateTexture :: (texture: *void, rect: *void, pixels: *u8, pitch: s32) -> s32 #foreign sdl "SDL_UpdateTexture";
+RenderCopy :: (renderer: *void, texture: *void, source: *void,
+    destination: *void) -> s32 #foreign sdl "SDL_RenderCopy";
+RenderPresent :: (renderer: *void) #foreign sdl "SDL_RenderPresent";
+cairo :: #system_library "cairo";
+CreateSurface :: (format: s32, width: s32, height: s32) -> *void #foreign cairo "cairo_image_surface_create";
+SurfaceStatus :: (surface: *void) -> s32 #foreign cairo "cairo_surface_status";
+SurfaceFlush :: (surface: *void) #foreign cairo "cairo_surface_flush";
+SurfaceData :: (surface: *void) -> *u8 #foreign cairo "cairo_image_surface_get_data";
+SurfaceStride :: (surface: *void) -> s32 #foreign cairo "cairo_image_surface_get_stride";
+DestroySurface :: (surface: *void) #foreign cairo "cairo_surface_destroy";
+CreatePaint :: (surface: *void) -> *void #foreign cairo "cairo_create";
+PaintStatus :: (paint: *void) -> s32 #foreign cairo "cairo_status";
+DestroyPaint :: (paint: *void) #foreign cairo "cairo_destroy";
+Save :: (paint: *void) #foreign cairo "cairo_save";
+Restore :: (paint: *void) #foreign cairo "cairo_restore";
+SetOperator :: (paint: *void, operator: s32) #foreign cairo "cairo_set_operator";
+SetSource :: (paint: *void, red: float64, green: float64, blue: float64,
+    alpha: float64) #foreign cairo "cairo_set_source_rgba";
+PaintAll :: (paint: *void) #foreign cairo "cairo_paint";
+
+Area :: struct { x: s32; y: s32; width: s32; height: s32; }
+
+// SDL_PIXELFORMAT_ARGB8888, Cairo's image layout, as desktop_runtime uses.
+PIXELS :: 0x16362004
+
+State :: struct {
+    window: *void
+    window_id: u32
+    renderer: *void
+    texture: *void
+    surface: *void
+    paint: *void
+    previous: Raster.RasterTarget
+    background: Color
+    width: s32
+    height: s32
+    x: s32
+    y: s32
+    click_x: s32
+    click_y: s32
+    drag_anchor_x: s32
+    drag_anchor_y: s32
+    drag_motion_x: s32
+    drag_motion_y: s32
+    drag_total_x: s32
+    drag_total_y: s32
+    drag_active: bool
+    drag_pending: bool
+    release_seen: bool
+    dragged: bool
+    clicked: bool
+    right_clicked: bool
+    close_requested: bool
+    resizable: bool
+    pointer_x: s32
+    pointer_y: s32
+    pointer_inside: bool
+    pointer_down: bool
+    pointer_pressed: bool
+    pointer_released: bool
+    wheel: float32
+    focused: bool
+    keys: [512]u8
+}
+
+windows: [3]*State;
+window_count: s32;
+active: *State;
+
+Owned :: (handle: *void) -> *State {
+    for index: 0..window_count - 1 {
+        if cast(*void)windows[index] == handle { return windows[index] }
+    }
+    return null
+}
+
+ForId :: (id: u32) -> *State {
+    if id == 0 { return null }
+    for index: 0..window_count - 1 {
+        if windows[index].window_id == id { return windows[index] }
+    }
+    return null
+}
+
+// A Cairo surface and SDL texture of the window's size; the old ones go only
+// once both new ones exist.
+Resize :: (state: *State, width: s32, height: s32) -> bool {
+    texture := CreateTexture(state.renderer, cast(u32)PIXELS, 1, width, height)
+    if texture == null { return false }
+    surface := CreateSurface(0, width, height)
+    if surface == null || SurfaceStatus(surface) != 0 {
+        if surface != null { DestroySurface(surface) }
+        DestroyTexture(texture)
+        return false
+    }
+    paint := CreatePaint(surface)
+    if paint == null || PaintStatus(paint) != 0 {
+        if paint != null { DestroyPaint(paint) }
+        DestroySurface(surface)
+        DestroyTexture(texture)
+        return false
+    }
+    Release(state)
+    state.texture = texture
+    state.surface = surface
+    state.paint = paint
+    state.width = width
+    state.height = height
+    return true
+}
+
+Release :: (state: *State) {
+    if state.paint != null { DestroyPaint(state.paint) }
+    if state.surface != null { DestroySurface(state.surface) }
+    if state.texture != null { DestroyTexture(state.texture) }
+    state.paint = null
+    state.surface = null
+    state.texture = null
+}
+
+Clear :: (state: *State) {
+    color := state.background
+    Save(state.paint)
+    SetOperator(state.paint, 1) // CAIRO_OPERATOR_SOURCE: the colour replaces
+    SetSource(state.paint, cast(float64)color.r / 255.0, cast(float64)color.g / 255.0,
+        cast(float64)color.b / 255.0, cast(float64)color.a / 255.0)
+    PaintAll(state.paint)
+    Restore(state.paint)
+}
+
+Present :: (state: *State) -> bool {
+    SurfaceFlush(state.surface)
+    if SurfaceStatus(state.surface) != 0 { return false }
+    if UpdateTexture(state.texture, null, SurfaceData(state.surface),
+        SurfaceStride(state.surface)) != 0 { return false }
+    if RenderCopy(state.renderer, state.texture, null, null) != 0 { return false }
+    RenderPresent(state.renderer)
+    return true
+}
+
+// A new poll: key edges from the last one end; held keys stay held.
+PollStart :: () {
+    for index: 0..window_count - 1 {
+        state := windows[index]
+        for key: cast(s32)1..511 { state.keys[key] &= cast(u8)FrameKeyHeld }
+    }
+}
+
+// Byte offsets inside SDL2's 56-byte SDL_Event.
+At :: (event: *Sdl.Event, offset: s32) -> *u8 {
+    bytes := cast(*u8)event
+    return *bytes[offset]
+}
+Signed :: (event: *Sdl.Event, offset: s32) -> s32 { return (cast(*s32)At(event, offset)).* }
+Unsigned :: (event: *Sdl.Event, offset: s32) -> u32 { return (cast(*u32)At(event, offset)).* }
+
+// Takes the window, keyboard, text and mouse events that name one of these
+// windows; desktop_runtime keeps every other event. It stays installed once
+// a window opened, and takes nothing while none is open.
+Route :: (event: *Sdl.Event) -> bool {
+    kind := event.kind
+    if kind != cast(u32)0x200 && (kind < cast(u32)0x300 || kind > cast(u32)0x303) &&
+    (kind < cast(u32)0x400 || kind > cast(u32)0x403) { return false }
+    state := ForId(event.window_id)
+    if state == null { return false }
+    if kind == cast(u32)0x200 {
+        detail := At(event, 12).*
+        // SDL_WINDOWEVENT_CLOSE, ENTER, LEAVE, FOCUS_GAINED and FOCUS_LOST.
+        if detail == cast(u8)14 { state.close_requested = true }
+        if detail == cast(u8)10 { state.pointer_inside = true }
+        if detail == cast(u8)11 { state.pointer_inside = false }
+        if detail == cast(u8)12 { state.focused = true }
+        // SHOWN, EXPOSED and RESTORED show the last finished picture again.
+        if (detail == cast(u8)1 || detail == cast(u8)3 || detail == cast(u8)9) && active != state {
+            unused Present(state)
+        }
+        if detail == cast(u8)13 {
+            state.focused = false
+            for key: cast(s32)1..511 {
+                if (state.keys[key] & cast(u8)FrameKeyHeld) != cast(u8)0 { state.keys[key] = cast(u8)FrameKeyReleased }
+            }
+        }
+        return true
+    }
+    if kind == cast(u32)0x300 || kind == cast(u32)0x301 {
+        // SDL_KeyboardEvent: repeat at 13, keysym.sym at 20, keysym.mod at 24.
+        code := DesktopKeyWithModifiers(Signed(event, 20), cast(s32)(Unsigned(event, 24) & cast(u32)65535))
+        if code <= 0 || code >= 512 { return true }
+        if kind == cast(u32)0x301 {
+            state.keys[code] &= cast(u8)(FrameKeyPressed | FrameKeyRepeated)
+            state.keys[code] |= cast(u8)FrameKeyReleased
+        } else if At(event, 13).* != cast(u8)0 {
+            state.keys[code] |= cast(u8)(FrameKeyHeld | FrameKeyRepeated)
+        } else {
+            if (state.keys[code] & cast(u8)FrameKeyHeld) == cast(u8)0 { state.keys[code] |= cast(u8)FrameKeyPressed }
+            state.keys[code] |= cast(u8)FrameKeyHeld
+        }
+        return true
+    }
+    if kind < cast(u32)0x400 { return true } // text editing and input
+    if kind == cast(u32)0x403 {
+        // SDL_MouseWheelEvent: y at 20; SDL_MOUSEWHEEL_FLIPPED at 24.
+        steps := cast(float32)Signed(event, 20)
+        if Unsigned(event, 24) == cast(u32)1 { steps = -steps }
+        state.wheel += steps
+        return true
+    }
+    if kind == cast(u32)0x400 {
+        // SDL_MouseMotionEvent: state at 16, x at 20, y at 24.
+        x := Signed(event, 20)
+        y := Signed(event, 24)
+        state.pointer_x = x
+        state.pointer_y = y
+        state.pointer_inside = true
+        if state.drag_active {
+            if (Unsigned(event, 16) & cast(u32)1) != cast(u32)0 {
+                state.drag_motion_x = x
+                state.drag_motion_y = y
+                state.drag_pending = true
+            } else {
+                state.release_seen = true
+            }
+        }
+        return true
+    }
+    // SDL_MouseButtonEvent: button at 16, x at 20, y at 24.
+    button := event.button
+    x := event.x
+    y := event.y
+    if kind == cast(u32)0x401 && button == cast(u8)1 {
+        state.pointer_x = x
+        state.pointer_y = y
+        state.pointer_inside = true
+        state.pointer_down = true
+        state.pointer_pressed = true
+        state.drag_active = !state.resizable
+        state.release_seen = false
+        state.dragged = false
+        state.clicked = false
+        state.drag_pending = false
+        state.drag_total_x = 0
+        state.drag_total_y = 0
+        state.drag_anchor_x = x
+        state.drag_anchor_y = y
+    }
+    if kind == cast(u32)0x402 {
+        state.click_x = x
+        state.click_y = y
+        if button == cast(u8)3 { state.right_clicked = true }
+        if button == cast(u8)1 {
+            state.pointer_x = x
+            state.pointer_y = y
+            state.pointer_down = false
+            state.pointer_released = true
+            if state.resizable { state.clicked = true } else { state.release_seen = true }
+        }
+    }
+    return true
+}
+
+Forget :: (state: *State) {
+    at: s32 = -1
+    for index: 0..window_count - 1 { if windows[index] == state { at = index } }
+    if at < 0 { return }
+    for index: at..window_count - 2 { windows[index] = windows[index + 1] }
+    window_count -= 1
+    windows[window_count] = null
+}
+
+KeyBits :: (window: SecondaryWindow, key: s32) -> u8 {
+    state := Owned(window.handle)
+    if state == null || key <= 0 || key >= 512 { return 0 }
+    return state.keys[key]
+}
+
+#scope_export
+
+OpenSecondaryWindow :: (title: string, x: s32, y: s32, width: s32,
+    height: s32, flags: s32, background: Color,
+    scale: float32) -> SecondaryWindow {
+    unused scale
+    opened: SecondaryWindow
+    main := Desktop.DesktopWindow()
+    if main == null || width <= 0 || height <= 0 || window_count >= 3 { return opened }
+    name: [128]u8
+    if !CopyCString(title, name[:]) { return opened }
+    // Hidden until its first picture; borderless, on top, off the taskbar
+    // and resizable as asked.
+    window_flags: u32 = 0x8
+    if (flags & 1) != 0 { window_flags |= cast(u32)0x10 }
+    if (flags & 2) != 0 { window_flags |= cast(u32)0x8000 }
+    if (flags & 4) != 0 { window_flags |= cast(u32)0x10000 }
+    if (flags & 64) != 0 { window_flags |= cast(u32)0x20 }
+    if (flags & 24) != 0 {
+        area: Area
+        display := WindowDisplay(main)
+        if display >= 0 && DisplayUsable(display, *area) == 0 {
+            if (flags & 16) != 0 {
+                x = area.x + (area.width - width) / 2
+                y = area.y + (area.height - height) / 2
+            } else {
+                x = area.x + area.width - width - x
+                y = area.y + y
+            }
+        }
+    }
+    state := cast(*State)Allocate(cast(usize)1, size_of(State))
+    if state == null { return opened }
+    state.window = CreateWindow(*name[0], x, y, width, height, window_flags)
+    if state.window != null { state.renderer = Presenter.CreatePixmapRenderer(state.window) }
+    if state.renderer == null || !Resize(state, width, height) {
+        Release(state)
+        if state.renderer != null { DestroyRenderer(state.renderer) }
+        if state.window != null { DestroyWindow(state.window) }
+        Free(cast(*void)state)
+        return opened
+    }
+    state.window_id = WindowId(state.window)
+    state.resizable = (flags & 64) != 0
+    if state.resizable { MinimumSize(state.window, 160, 196) }
+    state.background = background
+    Clear(state)
+    unused Present(state)
+    ShowWindow(state.window)
+    WindowPosition(state.window, *state.x, *state.y)
+    windows[window_count] = state
+    window_count += 1
+    route: Desktop.DesktopEventRoute = Route
+    start: Desktop.DesktopPollStart = PollStart
+    Desktop.desktop_event_route = route
+    Desktop.desktop_poll_start = start
+    opened.handle = cast(*void)state
+    return opened
+}
+
+CloseSecondaryWindow :: (window: SecondaryWindow) {
+    state := Owned(window.handle)
+    if state == null { return }
+    if active == state {
+        unused Raster.RasterUseTarget(state.previous)
+        active = null
+    }
+    Forget(state)
+    Release(state)
+    DestroyRenderer(state.renderer)
+    DestroyWindow(state.window)
+    Free(cast(*void)state)
+}
+
+// Starts drawing into the window: its surface, cleared to its background,
+// takes the frames' paint until EndSecondaryWindow. One window at a time.
+BeginSecondaryWindow :: (window: SecondaryWindow) -> bool {
+    state := Owned(window.handle)
+    if state == null || active != null { return false }
+    width: s32
+    height: s32
+    WindowSize(state.window, *width, *height)
+    if width > 0 && height > 0 && (width != state.width || height != state.height) &&
+    !Resize(state, width, height) { return false }
+    Clear(state)
+    active = state
+    state.previous = Raster.RasterUseTarget(.{state.surface, state.paint, false})
+    return true
+}
+
+// Gives the paint back to the main window and presents this one.
+EndSecondaryWindow :: (window: SecondaryWindow) -> bool {
+    state := Owned(window.handle)
+    if state == null || active != state { return false }
+    unused Raster.RasterUseTarget(state.previous)
+    active = null
+    return Present(state)
+}
+
+// Moves windows being dragged and turns a release without a drag into a
+// click. Call once a frame after PollDesktop.
+PumpSecondaryWindows :: () {
+    for index: 0..window_count - 1 {
+        state := windows[index]
+        if !state.drag_active { continue }
+        if state.drag_pending {
+            dx := state.drag_motion_x - state.drag_anchor_x
+            dy := state.drag_motion_y - state.drag_anchor_y
+            state.drag_pending = false
+            WindowPosition(state.window, *state.x, *state.y)
+            if dx != 0 || dy != 0 {
+                state.x += dx
+                state.y += dy
+                state.drag_total_x += dx
+                state.drag_total_y += dy
+                MoveWindow(state.window, state.x, state.y)
+                if state.drag_total_x > 2 || state.drag_total_x < -2 ||
+                state.drag_total_y > 2 || state.drag_total_y < -2 { state.dragged = true }
+            }
+        }
+        if state.release_seen {
+            state.drag_active = false
+            state.release_seen = false
+            if !state.dragged { state.clicked = true }
+        }
+    }
+}
+
+// Each of these reports once: a click, a right click, a drag, a close.
+IsSecondaryWindowClicked :: (window: SecondaryWindow) -> bool {
+    state := Owned(window.handle)
+    if state == null || !state.clicked { return false }
+    state.clicked = false
+    return true
+}
+
+IsSecondaryWindowRightClicked :: (window: SecondaryWindow) -> bool {
+    state := Owned(window.handle)
+    if state == null || !state.right_clicked { return false }
+    state.right_clicked = false
+    return true
+}
+
+IsSecondaryWindowDragged :: (window: SecondaryWindow) -> bool {
+    state := Owned(window.handle)
+    if state == null || !state.dragged { return false }
+    state.dragged = false
+    state.clicked = false
+    return true
+}
+
+TakeSecondaryWindowClose :: (window: SecondaryWindow) -> bool {
+    state := Owned(window.handle)
+    if state == null || !state.close_requested { return false }
+    state.close_requested = false
+    return true
+}
+
+// The window's keys during the last poll, as desktop_keyboard reports the
+// main window's.
+IsSecondaryWindowKeyDown :: (window: SecondaryWindow, key: s32) -> bool {
+    return (KeyBits(window, key) & cast(u8)FrameKeyHeld) != cast(u8)0
+}
+
+IsSecondaryWindowKeyPressed :: (window: SecondaryWindow, key: s32) -> bool {
+    return (KeyBits(window, key) & cast(u8)FrameKeyPressed) != cast(u8)0
+}
+
+IsSecondaryWindowKeyRepeated :: (window: SecondaryWindow, key: s32) -> bool {
+    return (KeyBits(window, key) & cast(u8)FrameKeyRepeated) != cast(u8)0
+}
+
+IsSecondaryWindowKeyReleased :: (window: SecondaryWindow, key: s32) -> bool {
+    return (KeyBits(window, key) & cast(u8)FrameKeyReleased) != cast(u8)0
+}
+
+// The window's SDL window, as DesktopWindow gives the main window's.
+SecondaryDesktopWindow :: (window: SecondaryWindow) -> *void {
+    state := Owned(window.handle)
+    return ifx state != null then state.window else null
+}
+
+IsSecondaryWindowFocused :: (window: SecondaryWindow) -> bool {
+    state := Owned(window.handle)
+    return state != null && state.focused
+}
+
+// The size its surface was made at, in pixels.
+GetSecondaryWindowSize :: (window: SecondaryWindow, width: *s32, height: *s32) {
+    state := Owned(window.handle)
+    if width != null { width.* = ifx state != null then state.width else 0 }
+    if height != null { height.* = ifx state != null then state.height else 0 }
+}
+
+SetSecondaryWindowKeyboardGrab :: (window: SecondaryWindow, enabled: bool) -> bool {
+    state := Owned(window.handle)
+    if state == null { return false }
+    desired: s32 = ifx enabled then 1 else 0
+    if KeyboardGrabbed(state.window) == desired { return true }
+    GrabKeyboard(state.window, desired)
+    return KeyboardGrabbed(state.window) == desired
+}
+
+GetSecondaryWindowPosition :: (window: SecondaryWindow, x: *s32, y: *s32) {
+    state := Owned(window.handle)
+    if x != null { x.* = ifx state != null then state.x else 0 }
+    if y != null { y.* = ifx state != null then state.y else 0 }
+}
+
+GetSecondaryWindowClickPosition :: (window: SecondaryWindow, x: *s32, y: *s32) {
+    state := Owned(window.handle)
+    if x != null { x.* = ifx state != null then state.click_x else -1 }
+    if y != null { y.* = ifx state != null then state.click_y else -1 }
+}
+
+// Gives the session this window's pointer for its next frame, in window
+// pixels: position, left button and wheel, each press, release and wheel
+// step once. Outside the window the pointer is at -1, -1, so nothing in the
+// window stays hovered; a held button keeps reporting where it is, so a drag
+// that leaves the window still ends where it was released.
+SecondaryWindowInput :: (window: SecondaryWindow, session: Session) -> bool {
+    state := Owned(window.handle)
+    if state == null { return false }
+    pointer: PointerFrame
+    pointer.x = -1.0
+    pointer.y = -1.0
+    if state.pointer_inside || state.pointer_down || state.pointer_released {
+        pointer.x = cast(float32)state.pointer_x
+        pointer.y = cast(float32)state.pointer_y
+    }
+    pointer.down = state.pointer_down
+    pointer.pressed = state.pointer_pressed
+    pointer.released = state.pointer_released
+    wheel := state.wheel
+    state.pointer_pressed = false
+    state.pointer_released = false
+    state.wheel = 0.0
+    unused TreePointerUpdate(session, pointer)
+    PointerWheelSend(session, pointer.x, pointer.y, wheel)
+    return true
+}
+
+BeginSecondaryFrame :: (session: Session, width: s32, height: s32) -> bool {
+    bounds := Rectangle.{0.0, 0.0, cast(float32)width, cast(float32)height}
+    return cast(s32)BeginFrame(session, cast(u64)1, bounds) == 0
+}
+
+EndSecondaryFrame :: (session: Session) {
+    unused EndFrame(session)
+}
+
+CloseSecondarySession :: (session: Session) {
+    if SessionValid(session) { unused CloseSession(session) }
+}

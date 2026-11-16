@@ -1414,6 +1414,51 @@ Every mutation keeps zoom in range and leaves no empty space around the page.
 Hosts observe wheel, pointer, and touch input and pass those observations in;
 `ViewWheelFactor(notches)` supplies the bounded 1.2-per-notch wheel factor.
 
+## Desktop host parts
+
+The SDL2/Cairo desktop host (`desktop_runtime`) carries optional parts that
+only programs importing them link. Key codes are Kryon's: letters as
+uppercase ASCII, named keys from 256 (Escape), as `desktop_keys` maps SDL's.
+
+- `desktop_runtime` itself routes each SDL event to the window it names, and
+  `DesktopWheelMoveX()` gives the poll's sideways wheel steps (positive to
+  the right) beside `DesktopWheelMove()`. Over another window of the program
+  the main window's pointer is at -1, -1 and presses nothing.
+- `kryon/desktop_keyboard`: `DesktopKeyDown(key)`, `DesktopKeyPressed(key)`
+  (the first press), `DesktopKeyRepeated(key)` (keyboard auto-repeat) and
+  `DesktopKeyReleased(key)`, for the last `PollDesktop`.
+- `kryon/desktop_window_state`: `DesktopMinimize`, `DesktopMaximize`,
+  `DesktopRestore`, `DesktopRaise` and `DesktopSetAlwaysOnTop(enabled)` ask
+  the window manager; `DesktopMinimized`, `DesktopMaximized` and
+  `DesktopAlwaysOnTop` report what it did. `DesktopMonitorBounds()` and
+  `DesktopMonitorUsable()` give the window's monitor in desktop pixels, and
+  `DesktopDisplayScale()` its density over 96 dpi (X11's `Xft.dpi` when set).
+- `kryon/desktop_secondary_window`: up to three more windows, each with its
+  own Cairo surface, presenter and events, with the calls of
+  `raylib_secondary_window`: `OpenSecondaryWindow(title, x, y, width,
+  height, flags, background, scale)`, `CloseSecondaryWindow`,
+  `BeginSecondaryWindow`/`EndSecondaryWindow` around
+  `BeginSecondaryFrame`/`EndSecondaryFrame`, `SecondaryWindowInput`,
+  `PumpSecondaryWindows`, `IsSecondaryWindowClicked`, `RightClicked`,
+  `Dragged`, `TakeSecondaryWindowClose`, `GetSecondaryWindowSize`,
+  `Position`, `ClickPosition`, `SetSecondaryWindowKeyboardGrab` and
+  `CloseSecondarySession`, plus each window's own keys
+  (`IsSecondaryWindowKeyDown`, `KeyPressed`, `KeyRepeated`, `KeyReleased`),
+  `IsSecondaryWindowFocused` and `SecondaryDesktopWindow` (its SDL window).
+- `kryon/cairo_assets`: `RasterUseAssets(read)` gives the raster the
+  program's own assets, such as files embedded in its executable: a picture
+  whose bytes `read(path)` returns decodes from memory in any format the
+  raster decodes. `RasterAssetsClose()` forgets them.
+- `kryon/cairo_typefaces`: `kryon/typeface_source`'s `RegisterTypefaceData`,
+  `RegisterTypefaceFile`, `RegisterSystemTypeface`, `UseTypeface` and
+  `ClearTypefaces` on Pango and fontconfig. Registered faces also serve
+  scripts the selected face lacks.
+- `kryon/cairo_render_scale`: `RasterSetScale(scale)` draws layout units at
+  `scale` pixels each, as a camera zoom does; `RasterScale()` reads it. The
+  program maps its pointer into layout units itself.
+
+`make desktop-windows-test` checks these on a private Xvfb with XTest input.
+
 ## Asset audio
 
 `kryon/Media` retains `MediaOpen`, pause/stop/state/message and text fetching.

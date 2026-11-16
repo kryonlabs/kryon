@@ -1,0 +1,175 @@
+// A program's typefaces for the desktop raster: kryon/typeface_source's
+// RegisterTypefaceData, RegisterTypefaceFile, RegisterSystemTypeface,
+// UseTypeface and ClearTypefaces on Pango and fontconfig. A registered face
+// joins the program's fonts, so text in a script the selected face lacks
+// still finds it; UseTypeface makes one the family all text is set in.
+// A face given as bytes lives in an in-memory file (see cairo_assets) until
+// the program ends, and registering the same bytes again reuses it, so a
+// program that clears and registers its faces on each language change adds
+// no fonts.
+Raster :: #import "cairo_raster";
+Assets :: #import "cairo_assets";
+#import "c_string"
+#import "byte_text_linux"
+#import "font_metrics"
+using Vectors :: #import "vec";
+
+#scope_file
+fontconfig :: #system_library "fontconfig";
+pango :: #system_library "pangocairo-1.0";
+objects :: #system_library "gobject-2.0";
+FontConfigCurrent :: () -> *void #foreign fontconfig "FcConfigGetCurrent";
+FontConfigAdd :: (config: *void, path: *u8) -> s32 #foreign fontconfig "FcConfigAppFontAddFile";
+FontQuery :: (path: *u8, id: u32, blanks: *void, count: *s32) -> *void #foreign fontconfig "FcFreeTypeQuery";
+FontQueryString :: (pattern: *void, key: *u8, index: s32, value: **u8) -> s32 #foreign fontconfig "FcPatternGetString";
+FontQueryFree :: (pattern: *void) #foreign fontconfig "FcPatternDestroy";
+NewFontMap :: () -> *void #foreign pango "pango_cairo_font_map_new";
+UseFontMap :: (map: *void) #foreign pango "pango_cairo_font_map_set_default";
+Unref :: (object: *void) #foreign objects "g_object_unref";
+LayoutChanged :: (layout: *void) #foreign pango "pango_layout_context_changed";
+
+// One font file the program added: its bytes' address and length when it
+// came from bytes, its in-memory file, and its family.
+Face :: struct { data: *u8; count: s64; path: [4096]u8; family: [256]u8; }
+// A name the program registered, and the face it names.
+Name :: struct { name: [128]u8; length: s64; face: s32; }
+
+faces: Vec(Face);
+names: Vec(Name);
+// The family of fontconfig's sans-serif, as a system face's.
+SYSTEM_FACE :: -1
+
+// Adds the font at PATH to fontconfig and reads its family.
+AddFace :: (face: *Face) -> bool {
+    if FontConfigAdd(FontConfigCurrent(), *face.path[0]) == 0 { return false }
+    count: s32 = 0
+    pattern := FontQuery(*face.path[0], 0, null, *count)
+    if pattern == null { return false }
+    key: [8]u8
+    unused CopyCString("family", key[:])
+    family: *u8 = null
+    found := FontQueryString(pattern, *key[0], 0, *family) == 0 && family != null
+    if found {
+        at: s32 = 0
+        while at < 255 && family[at] != cast(u8)0 { face.family[at] = family[at]; at += 1 }
+        face.family[at] = 0
+    }
+    FontQueryFree(pattern)
+    if found { Reload() }
+    return found
+}
+
+// Pango lists fonts once per font map, so a font added later needs a new
+// one; the raster's text layouts open again on it with the next text.
+Reload :: () {
+    map := NewFontMap()
+    if map == null { return }
+    UseFontMap(map)
+    Unref(map)
+    if Raster.layout != null { Raster.CairoTextClose() }
+    GlyphMetricsChanged()
+}
+
+Named :: (entry: *Name, name: string) -> bool {
+    return TextFromBytes(entry.name[0:entry.length]) == name
+}
+
+Remember :: (name: string, face: s32) -> bool {
+    if name.count > 128 { return false }
+    for index: 0..names.count - 1 {
+        if Named(*names[index], name) { names[index].face = face; return true }
+    }
+    entry: Name
+    for index: 0..name.count - 1 { entry.name[index] = name[index] }
+    entry.length = name.count
+    entry.face = face
+    VecPush(names, entry)
+    return true
+}
+
+// Text already shaped in the old family is shaped again, and widgets measure
+// again.
+Changed :: () {
+    for index: 0..Raster.SHAPED_LAYOUT_LIMIT - 1 {
+        Raster.shaped_entries[index].font = 0
+        if Raster.shaped_entries[index].layout != null { LayoutChanged(Raster.shaped_entries[index].layout) }
+    }
+    GlyphMetricsChanged()
+}
+
+// The selected family, copied, since faces moves as it grows.
+selected_family: [256]u8;
+
+#scope_export
+
+#program_export
+LoadTypefaceData :: (name: string, extension: string, data: string,
+    seed: *s32, seed_count: s32) -> bool {
+    unused extension; unused seed; unused seed_count
+    if name.count == 0 || data.count == 0 { return false }
+    bytes := (cast(*TextDescriptor)(*data)).data
+    for index: 0..faces.count - 1 {
+        if faces[index].data == bytes && faces[index].count == data.count { return Remember(name, cast(s32)index) }
+    }
+    descriptor := Assets.RasterAssetFile(data)
+    if descriptor < 0 { return false }
+    face: Face
+    face.data = bytes
+    face.count = data.count
+    if Assets.RasterAssetPath(descriptor, face.path[:]) == "" || !AddFace(*face) { return false }
+    VecPush(faces, face)
+    return Remember(name, cast(s32)faces.count - 1)
+}
+
+#program_export
+LoadTypefaceFile :: (name: string, path: string,
+    seed: *s32, seed_count: s32) -> bool {
+    unused seed; unused seed_count
+    if name.count == 0 || path.count == 0 { return false }
+    for index: 0..faces.count - 1 {
+        if faces[index].data == null && TextFromCString(*faces[index].path[0]) == path { return Remember(name, cast(s32)index) }
+    }
+    face: Face
+    if !CopyCString(path, face.path[:]) || !AddFace(*face) { return false }
+    VecPush(faces, face)
+    return Remember(name, cast(s32)faces.count - 1)
+}
+
+// The desktop's own sans-serif face, as fontconfig chooses it.
+#program_export
+LoadSystemTypeface :: (name: string) -> bool {
+    if name.count == 0 { return false }
+    return Remember(name, SYSTEM_FACE)
+}
+
+#program_export
+SelectTypeface :: (name: string) -> bool {
+    for index: 0..names.count - 1 {
+        if !Named(*names[index], name) { continue }
+        face := names[index].face
+        if face == SYSTEM_FACE {
+            unused CopyCString("sans-serif", selected_family[:])
+        } else {
+            selected_family = faces[face].family
+        }
+        Raster.raster_family = *selected_family[0]
+        Changed()
+        return true
+    }
+    return false
+}
+
+// Forgets the names and goes back to Kryon's font. The fonts stay added.
+#program_export
+ReleaseTypefaces :: () {
+    VecFree(names)
+    names = .{}
+    if Raster.raster_family != null {
+        Raster.raster_family = null
+        Changed()
+    }
+}
+
+// Pango keeps no glyph copies of its own to release.
+#program_export
+ReleaseTypefaceCpu :: () {}

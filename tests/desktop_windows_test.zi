@@ -1,0 +1,504 @@
+// The desktop host's windows on a private Xvfb, driven with real X input
+// (XTest): a main window and a secondary window each get only their own
+// pointer, wheel and keys and draw their own surface; the sideways wheel;
+// key repeat; minimize, restore and always-on-top; the monitor; embedded
+// pictures and fonts read from memory; and the render scale.
+//
+// The test runs itself twice: as the harness, which owns the display and
+// answers the window-manager requests a desktop's window manager would
+// (iconify, activate, _NET_WM_STATE changes), and as the client on that
+// display. Run from the Kryon root, never against the live desktop:
+//     ziran run --target=c tests/desktop_windows_test.zi -- build/test/desktop-windows
+#import "private_display_linux"
+#import "c_string"
+#import "byte_text_linux"
+#import "format"
+#import "file"
+#import "timer_linux"
+#import "environment_linux"
+#import "file_tree_linux"
+using Vectors :: #import "vec";
+#import "desktop_runtime"
+#import "desktop_keyboard"
+#import "desktop_window_state"
+#import "desktop_secondary_window"
+Raster :: #import "cairo_raster";
+#import "cairo_assets"
+#import "cairo_typefaces"
+#import "cairo_render_scale"
+#import "typeface_source"
+#import "session"
+#import "tree_draw"
+#import "drawing_props"
+#import "geometry"
+Box :: #import "box";
+
+#scope_file
+x11 :: #system_library "X11";
+xtst :: #system_library "Xtst";
+sdl :: #system_library "SDL2";
+libc :: #system_library "libc";
+XOpen :: (name: *u8) -> *void #foreign x11 "XOpenDisplay";
+XClose :: (display: *void) -> s32 #foreign x11 "XCloseDisplay";
+XRoot :: (display: *void, screen: s32) -> u64 #foreign x11 "XRootWindow";
+XSync :: (display: *void, discard: s32) -> s32 #foreign x11 "XSync";
+XFlush :: (display: *void) -> s32 #foreign x11 "XFlush";
+XAtom :: (display: *void, name: *u8, existing: s32) -> u64 #foreign x11 "XInternAtom";
+XSelect :: (display: *void, window: u64, mask: s64) -> s32 #foreign x11 "XSelectInput";
+XPending :: (display: *void) -> s32 #foreign x11 "XPending";
+XNext :: (display: *void, event: *XEvent) -> s32 #foreign x11 "XNextEvent";
+XChange :: (display: *void, window: u64, property: u64, kind: u64, format: s32, mode: s32,
+    data: *u8, count: s32) -> s32 #foreign x11 "XChangeProperty";
+XGetProperty :: (display: *void, window: u64, property: u64, offset: s64, length: s64, remove: s32,
+    wanted: u64, kind: *u64, format: *s32, count: *u64, after: *u64, data: **u8) -> s32 #foreign x11 "XGetWindowProperty";
+XFree :: (data: *void) -> s32 #foreign x11 "XFree";
+XImageOf :: (display: *void, drawable: u64, x: s32, y: s32, width: u32, height: u32,
+    planes: u64, format: s32) -> *XImageHead #foreign x11 "XGetImage";
+XFocus :: (display: *void, window: u64, revert: s32, time: u64) -> s32 #foreign x11 "XSetInputFocus";
+XKeycode :: (display: *void, symbol: u64) -> u8 #foreign x11 "XKeysymToKeycode";
+XErrorHandler :: #type (display: *void, event: *void) -> s32 #c_call;
+XSetErrors :: (handler: XErrorHandler) -> XErrorHandler #foreign x11 "XSetErrorHandler";
+FakeMotion :: (display: *void, screen: s32, x: s32, y: s32, delay: u64) -> s32 #foreign xtst "XTestFakeMotionEvent";
+FakeButton :: (display: *void, button: u32, press: s32, delay: u64) -> s32 #foreign xtst "XTestFakeButtonEvent";
+FakeKey :: (display: *void, keycode: u32, press: s32, delay: u64) -> s32 #foreign xtst "XTestFakeKeyEvent";
+WindowInfo :: (window: *void, info: *SystemInfo) -> s32 #foreign sdl "SDL_GetWindowWMInfo";
+Environment :: (name: *u8) -> *u8 #foreign libc "getenv";
+cairo :: #system_library "cairo";
+CairoSurface :: (format: s32, width: s32, height: s32) -> *void #foreign cairo "cairo_image_surface_create";
+CairoCreate :: (surface: *void) -> *void #foreign cairo "cairo_create";
+CairoColor :: (paint: *void, red: float64, green: float64, blue: float64, alpha: float64) #foreign cairo "cairo_set_source_rgba";
+CairoPaint :: (paint: *void) #foreign cairo "cairo_paint";
+CairoDestroy :: (paint: *void) #foreign cairo "cairo_destroy";
+CairoWritePNG :: (surface: *void, path: *u8) -> s32 #foreign cairo "cairo_surface_write_to_png";
+CairoSurfaceDestroy :: (surface: *void) #foreign cairo "cairo_surface_destroy";
+
+XEvent :: struct { words: [24]u64; }
+XImageHead :: struct { width: s32; height: s32; xoffset: s32; format: s32; data: *u8; }
+// SDL_SysWMinfo for X11: version, subsystem, then the display and window.
+SystemInfo :: struct {
+    major: u8
+    minor: u8
+    patch: u8
+    pad: u8
+    subsystem: u32
+    display: *void
+    window: u64
+    rest: [48]u8
+}
+
+Ignore :: (display: *void, event: *void) -> s32 { return 0 }
+
+Atom :: (display: *void, name: string) -> u64 {
+    bytes: [64]u8
+    unused CopyCString(name, bytes[:])
+    return XAtom(display, *bytes[0], 0)
+}
+
+// The atoms in WINDOW's _NET_WM_STATE.
+StateAtoms :: (display: *void, window: u64, atoms: *Vec(u64)) {
+    VecClear(<<atoms)
+    kind: u64; format: s32; count: u64; after: u64; data: *u8
+    if XGetProperty(display, window, Atom(display, "_NET_WM_STATE"), 0, 64, 0, 4, *kind, *format,
+        *count, *after, *data) != 0 || data == null { return }
+    values := cast(*u64)data
+    for index: 0..cast(s64)count - 1 { VecPush(<<atoms, values[index]) }
+    unused XFree(cast(*void)data)
+}
+
+// The harness's stand-in for a window manager: iconify sets
+// _NET_WM_STATE_HIDDEN, activation clears it, and _NET_WM_STATE requests add
+// or remove their atoms, as an EWMH window manager would.
+Answer :: (display: *void, event: *XEvent) {
+    if cast(s32)(event.words[0] & 0xffffffff) != 33 { return } // ClientMessage
+    window := event.words[4]
+    kind := event.words[5]
+    data := event.words[7:12]
+    atoms: Vec(u64)
+    defer VecFree(atoms)
+    StateAtoms(display, window, *atoms)
+    hidden := Atom(display, "_NET_WM_STATE_HIDDEN")
+    add: [2]u64
+    remove: [2]u64
+    if kind == Atom(display, "WM_CHANGE_STATE") && data[0] == 3 { add[0] = hidden }
+    else if kind == Atom(display, "_NET_ACTIVE_WINDOW") { remove[0] = hidden }
+    else if kind == Atom(display, "_NET_WM_STATE") {
+        for slot: 0..1 {
+            if data[slot + 1] == 0 { continue }
+            if data[0] == 1 { add[slot] = data[slot + 1] } else if data[0] == 0 { remove[slot] = data[slot + 1] }
+        }
+    } else { return }
+    next: Vec(u64)
+    defer VecFree(next)
+    for atom: atoms { if atom != remove[0] && atom != remove[1] && atom != add[0] && atom != add[1] { VecPush(next, atom) } }
+    for atom: add { if atom != 0 { VecPush(next, atom) } }
+    if next.count == 0 { VecPush(next, Atom(display, "_NET_WM_STATE_FOCUSED")) }
+    unused XChange(display, window, Atom(display, "_NET_WM_STATE"), 4, 32, 0, cast(*u8)*next[0], cast(s32)next.count)
+    unused XFlush(display)
+}
+
+// What the client saw while it polled.
+Seen :: struct {
+    main_pressed: s32
+    main_wheel: float32
+    main_wheel_x: float32
+    main_key_pressed: s32
+    main_key_repeated: s32
+    main_key_released: s32
+    second_clicked: s32
+    second_key_pressed: s32
+    second_key_repeated: s32
+    second_key_released: s32
+}
+
+x: *void;
+second: SecondaryWindow;
+
+// Polls the desktop for MILLISECONDS, recording key KEY's edges in both
+// windows.
+Poll :: (milliseconds: s64, key: s32 = 0) -> Seen {
+    seen: Seen
+    deadline := MonotonicMilliseconds() + milliseconds
+    while true {
+        if !PollDesktop() { break }
+        PumpSecondaryWindows()
+        if PollPointer().pressed { seen.main_pressed += 1 }
+        seen.main_wheel += DesktopWheelMove()
+        seen.main_wheel_x += DesktopWheelMoveX()
+        if IsSecondaryWindowClicked(second) { seen.second_clicked += 1 }
+        if key != 0 {
+            if DesktopKeyPressed(key) { seen.main_key_pressed += 1 }
+            if DesktopKeyRepeated(key) { seen.main_key_repeated += 1 }
+            if DesktopKeyReleased(key) { seen.main_key_released += 1 }
+            if IsSecondaryWindowKeyPressed(second, key) { seen.second_key_pressed += 1 }
+            if IsSecondaryWindowKeyRepeated(second, key) { seen.second_key_repeated += 1 }
+            if IsSecondaryWindowKeyReleased(second, key) { seen.second_key_released += 1 }
+        }
+        if MonotonicMilliseconds() >= deadline { break }
+        unused SleepMilliseconds(5)
+    }
+    return seen
+}
+
+// The screen's pixel at (px, py) as 0xRRGGBB.
+Pixel :: (px: s32, py: s32) -> u32 {
+    image := XImageOf(x, XRoot(x, 0), px, py, 1, 1, 0xffffffffffffffff, 2)
+    if image == null { return 0xdeadbeef }
+    value := (cast(*u32)image.data).* & 0xffffff
+    unused XFree(cast(*void)image.data)
+    unused XFree(cast(*void)image)
+    return value
+}
+
+Merge :: (a: Seen, b: Seen) -> Seen {
+    sum := a
+    sum.main_pressed += b.main_pressed
+    sum.main_wheel += b.main_wheel
+    sum.main_wheel_x += b.main_wheel_x
+    sum.main_key_pressed += b.main_key_pressed
+    sum.main_key_repeated += b.main_key_repeated
+    sum.main_key_released += b.main_key_released
+    sum.second_clicked += b.second_clicked
+    sum.second_key_pressed += b.second_key_pressed
+    sum.second_key_repeated += b.second_key_repeated
+    sum.second_key_released += b.second_key_released
+    return sum
+}
+
+// Moves the pointer to (px, py), presses and releases BUTTON, and reports
+// what both windows saw.
+Click :: (px: s32, py: s32, button: u32 = 1) -> Seen {
+    unused FakeMotion(x, -1, px, py, 0)
+    unused XFlush(x)
+    seen := Poll(80)
+    unused FakeButton(x, button, 1, 0)
+    unused XFlush(x)
+    seen = Merge(seen, Poll(40))
+    unused FakeButton(x, button, 0, 0)
+    unused XFlush(x)
+    return Merge(seen, Poll(250))
+}
+
+XWindowOf :: (window: *void) -> u64 {
+    info: SystemInfo
+    info.major = 2; info.minor = 0; info.patch = 22
+    if WindowInfo(window, *info) == 0 { return 0 }
+    return info.window
+}
+
+// Holds the key with X keysym SYMBOL for MILLISECONDS in the window with
+// the keyboard, then releases it.
+Hold :: (symbol: u64, key: s32, milliseconds: s64) -> Seen {
+    code := cast(u32)XKeycode(x, symbol)
+    unused FakeKey(x, code, 1, 0)
+    unused XFlush(x)
+    held := Poll(milliseconds, key)
+    unused FakeKey(x, code, 0, 0)
+    unused XFlush(x)
+    return Merge(held, Poll(150, key))
+}
+
+Fill :: (session: Session, bounds: Rectangle, color: Color) {
+    unused Box.Draw(session, Box.Props.{.bounds = bounds, .fill = color})
+}
+
+DrawMain :: (session: Session, bounds: Rectangle, color: Color) -> bool {
+    BeginDesktopFrame()
+    if cast(s32)BeginFrame(session, cast(u64)1, DesktopViewport()) != 0 { return false }
+    Fill(session, DesktopViewport(), Color.{40, 40, 40, 255})
+    Fill(session, bounds, color)
+    unused EndFrame(session)
+    return EndDesktopFrame()
+}
+
+Fail :: (code: s32, message: string) -> s32 {
+    print("desktop windows: %\n", message)
+    return code
+}
+
+embedded_png: string;
+EmbeddedRead :: (path: string) -> string {
+    if path == "assets/embedded/green.png" { return embedded_png }
+    return ""
+}
+
+red :: Color.{220, 0, 0, 255}
+green :: Color.{0, 200, 0, 255}
+blue :: Color.{0, 0, 230, 255}
+
+Client :: (folder: string) -> s32 {
+    name: [16]u8
+    unused CopyCString("DISPLAY", name[:])
+    x = XOpen(Environment(*name[0]))
+    if x == null { return Fail(20, "no X connection") }
+    if !OpenDesktopTitled(300, 200, "Kryon main") { return Fail(21, "main window did not open") }
+    session := SessionOpen()
+    if !DrawMain(session, DesktopViewport(), red) { return Fail(22, "main frame failed") }
+    // K2: a second window with its own surface, drawn through its own session.
+    second = OpenSecondaryWindow("Kryon second", 20, 20, 160, 120, 0, blue, 1.0)
+    if second.handle == null { return Fail(23, "secondary window did not open") }
+    second_session := SessionOpen()
+    if !BeginSecondaryWindow(second) { return Fail(24, "secondary window did not begin") }
+    if !BeginSecondaryFrame(second_session, 160, 120) { return Fail(25, "secondary frame did not begin") }
+    Fill(second_session, Rectangle.{0.0, 0.0, 80.0, 120.0}, green)
+    EndSecondaryFrame(second_session)
+    if !EndSecondaryWindow(second) { return Fail(26, "secondary window did not present") }
+    // The main window's next frame still draws into its own surface.
+    if !DrawMain(session, DesktopViewport(), red) { return Fail(27, "main frame after the secondary failed") }
+    unused Poll(400)
+    origin := DesktopOrigin()
+    main_x := cast(s32)origin.x
+    main_y := cast(s32)origin.y
+    if Pixel(main_x + 150, main_y + 100) != 0xdc0000 {
+        print("main pixel %\n", Pixel(main_x + 150, main_y + 100))
+        return Fail(28, "the main window does not show its own red")
+    }
+    second_x: s32; second_y: s32
+    GetSecondaryWindowPosition(second, *second_x, *second_y)
+    if Pixel(second_x + 40, second_y + 60) != 0x00c800 || Pixel(second_x + 120, second_y + 60) != 0x0000e6 {
+        print("second pixels % %\n", Pixel(second_x + 40, second_y + 60), Pixel(second_x + 120, second_y + 60))
+        return Fail(29, "the secondary window does not show its own green and blue")
+    }
+
+    // K1, K2: a click in each window reaches only that window, even while the
+    // main window keeps the keyboard, as no window manager moves it here.
+    main_window := XWindowOf(DesktopWindow())
+    second_window := XWindowOf(SecondaryDesktopWindow(second))
+    if main_window == 0 || second_window == 0 { return Fail(34, "no X windows for the SDL windows") }
+    unused XFocus(x, main_window, 2, 0)
+    unused XFlush(x)
+    unused Poll(200)
+    if !WindowFocusedHost() { return Fail(35, "the main window did not get the keyboard") }
+    seen := Click(second_x + 100, second_y + 60)
+    if seen.second_clicked != 1 || seen.main_pressed != 0 {
+        print("secondary click: clicked % main pressed %\n", seen.second_clicked, seen.main_pressed)
+        return Fail(30, "a click in the secondary window reached the main window or was lost")
+    }
+    seen = Click(main_x + 150, main_y + 100)
+    if seen.main_pressed < 1 || seen.second_clicked != 0 {
+        print("main click: pressed % secondary clicked %\n", seen.main_pressed, seen.second_clicked)
+        return Fail(31, "a click in the main window reached the secondary window or was lost")
+    }
+
+    // K1: the sideways wheel (X buttons 6 left, 7 right) and the upright one.
+    right := Merge(Click(main_x + 150, main_y + 100, 7), Click(main_x + 150, main_y + 100, 7))
+    left := Click(main_x + 150, main_y + 100, 6)
+    up := Click(main_x + 150, main_y + 100, 4)
+    if right.main_wheel_x != 2.0 || right.main_wheel != 0.0 || left.main_wheel_x != -1.0 ||
+    up.main_wheel != 1.0 || up.main_wheel_x != 0.0 {
+        print("wheel: right % % left % up % %\n", right.main_wheel_x, right.main_wheel,
+            left.main_wheel_x, up.main_wheel, up.main_wheel_x)
+        return Fail(32, "the wheel steps are wrong")
+    }
+    seen = Click(second_x + 100, second_y + 60, 7)
+    if seen.main_wheel_x != 0.0 { return Fail(33, "a wheel step in the secondary window reached the main window") }
+
+    // K1, K2: keys go to the window with the keyboard, and a held key repeats.
+    unused XFocus(x, second_window, 2, 0)
+    unused XFlush(x)
+    unused Poll(200)
+    if !IsSecondaryWindowFocused(second) || WindowFocusedHost() { return Fail(35, "the secondary window did not get the keyboard") }
+    seen = Hold(0x61, 65, 900) // XK_a, Kryon's A
+    if seen.second_key_pressed != 1 || seen.second_key_repeated < 1 || seen.second_key_released != 1 ||
+    seen.main_key_pressed != 0 || seen.main_key_repeated != 0 {
+        print("secondary keys: pressed % repeated % released %, main pressed % repeated %\n",
+            seen.second_key_pressed, seen.second_key_repeated, seen.second_key_released,
+            seen.main_key_pressed, seen.main_key_repeated)
+        return Fail(36, "the secondary window's key presses, repeats or releases are wrong")
+    }
+    unused XFocus(x, main_window, 2, 0)
+    unused XFlush(x)
+    unused Poll(200)
+    seen = Hold(0x62, 66, 900) // XK_b, Kryon's B
+    if seen.main_key_pressed != 1 || seen.main_key_repeated < 1 || seen.main_key_released != 1 ||
+    seen.second_key_pressed != 0 {
+        print("main keys: pressed % repeated % released %, secondary pressed %\n",
+            seen.main_key_pressed, seen.main_key_repeated, seen.main_key_released, seen.second_key_pressed)
+        return Fail(37, "the main window's key presses, repeats or releases are wrong")
+    }
+    if DesktopKeyDown(66) { return Fail(38, "a released key is still down") }
+
+    // K1: always on top, minimize and restore, as the window manager reports.
+    above := Atom(x, "_NET_WM_STATE_ABOVE")
+    atoms: Vec(u64)
+    if !DesktopSetAlwaysOnTop(true) || !DesktopAlwaysOnTop() { return Fail(39, "always on top was not set") }
+    unused Poll(300)
+    StateAtoms(x, main_window, *atoms)
+    on_top := false
+    for atom: atoms { if atom == above { on_top = true } }
+    if !on_top { return Fail(40, "the window manager was not asked to keep the window above") }
+    if !DesktopSetAlwaysOnTop(false) || DesktopAlwaysOnTop() { return Fail(41, "always on top was not cleared") }
+    unused Poll(300)
+    StateAtoms(x, main_window, *atoms)
+    for atom: atoms { if atom == above { return Fail(42, "the window is still kept above") } }
+    if DesktopMinimized() || !DesktopMinimize() { return Fail(43, "the window could not be minimized") }
+    deadline := MonotonicMilliseconds() + 3000
+    while !DesktopMinimized() && MonotonicMilliseconds() < deadline { unused Poll(50) }
+    if !DesktopMinimized() { return Fail(44, "the window manager's minimized state was not reported") }
+    if !DesktopRestore() { return Fail(45, "the window could not be restored") }
+    deadline = MonotonicMilliseconds() + 3000
+    while DesktopMinimized() && MonotonicMilliseconds() < deadline { unused Poll(50) }
+    if DesktopMinimized() { return Fail(46, "the restored window still reports minimized") }
+
+    // K1: the monitor the window is on.
+    monitor := DesktopMonitorBounds()
+    if monitor.width != 800.0 || monitor.height != 600.0 { return Fail(47, "the monitor size is wrong") }
+    usable := DesktopMonitorUsable()
+    if usable.width <= 0.0 || usable.width > 800.0 { return Fail(48, "the usable monitor area is wrong") }
+    scale := DesktopDisplayScale()
+    if !(scale > 0.0) || scale > 8.0 { return Fail(49, "the display scale is wrong") }
+
+    // K4: a picture embedded in the program, read from memory. Its file is
+    // gone before the raster asks for it.
+    png: Vec(u8)
+    BuilderPrint(*png, "%/green.png", folder)
+    png_path := BuilderFinish(png)
+    picture := CairoSurface(0, 4, 3)
+    paint := CairoCreate(picture)
+    CairoColor(paint, 0.0, 200.0 / 255.0, 0.0, 1.0)
+    CairoPaint(paint)
+    CairoDestroy(paint)
+    path_bytes: [4096]u8
+    unused CopyCString(png_path, path_bytes[:])
+    if CairoWritePNG(picture, *path_bytes[0]) != 0 { return Fail(50, "the test picture was not written") }
+    CairoSurfaceDestroy(picture)
+    png_bytes, png_read := ReadEntireFile(png_path)
+    embedded_png = png_bytes
+    if !png_read || !RemoveFile(png_path) { return Fail(51, "the test picture was not read") }
+    if Raster.ImageWidth("assets/embedded/green.png") != 0 { return Fail(52, "a picture was found before its reader") }
+    RasterUseAssets(EmbeddedRead)
+    if Raster.ImageWidth("assets/embedded/green.png") != 4 || Raster.ImageHeight("assets/embedded/green.png") != 3 {
+        return Fail(53, "the embedded picture was not decoded from memory")
+    }
+    pixels: [12]u32
+    if !Raster.CairoImagePixels("assets/embedded/green.png", 4, 3, pixels[:], false) ||
+    (pixels[5] & 0xffffff) != 0x00c800 { return Fail(54, "the embedded picture's pixels are wrong") }
+    if Raster.ImageWidth("assets/embedded/missing.png") != 0 { return Fail(55, "a missing embedded picture was found") }
+
+    // K4: fonts registered from bytes and from a file, selected and cleared.
+    sans_i := Raster.MeasureGlyphWidth("iiii", 20, "")
+    sans_m := Raster.MeasureGlyphWidth("MMMM", 20, "")
+    if sans_i <= 0 || sans_i == sans_m { return Fail(56, "Kryon's own font did not measure") }
+    mono: Vec(u8)
+    if !ReadFileInto("assets/fonts/LiberationMono-Regular.ttf", *mono) { return Fail(57, "no monospace font") }
+    if !RegisterTypefaceData("mono", ".ttf", TextView(mono[:]), null, 0) || !UseTypeface("mono") {
+        return Fail(58, "the font from memory was not registered")
+    }
+    mono_i := Raster.MeasureGlyphWidth("iiii", 20, "")
+    if mono_i <= 0 || mono_i != Raster.MeasureGlyphWidth("MMMM", 20, "") {
+        print("mono widths % %\n", mono_i, Raster.MeasureGlyphWidth("MMMM", 20, ""))
+        return Fail(59, "text is not set in the font from memory")
+    }
+    if !RegisterTypefaceData("again", ".ttf", TextView(mono[:]), null, 0) { return Fail(60, "the same bytes did not register again") }
+    if !RegisterTypefaceFile("dejavu", "assets/fonts/DejaVuSans.ttf", null, 0) || !UseTypeface("dejavu") {
+        return Fail(61, "the font file was not registered")
+    }
+    if Raster.MeasureGlyphWidth("iiii", 20, "") == Raster.MeasureGlyphWidth("MMMM", 20, "") { return Fail(62, "text is still monospace") }
+    ClearTypefaces()
+    if UseTypeface("mono") { return Fail(63, "a cleared name is still selectable") }
+    if Raster.MeasureGlyphWidth("iiii", 20, "") != sans_i { return Fail(64, "clearing did not bring Kryon's font back") }
+    if !RegisterSystemTypeface("ui") || !UseTypeface("ui") { return Fail(65, "the system face was not selected") }
+    ClearTypefaces()
+
+    // K4: the render scale draws layout units at twice the pixels.
+    if !RasterSetScale(2.0) || RasterScale() != 2.0 { return Fail(66, "the render scale was not set") }
+    if !DrawMain(session, Rectangle.{0.0, 0.0, 20.0, 20.0}, green) { return Fail(67, "the scaled frame failed") }
+    unused Poll(200)
+    if Pixel(main_x + 30, main_y + 30) != 0x00c800 || Pixel(main_x + 50, main_y + 50) != 0x282828 {
+        print("scaled pixels % %\n", Pixel(main_x + 30, main_y + 30), Pixel(main_x + 50, main_y + 50))
+        return Fail(68, "the render scale did not scale the frame")
+    }
+    unused RasterSetScale(1.0)
+
+    CloseSecondarySession(second_session)
+    CloseSecondaryWindow(second)
+    RasterAssetsClose()
+    CloseDesktop()
+    unused XClose(x)
+    print("desktop windows: client passed\n")
+    return 0
+}
+
+#scope_export
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc > 2 && TextFromCString(argv[1]) == "client" { return Client(TextFromCString(argv[2])) }
+    if argc < 2 { print("usage: desktop_windows_test FOLDER\n"); return 2 }
+    folder := TextFromCString(argv[1])
+    unused CreateDirectories(folder)
+    log: Vec(u8)
+    BuilderPrint(*log, "%/xvfb.log", folder)
+    display := OpenPrivateDisplay(800, 600, BuilderFinish(log))
+    if !display.valid { print("desktop windows: %\n", display.error); return 1 }
+    defer ClosePrivateDisplay(*display)
+    ignore: XErrorHandler = Ignore
+    unused XSetErrors(ignore)
+    unused XSelect(display.connection, XRoot(display.connection, 0), 0x80000) // SubstructureNotifyMask
+    unused XSync(display.connection, 0)
+    self := TextFromCString(argv[0])
+    arguments: [3]string = .[self, "client", folder]
+    extra: [1]string = .["SDL_VIDEODRIVER=x11"]
+    client_log: Vec(u8)
+    BuilderPrint(*client_log, "%/client.log", folder)
+    log_path := BuilderFinish(client_log)
+    client := StartOnDisplay(*display, arguments[:], extra[:], "", log_path)
+    if !client.started { print("desktop windows: the client did not start\n"); return 3 }
+    deadline := MonotonicMilliseconds() + 120000
+    while !PollProcess(*client) {
+        while XPending(display.connection) > 0 {
+            event: XEvent
+            unused XNext(display.connection, *event)
+            Answer(display.connection, *event)
+        }
+        if MonotonicMilliseconds() > deadline {
+            unused StopOwnedProcess(*client, 2000)
+            print("desktop windows: the client timed out\n")
+            break
+        }
+        unused SleepMilliseconds(5)
+    }
+    output, found := ReadEntireFile(log_path)
+    if found { print("%", output) }
+    if client.code != 0 { print("desktop windows: FAILED (client status %)\n", client.code); return 4 }
+    print("desktop windows: passed\n")
+    return 0
+}

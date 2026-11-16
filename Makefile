@@ -340,6 +340,16 @@ pay-per-import-test:
 		"$(ZIRAN_BIN)" run --target=c --root tests tests/pay_per_import_test.zi
 test: pay-per-import-test
 
+# The desktop host's windows on a private Xvfb with real X input: each
+# window's own events and surface, the sideways wheel, key repeat, window
+# state, the monitor, embedded pictures and fonts, and the render scale.
+.PHONY: desktop-windows-test
+desktop-windows-test:
+	@rm -rf build/test/desktop-windows
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
+		LDLIBS="-lXtst" "$(ZIRAN_BIN)" run --target=c tests/desktop_windows_test.zi -- build/test/desktop-windows
+test: desktop-windows-test
+
 .PHONY: cursor-api-test
 cursor-api-test:
 	python3 tests/cursor_api_test.py

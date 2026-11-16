@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- The Linux desktop host can run an app's own windows, input and raster
+  without raylib. It routes each SDL event to its window and reports the
+  sideways wheel; `kryon/desktop_keyboard` gives held, pressed, repeated and
+  released keys; `kryon/desktop_window_state` minimizes, restores, raises,
+  keeps on top and reports the monitor and display scale;
+  `kryon/desktop_secondary_window` opens more windows, each with its own Cairo
+  surface and events; `kryon/cairo_assets`, `kryon/cairo_typefaces` and
+  `kryon/cairo_render_scale` add embedded pictures, app fonts and a render
+  scale.
 - A drag in a TextField keeps the selection it made when the pointer is
   released; a click still places the caret.
 - Renderer artifact builds accept dependencies resolved through a local

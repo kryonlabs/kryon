@@ -1,0 +1,28 @@
+// The desktop window's render scale: layout units to pixels. Frames lay out
+// in the window's pixels divided by the scale and draw at its full
+// resolution, as a camera zoom would, and vector icons rasterize at the
+// scale too. The program maps its pointer into layout units itself. The
+// scale applies to the main window's paint, also after a resize; secondary
+// windows draw in their own pixels, so set it outside their frames.
+Raster :: #import "cairo_raster";
+#import "drawing_props"
+
+#scope_file
+cairo :: #system_library "cairo";
+IdentityMatrix :: (paint: *void) #foreign cairo "cairo_identity_matrix";
+Scale :: (paint: *void, x: float64, y: float64) #foreign cairo "cairo_scale";
+
+#scope_export
+// False for a scale outside (0, 16].
+RasterSetScale :: (scale: float32) -> bool {
+    if !(scale > 0.0) || scale > 16.0 { return false }
+    Raster.raster_scale = cast(float64)scale
+    if Raster.paint != null {
+        IdentityMatrix(Raster.paint)
+        Scale(Raster.paint, cast(float64)scale, cast(float64)scale)
+    }
+    SetPaintPixelScale(scale)
+    return true
+}
+
+RasterScale :: () -> float32 { return cast(float32)Raster.raster_scale }

@@ -66,6 +66,7 @@ StartTextInput :: () #foreign sdl_library "SDL_StartTextInput";
 StopTextInput :: () #foreign sdl_library "SDL_StopTextInput";
 GetMouseState :: (x: *s32, y: *s32) -> u32 #foreign sdl_library "SDL_GetMouseState";
 GetGlobalMouseState :: (x: *s32, y: *s32) -> u32 #foreign sdl_library "SDL_GetGlobalMouseState";
+GetMouseFocus :: () -> *void #foreign sdl_library "SDL_GetMouseFocus";
 GetModState :: () -> u32 #foreign sdl_library "SDL_GetModState";
 Delay :: (milliseconds: u32) #foreign sdl_library "SDL_Delay";
 PerformanceCounter :: () -> u64 #foreign sdl_library "SDL_GetPerformanceCounter";
@@ -167,6 +168,15 @@ desktop_physical_buttons: u32;
 desktop_physical_sampled: bool;
 secondary: SecondaryPointerFrame;
 desktop_wheel: float32;
+// Sideways wheel steps, positive to the right.
+desktop_wheel_x: float32;
+// Another window of this program, such as a secondary window, takes the
+// events that name it (see desktop_secondary_window); this one never sees them.
+DesktopEventRoute :: #type (event: *Event) -> bool;
+desktop_event_route: DesktopEventRoute;
+// Runs as each poll begins, before its events reach the route.
+DesktopPollStart :: #type () -> void;
+desktop_poll_start: DesktopPollStart;
 desktop_frame_input: FrameInputProvider;
 desktop_frame_input_pending_carry: bool;
 desktop_raw_keys: [512]u8;
@@ -752,7 +762,9 @@ PollDesktop :: () -> bool {
     right_pressed: bool = false
     right_released: bool = false
     desktop_wheel = 0.0
+    desktop_wheel_x = 0.0
     desktop_key_modifiers = -1
+    if desktop_poll_start != null { desktop_poll_start() }
     // SDL_PollEvent stops at the marker its last pump left at the end of the
     // queue, so events another thread pushed after that pump would wait for
     // the next frame. Pump once and take every queued event; SDL_GETEVENT
@@ -776,6 +788,7 @@ PollDesktop :: () -> bool {
             DesktopDropEvent(*event)
             continue
         }
+        if desktop_event_route != null && desktop_event_route(*event) { continue }
         if event.kind == cast(u32)0x200 && window != null &&
         event.window_id == GetWindowID(window) {
             detail := event.which & cast(u32)255
@@ -914,6 +927,10 @@ PollDesktop :: () -> bool {
             // SDL_MOUSEWHEEL_FLIPPED occupies byte offset 24.
             if event.y == 1 { step = -step }
             desktop_wheel += step
+            // SDL_MouseWheelEvent.x, at byte offset 16.
+            sideways := cast(float32)(cast(*s32)*event.button).*
+            if event.y == 1 { sideways = -sideways }
+            desktop_wheel_x += sideways
         }
         if event.button == cast(u8)1 {
             if event.kind == cast(u32)0x401 { pressed = true }
@@ -928,6 +945,11 @@ PollDesktop :: () -> bool {
     x: s32 = 0
     y: s32 = 0
     buttons: u32 = GetMouseState(*x, *y)
+    // Over another window of this program the pointer is that window's:
+    // here it is outside, and its buttons press nothing.
+    focus := GetMouseFocus()
+    elsewhere := focus != null && focus != window
+    if elsewhere { x = -1; y = -1; buttons = 0 }
     // X11's SDL event cache can miss a release while another window has
     // keyboard focus, then suppress the next press as already held. Query
     // actual button state there and retain event edges for taps between polls.
@@ -935,6 +957,7 @@ PollDesktop :: () -> bool {
     driver:=GetCurrentVideoDriver()
     if driver!=null && TextFromCString(driver)=="x11" {
         buttons=GetGlobalMouseState(null,null)
+        if elsewhere { buttons = 0 }
         if desktop_physical_sampled {
             if (buttons&cast(u32)1)!=0 && (desktop_physical_buttons&cast(u32)1)==0 { pressed=true }
             if (buttons&cast(u32)1)==0 && (desktop_physical_buttons&cast(u32)1)!=0 { released=true }
@@ -1002,6 +1025,10 @@ DesktopInputQueue :: () -> *InputDelivery { return *desktop_input }
 
 #program_export
 DesktopWheelMove :: () -> float32 { return desktop_wheel }
+
+// Sideways wheel steps this poll, positive to the right.
+#program_export
+DesktopWheelMoveX :: () -> float32 { return desktop_wheel_x }
 
 // The held modifier keys as KeyModifier bits. A key pressed in this poll
 // reports the modifiers held with it, even if they were released before the
@@ -1079,6 +1106,7 @@ EndDesktopFrame :: () -> bool {
     secondary.pressed = false
     secondary.released = false
     desktop_wheel = 0.0
+    desktop_wheel_x = 0.0
     if !FinishRasterFrame(desktop_frame_unchanged && desktop_pixels_valid) { return false }
     desktop_pixels_valid = true
     // A test driver's capture gets this finished frame (KRYON_TEST_DRIVER).
