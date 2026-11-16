@@ -257,7 +257,7 @@ jobs:
           export PATH="$ZIRAN_ROOT/build/bin:$PATH"
           make site
           python3 tests/gallery_modules_test.py
-          make site-gallery-test
+          make site-browser-test
 
       - name: Show how much the compile cache saved
         if: always()
