@@ -1,0 +1,98 @@
+Editor :: #import "kryon/markdown_editor";
+Markdown :: #import "kryon/markdown_preview";
+TextArea :: #import "kryon/text_area";
+TextField :: #import "kryon/text_field";
+#import "kryon/geometry"
+#import "widget_test_session"
+#import "ziran_widget_noop_host"
+#import "system_clipboard_host"
+#import "kryon/tree"
+#import "std/vec"
+
+
+bytes: [4096]u8;
+
+Render :: (props: Editor.Props) -> TextArea.Result {
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 640.0, 480.0})
+    result := Editor.Draw(TestSession(), props)
+    if !TreeFinish(TestSession()) {
+        result.node = -1
+    }
+    return result
+}
+
+#program_export
+Main :: () -> s32 {
+    text := "# Context 🌿\n**done** and *next* [file](plans/work.md)\n- [ ] Keep the owner’s words.\n> verbatim\n"
+    props: Editor.Props
+    props.area.value = text
+    props.area.bounds = Rectangle.{0.0, 0.0, 640.0, 480.0}
+    props.area.wrap = true
+    props.muted_color = cast(u32)0x8899aaff
+    props.link_color = cast(u32)0x6699ffff
+    first := Render(props)
+    if first.node < 0 || first.edit.changed || Editor.workspace.preview.hidden_count != 7 ||
+    Editor.workspace.preview.strong_count != 2 || Editor.workspace.preview.italic_count != 1 ||
+    Editor.workspace.preview.heading_count != 1 || Editor.workspace.lines[0].scale != 1.6 {
+        return 1
+    }
+    // The caret line reveals syntax, while the next line keeps its preview.
+    props.area.focused = true
+    props.area.cursor = 5
+    props.area.anchor = 5
+    Render(props)
+    if Editor.workspace.preview.hidden_count != 6 || Editor.workspace.preview.hidden[0].start == 0 {
+        return 2
+    }
+    // Typing edits the original Markdown rather than a rendered projection.
+    props.area.cursor = cast(s32)text.count
+    props.area.anchor = props.area.cursor
+    props.area.input.text = "## Questions\n- [ ] ¿Qué sigue?\n"
+    props.area.key = cast(u64)9311
+    props.area.focus_id = 9311
+    props.area.max_bytes = 4096
+    props.area.max_codepoints = 4096
+    edited := Render(props)
+    if edited.node < 0 || !edited.edit.changed {
+        return 3
+    }
+    state: TextField.State = .{.bytes = bytes[:], .length = cast(s32)text.count}
+    for index: cast(s64)0..text.count - 1 {
+        bytes[index] = text[index]
+    }
+    edit: TextField.Edit = .{.start = edited.edit.start, .end = edited.edit.end,
+        .replacement = edited.edit.replacement, .changed = true}
+    if !TextField.StateApplyEdit(*state, edit) {
+        return 4
+    }
+    value := TextView(state.bytes[:state.length])
+    if value[:text.count] != text || value[text.count:] != props.area.input.text {
+        return 5
+    }
+    // A new workspace (reopening the saved file) retains every Markdown byte.
+    props.area.value = value
+    props.area.focused = false
+    props.area.input = TextArea.Input.{}
+
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 640.0, 480.0})
+    clean := Editor.Draw(TestSession(), props)
+    if !TreeFinish(TestSession()) || clean.edit.changed ||
+    Editor.workspace.preview.heading_count != 2 || Editor.workspace.lines[1].scale != 1.4 {
+        return 6
+    }
+    // Resolved images remain the host's responsibility.
+    image_text := "![a](media:a)"
+    images: [1]Markdown.ImageSpan = .[Markdown.ImageSpan.{
+        .valid = true, .start = 0, .end = 13, .line_start = 0,
+        .line_end = 13, .alt_end = 3}]
+    Markdown.Scan(*Editor.workspace.preview, image_text, 0, 0, false, images[:])
+    if Editor.workspace.preview.image_count != 1 ||
+    !Editor.workspace.preview.images[0].cover || Editor.workspace.preview.hidden_count != 1 {
+        return 7
+    }
+    Markdown.Scan(*Editor.workspace.preview, image_text, 2, 2, true, images[:])
+    if Editor.workspace.preview.images[0].cover || Editor.workspace.preview.hidden_count != 0 {
+        return 8
+    }
+    return 0
+}

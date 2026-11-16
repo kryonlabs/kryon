@@ -1,0 +1,729 @@
+// Extracted from Inner Breeze Diary's inline Markdown editor. Byte ranges
+// address the original document; formatting never rewrites its Markdown.
+Text :: #import "kryon/text_props";
+
+TONE_MUTED :: 1
+TONE_LINK :: 2
+
+// What the editor shows for one entry, rebuilt every frame.
+PREVIEW_RANGES :: 512
+PREVIEW_TONES :: 256
+PREVIEW_HEADINGS :: 128
+PREVIEW_IMAGES :: 64
+// What one line may add; a line that would not fit ends the preview there.
+LINE_MARKS :: 64
+LINE_LINKS :: 16
+LINE_RUNS :: 64
+Tone :: struct {
+    start: s32
+    end: s32
+    tone: s32
+}
+
+// A heading's line and level (1 to 6).
+Heading :: struct {
+    start: s32
+    level: s32
+}
+
+// A resolved drawn for an embed under its line, after the line's earlier
+// photos. On a line of photos alone, away from the caret, the first one
+// takes the hidden line's place (cover).
+ImageSpan :: struct {
+    valid: bool
+    start: s32
+    end: s32
+    line_start: s32
+    line_end: s32
+    alt_end: s32
+}
+
+ImageBlock :: struct {
+    embed: ImageSpan
+    cover: bool
+}
+
+// Every list is sorted by start and disjoint, as Kryon's TextArea requires.
+Preview :: struct {
+    hidden: [PREVIEW_RANGES]Text.Range
+    hidden_count: s32
+    strong: [PREVIEW_RANGES]Text.Range
+    strong_count: s32
+    italic: [PREVIEW_RANGES]Text.Range
+    italic_count: s32
+    tones: [PREVIEW_TONES]Tone
+    tone_count: s32
+    headings: [PREVIEW_HEADINGS]Heading
+    heading_count: s32
+    images: [PREVIEW_IMAGES]ImageBlock
+    image_count: s32
+    // Lines after the last one that fit are shown as plain text.
+    truncated: bool
+}
+
+// ---------------------------------------------------------------- lines
+LineEnd :: (text: string, start: s32) -> s32 {
+    end := start
+    while end < cast(s32)text.count && text[end] != cast(u8)10 {
+        end += 1
+    }
+    return end
+}
+
+LineStart :: (text: string, at: s32) -> s32 {
+    start := at
+    if start > cast(s32)text.count {
+        start = cast(s32)text.count
+    }
+    while start > 0 && text[start - 1] != cast(u8)10 {
+        start -= 1
+    }
+    return start
+}
+
+Blank :: (byte: u8) -> bool {
+    return byte == cast(u8)32 || byte == cast(u8)9
+}
+
+// Hosts resolve image destinations. The editor never reads files, interprets
+// app-specific media paths, or sends network requests.
+resolved_images: []ImageSpan;
+
+EmbedAt :: (text: string, at: s32) -> ImageSpan {
+    for image: resolved_images {
+        if image.start == at && image.valid && image.start >= 0 &&
+        image.end > image.start && image.end <= cast(s32)text.count &&
+        image.line_start == LineStart(text, at) &&
+        image.line_end == LineEnd(text, at) && image.end <= image.line_end &&
+        image.alt_end > image.start && image.alt_end < image.end {
+            return image
+        }
+    }
+    return ImageSpan.{}
+}
+
+EmbedIn :: (text: string, from: s32, to: s32) -> ImageSpan {
+    for at: from..to - 1 {
+        if text[at] == #char "!" {
+            image := EmbedAt(text, at)
+            if image.valid && image.end <= to {
+                return image
+            }
+        }
+    }
+    return ImageSpan.{}
+}
+
+ImageLine :: (text: string, start: s32) -> bool {
+    end := LineEnd(text, start)
+    at := start
+    found := false
+    while at < end {
+        if Blank(text[at]) || text[at] == cast(u8)13 {
+            at += 1
+            continue
+        }
+        image := EmbedAt(text, at)
+        if !image.valid {
+            return false
+        }
+        found = true
+        at = image.end
+    }
+    return found
+}
+
+// ---------------------------------------------------------------- preview
+
+// One line's marks before they are sorted into the preview.
+LineMarks :: struct {
+    hidden: [LINE_MARKS]Text.Range
+    hidden_count: s32
+    strong: [LINE_MARKS]Text.Range
+    strong_count: s32
+    italic: [LINE_MARKS]Text.Range
+    italic_count: s32
+    tones: [LINE_MARKS]Tone
+    tone_count: s32
+    // A mark did not fit; the line is shown as plain text.
+    overflow: bool
+}
+
+// A link or inline image on a line: `[` at open, text up to text_end, then
+// `](destination)` up to end.
+Link :: struct {
+    open: s32
+    text_end: s32
+    end: s32
+    image: bool
+    // An image whose destination is a resolved: an embed.
+    resolved: bool
+}
+
+// A run of `*` or `_` delimiters for emphasis.
+Run :: struct {
+    start: s32
+    length: s32
+    marker: u8
+    can_open: bool
+    can_close: bool
+    // Delimiters still unmatched, taken from its right as an opener and
+    // from its left as a closer.
+    left: s32
+    taken: s32
+    dead: bool
+}
+
+markdown_line: LineMarks;
+markdown_links: [LINE_LINKS]Link;
+markdown_link_count: s32;
+markdown_runs: [LINE_RUNS]Run;
+
+MarkHidden :: (marks: *LineMarks, start: s32, end: s32) {
+    if end <= start {
+        return
+    }
+    if marks.hidden_count >= LINE_MARKS {
+        marks.overflow = true
+        return
+    }
+    marks.hidden[marks.hidden_count] = Text.Range.{.start = start, .end = end}
+    marks.hidden_count += 1
+}
+
+MarkStrong :: (marks: *LineMarks, start: s32, end: s32) {
+    if end <= start {
+        return
+    }
+    if marks.strong_count >= LINE_MARKS {
+        marks.overflow = true
+        return
+    }
+    marks.strong[marks.strong_count] = Text.Range.{.start = start, .end = end}
+    marks.strong_count += 1
+}
+
+MarkItalic :: (marks: *LineMarks, start: s32, end: s32) {
+    if end <= start {
+        return
+    }
+    if marks.italic_count >= LINE_MARKS {
+        marks.overflow = true
+        return
+    }
+    marks.italic[marks.italic_count] = Text.Range.{.start = start, .end = end}
+    marks.italic_count += 1
+}
+
+MarkTone :: (marks: *LineMarks, start: s32, end: s32, tone: s32) {
+    if end <= start {
+        return
+    }
+    if marks.tone_count >= LINE_MARKS {
+        marks.overflow = true
+        return
+    }
+    marks.tones[marks.tone_count] = Tone.{.start = start, .end = end, .tone = tone}
+    marks.tone_count += 1
+}
+
+// Sorts ranges by start and joins those that overlap or touch, so nested
+// emphasis of one kind reads as one range.
+JoinRanges :: (ranges: []Text.Range, count: s32) -> s32 {
+    for index: cast(s32)1..count - 1 {
+        value := ranges[index]
+        at := index
+        while at > 0 && ranges[at - 1].start > value.start {
+            ranges[at] = ranges[at - 1]
+            at -= 1
+        }
+        ranges[at] = value
+    }
+    joined: s32 = 0
+    for index: cast(s32)0..count - 1 {
+        if joined > 0 && ranges[index].start <= ranges[joined - 1].end {
+            if ranges[index].end > ranges[joined - 1].end {
+                ranges[joined - 1].end = ranges[index].end
+            }
+            continue
+        }
+        ranges[joined] = ranges[index]
+        joined += 1
+    }
+    return joined
+}
+
+// Sorts hidden markers by start. Markers never overlap; one that would is
+// shown instead.
+SortHidden :: (ranges: []Text.Range, count: s32) -> s32 {
+    for index: cast(s32)1..count - 1 {
+        value := ranges[index]
+        at := index
+        while at > 0 && ranges[at - 1].start > value.start {
+            ranges[at] = ranges[at - 1]
+            at -= 1
+        }
+        ranges[at] = value
+    }
+    kept: s32 = 0
+    for index: cast(s32)0..count - 1 {
+        if kept > 0 && ranges[index].start < ranges[kept - 1].end {
+            continue
+        }
+        ranges[kept] = ranges[index]
+        kept += 1
+    }
+    return kept
+}
+
+SortTones :: (tones: []Tone, count: s32) -> s32 {
+    for index: cast(s32)1..count - 1 {
+        value := tones[index]
+        at := index
+        while at > 0 && tones[at - 1].start > value.start {
+            tones[at] = tones[at - 1]
+            at -= 1
+        }
+        tones[at] = value
+    }
+    kept: s32 = 0
+    for index: cast(s32)0..count - 1 {
+        if kept > 0 && tones[index].start < tones[kept - 1].end {
+            continue
+        }
+        tones[kept] = tones[index]
+        kept += 1
+    }
+    return kept
+}
+
+// A byte escaped by an odd number of backslashes before it.
+Escaped :: (text: string, at: s32, from: s32) -> bool {
+    slashes: s32 = 0
+    cursor := at - 1
+    while cursor >= from && text[cursor] == cast(u8)92 {
+        slashes += 1
+        cursor -= 1
+    }
+    return slashes % 2 == 1
+}
+
+Punctuation :: (byte: u8) -> bool {
+    return (byte >= cast(u8)33 && byte <= cast(u8)47) || (byte >= cast(u8)58 && byte <= cast(u8)64) ||
+    (byte >= cast(u8)91 && byte <= cast(u8)96) || (byte >= cast(u8)123 && byte <= cast(u8)126)
+}
+
+// Photos, links and other inline images on text[from:to]. A resolved is read
+// as an embed; other destinations hold no spaces, as CommonMark's plain
+// destinations, and their titles and angle brackets stay text.
+FindLinks :: (text: string, from: s32, to: s32) {
+    markdown_link_count = 0
+    at := from
+    while at < to && markdown_link_count < LINE_LINKS {
+        if text[at] == #char "!" {
+            embed := EmbedAt(text, at)
+            if embed.valid && embed.end <= to {
+                markdown_links[markdown_link_count] = Link.{.open = at + 1, .text_end = embed.alt_end,
+                    .end = embed.end, .image = true, .resolved = true}
+                markdown_link_count += 1
+                at = embed.end
+                continue
+            }
+        }
+        if text[at] != #char "[" || Escaped(text, at, from) {
+            at += 1
+            continue
+        }
+        image := at > from && text[at - 1] == #char "!" && !Escaped(text, at - 1, from)
+        close := at + 1
+        while close < to && text[close] != #char "]" && text[close] != #char "[" {
+            close += 1
+        }
+        if close >= to || text[close] != #char "]" || close + 1 >= to || text[close + 1] != #char "(" {
+            at += 1
+            continue
+        }
+        end := close + 2
+        while end < to && text[end] != #char ")" && !Blank(text[end]) {
+            end += 1
+        }
+        if end >= to || text[end] != #char ")" || end == close + 2 {
+            at += 1
+            continue
+        }
+        markdown_links[markdown_link_count] = Link.{.open = at, .text_end = close, .end = end + 1, .image = image}
+        markdown_link_count += 1
+        at = end + 1
+    }
+}
+
+// Whether at lies inside a link or inline image found on the line. Emphasis
+// around a link treats it as one piece; its text pairs on its own.
+LinkSyntax :: (at: s32) -> bool {
+    for index: cast(s32)0..markdown_link_count - 1 {
+        link := markdown_links[index]
+        start := link.open
+        if link.image {
+            start -= 1
+        }
+        if at >= start && at < link.end {
+            return true
+        }
+    }
+    return false
+}
+
+// Emphasis on text[from:to] with CommonMark's flanking rules and its rule of
+// three, within one line. Matched markers hide away from the caret's line.
+Emphasis :: (marks: *LineMarks, text: string, from: s32, to: s32, active: bool) {
+    count: s32 = 0
+    at := from
+    while at < to {
+        byte := text[at]
+        if (byte != #char "*" && byte != #char "_") || Escaped(text, at, from) || LinkSyntax(at) {
+            at += 1
+            continue
+        }
+        end := at
+        while end < to && text[end] == byte && !LinkSyntax(end) {
+            end += 1
+        }
+        if count >= LINE_RUNS {
+            marks.overflow = true
+            return
+        }
+        before: u8 = 32
+        if at > from {
+            before = text[at - 1]
+        }
+        after: u8 = 32
+        if end < to {
+            after = text[end]
+        }
+        before_space := Blank(before)
+        after_space := Blank(after)
+        left_flanking := !after_space &&
+            (!Punctuation(after) || before_space || Punctuation(before))
+        right_flanking := !before_space &&
+            (!Punctuation(before) || after_space || Punctuation(after))
+        run: Run
+        run.start = at
+        run.length = end - at
+        run.left = run.length
+        run.marker = byte
+        if byte == #char "*" {
+            run.can_open = left_flanking
+            run.can_close = right_flanking
+        } else {
+            run.can_open = left_flanking && (!right_flanking || Punctuation(before))
+            run.can_close = right_flanking && (!left_flanking || Punctuation(after))
+        }
+        markdown_runs[count] = run
+        count += 1
+        at = end
+    }
+    for closer: cast(s32)0..count - 1 {
+        if !markdown_runs[closer].can_close {
+            continue
+        }
+        while markdown_runs[closer].left > 0 {
+            opener: s32 = -1
+            candidate := closer - 1
+            while candidate >= 0 {
+                run := markdown_runs[candidate]
+                if !run.dead && run.can_open && run.left > 0 && run.marker == markdown_runs[closer].marker {
+                    both := run.can_close || markdown_runs[closer].can_open
+                    sum := run.length + markdown_runs[closer].length
+                    three := both && sum % 3 == 0 &&
+                        !(run.length % 3 == 0 && markdown_runs[closer].length % 3 == 0)
+                    if !three {
+                        opener = candidate
+                        break
+                    }
+                }
+                candidate -= 1
+            }
+            if opener < 0 {
+                break
+            }
+            // Openers between the pair can no longer match.
+            for between: opener + 1..closer - 1 {
+                markdown_runs[between].dead = true
+            }
+            use: s32 = 1
+            if markdown_runs[opener].left >= 2 && markdown_runs[closer].left >= 2 {
+                use = 2
+            }
+            content_start := markdown_runs[opener].start + markdown_runs[opener].left
+            content_end := markdown_runs[closer].start + markdown_runs[closer].taken
+            if !active {
+                MarkHidden(marks, content_start - use, content_start)
+                MarkHidden(marks, content_end, content_end + use)
+            }
+            if use == 2 {
+                MarkStrong(marks, content_start, content_end)
+            } else {
+                MarkItalic(marks, content_start, content_end)
+            }
+            markdown_runs[opener].left -= use
+            markdown_runs[closer].left -= use
+            markdown_runs[closer].taken += use
+        }
+        if markdown_runs[closer].left > 0 && !markdown_runs[closer].can_open {
+            markdown_runs[closer].dead = true
+        }
+    }
+}
+
+// Links, then emphasis around and inside them, on text[from:to].
+Inline :: (marks: *LineMarks, text: string, from: s32, to: s32, active: bool, quoted: bool) {
+    FindLinks(text, from, to)
+    links: [LINE_LINKS]Link
+    link_count := markdown_link_count
+    for index: cast(s32)0..link_count - 1 {
+        links[index] = markdown_links[index]
+    }
+    Emphasis(marks, text, from, to, active)
+    for index: cast(s32)0..link_count - 1 {
+        link := links[index]
+        // A resolved is drawn under its line; its Markdown hides like a link's.
+        if link.resolved && !active {
+            MarkHidden(marks, link.open - 1, link.end)
+        }
+        if link.image {
+            continue
+        }
+        if !active {
+            MarkHidden(marks, link.open, link.open + 1)
+            MarkHidden(marks, link.text_end, link.end)
+        }
+        if !quoted {
+            MarkTone(marks, link.open + 1, link.text_end, TONE_LINK)
+        }
+        // Emphasis inside a link's text pairs only there.
+        markdown_link_count = 0
+        Emphasis(marks, text, link.open + 1, link.text_end, active)
+    }
+}
+
+// A heading's level and where its text starts, or level 0.
+HeadingAt :: (text: string, start: s32, end: s32) -> Heading {
+    heading: Heading
+    at := start
+    while at < end && at - start < 3 && text[at] == cast(u8)32 {
+        at += 1
+    }
+    level: s32 = 0
+    while at < end && text[at] == #char "#" && level < 7 {
+        level += 1
+        at += 1
+    }
+    if level < 1 || level > 6 || (at < end && !Blank(text[at])) {
+        return heading
+    }
+    heading.level = level
+    heading.start = at
+    return heading
+}
+
+// Where a list item's marker ends (before its spaces), or -1.
+ListMarkerEnd :: (text: string, start: s32, end: s32) -> s32 {
+    at := start
+    while at < end && Blank(text[at]) {
+        at += 1
+    }
+    if at >= end {
+        return -1
+    }
+    marker := text[at]
+    if marker == #char "-" || marker == #char "*" || marker == #char "+" {
+        at += 1
+    } else {
+        digits: s32 = 0
+        while at < end && text[at] >= cast(u8)48 && text[at] <= cast(u8)57 && digits < 10 {
+            at += 1
+            digits += 1
+        }
+        if digits < 1 || digits > 9 || at >= end || (text[at] != #char "." && text[at] != #char ")") {
+            return -1
+        }
+        at += 1
+    }
+    if at < end && !Blank(text[at]) {
+        return -1
+    }
+    return at
+}
+
+// Where a quote's text starts after `>` and one space, or -1.
+QuoteStart :: (text: string, start: s32, end: s32) -> s32 {
+    at := start
+    while at < end && at - start < 3 && text[at] == cast(u8)32 {
+        at += 1
+    }
+    if at >= end || text[at] != #char ">" {
+        return -1
+    }
+    at += 1
+    if at < end && Blank(text[at]) {
+        at += 1
+    }
+    return at
+}
+
+// A heading's closing `#` run with the spaces before it, hidden like its
+// opening marker: the start of that tail, or end when there is none.
+HeadingTail :: (text: string, from: s32, end: s32) -> s32 {
+    last := end
+    while last > from && Blank(text[last - 1]) {
+        last -= 1
+    }
+    hashes := last
+    while hashes > from && text[hashes - 1] == #char "#" {
+        hashes -= 1
+    }
+    if hashes == last {
+        return end
+    }
+    if hashes == from {
+        return from
+    }
+    if !Blank(text[hashes - 1]) {
+        return end
+    }
+    tail := hashes
+    while tail > from && Blank(text[tail - 1]) {
+        tail -= 1
+    }
+    return tail
+}
+
+PreviewAdd :: (preview: *Preview, marks: *LineMarks) -> bool {
+    marks.hidden_count = SortHidden(marks.hidden[:], marks.hidden_count)
+    marks.strong_count = JoinRanges(marks.strong[:], marks.strong_count)
+    marks.italic_count = JoinRanges(marks.italic[:], marks.italic_count)
+    marks.tone_count = SortTones(marks.tones[:], marks.tone_count)
+    if preview.hidden_count + marks.hidden_count > PREVIEW_RANGES ||
+    preview.strong_count + marks.strong_count > PREVIEW_RANGES ||
+    preview.italic_count + marks.italic_count > PREVIEW_RANGES ||
+    preview.tone_count + marks.tone_count > PREVIEW_TONES {
+        return false
+    }
+    for index: cast(s32)0..marks.hidden_count - 1 {
+        preview.hidden[preview.hidden_count] = marks.hidden[index]
+        preview.hidden_count += 1
+    }
+    for index: cast(s32)0..marks.strong_count - 1 {
+        preview.strong[preview.strong_count] = marks.strong[index]
+        preview.strong_count += 1
+    }
+    for index: cast(s32)0..marks.italic_count - 1 {
+        preview.italic[preview.italic_count] = marks.italic[index]
+        preview.italic_count += 1
+    }
+    for index: cast(s32)0..marks.tone_count - 1 {
+        preview.tones[preview.tone_count] = marks.tones[index]
+        preview.tone_count += 1
+    }
+    return true
+}
+
+// Builds the preview of text for the caret and selection between cursor and
+// anchor. While editing, the lines they touch show their Markdown as typed.
+Scan :: (preview: *Preview, text: string, cursor: s32, anchor: s32,
+    editing: bool, images: []ImageSpan) {
+    resolved_images = images
+    preview.hidden_count = 0
+    preview.strong_count = 0
+    preview.italic_count = 0
+    preview.tone_count = 0
+    preview.heading_count = 0
+    preview.image_count = 0
+    preview.truncated = false
+    first := ifx cursor < anchor then cursor else anchor
+    last := ifx cursor < anchor then anchor else cursor
+    line: s32 = 0
+    count := cast(s32)text.count
+    while line <= count {
+        end := LineEnd(text, line)
+        active := editing && last >= line && first <= end
+        // The line's photos are drawn under it, in order.
+        line_images := preview.image_count
+        embed := EmbedIn(text, line, end)
+        while embed.valid {
+            if preview.image_count >= PREVIEW_IMAGES {
+                preview.truncated = true
+                return
+            }
+            preview.images[preview.image_count] = ImageBlock.{.embed = embed}
+            preview.image_count += 1
+            embed = EmbedIn(text, embed.end, end)
+        }
+        // A line of photos alone shows its first resolved in its place.
+        if preview.image_count > line_images && ImageLine(text, line) {
+            if !active {
+                if preview.hidden_count >= PREVIEW_RANGES {
+                    preview.truncated = true
+                    return
+                }
+                preview.images[line_images].cover = true
+                preview.hidden[preview.hidden_count] = Text.Range.{.start = line, .end = end}
+                preview.hidden_count += 1
+            }
+            line = end + 1
+            continue
+        }
+        markdown_line = LineMarks.{}
+        content := line
+        quoted := false
+        heading := HeadingAt(text, line, end)
+        if heading.level > 0 {
+            if preview.heading_count >= PREVIEW_HEADINGS {
+                preview.truncated = true
+                return
+            }
+            preview.headings[preview.heading_count] = Heading.{.start = line, .level = heading.level}
+            text_start := heading.start
+            while text_start < end && Blank(text[text_start]) {
+                text_start += 1
+            }
+            tail := HeadingTail(text, text_start, end)
+            if !active {
+                MarkHidden(*markdown_line, line, text_start)
+                MarkHidden(*markdown_line, tail, end)
+            }
+            MarkStrong(*markdown_line, text_start, tail)
+            Inline(*markdown_line, text, text_start, tail, active, false)
+        } else {
+            quote := QuoteStart(text, line, end)
+            if quote >= 0 {
+                quoted = true
+                MarkTone(*markdown_line, line, end, TONE_MUTED)
+                content = quote
+            } else {
+                marker := ListMarkerEnd(text, line, end)
+                if marker >= 0 {
+                    marker_start := line
+                    while Blank(text[marker_start]) {
+                        marker_start += 1
+                    }
+                    MarkTone(*markdown_line, marker_start, marker, TONE_MUTED)
+                    content = marker
+                }
+            }
+            Inline(*markdown_line, text, content, end, active, quoted)
+        }
+        if markdown_line.overflow {
+            // The whole line shows as typed rather than half styled.
+            markdown_line = LineMarks.{}
+        }
+        if !PreviewAdd(preview, *markdown_line) {
+            preview.truncated = true
+            return
+        }
+        if heading.level > 0 {
+            preview.heading_count += 1
+        }
+        line = end + 1
+    }
+}

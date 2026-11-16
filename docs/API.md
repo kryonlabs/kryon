@@ -359,6 +359,22 @@ at most one size per line, or ignored as a whole; without them the layout is
 the plain area's. During an IME composition, lines and
 boxes after it move with the preedit.
 
+`MarkdownEditor :: #import "kryon/markdown_editor";` shares the inline
+Markdown editor extracted from Inner Breeze Diary. Call
+`MarkdownEditor.Draw(session, MarkdownEditor.Props.{.area = area, ...})`
+with ordinary `TextArea.Props` and retain its result's edit, cursor, anchor,
+scroll and focus. `muted_color` and `link_color` color list/quote markers and
+links. Headings, emphasis and links preview while the caret's active lines
+show their original syntax. The value and edit offsets always address the
+original Markdown; there is no HTML conversion or second document.
+
+The optional `kryon/markdown_preview` module exposes `Scan(preview, text,
+cursor, anchor, editing, images)` for hosts that need the formatting ranges.
+An app resolves its own media into `ImageSpan` values and corresponding
+`area.blocks`; the editor owns only their layout and syntax visibility.
+It never reads a file or fetches a URL. `kryon/text_props` exposes the
+text/range data types without importing a text renderer.
+
 Import `kryon/pointer_input` for `SamplePointer()`, which also works inside a
 hosted widget frame. The host returns the pointer sample for the session passed to `WidgetHostBegin`;
 an inactive frame cannot read input, and another session's sample is not exposed.

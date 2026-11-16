@@ -1,0 +1,75 @@
+// Inner Breeze Diary's editor, shared without its storage or media services.
+// The active lines show Markdown syntax; other lines show the formatted text.
+Preview :: #import "kryon/markdown_preview";
+TextArea :: #import "kryon/text_area";
+#import "kryon/session"
+
+Props :: struct {
+    area: TextArea.Props
+    muted_color: u32
+    link_color: u32
+    // Sorted byte spans for images resolved by the app, with corresponding
+    // blocks in area.blocks. Unresolved image syntax remains ordinary text.
+    images: []Preview.ImageSpan
+}
+
+Workspace :: struct {
+    preview: Preview.Preview
+    colors: [Preview.PREVIEW_TONES]TextArea.ColorSpan
+    lines: [Preview.PREVIEW_HEADINGS]TextArea.Line
+    blocks: [Preview.PREVIEW_IMAGES]TextArea.Block
+}
+
+HEADING_SCALES: [6]float32 = .[1.6, 1.4, 1.25, 1.1, 1.0, 1.0];
+
+// Like Diary's original editor, scratch is reused during each synchronous
+// widget draw. It holds formatting, never document or interaction state.
+workspace: Workspace;
+
+// No shadow document or conversion step is involved: edits address the
+// original Markdown bytes. Every range is consumed by TextArea in this call.
+Draw :: (session: Session, props: Props) -> TextArea.Result {
+    area := props.area
+    Preview.Scan(*workspace.preview, area.value, area.cursor, area.anchor,
+        area.focused && !area.read_only, props.images)
+    preview := *workspace.preview
+    area.hidden = preview.hidden[:preview.hidden_count]
+    area.strong = preview.strong[:preview.strong_count]
+    area.italic = preview.italic[:preview.italic_count]
+    colors: s32 = 0
+    for index: cast(s32)0..preview.tone_count - 1 {
+        tone := preview.tones[index]
+        color := ifx tone.tone == Preview.TONE_LINK then props.link_color else props.muted_color
+        if color != cast(u32)0 {
+            workspace.colors[colors] = TextArea.ColorSpan.{
+                .start = tone.start, .end = tone.end, .color = color}
+            colors += 1
+        }
+    }
+    area.colors = workspace.colors[:colors]
+    lines: s32 = 0
+    for index: cast(s32)0..preview.heading_count - 1 {
+        heading := preview.headings[index]
+        scale := HEADING_SCALES[heading.level - 1]
+        if scale > 1.0 {
+            workspace.lines[lines] = TextArea.Line.{.start = heading.start, .scale = scale}
+            lines += 1
+        }
+    }
+    area.lines = workspace.lines[:lines]
+    blocks: s32 = 0
+    for index: cast(s32)0..preview.image_count - 1 {
+        image := preview.images[index]
+        for supplied: cast(s32)0..cast(s32)props.images.count - 1 {
+            if props.images[supplied].start == image.embed.start &&
+            supplied < cast(s32)props.area.blocks.count {
+                workspace.blocks[blocks] = props.area.blocks[supplied]
+                workspace.blocks[blocks].cover = image.cover
+                blocks += 1
+                break
+            }
+        }
+    }
+    area.blocks = workspace.blocks[:blocks]
+    return TextArea.Draw(session, area)
+}

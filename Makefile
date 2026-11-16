@@ -112,6 +112,31 @@ ziran-test: project-toolchain
 # fetch the same package at the same time, and offline ones find none. A
 # pinned toolchain this builds uses the plain compilers, not instrumented ones.
 .PHONY: behavior-tests
+test: markdown-editor-test
+
+.PHONY: markdown-editor-test
+MARKDOWN_TEST_BINDINGS = \
+	--bind kryon/font_metrics:MeasureGlyphWidth=ziran_widget_noop_host:MeasureGlyphWidth \
+	--bind kryon/font_metrics:MeasureGlyphLineHeight=ziran_widget_noop_host:MeasureGlyphLineHeight \
+	--bind kryon/raster_text:RasterText=ziran_widget_noop_host:RasterText \
+	--bind kryon/raster_text:RasterTextClipped=ziran_widget_noop_host:RasterTextClipped \
+	--bind kryon/raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated \
+	--bind kryon/raster_shape:RasterRoundedRectangle=ziran_widget_noop_host:RasterRoundedRectangle \
+	--bind kryon/raster_shape:RasterRoundedRectangleOutline=ziran_widget_noop_host:RasterRoundedRectangleOutline \
+	--bind kryon/raster:RasterLine=ziran_widget_noop_host:RasterLine \
+	--bind kryon/paint_queue:RasterImage=ziran_widget_noop_host:RasterImage \
+	--bind kryon/image_raster:ImageWidth=ziran_widget_noop_host:ImageWidth \
+	--bind kryon/image_raster:ImageHeight=ziran_widget_noop_host:ImageHeight \
+	--bind kryon/system_clipboard:SystemClipboardOpenHost=system_clipboard_host:SystemClipboardOpenHost \
+	--bind kryon/system_clipboard:SystemClipboardByteHost=system_clipboard_host:SystemClipboardByteHost \
+	--bind kryon/system_clipboard:SystemClipboardWriteHost=system_clipboard_host:SystemClipboardWriteHost
+markdown-editor-test:
+	ziran build --project --module-path tests $(MARKDOWN_TEST_BINDINGS) --target=c --root tests --entry markdown_editor_behavior:Main --exe -o build/markdown-editor tests/markdown_editor_behavior.zi
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER HARMONY_DESKTOP_RECOVERY=0 build/markdown-editor/markdown_editor_behavior
+	ziran bundle --project --module-path tests $(MARKDOWN_TEST_BINDINGS) --root tests --entry markdown_editor_behavior:Main -o build/markdown-editor/editor.zx tests/markdown_editor_behavior.zi
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER HARMONY_DESKTOP_RECOVERY=0 ziran run build/markdown-editor/editor.zx
+
+
 behavior-tests:
 	@env -u CC -u CXX "$(abspath $(ZIRAN_BUILD_DIR))/bin/ziran" fetch
 	@ZIRAN_BIN="$(abspath $(ZIRAN_BUILD_DIR))/bin/ziran" \
@@ -122,7 +147,11 @@ behavior-tests:
 # Run one behavior area without regenerating every UI module and target.
 test-focus:
 	@test -n "$(TEST)" || { echo 'usage: make test-focus TEST=link_widget' >&2; exit 2; }
+ifeq ($(TEST),markdown_editor_behavior)
+	@$(MAKE) --no-print-directory markdown-editor-test
+else
 	@$(MAKE) --no-print-directory ziran-test TEST="$(TEST)" TEST_JOBS="$(TEST_JOBS)"
+endif
 
 header-check:
 	sh tools/check-zi-header-free.sh
