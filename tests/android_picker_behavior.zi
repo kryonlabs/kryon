@@ -82,6 +82,7 @@ FakeException :: (env: *JniEnv) -> u8 {
 FakeDescribe :: (env: *JniEnv) {
     unused env
 }
+FakeDeleteRef :: (env: *JniEnv, reference: *void) { unused env; unused reference }
 FakeClear :: (env: *JniEnv) {
     unused env
     exception_pending = 0
@@ -155,6 +156,7 @@ main :: () -> s32 {
     api.ExceptionDescribe = FakeDescribe
     api.ExceptionClear = FakeClear
     api.GetObjectClass = FakeObjectClass
+    api.DeleteLocalRef = FakeDeleteRef
     api.GetMethodID = FakeMethod
     api.NewStringUTF = FakeString
     api.CallVoidMethodA = FakeVoid

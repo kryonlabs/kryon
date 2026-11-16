@@ -77,6 +77,7 @@ OrientationGetEnv :: (vm: *JniVm, output: **JniEnv, version: s32) -> s32 {
 OrientationPush :: (env: *JniEnv, capacity: s32) -> s32 { orientation_frames += 1; return 0 }
 OrientationPop :: (env: *JniEnv, result: *void) -> *void { orientation_frames -= 1; return result }
 OrientationException :: (env: *JniEnv) -> u8 { return orientation_exception }
+OrientationDeleteRef :: (env: *JniEnv, reference: *void) {}
 OrientationClear :: (env: *JniEnv) { orientation_exception = 0 }
 OrientationDescribe :: (env: *JniEnv) {}
 OrientationClass :: (env: *JniEnv, object: *void) -> *void { return object }
@@ -103,6 +104,7 @@ OrientationVmOpen :: () {
     orientation_api.ExceptionClear = OrientationClear
     orientation_api.ExceptionDescribe = OrientationDescribe
     orientation_api.GetObjectClass = OrientationClass
+    orientation_api.DeleteLocalRef = OrientationDeleteRef
     orientation_api.GetMethodID = OrientationMethod
     orientation_api.CallVoidMethodA = OrientationCall
     orientation_vm_ready = true
