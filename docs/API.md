@@ -505,6 +505,12 @@ an active raster emission. Native renderer texture handles keep their existing
 contract. Standard hosted widget policy continues to reject all guest runtime
 texture IDs and does not advertise bitmap lifecycle capabilities; an embedding
 must provide a separate authenticated ownership policy to grant those effects.
+In a zx bundle the player owns these pictures: `kryon build` defines
+`KRYON_ZX` for zx profiles, and the same three calls become the host calls
+`BitmapImageCreateHost`, `BitmapImageUpdateHost` and `BitmapImageReleaseHost`
+(pixels cross once as a byte view), so the player's raster draws them. The
+desktop zx player provides them for the session it runs; a player without
+them refuses the bundle.
 
 ### System text clipboard and PRIMARY
 

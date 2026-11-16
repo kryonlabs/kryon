@@ -145,8 +145,11 @@ PaintImagePlaceholder :: (session: Session, node: s32, image: Image.Props,
 }
 
 Draw :: (session: Session, image: Image.Props) {
-    if Bitmaps.BitmapTagged(image.texture.id) &&
-        (!SessionValid(session) || Bitmaps.BitmapOwnedSlot(session.slot, session.epoch, image.texture) < 0) { return }
+    // A zx bundle's pictures live in its player, which checks them when it paints.
+    #if !#defined(KRYON_ZX) {
+        if Bitmaps.BitmapTagged(image.texture.id) &&
+            (!SessionValid(session) || Bitmaps.BitmapOwnedSlot(session.slot, session.epoch, image.texture) < 0) { return }
+    }
     node: s32 = -1
     if TreeIsBuilding(session) {
         node = TreeSubmitCurrent(session, image.key, WidgetKindImage, image.bounds)

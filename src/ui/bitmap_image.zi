@@ -9,6 +9,31 @@
     BitmapImageCreate :: (session: Session, width: s32, height: s32, rgba: []u8) -> Texture2D #foreign bitmap_host;
     BitmapImageUpdate :: (session: Session, image: Texture2D, rgba: []u8) -> bool #foreign bitmap_host;
     BitmapImageRelease :: (session: Session, image: Texture2D) #foreign bitmap_host;
+} else #if #defined(KRYON_ZX) {
+    // A portable bundle's pictures belong to its player, whose raster draws
+    // them: the player creates, updates and releases them for the session it
+    // runs. Pixels cross once, as a byte view.
+    #import "std/text"
+    bitmap_player :: #system_library "host_api";
+    BitmapImageCreateHost :: (width: s32, height: s32, rgba: string) -> u32 #foreign bitmap_player;
+    BitmapImageUpdateHost :: (image: u32, width: s32, height: s32, rgba: string) -> bool #foreign bitmap_player;
+    BitmapImageReleaseHost :: (image: u32, width: s32, height: s32) #foreign bitmap_player;
+    #program_export
+    BitmapImageCreate :: (session: Session, width: s32, height: s32, rgba: []u8) -> Texture2D {
+        if !SessionValid(session) || width <= 0 || height <= 0 || rgba.count != cast(s64)width * cast(s64)height * 4 { return .{} }
+        id := BitmapImageCreateHost(width, height, TextView(rgba))
+        if id == cast(u32)0 { return .{} }
+        return Texture2D.{.id = id, .width = width, .height = height, .mipmaps = 1, .format = 7}
+    }
+    #program_export
+    BitmapImageUpdate :: (session: Session, image: Texture2D, rgba: []u8) -> bool {
+        if !SessionValid(session) || image.id == cast(u32)0 { return false }
+        return BitmapImageUpdateHost(image.id, image.width, image.height, TextView(rgba))
+    }
+    #program_export
+    BitmapImageRelease :: (session: Session, image: Texture2D) {
+        if SessionValid(session) && image.id != cast(u32)0 { BitmapImageReleaseHost(image.id, image.width, image.height) }
+    }
 } else {
     #import "bitmap_store"
     #import "paint_queue"

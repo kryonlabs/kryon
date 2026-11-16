@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Portable (zx) apps can show pictures they make at run time, such as
+  photos a service hands them: `kryon/bitmap_image` in a zx bundle asks the
+  desktop zx player to hold the pixels, and the player's raster draws them
+  with the usual image radius, fit and smoothing.
 - A web page whose `#canvas` carries the `data-transparent` attribute has no
   background: the canvas host clears the empty window and each frame to alpha
   0, so the editor preview shows its theme wherever a program draws nothing.

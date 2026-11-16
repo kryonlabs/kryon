@@ -92,7 +92,8 @@ PROJECT_CONFIG_FILES := ziran.toml ziran.lock
 # KRYON_TEST_DRIVER is set in its environment, as it is when the program runs
 # under a test. Saved IR folds the choice, so each setting has its own stamp.
 TEST_DRIVER_STATE := $(if $(KRYON_TEST_DRIVER),on,off)
-ZIRAN_MODULE_ARGS := --project $(if $(KRYON_TEST_DRIVER),--define KRYON_TEST_DRIVER)
+# A zx bundle's runtime pictures (kryon/bitmap_image) belong to its player.
+ZIRAN_MODULE_ARGS := --project $(if $(KRYON_TEST_DRIVER),--define KRYON_TEST_DRIVER) $(if $(filter zx,$(PROJECT_CODEGEN)),--define KRYON_ZX)
 HOST := $(KRYON_DIR)/src/backend/$(HOST_MODULE).zi
 ifneq ($(PROJECT_HOST),)
 PROJECT_HOST_PATH := $(realpath $(PROJECT_HOST))
