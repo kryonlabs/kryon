@@ -350,6 +350,15 @@ desktop-windows-test:
 		LDLIBS="-lXtst" "$(ZIRAN_BIN)" run --target=c tests/desktop_windows_test.zi -- build/test/desktop-windows
 test: desktop-windows-test
 
+# The desktop audio mixer, SDL sink and asset audio, with no audio device:
+# SDL's disk driver stands in for one.
+.PHONY: desktop-audio-test
+desktop-audio-test:
+	@rm -rf build/test/desktop-audio
+	@env -u DISPLAY -u WAYLAND_DISPLAY LDLIBS="-lopus" \
+		"$(ZIRAN_BIN)" run --target=c tests/desktop_audio_test.zi -- build/test/desktop-audio
+test: desktop-audio-test
+
 .PHONY: cursor-api-test
 cursor-api-test:
 	python3 tests/cursor_api_test.py

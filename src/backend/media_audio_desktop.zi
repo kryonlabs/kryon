@@ -1,0 +1,126 @@
+// Kryon's asset audio (kryon/media_audio) on the desktop mixer and SDL sink,
+// without raylib: voices load Ogg Opus and WAV by content, music streams,
+// and PCM voices play the blocks a program submits. The device opens with
+// the first voice. MediaAudioUseDesktop installs the provider.
+#import "media_audio"
+#import "media_audio_host"
+#import "std/byte_text_linux"
+Mixer :: #import "audio_mixer";
+Sink :: #import "audio_sink_sdl";
+#import "audio_decode_opus"
+#import "audio_decode_wav"
+
+#scope_file
+libc :: #system_library "c";
+Allocate :: (count: usize, size: usize) -> *void #foreign libc "calloc";
+Free :: (value: *void) #foreign libc "free";
+
+Resource :: struct { voice: Mixer.AudioVoice; channels: s32; frames: s32; samples: [16384]s16; }
+
+Reply :: (voice: *MediaAudioVoice, code: MediaAudioCode = .Ok) -> MediaAudioResult {
+    return .{.code = code, .state = voice.state, .capabilities = cast(u32)127,
+        .message = ifx code == .Unavailable then "Audio device unavailable" else ""}
+}
+
+Device :: () -> MediaAudioCode {
+    return ifx Sink.AudioSinkOpen() then MediaAudioCode.Ok else MediaAudioCode.Unavailable
+}
+
+// A finished voice reports Finished once its mixer voice has played out.
+Refresh :: (voice: *MediaAudioVoice, resource: *Resource) {
+    if voice.state == .Playing && Mixer.AudioState(resource.voice) == .Finished { voice.state = .Finished }
+}
+
+Provider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: string) -> MediaAudioResult {
+    resource := cast(*Resource)voice.resource
+    if command.operation == .Capabilities { return Reply(voice) }
+    if command.operation == .Unload {
+        if resource != null {
+            Mixer.AudioUnload(resource.voice)
+            Free(cast(*void)resource)
+        }
+        voice.* = MediaAudioVoice.{}
+        return Reply(voice)
+    }
+    device := Device()
+    if command.operation == .Load || command.operation == .CreateStream {
+        if device != .Ok { return Reply(voice, device) }
+        resource = cast(*Resource)Allocate(1, size_of(Resource))
+        if resource == null { return Reply(voice, .Limit) }
+        if command.operation == .Load {
+            resource.voice = Mixer.AudioLoad(bytes, command.music)
+        } else {
+            resource.channels = command.channels
+            resource.frames = command.frames_per_block
+            resource.voice = Mixer.AudioOpenStream(command.sample_rate, command.channels, command.frames_per_block)
+            voice.pcm = true
+            voice.block_bytes = command.frames_per_block * command.channels * 2
+        }
+        if resource.voice.slot < 0 {
+            Free(cast(*void)resource)
+            voice.pcm = false
+            voice.block_bytes = 0
+            return Reply(voice, ifx command.operation == .Load then MediaAudioCode.Failed else MediaAudioCode.Limit)
+        }
+        Mixer.AudioSetGain(resource.voice, command.gain)
+        voice.resource = cast(*void)resource
+        voice.music = command.music && command.operation == .Load
+        voice.gain = command.gain
+        voice.state = .Ready
+        return Reply(voice)
+    }
+    Refresh(voice, resource)
+    if command.operation == .Stop {
+        Mixer.AudioStop(resource.voice)
+        voice.state = .Stopped
+        return Reply(voice)
+    }
+    if command.operation == .Pause {
+        if voice.state == .Paused { return Reply(voice) }
+        if voice.state != .Playing { return Reply(voice, .Invalid) }
+        Mixer.AudioPause(resource.voice)
+        voice.state = .Paused
+        return Reply(voice)
+    }
+    if command.operation == .Resume {
+        if voice.state != .Paused && voice.state != .Playing { return Reply(voice, .Invalid) }
+        if device != .Ok { return Reply(voice, device) }
+        Mixer.AudioResume(resource.voice)
+        voice.state = .Playing
+    } else if command.operation == .Play {
+        if command.looping && !voice.music { return Reply(voice, .Invalid) }
+        if device != .Ok { return Reply(voice, device) }
+        Mixer.AudioSetLooping(resource.voice, command.looping)
+        if !Mixer.AudioPlay(resource.voice) { return Reply(voice, .Failed) }
+        voice.state = .Playing
+    } else if command.operation == .Gain {
+        Mixer.AudioSetGain(resource.voice, command.gain)
+        voice.gain = command.gain
+    } else if command.operation == .SubmitStream {
+        if !voice.pcm || voice.state != .Playing { return Reply(voice, .Invalid) }
+        if !Mixer.AudioStreamWritable(resource.voice) { return Reply(voice, .Backpressure) }
+        // The public payload is little-endian signed 16-bit.
+        count := cast(s64)resource.frames * cast(s64)resource.channels
+        if count > 16384 || command.pcm.count != count * 2 { return Reply(voice, .Limit) }
+        for index: 0..count - 1 {
+            at := index * 2
+            resource.samples[index] = cast(s16)(cast(u16)command.pcm[at] | (cast(u16)command.pcm[at + 1] << 8))
+        }
+        if !Mixer.AudioStreamSubmit(resource.voice, resource.samples[0:count]) { return Reply(voice, .Failed) }
+    } else if command.operation != .Status {
+        return Reply(voice, .Invalid)
+    }
+    Refresh(voice, resource)
+    reply := Reply(voice, ifx command.operation == .Status then device else MediaAudioCode.Ok)
+    if voice.pcm { reply.writable = voice.state == .Playing && Mixer.AudioStreamWritable(resource.voice) }
+    if voice.music {
+        reply.has_position = true
+        reply.position_seconds = Mixer.AudioPosition(resource.voice)
+        length := Mixer.AudioLength(resource.voice)
+        if voice.state == .Finished && length >= 0.0 { reply.position_seconds = length }
+    }
+    return reply
+}
+
+#scope_export
+MediaAudioUseDesktop :: () { MediaAudioUseProvider(Provider) }

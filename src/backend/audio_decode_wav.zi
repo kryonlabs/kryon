@@ -1,0 +1,21 @@
+// RIFF WAVE for audio_mixer, PCM16 or float32, decoded whole by audio/wav.
+// Importing this module is what adds the format.
+Mixer :: #import "audio_mixer";
+Wav :: #import "audio/wav";
+Types :: #import "audio/types";
+using Vectors :: #import "vec";
+
+#scope_file
+Probe :: (bytes: []u8) -> bool {
+    return bytes.count >= 12 && TextView(bytes[0:4]) == "RIFF" && TextView(bytes[8:12]) == "WAVE"
+}
+
+Open :: (bytes: []u8, source: *Mixer.AudioSource) -> bool {
+    pcm: Types.PCM
+    if Wav.WavDecode(bytes, Types.MaxFrames, *pcm) != Types.OK { VecFree(pcm.samples); return false }
+    if Mixer.AudioDecodedSource(*pcm.samples, pcm.rate, pcm.channels, source) { return true }
+    VecFree(pcm.samples)
+    return false
+}
+
+registered: bool = Mixer.AudioUseDecoder(Probe, Open);

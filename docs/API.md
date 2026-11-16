@@ -1615,6 +1615,33 @@ with `MediaAudioUseProvider`; existing owners retain their provider until
 closed. The caller retains cue selection, score/synthesis, volume UI, mute,
 phrase scheduling and any single-in-flight music transition policy.
 
+On the Linux desktop without raylib, `kryon/media_audio_desktop`'s
+`MediaAudioUseDesktop()` installs a provider on Kryon's own mixer and SDL2
+sink, opening the device with the first voice. Programs can also use them
+directly:
+
+- `kryon/audio_mixer` mixes voices into 48 kHz float32 stereo with no device.
+  `AudioLoad(bytes, stream)` and `AudioLoadFile(path, stream)` recognize the
+  content: a sound (`stream = false`) decodes whole, music decodes while it
+  plays. `AudioOpenStream(rate, channels, frames)` plays signed 16-bit blocks
+  given to `AudioStreamSubmit(voice, samples)` while `AudioStreamWritable`
+  says there is room, and waits in silence between them. Each voice has
+  `AudioPlay` (from the start), `AudioStop`, `AudioPause`, `AudioResume`,
+  `AudioState`, `AudioPlaying`, `AudioSetGain`, `AudioSetPitch` (speed and
+  pitch together), `AudioSetLooping`, `AudioPosition`, `AudioLength` and
+  `AudioUnload`. `AudioUseTap(tap)` sees every mixed block on the sink's
+  audio thread, `AudioSetMasterGain` scales the mix, and `AudioRender(output,
+  frames)` mixes into a caller's buffer, as the sink does.
+- `kryon/audio_sink_sdl`: `AudioSinkOpen()`, `AudioSinkReady()` and
+  `AudioSinkClose()`. With `SDL_AUDIODRIVER=disk` SDL writes the device's
+  blocks to `SDL_DISKAUDIOFILE`.
+- Decoders join by import: `kryon/audio_decode_opus` (Ogg Opus, streamed,
+  links libopus) and `kryon/audio_decode_wav` (PCM16 or float32 WAV). A
+  decoder registers `AudioUseDecoder(probe, open)` over an `AudioSource`.
+
+`make desktop-audio-test` renders into its own buffer and plays through SDL's
+disk driver.
+
 ## Document persistence
 
 The existing `kryon/app_context` export provides `DocumentStorageReady() -> bool`

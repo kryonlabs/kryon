@@ -11,6 +11,10 @@
   surface and events; `kryon/cairo_assets`, `kryon/cairo_typefaces` and
   `kryon/cairo_render_scale` add embedded pictures, app fonts and a render
   scale.
+- `kryon/audio_mixer` mixes sounds, streamed music and PCM streams with gain,
+  pitch, loops and a mix tap, `kryon/audio_sink_sdl` plays it through SDL2,
+  `kryon/audio_decode_opus` and `kryon/audio_decode_wav` add formats, and
+  `kryon/media_audio_desktop` runs asset audio on it.
 - A drag in a TextField keeps the selection it made when the pointer is
   released; a click still places the caret.
 - Renderer artifact builds accept dependencies resolved through a local

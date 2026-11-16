@@ -1,0 +1,337 @@
+// The desktop audio stack without raylib or an audio device: the mixer
+// renders into this test's own buffer (gain, mixing, pitch, loop, pause,
+// PCM streams, the tap, WAV and streamed Ogg Opus), then the SDL sink plays
+// through SDL's disk driver, whose file must hold exactly what the tap saw,
+// and Kryon's asset audio runs on the same mixer.
+//     ziran run --target=c tests/desktop_audio_test.zi -- build/test/desktop-audio
+#import "c_string"
+#import "byte_text_linux"
+#import "format"
+#import "file"
+#import "file_tree_linux"
+#import "timer_linux"
+#import "math"
+using Vectors :: #import "vec";
+#import "audio_mixer"
+#import "audio_sink_sdl"
+#import "audio_decode_wav"
+#import "audio_decode_opus"
+#import "media_audio"
+#import "media_audio_host"
+#import "media_audio_desktop"
+#import "session"
+Types :: #import "audio/types";
+Wav :: #import "audio/wav";
+Opus :: #import "audio/opus";
+Ogg :: #import "audio/ogg";
+
+#scope_file
+libc :: #system_library "libc";
+SetEnvironment :: (name: *u8, value: *u8, overwrite: s32) -> s32 #foreign libc "setenv";
+
+PI :: 3.14159265358979
+
+// RATE Hz audio of SECONDS: a LEFT and a RIGHT sine (0 Hz for silence) at
+// AMPLITUDE, as WAV or Ogg Opus bytes.
+Tone :: (rate: s32, seconds: float64, left: float64, right: float64, channels: s32, amplitude: float64) -> Types.PCM {
+    pcm: Types.PCM
+    pcm.rate = rate
+    pcm.channels = channels
+    frames := cast(s64)(seconds * cast(float64)rate)
+    for frame: 0..frames - 1 {
+        for channel: 0..channels - 1 {
+            hertz := ifx channel == 0 then left else right
+            value := amplitude * Sin(2.0 * PI * hertz * cast(float64)frame / cast(float64)rate)
+            VecPush(pcm.samples, cast(float32)value)
+        }
+    }
+    return pcm
+}
+
+WavBytes :: (pcm: *Types.PCM, output: *Vec(u8)) -> bool { return Wav.WavEncode(pcm, output) == Types.OK }
+
+// 48 kHz PCM as Ogg Opus (RFC 7845), as audio/pipeline writes it, without
+// its resampler.
+OpusBytes :: (pcm: *Types.PCM, output: *Vec(u8)) -> bool {
+    encoder: Opus.Encoder
+    if Opus.EncoderOpen(*encoder, pcm.channels, Types.DefaultOptions()) != Types.OK { return false }
+    defer Opus.EncoderClose(*encoder)
+    header: [19]u8
+    text := "OpusHead"
+    for i: 0..7 { header[i] = text[i] }
+    header[8] = 1; header[9] = cast(u8)pcm.channels
+    Types.PutLittle(header[:], 10, 2, cast(u64)encoder.lookahead)
+    Types.PutLittle(header[:], 12, 4, cast(u64)pcm.rate)
+    if Ogg.AppendPage(output, header[:], 2, 0, 1, 0) != Types.OK { return false }
+    tags: [21]u8
+    text = "OpusTags"
+    for i: 0..7 { tags[i] = text[i] }
+    Types.PutLittle(tags[:], 8, 4, 5)
+    text = "Ziran"
+    for i: 0..4 { tags[12 + i] = text[i] }
+    if Ogg.AppendPage(output, tags[:], 0, 0, 1, 1) != Types.OK { return false }
+    channels := cast(s64)pcm.channels
+    total := pcm.samples.count / channels + cast(s64)encoder.lookahead
+    at: s64
+    sequence: u32 = 2
+    packet: [4096]u8
+    block: [5760]float32
+    page: Ogg.PageBuilder
+    size := cast(s64)encoder.frame_size * channels
+    while at < total {
+        for i: 0..size - 1 {
+            index := at * channels + i
+            block[i] = ifx index < pcm.samples.count then pcm.samples[index] else cast(float32)0.0
+        }
+        written: s32
+        if Opus.EncoderPacket(*encoder, block[0:size], packet[:], *written) != Types.OK { return false }
+        if Ogg.PageAdd(*page, packet[0:written]) != Types.OK { return false }
+        at += encoder.frame_size
+        if at >= total {
+            if Ogg.PageFlush(*page, output, true, total, sequence) != Types.OK { return false }
+        }
+    }
+    return true
+}
+
+// The tap's copy of every mixed block, up to its size.
+TAPPED :: 96000 * 2
+tapped: [TAPPED]float32;
+tapped_count: s64;
+Tap :: (samples: []float32, frames: s64) {
+    for index: 0..frames * 2 - 1 {
+        if tapped_count < TAPPED { tapped[tapped_count] = samples[index]; tapped_count += 1 }
+    }
+}
+
+Near :: (a: float32, b: float32, tolerance: float32 = 0.002) -> bool {
+    difference := a - b
+    return difference < tolerance && difference > -tolerance
+}
+
+Fail :: (code: s32, message: string) -> s32 {
+    print("desktop audio: %\n", message)
+    return code
+}
+
+Env :: (name: string, value: string) {
+    key: [64]u8
+    text: [4096]u8
+    unused CopyCString(name, key[:])
+    unused CopyCString(value, text[:])
+    unused SetEnvironment(*key[0], *text[0], 1)
+}
+
+// The 440 Hz WAV, which the asset reader also gives out.
+low_wav: string;
+Allowed :: (path: string) -> bool { return path == "assets/test/tone.wav" }
+Read :: (context: *void, path: string) -> string { unused context; unused path; return low_wav }
+Call :: (owner: *MediaAudioOwner, session: Session, command: MediaAudioCommand) -> MediaAudioResult {
+    command.voice = 1
+    return MediaAudioOwnerCall(owner, session, command)
+}
+
+#scope_export
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc < 2 { print("usage: desktop_audio_test FOLDER\n"); return 2 }
+    folder := TextFromCString(argv[1])
+    unused CreateDirectories(folder)
+    output: [8192]float32
+
+    // A sound decoded whole: a 440 Hz mono sine at half scale, played at half gain.
+    low := Tone(48000, 0.25, 440.0, 0.0, 1, 0.5)
+    wav: Vec(u8)
+    if !WavBytes(*low, *wav) { return Fail(10, "the test WAV was not encoded") }
+    low_wav = BuilderFinish(wav)
+    sound := AudioLoad(low_wav, false)
+    if sound.slot < 0 { return Fail(11, "the WAV did not load") }
+    if !Near(cast(float32)AudioLength(sound), 0.25) { return Fail(12, "the WAV's length is wrong") }
+    AudioUseTap(Tap)
+    AudioSetGain(sound, 0.5)
+    if !AudioPlay(sound) || !AudioPlaying(sound) { return Fail(13, "the sound did not play") }
+    AudioRender(output[:], 1024)
+    for frame: 0..1023 {
+        expected := 0.5 * low.samples[frame]
+        if !Near(output[frame * 2], expected) || output[frame * 2 + 1] != output[frame * 2] {
+            print("frame %: % % expected %\n", frame, output[frame * 2], output[frame * 2 + 1], expected)
+            return Fail(14, "the mixed sound is wrong")
+        }
+    }
+    if tapped_count != 2048 { return Fail(15, "the tap did not see the block") }
+    for index: 0..2047 { if tapped[index] != output[index] { return Fail(16, "the tap saw other samples") } }
+
+    // Two voices mix: an 880 Hz sine on the left only joins the first.
+    pair := Tone(48000, 0.25, 880.0, 0.0, 2, 0.25)
+    pair_wav: Vec(u8)
+    if !WavBytes(*pair, *pair_wav) { return Fail(17, "the stereo WAV was not encoded") }
+    left := AudioLoad(TextView(pair_wav[:]), false)
+    if left.slot < 0 || !AudioPlay(left) || !AudioPlay(sound) { return Fail(18, "the stereo WAV did not play") }
+    AudioRender(output[:], 1024)
+    for frame: 0..1023 {
+        mono := 0.5 * low.samples[frame]
+        if !Near(output[frame * 2], mono + pair.samples[frame * 2]) || !Near(output[frame * 2 + 1], mono) {
+            return Fail(19, "two voices did not mix")
+        }
+    }
+    AudioStop(left)
+
+    // Pitch 2 plays every other frame, so the sound ends in half its time.
+    AudioSetPitch(sound, 2.0)
+    unused AudioPlay(sound)
+    AudioRender(output[:], 512)
+    for frame: 0..511 {
+        if !Near(output[frame * 2], 0.5 * low.samples[frame * 2]) { return Fail(20, "pitch 2 did not skip frames") }
+    }
+    for block: 0..12 { AudioRender(output[:], 512) }
+    if AudioState(sound) != .Finished { return Fail(21, "the sound did not finish at pitch 2") }
+    AudioRender(output[:], 512)
+    for index: 0..1023 { if output[index] != 0.0 { return Fail(22, "a finished sound still plays") } }
+
+    // A loop starts over; a paused voice is silent and resumes where it was.
+    AudioSetPitch(sound, 1.0)
+    AudioSetLooping(sound, true)
+    unused AudioPlay(sound)
+    for block: 0..30 { AudioRender(output[:], 1000) }
+    if AudioState(sound) != .Playing || AudioPosition(sound) >= 0.25 { return Fail(23, "the loop did not start over") }
+    AudioPause(sound)
+    position := AudioPosition(sound)
+    AudioRender(output[:], 1024)
+    for index: 0..2047 { if output[index] != 0.0 { return Fail(24, "a paused voice still plays") } }
+    AudioResume(sound)
+    AudioRender(output[:], 480)
+    if AudioState(sound) != .Playing || !Near(cast(float32)(AudioPosition(sound) - position), 0.01, 0.0005) {
+        return Fail(25, "the voice did not resume where it paused")
+    }
+    AudioStop(sound)
+
+    // A PCM stream plays the blocks submitted, then silence, and never ends.
+    stream := AudioOpenStream(24000, 2, 256)
+    if stream.slot < 0 || !AudioStreamWritable(stream) { return Fail(26, "the PCM stream did not open") }
+    block: [512]s16
+    for index: 0..511 { block[index] = cast(s16)((index % 2) * 16384 - 8192) }
+    if AudioStreamSubmit(stream, block[0:511]) { return Fail(27, "a short block was accepted") }
+    // Play starts a stream afresh, so blocks follow it.
+    if !AudioPlay(stream) || !AudioStreamSubmit(stream, block[:]) || !AudioStreamSubmit(stream, block[:]) {
+        return Fail(28, "the PCM blocks were not taken")
+    }
+    // At half the mixer's rate each of the 512 submitted frames plays twice,
+    // then the stream waits in silence.
+    AudioRender(output[:], 1024)
+    for frame: 0..1021 {
+        if !Near(output[frame * 2], -0.25) || !Near(output[frame * 2 + 1], 0.25) {
+            print("stream frame %: % %\n", frame, output[frame * 2], output[frame * 2 + 1])
+            return Fail(29, "the PCM stream's samples are wrong")
+        }
+    }
+    if output[2046] != 0.0 || output[2047] != 0.0 { return Fail(30, "an empty stream did not wait in silence") }
+    if !AudioStreamSubmit(stream, block[:]) { return Fail(31, "the stream took no block after waiting") }
+    AudioRender(output[:], 256)
+    if !Near(output[100], -0.25) { return Fail(31, "a block after waiting did not play at once") }
+    for round: 0..3 { AudioRender(output[:], 1024) }
+    if AudioState(stream) != .Playing { return Fail(30, "an empty stream finished") }
+    for round: 0..3 { unused AudioStreamSubmit(stream, block[:]) }
+    if AudioStreamWritable(stream) || AudioStreamSubmit(stream, block[:]) { return Fail(31, "a full stream took another block") }
+    AudioUnload(stream)
+    if AudioState(stream) != .Unloaded || AudioPlay(stream) { return Fail(32, "an unloaded stream still answers") }
+
+    // Ogg Opus, recognized by its content and decoded while it plays.
+    opus_pcm := Tone(48000, 0.5, 440.0, 440.0, 2, 0.5)
+    opus: Vec(u8)
+    if !OpusBytes(*opus_pcm, *opus) { return Fail(33, "the test Opus was not encoded") }
+    music := AudioLoad(TextView(opus[:]), true)
+    if music.slot < 0 || !Near(cast(float32)AudioLength(music), 0.5) { return Fail(34, "the Opus music did not load") }
+    if !AudioPlay(music) { return Fail(35, "the Opus music did not play") }
+    energy: float64 = 0.0
+    for round: 0..9 {
+        AudioRender(output[:], 2400)
+        for index: 0..4799 { energy += cast(float64)output[index] * cast(float64)output[index] }
+    }
+    rms := Sqrt(energy / 48000.0)
+    if rms < 0.3 || rms > 0.4 { print("opus rms %\n", rms); return Fail(36, "the Opus music is not the tone") }
+    for round: 0..9 { AudioRender(output[:], 2400) }
+    if AudioState(music) != .Finished { return Fail(37, "the Opus music did not finish") }
+    AudioUnload(music)
+    garbage := "not audio at all, only text"
+    if AudioLoad(garbage, false).slot >= 0 { return Fail(38, "text loaded as audio") }
+
+    // The SDL sink, on SDL's disk driver: the file holds what the tap saw.
+    raw: Vec(u8)
+    BuilderPrint(*raw, "%/sink.raw", folder)
+    raw_path := BuilderFinish(raw)
+    Env("SDL_AUDIODRIVER", "disk")
+    Env("SDL_DISKAUDIOFILE", raw_path)
+    AudioSetGain(sound, 1.0)
+    unused AudioPlay(sound)
+    tapped_count = 0
+    if !AudioSinkOpen() || !AudioSinkReady() { return Fail(39, "the SDL sink did not open") }
+    unused SleepMilliseconds(400)
+    AudioSinkClose()
+    if AudioSinkReady() { return Fail(40, "the SDL sink did not close") }
+    file: Vec(u8)
+    if !ReadFileInto(raw_path, *file) || file.count < 8192 * 4 { return Fail(41, "the sink wrote nothing") }
+    samples := cast(*float32)*file[0]
+    count := file.count / 4
+    // SDL writes silence while a new device is paused, so the file's mix
+    // starts later than the tap's; line them up at their first sound.
+    first_file: s64 = 0
+    while first_file < count && samples[first_file] == 0.0 { first_file += 1 }
+    first_tap: s64 = 0
+    while first_tap < tapped_count && tapped[first_tap] == 0.0 { first_tap += 1 }
+    offset := first_file - first_tap
+    if first_file == count || first_tap == tapped_count || offset < 0 || offset % 2 != 0 {
+        print("sink offsets: file % tap %\n", first_file, first_tap)
+        return Fail(42, "the device's file and the tap do not line up")
+    }
+    compared := count - offset
+    if compared > tapped_count { compared = tapped_count }
+    if compared < 8192 { return Fail(42, "the device played too little") }
+    loud: s64 = 0
+    for index: 0..compared - 1 {
+        if samples[index + offset] != tapped[index] {
+            print("sink sample %: % tapped %\n", index, samples[index + offset], tapped[index])
+            return Fail(42, "the device got other samples than the tap")
+        }
+        if tapped[index] > 0.45 { loud += 1 }
+        if tapped[index] > 0.5001 || tapped[index] < -0.5001 { return Fail(43, "the sink's samples are out of range") }
+    }
+    if loud == 0 { return Fail(44, "the sink played no tone") }
+    AudioStop(sound)
+
+    // Kryon's asset audio on the desktop mixer: load, play, pause, resume,
+    // stop and unload a voice, then a PCM voice with backpressure.
+    MediaAudioUseDesktop()
+    session := SessionOpen()
+    owner: MediaAudioOwner
+    MediaAudioOwnerBind(*owner, session, Allowed, Read, null)
+    loaded := Call(*owner, session, .{.operation = .Load, .asset = "assets/test/tone.wav", .music = true, .gain = 0.5})
+    if loaded.code != .Ok || loaded.state != .Ready { print("load %\n", loaded.message); return Fail(45, "the asset did not load") }
+    if Call(*owner, session, .{.operation = .Play}).state != .Playing { return Fail(46, "the asset did not play") }
+    unused SleepMilliseconds(80)
+    status := Call(*owner, session, .{.operation = .Status})
+    if status.state != .Playing || !status.has_position || status.position_seconds <= 0.0 { return Fail(47, "the asset's position did not move") }
+    if Call(*owner, session, .{.operation = .Pause}).state != .Paused { return Fail(48, "the asset did not pause") }
+    if Call(*owner, session, .{.operation = .Resume}).state != .Playing { return Fail(49, "the asset did not resume") }
+    unused SleepMilliseconds(400)
+    if Call(*owner, session, .{.operation = .Status}).state != .Finished { return Fail(50, "the asset did not finish") }
+    if Call(*owner, session, .{.operation = .Stop}).state != .Stopped { return Fail(51, "the asset did not stop") }
+    if Call(*owner, session, .{.operation = .Unload}).state != .Unloaded { return Fail(52, "the asset did not unload") }
+    created := Call(*owner, session, .{.operation = .CreateStream, .format = .S16LE, .sample_rate = 48000,
+        .channels = 1, .frames_per_block = 2048, .gain = 1.0})
+    if created.code != .Ok { print("create %\n", created.message); return Fail(53, "the PCM voice did not open") }
+    if Call(*owner, session, .{.operation = .Play}).state != .Playing { return Fail(54, "the PCM voice did not play") }
+    pcm: [4096]u8
+    accepted: s32 = 0
+    pressured := false
+    for round: 0..9 {
+        reply := Call(*owner, session, .{.operation = .SubmitStream, .pcm = TextView(pcm[:])})
+        if reply.code == .Ok { accepted += 1 }
+        if reply.code == .Backpressure { pressured = true }
+    }
+    if accepted < 1 || !pressured { print("accepted %\n", accepted); return Fail(55, "the PCM voice took no block or never pushed back") }
+    unused Call(*owner, session, .{.operation = .Unload})
+    MediaAudioOwnerClose(*owner)
+    AudioSinkClose()
+    print("desktop audio: passed\n")
+    return 0
+}

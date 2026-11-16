@@ -1,0 +1,519 @@
+// Kryon's desktop audio mixer: voices of decoded or streamed sound, each
+// with its own gain, pitch and loop, mixed into interleaved float32 stereo
+// at 48 kHz, with a tap that sees every mixed block. It owns no device: a
+// sink (audio_sink_sdl) asks it for blocks from its audio thread, and a test
+// can render into a buffer of its own. Decoders join through
+// AudioUseDecoder (audio_decode_opus, audio_decode_wav); each recognizes its
+// content, never a file name.
+//
+// A sound loads decoded whole; music decodes while it plays. A PCM stream
+// plays signed 16-bit blocks the program submits and never finishes: it
+// plays silence until the next block. Every call here belongs to the
+// program's UI thread; while a sink runs, each holds the sink's lock, so the
+// audio thread sees a voice either before or after a change.
+using Vectors :: #import "vec";
+#import "std/file"
+#import "std/byte_text_linux"
+
+AUDIO_RATE :: 48000
+AUDIO_VOICES :: 32
+
+// Interleaved float32 frames at `rate`, from a decoder.
+AudioSource :: struct {
+    state: *void
+    // Fills up to `frames` frames of OUTPUT; 0 only at the end, -1 on error.
+    read: AudioSourceRead
+    // Back to the first frame.
+    rewind: AudioSourceRewind
+    close: AudioSourceClose
+    rate: s32
+    channels: s32
+    // Every frame, or -1 when the decoder cannot say.
+    frames: s64
+}
+AudioSourceRead :: #type (state: *void, output: []float32, frames: s64) -> s64;
+AudioSourceRewind :: #type (state: *void) -> bool;
+AudioSourceClose :: #type (state: *void) -> void;
+
+// A decoder: whether BYTES are its format, and a source over them. The bytes
+// stay valid and unchanged until the source closes.
+AudioDecoderProbe :: #type (bytes: []u8) -> bool;
+AudioDecoderOpen :: #type (bytes: []u8, source: *AudioSource) -> bool;
+
+// Sees each mixed block: `frames` stereo frames, on the sink's audio thread.
+AudioTap :: #type (samples: []float32, frames: s64) -> void;
+AudioLockCall :: #type () -> void;
+
+AudioVoiceState :: enum { Unloaded; Stopped; Playing; Paused; Finished; }
+
+// A voice the program holds; a voice unloaded since is no longer valid.
+AudioVoice :: struct { slot: s32; generation: u32; }
+
+#scope_file
+libc :: #system_library "c";
+Allocate :: (count: usize, size: usize) -> *void #foreign libc "calloc";
+Free :: (value: *void) #foreign libc "free";
+Copy :: (output: *void, input: *void, count: usize) -> *void #foreign libc "memcpy";
+
+// Source frames kept around the play position, for pitch and rate changes.
+WINDOW :: 1024
+DECODERS :: 8
+
+Decoder :: struct { probe: AudioDecoderProbe; open: AudioDecoderOpen; }
+
+Voice :: struct {
+    generation: u32
+    state: AudioVoiceState
+    source: AudioSource
+    // The compressed bytes a streamed decoder reads, owned here.
+    bytes: *u8
+    // Decoded frames at the play position: frame 0 is the one before.
+    window: [(WINDOW + 1) * 2]float32
+    window_frames: s64
+    phase: float64
+    ended: bool
+    looping: bool
+    gain: float32
+    pitch: float32
+    // Source frames decoded into the window since the start, over every loop.
+    decoded: s64
+    // A PCM stream's ring of submitted frames.
+    ring: *Ring
+}
+
+// Signed 16-bit blocks the program submits, as float frames.
+Ring :: struct {
+    samples: *float32
+    capacity: s64
+    channels: s32
+    block: s64
+    start: s64
+    count: s64
+}
+
+voices: [AUDIO_VOICES]Voice;
+decoders: [DECODERS]Decoder;
+decoder_count: s32;
+tap: AudioTap;
+lock: AudioLockCall;
+unlock: AudioLockCall;
+master: float32 = 1.0;
+
+Lock :: () { if lock != null { lock() } }
+Unlock :: () { if unlock != null { unlock() } }
+
+Find :: (voice: AudioVoice) -> *Voice {
+    if voice.slot < 0 || voice.slot >= AUDIO_VOICES { return null }
+    found := *voices[voice.slot]
+    if found.state == .Unloaded || found.generation != voice.generation { return null }
+    return found
+}
+
+// Decoded whole, for a sound.
+Clip :: struct { samples: Vec(float32); channels: s32; frames: s64; at: s64; }
+
+ClipRead :: (state: *void, output: []float32, frames: s64) -> s64 {
+    clip := cast(*Clip)state
+    count := clip.frames - clip.at
+    if count > frames { count = frames }
+    if count <= 0 { return 0 }
+    channels := cast(s64)clip.channels
+    unused Copy(cast(*void)*output[0], cast(*void)*clip.samples[clip.at * channels], cast(usize)(count * channels * 4))
+    clip.at += count
+    return count
+}
+ClipRewind :: (state: *void) -> bool { (cast(*Clip)state).at = 0; return true }
+ClipClose :: (state: *void) {
+    clip := cast(*Clip)state
+    VecFree(clip.samples)
+    Free(state)
+}
+
+// The frames submitted so far, up to FRAMES; 0 until the next block.
+RingRead :: (state: *void, output: []float32, frames: s64) -> s64 {
+    ring := cast(*Ring)state
+    channels := cast(s64)ring.channels
+    taken := ifx ring.count < frames then ring.count else frames
+    for frame: 0..taken - 1 {
+        for channel: 0..channels - 1 {
+            output[frame * channels + channel] = ring.samples[((ring.start + frame) % ring.capacity) * channels + channel]
+        }
+    }
+    ring.start = (ring.start + taken) % ring.capacity
+    ring.count -= taken
+    return taken
+}
+RingRewind :: (state: *void) -> bool {
+    ring := cast(*Ring)state
+    ring.start = 0; ring.count = 0
+    return true
+}
+RingClose :: (state: *void) {
+    ring := cast(*Ring)state
+    Free(cast(*void)ring.samples)
+    Free(state)
+}
+
+// Takes a free slot for SOURCE, or -1 when every voice is in use.
+Install :: (source: AudioSource, bytes: *u8, ring: *Ring) -> AudioVoice {
+    Lock()
+    defer Unlock()
+    for slot: cast(s32)0..AUDIO_VOICES - 1 {
+        voice := *voices[slot]
+        if voice.state != .Unloaded { continue }
+        generation := voice.generation + 1
+        voice.* = .{}
+        voice.generation = generation
+        voice.state = .Stopped
+        voice.source = source
+        voice.bytes = bytes
+        voice.ring = ring
+        voice.gain = 1.0
+        voice.pitch = 1.0
+        return .{slot, generation}
+    }
+    return .{-1, 0}
+}
+
+Reset :: (voice: *Voice) {
+    voice.window_frames = 0
+    voice.phase = 0.0
+    voice.decoded = 0
+    voice.ended = false
+}
+
+// Keeps the last frame as frame 0 and decodes what follows it. A PCM stream
+// takes what has been submitted and waits for more; a loop starts over.
+Refill :: (voice: *Voice) -> bool {
+    channels := cast(s64)voice.source.channels
+    keep: s64 = 0
+    if voice.window_frames > 0 {
+        last := voice.window_frames - 1
+        for channel: 0..channels - 1 { voice.window[channel] = voice.window[last * channels + channel] }
+        voice.phase -= cast(float64)last
+        keep = 1
+    }
+    voice.window_frames = keep
+    rewinds := 0
+    while voice.window_frames <= WINDOW && !voice.ended {
+        room := WINDOW + 1 - voice.window_frames
+        start := voice.window_frames * channels
+        made := voice.source.read(voice.source.state, voice.window[start:start + room * channels], room)
+        if made < 0 { voice.ended = true; break }
+        if made == 0 {
+            if voice.ring != null { break }
+            // A source that is empty from its start ends even when looping.
+            if voice.looping && rewinds == 0 && voice.source.rewind(voice.source.state) {
+                rewinds += 1
+                continue
+            }
+            voice.ended = true
+            break
+        }
+        rewinds = 0
+        voice.window_frames += made
+        voice.decoded += made
+        if voice.ring != null && made < room { break }
+    }
+    return voice.window_frames > keep
+}
+
+Mix :: (voice: *Voice, output: []float32, frames: s64) {
+    channels := cast(s64)voice.source.channels
+    step := cast(float64)voice.source.rate / cast(float64)AUDIO_RATE * cast(float64)voice.pitch
+    gain := voice.gain * master
+    right := ifx channels > 1 then cast(s64)1 else cast(s64)0
+    for frame: 0..frames - 1 {
+        index := cast(s64)voice.phase
+        while index + 1 >= voice.window_frames {
+            if !voice.ended && Refill(voice) {
+                index = cast(s64)voice.phase
+                continue
+            }
+            // A stream waits in silence; anything else has played out.
+            if voice.ring == null { voice.state = .Finished }
+            return
+        }
+        t := cast(float32)(voice.phase - cast(float64)index)
+        at := index * channels
+        next := (index + 1) * channels
+        left_sample := voice.window[at] + (voice.window[next] - voice.window[at]) * t
+        right_sample := voice.window[at + right] + (voice.window[next + right] - voice.window[at + right]) * t
+        output[frame * 2] += left_sample * gain
+        output[frame * 2 + 1] += right_sample * gain
+        voice.phase += step
+    }
+}
+
+// The play position in seconds: what was decoded less what waits in the
+// window, within the current loop.
+Seconds :: (voice: *Voice) -> float64 {
+    if voice.source.rate <= 0 { return 0.0 }
+    played := cast(float64)(voice.decoded - voice.window_frames) + voice.phase
+    if played < 0.0 { played = 0.0 }
+    frames := cast(float64)voice.source.frames
+    if voice.looping && frames > 0.0 {
+        while played >= frames { played -= frames }
+    }
+    return played / cast(float64)voice.source.rate
+}
+
+#scope_export
+
+// A source over frames decoded whole, which it takes from SAMPLES.
+AudioDecodedSource :: (samples: *Vec(float32), rate: s32, channels: s32, source: *AudioSource) -> bool {
+    if rate <= 0 || channels < 1 || channels > 2 { return false }
+    clip := cast(*Clip)Allocate(1, size_of(Clip))
+    if clip == null { return false }
+    VecSwap(clip.samples, <<samples)
+    clip.channels = channels
+    clip.frames = clip.samples.count / cast(s64)channels
+    source.* = .{.state = cast(*void)clip, .read = ClipRead, .rewind = ClipRewind,
+        .close = ClipClose, .rate = rate, .channels = channels, .frames = clip.frames}
+    return true
+}
+
+// A decoder module registers itself from its initializer.
+AudioUseDecoder :: (probe: AudioDecoderProbe, open: AudioDecoderOpen) -> bool {
+    if decoder_count >= DECODERS { return false }
+    decoders[decoder_count] = .{probe, open}
+    decoder_count += 1
+    return true
+}
+
+// The sink's lock around changes the audio thread could see.
+AudioUseLock :: (enter: AudioLockCall, leave: AudioLockCall) {
+    lock = enter
+    unlock = leave
+}
+
+AudioUseTap :: (next: AudioTap) {
+    Lock()
+    tap = next
+    Unlock()
+}
+
+AudioSetMasterGain :: (gain: float32) {
+    if !(gain >= 0.0) { return }
+    Lock()
+    master = gain
+    Unlock()
+}
+
+// Mixes FRAMES stereo frames of every playing voice into OUTPUT, replacing
+// what it held, then shows them to the tap. The sink's audio thread calls
+// this; a test can call it directly.
+AudioRender :: (output: []float32, frames: s64) {
+    for index: 0..frames * 2 - 1 { output[index] = 0.0 }
+    for slot: 0..AUDIO_VOICES - 1 {
+        if voices[slot].state == .Playing { Mix(*voices[slot], output, frames) }
+    }
+    for index: 0..frames * 2 - 1 {
+        if output[index] > 1.0 { output[index] = 1.0 }
+        if output[index] < -1.0 { output[index] = -1.0 }
+    }
+    if tap != null { tap(output[0:frames * 2], frames) }
+}
+
+// A voice of BYTES in the first registered format that recognizes them:
+// decoded whole now, or, for music (`stream`), while it plays. The bytes
+// are copied; slot -1 when no decoder knows them or every voice is in use.
+AudioLoad :: (bytes: string, stream: bool) -> AudioVoice {
+    failed := AudioVoice.{-1, 0}
+    if bytes.count == 0 { return failed }
+    view := BytesFromPointer((cast(*TextDescriptor)(*bytes)).data, cast(u64)bytes.count)
+    chosen: s32 = -1
+    for index: 0..decoder_count - 1 {
+        if decoders[index].probe(view) { chosen = cast(s32)index; break }
+    }
+    if chosen < 0 { return failed }
+    owned := cast(*u8)Allocate(cast(usize)bytes.count, 1)
+    if owned == null { return failed }
+    unused Copy(cast(*void)owned, cast(*void)*view[0], cast(usize)bytes.count)
+    source: AudioSource
+    if !decoders[chosen].open(BytesFromPointer(owned, cast(u64)bytes.count), *source) ||
+    source.channels < 1 || source.channels > 2 || source.rate <= 0 {
+        if source.close != null { source.close(source.state) }
+        Free(cast(*void)owned)
+        return failed
+    }
+    if !stream {
+        // A sound decodes whole here, on the program's thread.
+        samples: Vec(float32)
+        block: [WINDOW * 2]float32
+        channels := cast(s64)source.channels
+        made: s64 = 1
+        while made > 0 {
+            made = source.read(source.state, block[0:WINDOW * channels], WINDOW)
+            for index: 0..made * channels - 1 { VecPush(samples, block[index]) }
+        }
+        rate := source.rate
+        source.close(source.state)
+        Free(cast(*void)owned)
+        owned = null
+        if made < 0 || !AudioDecodedSource(*samples, rate, cast(s32)channels, *source) {
+            VecFree(samples)
+            return failed
+        }
+    }
+    voice := Install(source, owned, null)
+    if voice.slot < 0 {
+        source.close(source.state)
+        if owned != null { Free(cast(*void)owned) }
+    }
+    return voice
+}
+
+AudioLoadFile :: (path: string, stream: bool) -> AudioVoice {
+    bytes: Vec(u8)
+    defer VecFree(bytes)
+    if !ReadFileInto(path, *bytes) { return .{-1, 0} }
+    return AudioLoad(TextView(bytes[:]), stream)
+}
+
+// A stream of signed 16-bit blocks of FRAMES frames each, at RATE.
+AudioOpenStream :: (rate: s32, channels: s32, frames: s32) -> AudioVoice {
+    failed := AudioVoice.{-1, 0}
+    if rate < 8000 || rate > 192000 || channels < 1 || channels > 2 || frames < 64 || frames > 65536 { return failed }
+    ring := cast(*Ring)Allocate(1, size_of(Ring))
+    if ring == null { return failed }
+    ring.channels = channels
+    ring.block = frames
+    ring.capacity = cast(s64)frames * 4
+    ring.samples = cast(*float32)Allocate(cast(usize)(ring.capacity * cast(s64)channels), 4)
+    if ring.samples == null { Free(cast(*void)ring); return failed }
+    source := AudioSource.{.state = cast(*void)ring, .read = RingRead, .rewind = RingRewind,
+        .close = RingClose, .rate = rate, .channels = channels, .frames = -1}
+    voice := Install(source, null, ring)
+    if voice.slot < 0 { RingClose(cast(*void)ring) }
+    return voice
+}
+
+// Room for another whole block.
+AudioStreamWritable :: (voice: AudioVoice) -> bool {
+    Lock()
+    defer Unlock()
+    found := Find(voice)
+    return found != null && found.ring != null && found.ring.capacity - found.ring.count >= found.ring.block
+}
+
+// Copies one whole block of interleaved samples; false when it is not
+// exactly one block or there is no room.
+AudioStreamSubmit :: (voice: AudioVoice, samples: []s16) -> bool {
+    Lock()
+    defer Unlock()
+    found := Find(voice)
+    if found == null || found.ring == null { return false }
+    ring := found.ring
+    channels := cast(s64)ring.channels
+    if samples.count != ring.block * channels || ring.capacity - ring.count < ring.block { return false }
+    for frame: 0..ring.block - 1 {
+        at := ((ring.start + ring.count + frame) % ring.capacity) * channels
+        for channel: 0..channels - 1 {
+            ring.samples[at + channel] = cast(float32)samples[frame * channels + channel] / 32768.0
+        }
+    }
+    ring.count += ring.block
+    return true
+}
+
+// From the start.
+AudioPlay :: (voice: AudioVoice) -> bool {
+    Lock()
+    defer Unlock()
+    found := Find(voice)
+    if found == null || !found.source.rewind(found.source.state) { return false }
+    Reset(found)
+    found.state = .Playing
+    return true
+}
+
+AudioStop :: (voice: AudioVoice) {
+    Lock()
+    defer Unlock()
+    found := Find(voice)
+    if found == null { return }
+    found.state = .Stopped
+    Reset(found)
+}
+
+AudioPause :: (voice: AudioVoice) {
+    Lock()
+    defer Unlock()
+    found := Find(voice)
+    if found != null && found.state == .Playing { found.state = .Paused }
+}
+
+AudioResume :: (voice: AudioVoice) {
+    Lock()
+    defer Unlock()
+    found := Find(voice)
+    if found != null && found.state == .Paused { found.state = .Playing }
+}
+
+AudioState :: (voice: AudioVoice) -> AudioVoiceState {
+    Lock()
+    defer Unlock()
+    found := Find(voice)
+    if found == null { return .Unloaded }
+    return found.state
+}
+
+AudioPlaying :: (voice: AudioVoice) -> bool { return AudioState(voice) == .Playing }
+
+// 0 is silent, 1 as decoded.
+AudioSetGain :: (voice: AudioVoice, gain: float32) {
+    if !(gain >= 0.0) { return }
+    Lock()
+    defer Unlock()
+    found := Find(voice)
+    if found != null { found.gain = gain }
+}
+
+// Speed and pitch together: 2 plays an octave up in half the time.
+AudioSetPitch :: (voice: AudioVoice, pitch: float32) {
+    if !(pitch > 0.0) || pitch > 16.0 { return }
+    Lock()
+    defer Unlock()
+    found := Find(voice)
+    if found != null { found.pitch = pitch }
+}
+
+AudioSetLooping :: (voice: AudioVoice, looping: bool) {
+    Lock()
+    defer Unlock()
+    found := Find(voice)
+    if found != null { found.looping = looping }
+}
+
+// Seconds played since the start, or since the loop began again.
+AudioPosition :: (voice: AudioVoice) -> float64 {
+    Lock()
+    defer Unlock()
+    found := Find(voice)
+    if found == null { return 0.0 }
+    return Seconds(found)
+}
+
+// Seconds of the whole sound, or -1 when its decoder cannot say.
+AudioLength :: (voice: AudioVoice) -> float64 {
+    Lock()
+    defer Unlock()
+    found := Find(voice)
+    if found == null || found.source.frames < 0 { return -1.0 }
+    return cast(float64)found.source.frames / cast(float64)found.source.rate
+}
+
+AudioUnload :: (voice: AudioVoice) {
+    Lock()
+    found := Find(voice)
+    if found == null { Unlock(); return }
+    source := found.source
+    bytes := found.bytes
+    generation := found.generation
+    found.* = .{}
+    found.generation = generation
+    Unlock()
+    if source.close != null { source.close(source.state) }
+    if bytes != null { Free(cast(*void)bytes) }
+}
