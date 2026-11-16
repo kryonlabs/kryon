@@ -12,11 +12,15 @@ unset SDL_WINDOWID WAYLAND_SOCKET
 export YUE_DESKTOP_RECOVERY=0
 export TMPDIR="$work" XDG_RUNTIME_DIR="$runtime"
 export SDL_VIDEODRIVER=x11 SDL_RENDER_DRIVER=software
+# The test closes and reopens its window. Xvfb resets when its last client
+# leaves, and a reconnect during the reset fails ("x11 not available"), which
+# a desktop's server never does; keep this server running unreset.
+xvfb="-noreset -screen 0 640x480x24"
 libs="$(pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig glib-2.0) -lm -lpthread"
 LDLIBS="$libs" "$ziran" build --project --root "$repo/tests" \
     --target=c --entry desktop_input_backpressure_test:main --exe \
     -o "$work/c" "$repo/tests/desktop_input_backpressure_test.zi"
-xvfb-run -a "$work/c/desktop_input_backpressure_test"
+xvfb-run -a -s "$xvfb" "$work/c/desktop_input_backpressure_test"
 echo "Desktop input backpressure: source native SDL burst passed"
 
 "$ziran" ir --project --root "$repo/tests" \
@@ -24,5 +28,5 @@ echo "Desktop input backpressure: source native SDL burst passed"
 LDLIBS="$libs" "$ziran" build --target=c --root "$work/ir" \
     --entry desktop_input_backpressure_test:main --exe \
     -o "$work/saved" "$work/ir/desktop_input_backpressure_test.zir"
-xvfb-run -a "$work/saved/desktop_input_backpressure_test"
+xvfb-run -a -s "$xvfb" "$work/saved/desktop_input_backpressure_test"
 echo "Desktop input backpressure: saved-IR native SDL burst passed"
