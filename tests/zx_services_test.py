@@ -14,11 +14,11 @@ import time
 import wave
 
 from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
-from raylib_project_test import png_pixels, rgb
+from image_test_tools import png_pixels, rgb
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--runner', choices=['wine'])
-parser.add_argument('--player', type=Path, default=ROOT / 'build/zx-raylib/zx')
+parser.add_argument('--player', type=Path, default=ROOT / 'build/bin/zx')
 parser.add_argument('--skip-browser', action='store_true')
 parser.add_argument('--android-serial', help='Only the disposable KryonZx emulator; never a physical device')
 args = parser.parse_args()

@@ -10,11 +10,11 @@ import shutil
 import time
 
 from toolchain import ROOT
-from raylib_project_test import png_pixels, rgb
+from image_test_tools import png_pixels, rgb
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--runner', choices=['wine'])
-parser.add_argument('--player', type=Path, default=ROOT / 'build/zx-raylib/zx')
+parser.add_argument('--player', type=Path, default=ROOT / 'build/bin/zx')
 parser.add_argument('--private', action='store_true')
 args = parser.parse_args()
 

@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
-from raylib_project_test import solid_png
+from image_test_tools import solid_png
 
 output = ROOT / 'build/scratch/zx-hosted'
 project = output / 'project'
@@ -37,7 +37,7 @@ for name, defines in [('hosted', []), ('hosted_other', ['--define', 'HOSTED_OTHE
                     *defines, '--entry', 'app:main', '--asset-dir', 'assets=assets',
                     '-o', str(output / f'{name}.zx'), 'src/app.zi'],
                    cwd=project, env=env, check=True, timeout=60)
-    subprocess.run([str(ROOT / 'build/zx-raylib/zx'), '--check', str(output / f'{name}.zx')],
+    subprocess.run([str(ROOT / 'build/bin/zx'), '--check', str(output / f'{name}.zx')],
                    env=env, check=True, timeout=30)
 (output / 'invalid.zx').write_bytes(b'invalid ZX')
 subprocess.run([sys.executable, str(ROOT / 'tests/zx_hosted_native_test.py')],

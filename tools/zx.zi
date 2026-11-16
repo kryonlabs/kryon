@@ -13,7 +13,8 @@
 #import "program_title"
 #import "vec"
 #import "file_linux"
-Media :: #import "media_linux";
+#import "bundle_media"
+#import "bundle_app"
 Video :: #import "video_linux";
 Service :: #import "service_linux";
 Bitmaps :: #import "bitmap_image";
@@ -43,6 +44,8 @@ Player :: struct {
     input: Session
     key: s32
     modifiers: s32
+    media: BundleMedia
+    closed: bool
 }
 
 Names :: #import "bundle_names";
@@ -116,6 +119,9 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     function := TextFromCString(function_name)
     if !Supported(module, function) { return 0 }
     result.kind = HostVoid
+    if ModuleName(module, "media") {
+        return BundleMediaCall(*player.media, module, function, args, count, result)
+    }
     if ModuleName(module, "clock") && function == "ClockMillisecondsHost" && count == 0 {
         result.kind = HostInteger; result.integer = MonotonicMilliseconds(); return 1
     }
@@ -208,30 +214,9 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         result.length = cast(usize)value.count
         return 1
     }
-    if (function == "MediaOpenHost" || function == "FetchTextHost") && count == 1 && args[0].kind == HostString {
+    if count == 0 && function == "WindowCompactHost" {
         result.kind = HostInteger
-        if function == "MediaOpenHost" { result.integer = cast(s64)Media.MediaOpenHost(TextValue(args[0])) }
-        else { result.integer = cast(s64)Media.FetchTextHost(TextValue(args[0])) }
-        return 1
-    }
-    if count == 0 && (function == "MediaStateHost" || function == "FetchTextStateHost" || function == "WindowCompactHost") {
-        result.kind = HostInteger
-        if function == "MediaStateHost" { result.integer = cast(s64)Media.MediaStateHost() }
-        if function == "FetchTextStateHost" { result.integer = cast(s64)Media.FetchTextStateHost() }
-        if function == "WindowCompactHost" { result.integer = cast(s64)Background.WindowCompactHost() }
-        return 1
-    }
-    if count == 0 && (function == "MediaMessageHost" || function == "FetchTextResultHost") {
-        value := ifx function == "MediaMessageHost" then Media.MediaMessageHost() else Media.FetchTextResultHost()
-        result.kind = HostString
-        result.length = cast(usize)value.count
-        descriptor := cast(*TextDescriptor)(*value)
-        result.data = descriptor.data
-        return 1
-    }
-    if count == 0 && (function == "MediaPauseHost" || function == "MediaStopHost") {
-        if function == "MediaPauseHost" { Media.MediaPauseHost() }
-        else { Media.MediaStopHost() }
+        result.integer = cast(s64)Background.WindowCompactHost()
         return 1
     }
     if function == "WindowBackgroundDragHost" && count == 1 && args[0].kind == HostInteger {
@@ -406,13 +391,13 @@ RemoveAssetDirectory :: (path: string) -> bool {
     return CopyCString(path, bytes[:]) && RemoveDirectory(*bytes[0]) == 0 && ok
 }
 
-RunFrame :: (instance: *void) -> bool {
-    Media.MediaTick()
+RunFrame :: (instance: *void, player: *Player) -> bool {
+    BundleMediaTick(*player.media)
     BeginDesktopFrame()
     result: s64
     has_result: s32
     if RunBundleInstance(instance, *result, *has_result) == 0 { return false }
-    if has_result != 0 && result != 0 { return false }
+    if has_result != 0 && result != 0 { player.closed = true }
     return EndDesktopFrame()
 }
 
@@ -468,7 +453,16 @@ Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
             return
         }
     }
+    // Initializers resolve resources against the candidate bundle. Keep its
+    // media separate until the candidate can replace the current instance.
+    replacement_media: BundleMedia
+    replacement_media.bundle = replacement
+    previous_media := player.media
+    player.media = replacement_media
     prepared := OpenInstance(replacement, player)
+    replacement_media = player.media
+    player.media = previous_media
+    defer { BundleMediaClose(*replacement_media) }
     if prepared == null {
         if replacement_assets != "" { unused RemoveAssetDirectory(replacement_assets) }
         CloseBundle(replacement)
@@ -495,6 +489,7 @@ Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
     // Swap only at a frame boundary. The window and host stay alive; module
     // memory is reinitialized, while application-owned durable data stays put.
     CloseBundleInstance(instance.*)
+    BundleMediaClose(*player.media)
     CloseBundle(bundle.*)
     if assets_root.* != "" { unused RemoveAssetDirectory(assets_root.*) }
     assets_root.* = ""
@@ -503,6 +498,8 @@ Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
         assets_root.* = TextFromCString(*asset_storage[0])
     }
     bundle.* = replacement
+    player.media = replacement_media
+    replacement_media = BundleMedia.{}
     instance.* = prepared
     current.* = candidate
     print("zx: reloaded release %\n", candidate.sequence)
@@ -555,7 +552,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     }
     bundle := OpenBundle(bundle_name)
     if bundle == null { return 1 }
-    if AppPlayer.HostedBundle(bundle) {
+    if BundleIsApp(bundle) {
         if check { return AppPlayer.Run(bundle, true) }
         if watch {
             CloseBundle(bundle)
@@ -603,6 +600,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
         }
     }
     player: Player
+    player.media.bundle = bundle
     ok := PrepareInput(*player)
     index: u64 = 0
     while ok && index < BundleCapabilities(bundle) {
@@ -661,12 +659,12 @@ main :: (argc: s32, argv: **u8) -> s32 {
     }
     if ok {
         if CaptureRequested() {
-            ok = RunFrame(instance)
-            if ok { ok = RunFrame(instance) }
+            ok = RunFrame(instance, *player)
+            if ok && !player.closed { ok = RunFrame(instance, *player) }
             if ok { ok = CaptureConfigured() }
         } else {
             next_check: s64
-            while ok && PollDesktop() {
+            while ok && !player.closed && PollDesktop() {
                 key, modifiers := DesktopInputTake(player.input)
                 player.key = key
                 player.modifiers = modifiers
@@ -675,7 +673,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
                     next_check = now + 1000
                     Reload(pointer_path, *current, *bundle, *instance, *player, *assets_root, temporary[:])
                 }
-                ok = RunFrame(instance)
+                ok = RunFrame(instance, *player)
                 if ok { PauseDesktop() }
             }
         }
@@ -684,7 +682,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
         TreeInputReset(player.input)
         unused SessionClose(player.input)
     }
-    Media.CloseMedia()
+    BundleMediaClose(*player.media)
     Video.VideoStopHost()
     Service.CloseService()
     CloseDesktop()

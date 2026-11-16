@@ -6,11 +6,11 @@ import subprocess
 import sys
 import time
 
-from toolchain import ROOT
-from raylib_project_test import png_pixels, rgb
+from toolchain import ROOT, ZIRAN
+from image_test_tools import png_pixels, rgb
 
 p = argparse.ArgumentParser()
-p.add_argument('--player', type=Path, required=True)
+p.add_argument('--player', type=Path, default=ROOT / 'build/bin/zx')
 p.add_argument('--bundle', type=Path, required=True)
 p.add_argument('--runner', default='')
 p.add_argument('--unicode-helper', type=Path)
@@ -81,4 +81,26 @@ for mode in ('keyboard', 'unicode'):
     contents = (output / f'{a.runner or "native"}-{mode}.log').read_text(errors='replace')
     assert 'zx interaction passed' in contents, contents[-3000:]
     assert 'interaction failed' not in contents, contents[-3000:]
-print('Native ZX image, text, resize, click, keyboard and Unicode passed')
+# A completed guest closes the player successfully. A VM trap must still
+# fail, so treating a normal frame result as completion cannot hide traps.
+status_root = output / 'status'
+status_root.mkdir(exist_ok=True)
+for name, source, expected in (
+    ('complete', '#program_export\nmain :: () -> s32 { return 7 }\n', 0),
+    ('trap', 'index: s32 = 2;\n#program_export\nmain :: () -> s32 {\n'
+             ' values: [1]s32\n return values[index]\n}\n', 1),
+):
+    path = status_root / (name + '.zi')
+    path.write_text(source)
+    bundle_path = status_root / (name + '.zx')
+    subprocess.run([str(ZIRAN), 'bundle', *(['--checks'] if name == 'trap' else []),
+                    '--root', str(status_root),
+                    '--entry', name + ':main', '-o', str(bundle_path), str(path)],
+                   check=True, timeout=60)
+    bundle_name = str(bundle_path.resolve())
+    if a.runner == 'wine':
+        bundle_name = 'Z:' + bundle_name.replace('/', '\\')
+    command = ([a.runner] if a.runner else []) + [str(a.player.resolve()), bundle_name]
+    result = subprocess.run(command, text=True, capture_output=True, timeout=30)
+    assert result.returncode == expected, (name, result.returncode, result.stdout, result.stderr)
+print('Native ZX image, text, resize, click, keyboard, Unicode and exit status passed')

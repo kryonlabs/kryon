@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 from toolchain import ROOT, ZIRAN, ZIRAN_ROOT, kryon_test_project
-from raylib_project_test import solid_png
+from image_test_tools import solid_png
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--gallery-index', type=Path)
@@ -39,7 +39,7 @@ subprocess.run([str(ZIRAN), 'build', '--root', str(ROOT / 'tests/zx'), *paths, *
                 '--target=c', '--no-main', '--entry', 'headless:main', '-o', str(generated),
                 str(ROOT / 'tests/zx/headless.zi')], env=env, check=True, timeout=180)
 program = output / 'headless'
-runtime = ROOT / 'build/zx-raylib/runtime/libziran.a'
+runtime = ZIRAN_ROOT / 'build/libziran.a'
 subprocess.run([env.get('CC', 'cc'), '-O2', '-Wno-main', '-ffunction-sections', '-fdata-sections',
                 '-Wl,-dead_strip' if sys.platform == 'darwin' else '-Wl,--gc-sections',
                 '-I' + str(ZIRAN_ROOT / 'include'),

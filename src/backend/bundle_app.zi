@@ -151,15 +151,24 @@ BundleAppClose :: (host: *BundleApp) {
     host.* = BundleApp.{}
 }
 
-BundleAppPrepare :: (host: *BundleApp, bytes: string, root: string) -> bool {
+// Takes ownership of a bundle that its caller has already validated.
+BundleAppPrepareBundle :: (host: *BundleApp, bundle: *void, root: string,
+    locale: string = "en") -> bool {
     BundleAppClose(host)
-    if root == "" { host.error = "The app private document directory is unavailable"; return false }
-    host.local.locale = "en"
+    host.app.app.bundle = bundle
+    if root == "" {
+        HostedAppClose(*host.app.app)
+        host.error = "The app private document directory is unavailable"
+        return false
+    }
+    host.local.locale = locale
     host.app.services = BundleAppServices
     host.app.widgets = BundleAppWidgets
     host.app.allows = BundleAppAllows
     host.app.context = cast(*void)host
-    if !AppContextOpen(*host.app, bytes) {
+    if !HostedAppStart(*host.app.app, AppContextAllows, AppContextCall, cast(*void)(*host.app)) ||
+    !AppContextIdentify(cast(*void)(*host.app)) {
+        HostedAppClose(*host.app.app)
         host.error = "The app identity or required capabilities could not initialize"
         return false
     }
@@ -176,9 +185,20 @@ BundleAppPrepare :: (host: *BundleApp, bytes: string, root: string) -> bool {
     return true
 }
 
+BundleAppPrepare :: (host: *BundleApp, bytes: string, root: string) -> bool {
+    data := cast(*TextDescriptor)(*bytes)
+    return BundleAppPrepareBundle(host, OpenBundleBytes(data.data, cast(u64)bytes.count), root)
+}
+
 BundleAppOpen :: (host: *BundleApp, bytes: string, root: string,
     previous: *BundleApp = null) -> bool {
-    if !BundleAppPrepare(host, bytes, root) { return false }
+    data := cast(*TextDescriptor)(*bytes)
+    return BundleAppOpenBundle(host, OpenBundleBytes(data.data, cast(u64)bytes.count), root, previous)
+}
+
+BundleAppOpenBundle :: (host: *BundleApp, bundle: *void, root: string,
+    previous: *BundleApp = null, locale: string = "en") -> bool {
+    if !BundleAppPrepareBundle(host, bundle, root, locale) { return false }
     if previous != null && previous.ready && host.directory == previous.directory {
         // Prepare and identify the replacement before changing the current
         // app. Move its already-owned lock only after a successful save.

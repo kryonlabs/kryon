@@ -39,6 +39,7 @@ ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
 KRYON_UI_PATHS := $(foreach directory,$(sort $(shell find src/ui -type d)),--module-path $(directory) --module-path kryon=$(directory))
 ZIRAN_STD_PATH := --module-path $(ZIRAN_DIR)/std $(KRYON_UI_PATHS)
 KRYON_DIR := $(CURDIR)
+include mk/codecs.mk
 include mk/zx-player.mk
 ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c $(ZIRAN_DIR)/cmd/zi2*/*.c $(ZIRAN_DIR)/cmd/zx2*/*.c \
     $(ZIRAN_DIR)/cmd/zir*/*.h $(ZIRAN_DIR)/cmd/zi2*/*.h $(ZIRAN_DIR)/cmd/zx2*/*.h $(ZIRAN_DIR)/include/*.h \
@@ -212,7 +213,6 @@ renderer-artifact-test: build/bin/kryon
 
 .PHONY: zx-test zx-reload-test
 include mk/zx-canvas.mk
-include mk/codecs.mk
 include mk/raylib-library.mk
 include mk/zx-raylib.mk
 
@@ -242,16 +242,16 @@ zx-window-test: zx-player zx-window-host
 test: zx-window-test
 
 .PHONY: zx-services-test zx-hosted-test zx-headless-test
-zx-headless-test: zx-raylib
+zx-headless-test: zx-player
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran \
 		python3 tests/zx_headless_test.py
-zx-services-test: zx-raylib zx-canvas
+zx-services-test: zx-player zx-canvas
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran \
 		python3 tests/zx_services_test.py
 
-zx-hosted-test: zx-raylib zx-canvas
+zx-hosted-test: zx-player zx-canvas
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran \
 		python3 tests/zx_hosted_test.py
@@ -268,6 +268,13 @@ gallery-zx-test: gallery-zx zx-player
 zx-canvas-test: build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zx_canvas_test.py
+
+.PHONY: zx-native-test
+zx-native-test: zx-test zx-player
+	@python3 tests/zx_native_test.py --bundle build/zx-test/download\ with\ spaces/app.zx
+
+test: zx-native-test
+
 
 zx-raylib-test: zx-test zx-raylib
 	@python3 tests/zx_native_test.py --player $(ZX_RAYLIB_PROGRAM) \
