@@ -16,7 +16,7 @@ try:
     package_id = kryon_test_project(project)
     # A toast has no editable text, so the program never calls the platform
     # keyboard capability and binds no provider for it.
-    for name in ('toast_action_test', 'ziran_test_driver_host'):
+    for name in ('toast_action_test', 'ziran_test_driver_host', 'text_input_platform_host'):
         source = (ROOT / f'tests/{name}.zi').read_text()
         for module in ('session', 'drawing_props', 'geometry'):
             source = source.replace(chr(35)+'import "'+module+'"', chr(35)+'import "kryon/'+module+'"')
