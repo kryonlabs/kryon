@@ -1,0 +1,22 @@
+// A hosted program that builds its own menu bar from kryon/menu's props,
+// types and state, as Workbook does, and never draws the retained menu.
+Menu :: #import "kryon/menu";
+
+#program_export
+Main :: () -> s32 {
+    items: [2]Menu.MenuItem
+    items[0] = Menu.MenuItem.{.id = 101, .label = "Open", .accelerator = "Ctrl+O"}
+    items[1].kind = Menu.MenuItemKind.MenuSeparator
+    groups: [1]Menu.MenuGroup
+    groups[0] = Menu.MenuGroup.{"File", items[:]}
+    props: Menu.Props
+    props.key = cast(u64)7
+    props.input.down = true
+    state: Menu.MenuState
+    Menu.MenuStateInit(*state)
+    result: Menu.MenuResult
+    result.activated_id = groups[0].items[0].id
+    if !state.initialized || state.open_index != -1 || !props.input.down { return 1 }
+    if result.activated_id != 101 { return 2 }
+    return 0
+}

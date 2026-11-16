@@ -184,7 +184,17 @@ CheckZxProgram :: (ziran: string, entry: string, source: string, output: string)
 BundleProgram :: (ziran: string, entry: string, source: string, bundle: string, listing: string) -> bool {
     arguments: [10]string = .[ziran, "bundle", "--project", "--root", "examples", "--entry", entry,
         "-o", bundle, source]
-    if !Run(arguments[:], "") { return false }
+    return Run(arguments[:], "") && ListBundle(ziran, bundle, listing)
+}
+
+// The same for a hosted-UI program in tests/, whose host draws its widgets.
+BundleHostedProgram :: (ziran: string, entry: string, source: string, bundle: string, listing: string) -> bool {
+    arguments: [12]string = .[ziran, "bundle", "--project", "--root", "tests", "--define",
+        "KRYON_HOSTED_UI", "--entry", entry, "-o", bundle, source]
+    return Run(arguments[:], "") && ListBundle(ziran, bundle, listing)
+}
+
+ListBundle :: (ziran: string, bundle: string, listing: string) -> bool {
     tool: Vec(u8)
     slash := ziran.count - 1
     while slash >= 0 && ziran[slash] != #char "/" { slash -= 1 }
@@ -331,6 +341,18 @@ main :: () -> s32 {
             zx_window_capabilities[:])
     }
 
+    // A hosted program that builds its own menu bar from kryon/menu's props,
+    // types and state carries no retained menu, tree or paint queue.
+    hosted_menu_modules: [2]string = .["hosted_menu_types", "menu_props"]
+    no_capabilities: []string
+    if !BundleHostedProgram(ziran, "hosted_menu_types:Main", "tests/hosted_menu_types.zi",
+        "build/test/pay-per-import/hosted-menu.zx", "build/test/pay-per-import/hosted-menu.lir") {
+        Fail("hosted menu types (zx)", "does not bundle", "tests/hosted_menu_types.zi")
+    } else {
+        ExpectBundle("hosted menu types (zx)", "build/test/pay-per-import/hosted-menu.lir",
+            hosted_menu_modules[:], no_capabilities)
+    }
+
     // kryon/app's frame loop arrives with App.Run.
     hello_present: [7]string = .["app", "frames_desktop", "desktop_loop", "tree", "tree_frame",
         "text", "paint_queue"]
@@ -412,6 +434,6 @@ main :: () -> s32 {
     }
 
     if failures > 0 { return 1 }
-    print("pay per import: window, hello, box, button, image and textfield carry only what they import, on Linux and the web; window's bundle asks its host only for the window\n")
+    print("pay per import: window, hello, box, button, image and textfield carry only what they import, on Linux and the web; window's bundle asks its host only for the window; a hosted program gets kryon/menu's types without the retained menu\n")
     return 0
 }

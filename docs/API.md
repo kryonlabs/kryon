@@ -13,7 +13,9 @@ and swipe actions are available from `kryon/onboarding_checklist_task` and
 
 With `KRYON_HOSTED_UI`, the same named widget packages expose their hosted
 contracts. Retained-only components such as Page and Toast require a local
-tree. Pointer and keyboard sampling remain separate imports.
+tree. Hosted `kryon/menu` keeps the menu's props, types and state; its menu
+bar `Draw` comes only with a local tree. Pointer and keyboard sampling remain
+separate imports.
 
 Rendering hosts that retain pixels can call `CommitFrameDamaged(session)` to
 commit the tree and compare paint while leaving changed commands queued. An

@@ -1,4 +1,7 @@
 using PropsModule :: #import "menu_props";
+// Hosted programs get the menu's props, types and state; the retained bar
+// and its tree come only with a retained program.
+#if !#defined(KRYON_HOSTED_UI) {
 #import "transition"
 Theme :: #import "theme";
 // Submit the menu after the page content so its panels own pointer input.
@@ -414,4 +417,5 @@ Draw :: (session: Session, props: PropsModule.Props, groups: []MenuGroup, state:
     state.reveal = false
     result.open_index = state.open_index; result.focused = state.focused
     return result
+}
 }
