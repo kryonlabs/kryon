@@ -1,5 +1,5 @@
 #import "widget_host"
-Image :: #import "kryon/image";
+Image :: #import "kryon/image_props";
 #import "drawing_props"
 #program_export
 main :: () -> s32 {
