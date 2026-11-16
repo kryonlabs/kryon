@@ -89,6 +89,11 @@ site_volume: float32 = 65.0;
 site_notifications: bool = true;
 site_hold: HoldButton.HoldButtonState;
 site_confirm: ConfirmButton.ConfirmButtonState;
+// The hold button's progress and whether the confirm button is armed, which
+// the web page reports. Readers in other modules go through these: the
+// states' types name this module's imports.
+SiteHoldProgress :: () -> float32 { return site_hold.progress }
+SiteConfirmArmed :: () -> bool { return site_confirm.armed }
 site_hold_count: s32;
 site_confirm_count: s32;
 site_code_colors: [8192]TextArea.ColorSpan;
