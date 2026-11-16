@@ -1,0 +1,14 @@
+// A hosted program that places its own rows from kryon/layout's behavior and
+// reads kryon/toolbar's props and behavior, and never builds the retained tree.
+Layout :: #import "kryon/layout";
+Toolbar :: #import "kryon/toolbar";
+
+#program_export
+Main :: () -> s32 {
+    if Layout.Clamp(9, 0, 5) != 5 { return 1 }
+    props: Toolbar.Props
+    result: Toolbar.ToolbarResult
+    if Toolbar.ToolbarBarRole() == Toolbar.ToolbarActionRole() { return 2 }
+    if Toolbar.ToolbarActionIdFor(3, 1) == Toolbar.ToolbarActionIdFor(3, 0) { return 3 }
+    return 0
+}

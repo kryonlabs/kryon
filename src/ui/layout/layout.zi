@@ -1,8 +1,11 @@
 using PropsModule :: #import "layout_props";
+using BehaviorModule :: #import "layout_behavior";
+// Hosted programs get the layout's props and behavior; the retained tree
+// placement comes only with a retained program.
+#if !#defined(KRYON_HOSTED_UI) {
 #import "geometry"
 #import "grid"
 #import "grid_props"
-using BehaviorModule :: #import "layout_behavior";
 #import "session"
 #import "tree"
 #import "widget_kind"
@@ -190,4 +193,5 @@ StackChildBoundsFor :: (container: LayoutContainer,
     declared: Rectangle, measured: Rectangle) -> Rectangle {
     return StackChildBounds(declared, measured,
         ContainerMetrics(container))
+}
 }

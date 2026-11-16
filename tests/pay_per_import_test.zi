@@ -353,6 +353,17 @@ main :: () -> s32 {
             hosted_menu_modules[:], no_capabilities)
     }
 
+    // The same holds for kryon/layout's behavior and kryon/toolbar's props
+    // and behavior.
+    hosted_layout_modules: [3]string = .["hosted_layout_toolbar", "layout_behavior", "toolbar_behavior"]
+    if !BundleHostedProgram(ziran, "hosted_layout_toolbar:Main", "tests/hosted_layout_toolbar.zi",
+        "build/test/pay-per-import/hosted-layout.zx", "build/test/pay-per-import/hosted-layout.lir") {
+        Fail("hosted layout and toolbar (zx)", "does not bundle", "tests/hosted_layout_toolbar.zi")
+    } else {
+        ExpectBundle("hosted layout and toolbar (zx)", "build/test/pay-per-import/hosted-layout.lir",
+            hosted_layout_modules[:], no_capabilities)
+    }
+
     // kryon/app's frame loop arrives with App.Run.
     hello_present: [7]string = .["app", "frames_desktop", "desktop_loop", "tree", "tree_frame",
         "text", "paint_queue"]
@@ -434,6 +445,6 @@ main :: () -> s32 {
     }
 
     if failures > 0 { return 1 }
-    print("pay per import: window, hello, box, button, image and textfield carry only what they import, on Linux and the web; window's bundle asks its host only for the window; a hosted program gets kryon/menu's types without the retained menu\n")
+    print("pay per import: window, hello, box, button, image and textfield carry only what they import, on Linux and the web; window's bundle asks its host only for the window; a hosted program gets kryon/menu's types without the retained menu, and kryon/layout's and kryon/toolbar's behavior without their retained halves\n")
     return 0
 }

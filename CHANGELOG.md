@@ -11,6 +11,11 @@
   `MenuState`, `MenuStateInit`, `MenuResult`) and carries none of the
   retained menu bar, tree, tree input or paint queue. The menu bar's `Draw`
   comes only with a retained program, which builds exactly as before.
+- A `KRYON_HOSTED_UI` bundle can import `kryon/layout` for its layout
+  behavior and props, and `kryon/toolbar` for its toolbar behavior and
+  props, and carries none of the retained tree placement or toolbar. The
+  retained `Row`, `Column`, `Draw` and toolbar come only with a retained
+  program, which builds as before.
 - Android builds compile Ziran's runtime for each ABI with the pinned
   toolchain's own `zi2c` (`GEN_ZI2C`), so the modules Ziran generates C for
   build on the host instead of with a `zi2c` built for the device; the ZX

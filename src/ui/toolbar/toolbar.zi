@@ -1,4 +1,8 @@
 using PropsModule :: #import "toolbar_props";
+using BehaviorModule :: #import "toolbar_behavior";
+// Hosted programs get the toolbar's props and behavior; the retained toolbar
+// and its tree come only with a retained program.
+#if !#defined(KRYON_HOSTED_UI) {
 Button :: #import "button";
 Dropdown :: #import "dropdown";
 Theme :: #import "theme";
@@ -10,7 +14,6 @@ Theme :: #import "theme";
 #import "style"
 #import "style_sheet"
 #import "surface"
-using BehaviorModule :: #import "toolbar_behavior";
 #import "tree"
 #import "widget_kind"
 
@@ -213,4 +216,5 @@ Draw :: (session: Session, props: PropsModule.Props, options: []Dropdown.Option,
         }
     }
     return result
+}
 }
