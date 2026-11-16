@@ -31,10 +31,6 @@ MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
 }
 #program_export
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 { unused typeface; return font }
-#program_export
-ImageWidth :: (path: string) -> s32 { unused path; return 0 }
-#program_export
-ImageHeight :: (path: string) -> s32 { unused path; return 0 }
 
 #program_export
 RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {

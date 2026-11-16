@@ -1,5 +1,5 @@
 Dropdown :: #import "dropdown";
-Image :: #import "image";
+Image :: #import "image_props";
 #import "drawing_props"
 
 IconRowItem :: struct {

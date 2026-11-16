@@ -11,6 +11,8 @@ Lanczos :: #import "lanczos_cache";
 CLIP :: Rectangle.{7.0, 9.0, 113.0, 103.0}
 
 Draw :: (path: string, source: Rectangle, bounds: Rectangle, tint: Color, smooth: bool) -> bool {
+    // A widget asks a picture's size before drawing it, which brings files.
+    if Raster.ImageWidth(path) <= 0 { return false }
     Raster.BeginRasterFrame()
     Texture.emitting_smooth = smooth
     Raster.RasterImage(path, 0, source, bounds, CLIP, .{}, 0.0, 0.0, tint)
@@ -35,6 +37,7 @@ Save :: (directory: string, name: string, index: s32) -> bool {
 // Two uniform pictures meeting at any fractional edge must cover each
 // device pixel once. A translucent fixture also detects double coverage.
 Adjacent :: (path: string, edge: float32, horizontal: bool, smooth: bool) -> bool {
+    if Raster.ImageWidth(path) <= 0 { return false }
     Raster.BeginRasterFrame()
     Texture.emitting_smooth = smooth
     a := Rectangle.{-8.25, -8.25, edge + 8.25, 160.0}
@@ -89,7 +92,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
             }
             if Lanczos.LanczosPending() { print("an exact copy started another: % %\n", sources[kind], index); return 7 }
             if !Save(directory, sources[kind], index) { return 8 }
-            snapped := Lanczos.LanczosSnap(targets[index])
+            snapped := RectangleSnap(targets[index])
             print("cairo % % % % % %\n", sources[kind], index, snapped.x, snapped.y, snapped.width, snapped.height)
         }
     }

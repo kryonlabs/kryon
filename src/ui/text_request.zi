@@ -1,4 +1,5 @@
 #import "session"
+#import "text_editing"
 #import "tree"
 #import "tree_input"
 Utf8 :: #import "std/utf8";
@@ -6,12 +7,13 @@ Utf8 :: #import "std/utf8";
 // Cut points in edited text are grapheme boundaries. The editing widgets
 // register the segmentation (see text_boundary): a request can only reach an
 // editing widget, so a program without one keeps the Unicode tables out.
+// The same registration opens requests to the platform (see text_editing).
 TextBoundary :: #type (value: string, at: s32) -> s32;
 text_boundary: TextBoundary;
 
 TextRequestUseBoundary :: (boundary: TextBoundary) -> bool {
     text_boundary = boundary
-    return true
+    return TextEditingUseRequests(TextRequestSend, TextRequestClear)
 }
 
 // A platform asks for an edit; the widget still validates its value limits

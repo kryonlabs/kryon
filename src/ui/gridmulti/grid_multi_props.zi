@@ -1,4 +1,4 @@
-Image :: #import "image";
+Image :: #import "image_props";
 #import "geometry"
 
 GridMultiLayout :: enum { GridMultiIcon :: 0; GridMultiCompact :: 1 }

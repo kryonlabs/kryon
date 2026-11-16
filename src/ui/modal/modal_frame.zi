@@ -1,7 +1,6 @@
 using Modal :: #import "modal_props";
 using ActionModule :: #import "modal";
 Button :: #import "button";
-Image :: #import "image";
 Overlay :: #import "overlay";
 Theme :: #import "theme";
 // Portable compositions submit the same dialog to a retained UI host; the

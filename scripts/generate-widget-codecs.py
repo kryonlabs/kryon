@@ -66,7 +66,7 @@ KRYON_RAW_SOURCES = [
 KRYON_PACKAGE_SOURCES = [
     ('Text', 'text', 'text/text_props.zi',
      {'Props': 'TextProps', 'Range': 'TextRange', 'Wrap': 'TextWrap'}),
-    ('Image', 'image', 'image/image_props.zi', {'Props': 'ImageProps'}),
+    ('Image', 'image_props', 'image/image_props.zi', {'Props': 'ImageProps'}),
     ('Button', 'button', 'button/button_props.zi', {'Props': 'ButtonProps'}),
     ('TextField', 'text_field', 'textfield/text_field_props.zi',
      {'State': 'TextFieldState', 'Input': 'TextFieldInput', 'Props': 'TextFieldProps',

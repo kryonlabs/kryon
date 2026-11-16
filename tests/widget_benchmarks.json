@@ -8,8 +8,6 @@
     "tests/system_clipboard_host.zi"
   ],
   "bindings": [
-    "image_raster:ImageWidth=widget_benchmark_host:ImageWidth",
-    "image_raster:ImageHeight=widget_benchmark_host:ImageHeight",
     "system_clipboard:SystemClipboardOpenHost=system_clipboard_host:SystemClipboardOpenHost",
     "system_clipboard:SystemClipboardByteHost=system_clipboard_host:SystemClipboardByteHost",
     "system_clipboard:SystemClipboardWriteHost=system_clipboard_host:SystemClipboardWriteHost",

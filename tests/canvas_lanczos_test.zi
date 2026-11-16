@@ -85,7 +85,7 @@ Test :: () -> s32 {
             if !Draw(path, boxes[index], targets[index], tints[index], true) { return 60 + kind * 4 + index }
             for i: 0..65535 { if frame[i] != kept[i] { return 70 + kind * 4 + index } }
             if Lanczos.LanczosPending() { return 80 + kind * 4 + index }
-            Publish(sources[kind], index, Lanczos.LanczosSnap(targets[index]))
+            Publish(sources[kind], index, RectangleSnap(targets[index]))
         }
         // A sharp draw never makes a copy.
         if !Draw(path, boxes[1], targets[1], tints[0], false) || Lanczos.LanczosPending() { return 90 + kind }

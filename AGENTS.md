@@ -63,7 +63,11 @@ Nothing is imported by default. A program carries only the code for what it
 imports and uses. A bare window carries the window, its events and
 presenting; import a frame and you get a frame, import a rectangle and you get
 a rectangle. Optional features arrive through their import or first use, never
-through runtime flags. Make generated code smaller by cutting what isn't
+through runtime flags. Shared code reaches an optional part through a small
+slot module (such as `frame_driver`, `image_lookup`, `text_editing` and
+`scroll_sampling`) that the part's own module fills from its initializer or
+first use; shared code never imports the part itself. Make generated code
+smaller by cutting what isn't
 needed, never by merging files (owner, 2026-11-15).
 
 One widget concept has one public implementation. `Text.Draw(Text.Props)` and

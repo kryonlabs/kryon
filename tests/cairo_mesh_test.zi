@@ -24,6 +24,8 @@ Is :: (x: s32, y: s32, color: u32) -> bool {
 }
 
 Draw :: (path: string, columns: s32, rows: s32, clip: Rectangle) -> bool {
+    // A widget asks a picture's size before drawing it, which brings files.
+    if Raster.ImageWidth(path) <= 0 { return false }
     Raster.BeginRasterFrame()
     Raster.RasterImageMesh(path, 0, .{0.0, 0.0, 2.0, 2.0}, points[:], columns, rows,
         clip, .{255, 255, 255, 255})

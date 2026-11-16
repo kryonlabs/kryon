@@ -41,6 +41,14 @@ not_without_pictures: [10]string = .["image_decode_linux", "avif_decode", "lancz
     "ziran_image_decode", "riff", "bmff", "video_linux", "std_thread_linux",
     "std_parallel_linux", "app_asset_path"];
 
+// What a frame example carries none of when it shows no picture, edits no
+// text and has no scroll, tabs, text area or grid: the picture chain, text
+// input and the scroll device.
+not_in_a_plain_frame: [14]string = .["image_decode_linux", "avif_decode", "lanczos_cache",
+    "ziran_image_decode", "riff", "bmff", "native_api", "video_linux", "std_thread_linux",
+    "std_parallel_linux", "app_asset_path", "text_request", "text_input_platform",
+    "scroll_device"];
+
 failures: s32;
 
 Fail :: (example: string, message: string, module: string) {
@@ -193,19 +201,39 @@ main :: () -> s32 {
     if !BuildFrame(ziran, "examples/box") {
         Fail("box", "does not build", "examples/box")
     } else {
-        Expect("box", "build/examples/box/generated/desktop/c", box_present[:], not_without_pictures[:])
+        Expect("box", "build/examples/box/generated/desktop/c", box_present[:], not_in_a_plain_frame[:])
     }
 
-    image_present: [6]string = .["image", "image_decode_linux", "avif_decode",
-        "lanczos_cache", "riff", "bmff"]
-    image_absent: [1]string = .["video_linux"]
+    // A button without an icon: no picture, no text input, no scrolls.
+    button_present: [3]string = .["button", "tree", "tree_frame"]
+    if !BuildFrame(ziran, "examples/button") {
+        Fail("button", "does not build", "examples/button")
+    } else {
+        Expect("button", "build/examples/button/generated/desktop/c", button_present[:],
+            not_in_a_plain_frame[:])
+    }
+
+    image_present: [11]string = .["image", "image_decode_linux", "avif_decode",
+        "ziran_image_decode", "lanczos_cache", "riff", "bmff", "native_api",
+        "std_thread_linux", "std_parallel_linux", "app_asset_path"]
+    image_absent: [3]string = .["video_linux", "text_request", "text_input_platform"]
     if !BuildFrame(ziran, "examples/image") {
         Fail("image", "does not build", "examples/image")
     } else {
         Expect("image", "build/examples/image/generated/desktop/c", image_present[:], image_absent[:])
     }
 
+    textfield_present: [5]string = .["textfield", "text_request", "text_input_platform",
+        "text_boundary", "scroll_device"]
+    textfield_absent: [1]string = .["video_linux"]
+    if !BuildFrame(ziran, "examples/textfield") {
+        Fail("textfield", "does not build", "examples/textfield")
+    } else {
+        Expect("textfield", "build/examples/textfield/generated/desktop/c", textfield_present[:],
+            textfield_absent[:])
+    }
+
     if failures > 0 { return 1 }
-    print("pay per import: window, hello, box and image carry only what they import\n")
+    print("pay per import: window, hello, box, button, image and textfield carry only what they import\n")
     return 0
 }

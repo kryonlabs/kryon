@@ -3,6 +3,8 @@ Button :: #import "button";
 #import "control_props"
 #import "geometry"
 #import "icon"
+// Its icons are atlas pictures, which its button draws (see image_lookup).
+#import "image"
 #import "session"
 #import "system_clipboard"
 #import "tree"
@@ -118,6 +120,7 @@ Draw :: (session: Session, props: Props,
         }
     }
     submitted_before := TreeSubmittedCount(session)
+    ImageUsePictures()
     activation_result := Button.Draw(session, button)
     submitted_after := TreeSubmittedCount(session)
     if submitted_after > submitted_before { result.node = submitted_after - 1 }

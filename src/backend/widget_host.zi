@@ -11,6 +11,8 @@ Fieldset :: #import "fieldset";
 GuidedTour :: #import "guidedtour";
 HoverCard :: #import "hovercard";
 Image :: #import "image";
+// Guests' buttons carry built-in icons (see image_lookup).
+#import "icon"
 InlineEdit :: #import "inlineedit";
 Modal :: #import "modal_frame";
 MoneyField :: #import "moneyfield";
@@ -446,6 +448,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     if !widget_host_active {
         return 0
     }
+    // Guests' buttons carry file pictures.
+    Image.ImageUsePictures()
     owner := TextFromCString(module)
     name := TextFromCString(function)
     if ModuleName(owner, "image_raster") &&

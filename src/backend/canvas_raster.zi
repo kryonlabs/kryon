@@ -203,7 +203,7 @@ CanvasLanczosImage :: (index: s32, source: Rectangle, destination: Rectangle,
     f := WebGetNumber(matrix, page_names.f)
     if WebGetNumber(matrix, page_names.b) != 0.0 || WebGetNumber(matrix, page_names.c) != 0.0 ||
         !(a > 0.0) || !(d > 0.0) { return false }
-    snapped := Lanczos.LanczosSnap(Rectangle.{cast(float32)(cast(float64)destination.x * a + e),
+    snapped := RectangleSnap(Rectangle.{cast(float32)(cast(float64)destination.x * a + e),
         cast(float32)(cast(float64)destination.y * d + f), cast(float32)(cast(float64)destination.width * a),
         cast(float32)(cast(float64)destination.height * d)})
     if !Lanczos.LanczosEligible(source, texture.width, texture.height, snapped) { return false }

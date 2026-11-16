@@ -7,18 +7,6 @@ outlines: s32;
 outline_x: float32;
 
 #program_export
-ImageWidth :: (asset_path: string) -> s32 {
-    unused asset_path
-    return 0
-}
-
-#program_export
-ImageHeight :: (asset_path: string) -> s32 {
-    unused asset_path
-    return 0
-}
-
-#program_export
 MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
     unused font
     unused typeface

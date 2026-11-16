@@ -155,6 +155,8 @@ DrawNavigationDockItem :: (session: Session, props: PropsModule.Props,
     button.id = props.id
     button.bounds = bounds
     button.label = item.label
+    // The bar draws its items' pictures, on its own and on their buttons.
+    Image.ImageUsePictures()
     button.image = item.image
     button.icon_shape = item.icon_shape
     button.selected = item.active && props.motion == null

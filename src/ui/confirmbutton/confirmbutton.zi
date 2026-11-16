@@ -6,6 +6,8 @@ Button :: #import "button";
 #import "font_metrics"
 #import "geometry"
 #import "icon"
+// Its icons are atlas pictures, which its button draws (see image_lookup).
+#import "image"
 #import "input_protocol"
 #import "paint_queue"
 #import "session"
@@ -232,6 +234,7 @@ Draw :: (session: Session, props: Props,
     submitted.invisible = true
     submitted.state = cast(ButtonState)ButtonStateAuto
     submitted_before := TreeSubmittedCount(session)
+    ImageUsePictures()
     unused Button.Draw(session, submitted)
     submitted_after := TreeSubmittedCount(session)
     if submitted_after > submitted_before { result.node = submitted_after - 1 }

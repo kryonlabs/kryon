@@ -1,0 +1,32 @@
+// Scrolls sample the pointer, wheel and clock once per frame (see
+// scroll_device). The frame reaches the device through these slots, which
+// scroll_device fills from its module initializer, so a program without a
+// scroll, tabs, text area or grid carries none of it.
+#import "geometry"
+#import "session"
+
+ScrollSampleFrame :: #type (session: Session, mouse: Vector2, pressed: bool, down: bool,
+    released: bool, wheel: float32, now_seconds: float64) -> void;
+ScrollSampleQuery :: #type (session: Session) -> bool;
+
+scroll_sample_frame: ScrollSampleFrame;
+scroll_sample_moving: ScrollSampleQuery;
+
+ScrollSamplingUse :: (frame: ScrollSampleFrame, moving: ScrollSampleQuery) -> bool {
+    scroll_sample_frame = frame
+    scroll_sample_moving = moving
+    return true
+}
+
+// The host's pointer, wheel and clock for this frame (see BeginScrollFrame).
+ScrollSampleBegin :: (session: Session, mouse: Vector2, pressed: bool, down: bool,
+    released: bool, wheel: float32, now_seconds: float64) {
+    if scroll_sample_frame != null {
+        scroll_sample_frame(session, mouse, pressed, down, released, wheel, now_seconds)
+    }
+}
+
+// True while a drag, glide or fling still moves a scroll (see ScrollDeviceMoving).
+ScrollSampleMoving :: (session: Session) -> bool {
+    return scroll_sample_moving != null && scroll_sample_moving(session)
+}

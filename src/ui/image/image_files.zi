@@ -1,0 +1,12 @@
+// kryon/image: the Image widget (image), and file pictures for widgets that
+// show one beside their content, such as a button's icon (see image_lookup).
+// Library code imports image itself, so only a program that imports
+// kryon/image carries those pictures.
+using Image :: #import "image";
+#if !#defined(KRYON_HOSTED_UI) {
+    ImageFilesUse :: () -> bool {
+        ImageUsePictures()
+        return true
+    }
+    image_files_registered: bool = ImageFilesUse();
+}

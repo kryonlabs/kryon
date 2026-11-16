@@ -4,6 +4,8 @@ Theme :: #import "theme";
 
 Button :: #import "kryon/button";
 Image :: #import "kryon/image";
+// Built-in icon_type icons draw once a program imports kryon/icon.
+#import "kryon/icon"
 #import "button_behavior"
 #import "control_props"
 #import "geometry"

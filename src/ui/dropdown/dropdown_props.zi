@@ -1,4 +1,4 @@
-Image :: #import "image";
+Image :: #import "image_props";
 #import "dropdown_behavior"
 #import "geometry"
 

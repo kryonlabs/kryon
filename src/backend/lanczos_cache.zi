@@ -445,16 +445,6 @@ LanczosWait :: () -> bool {
     }
 }
 
-// The device pixels a cached draw covers: DESTINATION's edges rounded to
-// whole pixels.
-LanczosSnap :: (destination: Rectangle) -> Rectangle {
-    left := LanczosFloor(destination.x + 0.5)
-    top := LanczosFloor(destination.y + 0.5)
-    right := LanczosFloor(destination.x + destination.width + 0.5)
-    bottom := LanczosFloor(destination.y + destination.height + 0.5)
-    return .{cast(float32)left, cast(float32)top, cast(float32)(right - left), cast(float32)(bottom - top)}
-}
-
 // Whether SOURCE of a WIDTH by HEIGHT picture drawn over SNAPPED device
 // pixels is worth a Lanczos copy: a whole-pixel draw of the source at its
 // own size needs none.

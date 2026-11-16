@@ -15,6 +15,9 @@
 - A bare window checks only itself: `kryon/app` keeps each platform's window
   (`desktop_window`, new `page_window`) apart from its frame loop
   (`frames_desktop`, `frames_web`).
+- Pictures, text input and scroll devices come only with the widgets that
+  use them; a button without an icon carries no decoders or asset paths.
+  Its file pictures come with `kryon/image`, its icons with `kryon/icon`.
 - Empty desktop windows omit image decoding, smooth scaling, video and threads.
   Import `kryon/cursor` for picture cursors in custom widget hosts. Native
   desktop project builds link X11 correctly.

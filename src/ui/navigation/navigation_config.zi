@@ -1,7 +1,6 @@
 using PropsModule :: #import "navigation_bar_config_props";
 Button :: #import "button";
 Dropdown :: #import "dropdown";
-Image :: #import "image";
 Modal :: #import "modal_frame";
 Overlay :: #import "overlay";
 Theme :: #import "theme";

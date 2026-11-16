@@ -3,10 +3,9 @@
 #import "session"
 #import "tree"
 #import "tree_input"
-#import "text_request"
-#import "text_input_platform"
+#import "text_editing"
 #import "text_selection_host"
-Scroll :: #import "scroll_device";
+#import "scroll_sampling"
 
 using FrameStatus;
 
@@ -44,7 +43,7 @@ BeginFrame :: (session: Session, screen_key: u64,
     frame_current_modifiers[slot] = active_modifiers[slot]
     frame_retained = SessionFlagSet(frame_retained, slot, false)
     unused TreeKeyboardRoute(session)
-    TextInputFocusFrameBegin(session)
+    TextEditingFrameBegin(session)
     PaintClear(session)
     frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, SessionIndex(session), false)
     TreeStart(session, screen_key, bounds)
@@ -58,7 +57,7 @@ BeginFrame :: (session: Session, screen_key: u64,
 RetainFrame :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
     slot := SessionIndex(session)
-    if SessionFlagGet(frame_input_changed, slot) || !SessionFlagGet(paint_snapshots_valid, slot) || TextInputFocused(session) || TextSelectionBusy(session) || Scroll.ScrollDeviceMoving(session) ||
+    if SessionFlagGet(frame_input_changed, slot) || !SessionFlagGet(paint_snapshots_valid, slot) || TextEditingFocused(session) || TextSelectionBusy(session) || ScrollSampleMoving(session) ||
         !trees[slot].building || trees[slot].error != cast(FrameStatus)FrameOk ||
         trees[slot].submitted_count != 1 || trees[slot].committed_count < 1 ||
         trees[slot].scope_depth != 1 || PendingPaintCount(session) != 0 { return false }
@@ -223,6 +222,6 @@ CloseSession :: (session: Session) -> bool {
     TreeDispose(session)
     PaintDispose(session)
     TreeInputReset(session)
-    TextRequestClear(session)
+    TextEditingClear(session)
     return SessionClose(session)
 }

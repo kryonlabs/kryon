@@ -8,6 +8,8 @@ Theme :: #import "theme";
     host_api :: #system_library "host_api";
     ImageHostedHost :: (session: Session, image: Image.Props) #foreign host_api;
         Draw :: (session: Session, image: Image.Props) { ImageHostedHost(session, image) }
+    // The host draws a portable composition's pictures.
+    ImageUsePictures :: () {}
 } else {
 #import "session"
 #import "semantic"
@@ -16,6 +18,7 @@ Theme :: #import "theme";
 #import "font_metrics"
 #import "geometry"
 using BehaviorModule :: #import "image_behavior";
+#import "image_lookup"
 #import "image_raster"
 Bitmaps :: #import "bitmap_store";
 #import "paint_queue"
@@ -78,6 +81,11 @@ ImageTextureFor :: (image: Image.Props) -> Texture2D {
     }
     return texture
 }
+
+// Code that hands a button its pictures, such as a widget host drawing its
+// guests or a copy button showing its atlas icons, brings file pictures for
+// it when it draws (see image_lookup).
+ImageUsePictures :: () { image_texture_lookup = ImageTextureFor }
 
 // What an image draws this frame: its picture once that is ready, else its
 // preview with the source mapped onto the preview's pixels. Asking for the

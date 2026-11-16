@@ -2,7 +2,6 @@ using TitleBarSchema :: #import "title_bar_props";
 Button :: #import "button";
 DropdownWidget :: #import "dropdown";
 DropdownSchema :: #import "dropdown_props";
-Image :: #import "image";
 Theme :: #import "theme";
 // Portable compositions use the same title bar as retained native hosts.
 #if #defined(KRYON_HOSTED_UI) {

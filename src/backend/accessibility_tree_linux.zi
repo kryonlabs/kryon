@@ -8,7 +8,7 @@
 #import "session"
 #import "tree"
 #import "tree_input"
-#import "text_request"
+#import "text_editing"
 #import "widget_kind"
 #import "accessibility_linux"
 // The GIO and GLib calls the tree's objects make; a foreign declaration
@@ -377,7 +377,7 @@ NodeMethod :: (bus: *void, sender: *u8, path: *u8, iface: *u8,
         length: usize = 0
         pointer: *u8 = VGetString(child, *length)
         value: string = NativeText(pointer, output[:])
-        ok: bool = length <= cast(usize)65536 && TextRequestSend(ui, index, value, true, cast(s32)value.count, cast(s32)value.count)
+        ok: bool = length <= cast(usize)65536 && TextEditingRequest(ui, index, value, true, cast(s32)value.count, cast(s32)value.count)
         VUnref(child)
         result = TupleOne(VBool(cast(s32)ok))
     } else if name == "GetNSelections" {
@@ -395,7 +395,7 @@ NodeMethod :: (bus: *void, sender: *u8, path: *u8, iface: *u8,
         if name == "SetCaretOffset" { start = ByteOffset(index, ArgumentInt(params, 0)); end = start }
         else if name == "AddSelection" { start = ByteOffset(index, ArgumentInt(params, 0)); end = ByteOffset(index, ArgumentInt(params, 1)) }
         else if name == "SetSelection" { start = ByteOffset(index, ArgumentInt(params, 1)); end = ByteOffset(index, ArgumentInt(params, 2)) }
-        result = TupleOne(VBool(cast(s32)TextRequestSend(ui, index, "", false, end, start)))
+        result = TupleOne(VBool(cast(s32)TextEditingRequest(ui, index, "", false, end, start)))
     }
     if result == null { result = AccessibleMethod(name) }
     ReplyResult(invocation, result)

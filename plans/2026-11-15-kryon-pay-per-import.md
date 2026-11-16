@@ -12,9 +12,9 @@ window plus what it imports. This overrides the 2026-11-13 plan's choice to
 keep accessibility in every program: an empty window keeps only window-level
 accessibility, and widget roles and nodes come with the widget imports.
 
-Status: in progress. The empty window is done (17 KB executable, pushed);
-frame examples still carry pictures, text input and gamepad code they don't
-import (see "Modules outside an example's imports" and Steps).
+Status: in progress. The empty window is done (17 KB executable, pushed).
+Pictures, text input and scroll devices arrive with the widgets that use them
+(see "Pictures, text input and scroll devices"); open work is in Steps.
 
 ## Measurement
 
@@ -179,6 +179,32 @@ today's Ziran:
 Window, hello and box shrank by the empty-window work. Button, image and text
 grew by a few files: today's Kryon adds modules their widget imports reach.
 
+### Pictures, text input and scroll devices
+
+Before is Kryon 389bf25e, after adds this step; the same tree, sources and
+Ziran, one build at a time through the build queue:
+
+| Example | Before C files | Before C bytes | Before exe | After C files | After C bytes | After exe |
+| --- | --- | --- | --- | --- | --- | --- |
+| box | 60 | 836 562 | 284 744 | 59 | 826 953 | 284 720 |
+| button | 96 | 1 411 582 | 448 264 | 70 | 980 794 | 342 016 |
+| image | 87 | 1 320 554 | 415 400 | 88 | 1 314 034 | 416 144 |
+| text | 95 | 1 445 077 | 462 504 | 71 | 1 020 207 | 356 472 |
+| textfield | 107 | 1 580 157 | 514 496 | 84 | 1 166 840 | 409 840 |
+
+Box, button, image and text no longer carry `text_request`,
+`text_input_platform` or `scroll_device`; button, text and textfield no
+longer carry the picture chain (textfield keeps its text input). The desktop
+rasterizer registers file pictures when a program first asks a picture's
+size. A button reaches file pictures and
+atlas icons through `image_lookup`: `kryon/image` (`image_files`, the export)
+fills the pictures and `kryon/icon` the atlas, while library code imports
+`image` itself, which registers nothing. Toolbar, title bar and modal header
+pictures reach their buttons the same way; navigation, copy and confirm
+buttons and the widget host fill the lookup where they draw, as they reached
+pictures before. Image's executable grew by 744 bytes (the lookup, its
+initializer and `image_files`) while its C shrank.
+
 ### Modules outside an example's imports
 
 All 88 frame examples carry these although their `.zi` imports do not name
@@ -188,10 +214,7 @@ them (`examples/window.zi` and `examples/hello.zi`, the two `App.Show` and
 | Module | Likely caller |
 | --- | --- |
 | `cursor` | `src/ui/tree.zi`, `src/ui/tree_frame.zi`, `src/ui/tree_input.zi` (any widget reaches `tree`) |
-| `scroll_device` | `src/ui/tree_draw.zi`, `src/ui/tree_frame.zi`, `src/ui/tree_input.zi`, `src/ui/scroll/scroll.zi`, `src/ui/tabs/tabs.zi`, `src/ui/textarea/textarea.zi`, `src/ui/gridmulti/gridmulti.zi` |
 | `gamepad_navigation` | `src/ui/tree_frame.zi` |
-| `text_request` | `src/ui/tree_draw.zi`, `src/ui/text_boundary.zi`, `src/ui/textarea/textarea.zi`, `src/ui/textfield/textfield.zi` |
-| `text_input_platform` | `src/ui/tree_draw.zi`, `src/ui/textarea/textarea.zi`, `src/ui/textfield/textfield.zi` |
 | `program_title` | `src/backend/desktop_loop.zi`, `src/backend/desktop_runtime.zi`, `src/backend/cairo_raster.zi` |
 | `accessibility_linux` | `src/backend/desktop_loop.zi`, `src/backend/accessibility_tree_linux.zi` |
 | `accessibility_tree_linux` | `src/backend/app_host_desktop.zi`, `src/backend/desktop_run.zi` |
@@ -290,18 +313,18 @@ same way (`AccessibilityTreeUse()`).
 
 Open work only; finished steps are described in Design and pushed.
 
-- [ ] Pictures only with a picture: `cairo_raster` reaches `image_decode_linux`
-  and `lanczos_cache` directly (lines 263 and 270), and `button` imports
-  `kryon/image` for its icon slot, so 58 frame examples carry the decoders,
-  threads and asset paths without drawing a picture. Register the picture
-  path from the module that draws a picture; a button without an icon
-  carries none of it.
-- [ ] Text input only with a text field: `tree_draw` reaches `text_request`
-  and `text_input_platform` in every frame example.
-- [ ] Gamepad navigation and scroll devices only through the widgets or
-  inputs that use them (`tree_frame`, `tree_draw`).
-- [ ] Extend `make pay-per-import-test` to assert each of the above (box and
-  button carry no decoder or text input; image and textfield do).
+- [ ] Widgets whose picture is optional data still reach the picture chain
+  without a picture once the widget draws: `text_area`'s image blocks,
+  dropdown option images, avatar, badge and carousel. A block's
+  image is a bare path string an app sets without importing anything, so
+  moving it to `image_lookup` (as button's icon is) would drop pictures from
+  apps that never import `kryon/image`; ask the owner first. Measure the 88
+  frame examples again afterwards.
+- [ ] Gamepad navigation (`GamepadNavigationKey`, about 700 bytes of C) is
+  still in every frame program: it turns controller buttons into the
+  navigation keys any focusable node takes, and focus is per-node tree data
+  (an interactive kind, or a card or text with a focus id), so no import
+  marks a program that can take focus. Leave it unless such a mark appears.
 - [ ] Eleven examples don't build today: ten chart and table examples fail
   with "unknown initializer field: font" (`Text.Props` still has `font`),
   and `flow` fails because `zi2c` exits 127. Find the cause and fix it, or

@@ -1,7 +1,6 @@
 using PropsModule :: #import "toolbar_props";
 Button :: #import "button";
 Dropdown :: #import "dropdown";
-Image :: #import "image";
 Theme :: #import "theme";
 #import "session"
 #import "control_props"

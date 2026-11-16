@@ -17,7 +17,7 @@
 #import "style"
 #import "tooltip_common"
 Text :: #import "kryon/text";
-Image :: #import "kryon/image";
+Image :: #import "kryon/image_props";
 Button :: #import "kryon/button";
 TextField :: #import "kryon/text_field";
 TextArea :: #import "kryon/text_area";

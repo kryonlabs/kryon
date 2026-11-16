@@ -1,4 +1,5 @@
 #import "session"
+#import "text_editing"
 host_api :: #system_library "host_api";
 SetPlatformTextKeyboardVisible :: (session: Session, visible: bool) #foreign host_api;
 
@@ -38,12 +39,14 @@ text_input_queues: [9]TextInputQueueState;
 text_keyboards: [9]TextKeyboardState;
 text_focus_frames: [9]TextFocusFrameState;
 
-// An editable text field or area has focus in the frame being built.
+// An editable text field or area has focus in the frame being built. The
+// first focus brings the frame's focus tracking (see text_editing).
 #program_export
 TextInputNoteFocused :: (session: Session) {
     if !SessionValid(session) {
         return
     }
+    TextEditingUseFocus(TextInputFocusFrameBegin, TextInputFocused)
     index := SessionIndex(session)
     if !TextInputOwnerMatches(text_focus_frames[index].owner, session) {
         text_focus_frames[index] = .{}

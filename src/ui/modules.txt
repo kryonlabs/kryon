@@ -76,6 +76,7 @@ hovercard/hovercard.zi
 hovercard/hover_card_props.zi
 icon.zi
 image/image_behavior.zi
+image/image_lookup.zi
 image/image_mesh.zi
 image/image_props.zi
 image/image_raster.zi
@@ -152,6 +153,7 @@ router_props.zi
 scene_tree_props.zi
 scroll/scroll_behavior.zi
 scroll_device.zi
+scroll_sampling.zi
 scroll/scroll_props.zi
 scroll/scroll.zi
 scrubfield/scrubfield.zi
@@ -207,6 +209,7 @@ textfield/textfield.zi
 text_host.zi
 text_input.zi
 text_input_platform.zi
+text_editing.zi
 textfield/text_field_props.zi
 textarea/text_area_props.zi
 text_layout.zi

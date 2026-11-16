@@ -147,6 +147,13 @@ height instead of staying at the styled icon size: up to 64 units above the
 label, or up to 40 units beside it. A vector `icon_shape` still takes
 precedence over an `image` and keeps the styled size.
 
+A button draws only the icons its program imports. A vector `icon_shape` and
+pixels handed over as `image.texture` always draw. A file picture in
+`image.asset_path` draws once the program imports `kryon/image`, and a
+built-in `icon_type` once it also imports `kryon/icon`. A button without an
+icon carries no picture decoder, asset path or icon atlas. The same holds for
+pictures a toolbar, title bar or modal header hands to its buttons.
+
 ## Breadcrumbs
 
 `Breadcrumb.Draw(session: Session, props: Breadcrumb.Props, items: []Breadcrumb.BreadcrumbItem)

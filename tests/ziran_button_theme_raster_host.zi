@@ -63,18 +63,6 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
 }
 
 #program_export
-ImageWidth :: (asset_path: string) -> s32 {
-    unused asset_path
-    return 0
-}
-
-#program_export
-ImageHeight :: (asset_path: string) -> s32 {
-    unused asset_path
-    return 0
-}
-
-#program_export
 RasterLine :: (line: Rectangle, color: Color) {
     unused line; unused color
 }

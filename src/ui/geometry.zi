@@ -65,6 +65,16 @@ RectangleIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle {
     return result
 }
 
+// The whole pixels a rectangle covers, each edge rounded to the nearest
+// pixel, so pictures drawn side by side own their shared edge once.
+RectangleSnap :: (bounds: Rectangle) -> Rectangle {
+    left := FloorInteger(bounds.x + 0.5)
+    top := FloorInteger(bounds.y + 0.5)
+    right := FloorInteger(bounds.x + bounds.width + 0.5)
+    bottom := FloorInteger(bounds.y + bounds.height + 0.5)
+    return .{cast(float32)left, cast(float32)top, cast(float32)(right - left), cast(float32)(bottom - top)}
+}
+
 // Axis-aligned coverage of a rectangle rotated clockwise about a world point.
 RotatedRectangleBounds :: (bounds: Rectangle, origin: Vector2, rotation: float32) -> Rectangle {
     camera: Camera = .{.offset = origin, .target = origin, .rotation = rotation, .zoom = 1.0}

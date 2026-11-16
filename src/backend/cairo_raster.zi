@@ -308,7 +308,7 @@ ScaledImageFor :: (image: *void, source: Rectangle, destination: Rectangle, snap
     if matrix.xx != 1.0 || matrix.yy != 1.0 || matrix.xy != 0.0 || matrix.yx != 0.0 ||
         matrix.x0 != 0.0 || matrix.y0 != 0.0 { return null }
     width := ImageSurfaceWidth(image); height := ImageSurfaceHeight(image)
-    snapped.* = Lanczos.LanczosSnap(destination)
+    snapped.* = RectangleSnap(destination)
     if !Lanczos.LanczosEligible(source, width, height, snapped.*) { return null }
     key: Lanczos.LanczosKey = .{serial, 0, 0, source, cast(s32)snapped.width, cast(s32)snapped.height}
     CairoUseSmooth()
@@ -330,6 +330,27 @@ ScaledImageFor :: (image: *void, source: Rectangle, destination: Rectangle, snap
 }
 image_clock: u64;
 image_bytes: s64;
+
+// File pictures arrive with the first picture a program asks the size of:
+// every widget that draws one lays it out from its size first (see
+// image_raster), so ImageWidth and ImageHeight register loading, decoding
+// and smooth copies. A program that draws only managed pixels, such as
+// vector icons, carries no decoder, asset path or Lanczos worker.
+RasterPictureLoad :: #type (asset_path: string) -> *void;
+RasterPictureSmooth :: #type (image: *void, source: Rectangle, destination: Rectangle,
+    snapped: *Rectangle) -> *Lanczos.LanczosEntry;
+raster_picture_load: RasterPictureLoad;
+raster_picture_smooth: RasterPictureSmooth;
+CairoUsePictures :: () {
+    raster_picture_load = LoadPNG
+    raster_picture_smooth = ScaledImageFor
+}
+// A file picture once pictures are in use; a managed one always.
+CairoPictureFor :: (asset_path: string, texture_id: u32) -> *void {
+    if texture_id != cast(u32)0 { return CairoManagedImage(texture_id) }
+    if raster_picture_load == null { return null }
+    return raster_picture_load(asset_path)
+}
 
 SetColor :: (color: Color) {
     SetSourceRGBA(paint, cast(float64)color.r / 255.0,
@@ -840,6 +861,7 @@ LoadPNG :: (original_path: string) -> *void {
 
 #program_export
 ImageWidth :: (asset_path: string) -> s32 {
+    CairoUsePictures()
     image: *void = LoadPNG(asset_path)
     if image == null { return 0 }
     return ImageSurfaceWidth(image)
@@ -847,6 +869,7 @@ ImageWidth :: (asset_path: string) -> s32 {
 
 #program_export
 ImageHeight :: (asset_path: string) -> s32 {
+    CairoUsePictures()
     image: *void = LoadPNG(asset_path)
     if image == null { return 0 }
     return ImageSurfaceHeight(image)
@@ -894,17 +917,16 @@ RasterImage :: (asset_path: string, texture_id: u32,
         image_error = true
         return
     }
-    image: *void
-    if texture_id != cast(u32)0 { image = CairoManagedImage(texture_id) }
-    else { image = LoadPNG(asset_path) }
+    image := CairoPictureFor(asset_path, texture_id)
     if image == null {
         image_error = true
         return
     }
     sampled: *Lanczos.LanczosEntry
     snapped: Rectangle
-    if texture_id == cast(u32)0 && rotation == 0.0 && origin.x == 0.0 && origin.y == 0.0 && CurrentPaintSmooth() {
-        sampled = ScaledImageFor(image, source, destination, *snapped)
+    if texture_id == cast(u32)0 && raster_picture_smooth != null && rotation == 0.0 &&
+        origin.x == 0.0 && origin.y == 0.0 && CurrentPaintSmooth() {
+        sampled = raster_picture_smooth(image, source, destination, *snapped)
     }
     Save(paint)
     polygon := CurrentPaintPolygon()
@@ -919,7 +941,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
         matrix.xy == 0.0 && matrix.yx == 0.0 && matrix.x0 == 0.0 && matrix.y0 == 0.0
     // Cairo's aliased clip and the cached copy disagree at exact half
     // pixels. Round both to the copy's device edges, also while it loads.
-    image_clip := ifx device_pixels then Lanczos.LanczosSnap(clip) else clip
+    image_clip := ifx device_pixels then RectangleSnap(clip) else clip
     RoundBox(image_clip, radius)
     Clip(paint)
     if polygon.count >= 3 {
@@ -952,7 +974,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
     if device_pixels {
         covered := destination
         covered.x -= origin.x; covered.y -= origin.y
-        covered = Lanczos.LanczosSnap(covered)
+        covered = RectangleSnap(covered)
         CanvasRectangle(paint, covered.x, covered.y, covered.width, covered.height)
         Clip(paint)
     }
@@ -1005,9 +1027,7 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
         image_error = true
         return
     }
-    image: *void
-    if texture_id != cast(u32)0 { image = CairoManagedImage(texture_id) }
-    else { image = LoadPNG(asset_path) }
+    image := CairoPictureFor(asset_path, texture_id)
     if image == null {
         image_error = true
         return

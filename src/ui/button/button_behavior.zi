@@ -1,4 +1,3 @@
-Image :: #import "image";
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"

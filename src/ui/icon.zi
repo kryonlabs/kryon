@@ -1,5 +1,6 @@
-Image :: #import "image";
+Image :: #import "image_props";
 #import "geometry"
+#import "image_lookup"
 
 // These values are persisted by applications and match icons/*.json.
 IconType :: enum {
@@ -132,6 +133,10 @@ IconType :: enum {
     IconPfpMoon :: 126
     IconExpand :: 127
 }
+
+// Widgets with an icon slot, such as a button, find these icons once a
+// program imports kryon/icon; they draw them as pictures (kryon/image).
+icon_lookup_registered: bool = IconLookupUse(ImageForIcon);
 
 // Icon IDs are stable across releases because applications persist them.
 // The atlas positions follow icons/*.json; callers render the returned props

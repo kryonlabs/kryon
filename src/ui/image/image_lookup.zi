@@ -1,0 +1,39 @@
+// A widget that can show a picture beside its own content, such as a
+// button's icon, draws file pictures and built-in icons only when the
+// program imports them: kryon/image fills the texture lookup and kryon/icon
+// the icon atlas, each from its module initializer. Without them such a
+// widget still draws the pixels it is handed as a texture, and carries no
+// decoder, asset path or atlas.
+using Image :: #import "image_props";
+#import "drawing_props"
+#import "geometry"
+
+ImageTextureLookup :: #type (image: Image.Props) -> Texture2D;
+IconImageLookup :: #type (icon_type: s32, bounds: Rectangle, alt_text: string) -> Image.Props;
+image_texture_lookup: ImageTextureLookup;
+icon_image_lookup: IconImageLookup;
+
+ImageLookupUse :: (lookup: ImageTextureLookup) -> bool {
+    image_texture_lookup = lookup
+    return true
+}
+
+IconLookupUse :: (lookup: IconImageLookup) -> bool {
+    icon_image_lookup = lookup
+    return true
+}
+
+// The texture IMAGE draws with: its own, or its file's once kryon/image is
+// imported (see ImageTextureFor).
+ImageLookupTexture :: (image: Image.Props) -> Texture2D {
+    if image.texture.id != cast(u32)0 || image.asset_path == "" || image_texture_lookup == null {
+        return image.texture
+    }
+    return image_texture_lookup(image)
+}
+
+// A built-in icon's picture once kryon/icon is imported, else none.
+IconLookupImage :: (icon_type: s32, bounds: Rectangle, alt_text: string) -> Image.Props {
+    if icon_image_lookup == null { return .{} }
+    return icon_image_lookup(icon_type, bounds, alt_text)
+}

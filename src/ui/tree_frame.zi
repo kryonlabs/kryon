@@ -15,7 +15,7 @@
 #import "input_take"
 #import "frame_input_provider"
 #import "gamepad_navigation"
-Scroll :: #import "scroll_device";
+#import "scroll_sampling"
 
 using FrameStatus;
 
@@ -30,7 +30,7 @@ TreeFrameRun :: (session: Session, input: FrameDriverInput) -> FrameDriverResult
     unused TreePointerUpdate(session, pointer)
     TreeSecondaryPointerUpdate(session, input.secondary)
     unused PointerWheelSend(session, pointer.x, pointer.y, wheel)
-    Scroll.BeginScrollFrame(session, .{pointer.x, pointer.y}, pointer.pressed,
+    ScrollSampleBegin(session, .{pointer.x, pointer.y}, pointer.pressed,
         pointer.down, pointer.released, wheel, input.seconds)
     if input.frame_input != null && !FrameInputProviderBegin(input.frame_input, session) { return result }
     published := session

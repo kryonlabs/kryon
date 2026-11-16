@@ -307,7 +307,7 @@ PixmapSetImage :: (slot: s32, path: string, width: s32, height: s32, pixels: []u
         width := pixmap_image_widths[slot]; height := pixmap_image_heights[slot]
         count := cast(s64)width * height
         if width <= 0 || height <= 0 || PixmapSourceCount(slot) < count { return -1 }
-        snapped.* = Lanczos.LanczosSnap(destination)
+        snapped.* = RectangleSnap(destination)
         if !Lanczos.LanczosEligible(source, width, height, snapped.*) { return -1 }
         key: Lanczos.LanczosKey = .{PixmapLanczosContent(slot), pixmap_image_revisions[slot], PIXMAP_LANCZOS_SESSION,
             source, cast(s32)snapped.width, cast(s32)snapped.height}

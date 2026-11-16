@@ -2,6 +2,7 @@ ScrollSchema :: #import "scroll_props";
 #import "control_props"
 #import "geometry"
 #import "scroll_behavior"
+#import "scroll_sampling"
 #import "session"
 #import "style"
 #import "style_sheet"
@@ -54,6 +55,10 @@ ScrollDevice :: struct {
 SCROLL_DEVICE_SLOTS :: 9
 scroll_devices: [SCROLL_DEVICE_SLOTS]ScrollDevice;
 scroll_device_current: s32;
+
+// The frame samples the device through scroll_sampling once a program
+// imports a scroll.
+scroll_sampling_registered: bool = ScrollSamplingUse(BeginScrollFrame, ScrollDeviceMoving);
 
 ScrollDeviceSlot :: (session: Session) -> s32 {
     slot := SessionIndex(session)

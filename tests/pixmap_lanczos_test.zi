@@ -77,7 +77,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
             }
             if Pixels.PixmapLanczosPending() { print("an exact copy started another: % %\n", sources[kind], index); return 7 }
             if !Save(directory, sources[kind], index) { return 8 }
-            snapped := Lanczos.LanczosSnap(targets[index])
+            snapped := RectangleSnap(targets[index])
             print("pixmap % % % % % %\n", sources[kind], index, snapped.x, snapped.y, snapped.width, snapped.height)
         }
     }

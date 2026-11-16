@@ -22,6 +22,8 @@ Is :: (x: s32, y: s32, color: u32) -> bool {
 
 // A 2 by 2 image drawn over the whole 64 by 64 surface.
 Draw :: (path: string, smooth: bool, tint: Color) -> bool {
+    // A widget asks a picture's size before drawing it, which brings files.
+    if Raster.ImageWidth(path) <= 0 { return false }
     Raster.BeginRasterFrame()
     Texture.emitting_smooth = smooth
     full: Rectangle = .{0.0, 0.0, 64.0, 64.0}
