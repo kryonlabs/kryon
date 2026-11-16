@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `kryon/tree_frame` is public: a program with its own desktop host imports
+  it, calls `TreeFrameUse()` and passes its frame to `DesktopLoop.Run`, and
+  the widget tree runs each frame with the test driver's pointer and wheel.
+  The desktop loop no longer applies the test driver's pointer and wheel a
+  second time before the frame driver does.
 - When the Linux desktop host cannot open its window, it now says on
   standard error which step failed (starting SDL video, creating the window,
   renderer or texture, or the Cairo surface) and SDL's reason. Before, it
