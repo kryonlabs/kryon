@@ -6,7 +6,7 @@ ImageSchema :: #import "image_props";
 #import "page_core"
 #import "page_texture"
 #import "paint_queue"
-#import "raylib_clip"
+#import "canvas_clip"
 #import "web"
 
 PAGE_MESH_TEXTURES :: 32

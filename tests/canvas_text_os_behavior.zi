@@ -11,8 +11,8 @@
 
 c :: #system_library "c";
 TestAllocate :: (size: usize) -> *void #foreign c "malloc";
-TestFormat :: (format: *u8, values: ..any) -> *u8 #foreign c "TextFormat";
-TestLog :: (level: s32, format: *u8, values: ..any) #foreign c "TraceLog";
+TestFormat :: (format: *u8, values: ..any) -> *u8 #foreign c "FormatCanvasText";
+TestLog :: (level: s32, format: *u8, values: ..any) #foreign c "TraceCanvasLog";
 
 draw_count: s32;
 last_draw: Rectangle;

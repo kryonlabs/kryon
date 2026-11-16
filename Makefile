@@ -835,6 +835,12 @@ image-pixels-test: project-toolchain
 	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/image_pixels_test.sh
 test: image-pixels-test
 
+.PHONY: native-image-services-test
+native-image-services-test: project-toolchain $(AVIF_SO)
+	@sh tests/native_image_services_test.sh
+test: native-image-services-test
+
+
 .PHONY: image-preview-test
 image-preview-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/image_preview_zi_test.sh

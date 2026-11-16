@@ -10,7 +10,7 @@
 #if OS == .WEB {
 
     // Sample existing page gamepad APIs once per host poll. Their button
-    // IDs are raylib's; navigation uses standard Gamepad numbering internally.
+    // Page button IDs map to standard Gamepad numbering for navigation.
     CanvasGamepadPoll :: () {
         buttons: [4]u32
         logical: [8]s32 = .{0, 1, 9, 12, 13, 14, 15, 8}
@@ -43,43 +43,34 @@
     canvas_gamepad_next: s32;
     canvas_key_name: [16]u8;
 
-    #program_export
     IsKeyPressed :: (code: s32) -> bool {
         return CanvasQueueHas(*canvas_keys_pressed[0], canvas_keys_pressed_count, code)
     }
 
-    #program_export
     IsKeyPressedRepeat :: (code: s32) -> bool {
         return CanvasQueueHas(*canvas_keys_repeated[0], canvas_keys_repeated_count, code)
     }
 
-    #program_export
     IsKeyDown :: (code: s32) -> bool {
         return code >= 0 && code < CANVAS_KEY_LIMIT && canvas_keys_down[code]
     }
 
-    #program_export
     IsKeyReleased :: (code: s32) -> bool {
         return CanvasQueueHas(*canvas_keys_released[0], canvas_keys_released_count, code)
     }
 
-    #program_export
     IsMouseButtonPressed :: (code: s32) -> bool {
         return CanvasQueueHas(*canvas_buttons_pressed[0], canvas_buttons_pressed_count, code)
     }
 
-    #program_export
     IsMouseButtonDown :: (code: s32) -> bool {
         return code >= 0 && code < CANVAS_BUTTON_LIMIT && canvas_buttons_down[code]
     }
 
-    #program_export
     IsMouseButtonReleased :: (code: s32) -> bool {
         return CanvasQueueHas(*canvas_buttons_released[0], canvas_buttons_released_count, code)
     }
-    // Raylib's frame queues, for browser builds of apps written against
-    // raylib's API. Kryon sessions take ordered input with CanvasInputTake.
-    #program_export
+    // Frame-local reads. Sessions take ordered input with CanvasInputTake.
     GetKeyPressed :: () -> s32 {
         if canvas_keys_pressed_read >= canvas_keys_pressed_count { return 0 }
         key := canvas_keys_pressed[canvas_keys_pressed_read]
@@ -87,96 +78,77 @@
         return key
     }
 
-    #program_export
     GetCharPressed :: () -> s32 {
         return CanvasQueuePop(*canvas_chars[0], *canvas_chars_count)
     }
 
-    #program_export
     GetMouseX :: () -> s32 {
         return cast(s32)canvas_mouse_x
     }
 
-    #program_export
     GetMouseY :: () -> s32 {
         return cast(s32)canvas_mouse_y
     }
 
-    #program_export
     GetMousePosition :: () -> Vector2 {
         return Vector2.{cast(float32)cast(s32)canvas_mouse_x, cast(float32)cast(s32)canvas_mouse_y}
     }
 
-    #program_export
     GetMouseDelta :: () -> Vector2 {
         return Vector2.{cast(float32)canvas_mouse_delta_x, cast(float32)canvas_mouse_delta_y}
     }
 
-    #program_export
     GetMouseWheelMove :: () -> float32 {
         return cast(float32)CanvasWheelDominant()
     }
 
-    #program_export
     GetMouseWheelMoveV :: () -> Vector2 {
         return Vector2.{cast(float32)canvas_wheel_x, cast(float32)canvas_wheel_y}
     }
-    #program_export
     SetMouseOffset :: (x: s32, y: s32) {
         canvas_mouse_offset_x = cast(float64)x
         canvas_mouse_offset_y = cast(float64)y
     }
-    #program_export
     ShowCursor :: () {
         canvas_cursor_hidden = false
         PageInputCursor(0)
     }
 
-    #program_export
     HideCursor :: () {
         canvas_cursor_hidden = true
         PageInputCursor(1)
     }
 
-    #program_export
     EnableCursor :: () {
         canvas_cursor_hidden = false
         PageInputCursor(2)
     }
 
-    #program_export
     DisableCursor :: () {
         canvas_cursor_hidden = true
         PageInputCursor(3)
     }
 
-    #program_export
     IsCursorHidden :: () -> bool {
         return canvas_cursor_hidden
     }
-    #program_export
     GetTouchPosition :: (index: s32) -> Vector2 {
         return Vector2.{cast(float32)CanvasTouchField(index, 0), cast(float32)CanvasTouchField(index, 1)}
     }
-    #program_export
     GetTouchPointCount :: () -> s32 {
         return canvas_touch_count
     }
 
-    #program_export
     IsGamepadAvailable :: (gamepad: s32) -> bool {
         return PageGamepadQuery(gamepad, 0, 0) != 0
     }
-    #program_export
     IsGamepadButtonPressed :: (gamepad: s32, button: s32) -> bool {
         return PageGamepadQuery(gamepad, 1, button) != 0
     }
 
-    #program_export
     IsGamepadButtonDown :: (gamepad: s32, button: s32) -> bool {
         return PageGamepadQuery(gamepad, 2, button) != 0
     }
-    #program_export
     GetGamepadAxisMovement :: (gamepad: s32, axis: s32) -> float32 {
         return cast(float32)PageGamepadAxis(gamepad, axis)
     }

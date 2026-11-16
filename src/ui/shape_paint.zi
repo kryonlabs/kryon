@@ -24,7 +24,7 @@ using PaintKind;
 //   Triangle  origin, source.x and source.y, source.width and source.height
 //             = its three points.
 
-// A whole turn takes 36 segments, as raylib's DrawCircle draws it, or more
+// A whole turn takes at least 36 segments, or more
 // on a large radius; one segment per degree at most.
 SHAPE_TURN_SEGMENTS :: 36
 SHAPE_MAX_SEGMENTS :: 360
@@ -58,7 +58,7 @@ LineCorners :: struct {
     valid: bool
 }
 
-// The corners of a line `thickness` wide, as raylib's DrawLineEx makes them:
+// The corners of a line `thickness` wide with square ends:
 // the two at its start, then the two at its end, each pair across the line.
 LineCornersFor :: (start: Vector2, end: Vector2,
     thickness: float32) -> LineCorners {
@@ -110,7 +110,7 @@ LineCovered :: (start: Vector2, end: Vector2, thickness: float32) -> Rectangle {
 
 // Segments for an arc of `sweep` degrees: 36 to a whole turn, or on a large
 // radius enough that no chord strays more than half a pixel inside the arc,
-// as raylib's automatic DrawRing count.
+// for automatic ring tessellation.
 ShapeArcSegments :: (radius: float32, sweep: float32) -> s32 {
     if !Finite32(sweep) || sweep <= 0.0 { return 0 }
     if sweep > 360.0 { sweep = 360.0 }

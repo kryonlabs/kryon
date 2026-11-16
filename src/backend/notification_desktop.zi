@@ -12,7 +12,7 @@ DESKTOP_NOTIFICATIONS :: #defined(PLATFORM_DESKTOP) && !#defined(_WIN32)
 
 #if DESKTOP_NOTIFICATIONS {
     notification_c :: #system_library "c";
-    notification_raylib :: #system_library "raylib";
+    notification_sdl :: #system_library "SDL2";
     NotificationAccess :: (path: *u8, mode: s32) -> s32 #foreign notification_c "access";
     NotificationFork :: () -> s32 #foreign notification_c "fork";
     NotificationWait :: (pid: s32, status: *s32,
@@ -20,7 +20,7 @@ DESKTOP_NOTIFICATIONS :: #defined(PLATFORM_DESKTOP) && !#defined(_WIN32)
     NotificationExec :: (path: *u8, first: *u8,
         args: ..any) -> s32 #foreign notification_c "execl";
     NotificationExit :: (status: s32) #foreign notification_c "_exit";
-    NotificationWindowFocused :: () -> bool #foreign notification_raylib "IsWindowFocused";
+    NotificationKeyboardFocus :: () -> *void #foreign notification_sdl "SDL_GetKeyboardFocus";
 }
 
 notification_app_name: [128]u8;
@@ -69,7 +69,7 @@ NotificationWindowFocusedHost :: () -> bool {
         return AndroidNotificationWindowFocusedHost()
     }
     #if DESKTOP_NOTIFICATIONS {
-        return NotificationWindowFocused()
+        return NotificationKeyboardFocus() != null
     }
     return false
 }

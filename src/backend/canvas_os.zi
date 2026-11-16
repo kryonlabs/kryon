@@ -98,12 +98,10 @@
         return *canvas_current_directory[0]
     }
 
-    #program_export
     GetClipboardText :: () -> *u8 {
         return *canvas_clipboard_text[0]
     }
 
-    #program_export
     SetClipboardText :: (text: *u8) {
         if text != null {
             unused OsCopyBounded(*canvas_clipboard_text[0], CANVAS_CLIPBOARD_SIZE, text)
@@ -113,17 +111,14 @@
         }
     }
 
-    #program_export
     FileExists :: (path: *u8) -> bool {
         return path != null && OsFileKind(path) == 1
     }
 
-    #program_export
     DirectoryExists :: (path: *u8) -> bool {
         return path != null && OsFileKind(path) == 2
     }
 
-    #program_export
     GetDirectoryPath :: (path: *u8) -> *u8 {
         if path == null {
             return OsCurrentDirectory()
@@ -148,7 +143,6 @@
         return *canvas_directory[0]
     }
 
-    #program_export
     MakeDirectory :: (path: *u8) -> s32 {
         if path == null || path[0] == cast(u8)0 || OsLength(path) >= 1024 {
             return -1
@@ -180,11 +174,9 @@
         return -1
     }
 
-    #program_export
     SetLoadFileDataCallback :: (callback: CanvasLoadDataCallback) {
         canvas_load_data_callback = callback
     }
-    #program_export
     SaveFileData :: (path: *u8, data: *void, size: s32) -> bool {
         if path == null || data == null || size < 0 {
             return false
@@ -204,7 +196,6 @@
         return written == cast(usize)size && closed == 0
     }
 
-    #program_export
     SaveFileText :: (path: *u8, text: *u8) -> bool {
         if text == null {
             return false
@@ -219,7 +210,6 @@
         return SaveFileData(path, cast(*void)text, cast(s32)length)
     }
 
-    #program_export
     LoadFileData :: (path: *u8, size: *s32) -> *u8 {
         if size != null {
             size.* = 0
@@ -264,12 +254,10 @@
         return data
     }
 
-    #program_export
     UnloadFileData :: (data: *u8) {
         OsRelease(cast(*void)data)
     }
 
-    #program_export
     LoadFileText :: (path: *u8) -> *u8 {
         if canvas_load_text_callback != null {
             return canvas_load_text_callback(path)
@@ -288,12 +276,10 @@
         return text
     }
 
-    #program_export
     UnloadFileText :: (text: *u8) {
         OsRelease(cast(*void)text)
     }
 
-    #program_export
     ChangeDirectory :: (path: *u8) -> s32 {
         if path == null || OsChdir(path) != 0 {
             return -1
@@ -301,19 +287,16 @@
         return 0
     }
 
-    #program_export
     GetWorkingDirectory :: () -> *u8 {
         if OsGetcwd(*canvas_working_directory[0], 1024) == null {
             return OsCurrentDirectory()
         }
         return *canvas_working_directory[0]
     }
-    #program_export
     GetFileLength :: (path: *u8) -> s32 {
         return OsFileLength(path)
     }
 
-    #program_export
     GetFileName :: (path: *u8) -> *u8 {
         if path == null {
             return null
@@ -333,7 +316,6 @@
         return path
     }
 
-    #program_export
     GetFileExtension :: (path: *u8) -> *u8 {
         base := GetFileName(path)
         extension := *canvas_empty[0]
@@ -352,12 +334,10 @@
         return extension
     }
 
-    #program_export
     IsFileExtension :: (path: *u8, extension: *u8) -> bool {
         return extension != null && OsCompare(GetFileExtension(path), extension) == 0
     }
 
-    #program_export
     GetFileNameWithoutExt :: (path: *u8) -> *u8 {
         base := GetFileName(path)
         if base == null {
@@ -379,7 +359,6 @@
         return *canvas_file_name[0]
     }
 
-    #program_export
     GetPrevDirectoryPath :: (path: *u8) -> *u8 {
         if path == null || path[0] == cast(u8)0 {
             return OsCurrentDirectory()
@@ -404,7 +383,6 @@
         return OsCurrentDirectory()
     }
 
-    #program_export
     IsPathFile :: (path: *u8) -> bool {
         return FileExists(path)
     }
@@ -417,7 +395,6 @@
         OsRelease(cast(*void)files.paths)
     }
 
-    #program_export
     LoadDroppedFiles :: () -> CanvasFilePathList {
         files: CanvasFilePathList
         count := OsDroppedCount()
@@ -441,17 +418,14 @@
         return files
     }
 
-    #program_export
     IsFileDropped :: () -> bool {
         return OsDroppedCount() > 0
     }
 
-    #program_export
     UnloadDroppedFiles :: (files: CanvasFilePathList) {
         FreeCanvasPaths(files)
     }
 
-    #program_export
     LoadDirectoryFilesEx :: (base_path: *u8, filter: *u8,
         scan_subdirs: bool) -> CanvasFilePathList {
         unused scan_subdirs
@@ -512,27 +486,23 @@
         return files
     }
 
-    #program_export
     LoadDirectoryFiles :: (path: *u8) -> CanvasFilePathList {
         return LoadDirectoryFilesEx(path, null, false)
     }
 
-    #program_export
     UnloadDirectoryFiles :: (files: CanvasFilePathList) {
         FreeCanvasPaths(files)
     }
-    #program_export
     SetShapesTexture :: (texture: Texture2D, rectangle: Rectangle) {
         unused texture
         unused rectangle
     }
 
-    #program_export
     SetTraceLogCallback :: (callback: CanvasTraceCallback) {
         canvas_trace_callback = callback
     }
 
-    #program_export "TextFormat"
+    #program_export
     FormatCanvasText :: (format: *u8, arguments: *void) -> *u8 {
         slot := canvas_format_next
         canvas_format_next = (canvas_format_next + 1) % 16
@@ -554,11 +524,10 @@
 
     CanvasConsoleError :: (message: *u8) #foreign c "emscripten_console_error";
 
-    // raylib's TraceLog: a C varargs call whose argument list arrives as one
-    // pointer, as with TextFormat.
+    // C varargs arrive as one pointer, as with FormatCanvasText.
     canvas_trace_level: s32 = 0;
 
-    #program_export "TraceLog"
+    #program_export
     TraceCanvasLog :: (level: s32, format: *u8, arguments: *void) {
         if level < canvas_trace_level { return }
         if canvas_trace_callback != null {
@@ -568,18 +537,15 @@
         CanvasConsoleError(FormatCanvasLog(format, arguments))
     }
 
-    // raylib's memory and log-level entry points, for apps that still call them.
-    #program_export "MemAlloc"
+    // Canvas memory and logging controls.
     CanvasMemAlloc :: (size: u32) -> *void {
         return OsAllocate(cast(usize)size)
     }
 
-    #program_export "MemFree"
     CanvasMemFree :: (memory: *void) {
         OsRelease(memory)
     }
 
-    #program_export "SetTraceLogLevel"
     SetCanvasTraceLevel :: (level: s32) {
         canvas_trace_level = level
     }

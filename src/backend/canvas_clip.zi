@@ -1,0 +1,41 @@
+// Canvas clips use the page transform and restore the preceding path clip.
+#import "geometry"
+#import "page_paint"
+
+clip_math :: #system_library "m";
+ClipFloor :: (value: float32) -> float32 #foreign clip_math "floorf";
+ClipCeil :: (value: float32) -> float32 #foreign clip_math "ceilf";
+
+RasterClipState :: struct { enabled: bool }
+
+BeginRasterClip :: (bounds: Rectangle) -> RasterClipState {
+    matrix: [6]float32 = .{1.0, 0.0, 0.0, 1.0, 0.0, 0.0}
+    PageGetModelview(*matrix[0])
+    left: float32; top: float32; right: float32; bottom: float32
+    for corner: 0..3 {
+        x := bounds.x + ifx (corner & 1) != 0 then bounds.width else 0.0
+        y := bounds.y + ifx (corner & 2) != 0 then bounds.height else 0.0
+        screen_x := matrix[0] * x + matrix[2] * y + matrix[4]
+        screen_y := matrix[1] * x + matrix[3] * y + matrix[5]
+        if corner == 0 || screen_x < left { left = screen_x }
+        if corner == 0 || screen_x > right { right = screen_x }
+        if corner == 0 || screen_y < top { top = screen_y }
+        if corner == 0 || screen_y > bottom { bottom = screen_y }
+    }
+    left = ClipFloor(left); top = ClipFloor(top)
+    PageClipPush(cast(s32)left, cast(s32)top,
+        cast(s32)(ClipCeil(right) - left), cast(s32)(ClipCeil(bottom) - top))
+    return .{true}
+}
+
+EndRasterClip :: (state: RasterClipState) {
+    if state.enabled { PageClipPop() }
+}
+
+RasterPixelScale :: () -> float32 {
+    matrix: [6]float32 = .{1.0, 0.0, 0.0, 1.0, 0.0, 0.0}
+    PageGetModelview(*matrix[0])
+    scale := matrix[0]
+    if scale < 0.0 { scale = -scale }
+    return ifx scale > 0.0 then scale else 1.0
+}

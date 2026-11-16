@@ -1,5 +1,5 @@
 // Native backend storage. Image packages own decoding and std/image pixels;
-// hosts own the malloc buffer handed to Cairo or raylib's image allocator.
+// hosts own the malloc buffer handed to native rendering and image services.
 Encoded :: #import "image_codec/bytes";
 Riff :: #import "webp/riff";
 #import "std/byte_text_linux"
@@ -16,4 +16,112 @@ ImageEncodedBytes :: (data: string) -> Encoded.BorrowedBytes {
 
 ImageWebpSignature :: (data: string) -> bool {
     return Riff.WebpHasSignature(ImageEncodedBytes(data))
+}
+
+// Owned, upright, straight RGBA bytes for native host features.
+DecodedImage :: struct { pixels: *u8; width: s32; height: s32 }
+DecodedImageFree :: (image: DecodedImage) { ImagePixelsFree(image.pixels) }
+
+#if OS != .WEB && !#defined(ANDROID_BUILD) {
+    Desktop :: #import "image_decode_desktop";
+    #import "avif_decode"
+    Codecs :: #import "image_codec/api";
+    Engine :: #import "webp/engine";
+    NativeWebp :: #import "webp/native_api";
+    #import "std/c_string"
+    LoaderNew :: #type () -> *void #c_call;
+    LoaderWrite :: #type (*void, *u8, usize, *void) -> s32 #c_call;
+    LoaderClose :: #type (*void, *void) -> s32 #c_call;
+    LoaderImage :: #type (*void) -> *void #c_call;
+    LoaderSize :: #type (*void, s32, s32) -> void #c_call;
+    Prepared :: #type (*void, s32, s32, *bool) -> void #c_call;
+    Connect :: #type (*void, *u8, *void, *void, *void, s32) -> usize #c_call;
+    loader_new: LoaderNew;
+    loader_write: LoaderWrite;
+    loader_close: LoaderClose;
+    loader_image: LoaderImage;
+    loader_size: LoaderSize;
+    connect: Connect;
+    loader_ready: bool;
+
+    DecodeLoaderReady :: () -> bool {
+        if loader_ready { return true }
+        if !Desktop.Init() { return false }
+        loader_ready = Desktop.Resolve(Desktop.library, cast(*void)*loader_new, "gdk_pixbuf_loader_new") &&
+            Desktop.Resolve(Desktop.library, cast(*void)*loader_write, "gdk_pixbuf_loader_write") &&
+            Desktop.Resolve(Desktop.library, cast(*void)*loader_close, "gdk_pixbuf_loader_close") &&
+            Desktop.Resolve(Desktop.library, cast(*void)*loader_image, "gdk_pixbuf_loader_get_pixbuf") &&
+            Desktop.Resolve(Desktop.library, cast(*void)*loader_size, "gdk_pixbuf_loader_set_size") &&
+            Desktop.Resolve(Desktop.object_library, cast(*void)*connect, "g_signal_connect_data")
+        return loader_ready
+    }
+    DecodePrepared :: (loader: *void, width: s32, height: s32, rejected: *bool) {
+        if width <= 0 || height <= 0 || width > 32768 || height > 32768 ||
+        cast(s64)width * height > 67108864 {
+            rejected.* = true
+            loader_size(loader, 1, 1)
+        }
+    }
+
+    ImageDecodeEncoded :: (data: string, file_type: string) -> DecodedImage {
+        unused file_type
+        if data.count <= 0 || data.count > 268435456 { return .{} }
+        if AvifSignature(data) {
+            if !Desktop.AvifInit() { return .{} }
+            image: DecodedImage
+            image.pixels = AvifDecode(Desktop.avif_api, data, *image.width, *image.height)
+            return image
+        }
+        if ImageWebpSignature(data) {
+            if !Desktop.WebPInit() { return .{} }
+            input := ImageEncodedBytes(data)
+            options := Engine.WebpDefaultOptions()
+            probe := Riff.WebpProbe(input, options.limits)
+            if !probe.is_ok { return .{} }
+            count := cast(s64)probe.metadata.width * probe.metadata.height * 4
+            pixels := ImagePixelsAllocate(cast(usize)count)
+            if pixels == null { return .{} }
+            result := NativeWebp.WebpNativeDecodeInto(*Desktop.webp_api, input,
+                Codecs.OutputBuffer.{BytesFromPointer(pixels, cast(u64)count), cast(s64)probe.metadata.width * 4}, options)
+            if !result.is_ok { ImagePixelsFree(pixels); return .{} }
+            return .{pixels, result.metadata.width, result.metadata.height}
+        }
+        if !DecodeLoaderReady() { return .{} }
+        loader := loader_new()
+        if loader == null { return .{} }
+        defer { Desktop.CloseImage(loader) }
+        rejected: bool
+        signal: [14]u8
+        unused CopyCString("size-prepared", signal[:])
+        callback: Prepared = DecodePrepared
+        raw_callback := cast(**void)*callback
+        if connect(loader, *signal[0], raw_callback[0], cast(*void)*rejected, null, 0) == 0 { return .{} }
+        bytes := cast(*TextDescriptor)(*data)
+        wrote := loader_write(loader, bytes.data, cast(usize)data.count, null) != 0
+        closed := loader_close(loader, null) != 0
+        if !wrote || !closed || rejected { return .{} }
+        borrowed := loader_image(loader)
+        if borrowed == null { return .{} }
+        orient_image := Desktop.orient
+        image_channels := Desktop.channels_of
+        image_stride := Desktop.stride_of
+        image_pixels := Desktop.pixels_of
+        upright := orient_image(borrowed)
+        if upright == null { return .{} }
+        defer { Desktop.CloseImage(upright) }
+        width := Desktop.Width(upright); height := Desktop.Height(upright)
+        channels := image_channels(upright); stride := image_stride(upright)
+        source := image_pixels(upright)
+        if source == null || width <= 0 || height <= 0 || width > 32768 || height > 32768 ||
+        cast(s64)width * height > 67108864 || (channels != 3 && channels != 4) || stride < width * channels { return .{} }
+        pixels := ImagePixelsAllocate(cast(usize)(cast(s64)width * height * 4))
+        if pixels == null { return .{} }
+        for y: 0..height - 1 { for x: 0..width - 1 {
+            input_at := cast(s64)y * stride + x * channels
+            output_at := (cast(s64)y * width + x) * 4
+            pixels[output_at] = source[input_at]; pixels[output_at + 1] = source[input_at + 1]; pixels[output_at + 2] = source[input_at + 2]
+            pixels[output_at + 3] = ifx channels == 4 then source[input_at + 3] else cast(u8)255
+        } }
+        return .{pixels, width, height}
+    }
 }

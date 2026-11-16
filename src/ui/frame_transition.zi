@@ -50,7 +50,7 @@ FrameTransitionImage :: (surface: FrameSurface, bounds: Rectangle,
     alpha_byte := cast(u32)(alpha * 255.0 + 0.5)
     image: Image.Props = .{.bounds = bounds, .fit = cast(Image.ImageFit)ImageFitStretch,
         .texture = surface.texture}
-    // Raylib render targets store rows opposite to normal textures. The
+    // Inverted render targets store rows opposite to normal textures. The
     // negative source height is the host's upright sampling convention.
     image.source = Rectangle.{0.0, 0.0,
         cast(float32)surface.texture.width,

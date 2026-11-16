@@ -1,0 +1,71 @@
+// Real memory decoding, export and SDL window services on a private display.
+Decode :: #import "ziran_image_decode";
+Export :: #import "image_export";
+Icon :: #import "window_icon";
+Desktop :: #import "desktop_runtime";
+Notify :: #import "notification_desktop";
+#import "image_integration_fixture"
+#import "std/timer_linux"
+#import "std/byte_text_linux"
+#import "std/vec"
+sdl :: #system_library "SDL2";
+Show :: (window: *void) #foreign sdl "SDL_ShowWindow";
+Hide :: (window: *void) #foreign sdl "SDL_HideWindow";
+Focus :: (window: *void) -> s32 #foreign sdl "SDL_SetWindowInputFocus";
+Pump :: () #foreign sdl "SDL_PumpEvents";
+
+CheckPixels :: (bytes: string, width: s32, height: s32, expected: []u8) -> bool {
+    image := Decode.ImageDecodeEncoded(bytes, ".png")
+    defer Decode.DecodedImageFree(image)
+    if image.pixels == null || image.width != width || image.height != height { return false }
+    for at: 0..expected.count - 1 { if image.pixels[at] != expected[at] { return false } }
+    return true
+}
+main :: () -> s32 {
+    png := Fixture("build/scratch/image-pixels", "rgba", ".png")
+    defer VecFree(png)
+    bytes := TextFromBytes(png[:])
+    expected: [8]u8 = .[173, 61, 219, 97, 19, 203, 41, 255]
+    if !CheckPixels(bytes, 2, 1, expected[:]) { return 1 }
+    if Decode.ImageDecodeEncoded("invalid", ".png").pixels != null ||
+        Decode.ImageDecodeEncoded(bytes[:20], ".png").pixels != null { return 2 }
+    huge := Fixture("build/scratch/native-image-services", "huge", ".png")
+    defer VecFree(huge)
+    if Decode.ImageDecodeEncoded(TextFromBytes(huge[:]), ".png").pixels != null { return 3 }
+    if !Export.EncodedImageExport(bytes, ".png", "build/scratch/native-image-services/roundtrip.PNG") { return 4 }
+    exported := Fixture("build/scratch/native-image-services", "roundtrip", ".PNG")
+    defer VecFree(exported)
+    if !CheckPixels(TextFromBytes(exported[:]), 2, 1, expected[:]) { return 5 }
+    if !Export.EncodedImageExport(bytes, ".png", "build/scratch/native-image-services/roundtrip.jpg") { return 6 }
+    jpeg := Fixture("build/scratch/native-image-services", "roundtrip", ".jpg")
+    defer VecFree(jpeg)
+    decoded := Decode.ImageDecodeEncoded(TextFromBytes(jpeg[:]), ".jpg")
+    if decoded.pixels == null || decoded.width != 2 || decoded.height != 1 { return 7 }
+    Decode.DecodedImageFree(decoded)
+    if Export.EncodedImageExport(bytes, ".png", "build/scratch/native-image-services/no-format") ||
+        Export.EncodedImageExport("invalid", ".png", "build/scratch/native-image-services/bad.png") { return 8 }
+    webp := Fixture("tests/fixtures/webp", "lossless", ".webp")
+    defer VecFree(webp)
+    webp_image := Decode.ImageDecodeEncoded(TextFromBytes(webp[:]), ".webp")
+    if webp_image.pixels == null || webp_image.width != 3 || webp_image.height != 2 { return 9 }
+    Decode.DecodedImageFree(webp_image)
+    avif := Fixture("tests/fixtures/avif", "transform31", ".avif")
+    golden := Fixture("tests/fixtures/avif", "transform31", ".rgba")
+    defer VecFree(avif)
+    defer VecFree(golden)
+    if golden.count != 64 || !CheckPixels(TextFromBytes(avif[:]), 4, 4, golden[:]) { return 10 }
+    if Notify.NotificationWindowFocusedHost() || Icon.SetWindowIcon(bytes, ".png") { return 11 }
+    if !Desktop.OpenDesktopTitled(80, 60, "Image services test") { return 12 }
+    defer Desktop.CloseDesktop()
+    window := Desktop.DesktopWindow()
+    Show(window)
+    if Focus(window) != 0 { return 13 }
+    for attempt: 0..49 { Pump(); if Notify.NotificationWindowFocusedHost() { break }; unused SleepMilliseconds(10) }
+    if !Notify.NotificationWindowFocusedHost() { return 14 }
+    if !Icon.SetWindowIcon(bytes, ".png") || Icon.SetWindowIcon("invalid", ".png") { return 15 }
+    Hide(window)
+    for attempt: 0..49 { Pump(); if !Notify.NotificationWindowFocusedHost() { break }; unused SleepMilliseconds(10) }
+    if Notify.NotificationWindowFocusedHost() { return 16 }
+    print("Native image services: RGBA, PNG/JPEG export, WebP/AVIF orientation, invalid/oversized input, SDL icon and focus passed\n")
+    return 0
+}

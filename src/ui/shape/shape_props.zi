@@ -1,7 +1,7 @@
 #import "drawing_props"
 #import "geometry"
 
-// A straight line at any angle, with square ends like raylib's DrawLineEx.
+// A straight line at any angle, with square ends.
 Props :: struct {
     key: u64
     class_name: s32
@@ -14,7 +14,7 @@ Props :: struct {
 }
 
 // A filled circle. With has_edge, its colour fades linearly from `fill` at
-// the centre to `edge` at the rim, like raylib's DrawCircleGradient.
+// the centre to `edge` at the rim.
 CircleProps :: struct {
     key: u64
     class_name: s32
@@ -27,7 +27,7 @@ CircleProps :: struct {
 }
 
 // The band between two radii, whole or as an arc. Angles are in degrees
-// from the right, turning clockwise on screen, as in raylib's DrawRing: -90
+// from the right, turning clockwise on screen: -90
 // is the top. An inner radius of 0 fills a circle sector.
 RingProps :: struct {
     key: u64

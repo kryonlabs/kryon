@@ -32,24 +32,14 @@ ClipModelview :: () -> RaylibMatrix #foreign raylib_clip_host "rlGetMatrixModelv
 ClipFloor :: (value: float32) -> float32 #foreign raylib_clip_math "floorf";
 ClipCeil :: (value: float32) -> float32 #foreign raylib_clip_math "ceilf";
 
-#if OS == .WEB {
-    #import "page_paint"
-    CanvasClipPush :: (x: s32, y: s32, width: s32, height: s32) {
-        PageClipPush(x, y, width, height)
-    }
-    CanvasClipPop :: () {
-        PageClipPop()
-    }
-} else {
-    ClipEnabled :: (capability: u32) -> u8 #foreign raylib_clip_host "glIsEnabled";
-    ClipRead :: (parameter: u32, values: *s32) #foreign raylib_clip_host "glGetIntegerv";
-    ClipBegin :: (x: s32, y: s32, width: s32,
-        height: s32) #foreign raylib_clip_host "BeginScissorMode";
-    ClipEnd :: () #foreign raylib_clip_host "EndScissorMode";
-    ClipEnable :: () #foreign raylib_clip_host "rlEnableScissorTest";
-    ClipPixels :: (x: s32, y: s32, width: s32,
-        height: s32) #foreign raylib_clip_host "rlScissor";
-}
+ClipEnabled :: (capability: u32) -> u8 #foreign raylib_clip_host "glIsEnabled";
+ClipRead :: (parameter: u32, values: *s32) #foreign raylib_clip_host "glGetIntegerv";
+ClipBegin :: (x: s32, y: s32, width: s32,
+    height: s32) #foreign raylib_clip_host "BeginScissorMode";
+ClipEnd :: () #foreign raylib_clip_host "EndScissorMode";
+ClipEnable :: () #foreign raylib_clip_host "rlEnableScissorTest";
+ClipPixels :: (x: s32, y: s32, width: s32,
+    height: s32) #foreign raylib_clip_host "rlScissor";
 
 ClipPoint :: (matrix: RaylibMatrix, x: float32, y: float32) -> Vector2 {
     return Vector2.{matrix.m0 * x + matrix.m4 * y + matrix.m12,
@@ -96,45 +86,35 @@ ClipScreenBounds :: (bounds: Rectangle) -> Rectangle {
 BeginRasterClip :: (bounds: Rectangle) -> RasterClipState {
     state: RasterClipState
     screen := ClipScreenBounds(bounds)
-    #if OS == .WEB {
-        CanvasClipPush(cast(s32)screen.x, cast(s32)screen.y,
-            cast(s32)screen.width, cast(s32)screen.height)
-    } else {
-        state.enabled = ClipEnabled(cast(u32)0x0C11) != cast(u8)0
-        if state.enabled {
-            ClipRead(cast(u32)0x0C10, *state.bounds[0])
-        }
-        ClipBegin(cast(s32)screen.x, cast(s32)screen.y,
-            cast(s32)screen.width, cast(s32)screen.height)
-        if state.enabled {
-            pixels: [4]s32
-            ClipRead(cast(u32)0x0C10, *pixels[0])
-            prior := Rectangle.{cast(float32)state.bounds[0],
-                cast(float32)state.bounds[1], cast(float32)state.bounds[2],
-                cast(float32)state.bounds[3]}
-            current := Rectangle.{cast(float32)pixels[0],
-                cast(float32)pixels[1], cast(float32)pixels[2],
-                cast(float32)pixels[3]}
-            intersection := RectangleIntersection(prior, current)
-            ClipPixels(cast(s32)intersection.x, cast(s32)intersection.y,
-                cast(s32)intersection.width, cast(s32)intersection.height)
-        }
+    state.enabled = ClipEnabled(cast(u32)0x0C11) != cast(u8)0
+    if state.enabled {
+        ClipRead(cast(u32)0x0C10, *state.bounds[0])
+    }
+    ClipBegin(cast(s32)screen.x, cast(s32)screen.y,
+        cast(s32)screen.width, cast(s32)screen.height)
+    if state.enabled {
+        pixels: [4]s32
+        ClipRead(cast(u32)0x0C10, *pixels[0])
+        prior := Rectangle.{cast(float32)state.bounds[0],
+            cast(float32)state.bounds[1], cast(float32)state.bounds[2],
+            cast(float32)state.bounds[3]}
+        current := Rectangle.{cast(float32)pixels[0],
+            cast(float32)pixels[1], cast(float32)pixels[2],
+            cast(float32)pixels[3]}
+        intersection := RectangleIntersection(prior, current)
+        ClipPixels(cast(s32)intersection.x, cast(s32)intersection.y,
+            cast(s32)intersection.width, cast(s32)intersection.height)
     }
     return state
 }
 
 #scope_export
 EndRasterClip :: (state: RasterClipState) {
-    #if OS == .WEB {
-        CanvasClipPop()
-        unused state
-    } else {
-        ClipEnd()
-        if state.enabled {
-            ClipEnable()
-            ClipPixels(state.bounds[0], state.bounds[1],
-                state.bounds[2], state.bounds[3])
-        }
+    ClipEnd()
+    if state.enabled {
+        ClipEnable()
+        ClipPixels(state.bounds[0], state.bounds[1],
+            state.bounds[2], state.bounds[3])
     }
 }
 

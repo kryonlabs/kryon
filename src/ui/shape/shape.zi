@@ -84,7 +84,7 @@ using Shape :: #import "shape_props";
         return node
     }
 
-    // Like raylib's DrawRing, swapped radii or angles mean the same ring, and a
+    // Swapped radii or angles mean the same ring, and a
     // sweep beyond a whole turn draws one turn.
     #program_export
     Ring :: (session: Session, props: Shape.RingProps) -> s32 {

@@ -15,7 +15,7 @@ ImageSchema :: #import "image_props";
 #import "page_paint"
 #import "page_texture"
 #import "page_mesh"
-#import "raylib_clip"
+#import "canvas_clip"
 #import "page_core"
 #import "canvas_window"
 #import "web"

@@ -19,6 +19,7 @@ using Vectors :: #import "vec";
 #import "media_audio"
 #import "media_audio_host"
 #import "media_audio_desktop"
+Transport :: #import "media_audio_opus";
 #import "session"
 Types :: #import "audio/types";
 Wav :: #import "audio/wav";
@@ -331,6 +332,30 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if accepted < 1 || !pressured { print("accepted %\n", accepted); return Fail(55, "the PCM voice took no block or never pushed back") }
     unused Call(*owner, session, .{.operation = .Unload})
     MediaAudioOwnerClose(*owner)
+    // The shared Opus transport uses this same SDL device and mixer.
+    code: MediaAudioCode
+    asset := Transport.OpusAssetLoad(TextView(opus[:]), 0.5, *code)
+    if asset == null || code != .Ok { return Fail(56, "the Opus transport did not load") }
+    voice: MediaAudioVoice
+    voice.music = true; voice.state = .Ready
+    if Transport.OpusAssetCommand(asset, *voice, .{.operation = .Play, .looping = true}, .Ok).state != .Playing {
+        return Fail(57, "the Opus transport did not play")
+    }
+    unused SleepMilliseconds(80)
+    transport_position := Transport.OpusAssetReply(asset, *voice, .Ok)
+    if !transport_position.has_position || transport_position.position_seconds <= 0.0 { return Fail(58, "the Opus transport did not advance") }
+    if Transport.OpusAssetCommand(asset, *voice, .{.operation = .Pause}, .Ok).state != .Paused { return Fail(59, "the Opus transport did not pause") }
+    paused := Transport.OpusAssetReply(asset, *voice, .Ok).position_seconds
+    unused SleepMilliseconds(50)
+    if Transport.OpusAssetReply(asset, *voice, .Ok).position_seconds != paused { return Fail(60, "the paused Opus position moved") }
+    if Transport.OpusAssetCommand(asset, *voice, .{.operation = .Resume}, .Ok).state != .Playing { return Fail(61, "the Opus transport did not resume") }
+    unused SleepMilliseconds(550)
+    if Transport.OpusAssetReply(asset, *voice, .Ok).state != .Playing { return Fail(62, "the looping Opus transport stopped") }
+    unused Transport.OpusAssetCommand(asset, *voice, .{.operation = .Stop}, .Ok)
+    unused Transport.OpusAssetCommand(asset, *voice, .{.operation = .Play}, .Ok)
+    unused SleepMilliseconds(600)
+    if Transport.OpusAssetReply(asset, *voice, .Ok).state != .Finished { return Fail(63, "the Opus transport did not finish") }
+    Transport.OpusAssetDispose(asset)
     AudioSinkClose()
     print("desktop audio: passed\n")
     return 0

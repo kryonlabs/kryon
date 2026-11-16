@@ -19,6 +19,7 @@ ref = "1844042d1ca751e62e61df7617dba19c98588339"
 source = true
 
 [exports]
+canvas_clip = "src/backend/canvas_clip.zi"
 application_entry = "src/backend/application_entry.zi"
 window_runtime = "src/backend/window_runtime.zi"
 window_icon = "src/backend/window_icon.zi"

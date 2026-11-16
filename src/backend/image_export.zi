@@ -1,21 +1,46 @@
-// Decode encoded image bytes with Kryon's native image pipeline and export
-// them in the format selected by the destination path.
-#import "raylib_image_decode"
+// Decode upright straight RGBA and export through the native image codecs.
+#import "ziran_image_decode"
 #import "c_string"
+Desktop :: #import "image_decode_desktop";
 
-image_export_raylib :: #system_library "raylib";
-ImageExportNative :: (image: RaylibGlyphImage, path: *u8) -> bool #foreign image_export_raylib "ExportImage";
+#scope_file
+NewPixels :: #type (*u8, s32, s32, s32, s32, s32, s32, *void, *void) -> *void #c_call;
+SavePixels :: #type (*void, *u8, *u8, **u8, **u8, *void) -> s32 #c_call;
+new_pixels: NewPixels;
+save_pixels: SavePixels;
+ready: bool;
+ExportReady :: () -> bool {
+    if ready { return true }
+    if !Desktop.Init() { return false }
+    ready = Desktop.Resolve(Desktop.library, cast(*void)*new_pixels, "gdk_pixbuf_new_from_data") &&
+        Desktop.Resolve(Desktop.library, cast(*void)*save_pixels, "gdk_pixbuf_savev")
+    return ready
+}
 
+#scope_export
 #program_export
 EncodedImageExport :: (data: string, file_type: string, path: string) -> bool {
     path_bytes: [4096]u8
-    if data.count == 0 || !CopyCString(path, path_bytes[:]) {
-        return false
+    if data.count == 0 || !CopyCString(path, path_bytes[:]) { return false }
+    dot := path.count - 1
+    while dot >= 0 && path[dot] != 46 && path[dot] != 47 && path[dot] != 92 { dot -= 1 }
+    if dot < 0 || path[dot] != 46 { return false }
+    extension := path[dot + 1:]
+    kind: [16]u8
+    if extension.count == 0 || extension.count >= kind.count { return false }
+    for at: 0..extension.count - 1 {
+        byte := extension[at]
+        kind[at] = ifx byte >= 65 && byte <= 90 then byte + cast(u8)32 else byte
     }
-    image := RaylibDecodePixels(data, file_type)
-    if image.data == null {
-        return false
+    if extension.count == 3 && kind[0] == 106 && kind[1] == 112 && kind[2] == 103 {
+        unused CopyCString("jpeg", kind[:])
     }
-    defer { RaylibImageRelease(image) }
-    return ImageExportNative(image, *path_bytes[0])
+    image := ImageDecodeEncoded(data, file_type)
+    if image.pixels == null { return false }
+    defer DecodedImageFree(image)
+    if !ExportReady() { return false }
+    pixbuf := new_pixels(image.pixels, 0, 1, 8, image.width, image.height, image.width * 4, null, null)
+    if pixbuf == null { return false }
+    defer { Desktop.CloseImage(pixbuf) }
+    return save_pixels(pixbuf, *path_bytes[0], *kind[0], null, null, null) != 0
 }

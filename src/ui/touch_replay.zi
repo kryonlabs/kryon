@@ -1,7 +1,7 @@
 // Touches that begin and end between two host frames.
 //
 // A platform that applies every queued touch event once per frame, such as
-// raylib's Android backend, reports neither a press nor a release for a tap
+// a native Android event source, reports neither a press nor a release for a tap
 // or quick swipe that starts and ends while a frame is being drawn, and
 // reports a release where the touch last moved rather than where it lifted.
 // The host counts the touches it sees start and end, and TouchReplayStep

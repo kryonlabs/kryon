@@ -29,7 +29,7 @@ Bitmaps :: #import "bitmap_store";
 
     canvas_browser :: #system_library "env";
 
-    CanvasLoadFileData :: (path: *u8, size: *s32) -> *u8 #foreign canvas_browser "LoadFileData";
+    Files :: #import "canvas_os";
     CanvasRenderWidth :: () -> s32 #foreign canvas_browser "GetRenderWidth";
     CanvasRenderHeight :: () -> s32 #foreign canvas_browser "GetRenderHeight";
 
@@ -81,7 +81,7 @@ Bitmaps :: #import "bitmap_store";
     #program_export
     LoadImage :: (path: *u8) -> CanvasImage {
         size: s32
-        data := CanvasLoadFileData(path, *size)
+        data := Files.LoadFileData(path, *size)
         if data == null { return CanvasImage.{} }
         image := LoadImageFromMemory(null, data, size)
         CanvasRelease(cast(*void)data)
@@ -137,7 +137,7 @@ Bitmaps :: #import "bitmap_store";
     #program_export
     LoadTexture :: (path: *u8) -> Texture2D {
         size: s32
-        data := CanvasLoadFileData(path, *size)
+        data := Files.LoadFileData(path, *size)
         if data == null { return Texture2D.{} }
         width: s32
         height: s32
@@ -161,7 +161,7 @@ Bitmaps :: #import "bitmap_store";
     LoadTextureUnlessContent :: (path: *u8, previous: u64, previous_size: s64) -> CanvasEncodedTexture {
         result: CanvasEncodedTexture
         size: s32
-        data := CanvasLoadFileData(path, *size)
+        data := Files.LoadFileData(path, *size)
         if data == null || size <= 0 {
             if data != null { CanvasRelease(cast(*void)data) }
             return result

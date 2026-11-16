@@ -44,7 +44,7 @@ SvgIconEntry :: struct {
 }
 
 // Makes a texture of a raster: size by size pixels, each a white byte and
-// its alpha byte (raylib's gray-alpha format). Returns id 0 on failure.
+// its alpha byte (gray-alpha pixels). Returns id 0 on failure.
 SvgIconTextureMake :: #type (pixels: []u8, size: s32) -> Texture2D;
 SvgIconTextureFree :: #type (texture: Texture2D) -> ();
 svg_icon_texture_make: SvgIconTextureMake;

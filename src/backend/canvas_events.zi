@@ -92,8 +92,7 @@ using CompositionPhase;
     // above and below expire at EndFrame, even when the app takes its input
     // before BeginDrawing.
     canvas_input: InputDelivery;
-    // Raylib-compatible reads for apps written against raylib's API:
-    // GetKeyPressed walks this frame's fresh presses, GetCharPressed takes
+    // GetKeyPressed walks this frame's fresh presses; GetCharPressed takes
     // this frame's characters.
     canvas_keys_pressed_read: s32;
     canvas_chars: [CANVAS_QUEUE_LIMIT]s32;
