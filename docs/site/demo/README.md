@@ -36,14 +36,3 @@ app and module catalogs, responsive navigation, themes, keyboard focus,
 legacy routes, and real editor compilation, including rotated text. To retain
 review images, run `build-queue -- python3 tests/site_browser_test.py
 --screenshots backup/labs-site/verification` after confirming `backup/` is ignored.
-
-From the Kryon repository root, `node tests/demo_browser.mjs` starts a local
-server and private Xvfb/Chromium display. It checks real compilation, rendered
-pixels, persistent button state, error recovery, source escaping, cancellation,
-view switching, reset, responsive layout, and lazy loading in embeds. Its
-screenshots and logs live in `build/scratch/web-preview/`.
-Pass a deployed editor URL to run the same checks against a live site:
-
-```sh
-node tests/demo_browser.mjs https://kryonlabs.com/demo.html
-```
