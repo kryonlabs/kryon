@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A hosted widget's slice parameter (TabBar, SegmentedControl, Dropdown,
+  TitleBar, Modal actions, ContextMenu) is accepted whether the bundle names
+  its element type through the package (`[]TabBar.Tab`) or bare (`[]Tab`),
+  through one shared check; element count, storage and every element are
+  validated as before and a slice of another element type is still refused.
 - `kryon/tree_frame` is public: a program with its own desktop host imports
   it, calls `TreeFrameUse()` and passes its frame to `DesktopLoop.Run`, and
   the widget tree runs each frame with the test driver's pointer and wheel.

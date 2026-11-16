@@ -942,13 +942,19 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     return 0
 }
 
+// A hosted slice parameter holds at most `limit` elements of the named
+// record type, spelled qualified or not, and has storage for every element.
+WidgetHostSliceValid :: (values: HostValue, type_name: string, limit: usize) -> bool {
+    return values.kind == cast(s32)HostSlice && HostTypeValid(values.type_name, type_name) &&
+    values.length <= limit && (values.length == cast(usize)0 || values.elements != null)
+}
+
 WidgetHostTabBar :: (session: Session, arguments: *HostValue, result: *HostValue) -> s32 {
     if !WidgetValidTabBarProps(arguments[1]) {
         return 0
     }
     values := arguments[2]
-    if values.kind != cast(s32)HostSlice || TextFromCString(values.type_name) != "[]Tab" ||
-    values.length > cast(usize)WIDGET_HOST_TAB_LIMIT || (values.length > cast(usize)0 && values.elements == null) {
+    if !WidgetHostSliceValid(values, "[]Tab", cast(usize)WIDGET_HOST_TAB_LIMIT) {
         return 0
     }
     index: usize = 0
@@ -971,8 +977,7 @@ WidgetHostSegmentedControl :: (session: Session, arguments: *HostValue, result: 
         return 0
     }
     values := arguments[2]
-    if values.kind != cast(s32)HostSlice || TextFromCString(values.type_name) != "[]SegmentOption" ||
-    values.length > cast(usize)WIDGET_HOST_OPTION_LIMIT || (values.length > cast(usize)0 && values.elements == null) {
+    if !WidgetHostSliceValid(values, "[]SegmentOption", cast(usize)WIDGET_HOST_OPTION_LIMIT) {
         return 0
     }
     index: usize = 0
@@ -997,8 +1002,7 @@ WidgetHostTitleBar :: (session: Session, arguments: *HostValue, result: *HostVal
         return 0
     }
     values := arguments[2]
-    if values.kind != cast(s32)HostSlice || TextFromCString(values.type_name) != "[]DropdownOption" ||
-    values.length > cast(usize)WIDGET_HOST_OPTION_LIMIT || (values.length > cast(usize)0 && values.elements == null) {
+    if !WidgetHostSliceValid(values, "[]DropdownOption", cast(usize)WIDGET_HOST_OPTION_LIMIT) {
         return 0
     }
     props := WidgetDecodeTitleBarProps(arguments[1], *widget_title_bar_codec)
@@ -1027,8 +1031,7 @@ WidgetHostDropdown :: (session: Session, arguments: *HostValue, result: *HostVal
         return 0
     }
     values := arguments[2]
-    if values.kind != cast(s32)HostSlice || TextFromCString(values.type_name) != "[]DropdownOption" ||
-    values.length > cast(usize)WIDGET_HOST_OPTION_LIMIT || (values.length > cast(usize)0 && values.elements == null) {
+    if !WidgetHostSliceValid(values, "[]DropdownOption", cast(usize)WIDGET_HOST_OPTION_LIMIT) {
         return 0
     }
     props := WidgetDecodeDropdownProps(arguments[1], *widget_dropdown_codec)
@@ -1072,10 +1075,7 @@ WidgetHostActionModal :: (session: Session, arguments: *HostValue, result: *Host
         return 0
     }
     values := arguments[2]
-    if values.kind != cast(s32)HostSlice ||
-    TextFromCString(values.type_name) != "[]Modal.ActionModalAction" ||
-    values.length > cast(usize)16 ||
-    (values.length > cast(usize)0 && values.elements == null) {
+    if !WidgetHostSliceValid(values, "[]ActionModalAction", cast(usize)16) {
         return 0
     }
     index: usize = 0
@@ -1098,9 +1098,7 @@ WidgetHostActionModal :: (session: Session, arguments: *HostValue, result: *Host
 WidgetHostContextMenu :: (session: Session, arguments: *HostValue, result: *HostValue) -> s32 {
     if !WidgetValidContextMenuProps(arguments[1]) { return 0 }
     values := arguments[2]
-    if values.kind != cast(s32)HostSlice || TextFromCString(values.type_name) != "[]ContextMenuItem" ||
-    values.length > cast(usize)WIDGET_HOST_OPTION_LIMIT ||
-    (values.length > cast(usize)0 && values.elements == null) { return 0 }
+    if !WidgetHostSliceValid(values, "[]ContextMenuItem", cast(usize)WIDGET_HOST_OPTION_LIMIT) { return 0 }
     index: usize = 0
     while index < values.length {
         if !WidgetValidContextMenuItem(values.elements[index]) { return 0 }

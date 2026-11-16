@@ -570,6 +570,24 @@ main :: () -> s32 {
     if Call("segmented", "SegmentedControlHostedHost", arguments[:], *result) != 0 {
         return 106
     }
+    // A bundle names its slices through the public package types.
+    arguments[2].type_name = HostTextData("[]SegmentedControl.SegmentOption")
+    if Call("segmented", "SegmentedControlHostedHost", arguments[:], *result) != 1 { return 107 }
+    arguments[2].type_name = HostTextData("[]SegmentedControl.DropdownOption")
+    if Call("segmented", "SegmentedControlHostedHost", arguments[:], *result) != 0 { return 108 }
+    arguments[1] = WidgetEncodeTabBarProps(TabBar.Props.{}, *tab_bar_codec)
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]TabBar.Tab"),
+        .length = cast(usize)2, .elements = *tab_values[0]}
+    if Call("tabs", "TabBarHostedHost", arguments[:], *result) != 1 { return 109 }
+    arguments[2].type_name = HostTextData("[]TabBar.Segment")
+    if Call("tabs", "TabBarHostedHost", arguments[:], *result) != 0 { return 110 }
+    arguments[1] = WidgetEncodeDropdownProps(Dropdown.Props.{.key = cast(u64)315,
+            .bounds = Rectangle.{0.0, 0.0, 200.0, 40.0}, .selected_index = 1}, *dropdown_codec)
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]Dropdown.Option"),
+        .length = cast(usize)2, .elements = *option_values[0]}
+    if Call("dropdown", "DropdownHostedHost", arguments[:], *result) != 1 { return 111 }
+    arguments[2].type_name = HostTextData("[]Dropdown.Tab")
+    if Call("dropdown", "DropdownHostedHost", arguments[:], *result) != 0 { return 112 }
     arguments[1] = WidgetEncodeTitleBarProps(TitleBar.Props.{.key = cast(u64)15, .title = "Lumi",
             .bounds = Rectangle.{0.0, 0.0, 300.0, 40.0}, .trailing_width = 100}, *title_bar_codec)
     arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]DropdownOption"),
@@ -634,13 +652,13 @@ main :: () -> s32 {
     WidgetDecodeActionModalResult(result, *action_modal_result).action != 0 {
         return 41
     }
-    // Too many actions, or a slice not named by Kryon's qualified record, is refused.
+    // Too many actions, or a slice of another element type, is refused.
     arguments[2].length = cast(usize)17
     if Call("modal", "ActionModalHostedHost", arguments[:], *result) != 0 {
         return 42
     }
     arguments[2].length = cast(usize)1
-    arguments[2].type_name = HostTextData("[]ActionModalAction")
+    arguments[2].type_name = HostTextData("[]Modal.Other")
     if Call("modal", "ActionModalHostedHost", arguments[:], *result) != 0 {
         return 42
     }
