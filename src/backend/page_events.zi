@@ -318,6 +318,10 @@ PageEventHandle :: (context: s32, event: s32, second: s32, third: s32) {
         unused PageEventSend(CanvasEventMouseUp, button, 0, PageEventPointX(event),
             PageEventPointY(event), 0, 0, event)
     } else if context == PageEventWheel {
+        // A wheel turns over the point it names, which a pointer that has not
+        // moved since a click elsewhere would not report.
+        unused PageEventSend(CanvasEventMouseMove, 0, 0, PageEventPointX(event),
+            PageEventPointY(event), 0, 0, event)
         flags: s32 = PageEventSend(CanvasEventWheel,
             cast(s32)WebGetNumber(event, page_event_names.delta_mode), 0,
             WebGetNumber(event, page_event_names.delta_x),

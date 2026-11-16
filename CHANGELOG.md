@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- On the web, the mouse wheel scrolls what is under it even when the
+  pointer has not moved since a click elsewhere: the canvas host takes the
+  pointer position from the wheel event, which a page with a text editor
+  focused otherwise sent to the editor.
 - On Android, an activity without Kryon's optional Java callbacks, such as a
   Java-free NativeActivity without `onNativeFirstFrame`, `setTextInputState`
   or `setSoftKeyboardVisible`, no longer leaves a pending
