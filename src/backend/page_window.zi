@@ -6,14 +6,14 @@ using Types :: #import "app_types";
 #import "page_core"
 #import "web"
 
-// The empty window's colour, the same as an empty Kryon frame.
+// The empty window's colour, the same as an empty Kryon frame, or none on a
+// transparent page.
 PageWindowClear :: () {
     ctx := PageContext()
     if ctx == 0 { return }
     scope := WebScope()
-    WebSet(ctx, page_names.fill_style, WebText(PageColor(248, 250, 252, 255)))
-    unused WebCall4(ctx, page_names.fill_rect, WebNumber(0.0), WebNumber(0.0),
-        WebNumber(cast(float64)PageDimension(0)), WebNumber(cast(float64)PageDimension(1)))
+    PageBackground(ctx, 0.0, 0.0, cast(float64)PageDimension(0), cast(float64)PageDimension(1),
+        248, 250, 252, 255)
     WebEnd(scope)
     PageFrame()
 }

@@ -79,6 +79,7 @@ PageNames :: struct {
     line_width: s32
     line_cap: s32
     fill_rect: s32
+    clear_rect: s32
     stroke_rect: s32
     fill: s32
     stroke: s32
@@ -135,6 +136,7 @@ page_ctx: s32;
 page_back_canvas: s32;
 page_front_ctx: s32;
 page_created_canvas: bool;
+page_transparent: bool;
 page_open: bool;
 page_closed: bool;
 page_close_requested: bool;
@@ -230,6 +232,7 @@ PageInitNames :: () {
     page_names.line_width = WebName("lineWidth")
     page_names.line_cap = WebName("lineCap")
     page_names.fill_rect = WebName("fillRect")
+    page_names.clear_rect = WebName("clearRect")
     page_names.stroke_rect = WebName("strokeRect")
     page_names.fill = WebName("fill")
     page_names.stroke = WebName("stroke")
@@ -350,6 +353,21 @@ PageMakeCanvas :: (width: s32, height: s32) -> s32 {
 
 PageContext2D :: (canvas: s32) -> s32 {
     return WebAsObject(WebCall1(canvas, page_names.get_context, WebText("2d")))
+}
+
+// Paints the page's background over an area: the colour, or nothing at all
+// (alpha 0) when the page's canvas carries `data-transparent`, so what lies
+// behind the page shows wherever the program draws nothing.
+PageBackground :: (ctx: s32, x: float64, y: float64, width: float64, height: float64,
+    r: s32, g: s32, b: s32, a: s32) {
+    if page_transparent {
+        unused WebCall4(ctx, page_names.clear_rect, WebNumber(x), WebNumber(y),
+            WebNumber(width), WebNumber(height))
+        return
+    }
+    WebSet(ctx, page_names.fill_style, WebText(PageColor(r, g, b, a)))
+    unused WebCall4(ctx, page_names.fill_rect, WebNumber(x), WebNumber(y),
+        WebNumber(width), WebNumber(height))
 }
 
 // "rgba(r,g,b,a)" for a colour whose alpha is 0 to 255. The text lives in a
@@ -710,6 +728,8 @@ PageBoot :: (width: s32, height: s32, title: string) {
     }
     page_canvas = 0
     if canvas != 0 { page_canvas = WebKeep(canvas) }
+    page_transparent = document != 0 && canvas != 0 &&
+        WebAsBool(WebCall1(canvas, WebName("hasAttribute"), WebText("data-transparent")))
     if page_canvas != 0 { PageResizeMain(width, height) }
     if document != 0 && title.count > 0 { WebSet(document, page_names.title, WebText(title)) }
     if page_canvas != 0 {

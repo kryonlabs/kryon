@@ -1,11 +1,13 @@
 // Load a program entry's page in a private headless Chromium and wait until
-// its own main has named the page and painted the whole canvas.
+// its own main has named the page and booted its canvas, then check the
+// canvas's pixels by MODE: "opaque" paints every pixel, "clear" leaves every
+// pixel at alpha 0, and "drawn" paints some but leaves most at alpha 0.
 import {spawn} from 'node:child_process';
 import {readFile, stat} from 'node:fs/promises';
 import {join} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 
-const [html, profile] = process.argv.slice(2);
+const [html, profile, title, mode] = process.argv.slice(2);
 const launchedAt = Date.now();
 const env = {...process.env, YUE_DESKTOP_RECOVERY: '0'};
 for (const name of ['DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER']) delete env[name];
@@ -52,18 +54,30 @@ try {
     const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
     let painted = 0;
     for (let index = 3; index < data.length; index += 4) if (data[index]) painted += 1;
-    return {title: document.title, painted, pixels: canvas.width * canvas.height};
+    // The host sets the canvas's touch action as it boots, before main first
+    // yields, so its clear has happened by the time the page can be read.
+    return {title: document.title, booted: canvas.style.touchAction === 'none', painted,
+      pixels: canvas.width * canvas.height};
   })()`;
+  const expected = (seen) => mode === 'opaque' ? seen.painted === seen.pixels :
+    mode === 'clear' ? seen.painted === 0 : seen.painted > 0 && seen.painted < seen.pixels / 2;
+  const running = (seen) => seen.title === title && seen.booted && seen.pixels > 0;
   let seen = {};
   while (Date.now() < deadline) {
     seen = await evaluate(state) || {};
-    if (seen.title === 'Window' && seen.pixels > 0 && seen.painted === seen.pixels) break;
+    if (running(seen) && expected(seen)) break;
     await delay(100);
   }
-  if (seen.title !== 'Window' || !seen.pixels || seen.painted !== seen.pixels) {
-    throw new Error('the program did not run in the page: ' + JSON.stringify(seen) + ' ' + errors);
+  // A later repaint must not change what the page shows.
+  for (let sample = 0; sample < 10 && running(seen) && expected(seen); sample += 1) {
+    await delay(100);
+    seen = await evaluate(state) || {};
   }
-  console.log('Program entry page: main named the page and painted ' + seen.pixels + ' pixels');
+  if (!running(seen) || !expected(seen)) {
+    throw new Error('the program did not show a ' + mode + ' page: ' + JSON.stringify(seen) + ' ' + errors);
+  }
+  console.log('Program entry page: main named the page ' + title + ' and painted ' + seen.painted +
+    ' of ' + seen.pixels + ' pixels (' + mode + ')');
 } finally {
   socket?.close();
   browser.kill('SIGTERM');

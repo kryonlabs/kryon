@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A web page whose `#canvas` carries the `data-transparent` attribute has no
+  background: the canvas host clears the empty window and each frame to alpha
+  0, so the editor preview shows its theme wherever a program draws nothing.
+  Pages without it stay opaque.
 - The Linux desktop host can run an app's own windows, input and raster
   without raylib. It routes each SDL event to its window and reports the
   sideways wheel; `kryon/desktop_keyboard` gives held, pressed, repeated and

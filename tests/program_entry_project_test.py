@@ -4,6 +4,10 @@
 The entry is the maintained examples/window.zi. Its canvas profile must give a
 page whose generated host runs that main, and its desktop profile an
 executable that maps the program's window. Both run on private displays.
+
+The editor preview marks a page's canvas `data-transparent`: window.zi's page
+then leaves every pixel at alpha 0, and the maintained examples/hello.zi still
+draws its text over a transparent background. Unmarked, both are opaque.
 """
 
 import os
@@ -53,14 +57,21 @@ def run(command, directory):
     subprocess.run(list(map(str, command)), cwd=directory, env=ENV, check=True)
 
 
-for tool in ("xvfb-run", "xdotool"):
-    assert shutil.which(tool), f"Install {tool} to test a program entry's window"
+def browse(page, title, mode):
+    """Load PAGE, or with mode other than opaque its transparent copy, the
+    way the editor preview marks it, and check its canvas by MODE."""
+    if mode != "opaque":
+        html = page.read_text()
+        assert html.count('<canvas id="canvas"') == 1, f"{page} has no single page canvas"
+        page = page.with_name(page.stem + "-transparent.html")
+        page.write_text(html.replace('<canvas id="canvas"', '<canvas id="canvas" data-transparent'))
+    run([JS_RUNTIME, ROOT / "tests/program_entry_browser.mjs", page.as_uri(),
+         page.with_suffix(".profile"), title, mode], page.parent)
 
-with tempfile.TemporaryDirectory(prefix="program-entry-", dir=ROOT / "build") as directory:
-    project = Path(directory)
-    (project / "src").mkdir()
-    (project / "ziran.toml").write_text(
-        '[package]\nname = "window_program"\nentry = "src/window.zi"\n'
+
+def manifest(name, entry):
+    return (
+        f'[package]\nname = "{name}"\nentry = "src/{entry}"\n'
         'module_roots = ["src"]\n\n'
         '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
         'ref = "master"\n\n'
@@ -71,12 +82,25 @@ with tempfile.TemporaryDirectory(prefix="program-entry-", dir=ROOT / "build") as
         '[tool.kryon.profiles.web]\nbackend = "canvas"\n\n'
         '[tool.kryon.profiles.portable]\nbackend = "desktop"\ncodegen = "zx"\n'
     )
-    (project / "ziran.local.toml").write_text(
+
+
+def project_from(directory, name, example):
+    (directory / "src").mkdir(parents=True)
+    (directory / "ziran.toml").write_text(manifest(name, example))
+    (directory / "ziran.local.toml").write_text(
         f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n'
     )
-    shutil.copyfile(ROOT / "examples/window.zi", project / "src/window.zi")
+    shutil.copyfile(ROOT / "examples" / example, directory / "src" / example)
+    run([ZIRAN, "lock"], directory)
+
+
+for tool in ("xvfb-run", "xdotool"):
+    assert shutil.which(tool), f"Install {tool} to test a program entry's window"
+
+with tempfile.TemporaryDirectory(prefix="program-entry-", dir=ROOT / "build") as directory:
+    project = Path(directory) / "window"
+    project_from(project, "window_program", "window.zi")
     (project / "driver.py").write_text(DRIVER)
-    run([ZIRAN, "lock"], project)
 
     run([ZIRAN, "tool", "kryon", "build", "--profile", "web"], project)
     page = project / "build/window_program-web.html"
@@ -86,8 +110,15 @@ with tempfile.TemporaryDirectory(prefix="program-entry-", dir=ROOT / "build") as
     assert (project / "build/generated/web/ir/kryon_program_host.zir").is_file()
     assert not list((project / "build/generated/web/c").glob("*_canvas_run.c")), \
         "a program entry must not also link the frame host"
-    run([JS_RUNTIME, ROOT / "tests/program_entry_browser.mjs",
-         page.as_uri(), project / "browser-profile"], project)
+    browse(page, "Window", "opaque")
+    browse(page, "Window", "clear")
+
+    hello = Path(directory) / "hello"
+    project_from(hello, "hello_program", "hello.zi")
+    run([ZIRAN, "tool", "kryon", "build", "--profile", "web"], hello)
+    hello_page = hello / "build/hello_program-web.html"
+    browse(hello_page, "Hello", "opaque")
+    browse(hello_page, "Hello", "drawn")
 
     run([ZIRAN, "tool", "kryon", "build", "--profile", "desktop"], project)
     run(["xvfb-run", "-a", sys.executable, "driver.py"], project)
@@ -119,5 +150,5 @@ with tempfile.TemporaryDirectory(prefix="program-entry-", dir=ROOT / "build") as
     assert portable.returncode != 0
     assert "needs codegen c99" in portable.stdout + portable.stderr, \
         portable.stdout + portable.stderr
-print("Program entry: canvas page runs main, desktop executable maps its window, "
-      "portable profile is refused")
+print("Program entry: canvas page runs main, opaque unless its canvas is transparent, "
+      "desktop executable maps its window, portable profile is refused")

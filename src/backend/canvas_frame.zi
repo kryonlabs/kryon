@@ -7,7 +7,6 @@
 #import "tree_draw"
 #import "paint_queue"
 #import "page_core"
-#import "page_paint"
 #import "canvas_window"
 #import "web"
 
@@ -44,9 +43,8 @@ CanvasFrameEnsureClear :: () {
         WebNumber(1), WebNumber(0), WebNumber(0)}
     unused WebCall(ctx, page_names.set_transform, *identity[0], 6)
     color := canvas_frame_background
-    PageSetFill(ctx, cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
-    unused WebCall4(ctx, page_names.fill_rect, WebNumber(0), WebNumber(0),
-        WebNumber(cast(float64)page_render_width), WebNumber(cast(float64)page_render_height))
+    PageBackground(ctx, 0.0, 0.0, cast(float64)page_render_width, cast(float64)page_render_height,
+        cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
     unused WebCall0(ctx, page_names.restore)
     WebEnd(scope)
 }
@@ -71,10 +69,8 @@ CanvasFrameBegin :: (background: Color) {
 
 CanvasFrameFill :: (area: Rectangle) {
     color := canvas_frame_background
-    ctx := page_ctx
-    PageSetFill(ctx, cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
-    unused WebCall4(ctx, page_names.fill_rect, WebNumber(cast(float64)area.x),
-        WebNumber(cast(float64)area.y), WebNumber(cast(float64)area.width), WebNumber(cast(float64)area.height))
+    PageBackground(page_ctx, cast(float64)area.x, cast(float64)area.y, cast(float64)area.width,
+        cast(float64)area.height, cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
 }
 
 CanvasFrameBuiltin :: (session: Session) -> bool {

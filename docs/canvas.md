@@ -64,6 +64,12 @@ Only this host's event listeners and resize observer are removed on close.
 A subsequent open creates new input and texture state; cached default font
 memory is released before closing the canvas.
 
+A `#canvas` that carries the `data-transparent` attribute has no background:
+the host clears the window and each frame to alpha 0 instead of Kryon's frame
+colour, so the page behind it shows wherever the program draws nothing, and
+widgets draw over it as usual. The editor preview sets it; without it every
+pixel is opaque.
+
 Applications that handle Escape as navigation can call `CanvasSetExitKey(0)`
 through `kryon/Canvas` to disable the host's default Escape-to-exit behavior.
 Ordered keys and text remain available through `CanvasInputTake(session)`.
