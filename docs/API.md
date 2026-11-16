@@ -1038,8 +1038,12 @@ host only for the window, its events, clearing and presenting
 `ZxWindowPresentHost`, `ZxWindowCloseHost`). Kryon's desktop zx player binds
 them to the same SDL window and runs the bundle's `main` as native code, so
 with the player installed (`make install-user`) `ziran run --backend native
-window.zx` opens the window; `make zx-window-test` checks it on a private
-Xvfb. `App.Run(window, Draw)` brings the frame loop, the widget tree's frame
+window.zx` opens the window. The same capabilities are a host library,
+`libkryon-desktop.so` from `zx_window_host.zi` (`make zx-window-host`), which
+`make install-user` registers as `kryon-desktop.library`, so `zx2native
+window.zx` writes a Linux executable that links them and opens the window
+itself. `make zx-window-test` checks both on a private Xvfb, and that with no
+library registered `zx2native` stops at the gap naming `ZxWindowOpenHost`. `App.Run(window, Draw)` brings the frame loop, the widget tree's frame
 driver (`TreeFrameUse`) and, on Linux, the accessibility tree
 (`AccessibilityTreeUse`). The desktop raster loads pictures, smooth copies and
 fonts when a frame first draws them, video when it opens, and the test driver

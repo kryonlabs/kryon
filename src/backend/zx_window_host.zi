@@ -1,0 +1,39 @@
+// zx_window's five host capabilities as a host library: a ZX program's
+// native executable links them by name with the C ABI the C target gives
+// zx_window's declarations, and its calls open, clear, present and close the
+// desktop window directly. `make zx-window-host` builds the library from
+// this module alone and `make install-user` registers it, so `zx2native`
+// links window.zi's bundle against it. It holds the one window such a
+// program opens.
+Desktop :: #import "desktop_window";
+
+opened: Desktop.DesktopWindow;
+
+// Opens the window hidden; the first present shows it.
+#program_export
+ZxWindowOpenHost :: (title: string, width: s32, height: s32) -> bool {
+    if opened.window != null || width <= 0 || width > 16384 || height <= 0 || height > 16384 { return false }
+    return Desktop.Open(*opened, title, width, height)
+}
+
+// Waits up to a second for the window's next event.
+#program_export
+ZxWindowEventHost :: () -> s32 {
+    return Desktop.NextEvent(*opened)
+}
+
+// Clears the window to a 0xRRGGBB colour.
+#program_export
+ZxWindowClearHost :: (color: u32) -> bool {
+    return Desktop.Clear(*opened, color & 0xffffff)
+}
+
+#program_export
+ZxWindowPresentHost :: () {
+    Desktop.Present(*opened)
+}
+
+#program_export
+ZxWindowCloseHost :: () {
+    Desktop.Close(*opened)
+}

@@ -1,12 +1,17 @@
-// examples/window.zi as a portable bundle, run as native code by the
-// installed desktop player on a private Xvfb: `ziran run --backend native`
-// finds the player through a private host registry, and the bundle's own
-// loop shows one 320 by 160 window titled "Window" in an empty frame's
-// colour, which closes with status 0 on a window manager's close request.
+// examples/window.zi as a portable bundle, run as native code on a private
+// Xvfb two ways, each through a private host registry: `ziran run --backend
+// native` finds the installed desktop player, and `zx2native` writes a Linux
+// executable that links the desktop host library's zx_window capabilities.
+// Each time the bundle's own loop shows one 320 by 160 window titled
+// "Window" in an empty frame's colour, which closes with status 0 on a window
+// manager's close request. With no host library registered, zx2native stops
+// at the gap that names the capability and writes nothing.
 //
-// Run from the Kryon root after make zx-player, never against the live
-// desktop, with an absolute work folder and the player:
-//     ziran run --target=c tests/zx_window_test.zi -- $PWD/build/test/zx-window $PWD/build/bin/zx
+// Run from the Kryon root after make zx-player zx-window-host, never against
+// the live desktop, with an absolute work folder, the player, the host
+// library and zx2native:
+//     ziran run --target=c tests/zx_window_test.zi -- $PWD/build/test/zx-window \
+//         $PWD/build/bin/zx $PWD/build/lib/libkryon-desktop.so ZIRAN/build/bin/zx2native
 // ZIRAN_BIN names the ziran command (default ziran).
 #import "private_display_linux"
 #import "c_string"
@@ -17,6 +22,7 @@
 #import "timer_linux"
 #import "environment_linux"
 #import "process_run_linux"
+#import "text_tools"
 using Vectors :: #import "vec";
 
 // The empty frame's colour, as desktop_window and zx_window clear to.
@@ -39,53 +45,39 @@ Fail :: (message: string) -> s32 {
     return 1
 }
 
-#program_export
-main :: (argc: s32, argv: **u8) -> s32 {
-    if argc != 3 { return Fail("usage: zx_window_test FOLDER PLAYER") }
-    folder := TextFromCString(argv[1])
-    player := TextFromCString(argv[2])
-    if folder == "" || folder[0] != #char "/" || player == "" || player[0] != #char "/" {
-        return Fail("the folder and the player must be absolute paths")
-    }
-    ziran := EnvironmentText("ZIRAN_BIN")
-    if ziran == "" { ziran = "ziran" }
-    hosts := Path(folder, "hosts")
-    if !CreateDirectories(hosts) { return Fail("cannot create the host registry") }
-    // The registry holds only this checkout's player.
+// A registration holding one absolute path.
+Register :: (path: string, target: string) -> bool {
     registration: Vec(u8)
-    BuilderPrint(*registration, "%\n", player)
-    if !WriteEntireFile(Path(hosts, "kryon-desktop.host"), BuilderFinish(registration)) {
-        return Fail("cannot register the player")
-    }
-    bundle := Path(folder, "window.zx")
-    build: [10]string = .[ziran, "bundle", "--project", "--root", "examples", "--entry", "window:main",
-        "-o", bundle, "examples/window.zi"]
-    built: ProcessRun
-    options: ProcessOptions = .{.arguments = build[:], .output_path = Path(folder, "bundle.log"), .merge_error = true}
-    if !RunProcess(options, *built) || built.code != 0 { return Fail("window.zi does not bundle") }
+    BuilderPrint(*registration, "%\n", target)
+    return WriteEntireFile(path, BuilderFinish(registration))
+}
 
-    display := OpenPrivateDisplay(640, 480, Path(folder, "xvfb.log"))
-    if !display.valid { return Fail(display.error) }
-    defer ClosePrivateDisplay(*display)
-    run: [5]string = .[ziran, "run", "--backend", "native", bundle]
-    extra: [2]string = .[Setting("ZIRAN_HOST_PATH", hosts), Setting("ZIRAN_NATIVE_CACHE", Path(folder, "native"))]
-    app := StartOnDisplay(*display, run[:], extra[:], "", Path(folder, "app.log"))
-    if !app.started { return Fail("ziran run did not start") }
-    // ziran run starts the player, which draws the window.
-    window := FindSessionWindow(*display, *app, 30000)
+// Runs COMMAND to completion with EXTRA settings, its output in LOG.
+Run :: (command: []string, extra: []string, log: string) -> s32 {
+    finished: ProcessRun
+    options: ProcessOptions = .{.arguments = command, .environment = extra, .output_path = log, .merge_error = true}
+    if !RunProcess(options, *finished) { return -1 }
+    return finished.code
+}
+
+// Waits for the run's window, checks its title, size and colour, asks it to
+// close and checks the run then ends with status 0.
+CheckWindow :: (display: *PrivateDisplay, app: *ProcessRun, route: string) -> s32 {
+    window := FindSessionWindow(display, app, 30000)
     if window == 0 {
-        unused StopOwnedProcess(*app, 2000)
-        return Fail("no window appeared; see app.log")
+        unused StopOwnedProcess(app, 2000)
+        print("zx window: % showed no window\n", route)
+        return 1
     }
     status: s32
-    title := WindowTitle(*display, window)
-    width, height := WindowSize(*display, window)
+    title := WindowTitle(display, window)
+    width, height := WindowSize(display, window)
     image: DisplayImage
     if title != "Window" {
-        print("zx window: the title is \"%\"\n", title)
+        print("zx window: % titled the window \"%\"\n", route, title)
         status = 1
     } else if width != 320 || height != 160 {
-        print("zx window: the window is % by %\n", width, height)
+        print("zx window: % opened a % by % window\n", route, width, height)
         status = 1
     } else {
         // The window maps before its first frame is presented, and X shows
@@ -93,37 +85,98 @@ main :: (argc: s32, argv: **u8) -> s32 {
         // up to 10 s for the presented frame; the assertion stays exact.
         painted_deadline := MonotonicMilliseconds() + 10000
         while true {
-            if !CaptureWindow(*display, window, *image) {
+            if !CaptureWindow(display, window, *image) {
                 status = Fail("cannot capture the window")
                 break
             }
             if ImagePixel(*image, 0, 0) == cast(u32)EMPTY_COLOR && ImageColorCount(*image) == 1 { break }
-            if MonotonicMilliseconds() < painted_deadline && !PollProcess(*app) {
+            if MonotonicMilliseconds() < painted_deadline && !PollProcess(app) {
                 unused SleepMilliseconds(20)
                 continue
             }
             first := ImagePixel(*image, 0, 0)
-            print("zx window: % colours, the first %, %, %\n", ImageColorCount(*image), PixelRed(first),
-                PixelGreen(first), PixelBlue(first))
+            print("zx window: % showed % colours, the first %, %, %\n", route, ImageColorCount(*image),
+                PixelRed(first), PixelGreen(first), PixelBlue(first))
             status = 1
             break
         }
     }
-    if !RequestWindowClose(*display, window) {
-        unused StopOwnedProcess(*app, 2000)
+    if !RequestWindowClose(display, window) {
+        unused StopOwnedProcess(app, 2000)
         return Fail("cannot ask the window to close")
     }
     deadline := MonotonicMilliseconds() + 10000
-    while !PollProcess(*app) && MonotonicMilliseconds() < deadline { unused SleepMilliseconds(20) }
+    while !PollProcess(app) && MonotonicMilliseconds() < deadline { unused SleepMilliseconds(20) }
     if !app.finished {
-        unused StopOwnedProcess(*app, 2000)
-        return Fail("closing the window did not end the run")
-    }
-    if app.code != 0 {
-        print("zx window: the run exited with status %\n", app.code)
+        unused StopOwnedProcess(app, 2000)
+        print("zx window: closing the window did not end %\n", route)
         return 1
     }
-    if status != 0 { return status }
-    print("zx window: window.zx ran natively in one 320x160 \"Window\" window and exited 0 when closed\n")
+    if app.code != 0 {
+        print("zx window: % exited with status %\n", route, app.code)
+        return 1
+    }
+    return status
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 5 { return Fail("usage: zx_window_test FOLDER PLAYER LIBRARY ZX2NATIVE") }
+    folder := TextFromCString(argv[1])
+    player := TextFromCString(argv[2])
+    library := TextFromCString(argv[3])
+    zx2native := TextFromCString(argv[4])
+    for path: string.[folder, player, library, zx2native] {
+        if path == "" || path[0] != #char "/" { return Fail("every path must be absolute") }
+    }
+    ziran := EnvironmentText("ZIRAN_BIN")
+    if ziran == "" { ziran = "ziran" }
+    hosts := Path(folder, "hosts")
+    empty := Path(folder, "no-hosts")
+    if !CreateDirectories(hosts) || !CreateDirectories(empty) { return Fail("cannot create the host registries") }
+    // The registry holds only this checkout's player and host library.
+    if !Register(Path(hosts, "kryon-desktop.host"), player) ||
+        !Register(Path(hosts, "kryon-desktop.library"), library) {
+        return Fail("cannot register the player and the host library")
+    }
+    bundle := Path(folder, "window.zx")
+    build: [10]string = .[ziran, "bundle", "--project", "--root", "examples", "--entry", "window:main",
+    "-o", bundle, "examples/window.zi"]
+    none: [0]string
+    if Run(build[:], none[:], Path(folder, "bundle.log")) != 0 { return Fail("window.zi does not bundle") }
+
+    // No registered library defines the capabilities: a named gap, no file.
+    gap := Path(folder, "gap.elf")
+    lower: [4]string = .[zx2native, "-o", gap, bundle]
+    unlinked: [1]string = .[Setting("ZIRAN_HOST_PATH", empty)]
+    gap_log := Path(folder, "gap.log")
+    if Run(lower[:], unlinked[:], gap_log) == 0 { return Fail("zx2native linked window.zx with no host library") }
+    gap_text, read := ReadEntireFile(gap_log)
+    if !read || !TextContains(gap_text, "assembly.gap.machine-host") || !TextContains(gap_text, "ZxWindowOpenHost") ||
+        PathExists(gap) {
+        return Fail("an unlinked window.zx did not stop at the gap naming ZxWindowOpenHost; see gap.log")
+    }
+    // With the host library registered, the executable links it.
+    executable := Path(folder, "window.elf")
+    lower[2] = executable
+    linked: [1]string = .[Setting("ZIRAN_HOST_PATH", hosts)]
+    if Run(lower[:], linked[:], Path(folder, "elf.log")) != 0 { return Fail("zx2native did not lower window.zx; see elf.log") }
+
+    display := OpenPrivateDisplay(640, 480, Path(folder, "xvfb.log"))
+    if !display.valid { return Fail(display.error) }
+    defer ClosePrivateDisplay(*display)
+    run: [5]string = .[ziran, "run", "--backend", "native", bundle]
+    extra: [2]string = .[Setting("ZIRAN_HOST_PATH", hosts), Setting("ZIRAN_NATIVE_CACHE", Path(folder, "native"))]
+    // ziran run starts the player, which draws the window.
+    app := StartOnDisplay(*display, run[:], extra[:], "", Path(folder, "app.log"))
+    if !app.started { return Fail("ziran run did not start") }
+    if CheckWindow(*display, *app, "ziran run") != 0 { return 1 }
+    // The executable calls the library's capabilities itself.
+    direct: [1]string = .[executable]
+    elf := StartOnDisplay(*display, direct[:], none[:], "", Path(folder, "elf-run.log"))
+    if !elf.started { return Fail("window.elf did not start") }
+    if CheckWindow(*display, *elf, "window.elf") != 0 { return 1 }
+    print("zx window: window.zx ran natively through ziran run and as an executable linking the host library, ")
+    print("each in one 320x160 \"Window\" window that exited 0 when closed; with no host library zx2native named the gap\n")
     return 0
 }

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- `zx_window_host.zi` is the desktop's zx_window capabilities as a host
+  library: `make zx-window-host` builds `build/lib/libkryon-desktop.so` and
+  `make install-user` installs it and registers it as
+  `~/.local/share/ziran/hosts/kryon-desktop.library`, so `zx2native` links
+  `examples/window.zi`'s bundle into a Linux executable that opens its
+  320x160 "Window" itself; the editor's Native Assembly, Binary and Open in
+  window use that executable. `make zx-window-test` also runs it on a private
+  Xvfb and checks that with no library registered `zx2native` stops at the
+  gap naming `ZxWindowOpenHost`.
+
 ## [0.4.0] - 2026-11-16
 
 - Builds with Ziran 0.6.0. ZX apps use Ziran's executable format on every

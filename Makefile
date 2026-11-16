@@ -214,14 +214,16 @@ zx-test: build/bin/kryon zx-player
 
 test: zx-test zx-reload-test
 
-# window.zi's bundle runs as native code in the desktop player's window on a
-# private Xvfb, through `ziran run` and a private host registry.
+# window.zi's bundle runs as native code on a private Xvfb through a private
+# host registry: in the desktop player's window through `ziran run`, and as
+# zx2native's executable linking the desktop host library.
 .PHONY: zx-window-test
-zx-window-test: zx-player
+zx-window-test: zx-player zx-window-host
 	@rm -rf build/test/zx-window
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
 		ZIRAN_BIN="$(abspath $(ZIRAN_BIN))" "$(ZIRAN_BIN)" run --target=c tests/zx_window_test.zi -- \
-		"$(abspath build/test/zx-window)" "$(abspath $(PLAYER))"
+		"$(abspath build/test/zx-window)" "$(abspath $(PLAYER))" "$(abspath $(WINDOW_HOST))" \
+		"$(abspath $(dir $(ZIRAN_BIN))zx2native)"
 test: zx-window-test
 
 .PHONY: zx-services-test zx-hosted-test zx-headless-test
@@ -297,16 +299,22 @@ pixmap-mono-font: $(OUTLINE_FONT_PROGRAM)
 # Installs the kryon command. Outside `ziran tool kryon` it forwards project
 # commands to ziran, which runs the Kryon each project's lock pins.
 PREFIX ?= $(HOME)/.local
-install-user: build/bin/kryon zx-player
+install-user: build/bin/kryon zx-player zx-window-host
 	mkdir -p "$(PREFIX)/bin"
 	cp build/bin/kryon "$(PREFIX)/bin/kryon.new"
 	mv -f "$(PREFIX)/bin/kryon.new" "$(PREFIX)/bin/kryon"
 	cp build/bin/zx "$(PREFIX)/bin/zx.new"
 	mv -f "$(PREFIX)/bin/zx.new" "$(PREFIX)/bin/zx"
+	mkdir -p "$(PREFIX)/lib/kryon"
+	cp $(WINDOW_HOST) "$(PREFIX)/lib/kryon/libkryon-desktop.so.new"
+	mv -f "$(PREFIX)/lib/kryon/libkryon-desktop.so.new" "$(PREFIX)/lib/kryon/libkryon-desktop.so"
 	mkdir -p "$(PREFIX)/share/ziran/hosts"
 	@provider=$$(CDPATH= cd -- "$(PREFIX)/bin" && pwd -P) && \
 		printf '%s/zx\n' "$$provider" > "$(PREFIX)/share/ziran/hosts/kryon-desktop.host.new"
 	mv -f "$(PREFIX)/share/ziran/hosts/kryon-desktop.host.new" "$(PREFIX)/share/ziran/hosts/kryon-desktop.host"
+	@library=$$(CDPATH= cd -- "$(PREFIX)/lib/kryon" && pwd -P) && \
+		printf '%s/libkryon-desktop.so\n' "$$library" > "$(PREFIX)/share/ziran/hosts/kryon-desktop.library.new"
+	mv -f "$(PREFIX)/share/ziran/hosts/kryon-desktop.library.new" "$(PREFIX)/share/ziran/hosts/kryon-desktop.library"
 	$(RM) "$(PREFIX)/bin/zib"
 
 # Laws state policy independently of its implementation; `ziran check`
