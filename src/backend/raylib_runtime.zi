@@ -1920,6 +1920,24 @@ RaylibDiscardTypefaceTextures :: (typeface: *RaylibTypeface) {
     }
 }
 
+// Kryon's colours are sRGB already, so the window must store them as they
+// are. SDL 3, which an SDL 2 program also runs on through sdl2-compat, can
+// give an OpenGL ES context an sRGB-capable framebuffer that encodes every
+// colour a second time, washing out the whole window; ask for a linear one.
+#if #defined(ANDROID_BUILD) || #defined(PLATFORM_WEB) || #defined(_WIN32) || #defined(__APPLE__) {
+    RaylibLinearFramebuffer :: () {}
+} else {
+    framebuffer_sdl :: #system_library "SDL2";
+    HostSdlSetHint :: (name: *u8, value: *u8) -> s32 #foreign framebuffer_sdl "SDL_SetHint";
+    RaylibLinearFramebuffer :: () {
+        hint: [64]u8
+        value: [2]u8 = .[48, 0]
+        if CopyCString("SDL_OPENGL_FORCE_SRGB_FRAMEBUFFER", hint[:]) {
+            unused HostSdlSetHint(*hint[0], *value[0])
+        }
+    }
+}
+
 // An empty title names the window after the program; see program_title.
 #program_export
 OpenRaylib :: (width: s32 = 960, height: s32 = 600,
@@ -1936,6 +1954,7 @@ OpenRaylib :: (width: s32 = 960, height: s32 = 600,
     InputDeliveryReset(*raylib_input)
     raylib_input_focused = false
     HostRaylibSetConfigFlags(flags)
+    RaylibLinearFramebuffer()
     HostRaylibInitWindow(width, height, *label[0])
     if !HostRaylibIsWindowReady() { return false }
     if !WindowVisible() {

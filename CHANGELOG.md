@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Raylib desktop windows on Linux show their exact colours where SDL 2 runs
+  on SDL 3 through sdl2-compat. SDL 3 could give the OpenGL ES context an
+  sRGB-capable framebuffer that encoded Kryon's sRGB colours a second time
+  and washed out the whole window; the host now asks SDL for a linear one.
 - On the web, the mouse wheel scrolls what is under it even when the
   pointer has not moved since a click elsewhere: the canvas host takes the
   pointer position from the wheel event, which a page with a text editor
