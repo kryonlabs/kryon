@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- A program entry builds in a profile with `codegen = "zx"`: its bundle is
+  the program's own `main`, with portable IR, so `kryon/app` gives it the ZX
+  window. In a canvas profile the ZX canvas player binds `zx_window` to the
+  page's canvas (`window_page_player.zi`), lowers the bundle to Wasm in the
+  page and runs `main` there, each wait for an event yielding to the page, so
+  `examples/window.zi`'s ZX shows its window in the browser; the editor's
+  Wasm platform opens it there. Both players share `zx_window_bundle.zi`.
 - `zx_window_host.zi` is the desktop's zx_window capabilities as a host
   library: `make zx-window-host` builds `build/lib/libkryon-desktop.so` and
   `make install-user` installs it and registers it as

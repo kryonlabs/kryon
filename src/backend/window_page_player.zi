@@ -1,0 +1,102 @@
+// The page's side of a bundle that only shows a window, as page_window shows
+// a C program's: Kryon's ZX canvas player binds the bundle's zx_window
+// capabilities to the page's canvas and runs the bundle's entry until the
+// page closes. Waiting for an event sleeps, which yields to the page, so the
+// entry's own loop never blocks it. No frame loop, raster, fonts or input
+// routing run for it.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "page_core"
+#import "web"
+using Window :: #import "zx_window_bundle";
+
+using HostValueKind;
+
+// zx_window's events.
+WINDOW_NONE :: 0
+WINDOW_CLOSE :: 1
+WINDOW_DRAW :: 2
+
+// How long a wait sleeps before it looks at the page again.
+WINDOW_WAIT_MS :: 50
+
+PageWindowCall :: (context: *void, module_name: *u8, function_name: *u8,
+    args: *HostValue, count: s32, result: *HostValue) -> s32 {
+    function := TextFromCString(function_name)
+    result.kind = HostVoid
+    if function == "ZxWindowOpenHost" && count == 3 && args[0].kind == HostString &&
+        args[1].kind == HostInteger && args[2].kind == HostInteger {
+        width := args[1].integer
+        height := args[2].integer
+        title: string
+        if args[0].length > 0 { title = TextFromBytes(BytesFromPointer(args[0].data, cast(u64)args[0].length)) }
+        open := false
+        if width > 0 && width <= 16384 && height > 0 && height <= 16384 {
+            PageBoot(cast(s32)width, cast(s32)height, title)
+            open = PageIsOpen() && PageCanvas() != 0
+            if open { PageBindResize() }
+        }
+        result.kind = HostInteger
+        result.integer = cast(s64)open
+        return 1
+    }
+    if function == "ZxWindowClearHost" && count == 1 && args[0].kind == HostUnsigned {
+        ctx := PageContext()
+        color := args[0].bits
+        if ctx != 0 {
+            scope := WebScope()
+            PageBackground(ctx, 0.0, 0.0, cast(float64)PageDimension(0), cast(float64)PageDimension(1),
+                cast(s32)((color >> 16) & 255), cast(s32)((color >> 8) & 255), cast(s32)(color & 255), 255)
+            WebEnd(scope)
+        }
+        result.kind = HostInteger
+        result.integer = cast(s64)(ctx != 0)
+        return 1
+    }
+    if count != 0 { return 0 }
+    if function == "ZxWindowEventHost" {
+        event := WINDOW_NONE
+        if PageDimension(6) != 0 { event = WINDOW_CLOSE }
+        else {
+            PageSleep(WINDOW_WAIT_MS)
+            // A resized canvas starts empty.
+            if PageDimension(6) != 0 { event = WINDOW_CLOSE }
+            else if PageDimension(4) != 0 { event = WINDOW_DRAW }
+        }
+        result.kind = HostInteger
+        result.integer = cast(s64)event
+        return 1
+    }
+    if function == "ZxWindowPresentHost" { PageFrame(); return 1 }
+    if function == "ZxWindowCloseHost" { PageClose(); return 1 }
+    return 0
+}
+
+// Binds the bundle's window capabilities to the page and runs its entry
+// until it returns, with the entry's result as the status. A capability
+// other than zx_window's stops it before anything runs.
+Run :: (bundle: *void) -> s32 {
+    bindings: [WINDOW_CAPABILITIES]HostBinding
+    count: u64 = 0
+    index: u64 = 0
+    while index < BundleCapabilities(bundle) {
+        module := BundleCapabilityModuleName(bundle, index)
+        function := BundleCapabilityFunctionName(bundle, index)
+        if !Capability(module, function) || count >= cast(u64)WINDOW_CAPABILITIES { return 1 }
+        bindings[count] = HostBinding.{.module = module, .function = function, .call = PageWindowCall,
+            .context = null}
+        count += 1
+        index += 1
+    }
+    instance := InstantiateBundle(bundle, *bindings[0], count)
+    if instance == null { return 1 }
+    result: s64
+    has_result: s32
+    ran := RunBundleInstance(instance, *result, *has_result) != 0
+    CloseBundleInstance(instance)
+    // An entry that stopped without closing its window leaves the page open
+    // as it is.
+    if !ran { return 1 }
+    return ifx has_result != 0 then cast(s32)result else 0
+}

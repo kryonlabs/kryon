@@ -2,6 +2,8 @@
 using Host :: #import "Canvas";
 using Render :: #import "canvas_raster";
 Player :: #import "bundle_player";
+WindowBundles :: #import "zx_window_bundle";
+WindowPage :: #import "window_page_player";
 #import "bundle_media"
 #import "page_core"
 #import "bundle_app"
@@ -162,6 +164,19 @@ LoadSelected :: (player: *Player.Player, assets: *AppFiles, raster: *RasterHost)
     data := BytesFromPointer(descriptor.data, cast(u64)bytes.count)
     checked := OpenBundleBytes(descriptor.data, cast(u64)bytes.count)
     if checked == null { ShowStatus("This file is not a valid ZX."); return false }
+    // A bundle that only shows a window runs its own entry on the page until
+    // the page closes, with the page's canvas as its window.
+    if WindowBundles.WindowBundle(checked) {
+        Player.PlayerClose(player)
+        BundleMediaClose(*media)
+        BundleAppClose(*apps[active_app])
+        hosted = false
+        ShowStatus("")
+        status := WindowPage.Run(checked)
+        CloseBundle(checked)
+        if status != 0 { ShowStatus("The ZX window could not open.") }
+        return status == 0
+    }
     is_app := BundleIsApp(checked)
     accepted := !is_app || BundleAppCheck(checked)
     CloseBundle(checked)

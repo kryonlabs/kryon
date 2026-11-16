@@ -1,0 +1,30 @@
+// A bundle that shows its window through zx_window, as App.Show's portable
+// window does, and its five capabilities: what a player binds for it, the
+// desktop's in window_player and the page's in window_page_player.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+Names :: #import "bundle_names";
+
+// zx_window's five capabilities.
+WINDOW_CAPABILITIES :: 5
+
+Capability :: (module: *u8, function: *u8) -> bool {
+    if !Names.ModuleName(TextFromCString(module), "zx_window") { return false }
+    name := TextFromCString(function)
+    return name == "ZxWindowOpenHost" || name == "ZxWindowEventHost" ||
+        name == "ZxWindowClearHost" || name == "ZxWindowPresentHost" ||
+        name == "ZxWindowCloseHost"
+}
+
+// The bundle shows its window through zx_window.
+WindowBundle :: (bundle: *void) -> bool {
+    index: u64 = 0
+    while index < BundleCapabilities(bundle) {
+        if Names.ModuleName(TextFromCString(BundleCapabilityModuleName(bundle, index)), "zx_window") {
+            return true
+        }
+        index += 1
+    }
+    return false
+}

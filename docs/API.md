@@ -1043,7 +1043,12 @@ window.zx` opens the window. The same capabilities are a host library,
 `make install-user` registers as `kryon-desktop.library`, so `zx2native
 window.zx` writes a Linux executable that links them and opens the window
 itself. `make zx-window-test` checks both on a private Xvfb, and that with no
-library registered `zx2native` stops at the gap naming `ZxWindowOpenHost`. `App.Run(window, Draw)` brings the frame loop, the widget tree's frame
+library registered `zx2native` stops at the gap naming `ZxWindowOpenHost`. In
+the browser, a project profile with `backend = "canvas"` and `codegen = "zx"`
+takes a program entry too: its bundle is the program's own `main`, and the ZX
+canvas player binds the window to the page's canvas (`window_page_player`),
+lowers the bundle to Wasm in the page and runs it, each wait for an event
+yielding to the page. `App.Run(window, Draw)` brings the frame loop, the widget tree's frame
 driver (`TreeFrameUse`) and, on Linux, the accessibility tree
 (`AccessibilityTreeUse`). The desktop raster loads pictures, smooth copies and
 fonts when a frame first draws them, video when it opens, and the test driver

@@ -128,9 +128,15 @@ endif
 # the profile's host owns main.
 PROJECT_PROGRAM := $(shell grep -Eqs '^main[[:space:]]*::' '$(PROJECT_ENTRY)' && echo program)
 ifneq ($(PROJECT_PROGRAM),)
-ifneq ($(PROJECT_CODEGEN),c99)
-$(error a program entry ($(PROJECT_ENTRY) declares main) needs codegen c99; a portable profile needs a Frame entry)
-endif
+ifeq ($(PROJECT_CODEGEN),zx)
+# A portable program's bundle is its own main, which kryon/app gives the
+# window ZX bundles have; the profile's player runs it.
+HOST_ID := $(PROJECT_ENTRY_MODULE)
+PROJECT_FRAME_BIND :=
+HOST_ROOT_SOURCES := $(PROJECT_ENTRY)
+else ifneq ($(PROJECT_CODEGEN),c99)
+$(error a program entry ($(PROJECT_ENTRY) declares main) needs codegen c99 or zx)
+else
 # The generated host is the process entry; it only calls the program's main.
 PROGRAM_HOST := $(GEN_DIR)/program-host/kryon_program_host.zi
 HOST := $(PROGRAM_HOST)
@@ -138,6 +144,7 @@ HOST_ID := kryon_program_host
 # Its folder is a module path, so the host is saved under its own name.
 PROJECT_FRAME_BIND := --module-path $(dir $(PROGRAM_HOST))
 HOST_ROOT_SOURCES := $(PROGRAM_HOST) $(PROJECT_ENTRY)
+endif
 else
 PROJECT_FRAME_BIND := --bind $(ZIRAN_PACKAGE_ID)_frame_entry:ProjectFrame=$(PROJECT_ENTRY_MODULE):Frame
 HOST_ROOT_SOURCES += $(PROJECT_ENTRY) $(KRYON_DIR)/src/backend/frame_entry.zi
@@ -172,9 +179,9 @@ IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) $(WEB_TARGE
 C_COMMAND := $(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB --entry $(HOST_ID):main \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
 else
-# A program selects its kryon/app host by compiled target, so its IR names
-# the native C target; frame IR stays portable.
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) $(if $(PROJECT_PROGRAM),--target=c) $(if $(filter c99,$(PROJECT_CODEGEN)),--define POSIX_THREADS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
+# A program selects its kryon/app host by compiled target, so a C program's
+# IR names the native C target; a ZX program's and frame IR stay portable.
+IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) $(if $(PROJECT_PROGRAM),$(if $(filter c99,$(PROJECT_CODEGEN)),--target=c)) $(if $(filter c99,$(PROJECT_CODEGEN)),--define POSIX_THREADS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
 C_COMMAND := $(ZIRAN) build --target=c --entry $(HOST_ID):main \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
 endif
@@ -374,7 +381,7 @@ $(PROGRAM): $(IR_STAMP) $(ASSET_DEPENDENCY) $(ZIRAN_DIR)/build/bin/zi2zx
 		-o $@ $(IR_DIR)/*.zir
 endif
 
-ifneq ($(PROJECT_PROGRAM),)
+ifneq ($(PROGRAM_HOST),)
 # main takes nothing or (argc, argv) and returns nothing or its exit status.
 $(PROGRAM_HOST): $(PROJECT_ENTRY) $(KRYON_DIR)/mk/ziran-project.mk
 	@mkdir -p $(dir $@)
