@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Android builds compile Ziran's runtime for each ABI with the pinned
+  toolchain's own `zi2c` (`GEN_ZI2C`), so the modules Ziran generates C for
+  build on the host instead of with a `zi2c` built for the device; the ZX
+  player APK builds again and runs `app.zx` natively on the ARMv7 Moto.
 - Kryon's renderer and SDL3 artifacts no longer list the top-level `Makefile`
   as a recipe input. Their providers never read it, and Ziran refuses an
   artifact whose inputs change while it builds, so an edit there failed a

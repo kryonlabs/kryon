@@ -25,6 +25,9 @@ command = [
     "CC=" + a.cc,
     "AR=" + a.ar,
     "OBJCOPY=" + a.objcopy,
+    # The modules Ziran generates C for compile on this host, with the
+    # pinned toolchain's own zi2c, not one built for the device.
+    "GEN_ZI2C=" + str(source / "build/bin/zi2c"),
     "CFLAGS=" + a.flags,
     "FRAMEFLAGS=-Wframe-larger-than=16384",
     str(output / "libziran.a"),
