@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Renderer artifact builds accept dependencies resolved through a local
+  override instead of failing the locked-edge commit check; locked builds
+  still require the exact commit.
 - Builds from the pinned packages again: avif is pinned to the commit with
   the encode and preview modules that image previews import.
 - Test-driver key commands retry after ordered-input backpressure instead of

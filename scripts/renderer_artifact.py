@@ -138,6 +138,13 @@ def mingw_library_flags(cc):
     return flags
 
 
+def verify_locked_commit(source, commit, local, name):
+    # A local override is a live checkout that pkg path already validated;
+    # only locked builds must match the provider edge's exact commit.
+    if not local and capture(['git', '-C', source, 'rev-parse', 'HEAD']) != commit:
+        raise ValueError(f'resolved {name} does not match the provider locked edge')
+
+
 def build(name, target, stage, root):
     if name == 'native-sdl3':
         if target != 'linux-x86_64-gnu':
@@ -152,8 +159,7 @@ def build(name, target, stage, root):
         locked = [] if (project / 'ziran.local.toml').exists() else ['--locked']
         source = Path(capture([toolchain / 'build/bin/ziran', 'pkg', 'path',
                                dependency['name'], *locked], cwd=project))
-        if capture(['git', '-C', source, 'rev-parse', 'HEAD']) != dependency['commit']:
-            raise ValueError('resolved SDL3 does not match the provider locked edge')
+        verify_locked_commit(source, dependency['commit'], not locked, 'SDL3')
         run(['sh', root / 'scripts/build-sdl3.sh', target, stage, source])
         return
     if name not in SUPPORTED_RENDERERS:
@@ -183,8 +189,8 @@ def build(name, target, stage, root):
                                dependency['name'], *locked], cwd=project))
         # pkg path validates an explicit local development identity itself.
         # Committed dependencies additionally retain the exact provider edge.
-        if 'commit' in dependency and capture(['git', '-C', source, 'rev-parse', 'HEAD']) != dependency['commit']:
-            raise ValueError(f'resolved {name} does not match the provider locked edge')
+        if 'commit' in dependency:
+            verify_locked_commit(source, dependency['commit'], not locked, name)
         return source
     avif_source = locked_source('libavif') if name != 'renderer-web' else None
     aom_source = locked_source('libaom') if name != 'renderer-web' else None

@@ -65,6 +65,17 @@ class RendererConsumerTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'absent'):
             renderer.locked_provider(lock, 'local-override')
 
+    def test_local_override_skips_and_locked_build_checks_the_commit(self):
+        repo = self.root / 'dep'
+        repo.mkdir()
+        git = lambda *a: subprocess.run(['git', '-C', str(repo), '-c', 'user.name=t',
+            '-c', 'user.email=t@t', *a], check=True, capture_output=True)
+        git('init', '-q')
+        git('commit', '-q', '--allow-empty', '-m', 'x')
+        renderer.verify_locked_commit(repo, 'older-locked-commit', True, 'avif')
+        with self.assertRaisesRegex(ValueError, 'does not match'):
+            renderer.verify_locked_commit(repo, 'older-locked-commit', False, 'avif')
+
     def test_native_order_resources_and_compile_options(self):
         result = self.consume()
         self.assertEqual(renderer.renderer_link(result), [str(self.root / 'lib/second.a'),
