@@ -1200,6 +1200,17 @@ WindowVisibleHost :: () -> bool {
     return (GetWindowFlags(window) & cast(u32)0x8) == cast(u32)0
 }
 
+// Observations leave SDL's event queue and intercepted close request intact.
+#program_export
+WindowMinimizedHost :: () -> bool {
+    return window != null && (GetWindowFlags(window) & cast(u32)0x40) != cast(u32)0
+}
+
+#program_export
+WindowClosingHost :: () -> bool {
+    return window == null || desktop_quit || desktop_close_requested
+}
+
 // SDL_WINDOW_INPUT_FOCUS, excluding hidden and minimized windows. Inspect only
 // the SDL window owned by this host; no desktop-wide window query is needed.
 #program_export

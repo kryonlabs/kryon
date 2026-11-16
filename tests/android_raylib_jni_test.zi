@@ -1,7 +1,6 @@
 Jni :: #import "android_jni";
 Native :: #import "android_native";
 Surface :: #import "android_surface";
-Window :: #import "window_runtime";
 Touch :: #import "android_touch";
 Text :: #import "std/byte_text_linux";
 CString :: #import "c_string";
@@ -20,15 +19,6 @@ ANativeWindow_getHeight :: (window: *void) -> s32 {
     return ifx window == cast(*void)cast(usize)1 then 1136 else 1280
 }
 
-viewport_width: s32;
-viewport_height: s32;
-framebuffer_width: s32;
-framebuffer_height: s32;
-viewport_calls: s32;
-projection_width: float64;
-projection_height: float64;
-projection_valid: bool = true;
-projection_mode: s32;
 draw_surface: *void;
 draw_width: s32;
 draw_height: s32;
@@ -72,49 +62,15 @@ HostQuerySurface :: (display: *void, surface: *void, attribute: s32,
 }
 
 
-#program_export "GetScreenWidth"
-HostWidth :: () -> s32 {
-    return 480
+SurfaceWidth :: () -> s32 {
+    width: s32
+    unused Surface.SyncAndroidSurfaceSize(*width, null)
+    return width
 }
-#program_export "GetScreenHeight"
-HostHeight :: () -> s32 {
-    return 800
-}
-#program_export "BeginDrawing"
-HostBegin :: () {}
-#program_export "rlDrawRenderBatchActive"
-HostFlush :: () {}
-#program_export "rlViewport"
-HostViewport :: (x: s32, y: s32, width: s32, height: s32) {
-    if x != 0 || y != 0 {
-        projection_valid = false
-    }
-    viewport_width = width
-    viewport_height = height
-    viewport_calls += 1
-}
-#program_export "rlMatrixMode"
-HostMatrixMode :: (mode: s32) {
-    projection_mode = mode
-}
-#program_export "rlLoadIdentity"
-HostIdentity :: () {}
-#program_export "rlOrtho"
-HostProjection :: (left: float64, right: float64, bottom: float64,
-    top: float64, near: float64, far: float64) {
-    if left != 0.0 || top != 0.0 || near != 0.0 || far != 1.0 || projection_mode != 5889 {
-        projection_valid = false
-    }
-    projection_width = right
-    projection_height = bottom
-}
-#program_export "rlSetFramebufferWidth"
-HostFramebufferWidth :: (width: s32) {
-    framebuffer_width = width
-}
-#program_export "rlSetFramebufferHeight"
-HostFramebufferHeight :: (height: s32) {
-    framebuffer_height = height
+SurfaceHeight :: () -> s32 {
+    height: s32
+    unused Surface.SyncAndroidSurfaceSize(null, *height)
+    return height
 }
 
 #program_export
@@ -151,14 +107,8 @@ Check :: () -> s32 {
     if !Native.AndroidNativeSurfaceSize(*width, *height) || width != 640 || height != 1136 {
         return 9
     }
-    if Window.WindowWidth() != 640 || Window.WindowHeight() != 1136 {
+    if SurfaceWidth() != 640 || SurfaceHeight() != 1136 {
         return 13
-    }
-    Window.BeginWindowFrame()
-    if viewport_calls != 1 || viewport_width != 640 || viewport_height != 1136 ||
-    framebuffer_width != 640 || framebuffer_height != 1136 ||
-    !projection_valid || projection_width != 640.0 || projection_height != 1136.0 || projection_mode != 5888 {
-        return 14
     }
     app.pending_window = cast(*void)cast(usize)2
     if !Surface.GetAndroidPendingSurfaceSize(*width, *height) || width != 720 || height != 1280 {
@@ -172,26 +122,14 @@ Check :: () -> s32 {
         return 12
     }
     app.window = cast(*void)cast(usize)2
-    if Window.WindowWidth() != 720 || Window.WindowHeight() != 1280 {
+    if SurfaceWidth() != 720 || SurfaceHeight() != 1280 {
         return 15
-    }
-    Window.BeginWindowFrame()
-    if viewport_calls != 2 || viewport_width != 720 || viewport_height != 1280 ||
-    framebuffer_width != 720 || framebuffer_height != 1280 ||
-    !projection_valid || projection_width != 720.0 || projection_height != 1280.0 || projection_mode != 5888 {
-        return 16
     }
     draw_surface = cast(*void)cast(usize)3
     draw_width = 684
     draw_height = 1244
-    if Window.WindowWidth() != 684 || Window.WindowHeight() != 1244 {
+    if SurfaceWidth() != 684 || SurfaceHeight() != 1244 {
         return 18
-    }
-    Window.BeginWindowFrame()
-    if viewport_calls != 3 || viewport_width != 684 || viewport_height != 1244 ||
-    framebuffer_width != 684 || framebuffer_height != 1244 ||
-    !projection_valid || projection_width != 684.0 || projection_height != 1244.0 {
-        return 19
     }
     if geometry_calls == 0 {
         return 21
@@ -201,35 +139,31 @@ Check :: () -> s32 {
     draw_width = 720
     draw_height = 1280
     previous_geometry_calls := geometry_calls
-    if Window.WindowWidth() != 720 || Window.WindowHeight() != 1280 ||
+    if SurfaceWidth() != 720 || SurfaceHeight() != 1280 ||
     geometry_calls != previous_geometry_calls {
         return 22
     }
     // A failed EGL query falls back to the native window before graphics
     // initialization or while the context is being recreated.
     draw_query_succeeds = false
-    if Window.WindowWidth() != 720 || Window.WindowHeight() != 1280 {
+    if SurfaceWidth() != 720 || SurfaceHeight() != 1280 {
         return 20
     }
     draw_query_succeeds = true
     Surface.SetAndroidWindowSize(684, 1244)
-    Window.SyncWindowSurface()
+    unused Surface.SyncAndroidSurfaceSize(null, null)
     offset_pointer := Touch.AndroidPointerFrame()
     if offset_pointer.x != 18.0 || offset_pointer.y != 18.0 {
         return 23
     }
     Surface.SetAndroidWindowSize(720, 1280)
-    Window.SyncWindowSurface()
+    unused Surface.SyncAndroidSurfaceSize(null, null)
     offset_pointer = Touch.AndroidPointerFrame()
     if offset_pointer.x != 0.0 || offset_pointer.y != 0.0 {
         return 24
     }
-    before_detach_calls := viewport_calls
     app.window = null
-    Window.SyncWindowSurface()
-    if viewport_calls != before_detach_calls {
-        return 17
-    }
+    unused Surface.SyncAndroidSurfaceSize(null, null)
     Jni.jni_android_app = null
     if Jni.JniGetAndroidApp() != null || Jni.AndroidInternalDataPath() != null {
         return 5

@@ -2320,13 +2320,16 @@ Custom native and Canvas hosts can import `kryon/window_runtime` for
 retain the backend's existing window semantics. These observations do not
 poll input, change focus, pause work, or decide whether closing hides or quits.
 Applications using retained frames keep their retained presentation lifecycle.
-`WindowWidth` and `WindowHeight` read the current drawing surface on Android,
-including after resume. Raylib hosts use the current EGL buffer extent, which
-can differ from the decorated native window while a resize settles. Surface
-synchronization releases stale fixed buffer sizes. `BeginWindowFrame`
-synchronizes its viewport and framebuffer dimensions. Kryon retained frames
-perform the same synchronization after texture mode, preserving the current
-surface when they present.
+`WindowWidth` and `WindowHeight` report the custom desktop host's drawing
+surface or Android's current native pixel extent. Desktop frames use the same
+SDL/Cairo window opened by `Desktop.OpenDesktopSized`; resize takes effect at
+`BeginWindowFrame`. Clearing replaces the whole Cairo surface, including alpha,
+while preserving the caller's clip for subsequent drawing. Android frames lock,
+paint and post NativeActivity pixels directly, and pause while the activity is
+paused or has no window. `SyncWindowSurface` refreshes Android's shared surface
+and touch transform. Closing requests activity shutdown, drains its lifecycle
+commands, then frees its native pixels. No native operation in this adapter
+requires raylib. Canvas keeps its page lifecycle.
 
 Custom hosts import `kryon/window_icon` for
 `SetWindowIcon(encoded: string, file_type: string) -> bool`. Encoded bytes

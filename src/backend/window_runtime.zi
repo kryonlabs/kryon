@@ -1,50 +1,29 @@
 // Presentation and window observations for applications with a custom host.
 // Kryon owns backend selection; the application retains its frame policy.
 #import "drawing_props"
-#if #defined(ANDROID_BUILD) {
-    AndroidSurface :: #import "android_surface";
-}
+ANDROID_WINDOW :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__)
 #if #defined(PLATFORM_WEB) {
     Window :: #import "canvas_window";
     Draw :: #import "canvas_draw";
+} else #if ANDROID_WINDOW {
+    Surface :: #import "android_surface";
+    Native :: #import "android_native";
+    android_frame_locked: bool;
 } else {
-    window_backend :: #system_library "raylib";
-    WindowWidthHost :: () -> s32 #foreign window_backend "GetScreenWidth";
-    WindowHeightHost :: () -> s32 #foreign window_backend "GetScreenHeight";
-    #if #defined(ANDROID_BUILD) {
-        WindowFlushHost :: () #foreign window_backend "rlDrawRenderBatchActive";
-        WindowViewportHost :: (x: s32, y: s32, width: s32, height: s32) #foreign window_backend "rlViewport";
-        WindowMatrixModeHost :: (mode: s32) #foreign window_backend "rlMatrixMode";
-        WindowMatrixIdentityHost :: () #foreign window_backend "rlLoadIdentity";
-        WindowProjectionHost :: (left: float64, right: float64, bottom: float64,
-            top: float64, near: float64, far: float64) #foreign window_backend "rlOrtho";
-        WindowFramebufferWidthHost :: (width: s32) #foreign window_backend "rlSetFramebufferWidth";
-        WindowFramebufferHeightHost :: (height: s32) #foreign window_backend "rlSetFramebufferHeight";
-    }
-    WindowFrameBeginHost :: () #foreign window_backend "BeginDrawing";
-    WindowFrameEndHost :: () #foreign window_backend "EndDrawing";
-    WindowFrameClearHost :: (color: Color) #foreign window_backend "ClearBackground";
-    WindowCloseHost :: () #foreign window_backend "CloseWindow";
-    WindowHiddenHost :: () -> bool #foreign window_backend "IsWindowHidden";
-    WindowMinimizedHost :: () -> bool #foreign window_backend "IsWindowMinimized";
-    WindowClosingHost :: () -> bool #foreign window_backend "WindowShouldClose";
+    Desktop :: #import "desktop_runtime";
+    Raster :: #import "cairo_raster";
 }
 
-// Android's native surface may change on resume without changing raylib's
-// original requested screen size. Layout and framebuffer presentation use
-// the current native pixel extent.
 #program_export
 WindowWidth :: () -> s32 {
     #if #defined(PLATFORM_WEB) {
         return Window.GetScreenWidth()
+    } else #if ANDROID_WINDOW {
+        width: s32
+        unused Surface.SyncAndroidSurfaceSize(*width, null)
+        return width
     } else {
-        #if #defined(ANDROID_BUILD) {
-            width: s32
-            if AndroidSurface.SyncAndroidSurfaceSize(*width, null) != 0 && width > 0 {
-                return width
-            }
-        }
-        return WindowWidthHost()
+        return cast(s32)Desktop.DesktopViewport().width
     }
 }
 
@@ -52,38 +31,21 @@ WindowWidth :: () -> s32 {
 WindowHeight :: () -> s32 {
     #if #defined(PLATFORM_WEB) {
         return Window.GetScreenHeight()
+    } else #if ANDROID_WINDOW {
+        height: s32
+        unused Surface.SyncAndroidSurfaceSize(null, *height)
+        return height
     } else {
-        #if #defined(ANDROID_BUILD) {
-            height: s32
-            if AndroidSurface.SyncAndroidSurfaceSize(null, *height) != 0 && height > 0 {
-                return height
-            }
-        }
-        return WindowHeightHost()
+        return cast(s32)Desktop.DesktopViewport().height
     }
 }
 
-// Call on the render thread with the default framebuffer selected. Retained
-// targets synchronize after leaving texture mode, which restores raylib's
-// original render dimensions.
+// Refresh Android's current native extent and the shared touch transform.
+// Desktop resize is applied at BeginDesktopFrame, before its raster is used.
 #program_export
 SyncWindowSurface :: () {
-    #if #defined(ANDROID_BUILD) {
-        width: s32
-        height: s32
-        if AndroidSurface.SyncAndroidSurfaceSize(*width, *height) == 0 ||
-        width <= 0 || height <= 0 {
-            return
-        }
-        WindowFlushHost()
-        WindowViewportHost(0, 0, width, height)
-        WindowFramebufferWidthHost(width)
-        WindowFramebufferHeightHost(height)
-        WindowMatrixModeHost(5889) // RL_PROJECTION
-        WindowMatrixIdentityHost()
-        WindowProjectionHost(0.0, cast(float64)width, cast(float64)height, 0.0, 0.0, 1.0)
-        WindowMatrixModeHost(5888) // RL_MODELVIEW
-        WindowMatrixIdentityHost()
+    #if ANDROID_WINDOW && !#defined(PLATFORM_WEB) {
+        unused Surface.SyncAndroidSurfaceSize(null, null)
     }
 }
 
@@ -91,9 +53,14 @@ SyncWindowSurface :: () {
 BeginWindowFrame :: () {
     #if #defined(PLATFORM_WEB) {
         Window.BeginDrawing()
-    } else {
-        WindowFrameBeginHost()
+    } else #if ANDROID_WINDOW {
+        if android_frame_locked { return }
         SyncWindowSurface()
+        if !Native.AndroidNativeWindowReady() || Native.AndroidNativePaused() ||
+        Native.AndroidNativeDestroyRequested() { return }
+        android_frame_locked = Native.AndroidNativeLock()
+    } else {
+        Desktop.BeginDesktopFrame()
     }
 }
 
@@ -101,8 +68,13 @@ BeginWindowFrame :: () {
 ClearWindowFrame :: (color: Color) {
     #if #defined(PLATFORM_WEB) {
         Draw.ClearBackground(color)
+    } else #if ANDROID_WINDOW {
+        if android_frame_locked {
+            Native.AndroidNativeFill((cast(u32)color.a << 24) | (cast(u32)color.r << 16) |
+                (cast(u32)color.g << 8) | cast(u32)color.b)
+        }
     } else {
-        WindowFrameClearHost(color)
+        Raster.ClearRasterFrame(color)
     }
 }
 
@@ -110,8 +82,13 @@ ClearWindowFrame :: (color: Color) {
 EndWindowFrame :: () {
     #if #defined(PLATFORM_WEB) {
         Window.EndDrawing()
+    } else #if ANDROID_WINDOW {
+        if !android_frame_locked { return }
+        unused Native.AndroidNativePresentDamage(0, 0, Native.android_pixel_width, Native.android_pixel_height)
+        unused Native.AndroidNativeUnlock()
+        android_frame_locked = false
     } else {
-        WindowFrameEndHost()
+        unused Desktop.EndDesktopFrame()
     }
 }
 
@@ -119,8 +96,15 @@ EndWindowFrame :: () {
 CloseNativeWindow :: () {
     #if #defined(PLATFORM_WEB) {
         Window.CloseWindow()
+    } else #if ANDROID_WINDOW {
+        if android_frame_locked {
+            unused Native.AndroidNativeUnlock()
+            android_frame_locked = false
+        }
+        Native.AndroidNativeFinish()
+        Native.AndroidNativeClose()
     } else {
-        WindowCloseHost()
+        Desktop.CloseDesktop()
     }
 }
 
@@ -128,8 +112,10 @@ CloseNativeWindow :: () {
 WindowHidden :: () -> bool {
     #if #defined(PLATFORM_WEB) {
         return Window.IsWindowHidden()
+    } else #if ANDROID_WINDOW {
+        return !Native.AndroidNativeWindowReady()
     } else {
-        return WindowHiddenHost()
+        return !Desktop.WindowVisibleHost()
     }
 }
 
@@ -137,17 +123,22 @@ WindowHidden :: () -> bool {
 WindowMinimized :: () -> bool {
     #if #defined(PLATFORM_WEB) {
         return Window.IsWindowMinimized()
+    } else #if ANDROID_WINDOW {
+        return Native.AndroidNativePaused()
     } else {
-        return WindowMinimizedHost()
+        return Desktop.WindowMinimizedHost()
     }
 }
 
-// This observes the current close request without polling input a second time.
+// Observe the current close request without polling or consuming input.
 #program_export
 WindowClosing :: () -> bool {
     #if #defined(PLATFORM_WEB) {
         return Window.WindowShouldClose()
+    } else #if ANDROID_WINDOW {
+        app := Native.AndroidNativeApp()
+        return app == null || Native.AndroidNativeDestroyRequested() || app.destroy_requested != 0
     } else {
-        return WindowClosingHost()
+        return Desktop.WindowClosingHost()
     }
 }

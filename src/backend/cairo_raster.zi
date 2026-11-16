@@ -95,6 +95,8 @@ ClosePath :: (paint: *void) #foreign cairo_library "cairo_close_path";
 Fill :: (paint: *void) #foreign cairo_library "cairo_fill";
 Stroke :: (paint: *void) #foreign cairo_library "cairo_stroke";
 Clip :: (paint: *void) #foreign cairo_library "cairo_clip";
+ResetClip :: (paint: *void) #foreign cairo_library "cairo_reset_clip";
+SetOperator :: (paint: *void, operation: s32) #foreign cairo_library "cairo_set_operator";
 MoveTo :: (paint: *void, x: float64, y: float64) #foreign cairo_library "cairo_move_to";
 LineTo :: (paint: *void, x: float64, y: float64) #foreign cairo_library "cairo_line_to";
 SetLineWidth :: (paint: *void, width: float64) #foreign cairo_library "cairo_set_line_width";
@@ -524,6 +526,21 @@ PrepareRasterPaint :: () {
     Save(paint)
     SetSourceRGBA(paint, 248.0 / 255.0, 250.0 / 255.0,
         252.0 / 255.0, 1.0)
+    Paint(paint)
+    Restore(paint)
+}
+
+// Replace the whole custom host frame, including transparent pixels. Preserve
+// the caller's clip and drawing state for the commands after the clear.
+#program_export
+ClearRasterFrame :: (color: Color) {
+    if paint == null { return }
+    frame_pending = false
+    Save(paint)
+    ResetClip(paint)
+    SetOperator(paint, 1) // CAIRO_OPERATOR_SOURCE
+    SetSourceRGBA(paint, cast(float64)color.r / 255.0, cast(float64)color.g / 255.0,
+        cast(float64)color.b / 255.0, cast(float64)color.a / 255.0)
     Paint(paint)
     Restore(paint)
 }

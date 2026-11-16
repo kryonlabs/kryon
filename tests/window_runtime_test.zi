@@ -1,84 +1,75 @@
-#import "window_runtime"
+Window :: #import "window_runtime";
+Desktop :: #import "desktop_runtime";
+Raster :: #import "cairo_raster";
+Event :: #import "sdl_event";
 #import "drawing_props"
 
-sequence: s32;
-cleared: Color;
-hidden: bool;
-minimized: bool;
-closing: bool;
-closed: bool;
-
-#program_export "GetScreenWidth"
-TestWidth :: () -> s32 {
-    return 640
-}
-#program_export "GetScreenHeight"
-TestHeight :: () -> s32 {
-    return 480
-}
-
-#program_export "BeginDrawing"
-TestBegin :: () {
-    sequence = sequence * 10 + 1
-}
-#program_export "ClearBackground"
-TestClear :: (color: Color) {
-    sequence = sequence * 10 + 2
-    cleared = color
-}
-#program_export "EndDrawing"
-TestEnd :: () {
-    sequence = sequence * 10 + 3
-}
-#program_export "CloseWindow"
-TestClose :: () {
-    closed = true
-}
-#program_export "IsWindowHidden"
-TestHidden :: () -> bool {
-    return hidden
-}
-#program_export "IsWindowMinimized"
-TestMinimized :: () -> bool {
-    return minimized
-}
-#program_export "WindowShouldClose"
-TestClosing :: () -> bool {
-    return closing
+sdl :: #system_library "SDL2";
+GetRenderer :: (window: *void) -> *void #foreign sdl "SDL_GetRenderer";
+ReadPixel :: (renderer: *void, bounds: *PixelBounds, format: u32, pixels: *u32, pitch: s32) -> s32 #foreign sdl "SDL_RenderReadPixels";
+Minimize :: (window: *void) #foreign sdl "SDL_MinimizeWindow";
+Restore :: (window: *void) #foreign sdl "SDL_RestoreWindow";
+Flags :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowFlags";
+WindowId :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowID";
+Push :: (event: *Event.Event) -> s32 #foreign sdl "SDL_PushEvent";
+cairo :: #system_library "cairo";
+SavePaint :: (paint: *void) #foreign cairo "cairo_save";
+RestorePaint :: (paint: *void) #foreign cairo "cairo_restore";
+PaintRectangle :: (paint: *void, x: float64, y: float64, width: float64, height: float64) #foreign cairo "cairo_rectangle";
+ClipPaint :: (paint: *void) #foreign cairo "cairo_clip";
+PixelBounds :: struct { x: s32; y: s32; width: s32; height: s32; }
+Pixel :: (x: s32, y: s32) -> u32 {
+    pixels := Raster.RasterSurfaceData()
+    row := cast(*u32)*pixels[cast(s64)y * cast(s64)Raster.RasterSurfaceStride()]
+    return row[x]
 }
 
 #program_export
 main :: () -> s32 {
-    if WindowWidth() != 640 || WindowHeight() != 480 {
-        return 7
-    }
-    if WindowHidden() || WindowMinimized() || WindowClosing() {
-        return 1
-    }
-    hidden = true
-    if !WindowHidden() || WindowMinimized() || WindowClosing() {
-        return 2
-    }
-    hidden = false
-    minimized = true
-    if WindowHidden() || !WindowMinimized() || WindowClosing() {
-        return 3
-    }
-    // A hidden/minimized custom host still decides when to present a frame.
-    BeginWindowFrame()
-    ClearWindowFrame(Color.{11, 22, 33, 44})
-    EndWindowFrame()
-    if sequence != 123 || cleared.r != cast(u8)11 || cleared.g != cast(u8)22 ||
-    cleared.b != cast(u8)33 || cleared.a != cast(u8)44 {
-        return 4
-    }
-    closing = true
-    if !WindowClosing() || closed {
-        return 5
-    }
-    CloseNativeWindow()
-    if !closed {
-        return 6
-    }
+    if !Desktop.OpenDesktopSized(64, 48) { return 1 }
+    if Window.WindowWidth() != 64 || Window.WindowHeight() != 48 ||
+        !Window.WindowHidden() || Window.WindowMinimized() || Window.WindowClosing() { return 2 }
+    Window.BeginWindowFrame()
+    Window.ClearWindowFrame(.{11, 22, 33, 255})
+    Window.EndWindowFrame()
+    if Window.WindowHidden() || Pixel(63, 47) != cast(u32)0xff0b1621 { return 3 }
+    corner := PixelBounds.{63, 47, 1, 1}
+    presented: u32
+    if ReadPixel(GetRenderer(Desktop.DesktopWindow()), *corner, cast(u32)0x16362004, *presented, 4) != 0 ||
+        presented != cast(u32)0xff0b1621 { return 4 }
+    if !Desktop.ResizeDesktop(80, 40) || Window.WindowWidth() != 64 { return 5 }
+    Window.BeginWindowFrame()
+    if Window.WindowWidth() != 80 || Window.WindowHeight() != 40 { return 6 }
+    // Clearing replaces the whole surface despite a caller's clip, then
+    // restores the clip for later drawing. Alpha is Cairo's premultiplied ARGB.
+    SavePaint(Raster.paint)
+    PaintRectangle(Raster.paint, 0.0, 0.0, 4.0, 4.0)
+    ClipPaint(Raster.paint)
+    Window.ClearWindowFrame(.{200, 100, 50, 128})
+    Raster.RasterRoundedRectangle(Desktop.DesktopViewport(), 0.0, 0, .{10, 20, 30, 255})
+    RestorePaint(Raster.paint)
+    Window.EndWindowFrame()
+    if Pixel(0, 0) != cast(u32)0xff0a141e || Pixel(79, 39) != cast(u32)0x80643219 { return 7 }
+    Desktop.WindowSetVisibleHost(false)
+    if !Window.WindowHidden() { return 8 }
+    Window.BeginWindowFrame()
+    Window.ClearWindowFrame(.{255, 255, 255, 0})
+    Window.EndWindowFrame()
+    if Pixel(0, 0) != cast(u32)0 || Pixel(79, 39) != cast(u32)0 { return 9 }
+    Desktop.WindowSetVisibleHost(true)
+    Minimize(Desktop.DesktopWindow())
+    if Window.WindowMinimized() != ((Flags(Desktop.DesktopWindow()) & cast(u32)0x40) != cast(u32)0) { return 10 }
+    Restore(Desktop.DesktopWindow())
+    if !Desktop.WindowInterceptCloseHost(true) { return 11 }
+    event: Event.Event
+    event.kind = cast(u32)0x200
+    event.window_id = WindowId(Desktop.DesktopWindow())
+    event.which = cast(u32)14
+    if Push(*event) != 1 || Window.WindowClosing() { return 12 }
+    if !Desktop.PollDesktop() || !Window.WindowClosing() || !Window.WindowClosing() { return 13 }
+    if !Desktop.WindowTakeCloseRequestHost() || Window.WindowClosing() { return 14 }
+    Window.CloseNativeWindow()
+    if Desktop.DesktopWindow() != null || !Window.WindowHidden() || !Window.WindowClosing() { return 15 }
+    Window.CloseNativeWindow()
     return 0
 }
