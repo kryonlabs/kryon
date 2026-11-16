@@ -9,8 +9,10 @@
 //     extra: [1]string = .["MY_APP_MODE=test"]
 //     app := StartOnDisplay(*display, arguments[:], extra[:], "", "build/my-test/app.log")
 //     window := FindOwnedWindow(*display, app.pid, 10000)
+//     // A launcher's child draws it: FindSessionWindow(*display, *app, 10000)
 //     image: DisplayImage
 //     if CaptureWindow(*display, window, *image) { unused SavePNG(*image, "build/my-test/title.png") }
+//     unused RequestWindowClose(*display, window)
 //     unused StopOwnedProcess(*app, 5000)
 //
 // Link programs that use it with -lX11 -lcairo.
@@ -42,6 +44,7 @@ XTree :: (display: *void, window: u64, root: *u64, parent: *u64, children: **u64
 XAttributes :: (display: *void, window: u64, attributes: *XWindowAttributes) -> s32 #foreign x11 "XGetWindowAttributes";
 XResize :: (display: *void, window: u64, width: u32, height: u32) -> s32 #foreign x11 "XResizeWindow";
 XImageOf :: (display: *void, drawable: u64, x: s32, y: s32, width: u32, height: u32, planes: u64, format: s32) -> *XImageHead #foreign x11 "XGetImage";
+XSend :: (display: *void, window: u64, propagate: s32, mask: s64, event: *u64) -> s32 #foreign x11 "XSendEvent";
 
 CairoImage :: (format: s32, width: s32, height: s32) -> *void #foreign cairo "cairo_image_surface_create";
 CairoFromPNG :: (path: *u8) -> *void #foreign cairo "cairo_image_surface_create_from_png";
@@ -64,6 +67,7 @@ PollRaw :: (fds: *PollEntry, count: u64, timeout_ms: s32) -> s32 #foreign libc "
 LinkRaw :: (path: *u8, output: *u8, size: u64) -> s64 #foreign libc "readlink";
 RealPathRaw :: (path: *u8, output: *u8) -> *u8 #foreign libc "realpath";
 AccessRaw :: (path: *u8, mode: s32) -> s32 #foreign libc "access";
+SessionRaw :: (pid: s32) -> s32 #foreign libc "getsid";
 
 PollEntry :: struct { fd: s32; events: s16; returned: s16 }
 
@@ -176,8 +180,9 @@ Viewable :: (display: *PrivateDisplay, window: u64) -> bool {
     return XAttributes(display.connection, window, *attributes) != 0 && attributes.map_state == 2
 }
 
-// The first viewable window under `parent` that `pid` owns, depth first.
-SearchTree :: (display: *PrivateDisplay, parent: u64, pid: s32, depth: s32) -> u64 {
+// The first viewable window under `parent` that `pid` owns, or with
+// `session` that a process of session `pid` owns, depth first.
+SearchTree :: (display: *PrivateDisplay, parent: u64, pid: s32, session: bool, depth: s32) -> u64 {
     root: u64; up: u64; children: *u64; count: u32
     if depth > 8 || XTree(display.connection, parent, *root, *up, *children, *count) == 0 { return 0 }
     defer { if children != null { unused XFree(cast(*void)children) } }
@@ -185,9 +190,24 @@ SearchTree :: (display: *PrivateDisplay, parent: u64, pid: s32, depth: s32) -> u
     while index < count {
         window := children[index]
         index += 1
-        if WindowPid(display, window) == cast(s64)pid && Viewable(display, window) { return window }
-        found := SearchTree(display, window, pid, depth + 1)
+        owner := WindowPid(display, window)
+        owned := owner == cast(s64)pid || (session && owner > 0 && owner < 0x7fffffff &&
+            SessionRaw(cast(s32)owner) == pid)
+        if owned && Viewable(display, window) { return window }
+        found := SearchTree(display, window, pid, session, depth + 1)
         if found != 0 { return found }
+    }
+    return 0
+}
+
+WaitForWindow :: (display: *PrivateDisplay, pid: s32, session: bool, timeout_ms: s64) -> u64 {
+    if !display.valid || pid <= 0 { return 0 }
+    deadline := MonotonicMilliseconds() + timeout_ms
+    while true {
+        unused XSync(display.connection, 0)
+        window := SearchTree(display, XRoot(display.connection, 0), pid, session, 0)
+        if window != 0 || MonotonicMilliseconds() >= deadline { return window }
+        unused SleepMilliseconds(50)
     }
     return 0
 }
@@ -346,15 +366,31 @@ StopOwnedProcess :: (run: *ProcessRun, grace_ms: s64) -> bool {
 // The first viewable window `pid` owns on this display, waiting up to
 // `timeout_ms` for it to appear; 0 when none does.
 FindOwnedWindow :: (display: *PrivateDisplay, pid: s32, timeout_ms: s64) -> u64 {
-    if !display.valid || pid <= 0 { return 0 }
-    deadline := MonotonicMilliseconds() + timeout_ms
-    while true {
-        unused XSync(display.connection, 0)
-        window := SearchTree(display, XRoot(display.connection, 0), pid, 0)
-        if window != 0 || MonotonicMilliseconds() >= deadline { return window }
-        unused SleepMilliseconds(50)
-    }
-    return 0
+    return WaitForWindow(display, pid, false, timeout_ms)
+}
+
+// The first viewable window any process of `run`'s own session owns, as
+// when a launcher such as `ziran run` starts the program that draws it.
+// StartOnDisplay starts each app in a session of its own.
+FindSessionWindow :: (display: *PrivateDisplay, run: *ProcessRun, timeout_ms: s64) -> u64 {
+    if !run.started { return 0 }
+    return WaitForWindow(display, run.pid, true, timeout_ms)
+}
+
+// Asks a window on this test's display to close, as a window manager's
+// close button does: a WM_PROTOCOLS WM_DELETE_WINDOW message.
+RequestWindowClose :: (display: *PrivateDisplay, window: u64) -> bool {
+    if !display.valid || window == 0 || !PrivateDisplayOwned(display) { return false }
+    // XClientMessageEvent in XEvent's 24 longs: type, serial, send_event,
+    // display, window, message_type, format, then the data longs.
+    event: [24]u64
+    event[0] = 33
+    event[4] = window
+    event[5] = AtomNamed(display, "WM_PROTOCOLS")
+    event[6] = 32
+    event[7] = AtomNamed(display, "WM_DELETE_WINDOW")
+    if XSend(display.connection, window, 0, 0, *event[0]) == 0 { return false }
+    return XSync(display.connection, 0) != 0
 }
 
 // The window's title (_NET_WM_NAME, else WM_NAME).

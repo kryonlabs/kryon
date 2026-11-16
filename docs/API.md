@@ -1013,12 +1013,21 @@ window (`desktop_window`, `page_window`) and frame loop (`frames_desktop`,
 `frames_web`) as separate modules, so `App.Show(window)` reaches only the
 window: on Linux the checked program of `examples/window.zi` is the window,
 `kryon/app`, `app_types`, `desktop_window`, `sdl_event`, `pixmap_sdl` and C
-strings. `App.Run(window, Draw)` brings the frame loop, the widget tree's frame
+strings. In a portable bundle the window is `zx_window`: the checked program is
+the window, `kryon/app`, `app_types` and `zx_window`, and the bundle asks its
+host only for the window, its events, clearing and presenting
+(`ZxWindowOpenHost`, `ZxWindowEventHost`, `ZxWindowClearHost`,
+`ZxWindowPresentHost`, `ZxWindowCloseHost`). Kryon's desktop zx player binds
+them to the same SDL window and runs the bundle's `main` as native code, so
+with the player installed (`make install-user`) `ziran run --backend native
+window.zx` opens the window; `make zx-window-test` checks it on a private
+Xvfb. `App.Run(window, Draw)` brings the frame loop, the widget tree's frame
 driver (`TreeFrameUse`) and, on Linux, the accessibility tree
 (`AccessibilityTreeUse`). The desktop raster loads pictures, smooth copies and
 fonts when a frame first draws them, video when it opens, and the test driver
 only with `KRYON_TEST_DRIVER`. `make pay-per-import-test` checks the examples'
-generated C and the window's checked program.
+generated C, the window's checked programs and its bundle's modules and host
+capabilities.
 
 The project tool accepts a program as a project's entry. When the entry module
 declares `main`, `kryon build --profile NAME` generates a host that only calls

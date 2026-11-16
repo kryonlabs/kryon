@@ -1,10 +1,11 @@
-using Types :: #import "app_types";
+// This target has no window host. It imports app_types by name, as the
+// frame loops do, so an unrun Run leaves nothing in the checked program.
+App :: #import "app_types";
 
-// This target has no window host.
-Show :: (window: Window) -> s32 {
+Show :: (window: App.Window) -> s32 {
     return 1
 }
 
-Run :: (window: Window, draw: Draw) -> s32 {
+Run :: (window: App.Window, draw: App.Draw) -> s32 {
     return 1
 }

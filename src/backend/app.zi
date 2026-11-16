@@ -11,6 +11,10 @@ using Types :: #import "app_types";
 } else #if TARGET == .C && OS == .WEB {
     Bare :: #import "page_window";
     Frames :: #import "frames_web";
+} else #if TARGET == .ZX {
+    // The installed desktop player hosts a bundle's window.
+    Bare :: #import "zx_window";
+    Frames :: #import "app_unsupported";
 } else {
     Bare :: #import "app_unsupported";
     Frames :: #import "app_unsupported";

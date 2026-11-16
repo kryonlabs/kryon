@@ -1,0 +1,121 @@
+// The desktop player's side of a bundle that only shows a window: it binds
+// the bundle's zx_window capabilities to the desktop window and runs the
+// bundle's entry as native code until the window closes. No frame loop,
+// raster, fonts or input routing run for it, and a bundle native code cannot
+// run stops with its named gap rather than running on the engine.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+Names :: #import "bundle_names";
+Desktop :: #import "desktop_window";
+
+using HostValueKind;
+
+// zx_window's five capabilities.
+WINDOW_CAPABILITIES :: 5
+
+Capability :: (module: *u8, function: *u8) -> bool {
+    if !Names.ModuleName(TextFromCString(module), "zx_window") { return false }
+    name := TextFromCString(function)
+    return name == "ZxWindowOpenHost" || name == "ZxWindowEventHost" ||
+        name == "ZxWindowClearHost" || name == "ZxWindowPresentHost" ||
+        name == "ZxWindowCloseHost"
+}
+
+// The bundle shows its window through zx_window.
+WindowBundle :: (bundle: *void) -> bool {
+    index: u64 = 0
+    while index < BundleCapabilities(bundle) {
+        if Names.ModuleName(TextFromCString(BundleCapabilityModuleName(bundle, index)), "zx_window") {
+            return true
+        }
+        index += 1
+    }
+    return false
+}
+
+WindowCall :: (context: *void, module_name: *u8, function_name: *u8,
+    args: *HostValue, count: s32, result: *HostValue) -> s32 {
+    opened := cast(*Desktop.DesktopWindow)context
+    function := TextFromCString(function_name)
+    result.kind = HostVoid
+    if function == "ZxWindowOpenHost" && count == 3 && args[0].kind == HostString &&
+        args[1].kind == HostInteger && args[2].kind == HostInteger {
+        width := args[1].integer
+        height := args[2].integer
+        title: string
+        if args[0].length > 0 { title = TextFromBytes(BytesFromPointer(args[0].data, cast(u64)args[0].length)) }
+        open := opened.window == null && width > 0 && width <= 16384 && height > 0 && height <= 16384 &&
+            Desktop.Open(opened, title, cast(s32)width, cast(s32)height)
+        result.kind = HostInteger
+        result.integer = cast(s64)open
+        return 1
+    }
+    if function == "ZxWindowClearHost" && count == 1 && args[0].kind == HostUnsigned {
+        result.kind = HostInteger
+        result.integer = cast(s64)Desktop.Clear(opened, cast(u32)(args[0].bits & 0xffffff))
+        return 1
+    }
+    if count != 0 { return 0 }
+    if function == "ZxWindowEventHost" {
+        result.kind = HostInteger
+        result.integer = cast(s64)Desktop.NextEvent(opened)
+        return 1
+    }
+    if function == "ZxWindowPresentHost" { Desktop.Present(opened); return 1 }
+    if function == "ZxWindowCloseHost" { Desktop.Close(opened); return 1 }
+    return 0
+}
+
+// Binds the bundle's window capabilities and runs its entry until it
+// returns, with the entry's result as the status. With `check`, it only
+// reports whether every capability binds, running nothing.
+Run :: (bundle: *void, check: bool) -> s32 {
+    opened: Desktop.DesktopWindow
+    bindings: [WINDOW_CAPABILITIES]HostBinding
+    count: u64 = 0
+    ok := true
+    index: u64 = 0
+    while index < BundleCapabilities(bundle) {
+        module := BundleCapabilityModuleName(bundle, index)
+        function := BundleCapabilityFunctionName(bundle, index)
+        if !Capability(module, function) || count >= cast(u64)WINDOW_CAPABILITIES {
+            print("zx: unsupported host capability %:%\n", TextFromCString(module), TextFromCString(function))
+            ok = false
+        } else {
+            bindings[count] = HostBinding.{.module = module, .function = function, .call = WindowCall,
+                .context = cast(*void)*opened}
+            count += 1
+        }
+        index += 1
+    }
+    if !ok || check {
+        CloseBundle(bundle)
+        return ifx ok then 0 else 1
+    }
+    problem := GetBundleNativeProblem(bundle)
+    if problem != "" {
+        print("zx: %\n", problem)
+        CloseBundle(bundle)
+        return 1
+    }
+    options := BundleInstanceOptions.{.backend = .Native}
+    instance := InstantiateBundleWithOptions(bundle, *bindings[0], count, *options)
+    if instance == null {
+        print("zx: could not initialize app instance\n")
+        CloseBundle(bundle)
+        return 1
+    }
+    result: s64
+    has_result: s32
+    ran := RunBundleInstance(instance, *result, *has_result) != 0
+    CloseBundleInstance(instance)
+    // An entry that stopped without closing its window leaves none open.
+    Desktop.Close(*opened)
+    CloseBundle(bundle)
+    if !ran {
+        print("zx: app execution failed\n")
+        return 1
+    }
+    return ifx has_result != 0 then cast(s32)result else 0
+}

@@ -1,7 +1,8 @@
 // A desktop window with nothing in it, as App.Show opens one: the window,
 // its events, clearing and presenting. It reaches none of the widget frame,
 // input routing, raster, cursor or accessibility code, so a program that
-// only shows a window carries none of it.
+// only shows a window carries none of it. The ZX player opens the same
+// window for a bundle's App.Show through these steps.
 using Types :: #import "app_types";
 Sdl :: #import "sdl_event";
 Presenter :: #import "pixmap_sdl";
@@ -29,17 +30,99 @@ WINDOW_SDL_INIT :: 0x4020
 WINDOW_FLAGS :: 0x28
 WINDOW_CENTERED :: 0x2fff0000
 
-WindowError :: (message: string) -> s32 {
+// The empty window's colour, the same as an empty Kryon frame, as 0xRRGGBB.
+EMPTY_COLOR :: 0xf8fafc
+
+// What NextEvent saw: nothing within a second, the window closing, or its
+// picture lost (shown, exposed, resized or restored) so it needs drawing.
+EVENT_NONE :: 0
+EVENT_CLOSE :: 1
+EVENT_DRAW :: 2
+
+// An open window: its SDL window, renderer and ID, and whether its first
+// picture has shown it.
+DesktopWindow :: struct {
+    window: *void
+    renderer: *void
+    id: u32
+    shown: bool
+}
+
+WindowError :: (message: string) -> bool {
     bytes: [256]u8
     if CopyCString(message, bytes[:]) {
         unused WindowWrite(2, *bytes[0], cast(u64)message.count)
     }
-    return 1
+    return false
 }
 
-// The empty window's colour, the same as an empty Kryon frame.
-WindowClear :: (renderer: *void) -> bool {
-    return SetRenderDrawColor(renderer, 248, 250, 252, 255) == 0 && RenderClear(renderer) == 0
+// Opens the window hidden, `width` by `height`, titled `title`; it shows
+// after its first Present.
+Open :: (opened: *DesktopWindow, title: string, width: s32, height: s32) -> bool {
+    if Init(cast(u32)WINDOW_SDL_INIT) != 0 {
+        return WindowError("kryon: could not open the desktop window\n")
+    }
+    name: [512]u8
+    if !CopyCString(title, name[:]) { name[0] = 0 }
+    window := CreateWindow(*name[0], cast(s32)WINDOW_CENTERED, cast(s32)WINDOW_CENTERED,
+        width, height, cast(u32)WINDOW_FLAGS)
+    if window == null {
+        Quit()
+        return WindowError("kryon: could not open the desktop window\n")
+    }
+    renderer := Presenter.CreatePixmapRenderer(window)
+    if renderer == null {
+        DestroyWindow(window)
+        Quit()
+        return WindowError("kryon: could not draw the desktop window\n")
+    }
+    opened.* = DesktopWindow.{.window = window, .renderer = renderer, .id = GetWindowID(window)}
+    return true
+}
+
+// Clears the window to `color` (0xRRGGBB).
+Clear :: (opened: *DesktopWindow, color: u32) -> bool {
+    if opened.renderer == null { return false }
+    red := cast(u8)((color >> 16) & 255)
+    green := cast(u8)((color >> 8) & 255)
+    blue := cast(u8)(color & 255)
+    return SetRenderDrawColor(opened.renderer, red, green, blue, 255) == 0 &&
+        RenderClear(opened.renderer) == 0
+}
+
+// Presents the cleared picture; the first one shows the window.
+Present :: (opened: *DesktopWindow) {
+    if opened.renderer == null { return }
+    RenderPresent(opened.renderer)
+    if !opened.shown {
+        ShowWindow(opened.window)
+        opened.shown = true
+    }
+}
+
+// Waits up to a second for the window's next event.
+NextEvent :: (opened: *DesktopWindow) -> s32 {
+    event: Sdl.Event
+    if opened.window == null { return EVENT_CLOSE }
+    if WaitEventTimeout(*event, 1000) == 0 { return EVENT_NONE }
+    // SDL_QUIT: the last window closed or the session ended.
+    if event.kind == cast(u32)0x100 { return EVENT_CLOSE }
+    if event.kind != cast(u32)0x200 || event.window_id != opened.id { return EVENT_NONE }
+    detail := event.which & cast(u32)255
+    // SDL_WINDOWEVENT_CLOSE.
+    if detail == cast(u32)14 { return EVENT_CLOSE }
+    // Shown, exposed, resized, size changed or restored.
+    if detail == cast(u32)1 || detail == cast(u32)3 || detail == cast(u32)5 ||
+        detail == cast(u32)6 || detail == cast(u32)9 { return EVENT_DRAW }
+    return EVENT_NONE
+}
+
+Close :: (opened: *DesktopWindow) {
+    if opened.window == null { return }
+    DestroyRenderer(opened.renderer)
+    DestroyWindow(opened.window)
+    Quit()
+    opened.* = DesktopWindow.{}
 }
 
 // Shows the window, cleared, until it closes: 960 by 600 pixels unless it
@@ -49,46 +132,19 @@ Show :: (window: Window) -> s32 {
     height := window.height
     if width <= 0 { width = 960 }
     if height <= 0 { height = 600 }
-    if Init(cast(u32)WINDOW_SDL_INIT) != 0 {
-        return WindowError("kryon: could not open the desktop window\n")
+    opened: DesktopWindow
+    if !Open(*opened, window.title, width, height) { return 1 }
+    if !Clear(*opened, EMPTY_COLOR) {
+        Close(*opened)
+        unused WindowError("kryon: could not draw the desktop window\n")
+        return 1
     }
-    name: [512]u8
-    if !CopyCString(window.title, name[:]) { name[0] = 0 }
-    shown := CreateWindow(*name[0], cast(s32)WINDOW_CENTERED, cast(s32)WINDOW_CENTERED,
-        width, height, cast(u32)WINDOW_FLAGS)
-    if shown == null {
-        Quit()
-        return WindowError("kryon: could not open the desktop window\n")
+    Present(*opened)
+    event := NextEvent(*opened)
+    while event != EVENT_CLOSE {
+        if event == EVENT_DRAW && Clear(*opened, EMPTY_COLOR) { Present(*opened) }
+        event = NextEvent(*opened)
     }
-    renderer := Presenter.CreatePixmapRenderer(shown)
-    if renderer == null || !WindowClear(renderer) {
-        if renderer != null { DestroyRenderer(renderer) }
-        DestroyWindow(shown)
-        Quit()
-        return WindowError("kryon: could not draw the desktop window\n")
-    }
-    RenderPresent(renderer)
-    ShowWindow(shown)
-    id := GetWindowID(shown)
-    event: Sdl.Event
-    open := true
-    while open {
-        if WaitEventTimeout(*event, 1000) == 0 { continue }
-        // SDL_QUIT: the last window closed or the session ended.
-        if event.kind == cast(u32)0x100 { open = false }
-        if event.kind == cast(u32)0x200 && event.window_id == id {
-            detail := event.which & cast(u32)255
-            // SDL_WINDOWEVENT_CLOSE.
-            if detail == cast(u32)14 { open = false }
-            // Shown, exposed, resized, size changed or restored: draw again.
-            if detail == cast(u32)1 || detail == cast(u32)3 || detail == cast(u32)5 ||
-                detail == cast(u32)6 || detail == cast(u32)9 {
-                if WindowClear(renderer) { RenderPresent(renderer) }
-            }
-        }
-    }
-    DestroyRenderer(renderer)
-    DestroyWindow(shown)
-    Quit()
+    Close(*opened)
     return 0
 }

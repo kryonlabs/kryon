@@ -1,0 +1,47 @@
+// A ZX bundle's window with nothing in it, as App.Show opens one: the
+// installed desktop player opens the window, and the bundle waits for its
+// events, clears and presents it until it closes. These are its only host
+// capabilities, so a bundle that only shows a window needs no frame, input,
+// text, font or raster capability.
+using Types :: #import "app_types";
+
+host_api :: #system_library "host_api";
+// Opens the window hidden; the first present shows it.
+ZxWindowOpenHost :: (title: string, width: s32, height: s32) -> bool #reads #foreign host_api;
+// Waits up to a second for the window's next event: ZX_WINDOW_NONE,
+// ZX_WINDOW_CLOSE or ZX_WINDOW_DRAW.
+ZxWindowEventHost :: () -> s32 #foreign host_api;
+// Clears the window to a 0xRRGGBB colour.
+ZxWindowClearHost :: (color: u32) -> bool #foreign host_api;
+ZxWindowPresentHost :: () #foreign host_api;
+ZxWindowCloseHost :: () #foreign host_api;
+
+ZX_WINDOW_NONE :: 0
+ZX_WINDOW_CLOSE :: 1
+// The window lost its picture (shown, exposed, resized or restored).
+ZX_WINDOW_DRAW :: 2
+
+// The empty window's colour, the same as an empty Kryon frame.
+ZX_WINDOW_COLOR :: 0xf8fafc
+
+// Shows the window, cleared, until it closes: 960 by 600 pixels unless it
+// names its size, untitled unless it names a title.
+Show :: (window: Window) -> s32 {
+    width := window.width
+    height := window.height
+    if width <= 0 { width = 960 }
+    if height <= 0 { height = 600 }
+    if !ZxWindowOpenHost(window.title, width, height) { return 1 }
+    if !ZxWindowClearHost(cast(u32)ZX_WINDOW_COLOR) {
+        ZxWindowCloseHost()
+        return 1
+    }
+    ZxWindowPresentHost()
+    event := ZxWindowEventHost()
+    while event != ZX_WINDOW_CLOSE {
+        if event == ZX_WINDOW_DRAW && ZxWindowClearHost(cast(u32)ZX_WINDOW_COLOR) { ZxWindowPresentHost() }
+        event = ZxWindowEventHost()
+    }
+    ZxWindowCloseHost()
+    return 0
+}

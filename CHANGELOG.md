@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `App.Show` opens its window from a portable bundle: `ziran run window.zx`
+  runs the bundle's `main` as native code in the desktop zx player, which
+  supplies only the window, its events, clearing and presenting; the bundle
+  carries no frame, font or text code.
 - Portable (zx) apps can show pictures they make at run time, such as
   photos a service hands them: `kryon/bitmap_image` in a zx bundle asks the
   desktop zx player to hold the pixels, and the player's raster draws them

@@ -21,6 +21,7 @@ Theme :: #import "system_theme_host_linux";
 Background :: #import "background_window_linux";
 Watch :: #import "bundle_watch";
 AppPlayer :: #import "app_player";
+WindowPlayer :: #import "window_player";
 #import "timer_linux"
 
 using HostValueKind;
@@ -577,6 +578,15 @@ main :: (argc: s32, argv: **u8) -> s32 {
         status := AppPlayer.Run(bundle, false)
         if resource_root != "" && !RemoveAssetDirectory(resource_root) { return 1 }
         return status
+    }
+    // A bundle that only shows a window runs its own entry in it.
+    if WindowPlayer.WindowBundle(bundle) {
+        if watch {
+            CloseBundle(bundle)
+            print("zx: window release watching is not available yet\n")
+            return 1
+        }
+        return WindowPlayer.Run(bundle, check)
     }
     // A downloaded app's relative assets live beside its bundle, independent
     // of where the owner launches it. Open the bundle before changing cwd.

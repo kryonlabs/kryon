@@ -185,6 +185,16 @@ zx-test: build/bin/kryon zx-player
 
 test: zx-test zx-reload-test
 
+# window.zi's bundle runs as native code in the desktop player's window on a
+# private Xvfb, through `ziran run` and a private host registry.
+.PHONY: zx-window-test
+zx-window-test: zx-player
+	@rm -rf build/test/zx-window
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
+		ZIRAN_BIN="$(abspath $(ZIRAN_BIN))" "$(ZIRAN_BIN)" run --target=c tests/zx_window_test.zi -- \
+		"$(abspath build/test/zx-window)" "$(abspath $(PLAYER))"
+test: zx-window-test
+
 .PHONY: zx-services-test zx-hosted-test zx-headless-test
 zx-headless-test: zx-raylib
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
@@ -300,7 +310,7 @@ check: all ziran-test header-check docs-check project-test public-surface-check 
 
 # CI runs make test as parallel jobs on separate machines. The hosts shard takes
 # every test target not named here, so a new one cannot miss CI.
-CI_SHARD_ZX := renderer-consumer-test zx-test zx-reload-test zx-services-test zx-hosted-test \
+CI_SHARD_ZX := renderer-consumer-test zx-test zx-reload-test zx-window-test zx-services-test zx-hosted-test \
 	zx-headless-test native-text-test native-accessibility-test
 CI_SHARD_CHECK := check
 CI_SHARD_WEB := canvas-test canvas-project-test program-entry-project-test zx-canvas-test zx-raylib-test \
