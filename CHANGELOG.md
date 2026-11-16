@@ -2,822 +2,350 @@
 
 ## Unreleased
 
+- Hosted widgets bundle to ZX again with the updated Ziran compiler.
+- Window beams cast moving shadows on CPU and GPU renderers. Daylight follows
+  latitude and time of day. Cutout textures cast silhouettes, and hidden
+  objects can keep their shadows through `SetShadows`.
+- Programs carry only the features they use. `App.Show(window)` opens a bare
+  window; `App.Run(window, Draw)` adds frame input, scrolling, navigation and
+  widget accessibility. Window titles pass through unchanged, including an
+  empty title. `kryon/desktop_loop` and `kryon/test_driver_frame` are exported.
 - A bare window checks only itself: `kryon/app` keeps each platform's window
   (`desktop_window`, new `page_window`) apart from its frame loop
   (`frames_desktop`, `frames_web`).
-- Build with Ziran e813c847, which lowers host calls returning records with long names, so hosted widgets bundle to ZX again.
-
-- Let window beams cast real moving shadows on painted surfaces in both CPU
-  and GPU rendering. Keep rooms readable at night, admit midday sunlight,
-  and use a latitude-aware sun path with east on the right in a north-facing view.
-  Cutout textures cast their silhouettes. Camera-hidden objects retain their
-  shadows, controlled separately with `SetShadows`.
-
-- A program carries only what it uses. `App.Show(window)` shows a window
-  without frames through its own small loop (`desktop_window`: the window,
-  its events, clearing and presenting), so `examples/window.zi` reaches only
-  the program, `kryon/app`, the desktop app host, that loop, the SDL presenter
-  and C strings: a 17 KB executable instead of 265 KB, with none of the frame
-  loop, desktop runtime, raster, sessions, input or accessibility. Hosts
-  that run frames (`App.Run(window, Draw)` and the frame host) register the
-  widget tree's frame driver (`tree_frame`, through `frame_driver`): input
-  routing, the frame, cursor shapes, scrolling, gamepad navigation and the
-  test driver's hooks. Accessibility is split: the window keeps the AT-SPI
-  connection and the application object, and widget roles and nodes live in
-  `accessibility_tree_linux`, which those hosts register. The test driver is
-  in a build only when `KRYON_TEST_DRIVER` is defined; `desktop_runtime`
-  then connects it (`test_driver_frame`, exported for other native hosts),
-  and a desktop window started for a test without it stops and says how to
-  build it. `App.Run` passes the window's title straight to the window; a
-  window without a title opens untitled. `input_delivery`,
-  `frame_input_provider` and `gamepad_navigation` moved to `src/ui`, and
-  `InputDeliveryTake` to the new `input_take`. `kryon/desktop_loop` and
-  `kryon/test_driver_frame` are exported. The ZX player decodes its guests'
-  picture cursors again (it imports `cursor_picture`). `make
-  pay-per-import-test` checks which modules the window, hello, box and image
-  examples carry.
-- An empty desktop window no longer carries image decoding, smooth picture
-  copies, video or threads: 39 generated C files and about 345 KB instead of
-  62 and 546 KB. The desktop rasterizer registers its picture cache, its
-  Lanczos copies and its font the first time a frame uses them; video
-  registers its frame as a named picture source (`raster_picture`) when it
-  opens. Picture cursors decode through `kryon/cursor` again (`cursor_picture`
-  and the `CursorPictureHost` capability), now that Ziran's Go target accepts
-  a module initializer that registers a procedure calling a host. A widget host
-  no longer imports the decoder; the application that embeds it imports
-  `kryon/cursor` for its guests' picture cursors. Native desktop project
-  builds link X11 explicitly.
-- Scenes made of painted pictures can follow the time of day. `Scene.grade`
-  (`SceneGrade`) tints and desaturates every material not marked `ungraded`,
-  and lights it with up to four lamps and a beam through an elliptical opening
-  such as a round window, the same on the CPU and the GPU. The new
-  `kryon/daylight` module gives the sun's path and the grade for any hour, and
-  a storybook sky shader with drifting clouds and twinkling stars from noise
-  made in code. While the sun is high the grade is exactly neutral.
-
-- A secure `TextField` with a value and no `display_value` shows one `*` per
-  character instead of an empty field. Before, an API key field looked empty
-  until the app's show toggle. An explicit `display_value` still replaces the
-  mask, and the secret still never reaches paint, semantics or the clipboard.
-
-- ZX apps run on Ziran's one executable format everywhere. Players and hosted
-  apps call `InstantiateBundle` on every target, including the browser; the
-  `--vm` option of `zx` and `ziran run` is gone, and the web, Raylib and
-  Android runtimes build `libziran` with its instruction engine instead of the
-  bootstrap subset.
-- Opening a bundle app no longer rewrites all of its assets. `BundleWriteAssets`
-  keeps every extracted file that already holds its asset (`AppFileSame`
-  compares in place) and writes a changed one without waiting for the disk
-  (`AppFileWrite(..., durable = false)`): the files are a copy of the bundle,
-  checked again on the next open. Before, every open synced each asset and its
-  directories; for an app with 557 assets that was about a third of a second
-  on every open, measured. `AppFileRead` sizes its buffer once instead of
-  growing it byte by byte.
-
-- GTK style queries notice a new default display. The style cache answered
-  from the previous display's settings after `gdk_display_manager_set_default_display`,
-  so theme values and the style generation went stale.
-
-- The native GPU scene renderer (`kryon/scene_gpu`) no longer rebuilds and
-  re-uploads a whole scene when one node moves, turns, or scales. It now
-  re-makes and sends only the moved nodes' triangles, so an animated door or
-  leaf in a large scene costs a fraction of a millisecond per frame instead
-  of a full rebuild (about 9 ms for an 88,000-vertex room, measured). The
-  rebuild path also leaked its per-node matrices on every rebuild; they are
-  now kept and reused. `SceneGpuResources.geometry_vertices` counts the
-  vertices sent, so tests can tell a partial update from a full one.
-- `FreezeGeometry(scene)` promises that a scene's meshes, materials and
-  vertices stay as they are, so the GPU renderer stops comparing them with
-  what it last drew on every frame; nodes may still move, show and hide. Any
-  Scene call that adds or changes geometry takes the promise back.
-- Native Linux apps can drag data out to other applications. The optional
-  `kryon/DragSourceLinux` module is an XDND version 5 drag source on its own
-  X connection: it follows the pointer while the toolkit keeps its implicit
-  grab, talks XDND to the window under the pointer (including proxies), serves
-  the dragged MIME data, shows a shaped drag icon and reports when the pointer
-  is over the app's own windows so the app can handle internal drops.
-- `GtkStyleIndicatorRaster` and GtkPainter kinds 9–11 draw the GTK theme's own
-  check box, radio option and submenu arrow, so native menus can show check,
-  radio and submenu rows exactly as GTK draws them.
-- Scene lights can carry a projected texture: `LightCookie` sends a scene
-  texture through a light's beam over its shadow box, multiplying direct
-  irradiance in linear light, identically in the CPU and GLES renderers, for
-  dappled sun through leaves and similar patterns. The GLES host now needs 15
-  texture units.
-- The semantic DOM backend is removed: the `dom` profile, `dom_host`,
-  `dom_tree`, `dom_paint`, `dom_run` and `dom_app_run`, their tests and
-  `docs/dom.md`. No project used it. The `web` template now builds a Canvas2D
-  page, `CanvasAppMainLoop` takes no argument, and the shared page event and
-  texture code loses its DOM branches. The tool refuses a profile with
-  `backend = "dom"`.
-- Browser bundles run again. Ziran's WebAssembly tier runs only `s64 -> s64`
-  host capabilities and no longer hands other bundles to the VM, so the ZX
-  Canvas player and hosted apps, whose capabilities carry strings and records,
-  failed to start in a page. `bundle_player` and `hosted_app` now select the
-  portable VM themselves on the web with `InstantiateBundlePortable`.
-- `make test` runs 70 targets instead of 86. Sixteen targets, and `video-test`
-  outside the suite, only reran one `tests/ziran_*_test.sh` that the behavior
-  test runner already runs; they are removed, and `make test-focus TEST=NAME`
-  runs one such script. The runner now also clears `XAUTHORITY`, the session
-  bus, the session manager and `GDK_DISPLAY`, as those targets did.
-- The test driver is no longer part of an ordinary build. `kryon/test_driver`
-  keeps its procedures, which now pass input through unchanged, and the driver
-  itself (`test_driver_engine`) is compiled in only when a build defines
-  `KRYON_TEST_DRIVER`: `--define KRYON_TEST_DRIVER` on a direct build, or the
-  variable set in the environment of `kryon build`. A test that drives an app
-  must build it that way. An app built without the driver and started with
-  the variable set stops at once and says so.
-- With the test driver change above and the text change below, an empty
-  window generates 62 C files and 545 KB instead of 64 and 748 KB, and its
-  executable is 265 KB instead of 346 KB. The image decoders stay: the desktop
-  host decodes cursor pictures itself, and moving that behind a host
-  capability broke the Go backend check and hosts that do not provide it.
-- Seven failing test targets pass again. The Canvas backend, audio, text,
-  Lanczos, asset cache, bitmap image and document storage tests name the web
-  target when they build a page, as the `OS == .WEB` host selection needs.
-  The host keys test builds as part of the project, because the key modules
-  import widgets by name. The toast test no longer binds the platform
-  keyboard capability, which a toast program never calls.
-- Programs without a text field or text area no longer carry Unicode's grapheme
-  tables. Text requests check their cut points through a procedure that the
-  editing widgets register when imported (`text_boundary`), so
-  `text_request` itself no longer imports `std/grapheme`. An empty window
-  generates 121 KB less C and its executable is 50 KB smaller. A host test
-  that sends text requests without an editing widget imports `text_boundary`.
-- The time picker and desktop image examples build again. Their shared demo
-  modules moved to `examples/demo/`, which the desktop hosts name as a module
-  path; `examples/` itself cannot be one because `window.zi` shares a name
-  with a project module. The time picker demo uses the current `Text.Props`
-  size field and imports `time_picker_behavior` for `TimePickerText`.
-- The pixmap parity test builds the image example as part of the project and
-  passes every saved module when it builds from saved IR, so an app module
-  bound to the host's `ProjectFrame` capability is loaded.
-- The project tool builds a program entry: when a project's entry module
-  declares `main` (a `kryon/app` program such as `examples/window.zi`),
-  `kryon build` generates a host that calls it, so the same file becomes a
-  desktop executable or a Canvas page. A portable `zx` profile still needs a
-  `Frame` entry and is refused with that reason.
-- Browser profiles name their target again. Canvas, DOM and raylib-web project
-  builds and the ZX canvas player pass `--target=c --target-os web
-  --target-cpu wasm32` when saving IR, which the `OS == .WEB` host selection
-  needs; with only `PLATFORM_WEB` defined every browser project failed on
-  unresolved Canvas functions.
-- Kryon's manifest names the desktop host's system libraries in `[package]
-  links`, so `ziran build --project --target=c --exe` of a program in this
-  checkout links without caller `LDLIBS`. The examples Makefile no longer
-  injects pkg-config link flags or compiles the desktop examples itself.
-- The Android `kryon:renderer-raylib` artifact builds raylib again: its
-  CMake project (`cmake/renderer-artifact`) owns `kryon_android_raylib`,
-  which the renderer-free native host helpers no longer define, so arm64 and
-  armv7 artifacts configure instead of failing on an unknown command.
-- Widgets are named package imports: `Text :: #import "kryon/text"` serves
-  `Text.Draw` and `Text.Props`, and every widget package serves its own
-  `Props` and primary `Draw` with short related names such as `Text.Wrap`,
-  `Dropdown.Option` and `TabBar.Result`. The `Kryon` and `Widgets` facades,
-  the `*_props` and `*_widget` exports and the `TextProps`-style names are
-  removed without aliases. New `flow`, `navigation_bar_config` and
-  `text_selection` exports cover modules the facades served; `Page` serves
-  `Heading` and `ParagraphText`, `ListBox` its navigation keys and
-  `transition` `TransitionFadeColor`. Core, hosts, generated codecs,
-  examples, templates and tests use the package names.
-- Native SDL desktop and Linux Raylib hosts expose the distinct PRIMARY text
-  selection through the public system clipboard API; unsupported hosts report
-  it unavailable instead of aliasing the ordinary clipboard.
-- Raylib keys keep a Control, Alt or Super press that was released again
-  within the same poll, so the quickest Control+C tap still reaches the app as
-  Control+C instead of a lost plain C.
-- Context-menu rows can show right-aligned accelerator labels and checked state,
-  with aligned check columns and portable hosted-widget fields.
-- Replace host-global key/text reads with one shared ordered per-session
-  delivery path across Desktop, Canvas and Raylib, preserving layout-aware
-  shortcuts, repeats, IME text, gamepad navigation and focus-loss handling.
-- Reuse identical GTK cell measurements, retain native raster caches across
-  unrelated GLib events, and composite clipped opaque pixels efficiently.
-- Detect unchanged GTK painter surfaces by exact byte comparison instead of
-  hashing every pixel each frame, clear and copy them in bulk, reuse resolved
-  GTK style metrics and identical CSS layers within a style generation, and
-  present desktop frames before publishing accessibility changes.
-- Deliver Return with its completed text run and use the shared SDL renderer
-  selector for desktop raster hosts.
-
-- Frame transitions can own a stable copy of a retained frame while rendering continues.
+- Empty desktop windows omit image decoding, smooth scaling, video and threads.
+  Import `kryon/cursor` for picture cursors in custom widget hosts. Native
+  desktop project builds link X11 correctly.
+- Painted scenes can follow the time of day with `Scene.grade`, lamps and light
+  through elliptical openings. `kryon/daylight` supplies a sun path, neutral
+  midday lighting and an animated sky. CPU and GPU rendering match.
+- Secure TextFields show a character mask when no `display_value` is supplied.
+  Explicit display text still overrides it; secrets stay out of paint,
+  accessibility and clipboard data.
+- ZX apps use Ziran's executable format on every target, including browsers.
+  The `--vm` option is removed. Browser bundles with string and record host
+  calls start correctly again.
+- Opening a bundle rewrites only changed assets and reads files faster.
+- GTK style queries refresh when the default display changes.
+- GPU scenes update only moved geometry and reuse resources, making animation
+  faster without leaking memory. `FreezeGeometry(scene)` skips geometry checks
+  until geometry changes; nodes can still move, appear and disappear.
+- Linux apps can drag MIME data into other applications with
+  `kryon/DragSourceLinux`, including drag icons and internal-drop detection.
+- GTK painters draw themed check boxes, radio options and submenu arrows.
+- `LightCookie` projects textures through scene lights on CPU and GLES,
+  supporting effects such as sunlight through leaves. GLES needs 15 texture units.
+- The unused semantic DOM backend is removed. Web projects use Canvas2D;
+  profiles selecting `backend = "dom"` are rejected.
+- Tests can run individually, and browser, audio, text, image, storage,
+  keyboard and toast tests build with the correct host settings.
+- The test driver requires `KRYON_TEST_DRIVER` at build time. Starting a test
+  against a build without it reports how to rebuild.
+- Programs without editing widgets omit Unicode grapheme tables.
+- The time picker and desktop image examples build again.
+- `kryon build` supports `main` entries using `kryon/app` on desktop and web.
+  Portable ZX profiles still require a `Frame` entry.
+- Browser projects select the correct target. Direct native project builds
+  link desktop system libraries automatically, and Android renderer artifacts
+  configure correctly again.
+- Import widgets by package, such as `kryon/text`, and use `Text.Draw` and
+  `Text.Props`. The `Kryon`/`Widgets` facades and old props/widget aliases are
+  removed. Related layout, navigation and text-selection APIs have direct exports.
+- SDL desktop and Linux Raylib hosts expose PRIMARY separately from the ordinary
+  clipboard; unsupported hosts report it unavailable.
+- Fast modifier shortcuts retain Control, Alt and Super even when released
+  within the same poll. Context menus support aligned accelerator labels and checks.
+- Desktop, Canvas and Raylib share ordered input delivery, preserving keyboard
+  layouts, repeats, IME text, gamepad navigation and focus-loss behavior.
+  Return arrives with its completed text run.
+- GTK painting reuses measurements, styles and raster caches, copies pixels
+  faster and presents frames before accessibility updates.
+- Frame transitions can retain a stable frame copy while rendering continues.
 
 ## [0.3.0] - 2026-11-12
 
-- Hosted bundles can measure approved images through typed width and height calls without gaining arbitrary file or raster access.
-
-- Custom hosts use shared application-entry and frame/window APIs; native window icons use the renderer image codecs with upright RGBA pixels. Android JNI, private files, touch and clipboard services use the selected custom raylib host, and resumed rendering and touch coordinates follow its current drawing buffers. Browser RGBA previews avoid native encoder links and expose encoding availability.
-
-- Raylib image loading links the pinned AVIF codec only for hosts that define
-  `AVIF_RAYLIB`; other builds decode no AVIF and carry no codec dependency.
-
-- Hosted Widgets aggregates expose supported host contracts without importing retained-only tree implementations, including TimePicker and Spinbox.
-
-- Redesigned the Guide, added a landscape Image example and theming guidance, and corrected Hold/Confirm progress borders.
-
-- Graphical bundles launch through `ziran run app.zx`; installation registers the desktop provider, `kryon run` shares that runner, and `--vm` selects portable execution.
-
-- Disabled EmptyState and Banner retain their configured controls and reject activation until enabled.
-
-- Carousel supports disabling all navigation, gestures, and actions together with `CarouselProps.disabled`.
-
-- Android source generation binds the selected Frame only for built-in native hosts; explicit custom hosts and ZX hosts retain their own entry contracts.
-
-- Reusable components now live in their own source folders while retaining public package import names. Widgets and individual package imports expose the extended core components and their public props, state, and task types.
-
-- Menu, TabBar, NavigationBar, and Collapsible support caller-owned spring motion, continuous reversals, frame activity results, and reduced motion; closing menus release interaction while their paint settles. Portable hosted TabBar calls reject nonnull state pointers until a portable motion state protocol is available.
-- OneTimeCode centers digits in their slots, ScrubField aligns its labels and numeric value, and maintained movement examples label their step counters. The four motion examples supply retained state and the input clock; the native gallery reduces its frame rate after paint settles.
-
-
-- Native bitmap caches keep their shared capacity while supporting existing compiler pins.
-- Native smooth-image caches retain multiple sizes of the same picture within their existing LRU budgets, preserving sharp covers beside thumbnails.
-
-- SwipeRow supports optional short and long actions per direction with fixed travel spans, distinct release results and matching equal-width strip previews.
-- Native TextArea corrections preserve the caret viewport by replacing only the changed span; unchanged TextArea and TextField snapshots retain selection without a text edit.
-
-- Linux apps can apply reusable GTK CSS providers to individual style contexts or their process screen, and temporarily select dark styling with nested restoration.
-- Apps can handle F3 shortcuts through the shared `KeyF3` key constant.
-
-- Modified Tab stays available to applications; TabBar keyboard navigation and removed or disabled focused tabs transfer retained focus to the selected tab.
-
-- Editable TextFields can opt into plain Tab for application completion while Shift+Tab retains focus traversal.
-
-- Breadcrumb provides keyed label navigation with caller-owned selection and focus, measured Unicode labels, and virtualized ancestor overflow.
-
-- Native Raylib renders managed RGBA images with revision-aware textures and owned queued pixels, preserving tint and session images across graphics resets.
-- Linux native apps can publish and read bounded multi-target MIME clipboards, with copied buffers, incremental transfers and conditional release of their own publication.
-
-- Apps can use icon and compact grids with multiple selection, keyboard navigation and focus scrolling.
-- Native apps carry their declared assets beside the executable and into installed packages, so images load independently of the working directory while private install prefixes stay private.
-- Linux apps can opt into their current GTK3 theme, icons and Pango text, including markup and custom font settings, through offscreen images.
-
-- The DevTools test browser takes extra Chromium switches in `flags`, such as the SwiftShader ones a WebGL page needs.
-
-- DOM pages report an image's size only once the browser has decoded it for display, and keep showing that decoded image, so it never shows blank; an image the browser cannot decode reports as unavailable.
-
-- raylib apps, including ones with their own 3D host, can build as WebGL browser pages with `platform = "web"`, with their asset folders preloaded.
-
-- Labels and image paths are copied when painted, so callers may free their strings right after the call.
-
-- Web scenes that draw more than 32 images no longer decode them again every frame; the image cache keeps the most recently used ones.
-
-- Web pages scale images with WebAssembly SIMD where the browser supports it, and fall back to a baseline build elsewhere.
-
-- Smooth images are shown at their on-screen size with Lanczos filtering on every backend, made off the UI thread (a slice per frame on the web) and matching Pillow.
-
-- Native AVIF images decode with dav1d and its CPU-tuned assembly on desktop and every Android ABI, using up to four cores for large frames.
-
-- Tall buttons such as launcher and keypad tiles keep rounded card corners, show their pictures large, and neutral soft buttons take a light accent tint.
-
-- Web touches and clicks land on what is drawn under them when the page pads its canvas for a phone's notch or home bar.
-
-- Explore Kryon Labs apps and visual modules with real previews, clear availability and an editable widget gallery.
-
-- Native images load AVIF through shared image packages.
-- TextArea pointer selection respects the retained view position.
-
-- Repeatedly scaled scene images render smoothly without resampling each frame.
-
-- Text can rotate around a chosen origin while keeping its full font size on native, web and Android renderers.
-
-- Apps can draw their own RGBA pixels as an ordinary Image on desktop, pixmap and web renderers, updating them in place without files.
-- Apps can import the image and SVG shape modules directly.
-
-- X11 session idle time now includes typing in other applications.
-- Custom cursors persist until changed, an application-wide cursor covers every session, and bitmap cursors no longer flicker or show light edges.
-- An application pointing cursor shows only over something clickable, including painted targets an app hit-tests itself.
-
-- Give widgets Material-style tones and states, and bottom navigation an icon-and-label layout with clear selection and focus.
-
-- Support desktop and web gamepads for game navigation, including View/Select host navigation, and expose modal titles to accessibility.
-
-- Custom Linux x86_64 hosts can try an opt-in SDL3 GPU renderer, using a pinned
-  SDL3 source package without installing SDL3 globally.
-
-- Styles resolve directly from indexed rules, and repeated frame labels share owned bytes without bounded lookup caches. Session and frame flags use compact bitsets.
-
-- Android: absolute file paths no longer go through raylib's asset reader, which
-  crashed a process with no running activity, such as Continue as approved while
-  the other app was closed.
-- Android prebuilt renderer packages link their codec archive through the
-  renderer interface, instead of requiring every app to define a separate
-  `kryonwebp` target.
-- Android apps can no longer opt out of the safe area: every frame stays clear
-  of the status bar, navigation bar and camera cutout, and a backdrop that runs
-  behind them asks for `AndroidWindowBounds`.
-- Images load WebP files on every host: lossy, lossless and transparent
-  pictures, and the first frame of animated ones.
-- Browser image loading shares one encoded snapshot between Canvas and DOM,
-  and image meshes reuse texture dimensions while drawing.
-- Web buttons still click once when a page update moves them mid press, and a
-  press that starts off a button no longer locks input when released over one.
-- Text with many new CJK or symbol characters draws far faster: Fontconfig sorts
-  a family once, a text rebakes each fallback font once, and fallback answers
-  no longer expire after 512 characters.
-- Linux Raylib apps can sleep until a descriptor or window input is ready with
-  `RaylibWaitForActivity`, and prepare a whole screen's glyphs with
-  `RaylibPrepareGlyphs`.
-- Keyboard shortcuts on desktop Raylib hosts follow the active keyboard layout,
-  such as Dvorak, instead of physical key positions.
-- Raylib hosts keep a modifier released in the same poll as its key press, so a
-  quick Ctrl+C is not read as a plain key.
-
-- SDL pixel hosts can paint on the GPU, including text and terminal cells, and
-  fall back to CPU painting without one.
-
-- Fix apps failing to save documents and extract assets on Android, where
-  system folders above the app's private storage cannot be opened.
-
-- Keep surrounding theme colors when buttons and embedded modules finish drawing in their own palettes.
-
-- Keys pressed by the test driver also appear in frame input snapshots, so apps
-  reading them can be driven in tests like apps reading the key queue.
-
-- Native project profiles can link verified dependency-owned support artifacts,
-  including audio providers alongside an existing desktop renderer.
-
-- Game build tools can share renderer metadata validation, resource paths and
-  ordered linker arguments instead of maintaining application copies.
-
-- MediaAudio adds owner-local Pause/Resume, retains paused PCM queues, and reports
-  available asset-music playback seconds through native, hosted and browser hosts.
-
-- Android document pickers accept multiple file types, including key backups, without showing every file type.
-- Document storage tests run native coverage without a browser SDK and keep full IDBFS coverage in the configured browser test job.
-
-- Game builders can share target-specific foreign renderer libraries and
-  standard font/browser resources through Kryon's package artifacts.
-
-- Media provides owned asset effects and looping music as independent voices,
-  with bounded gain, stop/unload/status, scoped packed-resource access and
-  native Raylib / browser providers. Suspended and unavailable audio return
-  explicit results; app disposal and successful restart release its voices.
-
-- Standard Desktop and Canvas hosts publish owned frame input snapshots from
-  their actual SDL and browser event state, preserving widget input queues and
-  clearing publication after callbacks, cancellation and teardown.
-
-- HTML browser apps receive right-clicks separately from middle-clicks, and
-  captured page areas keep Space and Enter in sync with the app.
-- Mouse drags follow captured `Press` areas in the HTML browser renderer,
-  including when released over another control or outside the area.
-
-- On the web, clicking or tapping a `Press` reports where it landed, so a
-  full-page area can tell a left-side tap from a right-side one. Keyboard
-  clicks still report no point.
-- `SwipeArea` forgets a touch that was released while the area was hidden, so
-  the next touch starts from its own position instead of the old one.
-- Title bars follow the app palette, keeping dark game navigation readable.
-- Updating an app's files never blanks its pictures: each image keeps
-  drawing until its new bytes have decoded, and an image whose bytes did not
-  change is not decoded again, on desktop, Android and the web.
+- Hosted bundles can measure approved images without arbitrary file access.
+- Custom hosts share application, frame and window APIs. Native icons retain
+  upright RGBA pixels. Android custom Raylib hosts handle private files, touch,
+  clipboard and resumed drawing correctly. Browser RGBA previews report
+  whether encoding is available.
+- Raylib hosts can opt into AVIF decoding without adding it to other builds.
+- Hosted Widgets exposes supported contracts, including TimePicker and Spinbox,
+  without pulling in retained widget trees.
+- Redesigned the Guide, added a landscape Image example and theming guidance,
+  and corrected Hold/Confirm progress borders.
+- Graphical bundles launch through `ziran run app.zx` and `kryon run` after
+  provider registration. `--vm` selects portable execution.
+- Disabled EmptyState and Banner preserve their controls and reject activation.
+  Carousel can disable navigation, gestures and actions together.
+- Android generation preserves custom and ZX host entry contracts.
+- Components have their own source folders while keeping public import names.
+  Package imports expose extended components and their public types.
+- Menu, TabBar, NavigationBar and Collapsible support caller-owned spring motion,
+  smooth reversals and reduced motion. Closing menus release interaction while
+  settling. Portable TabBar calls reject unsupported motion-state pointers.
+- OneTimeCode centers digits, ScrubField aligns values and labels, and motion
+  examples show step counters. The native gallery slows down when paint settles.
+- Native bitmap caches support existing compiler pins. Smooth-image caches keep
+  several sizes of a picture so covers stay sharp beside thumbnails.
+- SwipeRow supports short and long actions in either direction, with distinct
+  release results and equal-width previews.
+- TextArea corrections preserve the caret viewport. Unchanged TextArea and
+  TextField snapshots retain selection; pointer selection respects scrolling.
+- Linux apps can apply GTK CSS locally or process-wide and temporarily select
+  dark styling with nested restoration.
+- Apps can handle F3. Modified Tab remains available; TabBar transfers focus
+  when tabs are removed or disabled. Editable TextFields can reserve plain Tab
+  for completion while Shift+Tab still moves focus.
+- Breadcrumb supports keyed navigation, caller-owned selection and focus,
+  Unicode labels and ancestor overflow.
+- Raylib supports managed RGBA images with tint and updates, preserving session
+  pictures across graphics resets.
+- Linux apps can publish and read multi-format MIME clipboards, including large
+  transfers, and release only their own publication.
+- Icon and compact grids support multiple selection, keyboard navigation and
+  scrolling to focus.
+- Native apps carry assets into builds and installs so images load regardless
+  of the working directory. Private install prefixes stay private.
+- Linux apps can use GTK3 themes, icons and Pango text with markup and custom fonts.
+- Browser test launches accept extra Chromium flags, including WebGL settings.
+- DOM images report their size after decoding and stay visible; invalid images
+  report unavailable.
+- Raylib apps, including custom 3D hosts, can build as WebGL pages with assets.
+- Painted labels and image paths are copied, so callers can release them at once.
+- Web scenes retain recently used images and avoid decoding them every frame.
+  Supported browsers use WebAssembly SIMD scaling, with a baseline elsewhere.
+- Smooth images use Lanczos filtering across backends without blocking the UI.
+  Repeated scene scaling reuses the result. Native AVIF decoding uses shared
+  codecs and CPU acceleration on desktop and Android.
+- Tall buttons keep rounded corners and large pictures. Neutral soft buttons
+  use a light accent tint. Buttons and embedded modules preserve the surrounding
+  theme, and title bars follow the app palette.
+- Web touch and click coordinates account for safe-area padding. Buttons click
+  once even if moved mid-press, and releasing an outside press over one cannot
+  lock input.
+- Kryon Labs app and module previews show availability and an editable gallery.
+- Text rotates around a chosen origin at full size on native, web and Android.
+- Apps can draw and update RGBA pixels through Image without files, and import
+  image and SVG shape modules directly.
+- X11 idle time includes typing in other apps. Custom cursors persist until
+  changed; app-wide cursors cover all sessions. Bitmap cursors avoid flicker
+  and light edges. Pointing cursors appear only over clickable targets.
+- Widgets gain Material-style tones and states. Bottom navigation shows icons,
+  labels, selection and focus clearly.
+- Desktop and web gamepads support game and View/Select navigation. Modal titles
+  are accessible.
+- Custom Linux x86_64 hosts can opt into an SDL3 GPU renderer without a global
+  SDL3 install. SDL pixel hosts use GPU painting for text and terminal cells,
+  with CPU fallback.
+- Styles and repeated labels resolve faster with less frame overhead.
+- Android absolute file paths work without a running activity. Renderer packages
+  link their image codecs automatically. Frames always respect system bars and
+  cutouts; backdrops can request `AndroidWindowBounds`.
+- Images load lossy, lossless, transparent and first-frame animated WebP on all hosts.
+- Browser renderers share decoded image data and reuse image dimensions.
+- CJK and symbol-heavy text renders faster through improved fallback-font reuse.
+- Linux Raylib apps can wait for window or descriptor activity and prepare a
+  screen's glyphs together. Shortcuts follow the active keyboard layout and
+  retain modifiers during quick taps.
+- Android apps save documents and extract assets correctly in private storage.
+- Test-driver keys appear in frame input snapshots as well as key queues.
+- Native profiles can link verified dependency support artifacts, including
+  audio alongside their renderer. Game builders can share renderer validation,
+  resources and target-specific link settings.
+- MediaAudio supports Pause/Resume, retains paused PCM queues and reports
+  remaining asset-music playback time on native, hosted and browser hosts.
+- Android document pickers accept several file types without exposing all types.
+  Document storage can be tested natively without a browser SDK.
+- Media supports independent sound effects and looping music with gain, stop,
+  unload and status controls. Suspended or unavailable audio reports explicitly;
+  disposal and restart release the app's voices.
+- Desktop and Canvas publish owned frame input snapshots while preserving widget
+  queues and clearing state after callbacks, cancellation and teardown.
+- Browser apps distinguish right and middle clicks. Captured areas preserve
+  Space/Enter and follow drags released outside the area or over another control.
+- Web `Press` reports tap positions; keyboard activation has no point.
+  SwipeArea discards touches released while hidden.
+- Updated images remain visible until replacement data decodes. Unchanged images
+  are not decoded again on desktop, Android or web.
 
 ### Added
 
-- `frame_snapshot.CaptureFrameInput` returns owned per-frame held, pressed,
-  released and repeated keys with pointer, focus and monotonic timing. Raylib
-  gathers without consuming legacy keyboard/text queues; hosted reads stay
-  scoped to the active session and frame.
-
-- `TextFieldState` and props/edit/result helpers apply field changes to
-  caller-owned bytes, including overlapping replacements, with atomic range,
-  UTF-8 and capacity validation. Applications keep their own commit policy.
-- Every window and page is named after its app instead of "Kryon Ziran" or
-  "Kryon ZX": the install name, or else the package name. Builds keep it
-  beside the program, installs in `share/kryon/BIN/app.title`, and web
-  pages in their title; a ZX player names a bundle by the `.title` beside
-  it or its file name, and a program without one by its own file name.
-- `DirectionPad`: a four-way pad for touch games, like a D-pad. Pressing an
-  arm steps at once, holding repeats like an arrow key, sliding onto another
-  arm turns and a quick tap steps once; hosted games can use it.
-- Android UI tests: the test driver also runs on Android. In a debuggable
-  build, `adb shell run-as PACKAGE mkdir files/kryon-test-driver` before the
-  app starts turns it on in that folder, so a test can read the widgets and
-  press them on a real phone.
-- Inline links in `Text`: `TextProps.links` marks web links in the text,
-  which are painted inside the words in the theme's `link` color with an
-  underline, and `TextLinkAt` tells which link is under a pointer so an app
-  can open it. Portable apps can use both through their host.
-- Shapes beyond rectangles: `Line` draws a line of any thickness at any
-  angle, `Circle` a filled circle that can fade from its centre to its rim,
-  `Ring` a full ring or an arc between two radii, and `Triangle` a filled
-  triangle, and `Box` can fade its fill from top to bottom. Like `Box` they
-  take no input, sit in the widget tree, show only their visible part inside
-  a scroll area, and keep an unchanged frame reusable. Desktop, Android, web,
-  Cairo, the pixmap host, Plan 9 and the terminal draw them.
-- UI tests can drive a running app without reading screenshots: with
-  `KRYON_TEST_DRIVER` naming a directory, an app that calls the `TestDriver`
-  functions where it samples input answers a test's commands after each
-  frame. A test lists the committed widgets with their kind, role, label,
-  editor text, bounds, visibility, focus and enabled state, finds them by
-  label, role, key or focus id, presses one through the app's own pointer
-  path, types text and presses keys without dropping any on a slow machine,
-  drags with a held pointer, and waits until frames settle. Without the
-  variable nothing changes. A `Text` whose box cuts off some of its wrapped
-  lines records how many in the widget tree, and the driver reports them.
-- Images can be drawn warped over a grid of points: set `ImageProps.mesh`
-  to a columns × rows grid of screen points and `Image` stretches the
-  picture across it, two triangles per cell, so a painted arm or leg can
-  bend at its joint like a paper puppet. Mirrored grids draw too, the
-  image's bounds still clip it, and the caller may reuse its point buffer
-  right after the call. Desktop, Android, web, Cairo, the pixmap host and
-  Plan 9 draw it; a portable bundle can send a grid of up to 256 points
-  with a plain `Image`.
-- Add a first-class Android target: an `android` profile builds an
-  installable APK from the same application sources as the desktop. The
-  first `kryon build --profile android` generates the Android project beside
-  the application (never overwriting customized files) and assembles it with
-  Gradle; `kryon run --profile android` installs and launches it on a
-  connected device. The app runs as a native Android activity with
-  edge-to-edge rendering under the system bars and cutouts, touch input,
-  soft-keyboard text editing, display-density scaling, system dark mode and
-  orientation reporting, and a back key that closes the application when
-  nothing else handles it.
-- Widgets can keep their own state between frames on their retained node with
-  `TreeSetWidgetState` and `TreePreviousWidgetState`.
-- `Press` reports a click, a hold and where the pointer is while a press
-  lasts, so lists can select an item by holding it and more by dragging
-  across them. It paints nothing, takes keyboard focus like a button, and
-  keeps the press off its area only when asked, so scrolling still works.
-- Lay out tiles of one height in a responsive grid: `MeasureGrid` picks the
-  columns that fit the width, and `GridRowCount`, `GridCellsHeight`,
-  `GridCellBounds` and `GridIndexAt` give the rows, the height, each tile's
-  bounds and the tile under a point, for overlays and drag-and-drop.
-- Android apps without Java code can make HTTP requests with
-  `kryon/http_transfer`: when the activity has no transport of its own, a
-  native worker drives the system's `HttpURLConnection` through JNI, so TLS
-  and certificate checks stay the platform's. Redirects and caches are
-  refused, and a request that outlives its timeout fails.
-- `TimePicker` picks a time of day: a field showing 24-hour "HH:MM", or a
-  placeholder while no time is chosen, opens an hour and a minute column at
-  the current value. A tap, a finger drag or fling, or the mouse wheel
-  chooses and scrolls; Down opens it, the arrow keys step a column and wrap,
-  Left and Right switch columns, and Enter or Escape closes it. Optional Now
-  and Done buttons set the current time and close the popup, and an optional
-  Clear button takes the time away so the placeholder shows again. The time
-  changes as it is picked, so closing never loses a choice; the popup stays
-  on screen, opening above the field when there is no room below. The
-  picker takes the dropdown's look from every style, light or dark, and
-  portable apps can draw it through the widget host. `examples/` has a
-  window showing it in each state.
-- `TitleBar` and `ModalFrame` can draw their title strong, with the same
-  emphasis as Text's strong ranges, and a `ModalFrame` can start its title
-  at its content's edge, or after its left action, instead of centring it.
-- `Text` can type its text out: while `typing` is set it paints only the
-  first `typed` characters, never part of an accented letter, emoji or
-  multibyte character, and keeps the whole text's layout and accessible
-  label, so no word moves while it appears and screen readers read it all.
-  `TextCharactersEnd` gives where those characters end.
-- Images can scale smoothly: with `ImageProps.smooth` set, the raylib host
-  filters the image and draws it from mipmaps where the GPU allows them, and
-  browsers use their image smoothing, so a detailed picture drawn smaller or
-  larger than its pixels stays clean instead of turning jagged. Images
-  without it keep their sharp pixels.
-- `DismissibleOverlay` reports a tap on its backdrop or on its panel's own
-  background as `tapped`, whether or not the tap closes it, so an overlay
-  that may not be dismissed, such as a guide, can make a tap go on.
-- A `Scroll` can keep its scrollbar while its content still fits: with
-  `ScrollProps.keep_scrollbar` set, the scrollbar shows and takes its width
-  from the content from the start, so a list whose rows open keeps its
-  columns when it starts to scroll. With nothing to scroll, the scrollbar
-  takes no press, drag or hover.
-- Tabs that do not all fit in a `TabBar` follow a swipe, as a `Scroll`'s
-  content follows a finger, so every tab can be reached on a phone: a drag
-  that moves them selects no tab, a tap still selects one, and the wheel
-  still scrolls them. Tabs that reorder keep their own drag. A tab revealed
-  on selection keeps a peek of the tab before and after it in view.
-  `ScrollDeviceContentDrag` takes `horizontal` for content that scrolls
-  sideways.
+- `frame_snapshot.CaptureFrameInput` returns owned held, pressed, released and
+  repeated keys, pointer state, focus and timing without consuming legacy queues.
+  Hosted reads stay within the active session and frame.
+- TextField state and edit helpers update caller-owned bytes, validating ranges,
+  UTF-8 and capacity atomically, including overlapping replacements.
+- Windows and pages use the install or package name. ZX players use a nearby
+  title file or the bundle filename; unnamed programs use their filename.
+- DirectionPad offers four-way touch input with immediate steps, hold repeats
+  and sliding between directions, including hosted games.
+- Android UI tests can inspect and drive debuggable apps through a private
+  `kryon-test-driver` folder.
+- Text supports underlined theme-colored inline links and pointer hit testing,
+  including portable hosts.
+- Line, Circle, Ring and Triangle add clipped, noninteractive shapes. Circles
+  and Boxes support gradients across native, web, terminal and portable renderers.
+- The optional test driver inspects widgets, text, bounds, focus and state;
+  finds controls; clicks, types, presses keys and drags; and waits for frames
+  to settle without screenshots. It also reports clipped wrapped text.
+- Images can warp over a point grid for puppet-like animation, including
+  mirrored grids and clipping. Callers can immediately reuse the point buffer.
+  Portable bundles accept up to 256 points.
+- Android profiles build, install and run APKs from the same app sources as
+  desktop. Initial generation preserves customized Android files. Native apps
+  support edge-to-edge drawing, touch, soft-keyboard editing, density, dark mode,
+  orientation and an unhandled Back key that closes the app.
+- Widgets can retain their own state between frames on their tree node.
+- Press reports clicks, holds and pointer positions without painting. It takes
+  keyboard focus and optionally captures drags while preserving scrolling.
+- Grid helpers calculate responsive columns, rows, heights, cell bounds and
+  hit testing for tiles, overlays and drag-and-drop.
+- Android apps can use `kryon/http_transfer` without Java transport code, using
+  platform TLS and certificate checks. Redirects and caches are refused and
+  timeouts fail explicitly.
+- TimePicker provides a themed 24-hour field and hour/minute popup with touch,
+  fling, wheel and keyboard navigation. Optional Now, Done and Clear buttons
+  update the live selection; the popup stays on screen. Portable hosts support it.
+- TitleBar and ModalFrame support strong titles. ModalFrame can align its title
+  with content or the left action.
+- Text can reveal characters progressively without splitting Unicode characters,
+  changing layout or hiding its full accessible label.
+- Image smoothing can be enabled per picture; images without it keep sharp pixels.
+- DismissibleOverlay reports backdrop or panel-background taps even when it
+  cannot be dismissed.
+- Scroll can reserve scrollbar space before content overflows, keeping columns
+  stable. Inactive scrollbars ignore input.
+- Overflowing TabBars support swipe and wheel scrolling without accidental
+  selection; selected tabs leave neighbors partly visible. Reordering still works.
 
 ### Fixed
 
-- Recognize desktop numeric-keypad digits and preserve simultaneous key presses for local multiplayer games.
-
-- Holding arrow keys keeps moving in browser apps and games.
-
-- Keep warped-image animations smooth on slower browsers and refresh views when their images change.
-- Preserve final accessibility replies when an app exits and use the requested screen or window coordinates.
-- Reading a clipboard image no longer waits two seconds when the application
-  itself copied text, also on systems without the X-Resource library.
-
-- A popup, such as a dropdown's menu or a time picker's hours and minutes,
-  shows whole over the edge of the scroll area or dialog it opens from; a
-  time picker in a dialog no longer squeezes its popup into the dialog.
-
-- Dropdowns follow Kryon's light and dark system palettes; a dark palette
-  left their field and menu light before.
-- Android apps without Java code keep their content clear of the
-  navigation bar, the keyboard and display cutouts:
-  `PollAndroidWindowInsets` reads the window insets through JNI. On
-  Android 10 and older it also reads the window's visible frame, where those
-  versions may report only the keyboard, so content stays above it there
-  too.
-- Fonts packed in an Android app's APK load by their relative path, so
-  phones older than Android 10, which cannot name a system font, use the
-  app's own font.
-- Keyboard navigation works in every application: Tab and Shift+Tab move
-  between controls, skipping disabled ones, and the focused button shows a
-  focus ring in the style's focus color. Enter and Space press the focused
-  control after Tab. A click hides the ring and leaves Enter and Space to the
-  application, so they never press the clicked button again.
-- A dropdown keeps its menu open, its highlighted row and its scroll position
-  by itself, so an application passes only the selected value. Menus no longer
-  close again right after opening when the application does not hold that
-  state. `close` closes a menu from code.
+- Desktop numeric-keypad digits work, and simultaneous keys support multiplayer.
+  Held arrow keys keep moving in browser apps and games.
+- Warped-image animations stay smooth on slower browsers and refresh when images change.
+- Accessibility preserves final replies on exit and requested coordinate spaces.
+- Reading a clipboard image no longer stalls after copying text in the same app.
+- Popups draw fully outside their parent scroll area or dialog. Dropdowns follow
+  light and dark palettes.
+- Android content stays clear of navigation bars, keyboards and cutouts on older
+  phones too. APK fonts load by relative path, including before Android 10.
+- Tab and Shift+Tab traverse enabled controls with visible focus. Enter and
+  Space activate keyboard-focused controls; clicking hides the ring and returns
+  those keys to the app.
+- Dropdowns retain their own open state, highlighted row and scroll position.
+  Applications supply the selection and can close the menu from code.
 
 ## v0.2.0 - 2026-09-20
 
 ### Added
 
-- Add an Android secure-store helper that saves and unlocks secrets with
-  biometric/user-authenticated Android Keystore keys.
-- Add a Sweet app palette, with dark colors matched to the Sweet-Dark GTK
-  theme, and make it the default Default app palette.
-- Expose the Plan9, Xfce and Sweet palettes in the Go runtime: the bindings
-  previously stopped at Cobalt and clamped every other id to Mono. Also keep
-  the circle/accent catalog bytes, add `GetUIDefaultScheme` with the full
-  Default color roles, and `DefaultThemeForThemeStyle` for pairing a widget
-  style with its default palette.
-- Let scroll containers render a small visual bleed around their viewport so
-  control borders, focus rings, and Default state layers are not clipped.
+- Android secure storage protects secrets with biometric or user-authenticated
+  Keystore keys.
+- Sweet becomes the default app palette, matching Sweet-Dark in dark mode.
+  Go exposes Plan9, Xfce and Sweet palettes, full Default color roles and
+  style-to-palette pairing.
+- Scroll containers can leave room for borders, focus rings and state layers
+  around their viewport.
+- Patch releases follow successful master CI, with explicit minor/major tooling.
+  Checksummed native tool archives accompany SDK and renderer downloads.
+- Standalone and CI builds link notification and GTK tray dependencies correctly.
+- `KRYON_MEM_DEBUG` enables application and font memory diagnostics.
+
+### Changed
+
+- Widget, layout, interaction, style and tree behavior is authored in Kry and
+  compiled to C and Go. Clipboard callbacks use host-provided writers.
+- Font reuse reduces memory and repeated rasterization while keeping large text
+  crisp and native-script locale lists responsive.
+- `KRYON_TRAY_GTK_DL` loads GTK only when the tray is used.
+- Terminal provides a resizable shell with keyboard input, screen polling and
+  basic cursor movement and erasing.
+- `k2c --emit-krb` creates cartridges with generated C hosts and live bound state.
+  `kryon-preview cartridge` previews Kry or KRB files without building an app host.
+  Existing C projects keep working, and Raylib backend renaming works correctly.
+- Kry adds `defer` for reverse-order cleanup on block exits, resolves imported
+  type names across modules and accepts large functions without a fixed body cap.
+  Compiler cleanup no longer leaks memory.
+- Parsing reports multiple recoverable errors in source order rather than
+  stopping at the first. Fatal errors still report earlier diagnostics.
+- Standalone Kry apps can own their frame loop through `init`, `frame` and
+  `shutdown` hooks, including nested rendering and inspection overlays.
+- Platform helpers provide nonblocking processes, filesystem access and dynamic
+  library loading to Kry apps. Windows currently has stubs.
+- Krait moves to its own repository as the Kry-written IDE. It offers project
+  opening, a file tree, editable tabs, saving, dirty markers, undo/redo and live
+  previews. Console and problem panels run commands and show build diagnostics.
+- Hot reload and run builds no longer freeze the IDE; completed builds load
+  promptly. Source-editor copy, cut, paste and select-all work consistently,
+  and large clipboard selections no longer truncate.
+- Library objects link into PIE executables and dynamically loaded hosts.
+- The bundled C IDE is removed. `kryon-app` becomes `kryon` for building,
+  packaging, running, previewing and local Ksync; `kt ide` launches Krait.
+- Slider accepts `value_text_override` for custom labels. Callers must add
+  the argument; NULL keeps the numeric label.
+- Shared titlebar, drawing and text-editing helpers reduce duplication.
+  Preview documentation describes the actual build-and-reload flow.
+- Linux and FreeBSD run local-test equivalents on pushes and pull requests.
 
 ### Removed
 
-- Drop the unused Clay layout dependency: nothing in Kryon or downstream
-  apps called it, and it only compiled dead symbols into libkryon.
-
-
-### Added
-
-- Automatic patch releases after successful `master` CI, with retry-safe
-  version resolution and explicit minor/major bump tooling.
-- Checksummed native tools archives containing every Kryon command-line binary
-  alongside the existing static SDK and cross-platform renderer downloads.
-- CI and standalone Kryon builds now install/link the GIO notification
-  dependency explicitly instead of discovering its compile flags only.
-- Linux and FreeBSD CI install GTK development metadata required by the Go
-  desktop-tray bindings exercised by generated-code smoke tests.
-- Memory diagnostics: `KryonMemReport(tag)` / `KryonMemDebugEnabled()` print
-  RSS/high-water marks and the glibc arena breakdown to stderr when
-  `KRYON_MEM_DEBUG` is set; `UIFontMemoryReport(tag)` prints per-font
-  rasterization stats under the same switch.
-
-### Changed
-
-- Kryon's widget, layout, interaction, style, and UI-tree logic is now
-  authored in the Kry (`.kry`) UI language and compiled into the native C and
-  Go runtimes, replacing the hand-written C widget implementation. The
-  clipboard OSC52/paste callbacks are now host-provided write functions
-  instead of raw function pointers.
-- UI source fonts rasterize once per font at the DPI-scaled base size instead
-  of caching up to eight per-size rasterizations, and one lazily built large
-  tier keeps big text crisp. New codepoints re-rasterize at most once per
-  frame per font, so a locale list in native scripts no longer triggers a
-  rebuild storm. Freed atlas build buffers are returned to the OS
-  (`malloc_trim` on glibc). Idle heap use of font-heavy apps drops
-  accordingly.
-- Optional GTK dependency for the GTK_STATUS_ICON tray backend: apps can
-  define `KRYON_TRAY_GTK_DL` to resolve GTK through the new `gtk_dl` shim
-  (`dlopen("libgtk-3.so.0")` in the tray thread) instead of linking GTK.
-  Applications that skip the tray then never map libgtk-3 or its
-  gdk/pango/cairo dependency chain.
-- PTY terminal (`Terminal`) for IDE hosts: spawn `$SHELL`, write keys, poll
-  a screen grid, resize with `TIOCSWINSZ`. Basic CSI cursor and erase.
-- First krb cartridge slice: `k2c --emit-krb` packs widget calls into a
-  mmapable `.krb` (VFS nodes, string table, `OP_DRAW_TREE`, host import
-  names). `KrbLoad` / `KrbBind` / `KrbDraw` walk the image through a small
-  `KryBackend` table. `kryon-preview cartridge` renders a `.kry` or `.krb`
-  without building an app host. C emit still walks the reconstructed AST;
-  existing C projects are unchanged.
-- `k2c --emit-krb` also writes a C host (`*.krb.c` / `*.krb.h`): state
-  becomes `KrbBindMem` paths, button `if` bodies become bind functions,
-  and `Screen_krb_draw` / `Screen_krb_press` are the C ABI. `02_buttons`
-  clicks increment a mounted `click_count`.
-- Mount live C memory into a cartridge: `KrbMount` / `KrbBindMem` plus
-  `OP_CALL_HOST` and `OP_SET_I32`. A TEXT node whose name is a mounted path
-  draws the live value. Raylib builds now drop copied vendor `.o` files so
-  the backend rename header actually applies.
-- Add `defer` to the Kry language: `defer STMT` runs `STMT` at the enclosing
-  block's exit (fall-through, `return`, `break`, `continue`), in reverse
-  registration order across nested scopes. A compile-time transform that
-  splices the statement into the generated C at every exit point — no runtime
-  cost. `goto` out of a deferred scope is left to explicit cleanup.
-- Resolve qualified type references across modules. Writing
-  `alias.Type` after `alias :: #import "mod/path"` now produces the bare C type
-  name in every position — parameter lists, return types, struct fields, local
-  declarations, and `#global` declarations — instead of emitting `alias.Type`
-  verbatim (a C syntax error) or wrongly module-prefixing it. Structs and enums
-  use their declared name across translation units, so the alias prefix is
-  dropped. Qualified *calls* (`alias.fn(...)`) still rewrite to `module_fn(...)`
-  as before. The first multi-module `.kry` program (state + draw + host) now
-  compiles, links, and runs end to end.
-- Remove the fixed per-function body cap. `k2c` previously rejected any function
-  whose generated body exceeded a fixed 512-statement cap with
-  "generated body is too large", which blocks large UI draw functions.
-  `KryFunction.body`/`body_line` are now heap arrays that grow geometrically
-  (via `grow_body`), and the `apply_defers` splice pass allocates its working
-  buffers sized to the body. A 1,500-statement function compiles cleanly.
-  Verified clean under ASAN/UBSAN/LeakSanitizer; the previously-leaked
-  `file->functions`/`routes` arrays are now freed on exit.
-- Collect multiple parse errors instead of aborting on the first. Parsing now
-  installs a per-statement recovery boundary: a malformed statement records a
-  diagnostic and parsing continues with the next, so a file with several errors
-  reports all of them (Krait's problems pane becomes useful while editing).
-  A file that previously reported one error and exited now reports every
-  recoverable error in source order. Fatal conditions (out of memory, CLI
-  misuse) still abort as before, and any diagnostics already recorded are
-  flushed first. Examples and valid code are unaffected (byte-identical).
-- Standalone `.kry` apps can own their frame loop. The `app{}` block now
-  accepts `init`, `frame`, and `shutdown` hooks naming `.kry` functions; when
-  `frame` is set, `k2c` emits a `main()` that calls `init()` once, `frame()`
-  each iteration, and `shutdown()` at exit — without bracketing drawing, so the
-  program calls `BeginDrawing`/`BeginUIFrame`/`EndDrawing` itself and can host
-  nested render-texture passes and inspection overlays like a hand-written C
-  app. This is the entry point Krait uses. Without hooks the
-  existing single-screen `app{}`/`screen` dialect is unchanged (byte-identical).
-- Add the Kry standard platform library: `kry_process` (spawn a shell command
-  with non-blocking stdout/stderr polling, used for builds and consoles),
-  `kry_filesystem` (directory iteration, stat/mtime, recursive mkdir, realpath,
-  text read/write), and `kry_dylib` (dlopen/dlsym/dlclose for loading a built
-  app host). Declared in `kryon.h` and implemented under `src/kry_std/`, so they
-  are linked into `libkryon.a` and callable directly from `.kry` via `#extern`.
-  These lift Krait's inline POSIX surface into a reusable library so the
-  `.kry`-written IDE can spawn `make kryon-host`, walk the project tree, and
-  `dlopen` the resulting `app_host.so`. Windows has stub implementations.
-- Move the self-hosted IDE rewrite in Kry into the standalone IDE repository,
-  Krait (`kryonlabs/krait`): `app.kry` owns the window loop via the new
-  `app{}` hooks; `state.kry`, `start_page.kry`, `project.kry`, `tree.kry`, and
-  `editor.kry` implement the start page, project-open flow (file dialog +
-  `kry_fs`), a file-tree sidebar (`kry_fs_list_dir` +
-  `UICascadingTreeViewNode`), and a read-only source viewer (`kry_fs_read_file`
-  + `UITextAreaNode`). Krait transpiles those modules in one `k2c` invocation
-  and links the generated C against `libkryon.a` + raylib.
-- Krait gains an editable editor with multi-tab open files, Ctrl+S save
-  (`kry_fs_write_file`), dirty markers, and Ctrl+Z/Ctrl+Y undo/redo
-  (heap-snapshot ring), plus a live-preview pane (`preview.kry`) that runs
-  `make kryon-host` via `kry_process`, `dlopen`s the resulting `app_host.so`
-  via `kry_dylib`, and renders the host into a `RenderTexture` — the full
-  non-blocking build + hot-reload loop, written in Kry.
-- Add the Krait console and problems panels in Kry (`console.kry`,
-  `problems.kry`): an interactive shell that runs typed commands via
-  `kry_process` and drains output each frame, and a diagnostics parser that
-  splits `path:line:col: message` lines from build output into a problems
-  list, shown in a bottom panel that auto-opens when a build reports errors.
-- Compile kryon library objects with `-fPIC` so they link into PIE executables
-  and `dlopen`'d app hosts on distros that default to PIE.
-
-### Changed
-
-- Remove the bundled C IDE. Kryon now builds only the library, compiler, and
-  tooling; the Kry-written IDE, Krait (`kryonlabs/krait`), lives in its own
-  repository and vendors Kryon as a submodule.
-- Rename the app command `kryon-app` to `kryon`. There is now a single
-  `kryon` command for building, packaging, running, previewing, and the local
-  Ksync backend. `scripts/kryon-app.sh` → `scripts/kryon.sh`; the Makefile
-  installs `$(BINDIR)/kryon`; `kt` execs `kryon` for app runs and `krait` for
-  the `ide` target (freeing the bare `kryon` name for the build tool). App
-  `project.kryon` target entries that call `sh vendor/kryon/scripts/kryon.sh`
-  are updated in downstream apps.
-- Add a `value_text_override` parameter to the slider drawing helper and
-  `Slider`. When non-NULL it replaces the default numeric value label, letting
-  callers render custom value text (for example, named steps). This is a
-  breaking signature change: all callers must add the new argument (NULL keeps
-  the previous behavior).
-- Fix copy/cut/paste/select-all in the Krait source editor. `UITextAreaNode`
-  had its own generic clipboard handler that raced Krait's
-  `editor_handle_source_clipboard` on the same one-shot keypress, so Ctrl+C/V
-  worked inconsistently. The generic handler is removed; Krait now owns the
-  source-editor clipboard (it has the byte-cap, line-copy fallback, and status
-  messages). The stale `!textarea_changed` guard that silently skipped paste is
-  dropped too.
-- Raise the clipboard size caps so large selections copy and paste in full.
-  The kryon UI buffer (`g_clipboard_text`) grew from 4096 to 1 MiB, and the
-  vendored raylib SDL `GetClipboardText` buffer (`MAX_CLIPBOARD_BUFFER_LENGTH`,
-  a fixed 1024 that truncated pastes to 1019 bytes + `...`) is overridden to the
-  same 1 MiB via a `-D` flag passed through `RAY_RAYLIB_CONFIG` — no vendored
-  raylib source is edited. Both caps are now symmetric and above the editor's
-  512 KiB source buffer, which becomes the real ceiling.
-- Make hot-reload (and run targets) non-blocking. Krait ran the app-host build
-  as a synchronous `popen`+`fread` on the UI thread, freezing the window for the
-  whole compile. Builds now use the same `fork`+`pipe`+`waitpid(WNOHANG)` pattern
-  as the console runner (`editor_build_start`/`editor_build_poll`), drained each
-  frame from the main loop; the app host is `dlopen`ed on the poll that observes
-  a successful exit. The reload poll is lowered from 2.0s to 0.5s so a finished
-  build is picked up promptly, and builds are serialized with the console.
-- Split the screen-header (title bar) widgets out of `modal.c` into a new
-  `src/ui/ui_titlebar.c`, leaving `modal.c` holding only modal/dialog code.
-  Removed an orphaned empty scrollbar section marker.
-- Consolidate duplicated helpers: the three byte-identical `clampi` copies in
-  `guide.c`, `modal.c`, and `theme_picker.c` now use the shared `ui_clampi`.
-  Add shared `ui_draw_box_background`, `ui_caret_blink_visible`, and
-  `ui_open_url` helpers, replacing inlined copies in the text widgets and links.
-- Correct the README preview-projects section: Krait previews `.kry` by
-  rebuilding and `dlopen`ing an app host, not by rendering source directly.
-- Remove the empty leftover `src/editor/` directory; the C editor lived under
-  the command tree before the Krait migration.
-- Add CI workflow (`.github/workflows/ci.yml`) that builds and runs `make test`
-  on push and pull request for Linux and FreeBSD. Tests previously only ran at
-  release time.
-- Extract the UTF-8 codec and text-buffer helpers from `ui.c` into a new
-  `src/ui/ui_text_edit.c`, with a `tests/ui_text_edit_test.c` covering the
-  insert/delete/offset logic.
+- Removed the unused Clay layout dependency.
 
 ## v0.1.90 - 2026-09-08
 
-### Changed
-
-- Release: bump version to v0.1.90
 - Isolate auxiliary window focus state
 
 ## v0.1.89 - 2026-09-08
 
-### Changed
-
-- Release: bump version to v0.1.89
 - Isolate native tab state per render host
 
 ## v0.1.88 - 2026-09-08
 
-### Changed
-
-- Release: bump version to v0.1.88
 - Keep dropdown keys within popup ownership
 
 ## v0.1.87 - 2026-09-08
 
-### Changed
-
-- Release: bump version to v0.1.87
 - Keep popup menu Escape within its owner
 
 ## v0.1.86 - 2026-09-08
 
-### Changed
-
-- Release: bump version to v0.1.86
 - Focus native sliders from pointer presses
 
 ## v0.1.85 - 2026-09-08
 
-### Changed
-
-- Release: bump version to v0.1.85
 - Add native Linux IBus text composition
 
 ## v0.1.84 - 2026-09-08
 
-### Changed
-
-- Release: bump version to v0.1.84
 - Remove legacy UIForm aliases
 
 ## v0.1.83 - 2026-09-08
 
-### Changed
-
-- Release: bump version to v0.1.83
 - Unify C text composition handling
 
 ## v0.1.82 - 2026-09-08
 
-### Changed
-
-- Release: bump version to v0.1.82
 - Render native IME preedit accurately
 
 ## v0.1.81 - 2026-09-08
 
-### Changed
-
-- Release: bump version to v0.1.81
 - Add native word text editing
 
 ## v0.1.80 - 2026-09-08
 
-### Changed
-
-- Release: bump version to v0.1.80
 - Centralize C text navigation
 
 ## v0.1.79 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.79
 - Unify text selection navigation
 
 ## v0.1.78 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.78
 - Add multiline TextArea page navigation
 
 ## v0.1.77 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.77
 - Restore premultiplied paint layer compositing
 - Make tab capacity audit resilient to dropped clicks
 - Clean up default button rendering
@@ -825,61 +353,31 @@
 
 ## v0.1.76 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.76
 - Add temporary input to numeric controls
 
 ## v0.1.75 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.75
-- Enforce premultiplied paint layer output
-- Highlight Kry directives in text areas
-- Keep paint layer text on straight alpha
+- Paint layers preserve transparency and text alpha. Text areas highlight Kry directives.
 
 ## v0.1.74 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.74
-- Track single profile icon atlas
-- Use single transparent profile picture atlas
-- Keep paint layers premultiplied
-- Use rounded profile picture tiles
-- Use normal alpha for paint layer compositing
+- Profile pictures use rounded tiles and a shared transparent icon atlas.
+  Paint layers preserve correct transparency when composited.
 
 ## v0.1.73 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.73
-- Preserve synthetic tap activation
-- Suppress control activation after drag
-- Fix translucent paint layer compositing
-- Harden modern bottom navigation tests
-- Keep disabled bottom nav icons visible
-- Use normal alpha for paint layer compositing
-- Preserve retro style tokens
-- Remove stale locale dropdown compatibility
-- Expose locale dropdown controls
-- Modernize default nav styling
+- Synthetic taps activate controls; drags do not. Translucent layers composite correctly.
+- Disabled bottom-nav icons remain visible; default navigation styling improves
+  while retro tokens remain. Locale dropdown controls replace stale compatibility APIs.
 
 ## v0.1.72 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.72
 - Isolate and clean dropdown state
 - Modernize profile picture icons
 - Add text editor buffer helpers
 
 ## v0.1.71 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.71
 - Remove stale scaling compatibility alias
 - Keep ScaleUIPx compatibility
 - Add closeable collapsible headers
@@ -891,83 +389,49 @@
 
 ## v0.1.70 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.70
 - Add composed native tab scopes
 - Fix scroll clipping under render scale
 
 ## v0.1.69 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.69
-- Fix standalone DPI test on FreeBSD
-- Update public API snapshot for scaling helpers
-- Isolate native tab bar state by widget
-- Fix logical UI density scaling
-- Fix core UI scaling and picture bounds
+- TabBar state is isolated per widget. Logical density, core scaling and
+  picture bounds are corrected; scaling APIs and FreeBSD builds stay consistent.
 
 ## v0.1.68 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.68
-- Reuse canonical button behavior in composite widgets
-- Keep tab keyboard tests renderer-free
-- Unify native tab bar behavior
+- Composite buttons share consistent behavior, and native TabBars use the same
+  navigation rules with renderer-independent keyboard tests.
 
 ## v0.1.67 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.67
 - Add keyboard controls to native drag widgets
 
 ## v0.1.66 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.66
 - Add native multi-select keyboard navigation
 
 ## v0.1.65 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.65
 - Add native toggle keyboard navigation
 
 ## v0.1.64 - 2026-09-07
 
-### Changed
-
 - Unify keyboard interaction for choice widgets
-- Release: bump version to v0.1.64
 - Add native slider keyboard navigation
 
 ## v0.1.63 - 2026-09-07
 
-### Changed
-
-- Release: bump version to v0.1.63
 - Defer Text painting inside retained layouts
 - Keep canonical Text visible in mixed UI frames
 
 ## v0.1.62 - 2026-09-07
 
-### Changed
-
 - Update theme example runtime snapshot
 - Expose title bar opacity as a style token
-- Release: bump version to v0.1.62
 - Add native menu keyboard navigation
 
 ## v0.1.61 - 2026-09-06
 
-### Changed
-
-- Release: bump version to v0.1.61
 - Add native list box keyboard parity
 - Clip Text only when its bounds require it
 - Preserve outlined icons and live Text layering
@@ -975,183 +439,98 @@
 
 ## v0.1.60 - 2026-09-06
 
-### Changed
-
-- Keep retained text ordering invariant
-- Preserve immediate Text rendering in retained frames
-- Add canonical MingCute warning icon
-- Release: bump version to v0.1.60
-- Share one canonical text painter
-- Use a clean Default return affordance
-- Preserve canonical Text paint order on native screens
-- Make Text the canonical centered label API
+- Text becomes the shared centered-label API, preserving immediate and
+  retained paint order. Default gains a clean return control and MingCute warning icon.
 
 ## v0.1.59 - 2026-09-06
 
-### Changed
-
-- Release: bump version to v0.1.59
-- Keep canonical text retained and clipped
-- Add native table clipboard parity
-- Keep table Tab navigation within cells
-- Add native table keyboard parity
-- Keep reorder release owned through card dispatch
-- Keep popup-owned widget shortcuts isolated
-- Route accelerators through popup ownership
-- Avoid redundant clipping for intrinsic text
-- Preserve canonical text paint order in native screens
-- Enforce canonical TextProps usage
-- Refine canonical carousel navigation controls
-- Complete Sync crypto helper consolidation
-- Preserve shipped sync wire compatibility
-- Use clean Sync naming throughout optional sync runtime
+- Text retains clipping and paint order with consistent TextProps usage.
+- Native tables support clipboard operations and keyboard navigation, keeping
+  Tab within cells. Popups own shortcuts and accelerators; card dispatch keeps
+  reorder-release ownership.
+- Carousel navigation is refined. Optional Sync uses consistent names and
+  shared crypto helpers while preserving wire compatibility.
 
 ## v0.1.58 - 2026-09-06
 
-### Changed
-
-- Release: bump version to v0.1.58
-- Keep active gestures owned by popup branches
-- Rename optional sync module to Daochi
-- Enlarge canonical return title bar target
-- Implement DrawTextureRec in the libdraw backend
-- Render dropdown state with a chevron
-- Derive material bottom nav spacing from content
-- Align reorder targets with lifted items
-- Make fitted text density aware
-- Scale semantic font tokens with UI density
-- Add spreadsheet string-literal and error-name scanners to kry_eval
-- Ui: add shared carousel controls and honor secondary button style
+- Popups retain active gestures. Optional sync is renamed Daochi.
+- Return targets grow, dropdowns show chevrons, bottom navigation fits its
+  content, and reorder targets follow lifted items.
+- Text and semantic fonts respect density. Libdraw supports texture regions.
+- Spreadsheet evaluation recognizes string literals and error names.
+- Shared carousel controls honor secondary button styling.
 
 ## v0.1.57 - 2026-09-06
 
-### Changed
-
-- Release: bump version to v0.1.57
 - Restore focus across popup lifecycles
 
 ## v0.1.56 - 2026-09-06
 
-### Changed
-
-- Release: bump version to v0.1.56
 - Add canonical context popup scope
 
 ## v0.1.55 - 2026-09-06
 
-### Changed
-
-- Release: bump version to v0.1.55
 - Prefer bundled UI font and stabilize widget audit
 - Unify native text and composed popup widgets
 - Add spreadsheet string-literal and error-name scanners to kry_eval
 
 ## v0.1.54 - 2026-09-05
 
-### Changed
-
-- Release: bump version to v0.1.54
-- Keep dropdowns within the viewport and stabilize native CI audits
-- Complete native widget catalog and runtime interaction parity
-- Provide libdraw matrix compatibility for retained paint capture
-- Export the pi double-double constant alongside 2pi
-- Add quad log, hypot, inverse trig, and pi-accurate sinpi/cospi
-- Isolate Windows header names in SDL renderer builds
-- Add spreadsheet evaluation primitives: cell addressing and ulp-grace rounding
-- Fix text area lines overriding multiline clipboard selection
+- Dropdowns stay in view; native widgets reach interaction parity.
+- Libdraw supports retained-paint matrices, and Windows SDL builds avoid header conflicts.
+- Quad math adds pi, log, hypot, inverse trig and accurate sinpi/cospi.
+  Spreadsheet helpers add cell addressing and tolerant rounding.
+- TextArea line handling preserves multiline clipboard selections.
 
 ## v0.1.53 - 2026-09-05
 
-### Changed
-
-- Release: bump version to v0.1.53
-- Use native Windows file dialogs instead of POSIX desktop helpers
-- Test rotated text origins and rectangle intersections in libdraw
-- Composite native libdraw text in drawing order using coverage masks
-- Implement libdraw rectangle intersection for table clipping
-- Emit portable scalar operations from shared KIR and remove cgo
-- Support rotated font drawing in the libdraw backend
-- Exercise libdraw gradients and additive blending in smoke test
+- Windows uses native file dialogs. Libdraw supports rotated text, correct
+  drawing order, rectangle clipping, gradients and additive blending.
+- Shared KIR emits portable scalar operations without cgo.
 
 ## v0.1.52 - 2026-09-05
 
-### Changed
-
-- Release: bump version to v0.1.52
-- Docs: snapshot quad public API
-- Configure cmark dependency with a CMake 4 compatible policy minimum
-- Zero-initialize QR working matrices for m<n inputs
-- Add double-double quad arithmetic, compensated accumulator, and quad QR core
-- Build shared expression checking and lexical cleanup foundation
-- Limit libdraw routing fallbacks to native Plan 9
-- Build: create raylib lock parent directory
+- Added double-double arithmetic, compensated accumulation, quad QR and
+  shared expression checking. QR initializes wide matrices correctly.
+- Cmark builds with CMake 4; Raylib builds create their lock directory.
+  Libdraw routing fallbacks apply only on native Plan 9.
 
 ## v0.1.51 - 2026-09-05
 
-### Changed
-
-- Release: bump version to v0.1.51
-- Implement libdraw gradient and standard software blend modes
-- Fix libdraw build after moving shared image functions
-- Tint modal action icons for the active theme
-- Honor bottom navigation icon tint in the Go runtime
-- Allow apps to tint bottom navigation icons with theme colors
+- Libdraw gains gradients and software blend modes; shared image builds work again.
+- Modal action and bottom-navigation icons follow theme tint, including Go.
 
 ## v0.1.50 - 2026-09-05
 
-### Changed
-
-- Release: bump version to v0.1.50
 - Common.mk: default FONT_FILES to the bundled Noto face for vendored apps
 - Ui_text: log the resolved default font source, warn on bitmap fallback
 
 ## v0.1.49 - 2026-09-05
 
-### Changed
-
-- Release: bump version to v0.1.49
-- Ci: validate current site icon layout
-- Docs: preserve renderer page in site build
-- Build: repair examples Makefile
-- Ci: repair sanitizer coverage
-- Stdlib: add kry_zlib container primitives
-- Stdlib: add kry_xml and kry_gzip primitives
-- Ui: add immediate-mode widget slice with plots and sliders
-- Android: restore visible system bars after window focus
-- Test: pin bottom navigation to usable edge
-- Ui: use Android density for layout scale
-- Web: stabilize runtime asset initialization
-- Build: honor declared app theme source and mode
-- Ui: keep Slider as the frontend API
-- Ui: repeat deletion without backend key-repeat events
+- Added zlib, XML and gzip helpers, plus immediate-mode plots and sliders.
+- Android restores system bars after focus and uses display density for layout.
+  Web asset startup is more reliable.
+- App builds honor declared themes; example builds and sanitizer coverage work again.
+  Site builds preserve renderer docs and validate icons.
+- Slider remains the public API. Held deletion repeats without backend repeat events.
 
 ## v0.1.48 - 2026-09-04
-
-### Changed
 
 - The text-area and slider example now uses a polished responsive layout while demonstrating multiline editing.
 
 ## v0.1.47 - 2026-09-04
 
-### Fixed
-
 - Cartridge builds now accept `Screen` declarations as supported layout containers.
 
 ## v0.1.46 - 2026-09-04
-
-### Fixed
 
 - Static release archives now validate correctly when optional post-quantum cryptography support is disabled.
 
 ## v0.1.45 - 2026-09-04
 
-### Changed
-
 - The text-area and slider example is now included consistently in generated compatibility documentation and release packages.
 
 ## v0.1.44 - 2026-09-04
-
-### Changed
 
 - Multiline text areas now start at the top, accept new lines with Enter, and keep the caret visible as text wraps.
 - Large Default text areas keep normal field corners without changing button shapes.
@@ -1159,207 +538,84 @@
 
 ## v0.1.43 - 2026-09-04
 
-### Changed
-
-- Release: bump version to v0.1.43
 - Keep Win32 close hook safe across subclasses
 
 ## v0.1.42 - 2026-09-04
 
-### Changed
-
-- Release: bump version to v0.1.42
 - Consume Win32 core window close requests
 - Render: enable anti-aliasing by default
 
 ## v0.1.41 - 2026-09-04
 
-### Changed
-
-- Release: bump version to v0.1.41
-- Fix: guard platform-specific runtime symbols
-- Ui: add reusable guide pager
-- Ui: add composable swipe gestures
-- Ui: add outlined button style
-- Docs: refresh public API snapshot
-- Ksync: send PUT/PATCH as their real verbs over curl
-- Ui_text: latch failed font rasterizations per size
-- Kry_instance: SIGUSR2 backtrace dump
-- Kry_instance: own SIGTERM/SIGINT + robust lock stealing
-- Kry_instance: robust lock stealing + early release
+- Added guide paging, swipe gestures and outlined buttons. Ksync sends real
+  PUT/PATCH verbs. Failed font rasterizations stop retrying for the same size.
+- Single-instance handling improves shutdown and stale-lock recovery, with
+  SIGUSR2 backtrace diagnostics. Platform-specific symbols build correctly.
 
 ## v0.1.40 - 2026-09-03
 
-### Changed
-
-- Release: bump version to v0.1.40
 - Polish the icon set
 
 ## v0.1.39 - 2026-09-03
 
-### Changed
-
-- Release: bump version to v0.1.39
-- Fix image front-end duplicates and canvas radial gradient shim
-- Make Daochi/ksync optional and refresh the Labs site showcase
-- Drop --plan9 from k2cpp
-- Ship k2cpp in the tools distribution archive
-- Verify k2cpp in the packaged tools bundle
-- Fix k2go syntax test filename in make test recipe
-- Finish k2g/k2ir rename in runtime parity doc generator and k2kir test rule
-- Add k2cpp backend with full k2c parity
-- Rename k2g to k2go and k2ir to k2kir
-- Decode images in shared front-end for all backends
-- Implement Canvas texture updates
-- Add Light2D scene nodes
-- Modernize the Kryon platform icons
-- Add light and dark themes to Kryon Labs
-- Give Kryon its crayon color system
-- Give Kryon its crayon color system
-- Redesign the Kryon Labs website
-- Redesign the Kryon Labs website
-- Make rejected single-instance launches safe instead of crashing
-- Ignore static visitors in Area2D body_enter/body_exit signals
-- Read back armed shots through glad when glReadPixels is unresolved
-- Fix signal handler dispatch for application-defined kinds
-- Add direct Body2D control: transform, velocity set/get
-- Emit Area2D body_enter/body_exit signals from Box2D sensor events
-- Compute world transforms before ready hooks in SceneTick
+- Images decode across backends, Canvas supports texture updates and radial
+  gradients, and duplicate image APIs are fixed.
+- Daochi/Ksync is optional. Kryon Labs gains redesigned previews, light/dark
+  themes, platform icons and the crayon color system.
+- Added and packaged `k2cpp` with C-backend parity; its `--plan9` flag is removed.
+  `k2g` becomes `k2go` and `k2ir` becomes `k2kir`, including tooling references.
+- Rejected single-instance launches no longer crash. Screenshot readback works
+  when the usual OpenGL entry is unavailable.
+- Scenes gain Light2D, direct Body2D transforms and velocities, sensor enter/exit
+  signals that ignore static visitors, custom signal dispatch and correct world
+  transforms before ready hooks.
 
 ## v0.1.38 - 2026-09-01
 
-### Changed
-
-- Release: bump version to v0.1.38
-- Build KRB mount test before running it
-- Link app storage test filesystem helper
-- Allow local network sync URLs
-- Guard file app storage on Android
-- Add responsive score control
-- Add responsive segmented control
-- Fallback to fonttools module for subsets
-- Add UI font registration from text corpus
-- Deduplicate bubbled web input events
-- Add shared native Plan 9 application build rules
-- Add KryAppDataRoot for per-user app data
-- Keep the plan9 rewrite result heap owned
-- Iterate the plan9 rewrite for nested literals
-- Flatten cast literals nested in field values
-- Restrict array literal zeroing to declarations
-- Zero arrays declared from matching array literals
-- Accept size expressions in array cast validation
-- Flatten bracketed array compound literals
-- Split array cast types and strip inline in plan9 declarations
-- Fix FreeBSD Android DPI test link
-- Remove Inbe from Kryon showcase page
-- Update showcase and Pages deployment
-- Make web embeds resize to their host frame
-- Refuse member selections on call results in plan9 typing
-- Reject statement keywords as plan9 prototype types
-- Parse split static headers that open their body inline
-- Join split static prototype prefixes in the plan9 header scan
-- Unify void pointers in plan9 expression typing
-- Type array casts with size expressions and libc comparisons in the plan9 pass
-- Finish plan9 initializer typing: floats, ternaries, externs, arrays
-- Type parenthesized and logical initializer expressions in the plan9 pass
-- Drop the struct field table from the plan9 pass
-- Keep the base identifier typing under member chains
-- Restrict struct-body detection in the plan9 field scan
-- Type struct fields and member chains in the k2c plan9 pass
-- Allow pointer stars in plan9 prototype return types
-- Reject expression text in the k2c plan9 prototype map
-- Broaden the k2c plan9 type resolution
-- Type initializer expressions in the k2c plan9 pass
-- Resolve more initializer shapes in the k2c plan9 pass
-- Add a plan9-safe output mode to k2c
-- Match Canvas2D random values to raylib
-- Cache web automation query options
-- Ignore empty automation env options
-- Add automation options for test runs
-- Pace Canvas2D frames with browser vsync
-- Respect target FPS on Canvas2D
-- Render docs IDE previews directly on canvas
-- Build the ksync crypto primitives for Plan 9
-- Honor Canvas2D texture filters
-- Add web routing stubs to the libdraw backend
-- Add android_host and DOM page stubs to the Plan 9 library
-- Add the page, overlay, and spritesheet objects and IsTextureValid to the Plan 9 build
-- Provide ShowCursor and HideCursor on the native Plan 9 backend
-- Improve Debian platform icon
-- Define SIZE_MAX in the Plan 9 libc shim umbrella
-- Define SIZE_MAX in the Plan 9 limits shim
-- Implement rename for the native Plan 9 runtime
-- Flatten the remaining form section label compound literal for 8c
-- Avoid multi-field designated compound literals in 8c sources
-- Export immediate button controls
-- Flatten nested designated initializers in form row helpers
-- Guard GTK tray fallback deprecation
-- Fix KIR parser recursion and tool warnings
-- Provide fmaxf/fminf in the Plan 9 math shim
-- Add native spritesheet helpers
-- Fix recursive KIR expression parsing
-- Clean up Kryon build warnings
-- Improve Kry language tooling
-- Test dismissible overlay input capture
-- Add dismissible overlay helper
-- Use viewport scale as Android DPI floor
-- Stabilize Android viewport scaling
-- Add Android viewport policy resolver
-- Fix Android UI density scaling
-- Implement libdraw texture updates
+- Added responsive score and segmented controls, immediate buttons,
+  dismissible overlays and native spritesheet helpers.
+- Apps can register fonts from a text corpus; subsetting falls back to fonttools.
+- Added per-user app data roots and local-network sync URLs. Android storage
+  respects platform limits, and viewport and density scaling are corrected.
+- Plan 9 apps gain shared build rules and safer compiler output for nested
+  literals, arrays, casts, declarations, pointers and initializer expressions.
+  Type resolution and prototype parsing handle more valid code and reject
+  invalid forms correctly.
+- Plan 9 supports sync crypto, pages, overlays, spritesheets, cursor visibility,
+  file renaming, texture validity and missing math/limit helpers. Rendering
+  gains texture updates and web-routing stubs.
+- Canvas input avoids duplicate bubbled events, embeds resize to their frame,
+  frames follow browser vsync and target FPS, and random values and texture
+  filters match native rendering.
+- Docs previews render directly on canvas; showcase deployment and Debian icons
+  are refreshed. Automation accepts test options and ignores empty settings.
+- KIR parsing handles recursive expressions correctly. Language tooling, GTK
+  tray compatibility and build diagnostics improve; storage and cartridge
+  tests link their required helpers.
 
 ## v0.1.37 - 2026-08-30
 
-### Changed
-
-- Release: bump version to v0.1.37
-- Keep UI tree API test headless
-- Lock the canvas-space input contract with tests
-- Compress encrypted ksync payload envelopes
-- Revert X11 pointer translation: the canvas is window-sized
-- X11: translate pointer events by the window's root position
-- Runtime: log queued taps under the debug gate
-- Runtime: log tap consumption under the debug gate
-- Runtime: env-gated checkbox tap debug line
-- Tray: log registration and (debug-gated) connection death
-- Tray: path-scoped DBus serving and the dbusmenu property surface
-- Size the web canvas backing store from its CSS layout box
-- Add reusable app storage API
-- Add reusable Android host services
-- Include KIR text helpers in CMake codegen
-- Allocate the canvas font glyph scratch on the heap
-- Add post-frame callback scheduling
-- Fix render-target blits and autoplay-blocked audio decode in the canvas backend
-- Add web app screen routing
-- Cache bust showcase banner assets
-- Go runtime: Primary/OnPrimary/SurfaceVariant theme getters
-- Drop unused import
-- Tray test: expect path-style registration
-- Fix showcase project directory loading
-- Tray: register with the object path (XFCE host requirement)
-- Tray: serve the SNI surface before registering with the watcher
-- DBus: fall back to the XDG_RUNTIME_DIR session bus socket
-- Render context menus in overlay pass
-- DBus auth: send the hex of the decimal uid string
-- Pure-Go DBus: session client, action notifications, SNI tray
-- Refactor compiler text helpers
-- Fall back to warp-based relative mouse mode when raw mode fails
-- Expand Kryon matrix parity coverage
-- Add reusable screen and form helpers
+- Encrypted sync payloads are compressed. Canvas sizing and pointer input
+  follow the window-sized layout.
+- Added reusable app storage, Android services, screen/form helpers and
+  post-frame callbacks.
+- Canvas fixes render-target copies and audio decoding blocked by autoplay,
+  supports app routing and avoids oversized font scratch allocations.
+- Go exposes Primary, OnPrimary and SurfaceVariant theme colors.
+- Native trays and action notifications use pure-Go DBus, register correctly
+  with XFCE, serve menus and recover the session-bus address when needed.
+- Context menus draw above content. Relative mouse mode falls back when raw
+  mode fails. Debug logging covers taps and tray connections.
+- Showcase project loading and banner refreshes work correctly. Compiler helper
+  cleanup and headless/parity tests improve build reliability.
 
 ## v0.1.36 - 2026-08-30
 
-### Changed
-
-- Release: bump version to v0.1.36
 - Unify Kryon site playground entry
 
 ## v0.1.35 - 2026-08-30
 
-### Changed
-
 - Remove README link badges
-- Release: bump version to v0.1.35
 - Refresh Kryon README header
 - Harden KRB asset section loading
 - Use host arrow cursor for libdraw windows
@@ -1368,66 +624,42 @@
 
 ## v0.1.34 - 2026-08-30
 
-### Changed
-
-- Release: bump version to v0.1.34
 - Serialize the cmark-gfm vendor rule with a grouped target
 - Add page semantics and DOM route API
 
 ## v0.1.33 - 2026-08-29
 
-### Changed
-
-- Release: bump version to v0.1.33
 - Skip rendering unchanged frames and reuse the present-path buffers
 - Add rlActiveTextureSlot to the curated rlgl tier
 - Build app sources and vendor deps before the linux arch compile
 
 ## v0.1.32 - 2026-08-29
 
-### Changed
-
-- Release: bump version to v0.1.32
 - Deliver full clicks from the X11 backend so Button widgets respond
 
 ## v0.1.31 - 2026-08-29
 
-### Changed
-
-- Release: bump version to v0.1.31
 - Implement TabBar in the pure-Go runtime
 
 ## v0.1.30 - 2026-08-29
 
-### Changed
-
-- Release: bump version to v0.1.30
 - Make cursor-locked SDL mouse behave like GLFW disabled-cursor mode
 
 ## v0.1.29 - 2026-08-29
 
-### Changed
-
 - Fix the X11 window runtime dropping all compat input reads
 - Keep rlgl wrappers when audio is compiled out
 - Resolve rlgl and raymath inputs next to raylib.h in the compat generator
-- Release: bump version to v0.1.29
 - Add the 3D tier to the kryon surface
 - Let headless links resolve the instance window hooks
 
 ## v0.1.28 - 2026-08-29
 
-### Changed
-
-- Release: bump version to v0.1.28
 - Add custom-header variants to kry_http
 
 ## v0.1.27 - 2026-08-29
 
-### Changed
-
 - Document explicit C extern handling
-- Release: bump version to v0.1.27
 - Polish JavaScript lowering integration
 - Add derived theme color helpers
 - Add JavaScript lowering pipeline
@@ -1436,24 +668,15 @@
 
 ## v0.1.26 - 2026-08-29
 
-### Changed
-
-- Release: bump version to v0.1.26
 - Add DOM web backend smoke coverage
 
 ## v0.1.25 - 2026-08-29
 
-### Changed
-
-- Release: bump version to v0.1.25
 - Install ripgrep in release workflow
 
 ## v0.1.24 - 2026-08-29
 
-### Changed
-
 - Add Android window inset API
-- Release: bump version to v0.1.24
 - Install ripgrep in Linux CI
 - Degrade gracefully when instance lock is unavailable
 - Select retained text fields on double click
@@ -1465,17 +688,11 @@
 
 ## v0.1.23 - 2026-08-28
 
-### Changed
-
-- Release: bump version to v0.1.23
 - Use detected Android UI scale
 - Scale default UI fonts
 
 ## v0.1.22 - 2026-08-28
 
-### Changed
-
-- Release: bump version to v0.1.22
 - Improve Canvas2D backend parity
 - Add Android prelude activity
 - Fix Ksync crypto web warnings
@@ -1483,1046 +700,329 @@
 
 ## v0.1.21 - 2026-08-28
 
-### Changed
-
-- Release: bump version to v0.1.21
-- Treat unknown Unix update installs as source
-- Detect BSD home builds as source installs
-- Make spec test sed portable
-- Fix conformance matrix build directory
-- Add layout-key input and terminal UI primitives
-- Include stdbool in generated compat header
-- Add rich text editor control
-- Fix native linux raylib backend rename
-- Add app framework helpers
-- Expose IsKeyDown in the Go bindings
-- Anchor the Go theme enums at their own const blocks
-- Note the Go runtime theme parity in the changelog
-- Assert theme catalog relations instead of absolute iota ids
-- Focus Kryon site on runtime
-- Keep theme catalog count assertion relative to Sweet
-- Expose Plan9, Xfce and Sweet themes in the Go runtime
-- Hide text input when opening dropdowns
-- Fix modal release handling
-- Allow scroll viewport visual bleed
-- Match Sweet theme colors
-- Add Sweet Default theme palette
-- Add Android secure store helper
-- Fix termi partial frame writes
-- Blend translucent termi cell backgrounds
-- Render thick termi lines as cells
-- Keep termi sixel fallback visible
-- Rename terminal showcase to ktrem
-- Harden termi texture and process defaults
-- Reset termi frame clipping
-- Remove unused termi env helper
-- Respect terminal viewport in termi backend
-- Stabilize termi animated image frames
-- Batch termi frame output
-- Render termi circles as cell arcs
-- Add circle click handling primitive
-- Drain termi mouse events per frame
-- Add live website examples gallery
-- Default termi sixel to capable terminals
-- Reduce termi frame output
-- Clarify termi button states
-- Cache unchanged termi sixel draws
-- Fix termi mouse click delivery
-- Render termi textures with sixel
-- Add termi terminal backend
-- Revert "Add TUI backend"
-- Revert "Avoid TUI OpenURL ownership conflict"
-- Revert "Make TUI backend terminal-safe"
-- Revert "Scale TUI backend framebuffer"
-- Scale TUI backend framebuffer
-- Make TUI backend terminal-safe
-- Avoid TUI OpenURL ownership conflict
-- Add TUI backend
-- Avoid compound literal in icon loader
-- Guard Plan 9 math compatibility macros
-- Use native Plan 9 default cursor
-- Decode embedded icons as RGBA
-- Use raylib scissor for UI clips
-- Preserve BottomNav icon colors
-- Add generated progress parity coverage
-- Prepare monochrome UI icons as masks
-- Restore Default bottom nav icon colors
-- Add generated list box parity coverage
-- Normalize UI icon textures to RGBA
-- Add generated table parity coverage
-- Preserve bottom nav icon colors
-- Remove native Plan 9 terminal stubs
-- Restore Default bottom nav icon tint
-- Add generated controls parity coverage
-- Stub legacy terminal helpers on native Plan 9
-- Fix native Plan 9 terminal pane color resolution
-- Use URI stubs in native Plan 9 archive
-- Build terminal pane helpers for native Plan 9
-- Avoid Plan 9 terminal header collisions
-- Add Xfce theme
-- Add Plan 9 sys types shim
-- Add visual comparison matrix
-- Fix libdraw text and color capture handling
-- Add web Canvas source capture matrix gate
-- Improve native Plan 9 libdraw desktop rendering
-- Track generated C renderer matrix gaps
-- Rebuild objects when switching backends
-- Avoid raylib flush dependency on native Plan 9
-- Preserve button paint order in UI tree
-- Capture raylib generated C windows
-- Add raylib generated C matrix gate
-- Expose renderer source matrix on website
-- Preserve libdraw text hierarchy
-- Use Rect as canonical shape widget
-- Normalize matrix sources to current UI APIs
-- Clip libdraw native text draws
-- Isolate hosted app keyboard input
-- Add libdraw generated-C matrix capture
-- Let libdraw follow system themes on Linux
-- Add KRB web source matrix gate
-- Extend AppHost lifecycle callbacks
-- Gate widget coverage in conformance matrix
-- Add TableView drag range selection
-- Avoid libdraw Rect symbol collision
-- Add runtime and downstream matrix gates
-- Add libdraw compatibility hooks
-- Add Go toolbar menu and workbook icons
-- Add Go toolbar menu and workbook icons
-- Add renderer smoke matrix gate
-- Add KRB visual conformance checks
-- Test bottom nav icon color preservation
-- Add generated Kry conformance matrix
-- Resolve Kry host compiler outside Android toolchain
-- Use host compiler for Kry generation tools
-- Add CMake helper for Kry source generation
-- Remove text input sync diagnostics
-- Add eye visibility icons
-- Coalesce platform text input state per frame
-- Keep platform text input active while focused
-- Honor text input show pulses without active state
-- Log text input platform sync state
-- Request text input platform show on field taps
-- Sync text input platform state at frame end
-- Link only showcase author names
-- Remove showcase ranking note
-- Decode X11 spreadsheet navigation keys
-- Show showcase authors on site
-- Decode X11 escape key
-- Test platform text input reactivation
-- Reset platform text input when deactivated
-- Support horizontal text field panning
-- Normalize fingerprint icon color
-- Use themed text input colors without outer focus box
-- Keep fallback text field focus per input
-- Add no-cgo mouse drag state
-- Render text fields in immediate UI
-- Improve material text field contrast
-- Outline material text fields
-- Allow optional text field focus state
-- Fix modal capture and bottom nav icon colors
-- Use raylib render batch hook for screenshots
-- K2g pass char buffer args to externs
-- K2g fix local helper calls
-- K2g resolve cross-file helper calls
-- K2g support direct Go extern calls
-- Keep Default neutral tones unsaturated
-- Update generated icon assets
-- Revalidate site deploys
-- Expose theme settings in Go runtime
-- Lower theme settings for Go runtime
-- Clean #ui docs site snippets
-- Use generated showcase data on homepage
-- Add clean pane tab wrappers
-- Adopt #ui hierarchy syntax
-- Update k2 syntax tests for retained UI apps
-- Fix canvas backend smoke source filters
-- Track retained UI entry functions in Kir
-- Fix k2g generated app entrypoint
-- Use top-origin canvas font metrics
-- Generate showcase ranking data
-- Add table clipboard shortcuts
-- Fix Android clipped UI after rotation
-- Fix canvas guide paragraph clipping
-- Add Android surface resize sync
-- Restore site icon artifact
-- Update showcase stars and banners
-- Support fixed buffers in k2g extern calls
-- Let native Plan 9 follow the system theme
-- Exclude Plan 9 platform sources from native builds
-- Make icons tree the shared source root
-- Complete native Plan 9 audio streams
-- Implement native Plan 9 audio mixing
-- Fix native Plan 9 libdraw font scaling
-- Improve native Plan 9 libdraw backend
-- Remove the unused Clay layout dependency
-- Skip missing optional compat cleanup helper
-- Add the install target to the plan9 mkfile
-- Keep image decoder stb symbols private
-- Exclude Plan 9 sources from non-libdraw builds
-- Use vendored stb image include
-- Untrack native plan9 build objects
-- Ignore plan9 cpp-stage intermediates
-- Make the plan9 ui globals inert on hosted builds
-- Harden the compound literal rewriter against conditional includes
-- Keep the zero constants outside preprocessor conditionals
-- Fix the ui internals include depth for hosted builds
-- Include the ui internals by relative path for hosted builds
-- Drop line-splicing backslashes left by the comment stripper
-- Port ApplyCurrentUITheme for the plan9 theme core
-- Search src/ui for internal headers in the plan9 build
-- Add plan9 ui globals and empty asset table for the theme core
-- Rename cpp-stage objects to the mkfile object names
-- Assemble UIStyleTokens field-wise for the plan9 compiler
-- Scope the plan9 library to the theme core for now
-- Drop the Box2D-dependent scene layer from the plan9 build
-- Guard the Box2D bridge header behind KRYON_WITH_PHYSICS
-- Skip the fontconfig pipe helpers on plan9
-- Avoid a scalar compound literal in the sha256 length padding
-- Drop the shim offsetof in favor of the libc definition
-- Shim stdio.h so u.h precedes the pANS varargs declarations
-- Provide size_t from the plan9 libc shim
-- Define NULL centrally in the plan9 libc shim
-- Replace short compound literals with zero constants for the plan9 compiler
-- Guard the plan9 assert shim against the libc definition
-- Resolve plan9 shim PI and offsetof redefinitions
-- Fix comment apostrophe stripper to keep line-comment newlines
-- Enable C++ comments in the plan9 cpp pass
-- Use absolute include paths in the plan9 mkfile cpp rule
-- Preprocess the plan9 build through the system cpp and strip comment apostrophes
-- Guard plan9 shim re-includes of the include-once core headers
-- Keep stdarg include unconditional for the plan9 shim build
-- Fix plan9 mkfile source paths
-- Add native Plan 9 libdraw compatibility
-- Preserve libdraw UI icon colors
-- Match libdraw rounded radius semantics
-- Fix libdraw picture masks and audio
-- Handle fractional libdraw texture sources
-- Complete libdraw image compatibility
-- Expose toast draw helper
-- Add libdraw backend and Plan9 theme
-- Use Glenda icon for Plan 9 site card
-- Make table escape clear selection
-- Keep system theme fallback selection neutral
-- Use GTK selected colors in system theme
-- Add native table row and column selection
-- Fix X11 keyboard mapping in Go runtime
-- Add widget conformance for text input focus
-- Fix Go table double-click selection
-- Avoid startup X11 focus errors
-- Request X11 input focus for Go windows
-- Fix native Go text field input
-- Bring Go theme handling to C parity
-- Render registered fonts in Go runtime
-- Follow system theme in Go tables
-- Cover portfolio symbols in Go renderer
-- Write screenshots from Go runtime
-- Add native table cell support to Go runtime
-- Complete Go Kryon window compatibility wrappers
-- Add Go Kryon legacy UI compatibility
-- Fix Go X11 setup parsing
-- Log Go X11 window ids in debug mode
-- Sync mapped Go X11 windows
-- Report native Go window fallback errors
-- Support Xauthority in Go X11 window runtime
-- Install FreeBSD CI test tools
-- Install FreeBSD CI test tools
-- Add native Go X11 window runtime
-- Make site navigation page-based
-- Elide retained UI lifecycle from k2g output
-- Rename retained tree keys
-- Rename retained tree node IDs
-- Rename navigation and profile API
-- Add Kryon app showcase
-- Rename menu and accelerator API
-- Rename geometry and canvas API
-- Rename syntax mode API
-- Rename modal action API
-- Rename paragraph spec API
-- Rename text size API
-- Rename button style API
-- Rename public button spec API
-- Rename internal button render path
-- Rename internal text input render path
-- Check generated feature matrix docs
-- Rename public text helper APIs
-- Remove legacy KRB widget aliases
-- Rename public text input APIs
-- Rename text input platform callback API
-- Rename public text layout API
-- Hide retained tree draw internals
-- Hide text draw internals from public header
-- Hide composite draw-prefixed UI APIs from public headers
-- Hide legacy control draw APIs from public header
-- Rename public text input queue API
-- Assert generated long text runtime stability
-- Clean legacy widget names from API docs
-- Remove legacy Go cgo bridge
-- Remove legacy generated C surface names
-- Document clean runtime parity surfaces
-- Remove legacy frame aliases from generated path
-- Remove k2g runtime override
-- Document qualified generated Go runtime
-- Qualify generated Go runtime calls
-- Add generated long text parity
-- Stress native host text input
-- Add native Go host core
-- Add fingerprint UI icon
-- Use OpenURI for UI links
-- Render generated Go parity frames
-- Add native Go frame renderer
-- Block kryc from public surface
-- Fix web URI opener macro
-- Improve scroll focus and native window behavior
-- Assert generated Go frame operations
-- Record native Go frame operations
-- Avoid OpenURL duplicate on Android
-- Add scroll rect visibility helper
-- Prune direct Go field state per frame
-- Add direct native Go widget helpers
-- Add native Go generated layout semantics
-- Expose native Go runtime input helpers
-- Map native Go text size constants
-- Align generated button click parity
-- Expand generated runtime parity coverage
-- Disable single-instance lock on Android
-- Fix URI launcher compatibility generation
-- Add generated runtime parity test
-- Emit bare clean Go runtime calls
-- Guard clean generated runtime surface
-- Emit clean package Go runtime calls
-- Add cross-platform URI opener
-- Clean generated frame runtime surface
-- Expand native Go text input semantics
-- Enforce clean generated runtime output
-- Add native Go k2g runtime
-- Expose toast drawing API
-- Keep read-only text out of edit mode
-- Fix Go text field state handling
-- Add read-only selectable text controls
-- Fix X11 input ungrab status check
-- Clean image fit API names
-- Rename overlay hook to clean API
-- Update image props lowering
-- Clean image API styling
-- Fix screenshot PNG row buffer size
-- Add system locale detection
-- Use neutral path in session title test fixture
-- Add terminal input filtering for Kapsule
-- Simplify window unregister loop exit
-- Add terminal pane glyph grid rendering
-- Add Windows tray menus and registry theme detection
-- Let foreground widgets own the cursor over disabled background
-- Add terminal profile prompt helpers
-- Add terminal search controller
-- Add terminal clipboard actions
-- Add terminal scroll indicator helper
-- Add terminal row reflow helper
-- Add terminal profile settings helpers
-- Add terminal session record helpers
-- Add terminal keyboard input runner
-- Add terminal DCS buffer helper
-- Add terminal sixel decoder
-- Add simple terminal clipboard runner
-- Remove legacy terminal prefix aliases
-- Add terminal mode state transitions
-- Add terminal OSC command parser
-- Add terminal OSC palette parsers
-- Add terminal clipboard controller builder
-- Add terminal OSC color target helpers
-- Add terminal function key mapper
-- Add terminal clipboard scroll reset hook
-- Add terminal search navigation helpers
-- Add terminal clipboard command result helper
-- Add terminal pane clipboard and cursor helpers
-- Add terminal device status report formatter
-- Add terminal mode report formatter
-- Add terminal XTGETTCAP response formatter
-- Add terminal SGR status formatter
-- Add terminal cursor style report helper
-- Add terminal pane clipboard command controller
-- Add terminal pane view color resolver
-- Add terminal pane hyperlink sanitizers
-- Add terminal pane title sanitizer
-- Add terminal pane clipboard selection helpers
-- Add terminal pane theme color resolver
-- Add terminal pane link theme token
-- Add terminal clipboard action dispatcher
-- Add terminal pane color resolver
-- Add terminal pane text escaping helpers
-- Add terminal pane profile color helpers
-- Add terminal pane clipboard and cursor helpers
-- Add terminal pane session title helper
-- Add terminal pane OSC title helpers
-- Add terminal pane OSC color helpers
-- Add terminal pane profile color helpers
-- Add shared terminal mouse and paste helpers
-- Add shared terminal key encoding
-- Add terminal pane clipboard helpers
-- Add shared terminal pane search
-- Add shared terminal pane selection clipboard
-- Add terminal pane content metrics
-- Add shared clipboard source helpers
-- Add shared clipboard paste writer
-- Add terminal pane status theme tokens
-- Add OSC 52 clipboard helper
-- Add ABI version guard for prebuilt libraries
-- Resolve trace env flags once per process
-- Memoize material scheme per theme state
-- Rate-limit automatic system theme refresh
-- Cover clipboard target helpers
-- Add clipboard target helpers
-- Move UI clipboard buffer into Kryon source
-- Add terminal pane default palette
-- Add UI clipboard buffer helpers
-- Expose context menu widget
-- Add terminal pane selection text color
-- Add UI primary selection helpers
-- Expose vsync window flag in Go
-- Enable Go textarea layout caching
-- Use system UI font by default
-- Use system style on desktop
-- Remove Aero style
-- Stop textarea painting past viewport
-- Cache versioned textarea heights
-- Make styled images respect UI style
-- Add styled cover image drawing
-- Fix menu bar switching with open popup capture
-- Fix runtime downloads and text decoding
-- Fix menu close state after popup activation
-- Support sticky UI windows on X11
-- Fix menu bar switching between open menus
-- Allow apps to provide system theme palettes
-- Fix Default bottom nav icon contrast
-- Apply Canvas cursor to document targets
-- Fix material tab bar spacing
-- Consolidate Kry language documentation
-- Document Kry language and publish benchmarks
-- Advance Kry compile-time checks and expression KIR
-- Fix Canvas guide rendering and cursor
-- Draw menu bars as frame overlays
-- Add reusable app runtime helpers
-- Fix Android notification priority signature
-- Implement Canvas WebAudio backend
-- Add reusable terminal pane widget
-- Avoid duplicate badge measurement
-- Add website backend and widget matrices
-- Align installed desktop metadata names
-- Add Linux desktop integration helpers
-- Add themed Go surface widgets
-- Ui_window: baseline the drag at the press position
-- CI: gate on public-HTTPS submodule URLs
-- Ui_window: follow the global pointer during drags, not motion events
-- Ui_window: flush a released drag's final motion
-- Ui_window: capture the mouse during drags and drop per-frame position reads
-- Ui_window: expose StealCoreWindowClose for direct close polling
-- Ui_window: bridge core-window close and drag on the SDL path
-- Kry_update: arch-aware AppImage appcast key
-- Kryui: Go bindings for kry_update_flow
-- Tray: resolve gtk_status_icon_is_embedded through gtk_dl
-- Kry_std: kry_update_flow — the embeddable self-update lifecycle
-- Tray: ignore XEMBED-handshake activations on the status icon
-- Kry_std: self-update primitives — download, verify, apply
-- Kry_std: add kry_update desktop update-check module
-- Theme: default to the system theme source on every platform
-- Canvas: zero-init LoadFont's failure return
-- Canvas: dedupe the JS glue (ctxNow/col/makeCanvas, rounded radius)
-- Canvas: split the backend into per-concern sources
-- Canvas: frame counter and last-op diagnostics in the JS state
-- Canvas: null-grade the rest of the audio surface
-- Canvas: SaveFileData/Text, ChangeDirectory, GetWorkingDirectory
-- Canvas: IsWindowFocused on the surface (dropdown hover uses it)
-- Locale: detect the system default locale (GetDefaultLocaleCode)
-- Theme picker: route label fallbacks through the locale catalog
-- Dropdown: wobbled and slow clicks must select, not just pixel-perfect taps
-- Canvas: PauseSound and IsMusicStreamPlaying on the surface
-- Krb-run: remove the Linux framebuffer presentation backend
-- Canvas: file-name utils and IsMusicValid on the surface
-- Theme: drop the dedicated Aero palette, keep the style palette-agnostic
-- Canvas: cover the audio-device, wave, and image surface apps drive
-- Dropdown: dismiss popups on Escape and window focus loss
-- Dropdown: flip tall popups above the button when space below runs out
-- Canvas: real rounded rects, annulus rings, full tint, clipboard mirror
+- Unix and BSD home builds are recognized as source installs for updates.
+- Added layout-aware key input, terminal UI primitives, a rich-text editor and
+  reusable app framework helpers. Native Linux Raylib builds resolve backend names.
+- Go exposes held keys, full theme settings and Plan9, Xfce and Sweet palettes.
+  Theme IDs stay consistent with the native catalog.
+- Sweet becomes the Default palette with matched colors; Xfce and Plan9 themes
+  are added. Neutral tones remain unsaturated, and apps can supply system palettes.
+- Android secure storage supports authenticated secrets. Dropdowns hide text
+  input, modals handle release correctly and scroll views allow border bleed.
+- The termi backend draws textures through sixel with visible fallback, caches
+  unchanged pictures and batches output. Partial writes, viewport clipping,
+  animation, translucent cell backgrounds, circles, thick lines, button states
+  and mouse delivery work correctly. Sixel is enabled only on capable terminals.
+  The terminal showcase is renamed ktrem; the earlier TUI backend is reverted.
+- Icons decode as RGBA, monochrome icons become masks and bottom navigation
+  preserves its colors and tint. Added eye and fingerprint icons and shared icon assets.
+- Native Plan 9 gains libdraw rendering, system-theme support, installation,
+  font scaling, image masks, fractional texture sources and audio mixing/streams.
+  Icons retain colors, rounded corners match other backends and text respects
+  hierarchy and clipping. Terminal panes resolve colors without platform conflicts.
+- Plan 9 builds handle their compiler's literals, comments, headers, types and
+  preprocessing correctly. Platform sources stay out of unrelated builds;
+  physics-dependent scenes are excluded, and hosted theme builds work.
+- Backend switches rebuild objects. Shared source generation uses the host
+  compiler even during Android builds. Renderer and widget conformance matrices
+  cover C, Go, Canvas, libdraw and cartridges and appear on the website.
+- Rect is the canonical shape widget. Retained trees preserve button paint order;
+  hosted apps isolate keyboard input and receive expanded lifecycle callbacks.
+- Tables support drag-range, row and column selection, clipboard shortcuts and
+  Escape to clear selection. Go tables support cells, double clicks and system themes.
+- Text input stays active while focused and reopens when fields are tapped.
+  Fields pan horizontally and can retain focus per input. Immediate fields,
+  Material outlines, contrast and themed colors improve editing.
+- Go compilation resolves local and cross-file helpers, direct extern calls,
+  character buffers and fixed-buffer arguments. `#ui` hierarchy syntax and
+  retained entries lower correctly; Go themes and long-text rendering match native.
+- Added pane-tab wrappers. Android rotation synchronizes surface size and stops
+  clipping UI. Canvas fixes guide clipping and uses top-origin font metrics.
+- Removed unused Clay. Image decoder symbols remain private, and hosted/native
+  builds avoid conflicting platform sources and stale intermediates.
+- Go gains native X11 windows with Xauthority, focus, keyboard mapping and clear
+  fallback errors. Native rendering supports registered fonts, themed surfaces,
+  toolbar menus, workbook icons, screenshots and window compatibility helpers.
+- Public APIs use consistent names for trees, navigation, profiles, menus,
+  accelerators, geometry, canvas, syntax, modal actions, paragraphs, text, buttons,
+  images and overlays. Internal draw functions and legacy widget, frame and
+  generated-runtime aliases are hidden or removed, including the old cgo bridge.
+- Go has a native host, frame renderer, direct widgets and layout/input helpers.
+  Generated calls use the supported runtime, text editing and long labels remain
+  stable, and per-field state is pruned when unused. Hosts preserve click behavior.
+- Cross-platform links use OpenURI, including web and Android. Android disables
+  single-instance locks; desktop apps gain scroll visibility and window fixes.
+- Read-only text stays selectable without entering edit mode. TextField state
+  and X11 input ungrabbing are corrected. Screenshot PNG buffers handle full rows.
+- Added system locale detection, localized theme-picker fallbacks, Windows tray
+  menus and registry-based theme detection. Foreground widgets own the cursor
+  over disabled background controls.
+- Terminal panes gain glyph-grid rendering, search/navigation, row reflow,
+  scroll indicators, profiles and session records. Shared helpers encode keys,
+  mouse and paste input, filter input, parse sixel and OSC commands, track modes
+  and format terminal capability, cursor and status replies.
+- Terminal clipboard helpers support selection, primary selection, OSC52 and
+  paste. Titles and hyperlinks are sanitized; profile, theme, palette, selection
+  and status colors resolve consistently. Legacy terminal aliases are removed.
+- Prebuilt libraries check ABI versions. Theme refreshes are rate-limited and
+  reuse unchanged Material schemes; tracing settings resolve once per process.
+- Go exposes vsync. TextArea caches layout and heights, stops painting outside
+  its viewport and supports shared clipboard buffers.
+- Desktop apps use the system style and UI font by default. Aero is removed;
+  styled cover images follow the selected UI style. Default bottom-nav icons
+  retain contrast and Material tabs have corrected spacing.
+- Menu bars draw above content and switch correctly between open menus; popup
+  activation closes them correctly. Runtime downloads and text decoding are fixed.
+  X11 windows can remain sticky across workspaces.
+- Canvas applies cursors to page targets and fixes Guide rendering. WebAudio
+  supports sound and music controls; file save, directory and filename helpers,
+  focus queries and audio/image availability APIs are exposed.
+- Added reusable terminal panes, app runtime and Linux desktop-integration
+  helpers. Installed metadata names match, and Android notification priority works.
+- Window drags start at the press, capture the pointer, follow global movement
+  and apply the final release motion. SDL close requests and direct close polling work.
+- Self-update helpers check, download, verify and apply updates, with an
+  embeddable lifecycle and Go bindings. AppImage updates select the architecture.
+  GTK tray loading ignores handshake activations and detects embedding correctly.
+- Canvas fixes failed font loads and supplies frame diagnostics. Default locale
+  detection and localized labels are exposed across hosts.
+- Dropdowns accept slow or slightly moving clicks, dismiss on Escape/focus loss
+  and open above the field when needed. Canvas draws rounded rectangles, rings,
+  tinted images and clipboard mirrors. The Linux framebuffer cartridge backend
+  is removed.
+- The website gains a live examples gallery, author-linked app showcases,
+  page navigation and runtime/widget/backend matrices. Showcase data and banners
+  refresh consistently; Kry language docs and benchmarks are consolidated.
 
 ## v0.1.20 - 2026-08-18
 
-### Changed
-
-- Release: bump version to v0.1.20
-- Canvas: compile to an empty TU outside emcc
-- K2g: reach Go parity on the Runtime surface
-- Canvas: implement the HTML5 Canvas2D Tier A backend
+- HTML5 Canvas2D rendering is available without entering native builds.
+  Go reaches runtime API parity.
 
 ## v0.1.19 - 2026-08-18
 
-### Changed
-
-- Release: bump version to v0.1.19
-- K2c: emit a runnable main for screen-only apps
-- Build: keep the canvas backend out of native builds
-- Screenshots: neutral arm name, opt-in debug dumps, shared PNG writer
-- Docs: k2c column, bare widget names, and a permanent HTML renderer
+- Screen-only apps receive runnable C entries; Canvas stays out of native builds.
+  Screenshots share a PNG writer and optional diagnostics. Docs gain a permanent
+  HTML renderer and clearer compiler/widget naming.
 
 ## v0.1.18 - 2026-08-18
 
-### Changed
-
-- Release: bump version to v0.1.18
-- Backend: compile the KRB audio cap out without the raylib audio module
-- K2g: lower typed declarations, arrays, and goto/labels for real
-- Compat: let apps drop the audio forwarders from the generated wrappers
-- Krb-run: --backend fb presents cartridges on the Linux framebuffer
-- Kry_sw: track the dirty rectangle per call
-- K2b: lower Dropdown to a KRB_CTRL_DROPDOWN control
-- Screenshots: fix PNG chunk CRCs in the native writer
-- K2g: cover the full widget whitelist on the Go Runtime interface
+- Audio-free builds omit cartridge audio and optional compatibility wrappers.
+- Go supports typed declarations, arrays, goto/labels and the full widget set.
+- Cartridges can use the Linux framebuffer and Dropdown controls. Software
+  rendering tracks dirty regions; native screenshots write correct PNG checksums.
 
 ## v0.1.17 - 2026-08-18
 
-### Changed
-
-- Release: bump version to v0.1.17
 - Docs: add FEATURE_MATRIX.md mapping widgets and features across targets and backends
 - Ci: drop the renderer KRY_SW_SRCS overrides
 
 ## v0.1.16 - 2026-08-18
 
-### Changed
-
-- Release: bump version to v0.1.16
-- Ci: include kry_sw_png in the renderer KRY_SW_SRCS overrides
-- Build: link kry_sw_png into the KRB logic and asset tests
-- Build: link kry_sw_png into the KRB logic and asset tests
-- Tray+notify: SetDesktopTrayIcon emblem swap, action-capable notifications
-- Kry_sw: decode PNG assets for texture draws
-- Ui: build and test the secondary window paths
+- Software rendering decodes PNG textures; cartridge tests link the PNG helper.
+  Trays can change emblems and send actionable notifications. Secondary windows
+  have build and test coverage.
 
 ## v0.1.15 - 2026-08-18
 
-### Changed
-
-- Release: bump version to v0.1.15
 - Ci: run workflow actions on Node 24 runtimes
 
 ## v0.1.14 - 2026-08-18
 
-### Changed
-
-- Release: bump version to v0.1.14
-- Ui: make retained frames work without a render context
-- Test: trace and stress retained text input
-- Ui: select all text on double click
-- Test: cover click then tab field traversal
-- Correct secondary window texture orientation
-- Ui: route retained focus traversal
-- Build: always index static runtime archives
-- Runtime: enforce one app instance by default
-- Synchronize shared secondary window textures
-- Runtime: pace event-driven UI frames
-- Kryui: window flags and min size on the k2g AppConfig
-- Present secondary window textures without readback
-- Ui: keep font atlases immutable while typing
-- K2g: host bridge, enums, switch and full for headers
-- Render SDL secondary windows with shared GL contexts
-- Disable unsafe Linux secondary SDL windows
+- Retained frames work without a graphics context. Double clicks select all
+  text, focus traverses retained controls and font atlases stay stable while typing.
+- Secondary windows keep correct orientation and synchronized textures without
+  readback; SDL uses shared GL contexts, with unsafe Linux paths disabled.
+- Apps default to one instance and event-driven frame pacing. Static archives
+  are indexed reliably. Go supports window flags, minimum sizes, host bridges,
+  enums, switch statements and complete loop headers.
 
 ## v0.1.13 - 2026-08-18
 
-### Changed
-
-- Release: bump version to v0.1.13
-- Web: build the current KRB compiler sources
-- Build: avoid case-colliding makefiles
-- Ci: invoke Homebrew GNU make directly
-- Ci: pin the macOS renderer compiler
-- Ci: ignore macOS make compatibility preload
-- Ci: reset inherited make flags on macOS
-- Web: link shared KIR parser into IDE tools
-- Ci: prevent recursive macOS renderer build
-- Ci: install renderer toolchain dependencies
-- Ci: build renderer targets from complete checkouts
-- Ui: enforce cross-lowering text input latency
-- Avoid fixed buffer when canonicalizing tray icon path
-- Pass absolute icon path to AppIndicator
-- Resolve tray icon theme path for GNOME
-- Ui: complete retained text editing actions
-- Revert "Fix C-style local declarations in k2c"
-- Test: cover legacy k2c declarations
-- Ui: retain mouse and keyboard text selection
-- Fix C-style local declarations in k2c
-- Ui: rebuild font atlases only between frames
-- Add SDL auxiliary windows for Wayland
-- K2c: preserve anonymous enum declarations
+- Web tools build the current cartridge compiler and shared KIR parser.
+  macOS renderer builds use the required toolchain without recursive builds
+  or inherited Make settings; case-sensitive file naming avoids collisions.
+- Tray icons resolve absolute and themed paths on GNOME without fixed buffers.
+- Retained text editing and mouse/keyboard selection work across lowerings;
+  font atlases rebuild only between frames. Added Wayland auxiliary windows.
+- C generation preserves anonymous enums and supports legacy declarations.
 
 ## v0.1.12 - 2026-08-17
 
-### Changed
-
 - Fix AppIndicator icon lookup on Wayland
 - Ui: retain selected font for deferred text
-- Release: bump version to v0.1.12
 - Go: expose retained declarative UI
 - Ui: add retained declarative tree and typed events
 
 ## v0.1.11 - 2026-08-17
 
-### Changed
-
-- Release: bump version to v0.1.11
 - Ui: make text rendering event efficient
 
 ## v0.1.10 - 2026-08-17
 
-### Changed
-
-- Release: bump version to v0.1.10
 - Ui: add fixed-subset font sources
 
 ## v0.1.9 - 2026-08-17
 
-### Changed
-
-- Ui: copy font type string in RegisterUIFontSource
-- Ui: raise font raster tier cache from 4 to 8 slots
-- Ui: sample system theme from CSS before initializing GTK in-process
-- Release: bump version to v0.1.9
-- Build: log missing SDL2 DPI query once instead of every frame
-
-### Fixed
-
-- Text entry stays responsive when an app mixes its regular UI font with emoji or icon fonts, even when the fallback is registered first.
-- Typing and redrawing text no longer repeatedly scans the full font atlas for every glyph.
-- UI text uses exact-size font rasters, and idle windows can sleep until the next input event.
+- Registered fonts retain their type names and cache more sizes. Mixed UI,
+  emoji and icon fonts stay responsive without repeatedly scanning whole atlases.
+- Text uses exact-size rasters; idle windows sleep until input. GTK themes can
+  be sampled from CSS before initialization, and missing DPI queries log once.
 
 ## v0.1.8 - 2026-08-17
 
-### Changed
-
-- Release: bump version to v0.1.8
-- Ci: install Go on FreeBSD
-- Build: link FreeBSD curl codec dependencies
-- Go: add reusable grid cell editor
-- Build: search FreeBSD ports libraries
-- Test: build capability cartridge fixture
-- Ci: install GTK for Go binding smoke tests
-- Build: apply GIO notification include flags
-- Ui: finalize deferred overlays at frame end
-- Ci: install and link GIO notifications
-- Release: automate versions and publish all tools
-- Go: support arm64 native linking
-- Ui: persist line selection and expose pictures
-- Go: expose theme style selection
-- Ui: add scroll-safe multiline text selection
-- Ui: use neutral colors for tables
-- Go: add secure password fields
-- Go: expose text area focus state
-- Go: expose tab key compatibility constant
-- Go: complete raylib drawing compatibility helpers
-- Go: expose toolkit collection and dialog widgets
-- Go: expose window focus activation
-- Go: pin text editor state across cgo calls
-- Go: add native runtime and stateful controls
-- Go: own the kryui runtime bindings
-- K2ir: strip block comments while reading lines
-- Krb caps: reference host backends — storage, audio
-- Krb: plan-08 capability registry
-- KrbAutoMount: state initializers render without a host
-- Examples: profile and habit-edit screens — 11 cartridge screens
-- Kir_parse: skip plain # comments in TOP mode
-- Examples: statistics screen cartridge
-- Native exactness gate: PASSES for the language screen
-- Dropdown: measured native shape — rounded fill+border r3, diamond indicator
-- Language screen: truncating advances + native dropdown shape — structural 1530 -> 241
-- Native exactness comparator: AA-only vs structural classification
-- Atlas: sub-pixel advances; language cartridge from traced values
-- Atlas: raylib's ascent-shifted glyph offsets + per-mille UI scale
-- K2b atlas: fix GetCodepointBitmapBox extents; tier collection and UI-scale plumbing
-- Kry_sw: ui_text.c advance rounding; krb-sdl: deterministic single-frame dump
-- K2b atlas: raylib-identical glyph rasterization
-- Language cartridge: matched to the native reference frame
-- Screenshots: working native capture — pre-swap read + self-written PNG
-- Tests: arm the pre-swap capture in the native harness
-- Screenshots: ES2-safe capture — armed EndDrawing reads pre-swap
-- Tests: harden the xwd-path kill (TERM, then KILL)
-- LoadImageFromScreen: front-end override reading the front buffer
-- Tests: xwd-based native capture for software GL
-- K2c: initializer items take no inspect wrapper
-- K2c: multi-line array initializers
-- Tests: native exactness runs the app from the repo root
-- K2g: .kry -> Go backend on the shared Kir frontend
-- Krb v2: animated geometry — WHM session screen runs live in-cartridge
-- Examples: practice config screen cartridge (sliders, spinboxes)
-- Examples: habits screen cartridge (bound streak counters)
-- Krb v2: screen navigation — the whole app in one cartridge
-- Examples: manual screen cartridge (scrolling guide + breath circle)
-- Ci: exactness job — cross-engine byte-identity + krb unit tests
-- Examples: settings screen cartridge (scroll + dropdowns + checkboxes)
-- TakeScreenshot: use absolute paths as-is
-- Tests: native-comparison exactness harness (stage 2)
-- Tests: cross-engine screenshot-exactness harness
-- K2b: fix guard single-term parsing, positional ButtonProps, dropdown height
-- K2b: arithmetic expressions in guard conditions
-- Krb v2: dropdown controls
-- Krb v2: text input — TEXTINPUT node + typed-codepoint vtable path
-- Krb v2: scroll containers
-- K2b+engines: KFA1 glyph atlas — antialiased Noto text in cartridges
-- K2b: else branches and state-vs-state guard comparisons
-- K2b: decode png/jpg/bmp/webp and embed as cartridge pixels
-- Style tokens: fixed-pixel corner radii, not size fractions
-- Renderers: web player opens any .krb + CI builds per-platform downloads
-- K2b: embed referenced assets into the cartridge
-- Krb v2: embedded asset section + texture_rgba blit
-- Default style: subtle control rounding instead of full pills
-- K2b: compile .kry state updates and if-guards into v2 VM programs
-- Scene_inspect: set SO_REUSEADDR so quick restarts rebind
-- Kry_json: expose kry_json_type
-- Docs: KRB_FORMAT.md rewritten as an exact byte-level specification
-- Scene: live JSON inspection server
-- Krb v2: in-cartridge logic VM + circle/ring geometry nodes
-- Scene/property/signal/transform: drop the Kry/Kryon prefix from the public API
-- Scene: recycle removed node slots through a freelist
-- Test: host default style follows the MATERIAL default
-- Scene: application-defined node kinds with property callbacks
-- Krb-sdl: SDL2 desktop host for KRB cartridges
-- K2c: fix one-line control blocks, char literals, and locals named c
-- Krb-web: native web engine — kry_sw compiled to wasm, blitted to ImageData
-- System_theme web: snprintf not app copy_text
-- System_theme: web prefers-color-scheme detection; default source SYSTEM on web
-- Krb: kry_sw software rasterizer engine + headless conformance harness
-- Kir: 'c:' is a typed decl, not the raw-C 'c' keyword
-- Desktop_tray: drop GTK type-cast macros - they expand to gtk_*_get_type() calls the dlopen shim does not forward
-- Ksync: harden crypto, exports, JSON, delete, and sync transport
-- K2c: fix braced and bare-default switch cases
-- Kryon-app.sh: project.kryon target runner with default_target support
-- Ui_text: per-size raster tier cache (4 tiers) instead of single base raster
-- Docs: plan 11 — renderer engines for KRB cartridges
-- K2c: join multi-line initializers on '::' global declarations
-- Theme: default to MATERIAL on all platforms for now
-- System_theme: read the GTK palette straight from the theme's gtk.css when the process has no GTK
-- Theme: platform default source/mode helpers (system theme on desktop)
-- Ui_window: WIP center flag, drag/right-click/click-position queries, X11 move hook
-- Mem: diagnostics; ui_text: single-tier font rasters; tray: lazy GTK
-- K2b: report call kinds the KRB vocabulary cannot express
-- Site: add Discord and Telegram community links
-- Widgets: PickerDialog; Spinbox value text + wrap; public ButtonRow height
-- Ui_window: Windows/macOS compile the no-op stubs
-- Guide overlay: Android back key closes the guide
-- Terminal: drop downstream tool name from the feed comment (boundary check)
-- Terminal: TerminalFeedOutput - harness text printed into the terminal
-- Kry_http: streaming partial reads (kry_http_partial) + locked write callback
-- Ui_window: include stddef.h so the android/web stubs see NULL
-- Kry_sfs: the live engine as a synthetic file system + real input injection
-- Ui_window: extra OS windows rendered with the regular UI widgets
-- Kt: drop the 'target ide' fork of krait
-- Kryon owns the transport, not the vendor: drop kry_zai
-- Notification/android: declare GetAndroidApp
-- K2c: emit '#define' constants in the generated header
-- Kry_http: no-curl stub signature must match the header (const mismatch broke PLATFORM_WEB)
-- Web present shim: take the GL context before hiding the canvas (display:none canvases cannot create contexts in some engines)
-- Kry std: kry_json, kry_http, kry_zai — the AI-harness foundation
-- Web present shim: ?kryonpresent=debug forces activation and reports state via document.title
-- Web: kryon-web-present.js — 2D-canvas present mode for WebKitGTK+software GL
-- Add cross-platform notification helpers
-- Kc is fully gone: CHANGELOG/docs/comments now say k2c
-- Theme_picker: switch width matches the retro toggle's content minimum
-- Ui_dpi: web viewport is already CSS pixels — don't reapply devicePixelRatio
-- Kir joiner: adjacent string literals on continuation lines join
-- Kir joiner: '} #else_if COND {' region chains complete as statements
-- Kry_signal.h: last kc comment says k2c
-- Remove the last kc remnants
-- K2c: #private functions are file-static with forward prototypes
-- K2c: resolve bare function references passed as call arguments ('set_cb(name)' / 'f(a, name)'), and grow LOWER_TEXT_MAX with KIR_TEXT_MAX so long initializers stop truncating mid-identifier.
-- K2c: guard statements, array params, alias-call stem matching, init rewrites
-- Kir joiner + k2c name-resolution fixes
-- Kir joiner: three continuation bugs
-- Kir: compute the body '#if' kind once — parse_cond_start strips the trailing '{' in place, so the second parse in the emission branch saw no brace and every body '#if' lowered to '#elif'.
-- Kir+k2c: '#if' regions lower to C preprocessor conditionals
-- Tests: default tool paths to the canonical per-platform bin dir
-- K2c: array-typed parameters emit C syntax ('T name[N]')
-- Kir: parse K&R '} else {' as close + else re-open
-- Vendor.mk: fix K2C path export (make ate the sed $ anchors)
-- Remove legacy build/bin tool aliases; export canonical K2C for consumers
-- Kir: the '#if' region skip runs before import capture
-- Kir+k2c: top-level 'static name: T = init' globals; skip captures in unevaluated '#if MACRO {' blocks
-- Kir+k2c: capture the 'args' header directive; C-style params pass through
-- Kir+k2c: '#private' imports include in the .c only
-- Kir: ':=' classifies as DECL before the raw-'c' escape hatch
-- Kir+k2c: named enums ('Name :: enum { ... }' -> typedef enum)
-- K2c: angled includes stay angled; extension-less header imports append .h
-- K2c_project: drop IDE name from comment (boundary rule)
-- K2c: emit kryon_project.h/.c (app-host ABI) + main() from Kir
-- K2b: migrate to the shared Kir frontend — one frontend, two backends
-- K2c: #global variables have external linkage; header order typedefs->enums->globals->structs
-- K2c: colon functions keep their bare C names; bare-ref resolution only in assignment-RHS
-- K2c: don't rewrite member-access calls (x->fn(...) / x.fn(...))
-- K2c: krait's full IDE corpus compiles — all 8 generated files, zero errors
-- K2c: emit #extern prototypes with alias-stripped args
-- Kir+k2c: typedefs with names, enum commas, type emission order, ternary/&& joins
-- Kir+k2c: '#type' typedefs; angle-bracket includes don't join
-- Kir: enum constants joined by comma-continuation close their enum
-- Kir: fix duplicate anonymous enum (use int for enum_return)
-- Kir: pointer types don't continue lines; #enum nests inside structs
-- Kir+k2c: join operator continuations; alias-strip array sizes
-- K2c: cross-module call resolution via a whole-program symbol table
-- Kir: '#'-directive lines are header lines (never join their braces)
-- Kir: join multi-line compound literals (expression braces)
-- K2c: resolve module-local function calls to their full C names
-- Kir+k2c: fix UB alias-strip (src==dst snprintf), emit #enum blocks
-- Kir+k2c: struct fields converted to C declarators; '#' comments skipped in bodies
-- Kir+k2c: fix block-brace depth tracking + alias rewrite in body statements
-- Kir+k2c: struct types (Name :: struct), return types stop at '{'
-- K2c: emit #include for module imports (alias :: #import "path" -> #include "path.h")
-- Kir+k2c: return types, #extern prototypes, #global vars, module prefixes, alias stripping
-- K2c: Kir is the only pipeline — delete the entire legacy compiler
-- K2c --kir: PushUIInspectSource wrapping for call statements + ui_inspect.h include
-- K2c: Kir→C lowering skeleton (--kir flag, structurally valid output)
-- Extract Kir parser into shared kir_parse.c (prerequisite for k2c/k2b backends)
-- K2ir: parse app{} metadata (title/size/fps/theme/frame/init/scene/shutdown)
-- K2ir: multi-line statement joining (paren/bracket/string depth tracking)
-- K2ir: classify mutations (count++) as EXPR not UNKNOWN
-- Rename kc to k2c (kry-to-C compiler)
-- Archive libkryon.a under the platform-tagged build dir
-- Improve site text readability
-- Add Kryon browser IDE
-- Improve Kryon site button contrast
-- Fix CI links and platform icons
-- Guard KryScenePhysicsDestroy call so physics-off builds link
-- Teach k2ir about imports and externs
-- Add k2ir tool scaffold
-- Add initial KIR core
-- Document KIR compiler roadmap
-- Fix per-codepoint font fallback switching typefaces for covered glyphs
-- K2b: standalone .kry->.krb compiler, fully independent of kc
-- Krb: controls[] section + range widgets (Slider, VerticalSlider, Spinbox)
-- Krb: interactive Checkbox + Toggle widgets (value-bound, self-contained toggle)
-- Krb compiler: widen widget coverage (color literals, Line/Separator/Bevel/TextInRect, Image)
-- Kc: parse top-level 'frame NAME {}' as a hook function definition
-- Scene_property.h: refer to "an IDE inspector" instead of naming Krait
-- Build: make 2D physics (Box2D) optional via KRYON_WITH_PHYSICS
-- Kryon.h: expose embedded_assets.h through the umbrella
-- Krb: drop unused GROUP node and export enums for a clean v1
-- Krb: implement F32 field read/write and float text formatting
-- Expose terminal and krb in kryon.h; document the cartridge API
-- Add krb cartridge tests
-- Kryon-preview: render .kry/.krb to PNG via a cartridge subcommand
-- Kc: emit a krb cartridge from .kry (--emit-krb); route codegen via the AST
-- Add krb: a packed, mmapable Kryon cartridge format
-- Add terminal: a PTY terminal for IDE hosts
-- Add kry_backend: a draw/input vtable for non-raylib cartridge hosts
-- UI text: resolve font sources from embedded assets before the filesystem
-- UI: preserve ui_scale across SaveUIFrameState/RestoreUIFrameState
-- Raylib build: purge stale .o/.a from vendored sources before recompiling
-- Add Column/Row layout nodes with flexbox-style auto-positioning
-- Add raylib rename-check post-build step to fix symbol collision
-- Phase 6: TileMap + AudioSource nodes (all 12 Game2D kinds now implemented)
-- Phase 5: animation system (keyframe tracks, AnimationPlayer, AnimatedSprite2D)
-- Phase 4: Box2D v3 physics integration
-- Fix scale-domain mixing in title bar, toast, and text centering
-- Use best available DPI estimate, not just device density
-- Invalidate DPI cache when device density changes
-- Add device density hook, fix dropdown resize, widen theme spacing
-- Add kc signal language support, example, and property/signal tests
-- Add property model and signal bus for the scene tree
-- Add kc scene-tree language support, example, and tests
-- Implement built-in scene nodes: Node2D, Camera2D, Sprite2D
-- Add retained scene tree foundation and rename UI Sprite to Image
-- Allow custom value text on Slider widget
-- Fix pane tab hit testing
-- Add UI font init control
-- Tune tree view file label color
-- Keep UI keyboard input state backend-independent
-- Canonicalize widget API
-- Clean material toggle rendering
-- Document and enforce canonical app api
-- Fix sprite example syntax
-- Clean kryon app api
-- Add Default theme style widgets
-- Restore stable tool targets
-- Preserve icon texture colors
-- Use host-specific root build directories
-- Add GTK file dialog backend
-- Document default Ksync transport APIs
-- Avoid native Ksync transport warnings
-- Add default Ksync transport helpers
-- Kc: extract C emission into kc_codegen.c, heal project split
-- Kc: extract defer lowering into kc_defer.c
-- Kc: extract symbol resolution + expression rewrite into kc_resolve.c
-- Kc: extract KryFile/KryFunction mutators into kc_ir.c
-- Kc: extract diagnostics + error recovery into kc_diag.c
-- Kc: extract pure leaf helpers into kc_util.c
-- Kc: delete _funcs.txt and dedupe function-name helper
-- Own theme picker labels and expose text drawing helpers
-- Force retro UI style
-- Retain dropdown overlay clip bounds
-- Fix UI transition declaration
-- Add clean node measurement constructors
-- Route node measurement through widget ops
-- Store measurement data on widget nodes
-- Measure widget nodes generically
-- Move UI runtime to declarative nodes
-- Fix classic system focus and material buttons
-- Simplify theme style selection
-- Centralize native theme defaults
-- Add selectable native UI styles
-- Fix text context menu overlay handling
-- Add text input context menus
-- Stabilize UI cursor ownership
-- Route cursor shape requests through UI intent
-- Fix layout-aware shortcuts and bulk paste
-- Adapt syntax colors to dark themes
-- Fix cascading tree input capture
-- Remove bundled C IDE
-- Keep standalone IDE changelog name-neutral
-- Support standalone KITE IDE
-- Add nonblocking IDE console
-- Run kt scenarios visually by target
-- Expand kt project scenario tests
-- Add kt test runner
-- Fix IDE source clipboard fallback
-- Polish IDE chrome and clipboard fallback
-- Add IDE console panel
-- Add IDE problems panel tabs
-- Normalize kc source paths in generated output
-- Add shared font subsetting target
-- Add dynamic font fallback loading
-- Avoid Windows API name collisions
-- Define NULL for platform thread helpers
-- Add compiler diagnostics and UI text backend fixes
-- Fix Kryon IDE preview input and source selection
-- Isolate text input selection ownership
-- Rename Lyra sync APIs to Ksync
-- Rename Lyra sync APIs to Ksync
-- Phase 3 (foundation): type-aware AST classification of declarations
-- Phase 2 (partial): fix defer leaking across switch cases
-- Phase 1: build the AST alongside the existing path
-- Phase 0: harden the kc syntax oracle + add parser plan
-- Add kryon-app dev-backend for local sync development
-- Fix click-to-source for widgets used in if conditions
-- Add `defer` to the Kry language
-- Make text input focus persistent and single-owner across frames
-- Update website code sample to verb-free Kry syntax
+- FreeBSD builds resolve Go, curl, GTK, notification and ports dependencies;
+  Go supports arm64 native linking. Release tooling automates versions and
+  publishes all command-line tools.
+- Go gains a reusable grid editor, stateful controls, collection/dialog widgets,
+  secure password fields, text-area focus, theme-style selection, window
+  activation and Raylib drawing helpers. Editor state remains valid across calls.
+- Deferred overlays finalize at frame end. Multiline selection survives
+  scrolling, line selection persists, tables use neutral colors and pictures
+  are exposed to callers.
+- Cartridges gain registered storage/audio capabilities and state initializers
+  that render without a custom host. Added profile, habits, statistics, practice,
+  manual and settings screen examples.
+- Cartridge text uses antialiased Noto atlases with native font metrics and DPI
+  scaling. Dropdown shapes, text placement and software output match the native
+  reference, with cross-engine visual comparison tools.
+- Screenshots capture the displayed frame correctly, support software GL and
+  ES2, write valid PNGs and preserve absolute output paths.
+- A shared KIR frontend drives Kry-to-C, Go and cartridge compilation. It handles
+  multiline arrays and globals, comments, typed declarations, mutations,
+  conditional regions, string continuations and app metadata.
+- Cartridges support animated geometry, screen navigation, dropdowns, text
+  input, scrolling, range controls, checkboxes and toggles. Bound state and guard
+  expressions, including arithmetic and else branches, update within the cartridge.
+- Referenced PNG, JPEG, BMP and WebP images embed as pixels. Circle and ring
+  geometry, float fields and formatted values extend the cartridge format.
+- Web and SDL players run cartridges; browser players open any KRB. A software
+  rasterizer supports alternative hosts and headless comparisons. Preview tools
+  render Kry or KRB to PNG without a full application host.
+- Default controls use subtle fixed-radius rounding instead of full pills.
+  Font sources resolve embedded assets before filesystem paths, and saved frame
+  state preserves UI scale.
+- Scenes support live JSON inspection with quick restarts, reusable removed-node
+  slots and application-defined node kinds with property callbacks. Public scene,
+  property, signal and transform APIs drop redundant prefixes.
+- Added Node2D, Camera2D, Sprite2D, TileMap and AudioSource, keyframe animation,
+  AnimationPlayer and AnimatedSprite2D. Box2D physics is optional; physics-free
+  builds link correctly. Scene properties, signals and language syntax are supported.
+  The UI Sprite widget becomes Image.
+- C generation fixes one-line blocks, character literals, local names, switch
+  cases, typed declarations, private functions, function references, array
+  parameters and module aliases. Long initializers no longer truncate names.
+- Imports preserve header forms and visibility. Named/anonymous enums, structs,
+  typedefs, externs, globals and C-style parameters emit correctly and in usable
+  order. Cross-module and local calls resolve without rewriting member calls.
+- KIR joins multiline expressions and compound literals correctly, handles
+  preprocessor branches and nested enum blocks, and skips inactive imports.
+  The shared pipeline replaces the legacy compiler; `kc` becomes `k2c`.
+- Compiler app-host output includes project headers and runnable entries.
+  Build tools use canonical platform paths and stable targets. Static libraries
+  and build outputs are platform-specific; stale Raylib objects no longer cause
+  symbol collisions.
+- System-theme defaults, GTK CSS palette reading and browser dark-mode detection
+  improve theme selection. GTK trays load lazily, and font/memory diagnostics
+  help investigate heavy apps.
+- Added PickerDialog, wrapping Spinbox values, custom Slider labels and public
+  ButtonRow sizing. Android Back closes Guide overlays. Theme switches fit their
+  labels, and theme-picker labels remain valid.
+- Extra native windows use ordinary widgets, with positioning, drag, click and
+  right-click queries; unsupported platforms provide safe stubs.
+- Terminal supports PTYs and feeding external output. The synthetic filesystem
+  exposes the live UI engine and input injection for tooling.
+- HTTP supports streaming partial reads. Shared JSON/HTTP helpers and
+  cross-platform notifications become available; vendor-specific AI transport
+  moves out of Kryon. Browser builds work without curl.
+- Browser presentation can use a 2D canvas on WebKitGTK/software GL, creates its
+  graphics context before hiding the source canvas and offers activation diagnostics.
+  Web DPI stays in CSS pixels.
+- Ksync improves crypto, JSON, deletion and transport, provides default transport
+  helpers and a local development backend, and replaces the Lyra API names.
+- Reusable Column/Row nodes provide flex-style positioning. Measurement lives on
+  declarative widget nodes and uses shared widget operations.
+- DPI uses the best available estimate and updates with density changes.
+  Titlebars, toasts, centered text and dropdown resize use consistent scaling;
+  theme spacing and pane-tab hit testing are corrected.
+- Default and selectable native styles share platform defaults. Material toggles,
+  buttons and classic focus are corrected, icons preserve color, and tree labels
+  and syntax colors suit the theme. GTK supplies native file dialogs.
+- Text context menus render above content. Focus stays persistent and exclusive
+  across fields and text areas; cursor ownership follows UI intent. Keyboard
+  shortcuts respect layout, bulk paste works and tree input capture is corrected.
+- Font initialization is controllable, subsetting is shared and fallback fonts
+  load dynamically without changing typefaces for already covered glyphs.
+- The bundled C IDE is removed in favor of a standalone IDE. Its start page,
+  recent projects, preview inspection, toolbar, source selection and clipboard
+  fallback improve; builds expose a nonblocking console and problem panels.
+  The `kt` runner supports project scenarios and visual targets.
+- Compiler diagnostics, error recovery, expression typing and `defer` improve.
+  Deferred cleanup stays within its switch case, and widget calls in conditions
+  retain click-to-source inspection.
+- Windows API names and thread helper declarations no longer collide or fail
+  to build. Android notifications and web stubs use matching signatures.
+- The website gains a browser IDE, readable text, clearer buttons, community
+  links and current language samples, with corrected platform icons and CI links.
 
 ## v0.1.7 - 2026-07-26
 
-### Changed
-
-- Bump version to v0.1.7
-- Remove native_widget_name compiler name-rewrite hack
-- Finish removing Kry sugar verbs — language is now minimal
-- Remove redundant Kry verbs; widgets are now a library
-- Rework Platforms grid: add Windows, macOS, FreeBSD
-- Make text input focus exclusive across UITextField and UITextArea
+- Kry removes redundant verbs and compiler widget-name rewriting; widgets
+  are library APIs. TextField and TextArea share exclusive focus.
+- The Platforms grid adds Windows, macOS and FreeBSD.
 
 ## v0.1.6 - 2026-07-25
 
-### Changed
-
-- Bump version to v0.1.6
-- Resolve tray icon from installed hicolor paths
-- Fix site card cursors, release CI, and IDE recent-projects grid
-- Trigger site deploy (previous run hit GitHub internal error)
-- Restyle docs site with refined modern-retro theme
-- Add Kryon IDE start page and fix preview inspection
-- Improve Kry language and generic APIs
-- Support uninitialized C locals in k2c
-- Allow args locals in k2c functions
-- Add Kryon platform thread primitives
-- Support local enum blocks in k2c
-- Support bitwise compound assignments in k2c
-- Guard Kry compile-time expansion recursion
-- Add runtime asset sync API
-- Support Kry multidimensional arrays
-- Raise Kry type block capacity
-- Add Kry named enum syntax
-- Add Kry switch syntax
-- Update Kryon site goals
-- Add Kry web intrinsics
-- Add Kry anonymous block scopes
-- Add top-level Kry extern declarations
-- Add Jai-style Kry defines
-- Add Kry top-level macro translation
-- Add Kry type aliases
-- Allow Kry type-only modules
-- Generate project headers from Kry files
-- Guard Kry text shorthand parsing
-- Respect Kry locals when resolving function values
-- Limit Kry function value rewriting
-- Resolve Kry function values in expressions
-- Add exact C exports for Kry modules
-- Make Kry modules the only import path
-- Support path-based Kry module use
-- Fix IDE preview toolbar and text state
-- Tighten leading continuation parsing
-- Support leading expression continuations in Kry
-- Add native Kry enum blocks
-- Support break statements in Kry
-- Add native Kry struct declarations
-- Support multiline Kry function declarations
-- Rewrite nil in Kry static initializers
-- Add Jai-style Kry compile-time macros
-- Support multiline Kry state initializers
-- Use Jai-style typed Kry declarations
-- Keep postfix operators on one Kry line
-- Support multiline Kry block headers
-- Support operator line continuations in Kry
-- Support multiline Kry statements
-- Add Kry while statements
-- Allow app locals in Kry functions
-- Lift Kry function limits
-- Add flat Kry modules
-
+- Tray icons resolve installed hicolor paths. Site cards, release builds,
+  recent projects and IDE preview inspection, toolbar and text state are corrected.
+  Docs gain a modern retro theme and the IDE gains a start page.
+- Kry supports uninitialized and typed locals, argument locals, local/named
+  enums, structs, switches, while/break, bitwise assignments, multidimensional
+  arrays and anonymous scopes. App locals remain available in functions.
+- Multiline functions, state initializers, block headers and expressions work,
+  including leading/operator continuations; postfix operators stay together.
+  Function and type capacity limits are raised.
+- Modules use explicit paths, can contain only types and generate project headers.
+  C exports, extern declarations, aliases, defines and compile-time macros are
+  supported; recursive expansion is guarded.
+- Function values resolve in expressions without rewriting locals incorrectly.
+  Text shorthand, nil initializers and continuation parsing are corrected.
+- Added platform threads, runtime asset synchronization and web intrinsics.
 
 ## v0.1.5 - 2026-07-21
-
-### Added
 
 - Add the Kryon logo as the site and IDE app icon.
 - Add C-close Kry language direction docs.
 - Add automatic release tagging when the checked-in Kryon version changes.
 
-### Changed
-
 - Replace Kry `include` syntax with explicit `cimport` for C headers.
 - Use cleaner changelog version headings without brackets.
-
-### Fixed
 
 - Allocate Kry compiler state on the heap to avoid Linux runner stack crashes.
 
 ## v0.1.4 - 2026-07-18
-
-### Changed
 
 - Add Clay as a vendored layout dependency for future Kryon UI work.
 - Remove the vendored fontchop dependency and chopped bitmap font assets.
 
 ## v0.1.3 - 2026-07-16
 
-### Changed
-
 - Add public Kryon version metadata for release artifacts.
 - Move font atlas generation to the vendored fontchop submodule.
 - Replace the single implicit UI font with a registered font selection API.
 - Improve generated icon asset formatting and desktop/embedded fallbacks.
-
-### Added
 
 - Add Markdown support and text area UI.
 - Add pointer release helper APIs and modal layer input capture.
 
 ## v0.1.2 - 2026-07-12
 
-### Added
-
 - Add web file dialog loading.
 
 ## v0.1.1 - 2026-07-12
 
-### Fixed
-
 - Fix release CI vendor builds.
 
 ## v0.1.0 - 2026-07-12
-
-### Added
 
 - Add Kryon release automation.
