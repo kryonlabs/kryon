@@ -24,6 +24,10 @@ session_codec: WidgetSessionCodec;
 modal_calls: s32;
 modal_accepted: s32;
 action_slice_name: string;
+titlebar_calls: s32;
+titlebar_accepted: s32;
+titlebar_record_name: string;
+titlebar_slice_name: string;
 
 Allows :: (context: *void, module: string, function: string) -> bool {
     unused context
@@ -42,8 +46,14 @@ Call :: (context: *void, module: *u8, function: *u8,
         modal_calls += 1
         action_slice_name = TextFromCString(arguments[2].type_name)
     }
+    if name == "TitleBarHostedHost" && count == 3 {
+        titlebar_calls += 1
+        titlebar_record_name = TextFromCString(arguments[1].type_name)
+        titlebar_slice_name = TextFromCString(arguments[2].type_name)
+    }
     accepted := WidgetHostCall(null, module, function, arguments, count, result)
     if name == "ActionModalHostedHost" && accepted == 1 { modal_accepted += 1 }
+    if name == "TitleBarHostedHost" && accepted == 1 { titlebar_accepted += 1 }
     return accepted
 }
 
@@ -72,7 +82,7 @@ main :: () -> s32 {
     WidgetHostEnd()
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 2 }
     // The guest sends Kryon's qualified slice type, and the host draws it.
-    if modal_calls != 1 || action_slice_name != "[]Modal.ActionModalAction" {
+    if modal_calls != 1 || !HostTypeSame(action_slice_name, WidgetSliceTypeActionModalAction) {
         print("action modal calls % with slice %\n", modal_calls, action_slice_name)
         return 3
     }
@@ -80,6 +90,15 @@ main :: () -> s32 {
         print("action modal accepted % ran % answer %\n", modal_accepted, ran, answer)
         return 4
     }
+    if titlebar_calls != 1 || titlebar_accepted != 1 ||
+    !HostTypeSame(titlebar_record_name, WidgetTypeTitleBarProps) ||
+    !HostTypeSame(titlebar_slice_name, WidgetSliceTypeDropdownOption) {
+        print("titlebar calls % accepted % record % slice %\n", titlebar_calls,
+            titlebar_accepted, titlebar_record_name, titlebar_slice_name)
+        return 5
+    }
+    print("packaged titlebar record % expected % slice % expected %\n",
+        titlebar_record_name, WidgetTypeTitleBarProps, titlebar_slice_name, WidgetSliceTypeDropdownOption)
     HostedAppClose(*app)
     return 0
 }

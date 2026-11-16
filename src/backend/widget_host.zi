@@ -954,7 +954,7 @@ WidgetHostTabBar :: (session: Session, arguments: *HostValue, result: *HostValue
         return 0
     }
     values := arguments[2]
-    if !WidgetHostSliceValid(values, "[]Tab", cast(usize)WIDGET_HOST_TAB_LIMIT) {
+    if !WidgetHostSliceValid(values, WidgetSliceTypeTab, cast(usize)WIDGET_HOST_TAB_LIMIT) {
         return 0
     }
     index: usize = 0
@@ -977,7 +977,7 @@ WidgetHostSegmentedControl :: (session: Session, arguments: *HostValue, result: 
         return 0
     }
     values := arguments[2]
-    if !WidgetHostSliceValid(values, "[]SegmentOption", cast(usize)WIDGET_HOST_OPTION_LIMIT) {
+    if !WidgetHostSliceValid(values, WidgetSliceTypeSegmentOption, cast(usize)WIDGET_HOST_OPTION_LIMIT) {
         return 0
     }
     index: usize = 0
@@ -1002,7 +1002,7 @@ WidgetHostTitleBar :: (session: Session, arguments: *HostValue, result: *HostVal
         return 0
     }
     values := arguments[2]
-    if !WidgetHostSliceValid(values, "[]DropdownOption", cast(usize)WIDGET_HOST_OPTION_LIMIT) {
+    if !WidgetHostSliceValid(values, WidgetSliceTypeDropdownOption, cast(usize)WIDGET_HOST_OPTION_LIMIT) {
         return 0
     }
     props := WidgetDecodeTitleBarProps(arguments[1], *widget_title_bar_codec)
@@ -1031,7 +1031,7 @@ WidgetHostDropdown :: (session: Session, arguments: *HostValue, result: *HostVal
         return 0
     }
     values := arguments[2]
-    if !WidgetHostSliceValid(values, "[]DropdownOption", cast(usize)WIDGET_HOST_OPTION_LIMIT) {
+    if !WidgetHostSliceValid(values, WidgetSliceTypeDropdownOption, cast(usize)WIDGET_HOST_OPTION_LIMIT) {
         return 0
     }
     props := WidgetDecodeDropdownProps(arguments[1], *widget_dropdown_codec)
@@ -1075,7 +1075,7 @@ WidgetHostActionModal :: (session: Session, arguments: *HostValue, result: *Host
         return 0
     }
     values := arguments[2]
-    if !WidgetHostSliceValid(values, "[]ActionModalAction", cast(usize)16) {
+    if !WidgetHostSliceValid(values, WidgetSliceTypeActionModalAction, cast(usize)16) {
         return 0
     }
     index: usize = 0
@@ -1098,7 +1098,7 @@ WidgetHostActionModal :: (session: Session, arguments: *HostValue, result: *Host
 WidgetHostContextMenu :: (session: Session, arguments: *HostValue, result: *HostValue) -> s32 {
     if !WidgetValidContextMenuProps(arguments[1]) { return 0 }
     values := arguments[2]
-    if !WidgetHostSliceValid(values, "[]ContextMenuItem", cast(usize)WIDGET_HOST_OPTION_LIMIT) { return 0 }
+    if !WidgetHostSliceValid(values, WidgetSliceTypeContextMenuItem, cast(usize)WIDGET_HOST_OPTION_LIMIT) { return 0 }
     index: usize = 0
     while index < values.length {
         if !WidgetValidContextMenuItem(values.elements[index]) { return 0 }

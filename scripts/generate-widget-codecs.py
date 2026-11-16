@@ -252,6 +252,17 @@ def source_specs(paths):
     return specs
 
 
+class TypeNames(dict):
+    """Source spellings and defining-module identities for the same types."""
+    def __init__(self):
+        super().__init__()
+        self.wire = {}
+        for _, _, relative, renames in KRYON_PACKAGE_SOURCES:
+            path = KRYON_UI / relative
+            for name in re.findall(r'^([A-Za-z_]\w*)\s*::\s*(?:struct|enum)\b', path.read_text(), re.M):
+                self.wire[renames.get(name, name)] = f'{path.stem}.{name}'
+
+
 def read_schema(specs):
     """Return logical wire schemas and their concrete Ziran type names."""
     schema = {}
@@ -264,7 +275,7 @@ def read_schema(specs):
     # Package imports may use any local alias. Defaults have an explicit alias;
     # application sources are learned from their own `Alias :: #import` lines.
     qualified = {}
-    type_names = {}
+    type_names = TypeNames()
     for spec in specs:
         aliases = dict(spec.get('imports', {}))
         if spec['alias'] is not None:
@@ -283,6 +294,7 @@ def read_schema(specs):
             local[actual] = logical
             concrete = f"{spec['alias']}.{actual}" if spec['alias'] else actual
             type_names[logical] = concrete
+            type_names.wire[logical] = f"{spec['path'].stem}.{actual}"
 
         def logical_kind(kind):
             def replace(match):
@@ -400,7 +412,7 @@ def concrete_kind(kind, type_names):
 
 def wire_kind(kind, type_names):
     """Qualified HostValue spelling that keeps package-local records distinct."""
-    return concrete_kind(kind, type_names)
+    return concrete_kind(kind, type_names.wire)
 
 
 def scalar_encode(value, kind, type_names):
@@ -444,6 +456,8 @@ def generate(schema, needed, provided, header, imports, type_names, methods=None
     for kind in [*needed, *extra]:
         fields = schema[kind]
         if kind not in provided:
+            lines += [f'WidgetType{kind} :: "{wire_kind(kind, type_names)}"',
+                      f'WidgetSliceType{kind} :: "[]{wire_kind(kind, type_names)}"', '']
             if methods is not None and any('Widget' + op + kind not in methods for op in emitters):
                 lines += ['// Widget codec schema: ' + json.dumps([kind, fields], separators=(',', ':'))]
             lines += [f'Widget{kind}Codec :: struct {{', f'    fields: [{len(fields)}]HostField']

@@ -2,6 +2,8 @@
 // tests/ziran_hosted_action_modal_test.sh through Kryon's real widget host.
 #import "kryon/session"
 Modal :: #import "kryon/modal";
+TitleBar :: #import "kryon/title_bar";
+Dropdown :: #import "kryon/dropdown";
 
 test_host :: #system_library "host_api";
 TestSessionHost :: () -> Session #foreign test_host;
@@ -9,6 +11,8 @@ TestSessionHost :: () -> Session #foreign test_host;
 #program_export
 main :: () -> s32 {
     session := TestSessionHost()
+    options: [1]Dropdown.Option = .[Dropdown.Option.{.label = "Settings"}]
+    unused TitleBar.Draw(session, TitleBar.Props.{.key = cast(u64)19, .title = "Customize"}, options[:])
     actions: [2]Modal.ActionModalAction = .[
         Modal.ActionModalAction.{.key = cast(u64)1, .label = "Keep editing"},
         Modal.ActionModalAction.{.key = cast(u64)2, .label = "Discard"},

@@ -201,6 +201,11 @@ Call :: (module: string, function: string, arguments: []HostValue, result: *Host
 
 #program_export
 main :: () -> s32 {
+    if HostTypeSame("Text.Props", "Image.Props") ||
+    HostTypeSame("p0123456789abcdef_text_props.Props", WidgetTypeImageProps) ||
+    HostTypeSame("p0123456789abcdef_title_bar_props.Props", "pfedcba9876543210_title_bar_props.Props") {
+        return 120
+    }
     dimensions := HostedImageDimensions()
     if dimensions != 0 { return 1000 + dimensions }
     boundary := HostedPointerBoundary()
@@ -404,7 +409,7 @@ main :: () -> s32 {
     arguments[1] = WidgetEncodePressProps(Press.Props.{.id = 12, .label = "Message",
             .bounds = Rectangle.{0.0, 100.0, 200.0, 40.0}, .now = 1.0}, *press_codec)
     if Call("press", "PressHostedHost", arguments[:2], *result) != 1 ||
-    result.kind != cast(s32)HostRecord || TextFromCString(result.type_name) != "Press.PressResult" {
+    result.kind != cast(s32)HostRecord || TextFromCString(result.type_name) != "press_props.PressResult" {
         return 30
     }
     // A spinbox answers with its value, kept within its range.
@@ -412,7 +417,7 @@ main :: () -> s32 {
             .bounds = Rectangle.{0.0, 140.0, 150.0, 38.0}, .min = 5, .max = 35, .step = 1,
             .value = 16}, *spinbox_codec)
     if Call("spinbox", "SpinboxHostedHost", arguments[:2], *result) != 1 ||
-    TextFromCString(result.type_name) != "Spinbox.SpinboxStepResult" ||
+    TextFromCString(result.type_name) != "spinbox_props.SpinboxStepResult" ||
     WidgetDecodeSpinboxStepResult(result, *spinbox_result).value != 16 {
         return 31
     }
@@ -420,7 +425,7 @@ main :: () -> s32 {
     arguments[1] = WidgetEncodeTimePickerProps(TimePicker.Props.{.id = 14, .label = "Start",
             .bounds = Rectangle.{0.0, 180.0, 150.0, 36.0}, .value = 2000, .now = -1}, *time_picker_codec)
     if Call("timepicker", "TimePickerHostedHost", arguments[:2], *result) != 1 ||
-    TextFromCString(result.type_name) != "TimePicker.TimePickerResult" ||
+    TextFromCString(result.type_name) != "time_picker_props.TimePickerResult" ||
     WidgetDecodeTimePickerResult(result, *time_picker_result).value != 1439 ||
     WidgetDecodeTimePickerResult(result, *time_picker_result).changed {
         return 32
@@ -509,7 +514,7 @@ main :: () -> s32 {
         index += 1
     }
     arguments[1] = WidgetEncodeTabBarProps(TabBar.Props.{}, *tab_bar_codec)
-    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]Tab"),
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData(WidgetSliceTypeTab),
         .length = cast(usize)33, .elements = *tab_values[0]}
     if Call("tabs", "TabBarHostedHost", arguments[:], *result) != 0 {
         return 11
@@ -525,7 +530,7 @@ main :: () -> s32 {
     }
     arguments[1] = WidgetEncodeDropdownProps(Dropdown.Props.{.key = cast(u64)315,
             .bounds = Rectangle.{0.0, 0.0, 200.0, 40.0}, .selected_index = 1}, *dropdown_codec)
-    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]DropdownOption"),
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData(WidgetSliceTypeDropdownOption),
         .length = cast(usize)2, .elements = *option_values[0]}
     if Call("dropdown", "DropdownHostedHost", arguments[:], *result) != 1 ||
     !WidgetValidDropdownResult(result) || WidgetDecodeDropdownResult(result, *dropdown_result).selected_index != 1 {
@@ -554,7 +559,7 @@ main :: () -> s32 {
     arguments[1] = WidgetEncodeSegmentedControlProps(SegmentedControl.Props.{.key = cast(u64)316,
             .bounds = Rectangle.{0.0, 0.0, 240.0, 40.0}, .height = 40, .selected_index = 1,
             .has_selection = true}, *segmented_codec)
-    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]SegmentOption"),
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData(WidgetSliceTypeSegmentOption),
         .length = cast(usize)2, .elements = *segment_values[0]}
     if Call("segmented", "SegmentedControlHostedHost", arguments[:], *result) != 1 ||
     !WidgetValidSegmentedControlResult(result) ||
@@ -565,39 +570,49 @@ main :: () -> s32 {
     if Call("segmented", "SegmentedControlHostedHost", arguments[:], *result) != 0 {
         return 105
     }
-    arguments[2].type_name = HostTextData("[]DropdownOption")
+    arguments[2].type_name = HostTextData(WidgetSliceTypeDropdownOption)
     arguments[2].length = cast(usize)2
     if Call("segmented", "SegmentedControlHostedHost", arguments[:], *result) != 0 {
         return 106
     }
     // A bundle names its slices through the public package types.
-    arguments[2].type_name = HostTextData("[]SegmentedControl.SegmentOption")
+    arguments[2].type_name = HostTextData("[]p0123456789abcdef_segmented_control_props.SegmentOption")
     if Call("segmented", "SegmentedControlHostedHost", arguments[:], *result) != 1 { return 107 }
     arguments[2].type_name = HostTextData("[]SegmentedControl.DropdownOption")
     if Call("segmented", "SegmentedControlHostedHost", arguments[:], *result) != 0 { return 108 }
     arguments[1] = WidgetEncodeTabBarProps(TabBar.Props.{}, *tab_bar_codec)
-    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]TabBar.Tab"),
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]p0123456789abcdef_tab_bar_props.Tab"),
         .length = cast(usize)2, .elements = *tab_values[0]}
     if Call("tabs", "TabBarHostedHost", arguments[:], *result) != 1 { return 109 }
     arguments[2].type_name = HostTextData("[]TabBar.Segment")
     if Call("tabs", "TabBarHostedHost", arguments[:], *result) != 0 { return 110 }
     arguments[1] = WidgetEncodeDropdownProps(Dropdown.Props.{.key = cast(u64)315,
             .bounds = Rectangle.{0.0, 0.0, 200.0, 40.0}, .selected_index = 1}, *dropdown_codec)
-    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]Dropdown.Option"),
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]dropdown_props.Option"),
         .length = cast(usize)2, .elements = *option_values[0]}
     if Call("dropdown", "DropdownHostedHost", arguments[:], *result) != 1 { return 111 }
     arguments[2].type_name = HostTextData("[]Dropdown.Tab")
     if Call("dropdown", "DropdownHostedHost", arguments[:], *result) != 0 { return 112 }
     arguments[1] = WidgetEncodeTitleBarProps(TitleBar.Props.{.key = cast(u64)15, .title = "Lumi",
             .bounds = Rectangle.{0.0, 0.0, 300.0, 40.0}, .trailing_width = 100}, *title_bar_codec)
-    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]DropdownOption"),
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData(WidgetSliceTypeDropdownOption),
         .length = cast(usize)0, .elements = *option_values[0]}
     if Call("titlebar", "TitleBarHostedHost", arguments[:], *result) != 1 ||
-    TextFromCString(result.type_name) != "TitleBar.TitleBarResult" ||
+    TextFromCString(result.type_name) != "title_bar_props.TitleBarResult" ||
     WidgetDecodeTitleBarResult(result, *title_bar_result).trailing_bounds.x != 188.0 ||
     WidgetDecodeTitleBarResult(result, *title_bar_result).trailing_bounds.width != 100.0 {
         return 33
     }
+    // A package identity qualifies the defining module, independent of imports.
+    arguments[1].type_name = HostTextData("p9f8ecaca6100c8aa_title_bar_props.Props")
+    if Call("p9f8ecaca6100c8aa_titlebar", "TitleBarHostedHost", arguments[:], *result) != 1 {
+        return 114
+    }
+    arguments[1].type_name = HostTextData("p9f8ecaca6100c8aa_title_bar_props.TitleBarResult")
+    if Call("p9f8ecaca6100c8aa_titlebar", "TitleBarHostedHost", arguments[:], *result) != 0 {
+        return 115
+    }
+    arguments[1].type_name = HostTextData("title_bar_props.Props")
     arguments[2].length = cast(usize)33
     if Call("titlebar", "TitleBarHostedHost", arguments[:], *result) != 0 {
         return 34
@@ -614,7 +629,7 @@ main :: () -> s32 {
     arguments[1] = WidgetEncodeModalFrameProps(Modal.Props.{.key = cast(u64)16,
             .title = "Share", .width = 200, .height = 120, .has_right_action = true}, *modal_codec)
     if Call("modal_frame", "ModalFrameHostedHost", arguments[:2], *result) != 1 ||
-    TextFromCString(result.type_name) != "Modal.ModalFrameResult" ||
+    TextFromCString(result.type_name) != "modal_props.ModalFrameResult" ||
     !WidgetDecodeModalFrameResult(result, *modal_result).opened ||
     WidgetDecodeModalFrameResult(result, *modal_result).layout.panel.width != 200.0 {
         return 36
@@ -636,7 +651,7 @@ main :: () -> s32 {
     arguments[1] = WidgetEncodeScrollProps(Scroll.Props.{.key = cast(u64)7,
             .bounds = Rectangle.{0.0, 100.0, 200.0, 80.0}, .content_height = 400}, *scroll_codec)
     if Call("scroll", "ScrollHostedHost", arguments[:2], *result) != 1 ||
-    TextFromCString(result.type_name) != "Scroll.ScrollResult" {
+    TextFromCString(result.type_name) != "scroll_props.ScrollResult" {
         return 13
     }
     // Action dialogs validate the entire action list before drawing it.
@@ -645,7 +660,7 @@ main :: () -> s32 {
     action_values: [1]HostValue
     action_values[0] = WidgetEncodeActionModalAction(Modal.ActionModalAction.{.label = "Keep editing"}, *action_codec)
     arguments[2] = HostValue.{.kind = cast(s32)HostSlice,
-        .type_name = HostTextData("[]Modal.ActionModalAction"), .length = cast(usize)1,
+        .type_name = HostTextData("[]modal_props.ActionModalAction"), .length = cast(usize)1,
         .elements = *action_values[0]}
     if Call("modal", "ActionModalHostedHost", arguments[:], *result) != 1 ||
     !WidgetValidActionModalResult(result) ||
@@ -662,7 +677,7 @@ main :: () -> s32 {
     if Call("modal", "ActionModalHostedHost", arguments[:], *result) != 0 {
         return 42
     }
-    arguments[2].type_name = HostTextData("[]Modal.ActionModalAction")
+    arguments[2].type_name = HostTextData("[]modal_props.ActionModalAction")
     action_values[0] = HostScalar("s32", 1)
     if Call("modal", "ActionModalHostedHost", arguments[:], *result) != 0 {
         return 43
@@ -701,7 +716,7 @@ main :: () -> s32 {
     options[0].image.asset_path = "assets/photo.png"
     option_values[0] = WidgetEncodeDropdownOption(options[0], *option_codecs[0])
     arguments[1] = WidgetEncodeTitleBarProps(pictured, *title_bar_codec)
-    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]DropdownOption"),
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData(WidgetSliceTypeDropdownOption),
         .length = cast(usize)1, .elements = *option_values[0]}
     if Call("titlebar", "TitleBarHostedHost", arguments[:], *result) != 1 ||
     widget_options[0].image.asset_path != "apps/owner-a/assets/photo.png" || resolve_checks != checks + 3 { return 48 }
@@ -805,7 +820,7 @@ main :: () -> s32 {
     menu_values[0] = WidgetEncodeContextMenuItem(ContextMenu.ContextMenuItem.{.id = 1, .label = "Open"}, *menu_item_codecs[0])
     menu_values[1] = WidgetEncodeContextMenuItem(ContextMenu.ContextMenuItem.{.id = 2, .label = "Disabled", .disabled = true}, *menu_item_codecs[1])
     menu_values[2] = WidgetEncodeContextMenuItem(ContextMenu.ContextMenuItem.{.id = 3, .label = "Update"}, *menu_item_codecs[2])
-    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]ContextMenuItem"),
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData(WidgetSliceTypeContextMenuItem),
         .length = cast(usize)3, .elements = *menu_values[0]}
     before = PendingPaintCount(session)
     arguments[2].length = cast(usize)33
@@ -1032,7 +1047,7 @@ HostedPointerBoundary :: () -> s32 {
     tabs[0] = TabBar.Tab.{.key = 10, .label = "First"}
     tabs[1] = TabBar.Tab.{.key = 11, .label = "Second"}
     for index: 0..1 { tab_values[index] = WidgetEncodeTab(tabs[index], *tab_codecs[index]) }
-    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]Tab"),
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData(WidgetSliceTypeTab),
         .length = cast(usize)2, .elements = *tab_values[0]}
     props := TabBar.Props.{.key = 80, .bounds = .{0.0, 0.0, 280.0, 44.0}, .selected_index = 1}
     arguments[1] = WidgetEncodeTabBarProps(props, *tab_bar_codec)

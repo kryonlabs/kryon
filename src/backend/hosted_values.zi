@@ -3,6 +3,7 @@
 // missing field keeps its zero value and an unknown one is ignored. The
 // usual field order is checked first.
 #import "std/bundle_host"
+#import "bundle_names"
 #import "std/byte_text_linux"
 
 using HostValueKind;
@@ -43,10 +44,9 @@ HostFieldAt :: (value: HostValue, position: s32, name: string) -> s32 {
     return -1
 }
 
-// A package body names its own record without an import qualifier while its
-// host names that record through a package import. Keep those two spellings
-// compatible, but do not confuse equally named records from two packages.
-// Container prefixes stay exact.
+// Nominal names use their defining module. Package builds qualify that module
+// with a package identity; ordinary module builds use its plain name. Keep
+// different modules and container shapes distinct.
 HostTypeSame :: (actual: string, expected: string) -> bool {
     if actual == expected { return true }
     actual_at: s64 = 0
@@ -83,7 +83,12 @@ HostTypeSame :: (actual: string, expected: string) -> bool {
     }
     actual_qualified := actual_leaf != actual_at
     expected_qualified := expected_leaf != expected_at
-    if actual_qualified && expected_qualified { return false }
+    if actual_qualified && expected_qualified {
+        if actual[actual_leaf:] != expected[expected_leaf:] { return false }
+        actual_module := actual[actual_at:actual_leaf - 1]
+        expected_module := expected[expected_at:expected_leaf - 1]
+        return ModuleName(actual_module, expected_module) || ModuleName(expected_module, actual_module)
+    }
     if actual[actual_leaf:] == expected[expected_leaf:] { return true }
     if actual_qualified {
         return HostTypeFlatSame(actual[actual_at:], expected[expected_at:])
