@@ -35,9 +35,14 @@ name = ""
 for _ in range(100):
     found = subprocess.run(["xdotool", "search", "--pid", str(app.pid)],
                            capture_output=True, text=True).stdout.split()
-    if found:
-        name = subprocess.run(["xdotool", "getwindowname", found[0]],
+    # SDL names its window just after creating it, so a window found first
+    # can still be unnamed; wait for the name.
+    for window in found:
+        name = subprocess.run(["xdotool", "getwindowname", window],
                               capture_output=True, text=True).stdout.strip()
+        if name:
+            break
+    if name:
         break
     if app.poll() is not None:
         sys.exit(f"program exited with {app.returncode} before opening its window")
