@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- When the Linux desktop host cannot open its window, it now says on
+  standard error which step failed (starting SDL video, creating the window,
+  renderer or texture, or the Cairo surface) and SDL's reason. Before, it
+  failed without saying why.
 - A `KRYON_HOSTED_UI` bundle can import `kryon/menu` for the menu's props,
   types and state (`Props`, `MenuItem`, `MenuItemKind`, `MenuGroup`,
   `MenuState`, `MenuStateInit`, `MenuResult`) and carries none of the

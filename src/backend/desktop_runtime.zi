@@ -35,6 +35,7 @@ DesktopStop :: (status: s32) #foreign desktop_libc "exit";
 
 using SdlEvent :: #import "sdl_event";
 Init :: (flags: u32) -> s32 #foreign sdl_library "SDL_Init";
+SdlError :: () -> *u8 #foreign sdl_library "SDL_GetError";
 Quit :: () #foreign sdl_library "SDL_Quit";
 CreateWindow :: (title: *u8, x: s32, y: s32, width: s32,
     height: s32, flags: u32) -> *void #foreign sdl_library "SDL_CreateWindow";
@@ -444,11 +445,31 @@ DesktopTestDriverMissing :: () {
     DesktopStop(2)
 }
 
+// Writes `text` to standard error.
+DesktopReportText :: (text: string) {
+    bytes: [256]u8
+    if CopyCString(text, bytes[:]) { unused DesktopReport(2, *bytes[0], cast(usize)text.count) }
+}
+
+// Says which step of opening the window failed, with SDL's reason when SDL
+// gave one, and returns false.
+DesktopOpenFailed :: (step: string, sdl: bool) -> bool {
+    DesktopReportText("kryon: the desktop window could not ")
+    DesktopReportText(step)
+    reason := SdlError()
+    if sdl && reason != null && reason.* != cast(u8)0 {
+        DesktopReportText(": ")
+        DesktopReportText(TextFromCString(reason))
+    }
+    DesktopReportText("\n")
+    return false
+}
+
 OpenDesktopTitled :: (width: s32, height: s32, title_text: string) -> bool {
     DesktopTestDriverMissing()
     if width <= 0 || height <= 0 { return false }
     if size_of(Event) != 56 { return false }
-    if Init(cast(u32)0x2020) != 0 { return false }
+    if Init(cast(u32)0x2020) != 0 { return DesktopOpenFailed("start SDL video", true) }
     RasterUseWake(DesktopLanczosWake)
     FrameInputProviderReset(*desktop_frame_input)
     desktop_physical_buttons=0; desktop_physical_sampled=false
@@ -475,11 +496,11 @@ OpenDesktopTitled :: (width: s32, height: s32, title_text: string) -> bool {
     window_flags := cast(u32)0x28 // RESIZABLE | HIDDEN until transport is ready
     window = CreateWindow(*title[0], cast(s32)0x2fff0000,
         cast(s32)0x2fff0000, width, height, window_flags)
-    if window == null { return false }
+    if window == null { return DesktopOpenFailed("create its SDL window", true) }
     renderer = Presenter.CreatePixmapRenderer(window)
-    if renderer == null { return false }
+    if renderer == null { return DesktopOpenFailed("create its SDL renderer", true) }
     texture = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width, height)
-    if texture == null { return false }
+    if texture == null { return DesktopOpenFailed("create its SDL texture", true) }
     // Select an explicit native arrow before the first frame is drawn. This
     // also covers hosts that own their loop and have no retained tree yet.
     arrow:=DesktopSystemCursor(0)
@@ -496,7 +517,7 @@ OpenDesktopTitled :: (width: s32, height: s32, title_text: string) -> bool {
     desktop_first_frame = true
     desktop_first_frame_show = true
     StartTextInput()
-    if !OpenRaster(width, height) { return false }
+    if !OpenRaster(width, height) { return DesktopOpenFailed("create its Cairo surface", false) }
     DesktopControllersScan()
     return true
 }
