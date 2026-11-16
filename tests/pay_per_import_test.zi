@@ -17,18 +17,24 @@ using Vectors :: #import "vec";
 
 // What an empty window must never carry: the frame loop and desktop
 // runtime, the raster, accessibility, sessions, input, widgets, text,
-// pictures, video, threads, the test driver, asset paths and title files.
-not_in_a_window: [43]string = .["desktop_loop", "desktop_runtime", "cairo_raster",
-    "raster_picture", "accessibility_linux", "atspi_protocol", "session",
+// fonts, pictures, video, threads, the test driver, asset paths and title
+// files.
+not_in_a_window: [48]string = .["frames_desktop", "desktop_loop", "desktop_runtime",
+    "cairo_raster", "raster_picture", "accessibility_linux", "atspi_protocol", "session",
     "frame_clock", "frame_driver", "frame_input_provider", "frame_snapshot",
-    "input_delivery", "desktop_keys", "std_utf8", "std_timer_linux",
-    "std_byte_text_linux", "app_types",
-    "tree", "tree_draw", "tree_input", "tree_frame", "paint_queue",
-    "text_request", "text_input_platform", "cursor", "scroll_device",
+    "input_protocol", "input_delivery", "secondary_pointer", "desktop_keys", "std_utf8",
+    "std_timer_linux", "std_byte_text_linux", "app_types",
+    "tree", "tree_draw", "tree_input", "tree_frame", "paint_queue", "font_metrics",
+    "text_layout", "text_request", "text_input_platform", "cursor", "scroll_device",
     "gamepad_navigation", "input_take", "test_driver", "test_driver_frame",
     "bitmap_store", "image_decode_linux", "avif_decode", "lanczos_cache",
     "ziran_image_decode", "riff", "bmff", "video_linux", "std_thread_linux",
     "std_parallel_linux", "program_title", "app_asset_path", "accessibility_tree_linux"];
+
+// The checked program of an empty window on Linux: the window, kryon/app,
+// its types, the SDL window and presenter, and C strings.
+window_checked: [7]string = .["window", "app", "app_types", "desktop_window",
+    "sdl_event", "pixmap_sdl", "std_c_string"];
 
 // What no example that shows no picture or video carries.
 not_without_pictures: [10]string = .["image_decode_linux", "avif_decode", "lanczos_cache",
@@ -118,6 +124,39 @@ BuildProgram :: (ziran: string, entry: string, source: string, output: string) -
     return Run(arguments[:], "")
 }
 
+// A program entry's checked program for C on Linux, saved as one .zir file
+// per module: the modules an editor shows for it.
+CheckProgram :: (ziran: string, entry: string, source: string, output: string) -> bool {
+    arguments: [11]string = .[ziran, "ir", "--target=c", "--project", "--root",
+        "examples", "--entry", entry, "-o", output, source]
+    return Run(arguments[:], "")
+}
+
+// FILE is MODULE's saved checked IR.
+SavedFor :: (file: string, module: string) -> bool {
+    return EndsWith(file, ".zir") && file[:file.count - 4] == module
+}
+
+// The checked program in DIRECTORY holds exactly MODULES.
+ExpectChecked :: (example: string, directory: string, modules: []string) {
+    files: Vec(string)
+    if !ListDirectory(directory, *files) {
+        Fail(example, "has no checked program in", directory)
+        return
+    }
+    for file: files {
+        listed := !EndsWith(file, ".zir")
+        for module: modules { listed = listed || SavedFor(file, module) }
+        if !listed { Fail(example, "checks", file) }
+    }
+    for module: modules {
+        found := false
+        for file: files { found = found || SavedFor(file, module) }
+        if !found { Fail(example, "does not check", module) }
+    }
+    FreeDirectoryNames(*files)
+}
+
 // A frame example, built by the project tool's desktop profile into
 // build/examples/NAME/generated/desktop/c.
 BuildFrame :: (ziran: string, directory: string) -> bool {
@@ -129,14 +168,21 @@ main :: () -> s32 {
     ziran := EnvironmentText("ZIRAN_BIN")
     if ziran == "" { ziran = "ziran" }
 
-    window_present: [1]string = .["window"]
+    window_present: [4]string = .["window", "app", "desktop_window", "pixmap_sdl"]
     if !BuildProgram(ziran, "window:main", "examples/window.zi", "build/test/pay-per-import/window") {
         Fail("window", "does not build", "examples/window.zi")
     } else {
         Expect("window", "build/test/pay-per-import/window", window_present[:], not_in_a_window[:])
     }
+    if !CheckProgram(ziran, "window:main", "examples/window.zi", "build/test/pay-per-import/window-ir") {
+        Fail("window", "does not check", "examples/window.zi")
+    } else {
+        ExpectChecked("window", "build/test/pay-per-import/window-ir", window_checked[:])
+    }
 
-    hello_present: [4]string = .["tree", "tree_frame", "text", "paint_queue"]
+    // kryon/app's frame loop arrives with App.Run.
+    hello_present: [7]string = .["app", "frames_desktop", "desktop_loop", "tree", "tree_frame",
+        "text", "paint_queue"]
     if !BuildProgram(ziran, "hello:main", "examples/hello.zi", "build/test/pay-per-import/hello") {
         Fail("hello", "does not build", "examples/hello.zi")
     } else {

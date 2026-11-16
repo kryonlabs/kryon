@@ -995,19 +995,17 @@ libraries, so no caller `LDLIBS` is needed. Ziran applies those links to the
 root manifest only; an application that depends on Kryon builds through the
 project tool, which supplies them.
 
-A program carries only what it uses. `App.Run(window, Draw)` runs frames:
-before the first one the host registers the widget tree's frame driver
-(`TreeFrameUse`, see `frame_driver`), which routes input to the widgets,
-runs `Draw` and picks the cursor, and on Linux the tree's accessibility nodes
-(`AccessibilityTreeUse`). `App.Show(window)` only shows the window, cleared,
-until it closes, through its own small loop (`desktop_window`); it reaches
-none of the frame loop, desktop runtime, raster, accessibility or widget tree,
-so `examples/window.zi` compiles to the window, its event loop, clearing and
-presenting. The desktop raster host registers its picture cache, smooth copies
-and font the first time a frame draws a picture or text, video registers its
-frame source when it opens, and the test driver is in a build only when
-`KRYON_TEST_DRIVER` is defined. `make pay-per-import-test` checks which
-modules each example's generated C carries.
+A program carries only what it uses. `kryon/app` imports each platform's
+window (`desktop_window`, `page_window`) and frame loop (`frames_desktop`,
+`frames_web`) as separate modules, so `App.Show(window)` reaches only the
+window: on Linux the checked program of `examples/window.zi` is the window,
+`kryon/app`, `app_types`, `desktop_window`, `sdl_event`, `pixmap_sdl` and C
+strings. `App.Run(window, Draw)` brings the frame loop, the widget tree's frame
+driver (`TreeFrameUse`) and, on Linux, the accessibility tree
+(`AccessibilityTreeUse`). The desktop raster loads pictures, smooth copies and
+fonts when a frame first draws them, video when it opens, and the test driver
+only with `KRYON_TEST_DRIVER`. `make pay-per-import-test` checks the examples'
+generated C and the window's checked program.
 
 The project tool accepts a program as a project's entry. When the entry module
 declares `main`, `kryon build --profile NAME` generates a host that only calls

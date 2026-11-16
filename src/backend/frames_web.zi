@@ -1,4 +1,6 @@
-using App :: #import "app_types";
+// The web page's frame loop App.Run runs: the Canvas host,
+// sessions and the widget tree.
+App :: #import "app_types";
 #import "secondary_pointer"
 using Host :: #import "Canvas";
 #import "frame_snapshot"
@@ -11,7 +13,7 @@ Title :: #import "program_title";
 
 using FrameStatus;
 
-DrawCanvasFrame :: (session: Session, viewport: Rectangle, draw: Draw) -> bool {
+DrawCanvasFrame :: (session: Session, viewport: Rectangle, draw: App.Draw) -> bool {
     if !CanvasFrameInputBegin(session) { return false }
     defer { FrameInputEnd(session) }
     BeginCanvasFrame()
@@ -23,7 +25,7 @@ DrawCanvasFrame :: (session: Session, viewport: Rectangle, draw: Draw) -> bool {
         EndCanvasFrame()
         return false
     }
-    draw(Frame.{.slot = session.slot, .epoch = session.epoch})
+    App.CallDraw(draw, session.slot, session.epoch)
     if EndCanvasUiFrame(session) != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
         return false
@@ -32,7 +34,8 @@ DrawCanvasFrame :: (session: Session, viewport: Rectangle, draw: Draw) -> bool {
     return EndCanvasFrame()
 }
 
-Run :: (window: Window, draw: Draw = Empty) -> s32 {
+// Runs the program's frames in the page until it closes.
+Run :: (window: App.Window, draw: App.Draw) -> s32 {
     if window.title.count > 0 { unused Title.SetProgramTitle(window.title) }
     if !OpenCanvas() {
         CloseCanvas()
@@ -54,9 +57,4 @@ Run :: (window: Window, draw: Draw = Empty) -> s32 {
     CloseCanvas()
     if ok { return 0 }
     return 1
-}
-
-// A page shows the window as an empty frame.
-Show :: (window: Window) -> s32 {
-    return Run(window, Empty)
 }

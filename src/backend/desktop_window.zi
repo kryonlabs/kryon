@@ -2,7 +2,8 @@
 // its events, clearing and presenting. It reaches none of the widget frame,
 // input routing, raster, cursor or accessibility code, so a program that
 // only shows a window carries none of it.
-Sdl :: #import "desktop_runtime";
+using Types :: #import "app_types";
+Sdl :: #import "sdl_event";
 Presenter :: #import "pixmap_sdl";
 #import "std/c_string"
 
@@ -41,30 +42,34 @@ WindowClear :: (renderer: *void) -> bool {
     return SetRenderDrawColor(renderer, 248, 250, 252, 255) == 0 && RenderClear(renderer) == 0
 }
 
-// Shows a window of `width` by `height` pixels titled `title` until it closes.
-ShowDesktopWindow :: (width: s32, height: s32, title: string) -> s32 {
-    if width <= 0 || height <= 0 { return WindowError("kryon: the window needs a size\n") }
+// Shows the window, cleared, until it closes: 960 by 600 pixels unless it
+// names its size, untitled unless it names a title.
+Show :: (window: Window) -> s32 {
+    width := window.width
+    height := window.height
+    if width <= 0 { width = 960 }
+    if height <= 0 { height = 600 }
     if Init(cast(u32)WINDOW_SDL_INIT) != 0 {
         return WindowError("kryon: could not open the desktop window\n")
     }
     name: [512]u8
-    if !CopyCString(title, name[:]) { name[0] = 0 }
-    window := CreateWindow(*name[0], cast(s32)WINDOW_CENTERED, cast(s32)WINDOW_CENTERED,
+    if !CopyCString(window.title, name[:]) { name[0] = 0 }
+    shown := CreateWindow(*name[0], cast(s32)WINDOW_CENTERED, cast(s32)WINDOW_CENTERED,
         width, height, cast(u32)WINDOW_FLAGS)
-    if window == null {
+    if shown == null {
         Quit()
         return WindowError("kryon: could not open the desktop window\n")
     }
-    renderer := Presenter.CreatePixmapRenderer(window)
+    renderer := Presenter.CreatePixmapRenderer(shown)
     if renderer == null || !WindowClear(renderer) {
         if renderer != null { DestroyRenderer(renderer) }
-        DestroyWindow(window)
+        DestroyWindow(shown)
         Quit()
         return WindowError("kryon: could not draw the desktop window\n")
     }
     RenderPresent(renderer)
-    ShowWindow(window)
-    id := GetWindowID(window)
+    ShowWindow(shown)
+    id := GetWindowID(shown)
     event: Sdl.Event
     open := true
     while open {
@@ -83,7 +88,7 @@ ShowDesktopWindow :: (width: s32, height: s32, title: string) -> s32 {
         }
     }
     DestroyRenderer(renderer)
-    DestroyWindow(window)
+    DestroyWindow(shown)
     Quit()
     return 0
 }

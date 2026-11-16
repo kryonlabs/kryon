@@ -1,0 +1,28 @@
+// The desktop frame loop App.Run runs: the loop, sessions, the
+// widget tree's frame and its accessibility tree.
+App :: #import "app_types";
+Desktop :: #import "desktop_loop";
+using SessionModule :: #import "session";
+using Geometry :: #import "geometry";
+#import "tree_frame"
+#import "accessibility_tree_linux"
+
+active_draw: App.Draw;
+
+DrawFrame :: (session: Session, bounds: Rectangle) -> s32 {
+    App.CallDraw(active_draw, session.slot, session.epoch)
+    return 0
+}
+
+// Runs the program's frames in the window until it closes. A window without
+// a title opens untitled.
+Run :: (window: App.Window, draw: App.Draw) -> s32 {
+    unused TreeFrameUse()
+    unused AccessibilityTreeUse()
+    width := window.width
+    height := window.height
+    if width <= 0 { width = 960 }
+    if height <= 0 { height = 600 }
+    active_draw = draw
+    return Desktop.RunTitled(DrawFrame, width, height, window.title)
+}

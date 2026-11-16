@@ -335,6 +335,7 @@ test: gamepad-test
 # the window, its event loop, clearing and presenting; images bring decoders.
 .PHONY: pay-per-import-test
 pay-per-import-test:
+	@rm -rf build/test/pay-per-import
 	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_BIN="$(ZIRAN_BIN)" \
 		"$(ZIRAN_BIN)" run --target=c --root tests tests/pay_per_import_test.zi
 test: pay-per-import-test

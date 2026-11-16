@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- A bare window checks only itself: `kryon/app` keeps each platform's window
+  (`desktop_window`, new `page_window`) apart from its frame loop
+  (`frames_desktop`, `frames_web`).
 - Build with Ziran e813c847, which lowers host calls returning records with long names, so hosted widgets bundle to ZX again.
 
 - Let window beams cast real moving shadows on painted surfaces in both CPU

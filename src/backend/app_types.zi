@@ -10,6 +10,13 @@ Frame :: struct {
     slot: s32
     epoch: u64
 }
+
+// Builds one frame's widgets.
 Draw :: #type (frame: Frame) -> void;
 
-Empty :: (frame: Frame) { unused frame }
+// Calls `draw` for the frame of session `slot` at `epoch`. The frame hosts
+// import this module by name and call through here: Ziran checks a direct
+// call of an `App.Draw` against an unqualified `Frame`.
+CallDraw :: (draw: Draw, slot: s32, epoch: u64) {
+    draw(Frame.{.slot = slot, .epoch = epoch})
+}

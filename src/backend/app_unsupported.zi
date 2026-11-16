@@ -1,11 +1,10 @@
-using App :: #import "app_types";
+using Types :: #import "app_types";
 
-Run :: (window: Window, draw: Draw = Empty) -> s32 {
-    unused window
-    unused draw
+// This target has no window host.
+Show :: (window: Window) -> s32 {
     return 1
 }
 
-Show :: (window: Window) -> s32 {
-    return Run(window, Empty)
+Run :: (window: Window, draw: Draw) -> s32 {
+    return 1
 }

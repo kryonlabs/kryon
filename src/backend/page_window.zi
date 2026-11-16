@@ -1,0 +1,42 @@
+// A page window with nothing in it, as App.Show opens one on the web: the
+// page's canvas, cleared, until the page closes. It reaches none of the
+// Canvas frame host, input, text, raster or widget tree, so a program that
+// only shows a window carries none of it.
+using Types :: #import "app_types";
+#import "page_core"
+#import "web"
+
+// The empty window's colour, the same as an empty Kryon frame.
+PageWindowClear :: () {
+    ctx := PageContext()
+    if ctx == 0 { return }
+    scope := WebScope()
+    WebSet(ctx, page_names.fill_style, WebText(PageColor(248, 250, 252, 255)))
+    unused WebCall4(ctx, page_names.fill_rect, WebNumber(0.0), WebNumber(0.0),
+        WebNumber(cast(float64)PageDimension(0)), WebNumber(cast(float64)PageDimension(1)))
+    WebEnd(scope)
+    PageFrame()
+}
+
+// Shows the window, cleared, until the page closes: 960 by 600 pixels unless
+// the page lays the canvas out or the window names its size.
+Show :: (window: Window) -> s32 {
+    width := window.width
+    height := window.height
+    if width <= 0 { width = 960 }
+    if height <= 0 { height = 600 }
+    PageBoot(width, height, window.title)
+    if !PageIsOpen() || PageCanvas() == 0 {
+        PageClose()
+        return 1
+    }
+    PageBindResize()
+    PageWindowClear()
+    while PageDimension(6) == 0 {
+        PageSleep(100)
+        // A resized canvas starts empty.
+        if PageDimension(4) != 0 { PageWindowClear() }
+    }
+    PageClose()
+    return 0
+}

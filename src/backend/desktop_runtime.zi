@@ -33,21 +33,7 @@ desktop_libc :: #system_library "c";
 DesktopReport :: (descriptor: s32, text: *u8, count: usize) -> s64 #foreign desktop_libc "write";
 DesktopStop :: (status: s32) #foreign desktop_libc "exit";
 
-// SDL_Event is 56 bytes on the supported SDL2 ABI. SDL_MouseButtonEvent's
-// button byte is at offset 16; the remaining union storage is opaque.
-Event :: struct {
-    kind: u32
-    timestamp: u32
-    window_id: u32
-    which: u32
-    button: u8
-    state: u8
-    clicks: u8
-    padding: u8
-    x: s32
-    y: s32
-    payload: [28]u8
-}
+using SdlEvent :: #import "sdl_event";
 Init :: (flags: u32) -> s32 #foreign sdl_library "SDL_Init";
 Quit :: () #foreign sdl_library "SDL_Quit";
 CreateWindow :: (title: *u8, x: s32, y: s32, width: s32,

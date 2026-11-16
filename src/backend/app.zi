@@ -1,20 +1,27 @@
+// kryon/app: a window and its frames. Show only shows the window; Run draws
+// frames in it. Each platform's window and frame loop are separate modules,
+// so a program that only shows a window carries no frame loop. The frame
+// loops import app_types by name: a `using` import would keep an unrun loop
+// in the checked program.
 using Types :: #import "app_types";
 
 #if TARGET == .C && OS == .LINUX {
-    Host :: #import "app_host_desktop";
+    Bare :: #import "desktop_window";
+    Frames :: #import "frames_desktop";
 } else #if TARGET == .C && OS == .WEB {
-    Host :: #import "app_host_web";
+    Bare :: #import "page_window";
+    Frames :: #import "frames_web";
 } else {
-    Host :: #import "app_unsupported";
+    Bare :: #import "app_unsupported";
+    Frames :: #import "app_unsupported";
+}
+
+// Shows the window, cleared, until it closes.
+Show :: (window: Window) -> s32 {
+    return Bare.Show(window)
 }
 
 // Runs the program's frames: `draw` builds each frame's widgets.
-Run :: (window: Window, draw: Draw = Empty) -> s32 {
-    return Host.Run(window, draw)
-}
-
-// Shows the window until it closes, without frames. A program that draws
-// nothing carries no widget tree.
-Show :: (window: Window) -> s32 {
-    return Host.Show(window)
+Run :: (window: Window, draw: Draw) -> s32 {
+    return Frames.Run(window, draw)
 }
