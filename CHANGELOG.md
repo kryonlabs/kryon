@@ -2,161 +2,67 @@
 
 ## Unreleased
 
-- Kryon builds with Ziran 0.6.0, so native ZX apps get its faster machine
-  code: the widget scenarios run natively in 8.6 µs (Button), 9.6 µs (Text)
-  and 13.1 µs (Input) per two frames, 121–185× faster than with Ziran 0.5.0.
-- An app that Harmony embeds draws in Harmony's theme by default on Linux:
-  `SystemThemeLinux.SystemPaletteRead` returns the verified host's palette
-  and reads it again on each call, so apps follow a theme change; on its own
-  an app keeps the desktop palette. `ParentThemeLinux` says whether a host
-  supplies the theme.
-- Raylib desktop windows on Linux show their exact colours where SDL 2 runs
-  on SDL 3 through sdl2-compat. SDL 3 could give the OpenGL ES context an
-  sRGB-capable framebuffer that encoded Kryon's sRGB colours a second time
-  and washed out the whole window; the host now asks SDL for a linear one.
-- On the web, the mouse wheel scrolls what is under it even when the
-  pointer has not moved since a click elsewhere: the canvas host takes the
-  pointer position from the wheel event, which a page with a text editor
-  focused otherwise sent to the editor.
-- On Android, an activity without Kryon's optional Java callbacks, such as a
-  Java-free NativeActivity without `onNativeFirstFrame`, `setTextInputState`
-  or `setSoftKeyboardVisible`, no longer leaves a pending
-  `NoSuchMethodError` that broke the JNI calls after it: a method the
-  activity lacks counts as absent, and its lookup releases its class
-  reference.
-- A hosted widget's slice parameter (TabBar, SegmentedControl, Dropdown,
-  TitleBar, Modal actions, ContextMenu) is accepted whether the bundle names
-  its element type through the package (`[]TabBar.Tab`) or bare (`[]Tab`),
-  through one shared check; element count, storage and every element are
-  validated as before and a slice of another element type is still refused.
-- `kryon/tree_frame` is public: a program with its own desktop host imports
-  it, calls `TreeFrameUse()` and passes its frame to `DesktopLoop.Run`, and
-  the widget tree runs each frame with the test driver's pointer and wheel.
-  The desktop loop no longer applies the test driver's pointer and wheel a
-  second time before the frame driver does.
-- When the Linux desktop host cannot open its window, it now says on
-  standard error which step failed (starting SDL video, creating the window,
-  renderer or texture, or the Cairo surface) and SDL's reason. Before, it
-  failed without saying why.
-- A `KRYON_HOSTED_UI` bundle can import `kryon/menu` for the menu's props,
-  types and state (`Props`, `MenuItem`, `MenuItemKind`, `MenuGroup`,
-  `MenuState`, `MenuStateInit`, `MenuResult`) and carries none of the
-  retained menu bar, tree, tree input or paint queue. The menu bar's `Draw`
-  comes only with a retained program, which builds exactly as before.
-- A `KRYON_HOSTED_UI` bundle can import `kryon/layout` for its layout
-  behavior and props, and `kryon/toolbar` for its toolbar behavior and
-  props, and carries none of the retained tree placement or toolbar. The
-  retained `Row`, `Column`, `Draw` and toolbar come only with a retained
-  program, which builds as before.
-- Android builds compile Ziran's runtime for each ABI with the pinned
-  toolchain's own `zi2c` (`GEN_ZI2C`), so the modules Ziran generates C for
-  build on the host instead of with a `zi2c` built for the device; the ZX
-  player APK builds again and runs `app.zx` natively on the ARMv7 Moto.
-- Kryon's renderer and SDL3 artifacts no longer list the top-level `Makefile`
-  as a recipe input. Their providers never read it, and Ziran refuses an
-  artifact whose inputs change while it builds, so an edit there failed a
-  downstream project's native build under a local Kryon override.
-- `App.Show` opens its window from a portable bundle: `ziran run window.zx`
-  runs the bundle's `main` as native code in the desktop zx player, which
-  supplies only the window, its events, clearing and presenting; the bundle
-  carries no frame, font or text code.
-- Portable (zx) apps can show pictures they make at run time, such as
-  photos a service hands them: `kryon/bitmap_image` in a zx bundle asks the
-  desktop zx player to hold the pixels, and the player's raster draws them
-  with the usual image radius, fit and smoothing.
-- A web page whose `#canvas` carries the `data-transparent` attribute has no
-  background: the canvas host clears the empty window and each frame to alpha
-  0, so the editor preview shows its theme wherever a program draws nothing.
-  Pages without it stay opaque.
-- The Linux desktop host can run an app's own windows, input and raster
-  without raylib. It routes each SDL event to its window and reports the
-  sideways wheel; `kryon/desktop_keyboard` gives held, pressed, repeated and
-  released keys; `kryon/desktop_window_state` minimizes, restores, raises,
-  keeps on top and reports the monitor and display scale;
-  `kryon/desktop_secondary_window` opens more windows, each with its own Cairo
-  surface and events; `kryon/cairo_assets`, `kryon/cairo_typefaces` and
-  `kryon/cairo_render_scale` add embedded pictures, app fonts and a render
-  scale.
-- `kryon/audio_mixer` mixes sounds, streamed music and PCM streams with gain,
-  pitch, loops and a mix tap, `kryon/audio_sink_sdl` plays it through SDL2,
-  `kryon/audio_decode_opus` and `kryon/audio_decode_wav` add formats, and
-  `kryon/media_audio_desktop` runs asset audio on it.
-- `kryon/audio_decode_mp3` streams MP3 and MPEG Layer I and II audio through
-  the desktop mixer, and a stream's last frame now plays before it finishes.
-- `kryon/audio_decode_vorbis` streams Ogg Vorbis through the desktop mixer.
-- A drag in a TextField keeps the selection it made when the pointer is
-  released; a click still places the caret.
-- Renderer artifact builds accept dependencies resolved through a local
-  override instead of failing the locked-edge commit check; locked builds
-  still require the exact commit.
-- Builds from the pinned packages again: avif is pinned to the commit with
-  the encode and preview modules that image previews import.
-- Test-driver key commands retry after ordered-input backpressure instead of
-  reporting success before an application can receive them.
-- Hosted widgets bundle to ZX again with the updated Ziran compiler.
-- Window beams cast moving shadows on CPU and GPU renderers. Daylight follows
-  latitude and time of day. Cutout textures cast silhouettes, and hidden
-  objects can keep their shadows through `SetShadows`.
+## [0.4.0] - 2026-11-16
+
+- Builds with Ziran 0.6.0. ZX apps use Ziran's executable format on every
+  target, including browsers, and run as native code by default on Linux
+  x86-64 and AArch64; the widget scenarios run natively in 8.6 µs (Button),
+  9.6 µs (Text) and 13.1 µs (Input) per two frames, 121–185× faster than with
+  Ziran 0.5.0. The `--vm` option is removed.
 - Programs carry only the features they use. `App.Show(window)` opens a bare
-  window; `App.Run(window, Draw)` adds frame input, scrolling, navigation and
-  widget accessibility. Window titles pass through unchanged, including an
-  empty title. `kryon/desktop_loop` and `kryon/test_driver_frame` are exported.
-- A bare window checks only itself: `kryon/app` keeps each platform's window
-  (`desktop_window`, new `page_window`) apart from its frame loop
-  (`frames_desktop`, `frames_web`).
-- Pictures, text input and scroll devices come only with the widgets that
-  use them; a button without an icon carries no decoders or asset paths.
-  Its file pictures come with `kryon/image`, its icons with `kryon/icon`.
-- Web pages carry smooth picture copies, warped-picture meshes and the test
-  driver only when they use them.
-- Empty desktop windows omit image decoding, smooth scaling, video and threads.
-  Import `kryon/cursor` for picture cursors in custom widget hosts. Native
-  desktop project builds link X11 correctly.
-- Painted scenes can follow the time of day with `Scene.grade`, lamps and light
-  through elliptical openings. `kryon/daylight` supplies a sun path, neutral
-  midday lighting and an animated sky. CPU and GPU rendering match.
-- Secure TextFields show a character mask when no `display_value` is supplied.
-  Explicit display text still overrides it; secrets stay out of paint,
-  accessibility and clipboard data.
-- ZX apps use Ziran's executable format on every target, including browsers.
-  The `--vm` option is removed. Browser bundles with string and record host
-  calls start correctly again.
-- Opening a bundle rewrites only changed assets and reads files faster.
-- GTK style queries refresh when the default display changes.
-- GPU scenes update only moved geometry and reuse resources, making animation
-  faster without leaking memory. `FreezeGeometry(scene)` skips geometry checks
-  until geometry changes; nodes can still move, appear and disappear.
-- Linux apps can drag MIME data into other applications with
-  `kryon/DragSourceLinux`, including drag icons and internal-drop detection.
-- GTK painters draw themed check boxes, radio options and submenu arrows.
-- `LightCookie` projects textures through scene lights on CPU and GLES,
-  supporting effects such as sunlight through leaves. GLES needs 15 texture units.
-- The unused semantic DOM backend is removed. Web projects use Canvas2D;
-  profiles selecting `backend = "dom"` are rejected.
-- Tests can run individually, and browser, audio, text, image, storage,
-  keyboard and toast tests build with the correct host settings.
-- The test driver requires `KRYON_TEST_DRIVER` at build time. Starting a test
-  against a build without it reports how to rebuild.
-- Programs without editing widgets omit Unicode grapheme tables.
-- The time picker and desktop image examples build again.
-- `kryon build` supports `main` entries using `kryon/app` on desktop and web.
-  Portable ZX profiles still require a `Frame` entry.
-- Browser projects select the correct target. Direct native project builds
-  link desktop system libraries automatically, and Android renderer artifacts
-  configure correctly again.
+  window and `App.Run(window, Draw)` adds frame input, scrolling, navigation
+  and widget accessibility. Pictures, text input, scroll devices and Unicode
+  grapheme tables come only with the widgets that use them, and empty desktop
+  windows omit image decoding, smooth scaling, video and threads.
 - Import widgets by package, such as `kryon/text`, and use `Text.Draw` and
-  `Text.Props`. The `Kryon`/`Widgets` facades and old props/widget aliases are
-  removed. Related layout, navigation and text-selection APIs have direct exports.
-- SDL desktop and Linux Raylib hosts expose PRIMARY separately from the ordinary
-  clipboard; unsupported hosts report it unavailable.
-- Fast modifier shortcuts retain Control, Alt and Super even when released
-  within the same poll. Context menus support aligned accelerator labels and checks.
-- Desktop, Canvas and Raylib share ordered input delivery, preserving keyboard
-  layouts, repeats, IME text, gamepad navigation and focus-loss behavior.
-  Return arrives with its completed text run.
-- GTK painting reuses measurements, styles and raster caches, copies pixels
-  faster and presents frames before accessibility updates.
-- Frame transitions can retain a stable frame copy while rendering continues.
+  `Text.Props`. The `Kryon`/`Widgets` facades, the old props and widget
+  aliases and the unused DOM web backend are removed; web projects use
+  Canvas2D. `kryon/markdown_preview` and `kryon/markdown_editor` are
+  exported.
+- Portable apps run their window from a bundle: `ziran run window.zx` runs
+  `App.Show` as native code in the desktop ZX player, and `kryon/bitmap_image`
+  shows pictures a bundle makes at run time. A `KRYON_HOSTED_UI` bundle can
+  import `kryon/menu`, `kryon/layout` and `kryon/toolbar` for their props and
+  state only, and hosted widgets accept record and slice types named through
+  the package or bare.
+- The Linux desktop host can run an app's windows, input and raster without
+  raylib, with `kryon/desktop_keyboard` for held and repeated keys, and says
+  which step failed when it cannot open a window. `kryon/tree_frame` is public
+  for programs with their own desktop host.
+- Desktop audio: `kryon/audio_mixer` mixes sounds, streamed music and PCM
+  streams with gain, pitch, loops and a mix tap, played through
+  `kryon/audio_sink_sdl`, with Opus, WAV, MP3 and Ogg Vorbis decoders.
+- Painted scenes gain moving shadows from window beams, daylight that follows
+  latitude and time of day (`Scene.grade`, `kryon/daylight`), light through
+  elliptical openings and `LightCookie` texture projection. CPU and GPU
+  rendering match, and GPU scenes update only moved geometry
+  (`FreezeGeometry`).
+- Apps that Harmony embeds draw in Harmony's theme by default on Linux and
+  follow its theme changes.
+- Desktop, Canvas and Raylib share ordered input delivery, keeping keyboard
+  layouts, repeats, IME text, gamepad navigation and focus loss. Fast
+  modifier shortcuts keep their modifiers, test-driver keys retry after
+  backpressure, and context menus align accelerator labels and checks. On the
+  web the wheel scrolls what is under it even after a click elsewhere, and a
+  `#canvas` with `data-transparent` has no background.
+- Secure TextFields show a mask when no `display_value` is given; secrets stay
+  out of paint, accessibility and clipboard data. A drag in a TextField keeps
+  its selection when the pointer is released.
+- SDL desktop and Linux Raylib hosts expose the PRIMARY selection, Linux apps
+  can drag MIME data to other applications, and GTK painting is faster and
+  follows display changes.
+- `kryon build` supports `main` entries using `kryon/app` on desktop and web.
+  Browser projects pick the correct target and native project builds link
+  desktop system libraries automatically.
+- Fixes: Raylib windows show exact colours where SDL 2 runs on SDL 3 through
+  sdl2-compat; Android activities without Kryon's optional Java callbacks no
+  longer break later JNI calls, and Android builds compile Ziran's runtime
+  with the pinned toolchain; Kryon builds from its own pinned packages again,
+  and renderer artifacts accept local overrides and no longer depend on the
+  Makefile; hosted widgets bundle to ZX again; browser bundles with string and
+  record host calls start; opening a bundle rewrites only changed assets; the
+  time picker and desktop image examples build; Android renderer artifacts
+  configure again; the website's live preview and gallery build again.
 
 ## [0.3.0] - 2026-11-12
 
