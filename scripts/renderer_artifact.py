@@ -198,6 +198,27 @@ def build(name, target, stage, root):
     # dav1d, the default AV1 engine, is pinned by the avif package's own edge.
     avif_entry = next((p for p in lock['packages'] if p['id'] == provider['dependencies'].get('avif')), None)
     dav1d_source = locked_source('dav1d', avif_entry) if name != 'renderer-web' else None
+    if name != 'renderer-web':
+        webp_source = locked_source('libwebp')
+        webp_package = locked_source('webp')
+        audio_package = locked_source('audio')
+        audio_entry = next(p for p in lock['packages'] if p['id'] == provider['dependencies']['audio'])
+        opus_source = locked_source('libopus', audio_entry)
+        samplerate_source = locked_source('libsamplerate', audio_entry)
+        opus_config = [f'-DOPUS_DIR={opus_source}', f'-DSAMPLERATE_DIR={samplerate_source}']
+        copy(webp_source / 'COPYING', stage / 'resources/LICENSE-libwebp')
+        copy(webp_source / 'PATENTS', stage / 'resources/PATENTS-libwebp')
+        copy(opus_source / 'COPYING', stage / 'resources/LICENSE-opus')
+
+    def codec_arguments(work, cc):
+        return [f'KRYON_DIR={root}', f'CODEC_CC={cc}', 'CODEC_JOBS=2',
+                f'WEBP_PACKAGE={webp_source}', f'WEBP_CODEC_PACKAGE={webp_package}',
+                f'WEBP_BUILD={work}/webp', f'AVIF_CODEC_PACKAGE={avif_package}',
+                f'AVIF_PACKAGE={avif_source}', f'AOM_PACKAGE={aom_source}',
+                f'DAV1D_PACKAGE={dav1d_source}', f'AVIF_BUILD={work}/avif-codec',
+                f'AUDIO_CODEC_PACKAGE={audio_package}', f'OPUS_PACKAGE={opus_source}',
+                f'SAMPLERATE_PACKAGE={samplerate_source}', f'OPUS_BUILD={work}/audio']
+
     if name == 'renderer-web':
         copy(toolchain / 'web/ziran_web.js', stage / 'web/ziran_web.js')
         meta['link_flags'] = ['-sUSE_ZLIB=1', '-lidbfs.js', '-sFORCE_FILESYSTEM=1',
@@ -210,18 +231,24 @@ def build(name, target, stage, root):
     elif name == 'renderer-desktop':
         packages = ['sdl2', 'cairo', 'freetype2', 'pangocairo', 'fontconfig', 'gio-2.0']
         meta['compile_flags'] = shlex.split(capture(['pkg-config', '--cflags', *packages]))
-        meta['link_flags'] = shlex.split(capture(['pkg-config', '--libs', *packages])) + ['-lm', '-lpthread']
+        meta['link_flags'] = shlex.split(capture(['pkg-config', '--libs', *packages])) + ['-ldl', '-lm', '-lpthread']
+        cc = os.environ.get('CC', 'cc')
+        triple = capture([cc, '-dumpmachine'])
+        if 'x86_64' not in triple or 'linux' not in triple:
+            raise ValueError('CC must target Linux x86_64')
         with tempfile.TemporaryDirectory(prefix='.build-', dir=stage) as temporary:
-            run(['cmake', '-S', root / 'cmake/avif', '-B', temporary,
-                 f'-DKRYON_AVIF_PACKAGE_DIR={avif_package}', f'-DDAV1D_DIR={dav1d_source}',
-                 f'-DAVIF_DIR={avif_source}', f'-DAOM_DIR={aom_source}', '-DCMAKE_BUILD_TYPE=Release'])
-            run(['cmake', '--build', temporary, '--target', 'kryonavif', '--parallel', '2'])
-            copy(Path(temporary) / 'libkryonavif.so', stage / 'lib/libkryonavif.so')
+            work = Path(temporary)
+            run(['make', '-j1', '-f', root / 'mk/codecs.mk', *codec_arguments(work, cc),
+                 'codec-archives', str(work / 'avif-codec/libkryonavif.so')])
+            copy(work / 'webp/libkryonwebp.a', stage / 'lib/libkryonwebp.a')
+            copy(work / 'avif-codec/avif/libavif.a', stage / 'lib/libavif.a')
+            copy(work / 'avif-codec/aom/libaom.a', stage / 'lib/libaom.a')
+            copy(work / 'audio/libopus/libopus.a', stage / 'lib/libopus.a')
+            copy(work / 'avif-codec/libkryonavif.so', stage / 'lib/libkryonavif.so')
+        meta['archives'] = ['lib/libkryonwebp.a', 'lib/libavif.a', 'lib/libaom.a', 'lib/libopus.a']
         meta['shared_libraries'] = ['lib/libkryonavif.so']
     else:
         source = locked_source('raylib')
-        webp_source = locked_source('libwebp')
-        webp_package = locked_source('webp')
         cc = os.environ.get('CC', 'cc')
         triple = capture([cc, '-dumpmachine'])
         if target == 'linux-x86_64-gnu' and ('x86_64' not in triple or 'linux' not in triple):
@@ -232,16 +259,6 @@ def build(name, target, stage, root):
         for header in headers:
             copy(source / 'src' / header, stage / 'include' / header)
         copy(source / 'LICENSE', stage / 'resources/LICENSE-raylib')
-        copy(webp_source / 'COPYING', stage / 'resources/LICENSE-libwebp')
-        copy(webp_source / 'PATENTS', stage / 'resources/PATENTS-libwebp')
-        # media_audio_raylib decodes Ogg Opus with the audio package's libopus,
-        # built from that package's own pinned edge and static codec recipe.
-        audio_package = locked_source('audio')
-        audio_entry = next(p for p in lock['packages'] if p['id'] == provider['dependencies']['audio'])
-        opus_source = locked_source('libopus', audio_entry)
-        samplerate_source = locked_source('libsamplerate', audio_entry)
-        copy(opus_source / 'COPYING', stage / 'resources/LICENSE-opus')
-        opus_config = [f'-DOPUS_DIR={opus_source}', f'-DSAMPLERATE_DIR={samplerate_source}']
         meta.update(archives=['lib/libraylib.a', 'lib/libkryonwebp.a', 'lib/libavif.a', 'lib/libaom.a', 'lib/libopus.a'], include_directories=['include'])
         # Intermediates are disposable and kept inside staging; only final files
         # remain when the generic driver validates and publishes the descriptor.
@@ -251,23 +268,16 @@ def build(name, target, stage, root):
                 flags = capture(['pkg-config', '--cflags', 'sdl2', 'libdrm', 'gbm', 'egl', 'glesv2'])
                 run(['make', '-j1', '-f', root / 'mk/renderer-artifact.mk',
                      'RAYLIB_JOBS=1',
-                     f'KRYON_DIR={root}', f'RAYLIB_PACKAGE={source}', f'RAYLIB_BUILD={work}',
-                     f'WEBP_PACKAGE={webp_source}', f'WEBP_BUILD={work}/webp',
-                     f'WEBP_CODEC_PACKAGE={webp_package}', f'AVIF_CODEC_PACKAGE={avif_package}',
-                     f'AVIF_PACKAGE={avif_source}', f'AOM_PACKAGE={aom_source}', f'DAV1D_PACKAGE={dav1d_source}',
-                     f'AVIF_BUILD={work}/avif-codec',
+                     *codec_arguments(work, cc), f'RAYLIB_PACKAGE={source}', f'RAYLIB_BUILD={work}',
                      f'RAYLIB_CC={cc}', f'RAYLIB_AR={os.environ.get("AR", "ar")}',
                      f'RAYLIB_CFLAGS={flags} -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_TTF=1',
-                     str(work / 'libraylib.a'), str(work / 'webp/libkryonwebp.a'), str(work / 'avif-codec/avif/libavif.a')])
+                     str(work / 'libraylib.a'), 'codec-archives'])
                 archive = work / 'libraylib.a'
                 webp_archive = work / 'webp/libkryonwebp.a'
                 avif_archive = work / 'avif-codec/avif/libavif.a'
                 aom_archive = work / 'avif-codec/aom/libaom.a'
                 meta['compile_flags'] = shlex.split(flags)
                 meta['link_flags'] = shlex.split(capture(['pkg-config', '--libs', 'sdl2', 'libdrm', 'gbm', 'egl', 'glesv2', 'fontconfig'])) + ['-ldl', '-lpthread', '-lm']
-                run(['cmake', '-S', audio_package / 'native', '-B', work / 'audio', '-DCMAKE_BUILD_TYPE=Release',
-                     f'-DCMAKE_C_COMPILER={cc}', *opus_config])
-                run(['cmake', '--build', work / 'audio', '--target', 'opus', '--parallel', '1'])
                 meta['defines'] = ['PLATFORM_DESKTOP_SDL', 'GRAPHICS_API_OPENGL_ES2']
             else:
                 config = ['-DCMAKE_BUILD_TYPE=Release', '-DBUILD_SHARED_LIBS=OFF', '-DBUILD_EXAMPLES=OFF']

@@ -402,12 +402,12 @@ android_ndk = "string"
 android_api = "string=21"
 
 [artifacts.renderer-raylib]
-inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "mk/renderer-artifact.mk", "mk/raylib-library.mk", "cmake/renderer-artifact/CMakeLists.txt", "cmake/KryonAndroid.cmake", "cmake/ImagePackages.cmake", "cmake/WebP.cmake", "cmake/webp/CMakeLists.txt", "cmake/AVIF.cmake", "cmake/avif/CMakeLists.txt", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
+inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "mk/renderer-artifact.mk", "mk/raylib-library.mk", "mk/codecs.mk", "cmake/renderer-artifact/CMakeLists.txt", "cmake/KryonAndroid.cmake", "cmake/ImagePackages.cmake", "cmake/WebP.cmake", "cmake/webp/CMakeLists.txt", "cmake/AVIF.cmake", "cmake/avif/CMakeLists.txt", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
 outputs = ["lib/libraylib.a", "lib/libkryonwebp.a", "lib/libavif.a", "lib/libaom.a", "lib/libopus.a", "resources/LICENSE-opus", "resources/LICENSE-libavif", "resources/LICENSE-libaom", "resources/PATENTS-libaom", "resources/LICENSE-dav1d", "include/raylib.h", "include/rlgl.h", "include/raymath.h", "include/rcamera.h", "resources/LICENSE-raylib", "resources/LICENSE-libwebp", "resources/PATENTS-libwebp", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
 
 [artifacts.renderer-desktop]
-inputs = ["cmake/AVIF.cmake", "cmake/ImagePackages.cmake", "cmake/avif/CMakeLists.txt","src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
-outputs = ["lib/libkryonavif.so", "resources/LICENSE-libavif", "resources/LICENSE-libaom", "resources/PATENTS-libaom", "resources/LICENSE-dav1d", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
+inputs = ["mk/codecs.mk", "cmake/WebP.cmake", "cmake/webp/CMakeLists.txt", "cmake/AVIF.cmake", "cmake/ImagePackages.cmake", "cmake/avif/CMakeLists.txt", "src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
+outputs = ["lib/libkryonwebp.a", "lib/libavif.a", "lib/libaom.a", "lib/libopus.a", "lib/libkryonavif.so", "resources/LICENSE-libwebp", "resources/PATENTS-libwebp", "resources/LICENSE-opus", "resources/LICENSE-libavif", "resources/LICENSE-libaom", "resources/PATENTS-libaom", "resources/LICENSE-dav1d", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
 
 [artifacts.renderer-web]
 inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]

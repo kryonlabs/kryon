@@ -1,0 +1,38 @@
+// Real codec consumers link only the desktop artifact's native archives.
+#import "avif_image"
+#import "webp_image"
+#import "ziran_image_decode"
+#import "image_integration_fixture"
+Opus :: #import "audio/opus";
+Types :: #import "audio/types";
+#import "std/vec"
+#import "std/byte_text_linux"
+
+#program_export
+main :: () -> s32 {
+    avif := Fixture("tests/fixtures/avif", "transform31", ".avif")
+    golden := Fixture("tests/fixtures/avif", "transform31", ".rgba")
+    defer VecFree(avif)
+    defer VecFree(golden)
+    width: s32; height: s32
+    pixels := AvifImageDecode(TextFromBytes(avif[:]), *width, *height)
+    if pixels == null || width != 4 || height != 4 || golden.count != 64 { return 1 }
+    for at: 0..golden.count - 1 { if pixels[at] != golden[at] { ImagePixelsFree(pixels); return 2 } }
+    ImagePixelsFree(pixels)
+    webp := Fixture("tests/fixtures/webp", "lossless", ".webp")
+    defer VecFree(webp)
+    pixels = WebPImageDecode(TextFromBytes(webp[:]), *width, *height)
+    if pixels == null || width != 3 || height != 2 { return 3 }
+    matches := pixels[0] == 10 && pixels[1] == 20 && pixels[2] == 30 && pixels[3] == 255
+    ImagePixelsFree(pixels)
+    if !matches { return 4 }
+    encoder: Opus.Encoder
+    if Opus.EncoderOpen(*encoder, 2, Types.DefaultOptions()) != Types.OK { return 5 }
+    defer Opus.EncoderClose(*encoder)
+    pcm: [5760]float32
+    packet: [4096]u8
+    written: s32
+    if Opus.EncoderPacket(*encoder, pcm[:cast(s64)encoder.frame_size * 2], packet[:], *written) != Types.OK || written <= 0 { return 6 }
+    print("Desktop codec artifact: oriented AVIF pixels, WebP RGBA and Opus encoding passed without raylib\n")
+    return 0
+}

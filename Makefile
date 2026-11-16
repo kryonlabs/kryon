@@ -193,11 +193,18 @@ renderer-consumer-test:
 
 test: renderer-consumer-test
 
+.PHONY: desktop-codec-artifact-test
+desktop-codec-artifact-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/desktop_codec_artifact_test.py
+
+test: desktop-codec-artifact-test
+
 renderer-artifact-test: build/bin/kryon
 	env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/renderer_artifact_test.py
 
 .PHONY: zx-test zx-reload-test
 include mk/zx-canvas.mk
+include mk/codecs.mk
 include mk/raylib-library.mk
 include mk/zx-raylib.mk
 
@@ -673,7 +680,7 @@ sanitize-test: project-toolchain
 # removes every other entry that nothing has written to for a day, so a build
 # another session is running keeps its files. Go's module cache is read-only,
 # so write permission comes back first.
-BUILD_OUTPUTS := ziran project bin tools test examples sanitize raylib-ziran webp-ziran avif-ziran zx-reload-test zx-raylib zx-native-test zx-android-test \
+BUILD_OUTPUTS := ziran project bin tools test examples sanitize raylib-ziran webp-ziran avif-ziran opus zx-reload-test zx-raylib zx-native-test zx-android-test \
 	emscripten-cache android-surface-check text-input-platform-test zx-player zx-test zx-canvas zx-canvas-test gallery-zx \
 	accessibility text-shaping performance frame-replay frame-inspect frame-input-replay
 # Keep prior generated output while an installed or running app may use it.

@@ -158,7 +158,7 @@ class RendererConsumerTest(unittest.TestCase):
                     included = line.split()[1].replace('$(KRYON_DIR)/', '')
                     if included not in read:
                         pending.append(included)
-        self.assertEqual(read, {'mk/renderer-artifact.mk', 'mk/raylib-library.mk'})
+        self.assertEqual(read, {'mk/renderer-artifact.mk', 'mk/raylib-library.mk', 'mk/codecs.mk'})
         self.assertLessEqual(read, set(inputs))
 
     def test_invalid_virtual_mounts_are_rejected(self):
