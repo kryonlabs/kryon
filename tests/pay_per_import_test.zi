@@ -297,15 +297,49 @@ ExpectChecked :: (example: string, directory: string, modules: []string) {
     FreeDirectoryNames(*files)
 }
 
+// A frame example's own lock pins a published Kryon, and a developer's
+// ziran.local.toml may point anywhere. The test builds a copy of the example
+// in its scratch folder instead, whose own ziran.local.toml points kryon at
+// this checkout (and ziran at the running toolchain), locked there. Returns
+// the copy, or "" when it cannot be made.
+PrepareFrame :: (ziran: string, name: string) -> string {
+    source := JoinPath("examples", name)
+    copy := JoinPath("build/test/pay-per-import/examples", name)
+    if !CreateDirectories(copy) { return "" }
+    entries: Vec(string)
+    if !ListDirectory(source, *entries) { return "" }
+    copied := true
+    for entry: entries {
+        if entry == "build" || entry == "ziran.local.toml" { continue }
+        from := JoinPath(source, entry)
+        to := JoinPath(copy, entry)
+        copied = copied && (ifx IsDirectory(from) then CopyTree(from, to) else CopyFile(from, to))
+    }
+    FreeDirectoryNames(*entries)
+    overrides: Vec(u8)
+    BuilderPrint(*overrides, "[overrides]\nkryon = \"%\"\n", WorkingDirectory())
+    // ZIRAN_BIN is ROOT/build/bin/ziran when the Makefile runs the test.
+    tool_suffix := "/build/bin/ziran"
+    if EndsWith(ziran, tool_suffix) {
+        BuilderPrint(*overrides, "ziran = \"%\"\n", ziran[:ziran.count - tool_suffix.count])
+    }
+    lock: [2]string = .[ziran, "lock"]
+    if !copied || !WriteEntireFile(JoinPath(copy, "ziran.local.toml"), BuilderFinish(overrides)) ||
+        !Run(lock[:], copy) { return "" }
+    return copy
+}
+
 // A frame example, built by the project tool's desktop profile into
-// build/examples/NAME/generated/desktop/c.
+// DIRECTORY/build/generated/desktop/c.
 BuildFrame :: (ziran: string, directory: string) -> bool {
+    if directory == "" { return false }
     arguments: [6]string = .[ziran, "tool", "kryon", "build", "--profile", "desktop"]
     return Run(arguments[:], directory)
 }
 
-// The same frame example as a web page, into .../generated/web/c.
+// The same frame example as a web page, into .../build/generated/web/c.
 BuildWebFrame :: (ziran: string, directory: string) -> bool {
+    if directory == "" { return false }
     arguments: [6]string = .[ziran, "tool", "kryon", "build", "--profile", "web"]
     return Run(arguments[:], directory)
 }
@@ -373,19 +407,23 @@ main :: () -> s32 {
         Expect("hello", "build/test/pay-per-import/hello", hello_present[:], not_without_pictures[:])
     }
 
+    box := PrepareFrame(ziran, "box")
+    button := PrepareFrame(ziran, "button")
+    image := PrepareFrame(ziran, "image")
+    textfield := PrepareFrame(ziran, "textfield")
     box_present: [3]string = .["box", "tree", "tree_frame"]
-    if !BuildFrame(ziran, "examples/box") {
+    if !BuildFrame(ziran, box) {
         Fail("box", "does not build", "examples/box")
     } else {
-        Expect("box", "build/examples/box/generated/desktop/c", box_present[:], not_in_a_plain_frame[:])
+        Expect("box", JoinPath(box, "build/generated/desktop/c"), box_present[:], not_in_a_plain_frame[:])
     }
 
     // A button without an icon: no picture, no text input, no scrolls.
     button_present: [3]string = .["button", "tree", "tree_frame"]
-    if !BuildFrame(ziran, "examples/button") {
+    if !BuildFrame(ziran, button) {
         Fail("button", "does not build", "examples/button")
     } else {
-        Expect("button", "build/examples/button/generated/desktop/c", button_present[:],
+        Expect("button", JoinPath(button, "build/generated/desktop/c"), button_present[:],
             not_in_a_plain_frame[:])
     }
 
@@ -393,19 +431,19 @@ main :: () -> s32 {
         "ziran_image_decode", "lanczos_cache", "riff", "bmff", "native_api",
         "std_thread_linux", "std_parallel_linux", "app_asset_path"]
     image_absent: [3]string = .["video_linux", "text_request", "text_input_platform"]
-    if !BuildFrame(ziran, "examples/image") {
+    if !BuildFrame(ziran, image) {
         Fail("image", "does not build", "examples/image")
     } else {
-        Expect("image", "build/examples/image/generated/desktop/c", image_present[:], image_absent[:])
+        Expect("image", JoinPath(image, "build/generated/desktop/c"), image_present[:], image_absent[:])
     }
 
     textfield_present: [5]string = .["textfield", "text_request", "text_input_platform",
         "text_boundary", "scroll_device"]
     textfield_absent: [1]string = .["video_linux"]
-    if !BuildFrame(ziran, "examples/textfield") {
+    if !BuildFrame(ziran, textfield) {
         Fail("textfield", "does not build", "examples/textfield")
     } else {
-        Expect("textfield", "build/examples/textfield/generated/desktop/c", textfield_present[:],
+        Expect("textfield", JoinPath(textfield, "build/generated/desktop/c"), textfield_present[:],
             textfield_absent[:])
     }
 
@@ -424,24 +462,24 @@ main :: () -> s32 {
             not_in_a_plain_page[:])
     }
     web_box_present: [2]string = .["box", "tree"]
-    if !BuildWebFrame(ziran, "examples/box") {
+    if !BuildWebFrame(ziran, box) {
         Fail("box", "does not build for the web", "examples/box")
     } else {
-        Expect("box", "build/examples/box/generated/web/c", web_box_present[:], not_in_a_plain_web_frame[:])
+        Expect("box", JoinPath(box, "build/generated/web/c"), web_box_present[:], not_in_a_plain_web_frame[:])
     }
     web_button_present: [2]string = .["button", "tree"]
-    if !BuildWebFrame(ziran, "examples/button") {
+    if !BuildWebFrame(ziran, button) {
         Fail("button", "does not build for the web", "examples/button")
     } else {
-        Expect("button", "build/examples/button/generated/web/c", web_button_present[:],
+        Expect("button", JoinPath(button, "build/generated/web/c"), web_button_present[:],
             not_in_a_plain_web_frame[:])
     }
     web_image_present: [3]string = .["image", "lanczos_cache", "page_mesh"]
     web_image_absent: [3]string = .["test_driver", "text_request", "text_input_platform"]
-    if !BuildWebFrame(ziran, "examples/image") {
+    if !BuildWebFrame(ziran, image) {
         Fail("image", "does not build for the web", "examples/image")
     } else {
-        Expect("image", "build/examples/image/generated/web/c", web_image_present[:], web_image_absent[:])
+        Expect("image", JoinPath(image, "build/generated/web/c"), web_image_present[:], web_image_absent[:])
     }
 
     if failures > 0 { return 1 }
