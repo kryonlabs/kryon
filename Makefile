@@ -390,6 +390,26 @@ desktop-audio-mp3-test: $(MP3_A)
 		"$(AUDIO_PACKAGE)/tests/fixtures/mp3" build/test/desktop-audio-mp3
 test: desktop-audio-mp3-test
 
+# The static stb_vorbis archive that programs importing audio_decode_vorbis
+# link, built from the audio package's native/ and its pinned stb source.
+VORBIS_DIR := $(BUILD_DIR)/vorbis
+VORBIS_A := $(VORBIS_DIR)/libziran_vorbis.a
+$(VORBIS_A): ziran.lock
+	@mkdir -p $(VORBIS_DIR)
+	@cmake -S "$(AUDIO_PACKAGE)/native" -B $(VORBIS_DIR) -DCMAKE_BUILD_TYPE=Release \
+		-DSTB_DIR="$$("$(ZIRAN_BIN)" pkg path stb --offline)" > $(VORBIS_DIR)/configure.log
+	@cmake --build $(VORBIS_DIR) --target ziran_vorbis > $(VORBIS_DIR)/build.log
+
+# Ogg Vorbis streamed through the mixer equals audio/vorbis's own decode of
+# the audio package's fixtures, and plays as asset audio, with no audio device.
+.PHONY: desktop-audio-vorbis-test
+desktop-audio-vorbis-test: $(VORBIS_A)
+	@rm -rf build/test/desktop-audio-vorbis
+	@env -u DISPLAY -u WAYLAND_DISPLAY LDLIBS="-L$(VORBIS_DIR) -lziran_vorbis -lopus -lm" \
+		"$(ZIRAN_BIN)" run --target=c tests/desktop_audio_vorbis_test.zi -- \
+		"$(AUDIO_PACKAGE)/tests/fixtures/vorbis" build/test/desktop-audio-vorbis
+test: desktop-audio-vorbis-test
+
 .PHONY: cursor-api-test
 cursor-api-test:
 	python3 tests/cursor_api_test.py

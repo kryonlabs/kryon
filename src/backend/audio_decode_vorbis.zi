@@ -1,0 +1,52 @@
+// Ogg Vorbis for audio_mixer, decoded as it plays by audio/vorbis over
+// stb_vorbis at the stream's own rate. Importing this module is what adds the
+// format; native programs link audio's libziran_vorbis.a (make's
+// $(VORBIS_A)) and -lm.
+Mixer :: #import "audio_mixer";
+Vorbis :: #import "audio/vorbis";
+OggVorbis :: #import "audio/ogg_vorbis";
+Types :: #import "audio/types";
+
+#scope_file
+libc :: #system_library "c";
+Allocate :: (count: usize, size: usize) -> *void #foreign libc "calloc";
+Free :: (value: *void) #foreign libc "free";
+
+State :: struct { decoder: Vorbis.VorbisDecoder; }
+
+// The first Ogg page holds the Vorbis identification header; opening
+// validates the whole stream.
+Probe :: (bytes: []u8) -> bool { return OggVorbis.VorbisProbe(bytes) }
+
+Read :: (argument: *void, output: []float32, frames: s64) -> s64 {
+    state := cast(*State)argument
+    made: s64
+    channels := cast(s64)state.decoder.info.channels
+    if Vorbis.VorbisDecoderRead(*state.decoder, output[0:frames * channels], *made) != Types.OK { return -1 }
+    return made
+}
+
+Rewind :: (argument: *void) -> bool {
+    return Vorbis.VorbisDecoderRewind(*(cast(*State)argument).decoder) == Types.OK
+}
+
+Close :: (argument: *void) {
+    state := cast(*State)argument
+    Vorbis.VorbisDecoderClose(*state.decoder)
+    Free(argument)
+}
+
+Open :: (bytes: []u8, source: *Mixer.AudioSource) -> bool {
+    state := cast(*State)Allocate(1, size_of(State))
+    if state == null { return false }
+    if Vorbis.VorbisDecoderOpen(*state.decoder, bytes, OggVorbis.VorbisMaxStreamFrames) != Types.OK {
+        Free(cast(*void)state)
+        return false
+    }
+    info := state.decoder.info
+    source.* = .{.state = cast(*void)state, .read = Read, .rewind = Rewind, .close = Close,
+        .rate = info.rate, .channels = info.channels, .frames = info.frames}
+    return true
+}
+
+registered: bool = Mixer.AudioUseDecoder(Probe, Open);

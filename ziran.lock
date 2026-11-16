@@ -91,12 +91,12 @@
       "url": "https://github.com/videolan/dav1d.git"
     },
     {
-      "commit": "5ea3f6f1ae7f5bbefa72dfac2058d5c40ac29d5c",
-      "dependencies": {"dr_libs": "pb7c2dd1c09da0c1c", "libopus": "pe1fe9bbe80bf1d6d", "libsamplerate": "p0dd67588478f9a3e"},
-      "dependency_refs": {"dr_libs": "f12e197fd462e4c22873fbd70d11b1d2f2c1dc3c", "libopus": "ddbe48383984d56acd9e1ab6a090c54ca6b735a6", "libsamplerate": "c96f5e3de9c4488f4e6c97f59f5245f22fda22f7"},
-      "id": "pb60832c7babec726",
+      "commit": "ce5837f80e8ce6cb8d2d9f77915095d764da3485",
+      "dependencies": {"dr_libs": "pb7c2dd1c09da0c1c", "libopus": "pe1fe9bbe80bf1d6d", "libsamplerate": "p0dd67588478f9a3e", "stb": "pe4a63e2d6e0424e7"},
+      "dependency_refs": {"dr_libs": "f12e197fd462e4c22873fbd70d11b1d2f2c1dc3c", "libopus": "ddbe48383984d56acd9e1ab6a090c54ca6b735a6", "libsamplerate": "c96f5e3de9c4488f4e6c97f59f5245f22fda22f7", "stb": "9600522de53973336fa033a289858a4354cbb04c"},
+      "id": "pb46a53117b2530ce",
       "name": "audio",
-      "ref": "5ea3f6f1ae7f5bbefa72dfac2058d5c40ac29d5c",
+      "ref": "ce5837f80e8ce6cb8d2d9f77915095d764da3485",
       "url": "https://github.com/ziranlang/audio.git"
     },
     {
@@ -125,11 +125,20 @@
       "ref": "ddbe48383984d56acd9e1ab6a090c54ca6b735a6",
       "source": true,
       "url": "https://github.com/xiph/opus.git"
+    },
+    {
+      "commit": "9600522de53973336fa033a289858a4354cbb04c",
+      "dependencies": {},
+      "id": "pe4a63e2d6e0424e7",
+      "name": "stb",
+      "ref": "9600522de53973336fa033a289858a4354cbb04c",
+      "source": true,
+      "url": "https://github.com/nothings/stb.git"
     }
   ],
   "root": {
-    "dependencies": {"audio": "pb60832c7babec726", "avif": "p274c2dd6d03a7c0c", "image_codec": "p69c0e968ae5735d9", "libaom": "p74ab3cb6eb3b86fa", "libavif": "p57c0272208aae8db", "libwebp": "p3b3c785a0e17e605", "raylib": "pcc7aa76725f2fb2f", "sdl3": "p16cd0434af3dff7b", "webp": "pa068bd09450b2a80"},
-    "dependency_refs": {"audio": "5ea3f6f1ae7f5bbefa72dfac2058d5c40ac29d5c", "avif": "f26a552247e2cd367fd33def6860d903cac6ab8a", "image_codec": "360553150917f352e49e1beb78917370792ccaef", "libaom": "b141d9c45db236335351c8a4b2a14b3ade27c937", "libavif": "1aadfad932c98c069a1204261b1856f81f3bc199", "libwebp": "1844042d1ca751e62e61df7617dba19c98588339", "raylib": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e", "sdl3": "829a65d769d935c4852f8159e964312c0957260a", "webp": "02145a00a1f0df2a111da04a75f3fef260883897"},
+    "dependencies": {"audio": "pb46a53117b2530ce", "avif": "p274c2dd6d03a7c0c", "image_codec": "p69c0e968ae5735d9", "libaom": "p74ab3cb6eb3b86fa", "libavif": "p57c0272208aae8db", "libwebp": "p3b3c785a0e17e605", "raylib": "pcc7aa76725f2fb2f", "sdl3": "p16cd0434af3dff7b", "webp": "pa068bd09450b2a80"},
+    "dependency_refs": {"audio": "ce5837f80e8ce6cb8d2d9f77915095d764da3485", "avif": "f26a552247e2cd367fd33def6860d903cac6ab8a", "image_codec": "360553150917f352e49e1beb78917370792ccaef", "libaom": "b141d9c45db236335351c8a4b2a14b3ade27c937", "libavif": "1aadfad932c98c069a1204261b1856f81f3bc199", "libwebp": "1844042d1ca751e62e61df7617dba19c98588339", "raylib": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e", "sdl3": "829a65d769d935c4852f8159e964312c0957260a", "webp": "02145a00a1f0df2a111da04a75f3fef260883897"},
     "name": "kryon"
   },
   "toolchain": {

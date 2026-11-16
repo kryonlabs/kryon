@@ -1,0 +1,176 @@
+// Ogg Vorbis on the desktop mixer: audio package fixtures stream through
+// audio_decode_vorbis into the tap and must equal audio/vorbis's own decode,
+// a stream at another rate plays for its own length at the mixer's 48 kHz,
+// and Kryon's asset audio plays a Vorbis clip through SDL's disk driver,
+// with no audio device.
+//     ziran run --target=c tests/desktop_audio_vorbis_test.zi -- FIXTURES FOLDER
+// FIXTURES is the audio package's tests/fixtures/vorbis.
+#import "c_string"
+#import "byte_text_linux"
+#import "format"
+#import "file"
+#import "file_tree_linux"
+#import "timer_linux"
+using Vectors :: #import "vec";
+#import "audio_mixer"
+#import "audio_decode_vorbis"
+#import "audio_decode_opus"
+#import "media_audio"
+#import "media_audio_host"
+#import "media_audio_desktop"
+#import "session"
+Types :: #import "audio/types";
+Vorbis :: #import "audio/vorbis";
+
+#scope_file
+libc :: #system_library "libc";
+SetEnvironment :: (name: *u8, value: *u8, overwrite: s32) -> s32 #foreign libc "setenv";
+
+TAPPED :: 120000 * 2
+tapped: [TAPPED]float32;
+tapped_count: s64;
+Tap :: (samples: []float32, frames: s64) {
+    for index: 0..frames * 2 - 1 {
+        if tapped_count < TAPPED { tapped[tapped_count] = samples[index]; tapped_count += 1 }
+    }
+}
+
+Fail :: (code: s32, message: string) -> s32 {
+    print("desktop audio vorbis: %\n", message)
+    return code
+}
+
+Fixture :: (folder: string, name: string) -> string {
+    path: Vec(u8)
+    BuilderPrint(*path, "%/%", folder, name)
+    bytes, found := ReadEntireFile(BuilderFinish(path))
+    if !found { return "" }
+    return bytes
+}
+
+Reference :: (bytes: string, pcm: *Types.PCM) -> bool {
+    view := BytesFromPointer((cast(*TextDescriptor)(*bytes)).data, cast(u64)bytes.count)
+    return Vorbis.VorbisDecode(view, Types.MaxFrames, pcm) == Types.OK
+}
+
+Clamp :: (value: float32) -> float32 {
+    if value > 1.0 { return 1.0 }
+    if value < -1.0 { return -1.0 }
+    return value
+}
+
+// The mixer's stereo frame for source sample INDEX of a stream with CHANNELS.
+Expected :: (pcm: *Types.PCM, frame: s64, side: s64) -> float32 {
+    channels := cast(s64)pcm.channels
+    return Clamp(pcm.samples[frame * channels + ifx channels > 1 then side else 0])
+}
+
+Play :: (voice: AudioVoice, output: []float32) {
+    tapped_count = 0
+    unused AudioPlay(voice)
+    while AudioState(voice) == .Playing && tapped_count < TAPPED - 4096 { AudioRender(output, 1000) }
+}
+
+Env :: (name: string, value: string) {
+    key: [64]u8
+    text: [4096]u8
+    unused CopyCString(name, key[:])
+    unused CopyCString(value, text[:])
+    unused SetEnvironment(*key[0], *text[0], 1)
+}
+
+clip: string;
+Allowed :: (path: string) -> bool { return path == "assets/test/tone.ogg" }
+Read :: (context: *void, path: string) -> string { unused context; unused path; return clip }
+Call :: (owner: *MediaAudioOwner, session: Session, command: MediaAudioCommand) -> MediaAudioResult {
+    command.voice = 1
+    return MediaAudioOwnerCall(owner, session, command)
+}
+
+#scope_export
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc < 3 { print("usage: desktop_audio_vorbis_test FIXTURES FOLDER\n"); return 2 }
+    fixtures := TextFromCString(argv[1])
+    folder := TextFromCString(argv[2])
+    unused CreateDirectories(folder)
+    output: [2048]float32
+    AudioUseTap(Tap)
+
+    // At 48 kHz the mixer's frames are the decoder's, exactly.
+    same := Fixture(fixtures, "rate48.ogg")
+    expected: Types.PCM
+    if same == "" || !Reference(same, *expected) || expected.rate != 48000 { return Fail(10, "the 48 kHz fixture did not decode") }
+    frames := expected.samples.count / cast(s64)expected.channels
+    voice := AudioLoad(same, true)
+    if voice.slot < 0 { return Fail(11, "the Vorbis stream did not load") }
+    length := AudioLength(voice)
+    seconds := cast(float64)frames / 48000.0
+    if length < seconds - 0.0001 || length > seconds + 0.0001 { print("length % expected %\n", length, seconds); return Fail(12, "the stream's length is wrong") }
+    Play(voice, output[:])
+    if AudioState(voice) != .Finished { return Fail(13, "the stream did not finish") }
+    if tapped_count < frames * 2 { return Fail(14, "the stream played too little") }
+    for frame: 0..frames - 1 {
+        for side: 0..1 {
+            if tapped[frame * 2 + side] != Expected(*expected, frame, side) {
+                print("frame % side %: % expected %\n", frame, side, tapped[frame * 2 + side], Expected(*expected, frame, side))
+                return Fail(15, "the mixed stream differs from audio/vorbis's decode")
+            }
+        }
+    }
+    for index: frames * 2..tapped_count - 1 { if tapped[index] != 0.0 { return Fail(16, "the stream played past its end") } }
+    AudioUnload(voice)
+
+    // At another rate the stream lasts its own time at 48 kHz, and at
+    // 48 kHz over its rate in pitch the mixer's frames are the decoder's again.
+    other := Fixture(fixtures, "rate22.ogg")
+    reference: Types.PCM
+    if other == "" || !Reference(other, *reference) || reference.rate == 48000 { return Fail(20, "the other-rate fixture did not decode") }
+    source_frames := reference.samples.count / cast(s64)reference.channels
+    music := AudioLoad(other, true)
+    if music.slot < 0 { return Fail(21, "the other-rate stream did not load") }
+    Play(music, output[:])
+    played := tapped_count / 2
+    wanted := source_frames * 48000 / cast(s64)reference.rate
+    if AudioState(music) != .Finished || played < wanted - 1000 || played > wanted + 1000 {
+        print("played % frames for % expected\n", played, wanted)
+        return Fail(22, "the other-rate stream did not last its own time")
+    }
+    AudioSetPitch(music, cast(float32)(48000.0 / cast(float64)reference.rate))
+    Play(music, output[:])
+    for frame: 0..source_frames - 3 {
+        for side: 0..1 {
+            difference := tapped[frame * 2 + side] - Expected(*reference, frame, side)
+            if difference > 0.002 || difference < -0.002 {
+                print("frame % side %: % expected %\n", frame, side, tapped[frame * 2 + side], Expected(*reference, frame, side))
+                return Fail(23, "the resampled stream differs from audio/vorbis's decode")
+            }
+        }
+    }
+    AudioUnload(music)
+    if AudioLoad("plain text, not Ogg Vorbis", true).slot >= 0 { return Fail(24, "text loaded as Ogg Vorbis") }
+
+    // Kryon's asset audio plays a Vorbis clip through the SDL sink.
+    raw: Vec(u8)
+    BuilderPrint(*raw, "%/sink.raw", folder)
+    Env("SDL_AUDIODRIVER", "disk")
+    Env("SDL_DISKAUDIOFILE", BuilderFinish(raw))
+    clip = same
+    MediaAudioUseDesktop()
+    session := SessionOpen()
+    owner: MediaAudioOwner
+    MediaAudioOwnerBind(*owner, session, Allowed, Read, null)
+    loaded := Call(*owner, session, .{.operation = .Load, .asset = "assets/test/tone.ogg", .music = true, .gain = 0.5})
+    if loaded.code != .Ok || loaded.state != .Ready { print("load %\n", loaded.message); return Fail(30, "the Vorbis asset did not load") }
+    if Call(*owner, session, .{.operation = .Play}).state != .Playing { return Fail(31, "the Vorbis asset did not play") }
+    unused SleepMilliseconds(60)
+    status := Call(*owner, session, .{.operation = .Status})
+    if status.state != .Playing || !status.has_position || status.position_seconds <= 0.0 { return Fail(32, "the Vorbis asset's position did not move") }
+    deadline := MonotonicMilliseconds() + cast(s64)(seconds * 1000.0) + 1000
+    while Call(*owner, session, .{.operation = .Status}).state == .Playing && MonotonicMilliseconds() < deadline { unused SleepMilliseconds(20) }
+    if Call(*owner, session, .{.operation = .Status}).state != .Finished { return Fail(33, "the Vorbis asset did not finish") }
+    if Call(*owner, session, .{.operation = .Unload}).state != .Unloaded { return Fail(34, "the Vorbis asset did not unload") }
+    MediaAudioOwnerClose(*owner)
+    print("desktop audio vorbis: passed\n")
+    return 0
+}
