@@ -270,10 +270,12 @@ def main():
     common=['--module-path','src/backend','--entry','gtk_scroll_linux_test:main']
     executable=OUT/'source/gtk_scroll_linux_test'
     inputs=[source,ROOT/'src/backend/gtk_scroll_linux.zi',ROOT/'src/backend/gtk_style_linux.zi']
+    # Developer machines share builds through build-queue; CI runs them directly.
+    queue=['build-queue','--'] if shutil.which('build-queue') else []
     if not executable.exists() or executable.stat().st_mtime<max(path.stat().st_mtime for path in inputs):
-        run(['build-queue','--',compiler,'build','--root','tests',*common,'--target=c','--exe','-o',OUT/'source',source],env=env)
-    run(['build-queue','--',compiler,'ir','--root','tests',*common,'-o',OUT/'ir',source],env=env)
-    run(['build-queue','--',compiler,'build','--root',OUT/'ir',*common,'--target=c','--exe','-o',OUT/'saved',OUT/'ir/gtk_scroll_linux_test.zir'],env=env)
+        run([*queue,compiler,'build','--root','tests',*common,'--target=c','--exe','-o',OUT/'source',source],env=env)
+    run([*queue,compiler,'ir','--root','tests',*common,'-o',OUT/'ir',source],env=env)
+    run([*queue,compiler,'build','--root',OUT/'ir',*common,'--target=c','--exe','-o',OUT/'saved',OUT/'ir/gtk_scroll_linux_test.zir'],env=env)
     return run(['xvfb-run','-a','-s','-screen 0 1280x1100x24 -nolisten tcp','/usr/bin/python3',__file__,'--worker'],env=env).returncode
 
 if __name__=='__main__':
