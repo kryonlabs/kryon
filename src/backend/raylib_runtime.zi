@@ -65,6 +65,15 @@ RaylibGlyphMetricsChanged :: () {
 }
 
 raylib :: #system_library "raylib";
+#if #defined(ANDROID_BUILD) {
+    // This host alone reads raylib's native app; shared JNI services do not.
+    HostRaylibAndroidApp :: () -> *NativeAndroidApp #foreign raylib "GetAndroidApp";
+    RaylibPublishAndroidApp :: () -> bool {
+        jni_android_app = HostRaylibAndroidApp()
+        return jni_android_app != null
+    }
+    raylib_android_app_published: bool = RaylibPublishAndroidApp();
+}
 c :: #system_library "c";
 libm :: #system_library "m";
 HostRaylibSqrt :: (value: float32) -> float32 #foreign libm "sqrtf";

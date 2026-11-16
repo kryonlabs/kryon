@@ -8,13 +8,7 @@ CString :: #import "c_string";
 
 activity: Jni.NativeActivity;
 app: Jni.NativeAndroidApp;
-raylib_app: *Jni.NativeAndroidApp;
 private_path: [128]u8;
-
-#program_export
-GetAndroidApp :: () -> *Jni.NativeAndroidApp {
-    return raylib_app
-}
 
 #program_export
 ANativeWindow_getWidth :: (window: *void) -> s32 {
@@ -133,7 +127,7 @@ Check :: () -> s32 {
     }
     activity.internal_data_path = *private_path[0]
     app.activity = *activity
-    raylib_app = *app
+    Jni.jni_android_app = *app
     if Jni.JniGetAndroidApp() != *app {
         return 3
     }
@@ -236,7 +230,7 @@ Check :: () -> s32 {
     if viewport_calls != before_detach_calls {
         return 17
     }
-    raylib_app = null
+    Jni.jni_android_app = null
     if Jni.JniGetAndroidApp() != null || Jni.AndroidInternalDataPath() != null {
         return 5
     }

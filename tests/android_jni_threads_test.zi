@@ -132,6 +132,7 @@ Check :: () -> s32 {
     before: AndroidJniSession
     if AndroidJniAttachCurrent(*before) != 0 { return 10 }
     AndroidNativeStart(*app)
+    if JniGetAndroidApp() != *app { return 30 }
     defer { AndroidNativeClose() }
     AndroidJniKeepHostThread()
     CallJava(null)
@@ -161,6 +162,10 @@ Check :: () -> s32 {
     if absent != 0 { return absent }
     // The throwing call's exception is described and cleared once, at detach.
     if described != 1 || pending || local_refs != 0 { return 29 }
+    AndroidNativeClose()
+    if JniGetAndroidApp() != null || AndroidJniAttachCurrent(*before) != 0 { return 31 }
+    AndroidNativeStart(null)
+    if JniGetAndroidApp() != null { return 32 }
     unused TestKeyDelete(attached_key)
     return test_failure
 }

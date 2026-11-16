@@ -216,18 +216,8 @@ jni_android_app: *NativeAndroidApp;
     JniRealPath :: (path: *u8, output: *u8) -> *u8 #foreign libc "realpath";
 }
 
-#if JNI_ANDROID && #defined(KRYON_RAYLIB_HOST) {
-    jni_raylib :: #system_library "raylib";
-    JniRaylibAndroidApp :: () -> *NativeAndroidApp #foreign jni_raylib "GetAndroidApp";
-}
-
-JniGetAndroidApp :: () -> *NativeAndroidApp {
-    #if JNI_ANDROID && #defined(KRYON_RAYLIB_HOST) {
-        return JniRaylibAndroidApp()
-    } else {
-        return jni_android_app
-    }
-}
+// NativeActivity publishes the native_app_glue app before any JNI service.
+JniGetAndroidApp :: () -> *NativeAndroidApp { return jni_android_app }
 
 // Each long-lived host thread keeps its own JNI attachment. The render
 // owner and app worker must never share an attachment flag or a JNIEnv.

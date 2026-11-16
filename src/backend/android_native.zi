@@ -254,6 +254,7 @@ AndroidNativeOnCommand :: (app: *NativeAndroidApp, command: s32) {
 
 AndroidNativeStart :: (app: *NativeAndroidApp) {
     android_native_app = app
+    jni_android_app = app
     android_native_window = null
     android_native_window_ready = false
     android_native_resized = false
@@ -266,7 +267,6 @@ AndroidNativeStart :: (app: *NativeAndroidApp) {
         command: AndroidCommandHandler = AndroidNativeOnCommand
         app.command_callback = cast(*void)command
         app.input_callback = AndroidTouchInput
-        jni_android_app = app
     }
 }
 
@@ -385,6 +385,7 @@ AndroidNativeClose :: () {
     android_pixel_width = 0
     android_pixel_height = 0
     android_native_app = null
+    jni_android_app = null
     android_native_window = null
     android_native_window_ready = false
 }
