@@ -11,13 +11,13 @@ Bitmaps :: #import "bitmap_store";
 Lanczos :: #import "lanczos_cache";
 #import "canvas_text"
 ImageSchema :: #import "image_props";
-Image :: #import "image";
 #import "page_font"
 #import "page_paint"
 #import "page_texture"
 #import "page_mesh"
 #import "raylib_clip"
 #import "page_core"
+#import "canvas_window"
 #import "web"
 
 libm :: #system_library "m";
@@ -191,6 +191,7 @@ CanvasLanczosRelease :: (argument: *void) {
 // filter.
 CanvasLanczosImage :: (index: s32, source: Rectangle, destination: Rectangle,
     clip: Rectangle, radius: float32, tint: Color) -> bool {
+    CanvasUseSmooth()
     asset := *canvas_assets[index]
     texture := asset.texture
     slot := PageTextureFind(cast(s32)texture.id)
@@ -246,6 +247,21 @@ CanvasLanczosImage :: (index: s32, source: Rectangle, destination: Rectangle,
     return true
 }
 
+// The first smooth picture brings the Lanczos cache and its frame pump.
+CanvasUseSmooth :: () {
+    canvas_smooth_pump = Lanczos.LanczosPump
+    canvas_smooth_close = Lanczos.LanczosClose
+    canvas_smooth_forget = Lanczos.LanczosForget
+}
+
+// Smooth copies of file pictures arrive with the first picture a page asks
+// the size of: every widget that draws one lays it out from its size first
+// (see image_raster), so a page that draws only managed pixels, such as
+// vector icons, carries no Lanczos copies.
+CanvasPictureSmooth :: #type (index: s32, source: Rectangle, destination: Rectangle,
+    clip: Rectangle, radius: float32, tint: Color) -> bool;
+canvas_picture_smooth: CanvasPictureSmooth;
+
 // The browser decodes images itself and draws each when it is ready.
 #program_export
 ImagesPending :: () -> s32 {
@@ -254,6 +270,7 @@ ImagesPending :: () -> s32 {
 
 #program_export
 ImageWidth :: (asset_path: string) -> s32 {
+    canvas_picture_smooth = CanvasLanczosImage
     index: s32 = CanvasAssetIndex(asset_path)
     if index < 0 { return 0 }
     return canvas_assets[index].texture.width
@@ -261,6 +278,7 @@ ImageWidth :: (asset_path: string) -> s32 {
 
 #program_export
 ImageHeight :: (asset_path: string) -> s32 {
+    canvas_picture_smooth = CanvasLanczosImage
     index: s32 = CanvasAssetIndex(asset_path)
     if index < 0 { return 0 }
     return canvas_assets[index].texture.height
@@ -309,7 +327,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
     scope := WebScope()
     context := page_ctx
     if polygon.count >= 3 {
-        PageMeshFlush()
+        if canvas_mesh_flush != null { canvas_mesh_flush() }
         unused WebCall0(context, WebName("save"))
         unused WebCall0(context, WebName("beginPath"))
         unused WebCall2(context, WebName("moveTo"),
@@ -323,8 +341,8 @@ RasterImage :: (asset_path: string, texture_id: u32,
         unused WebCall0(context, WebName("closePath"))
         unused WebCall0(context, WebName("clip"))
     }
-    if asset < 0 || !CurrentPaintSmooth() || rotation != 0.0 ||
-        !CanvasLanczosImage(asset, source, destination, clip, radius, tint) {
+    if asset < 0 || !CurrentPaintSmooth() || rotation != 0.0 || canvas_picture_smooth == null ||
+        !canvas_picture_smooth(asset, source, destination, clip, radius, tint) {
         CanvasDrawImageClipped(texture, source, destination, clip, origin,
             rotation, radius, tint)
     }
@@ -368,6 +386,9 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     if Bitmaps.BitmapTagged(texture_id) { SetTextureFilter(texture, ifx CurrentPaintSmooth() then 1 else 0) }
     id: s32 = cast(s32)texture.id
     filter: s32 = PageTextureFilterFor(id)
+    // The first warped picture brings the page's mesh batches.
+    canvas_mesh_reset = PageMeshReset
+    canvas_mesh_flush = PageMeshFlush
     if PageMeshDraw(id, source, points[:count], columns, rows, clip, tint, filter) {
         return
     }

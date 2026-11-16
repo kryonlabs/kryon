@@ -3,7 +3,6 @@
 #import "geometry"
 #import "drawing_props"
 ImageSchema :: #import "image_props";
-Image :: #import "image";
 #import "page_core"
 #import "page_texture"
 #import "paint_queue"

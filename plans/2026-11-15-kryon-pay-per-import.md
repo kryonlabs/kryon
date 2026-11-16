@@ -205,6 +205,29 @@ buttons and the widget host fill the lookup where they draw, as they reached
 pictures before. Image's executable grew by 744 bytes (the lookup, its
 initializer and `image_files`) while its C shrank.
 
+### The web
+
+The web profile (`ziran tool kryon build --profile web`, C files and bytes
+and the page), and `ziran ir --target=c --target-os web --target-cpu wasm32`
+for the program entries (checked modules). Before is Kryon 389bf25e:
+
+| Example | Before | After |
+| --- | --- | --- |
+| window (checked modules) | 10 | 10 |
+| hello (checked modules) | 84 | 80 |
+| box | 74 files, 990 402 bytes, 1 388 955-byte page | 70, 828 685, 1 346 817 |
+| button | 85, 1 238 728, 1 598 206 | 79, 969 324, 1 487 512 |
+| image | 78, 1 153 816, 1 508 177 | 79, 1 158 182, 1 514 171 |
+
+An empty window on the web is the window, kryon/app, its types, the page
+window and the page (`page_core`, `page_geometry`) with four std modules.
+The Canvas host registers its Lanczos pump, close and forget with the first
+smooth copy, its mesh batches with the first warped picture, and smooth
+copies only once a page asks a picture's size, as the desktop does; it takes
+test-driver input through the frame driver. Paint queues warped pictures
+through their own emitter, so no host links its mesh rasterizer for a
+program that warps none.
+
 ### Modules outside an example's imports
 
 All 88 frame examples carry these although their `.zi` imports do not name

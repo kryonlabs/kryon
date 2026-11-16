@@ -669,25 +669,38 @@ EmitLabel :: (command: PaintCommand) {
     }
 }
 
+// The texture, smoothing and clip polygon an image's raster call reads.
+EmitImageBegin :: (command: PaintCommand) -> bool {
+    if command.clip.width <= 0.0 || command.clip.height <= 0.0 { return false }
+    emitting_texture = command.texture
+    emitting_smooth = command.smooth
+    if command.image_clip_count > 0 { emitting_image_polygon = command.mesh_points }
+    return true
+}
+
+EmitImageEnd :: () {
+    emitting_texture.id = cast(u32)0
+    emitting_smooth = false
+    emitting_image_polygon = emitting_image_polygon[:0]
+}
+
 EmitImage :: (command: PaintCommand) {
-    if command.clip.width > 0.0 && command.clip.height > 0.0 {
-        emitting_texture = command.texture
-        emitting_smooth = command.smooth
-        if command.image_clip_count > 0 { emitting_image_polygon = command.mesh_points }
-        if PaintMeshPointCount(command.mesh_columns, command.mesh_rows) > 0 {
-            RasterImageMesh(command.asset_path, command.texture_id,
-                command.source, command.mesh_points, command.mesh_columns,
-                command.mesh_rows, command.clip, command.color)
-        } else {
-            RasterImage(command.asset_path, command.texture_id,
-                command.source, command.bounds, command.clip,
-                command.origin, command.rotation, command.radius,
-                command.color)
-        }
-        emitting_texture.id = cast(u32)0
-        emitting_smooth = false
-        emitting_image_polygon = emitting_image_polygon[:0]
-    }
+    if !EmitImageBegin(command) { return }
+    RasterImage(command.asset_path, command.texture_id,
+        command.source, command.bounds, command.clip,
+        command.origin, command.rotation, command.radius,
+        command.color)
+    EmitImageEnd()
+}
+
+// A warped image has its own emitter, so a program that warps none carries
+// no mesh rasterizer.
+EmitImageMesh :: (command: PaintCommand) {
+    if !EmitImageBegin(command) { return }
+    RasterImageMesh(command.asset_path, command.texture_id,
+        command.source, command.mesh_points, command.mesh_columns,
+        command.mesh_rows, command.clip, command.color)
+    EmitImageEnd()
 }
 
 ClipLabel :: (command: PaintCommand, geometry: NodeGeometry) -> PaintCommand {
@@ -1054,7 +1067,7 @@ PaintImageMesh :: (session: Session, node: s32, asset_path: string,
     command.data.mesh_columns = columns
     command.data.mesh_rows = rows
     command.data.mesh_points = points
-    emit: PaintEmitter = EmitImage
+    emit: PaintEmitter = EmitImageMesh
     command.emit = emit
     clip_for: PaintClipper = ClipImage
     command.clip_for = clip_for

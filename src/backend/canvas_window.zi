@@ -9,11 +9,27 @@
 #import "page_input"
 #import "page_paint"
 #import "page_texture"
-#import "page_mesh"
 #import "c_string"
 #import "geometry"
 #import "drawing_props"
-Lanczos :: #import "lanczos_cache";
+
+// Smooth picture copies (see lanczos_cache) and warped pictures (page_mesh)
+// register here the first time canvas_raster draws one, so a page that never
+// draws one carries neither: the frame pumps the copies, the window resets
+// both, and an evicted picture forgets its copies.
+CanvasSmoothPump :: #type () -> bool;
+CanvasRelease :: #type () -> void;
+CanvasSmoothForget :: #type (content: u64) -> void;
+canvas_smooth_pump: CanvasSmoothPump;
+canvas_smooth_close: CanvasRelease;
+canvas_smooth_forget: CanvasSmoothForget;
+canvas_mesh_reset: CanvasRelease;
+canvas_mesh_flush: CanvasRelease;
+CanvasPicturesReset :: () {
+    if canvas_mesh_reset != null { canvas_mesh_reset() }
+    // Lanczos copies are page textures.
+    if canvas_smooth_close != null { canvas_smooth_close() }
+}
 #if OS == .WEB {
     canvas_monitor_name: [32]u8;
     canvas_empty: [1]u8;
@@ -37,10 +53,8 @@ Lanczos :: #import "lanczos_cache";
         canvas_width = width
         canvas_height = height
         canvas_external_frame_pacing = false
-        PageMeshReset()
         CanvasBitmapClose()
-        // Lanczos copies are page textures.
-        Lanczos.LanczosClose()
+        CanvasPicturesReset()
         PageTexturesReset()
         PageBoot(width, height, TextFromCString(title))
         PageEventsBind()
@@ -52,10 +66,9 @@ Lanczos :: #import "lanczos_cache";
 
     #program_export
     CloseWindow :: () {
-        Lanczos.LanczosClose()
+        CanvasPicturesReset()
         CanvasBitmapClose()
         CloseCanvasText()
-        PageMeshReset()
         PageClose()
         PageTexturesReset()
         canvas_ready = false

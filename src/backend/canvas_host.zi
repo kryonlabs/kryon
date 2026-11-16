@@ -11,7 +11,7 @@
 #import "canvas_events"
 #import "input_delivery"
 #import "input_take"
-#import "test_driver"
+#import "frame_driver"
 #import "canvas_frame"
 #import "page_core"
 #import "program_title"
@@ -25,7 +25,6 @@
 #import "number_text"
 #import "byte_text_linux"
 Metrics :: #import "font_metrics";
-Lanczos :: #import "lanczos_cache";
 
 // Bitmap cursors keep their CSS by request and density, so switching between
 // an application hand and a tool never re-encodes an image.
@@ -378,7 +377,7 @@ PollCanvas :: () -> bool {
     }
     CanvasGamepadPoll()
     // A test driver types through the same ordered delivery.
-    TestDriverInput(*canvas_input)
+    if frame_test_input != null { frame_test_input(*canvas_input) }
     canvas_pointer.x = cast(float32)GetMouseX()
     canvas_pointer.y = cast(float32)GetMouseY()
     canvas_pointer.pressed = IsMouseButtonPressed(0)
@@ -458,7 +457,7 @@ BeginCanvasFrame :: () {
     canvas_image_error = false
     // The page makes Lanczos copies a slice per frame; a finished one is
     // drawn on this frame.
-    if Lanczos.LanczosPump() { PaintResourcesChanged() }
+    if canvas_smooth_pump != null && canvas_smooth_pump() { PaintResourcesChanged() }
     CanvasFrameBegin(Color.{248, 250, 252, 255})
 }
 

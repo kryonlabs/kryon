@@ -36,6 +36,19 @@ not_in_a_window: [48]string = .["frames_desktop", "desktop_loop", "desktop_runti
 window_checked: [7]string = .["window", "app", "app_types", "desktop_window",
     "sdl_event", "pixmap_sdl", "std_c_string"];
 
+// The checked program of an empty window on the web: the window, kryon/app,
+// its types, the page window and the page it opens.
+web_window_checked: [10]string = .["window", "app", "app_types", "page_window", "page_core",
+    "page_geometry", "std_web", "std_text_buffer", "std_number_text", "std_byte_text_linux"];
+
+// What a web program that warps or smooths no picture carries none of.
+not_in_a_plain_page: [5]string = .["image", "lanczos_cache", "std_resample", "page_mesh",
+    "test_driver"];
+
+// What a web frame example with no picture, text field or scroll carries none of.
+not_in_a_plain_web_frame: [8]string = .["image", "lanczos_cache", "std_resample", "page_mesh",
+    "test_driver", "text_request", "text_input_platform", "scroll_device"];
+
 // What no example that shows no picture or video carries.
 not_without_pictures: [10]string = .["image_decode_linux", "avif_decode", "lanczos_cache",
     "ziran_image_decode", "riff", "bmff", "video_linux", "std_thread_linux",
@@ -140,6 +153,31 @@ CheckProgram :: (ziran: string, entry: string, source: string, output: string) -
     return Run(arguments[:], "")
 }
 
+// The same checked program for the web page, as the web profile builds it.
+CheckWebProgram :: (ziran: string, entry: string, source: string, output: string) -> bool {
+    arguments: [15]string = .[ziran, "ir", "--target=c", "--target-os", "web", "--target-cpu",
+        "wasm32", "--project", "--root", "examples", "--entry", entry, "-o", output, source]
+    return Run(arguments[:], "")
+}
+
+// The checked program in DIRECTORY holds each of PRESENT and none of ABSENT.
+ExpectCheckedModules :: (example: string, directory: string, present: []string, absent: []string) {
+    files: Vec(string)
+    if !ListDirectory(directory, *files) {
+        Fail(example, "has no checked program in", directory)
+        return
+    }
+    for module: present {
+        found := false
+        for file: files { found = found || SavedFor(file, module) }
+        if !found { Fail(example, "does not check", module) }
+    }
+    for module: absent {
+        for file: files { if SavedFor(file, module) { Fail(example, "checks", module) } }
+    }
+    FreeDirectoryNames(*files)
+}
+
 // FILE is MODULE's saved checked IR.
 SavedFor :: (file: string, module: string) -> bool {
     return EndsWith(file, ".zir") && file[:file.count - 4] == module
@@ -169,6 +207,12 @@ ExpectChecked :: (example: string, directory: string, modules: []string) {
 // build/examples/NAME/generated/desktop/c.
 BuildFrame :: (ziran: string, directory: string) -> bool {
     arguments: [6]string = .[ziran, "tool", "kryon", "build", "--profile", "desktop"]
+    return Run(arguments[:], directory)
+}
+
+// The same frame example as a web page, into .../generated/web/c.
+BuildWebFrame :: (ziran: string, directory: string) -> bool {
+    arguments: [6]string = .[ziran, "tool", "kryon", "build", "--profile", "web"]
     return Run(arguments[:], directory)
 }
 
@@ -233,7 +277,42 @@ main :: () -> s32 {
             textfield_absent[:])
     }
 
+    // The web: an empty window is the window and its page, and frame
+    // examples carry only what they import, as on Linux.
+    if !CheckWebProgram(ziran, "window:main", "examples/window.zi", "build/test/pay-per-import/window-web-ir") {
+        Fail("window (web)", "does not check", "examples/window.zi")
+    } else {
+        ExpectChecked("window (web)", "build/test/pay-per-import/window-web-ir", web_window_checked[:])
+    }
+    web_hello_present: [5]string = .["app", "frames_web", "tree", "text", "paint_queue"]
+    if !CheckWebProgram(ziran, "hello:main", "examples/hello.zi", "build/test/pay-per-import/hello-web-ir") {
+        Fail("hello (web)", "does not check", "examples/hello.zi")
+    } else {
+        ExpectCheckedModules("hello (web)", "build/test/pay-per-import/hello-web-ir", web_hello_present[:],
+            not_in_a_plain_page[:])
+    }
+    web_box_present: [2]string = .["box", "tree"]
+    if !BuildWebFrame(ziran, "examples/box") {
+        Fail("box", "does not build for the web", "examples/box")
+    } else {
+        Expect("box", "build/examples/box/generated/web/c", web_box_present[:], not_in_a_plain_web_frame[:])
+    }
+    web_button_present: [2]string = .["button", "tree"]
+    if !BuildWebFrame(ziran, "examples/button") {
+        Fail("button", "does not build for the web", "examples/button")
+    } else {
+        Expect("button", "build/examples/button/generated/web/c", web_button_present[:],
+            not_in_a_plain_web_frame[:])
+    }
+    web_image_present: [3]string = .["image", "lanczos_cache", "page_mesh"]
+    web_image_absent: [3]string = .["test_driver", "text_request", "text_input_platform"]
+    if !BuildWebFrame(ziran, "examples/image") {
+        Fail("image", "does not build for the web", "examples/image")
+    } else {
+        Expect("image", "build/examples/image/generated/web/c", web_image_present[:], web_image_absent[:])
+    }
+
     if failures > 0 { return 1 }
-    print("pay per import: window, hello, box, button, image and textfield carry only what they import\n")
+    print("pay per import: window, hello, box, button, image and textfield carry only what they import, on Linux and the web\n")
     return 0
 }

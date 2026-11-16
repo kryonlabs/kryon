@@ -20,6 +20,8 @@
 - Pictures, text input and scroll devices come only with the widgets that
   use them; a button without an icon carries no decoders or asset paths.
   Its file pictures come with `kryon/image`, its icons with `kryon/icon`.
+- Web pages carry smooth picture copies, warped-picture meshes and the test
+  driver only when they use them.
 - Empty desktop windows omit image decoding, smooth scaling, video and threads.
   Import `kryon/cursor` for picture cursors in custom widget hosts. Native
   desktop project builds link X11 correctly.

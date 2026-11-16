@@ -8,7 +8,7 @@
 #import "canvas_os"
 #import "text_typeface"
 #import "text_buffer"
-Lanczos :: #import "lanczos_cache";
+#import "canvas_window"
 #import "page_core"
 #import "paint_queue"
 // Text layout stays cached while these fonts stay loaded; see font_metrics.
@@ -276,7 +276,7 @@ CanvasForgetAsset :: (index: s32) {
         // Queued page paint can still refer to the texture being released.
         PageFlushPaint()
         UnloadTexture(canvas_assets[index].texture)
-        Lanczos.LanczosForget(canvas_assets[index].hash)
+        if canvas_smooth_forget != null { canvas_smooth_forget(canvas_assets[index].hash) }
         PaintResourcesChanged()
     }
     canvas_assets[index] = CanvasAsset.{}
