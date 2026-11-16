@@ -43,30 +43,8 @@ RasterSettle :: () -> bool {
     return raster_smooth_wait != null && raster_smooth_wait()
 }
 
-libdl :: #system_library "dl";
-RasterLookup :: (handle: *void, symbol: *u8) -> *void #foreign libdl "dlsym";
-
-RasterGetEnvironment :: (name: *u8) -> *u8 {
-    symbol: [16]u8
-    if !CopyCString("environ", symbol[:]) { return null }
-    slot: *void = RasterLookup(null, *symbol[0])
-    if slot == null { return null }
-    environment_ref: ***u8 = cast(***u8)slot
-    entries: **u8 = environment_ref.*
-    if entries == null { return null }
-    index: s32 = 0
-    while entries[index] != null {
-        entry: *u8 = entries[index]
-        at: s32 = 0
-        while entry[at] != cast(u8)0 && name[at] != cast(u8)0 &&
-            entry[at] == name[at] { at += 1 }
-        if name[at] == cast(u8)0 && entry[at] == cast(u8)61 {
-            return *entry[at + 1]
-        }
-        index += 1
-    }
-    return null
-}
+environment :: #system_library "c";
+RasterGetEnvironment :: (name: *u8) -> *u8 #foreign environment "getenv";
 
 cairo_library :: #system_library "cairo";
 freetype_library :: #system_library "freetype";
@@ -280,7 +258,7 @@ RasterAssetPath :: #type (path: string, output: []u8) -> string;
 raster_asset_path: RasterAssetPath;
 // A typeface the program selected (see cairo_typefaces), else Kryon's font.
 raster_family: *u8;
-Decode :: #import "image_decode_linux";
+Decode :: #import "image_decode_desktop";
 CachedImage :: struct { path: [4096]u8; length: s32; image: *void; used: u64; bytes: s64; serial: u64; }
 cached_images: [128]CachedImage;
 

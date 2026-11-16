@@ -1,0 +1,86 @@
+// Native Windows common file dialog, with UTF-8 at the Kryon boundary and
+// UTF-16 at the OS boundary. The dialog is owned by our SDL main window.
+Native :: #import "desktop_native_windows";
+#import "std/c_string"
+kernel :: #system_library "kernel32";
+dialogs :: #system_library "comdlg32";
+ToWide :: (page: u32, flags: u32, input: *u8, count: s32, output: *u16, capacity: s32) -> s32 #foreign kernel "MultiByteToWideChar";
+ToUtf8 :: (page: u32, flags: u32, input: *u16, count: s32, output: *u8, capacity: s32, default_char: *u8, used_default: *s32) -> s32 #foreign kernel "WideCharToMultiByte";
+OpenFile :: (dialog: *Dialog) -> s32 #foreign dialogs "GetOpenFileNameW";
+SaveFile :: (dialog: *Dialog) -> s32 #foreign dialogs "GetSaveFileNameW";
+LastError :: () -> u32 #foreign dialogs "CommDlgExtendedError";
+Dialog :: struct {
+    size: u32; owner: *void; instance: *void; filter: *u16;
+    custom_filter: *u16; custom_capacity: u32; filter_index: u32;
+    file: *u16; capacity: u32; file_title: *u16; title_capacity: u32;
+    folder: *u16; title: *u16; flags: u32; file_offset: u16;
+    extension_offset: u16; extension: *u16; custom: isize;
+    hook: *void; template_name: *u16; reserved: *void;
+    reserved_word: u32; flags_extended: u32;
+}
+FileDialogProps :: struct {
+    title: string
+    filename: string
+    save: bool
+    filter_name: string
+    patterns: []string
+    folder: string
+}
+FileDialogResult :: struct { available: bool; accepted: bool; bytes: s32; }
+
+Wide :: (text: string, output: []u16) -> bool {
+    if output.count == 0 { return false }
+    if text.count == 0 { output[0] = 0; return true }
+    bytes: [4096]u8
+    if !CopyCString(text, bytes[:]) { return false }
+    return ToWide(65001, 8, *bytes[0], -1, *output[0], cast(s32)output.count) > 0
+}
+
+#program_export
+FileDialog :: (props: FileDialogProps, output: []u8) -> FileDialogResult {
+    result: FileDialogResult
+    if output.count < 2 || output.count > 2147483647 { return result }
+    title: [512]u16; filename: [32768]u16; folder: [4096]u16
+    if !Wide(props.title, title[:]) || !Wide(props.filename, filename[:]) || !Wide(props.folder, folder[:]) { return result }
+    filter: [4096]u16
+    label := props.filter_name
+    if label == "" { label = "Files" }
+    if !Wide(label, filter[:]) { return result }
+    at: s32 = 0
+    while filter[at] != 0 { at += 1 }
+    // Leave room for both separators, at least one pattern and the final NUL.
+    if at > 4092 { return result }
+    at += 1
+    if props.patterns.count == 0 {
+        filter[at] = 42; filter[at + 1] = 0; at += 2
+    } else {
+        for index: 0..cast(s64)props.patterns.count - 1 {
+            pattern: [1024]u16
+            if !Wide(props.patterns[index], pattern[:]) { return result }
+            i: s32 = 0
+            while pattern[i] != 0 {
+                if at >= 4093 { return result }
+                filter[at] = pattern[i]; at += 1; i += 1
+            }
+            if at >= 4095 { return result }
+            filter[at] = ifx index + 1 < cast(s64)props.patterns.count then cast(u16)59 else cast(u16)0
+            at += 1
+        }
+    }
+    filter[at] = 0
+    native: Dialog
+    native.size = cast(u32)size_of(Dialog); native.owner = Native.NativeWindow()
+    native.title = *title[0]; native.file = *filename[0]; native.capacity = 32768
+    native.filter = *filter[0]; native.filter_index = 1
+    if props.folder.count > 0 { native.folder = *folder[0] }
+    // Explorer, path must exist, no process cwd changes, overwrite prompt
+    // on save, existing file required on open.
+    native.flags = cast(u32)(0x80000 | 0x800 | 8 | ifx props.save then 2 else 0x1000)
+    accepted := ifx props.save then SaveFile(*native) else OpenFile(*native)
+    result.available = accepted != 0 || LastError() == 0
+    if accepted == 0 { return result }
+    count := ToUtf8(65001, 0, *filename[0], -1, *output[0], cast(s32)output.count, null, null)
+    if count <= 0 { return result }
+    result.accepted = true; result.bytes = count - 1
+    return result
+}

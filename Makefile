@@ -1047,3 +1047,10 @@ application-entry-test: $(ZI2C_BIN)
 	ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/application_entry_test.sh
 
 test: application-entry-test
+
+# Cross-build and execute the Windows SDL/Cairo host on a private Wine display.
+.PHONY: windows-desktop-host-test
+BUILD_OUTPUTS += windows-desktop
+windows-desktop-host-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		HARMONY_DESKTOP_RECOVERY=0 python3 tests/windows_desktop_test.py

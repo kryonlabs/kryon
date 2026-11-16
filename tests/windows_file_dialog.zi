@@ -1,0 +1,27 @@
+Dialogs :: #import "file_dialog_windows";
+using Desktop :: #import "desktop_runtime";
+#program_export
+main :: () -> s32 {
+    output: [4096]u8
+    oversized_label: [4095]u8
+    for index: 0..4094 { oversized_label[index] = cast(u8)65 }
+    invalid: Dialogs.FileDialogProps
+    invalid.filter_name = TextView(oversized_label[:])
+    rejected := Dialogs.FileDialog(invalid, output[:])
+    if rejected.available || rejected.accepted { return 3 }
+    empty_patterns: [4096]string
+    invalid.filter_name = "Files"
+    invalid.patterns = empty_patterns[:]
+    rejected = Dialogs.FileDialog(invalid, output[:])
+    if rejected.available || rejected.accepted { return 4 }
+    if !OpenDesktopTitled(320, 160, "Kryon dialog owner") { return 1 }
+    defer CloseDesktop()
+    props: Dialogs.FileDialogProps
+    props.title = "Kryon Windows File Dialog"
+    patterns: [2]string = .["*.txt", "*.zi"]
+    props.patterns = patterns[:]
+    props.filter_name = "Text and Ziran"
+    result := Dialogs.FileDialog(props, output[:])
+    if !result.available || result.accepted { return 2 }
+    return 0
+}

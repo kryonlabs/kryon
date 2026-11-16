@@ -1,0 +1,8 @@
+// The desktop host's process I/O on POSIX.
+#scope_file
+c :: #system_library "c";
+Write :: (fd: s32, bytes: *u8, count: usize) -> s64 #foreign c "write";
+Change :: (path: *u8) -> s32 #foreign c "chdir";
+#scope_export
+Report :: (fd: s32, bytes: *u8, count: usize) -> s64 { return Write(fd, bytes, count) }
+ChangeDirectory :: (path: *u8) -> s32 { return Change(path) }

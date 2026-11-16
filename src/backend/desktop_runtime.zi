@@ -22,15 +22,17 @@ Timer :: #import "std/timer_linux";
 RasterCursor :: #import "cairo_raster";
 #import "utf8"
 Presenter :: #import "pixmap_sdl";
-// The desktop's video player: kryon/video's host capabilities link to it
-// only in programs that play a video.
-VideoHost :: #import "video_linux";
 Clock :: #import "frame_clock";
 
 sdl_library :: #system_library "SDL2";
 GetEnvironment :: (name: *u8) -> *u8 #foreign sdl_library "SDL_getenv";
 desktop_libc :: #system_library "c";
-DesktopReport :: (descriptor: s32, text: *u8, count: usize) -> s64 #foreign desktop_libc "write";
+#if OS == .WINDOWS {
+    Process :: #import "desktop_process_windows";
+} else {
+    Process :: #import "desktop_process_linux";
+}
+
 DesktopStop :: (status: s32) #foreign desktop_libc "exit";
 
 using SdlEvent :: #import "sdl_event";
@@ -441,14 +443,14 @@ DesktopTestDriverMissing :: () {
     if value == null || value.* == cast(u8)0 { return }
     message: string = "kryon: KRYON_TEST_DRIVER is set, but this build has no test driver.\nBuild it with KRYON_TEST_DRIVER set in the environment, or with --define KRYON_TEST_DRIVER.\n"
     bytes: [256]u8
-    if CopyCString(message, bytes[:]) { unused DesktopReport(2, *bytes[0], cast(usize)message.count) }
+    if CopyCString(message, bytes[:]) { unused Process.Report(2, *bytes[0], cast(usize)message.count) }
     DesktopStop(2)
 }
 
 // Writes `text` to standard error.
 DesktopReportText :: (text: string) {
     bytes: [256]u8
-    if CopyCString(text, bytes[:]) { unused DesktopReport(2, *bytes[0], cast(usize)text.count) }
+    if CopyCString(text, bytes[:]) { unused Process.Report(2, *bytes[0], cast(usize)text.count) }
 }
 
 // Says which step of opening the window failed, with SDL's reason when SDL

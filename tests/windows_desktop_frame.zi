@@ -1,0 +1,13 @@
+// A project frame linked through the stock desktop_run entry.
+#import "session"
+#import "geometry"
+Text :: #import "kryon/text";
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    props: Text.Props
+    props.bounds = .{20.0, 15.0, 280.0, 38.0}
+    props.text = "Windows project frame"
+    Text.Draw(session, props)
+    return 0
+}

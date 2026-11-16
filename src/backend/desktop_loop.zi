@@ -4,7 +4,7 @@
 // widget tree's frame driver first (TreeFrameUse, see frame_driver); without
 // one the window only clears and presents.
 #import "secondary_pointer"
-A :: #import "accessibility_linux";
+#import "desktop_accessibility"
 #import "cairo_raster"
 #import "desktop_runtime"
 #import "frame_driver"
@@ -18,15 +18,14 @@ Timer :: #import "std/timer_linux";
 #import "std/file_linux"
 #import "std/c_string"
 
-accessibility_attempted: bool;
-accessibility_enabled: bool;
 frame_activity: Clock.FrameActivity;
 last_pointer: Vector2; last_width: float32; last_height: float32;
 
-libc :: #system_library "libc";
-DesktopWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
-DesktopChangeDirectory :: (path: *u8) -> s32 #foreign libc "chdir";
-
+#if OS == .WINDOWS {
+    Process :: #import "desktop_process_windows";
+} else {
+    Process :: #import "desktop_process_linux";
+}
 
 DesktopError :: (message: string) -> s32 {
     output: [256]u8
@@ -38,15 +37,14 @@ DesktopError :: (message: string) -> s32 {
         index += 1
     }
     output[index] = cast(u8)10
-    DesktopWrite(2, *output[0], cast(u64)(length + 1))
+    Process.Report(2, *output[0], cast(usize)(length + 1))
     return 1
 }
 
 DrawFrame :: (session: Session, draw: FrameDraw, title: string = "",
     keyboard_activity: bool = false) -> bool {
     origin: Vector2 = DesktopOrigin()
-    A.AccessibilityOrigin(cast(s32)origin.x, cast(s32)origin.y)
-    A.AccessibilityPoll()
+    if access_frame != null { access_frame(cast(s32)origin.x, cast(s32)origin.y) }
     BeginDesktopFrame()
     viewport: Rectangle = DesktopViewport()
     pointer: PointerFrame = PollPointer()
@@ -77,13 +75,8 @@ DrawFrame :: (session: Session, draw: FrameDraw, title: string = "",
     // Present before publishing accessibility changes: they never change
     // pixels, and assistive technology reads the same finished tree.
     presented := EndDesktopFrame()
-    if !accessibility_attempted && !CaptureRequested() {
-        accessibility_attempted = true
-        accessibility_enabled = A.AccessibilityOpen(session, A.AccessibilityTitle(session, title))
-    } else if accessibility_enabled && !A.AccessibilitySync() {
-        A.AccessibilityClose()
-        accessibility_enabled = false
-        unused DesktopError("kryon: Linux accessibility synchronization failed")
+    if !CaptureRequested() && access_publish != null && !access_publish(session, title) {
+        unused DesktopError("kryon: accessibility synchronization failed")
     }
     return presented
 }
@@ -127,7 +120,7 @@ RunTitled :: (draw: FrameDraw, width: s32, height: s32, title: string) -> s32 {
             if ok { PauseDesktop() }
         }
     }
-    A.AccessibilityClose()
+    if access_close != null { access_close() }
     if frame_session_end != null { unused frame_session_end(session) }
     CloseDesktop()
     if ok { return 0 }
@@ -144,13 +137,13 @@ DesktopStartBeside :: (marker: string) -> bool {
     start := ProgramNameStart(program)
     if start <= 1 { return false }
     directory: [4096]u8
-    if !CopyCString(program[0:start - 1], directory[:]) || DesktopChangeDirectory(*directory[0]) != 0 {
+    if !CopyCString(program[0:start - 1], directory[:]) || Process.ChangeDirectory(*directory[0]) != 0 {
         return false
     }
     up: [3]u8 = .[46, 46, 0]
     for level: 0..3 {
         if PathExists(marker) { return true }
-        if level < 3 && DesktopChangeDirectory(*up[0]) != 0 { return false }
+        if level < 3 && Process.ChangeDirectory(*up[0]) != 0 { return false }
     }
     return false
 }

@@ -1,7 +1,7 @@
 Pixels :: #import "raylib_image_decode";
 #import "avif_title_fixture"
 #import "avif_engine_parity"
-Decode :: #import "image_decode_linux";
+Decode :: #import "image_decode_desktop";
 #import "file"
 #import "text_tools"
 #import "std/byte_text_linux"

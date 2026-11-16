@@ -1,5 +1,5 @@
 // Optional native loading must link without a static AVIF/WebP dependency.
-Decode :: #import "image_decode_linux";
+Decode :: #import "image_decode_desktop";
 #import "std/byte_text_linux"
 
 OpenFixture :: (directory: string, name: string) -> Decode.WebPImage {

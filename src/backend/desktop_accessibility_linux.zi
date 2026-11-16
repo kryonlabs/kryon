@@ -1,0 +1,27 @@
+// AT-SPI lifecycle for the desktop's Linux tree.
+A :: #import "accessibility_linux";
+using Host :: #import "desktop_accessibility";
+#import "accessibility_tree_linux"
+#import "session"
+
+attempted: bool;
+enabled: bool;
+Poll :: (x: s32, y: s32) { A.AccessibilityOrigin(x, y); A.AccessibilityPoll() }
+Publish :: (session: Session, title: string) -> bool {
+    if !attempted {
+        attempted = true
+        enabled = A.AccessibilityOpen(session, A.AccessibilityTitle(session, title))
+    } else if enabled && !A.AccessibilitySync() {
+        A.AccessibilityClose()
+        enabled = false
+        return false
+    }
+    return true
+}
+Close :: () { A.AccessibilityClose(); attempted = false; enabled = false }
+DesktopAccessibilityUse :: () {
+    unused AccessibilityTreeUse()
+    access_frame = Poll
+    access_publish = Publish
+    access_close = Close
+}

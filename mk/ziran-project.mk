@@ -186,7 +186,7 @@ C_COMMAND := $(ZIRAN) build --target=c --entry $(HOST_ID):main \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
 endif
 ifeq ($(PROJECT_BACKEND),desktop)
-HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi $(KRYON_DIR)/src/backend/image_decode_linux.zi $(KRYON_DIR)/src/backend/avif_decode.zi $(KRYON_DIR)/src/backend/accessibility_linux.zi $(KRYON_DIR)/src/backend/atspi_protocol.zi
+HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi $(KRYON_DIR)/src/backend/image_decode_desktop.zi $(KRYON_DIR)/src/backend/avif_decode.zi $(KRYON_DIR)/src/backend/accessibility_linux.zi $(KRYON_DIR)/src/backend/atspi_protocol.zi
 HOST_SOURCES += $(wildcard $(KRYON_DIR)/src/backend/gtk_*_linux.zi) $(KRYON_DIR)/src/backend/file_date_linux.zi
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas),)

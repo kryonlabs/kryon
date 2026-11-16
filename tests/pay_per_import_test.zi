@@ -27,14 +27,14 @@ not_in_a_window: [48]string = .["frames_desktop", "desktop_loop", "desktop_runti
     "tree", "tree_draw", "tree_input", "tree_frame", "paint_queue", "font_metrics",
     "text_layout", "text_request", "text_input_platform", "cursor", "scroll_device",
     "gamepad_navigation", "input_take", "test_driver", "test_driver_frame",
-    "bitmap_store", "image_decode_linux", "avif_decode", "lanczos_cache",
+    "bitmap_store", "image_decode_desktop", "avif_decode", "lanczos_cache",
     "ziran_image_decode", "riff", "bmff", "video_linux", "std_thread_linux",
     "std_parallel_linux", "program_title", "app_asset_path", "accessibility_tree_linux"];
 
 // The checked program of an empty window on Linux: the window, kryon/app,
 // its types, the SDL window and presenter, and C strings.
-window_checked: [7]string = .["window", "app", "app_types", "desktop_window",
-    "sdl_event", "pixmap_sdl", "std_c_string"];
+window_checked: [8]string = .["window", "app", "app_types", "desktop_window",
+    "desktop_process_linux", "sdl_event", "pixmap_sdl", "std_c_string"];
 
 // The checked program of an empty window as a portable bundle: the window,
 // kryon/app, its types and the bundle's window.
@@ -62,14 +62,14 @@ not_in_a_plain_web_frame: [8]string = .["image", "lanczos_cache", "std_resample"
     "test_driver", "text_request", "text_input_platform", "scroll_device"];
 
 // What no example that shows no picture or video carries.
-not_without_pictures: [10]string = .["image_decode_linux", "avif_decode", "lanczos_cache",
+not_without_pictures: [10]string = .["image_decode_desktop", "avif_decode", "lanczos_cache",
     "ziran_image_decode", "riff", "bmff", "video_linux", "std_thread_linux",
     "std_parallel_linux", "app_asset_path"];
 
 // What a frame example carries none of when it shows no picture, edits no
 // text and has no scroll, tabs, text area or grid: the picture chain, text
 // input and the scroll device.
-not_in_a_plain_frame: [14]string = .["image_decode_linux", "avif_decode", "lanczos_cache",
+not_in_a_plain_frame: [14]string = .["image_decode_desktop", "avif_decode", "lanczos_cache",
     "ziran_image_decode", "riff", "bmff", "native_api", "video_linux", "std_thread_linux",
     "std_parallel_linux", "app_asset_path", "text_request", "text_input_platform",
     "scroll_device"];
@@ -427,7 +427,7 @@ main :: () -> s32 {
             not_in_a_plain_frame[:])
     }
 
-    image_present: [11]string = .["image", "image_decode_linux", "avif_decode",
+    image_present: [11]string = .["image", "image_decode_desktop", "avif_decode",
         "ziran_image_decode", "lanczos_cache", "riff", "bmff", "native_api",
         "std_thread_linux", "std_parallel_linux", "app_asset_path"]
     image_absent: [3]string = .["video_linux", "text_request", "text_input_platform"]

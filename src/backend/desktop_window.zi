@@ -21,8 +21,11 @@ WaitEventTimeout :: (event: *Sdl.Event, milliseconds: s32) -> s32 #foreign sdl "
 SetRenderDrawColor :: (renderer: *void, red: u8, green: u8, blue: u8, alpha: u8) -> s32 #foreign sdl "SDL_SetRenderDrawColor";
 RenderClear :: (renderer: *void) -> s32 #foreign sdl "SDL_RenderClear";
 
-libc :: #system_library "libc";
-WindowWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
+#if OS == .WINDOWS {
+    Process :: #import "desktop_process_windows";
+} else {
+    Process :: #import "desktop_process_linux";
+}
 
 // SDL_INIT_VIDEO and SDL_INIT_EVENTS.
 WINDOW_SDL_INIT :: 0x4020
@@ -51,7 +54,7 @@ DesktopWindow :: struct {
 WindowError :: (message: string) -> bool {
     bytes: [256]u8
     if CopyCString(message, bytes[:]) {
-        unused WindowWrite(2, *bytes[0], cast(u64)message.count)
+        unused Process.Report(2, *bytes[0], cast(usize)message.count)
     }
     return false
 }

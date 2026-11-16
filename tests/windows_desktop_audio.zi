@@ -1,0 +1,55 @@
+// Both the SDL sink and the public asset-audio provider on Windows. SDL's
+// disk device records the mixed PCM without reaching the owner's audio.
+#import "session"
+#import "media_audio"
+#import "media_audio_host"
+#import "media_audio_desktop"
+#import "audio_sink_sdl"
+#import "std/byte_text_linux"
+Timer :: #import "std/timer_linux";
+
+#program_export
+main :: () -> s32 {
+    owner: MediaAudioOwner
+    MediaAudioUseDesktop()
+    session := SessionOpen()
+    if !SessionValid(session) { return 1 }
+    defer { unused SessionClose(session) }
+    defer { AudioSinkClose() }
+    MediaAudioOwnerBind(*owner, session, owner.allowed, owner.read, null)
+    defer { MediaAudioOwnerClose(*owner) }
+    command: MediaAudioCommand
+    command.operation = .CreateStream
+    command.voice = 1
+    command.gain = 1.0
+    command.sample_rate = 48000
+    command.channels = 2
+    command.frames_per_block = 2048
+    command.format = .S16LE
+    result := MediaAudioOwnerCall(*owner, session, command)
+    if result.code != .Ok {
+        unused PrintError(AudioError())
+        return 10 + cast(s32)result.code
+    }
+    command.operation = .Play
+    result = MediaAudioOwnerCall(*owner, session, command)
+    if result.code != .Ok { return 3 }
+    samples: [8192]u8
+    for index: 0..2047 {
+        samples[index * 4] = 0; samples[index * 4 + 1] = 32
+        samples[index * 4 + 2] = 0; samples[index * 4 + 3] = 224
+    }
+    command.operation = .SubmitStream
+    command.pcm = TextView(samples[:])
+    result = MediaAudioOwnerCall(*owner, session, command)
+    if result.code != .Ok { return 4 }
+    unused Timer.SleepMilliseconds(150)
+    command.operation = .Unload
+    unused MediaAudioOwnerCall(*owner, session, command)
+    return 0
+}
+
+sdl :: #system_library "SDL2";
+c :: #system_library "c";
+AudioError :: () -> *u8 #foreign sdl "SDL_GetError";
+PrintError :: (text: *u8) -> s32 #foreign c "puts";

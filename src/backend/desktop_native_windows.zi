@@ -1,0 +1,13 @@
+// Native handle for this process's SDL main window. No foreign window lookup.
+Desktop :: #import "desktop_runtime";
+sdl :: #system_library "SDL2";
+Version :: (version: *u8) #foreign sdl "SDL_GetVersion";
+WindowInfo :: (window: *void, info: *Info) -> s32 #foreign sdl "SDL_GetWindowWMInfo";
+Info :: struct { version: [3]u8; padding: u8; subsystem: s32; window: *void; context: *void; instance: *void; rest: [40]u8; }
+NativeWindow :: () -> *void {
+    if Desktop.DesktopWindow() == null { return null }
+    info: Info
+    Version(*info.version[0])
+    if WindowInfo(Desktop.DesktopWindow(), *info) == 0 || info.subsystem != 1 { return null }
+    return info.window
+}

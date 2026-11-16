@@ -14,6 +14,7 @@ SUPPORTED_RENDERERS = {
     'renderer-raylib': ('linux-x86_64-gnu', 'windows-x86_64-mingw',
                         'android-aarch64-bionic', 'android-armv7-bionic'),
     'renderer-desktop': ('linux-x86_64-gnu',),
+    'renderer-desktop-windows': ('windows-x86_64-mingw',),
     'renderer-web': ('emscripten-wasm32-emscripten',),
 }
 
@@ -36,6 +37,8 @@ def renderer_metadata(artifact):
 
     for field in ('compile_flags', 'link_flags', 'defines'):
         strings(field)
+    if 'runtime_archive' in meta:
+        meta['runtime_archive'] = str(artifact.output(meta['runtime_archive']))
     meta['shared_libraries'] = [str(artifact.output(name)) for name in strings('shared_libraries', [])]
     meta['archives'] = [str(artifact.output(name)) for name in strings('archives')]
     meta['js_libraries'] = [str(artifact.output(name)) for name in strings('js_libraries', [])]
@@ -174,6 +177,14 @@ def build(name, target, stage, root):
                            'font_license': 'resources/LICENSE-Liberation'})
     copy(root / 'assets/fonts/LiberationSans-Regular.ttf', stage / meta['resources']['font'])
     copy(root / 'assets/fonts/LICENSE-Liberation', stage / meta['resources']['font_license'])
+    if name == 'renderer-desktop-windows':
+        from windows_desktop import artifact
+        meta['archives'] = artifact(stage)
+        meta['defines'] = ['_WIN32', 'PLATFORM_DESKTOP']
+        meta['link_flags'] = ['-lcomdlg32', '-luser32', '-lshell32', '-lkernel32', '-lm']
+        meta['runtime_archive'] = 'runtime.tar'
+        (stage / 'renderer.json').write_text(json.dumps(meta, indent=2) + '\n')
+        return
     # Resolve the provider's locked dependency edge, never a consumer's
     # potentially shadowing top-level alias. pkg path remains the public API.
     project = Path(os.environ['ZIRAN_PROJECT_ROOT'])

@@ -1,0 +1,12 @@
+// MinGW's CRT takes a 32-bit byte count and returns a 32-bit result. Keep
+// that ABI here; shared host code uses its native-size buffer length.
+#scope_file
+c :: #system_library "c";
+Write :: (fd: s32, bytes: *u8, count: u32) -> s32 #foreign c "_write";
+Change :: (path: *u8) -> s32 #foreign c "_chdir";
+#scope_export
+Report :: (fd: s32, bytes: *u8, count: usize) -> s64 {
+    if count > cast(usize)2147483647 { return -1 }
+    return cast(s64)Write(fd, bytes, cast(u32)count)
+}
+ChangeDirectory :: (path: *u8) -> s32 { return Change(path) }

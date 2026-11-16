@@ -1,5 +1,5 @@
 #import "pixmap"
-Decode :: #import "image_decode_linux"
+Decode :: #import "image_decode_desktop"
 #import "std/byte_text_linux"
 #import "file"
 #program_export

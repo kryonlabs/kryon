@@ -20,7 +20,7 @@
     page_pixels_c :: #system_library "c";
     PagePixelRelease :: (pixels: *void) #foreign page_pixels_c "free";
 } else {
-    Decode :: #import "image_decode_linux";
+    Decode :: #import "image_decode_desktop";
 }
 
 #if OS == .WEB || #defined(ANDROID_BUILD) {

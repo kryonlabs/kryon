@@ -1,0 +1,25 @@
+// Public App.Run and real Text/Button widgets on the Windows SDL/Cairo host.
+App :: #import "kryon/app";
+Text :: #import "kryon/text";
+Button :: #import "kryon/button";
+#import "session"
+
+Draw :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    label: Text.Props
+    label.key = 1
+    label.bounds = .{20.0, 15.0, 280.0, 38.0}
+    label.text = "Windows desktop"
+    unused Text.Draw(session, label)
+    button: Button.Props
+    button.key = 2
+    button.bounds = .{30.0, 70.0, 180.0, 48.0}
+    button.label = "SDL2 + Cairo"
+    unused Button.Draw(session, button)
+}
+
+#program_export
+main :: () -> s32 {
+    return App.Run(App.Window.{.width = 320, .height = 160,
+        .title = "Kryon Windows Text Button"}, Draw)
+}

@@ -5,8 +5,8 @@ module_roots = ["src/ui", "src/backend", "src/ui/alert", "src/ui/avatar", "src/u
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
-# Ziran v0.6.0
-ref = "d17c7aa1e093066ef03f307a45f6966dd9b29d4b"
+# Foreign C record reachability and Windows named DLL hosts.
+ref = "ebd19223fa18432066f5dfa53124640eea36fa94"
 
 [dependencies.raylib]
 git = "https://github.com/raysan5/raylib.git"
@@ -318,6 +318,9 @@ window_visible = "src/backend/window_visible.zi"
 zoom = "src/ui/zoom.zi"
 
 file_dialog_linux = "src/backend/file_dialog_linux.zi"
+file_dialog_windows = "src/backend/file_dialog_windows.zi"
+system_clipboard_windows = "src/backend/system_clipboard_windows.zi"
+background_window_windows = "src/backend/background_window_windows.zi"
 toggle_measure = "src/ui/toggle/toggle_measure.zi"
 transition = "src/ui/transition.zi"
 text_selection = "src/ui/text_selection_widget.zi"
@@ -443,8 +446,13 @@ ref = "f26a552247e2cd367fd33def6860d903cac6ab8a"
 
 [dependencies.webp]
 git = "https://github.com/ziranlang/webp.git"
-ref = "02145a00a1f0df2a111da04a75f3fef260883897"
+ref = "ec6ed304767e10c125ab2820f3b01d6fd773e147"
 
 [dependencies.audio]
 git = "https://github.com/ziranlang/audio.git"
 ref = "ce5837f80e8ce6cb8d2d9f77915095d764da3485"
+
+# MinGW import libraries; runtime.tar holds the matching DLLs and licenses.
+[artifacts.renderer-desktop-windows]
+inputs = ["src/project/cli_linux.zi", "scripts/renderer_artifact.py", "scripts/windows_desktop.py", "scripts/windows-desktop-packages.json", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
+outputs = ["lib/libSDL2.dll.a", "lib/libcairo.dll.a", "lib/libpangocairo-1.0.dll.a", "lib/libpango-1.0.dll.a", "lib/libfontconfig.dll.a", "lib/libfreetype.dll.a", "lib/libgobject-2.0.dll.a", "lib/libglib-2.0.dll.a", "lib/libgdk_pixbuf-2.0.dll.a", "lib/libopus.dll.a", "runtime.tar", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]

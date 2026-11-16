@@ -1,0 +1,84 @@
+// Owned-window services and a second Cairo surface, exercised under Wine.
+using Desktop :: #import "desktop_runtime";
+using Secondary :: #import "desktop_secondary_window";
+Background :: #import "background_window_windows";
+Clipboard :: #import "system_clipboard_windows";
+Native :: #import "desktop_native_windows";
+#import "tray"
+#import "tray_props"
+#import "std/timer_linux"
+#import "geometry"
+#import "drawing_props"
+
+user :: #system_library "user32";
+kernel :: #system_library "kernel32";
+Register :: (name: *u8) -> u32 #foreign user "RegisterClipboardFormatA";
+OpenClipboard :: (window: *void) -> s32 #foreign user "OpenClipboard";
+EmptyClipboard :: () -> s32 #foreign user "EmptyClipboard";
+SetData :: (format: u32, memory: *void) -> *void #foreign user "SetClipboardData";
+CloseClipboard :: () -> s32 #foreign user "CloseClipboard";
+Allocate :: (flags: u32, size: usize) -> *void #foreign kernel "GlobalAlloc";
+Lock :: (memory: *void) -> *u8 #foreign kernel "GlobalLock";
+Unlock :: (memory: *void) -> s32 #foreign kernel "GlobalUnlock";
+Release :: (memory: *void) -> *void #foreign kernel "GlobalFree";
+
+ImageClipboard :: () -> bool {
+    name: [4]u8 = .[80, 78, 71, 0]
+    format := Register(*name[0])
+    if format == 0 || OpenClipboard(Native.NativeWindow()) == 0 { return false }
+    memory := Allocate(2, 9)
+    if memory == null { unused CloseClipboard(); return false }
+    bytes := Lock(memory)
+    if bytes == null { unused Release(memory); unused CloseClipboard(); return false }
+    for index: 0..8 { bytes[index] = cast(u8)(index + 1) }
+    unused Unlock(memory)
+    accepted := EmptyClipboard() != 0 && SetData(format, memory) != null
+    if !accepted { unused Release(memory) }
+    unused CloseClipboard()
+    if !accepted { return false }
+    output: [256]u8
+    result := Clipboard.SystemClipboardImage(output[:])
+    if !result.available || !result.found || result.size < 9 || result.png.count < 9 { return false }
+    for index: 0..8 { if result.png[index] != cast(u8)(index + 1) { return false } }
+    short: [2]u8
+    result = Clipboard.SystemClipboardImage(short[:])
+    return result.available && result.found && result.size >= 9 && result.png.count == 0
+}
+
+#program_export
+main :: () -> s32 {
+    if !OpenDesktopTitled(320, 160, "Kryon Windows Services probe") { return 1 }
+    defer CloseDesktop()
+    Background.WindowBackgroundHost(240, 120, 0, 0)
+    if !Background.WindowCompactHost() { return 20 }
+    CloseDesktop()
+    if !OpenDesktopTitled(320, 160, "Kryon Windows Services") { return 21 }
+    if Background.WindowCompactHost() { return 22 }
+    if Native.NativeWindow() == null { return 2 }
+    if !SystemClipboardWriteHost("Windows UTF-8 clipboard") || SystemClipboardOpenHost() != 23 { return 3 }
+    if SystemClipboardByteHost(0) != 87 { return 4 }
+    if !ImageClipboard() { return 5 }
+    Background.WindowBackgroundHost(240, 120, 0, 0)
+    if !Background.WindowCompactHost() { return 6 }
+    Background.WindowBackgroundHost(0, 0, 0, 0)
+    if Background.WindowCompactHost() { return 7 }
+    spec: TraySpec
+    spec.id = "kryon-wine-test"; spec.title = "Kryon Wine test"
+    unused TrayOpen(spec)
+    unused TrayVisible()
+    unused TrayTakeAction()
+    defer TrayClose()
+    secondary := OpenSecondaryWindow("Kryon Windows Secondary", 10, 10, 160, 100,
+        0, Color.{20, 80, 140, 255}, 1.0)
+    if secondary.handle == null { return 8 }
+    defer CloseSecondaryWindow(secondary)
+    if !BeginSecondaryWindow(secondary) || !EndSecondaryWindow(secondary) { return 9 }
+    start := MonotonicMilliseconds()
+    while PollDesktop() {
+        if MonotonicMilliseconds() - start > 30000 { return 10 }
+        BeginDesktopFrame()
+        if !EndDesktopFrame() { return 11 }
+        PauseDesktop()
+    }
+    return 0
+}

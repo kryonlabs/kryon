@@ -1,0 +1,257 @@
+[
+  {
+    "name": "mingw-w64-x86_64-brotli",
+    "file": "mingw-w64-x86_64-brotli-1.2.1-1-any.pkg.tar.zst",
+    "sha256": "3163fae24021624b49d3372a6a7fe05c0f3e01b301e65fcbcb3a95557019fb2d"
+  },
+  {
+    "name": "mingw-w64-x86_64-bzip2",
+    "file": "mingw-w64-x86_64-bzip2-1.0.8-4-any.pkg.tar.zst",
+    "sha256": "123768f30ae14ba654a6feb70f8526146a331bc85f831a91a549ffb3f6cbffc7"
+  },
+  {
+    "name": "mingw-w64-x86_64-cairo",
+    "file": "mingw-w64-x86_64-cairo-1.18.6-2-any.pkg.tar.zst",
+    "sha256": "937a911b5efd6388b4ed8e6e268bbc4985db2f897648fb60de57ae4bc7fac7d6"
+  },
+  {
+    "name": "mingw-w64-x86_64-cc-libs",
+    "file": "mingw-w64-x86_64-cc-libs-16.2.0-7-any.pkg.tar.zst",
+    "sha256": "3d9d4492e35157087ab0db79b2aa0610909d5f6e18bfdc1035dd4a24544cc577"
+  },
+  {
+    "name": "mingw-w64-x86_64-expat",
+    "file": "mingw-w64-x86_64-expat-2.10.0-1-any.pkg.tar.zst",
+    "sha256": "5db410fd909aa6b25e063d720ed36211efaf2de6c39a9e984cf0f494a4f573d3"
+  },
+  {
+    "name": "mingw-w64-x86_64-fontconfig",
+    "file": "mingw-w64-x86_64-fontconfig-2.18.3-1-any.pkg.tar.zst",
+    "sha256": "7cdd32ad27ee9f8d176698744f3efa123feba57cecb833e87c221b50cd7224d1"
+  },
+  {
+    "name": "mingw-w64-x86_64-freetype",
+    "file": "mingw-w64-x86_64-freetype-2.15.0-1-any.pkg.tar.zst",
+    "sha256": "426bd4e0e979118682be881ace475ef4d3ff1668084ac796350fb7e0504b82ef"
+  },
+  {
+    "name": "mingw-w64-x86_64-fribidi",
+    "file": "mingw-w64-x86_64-fribidi-1.0.18-1-any.pkg.tar.zst",
+    "sha256": "0855a60a2060e2d07d71531839fcd05ef75043c93b8feeede2087533c5bc9b64"
+  },
+  {
+    "name": "mingw-w64-x86_64-gdk-pixbuf2",
+    "file": "mingw-w64-x86_64-gdk-pixbuf2-2.44.8-1-any.pkg.tar.zst",
+    "sha256": "2ae126427a404cbcac69f9995f71e7deea8733e0962d84bde0ac9bce46ed45b6"
+  },
+  {
+    "name": "mingw-w64-x86_64-gettext-runtime",
+    "file": "mingw-w64-x86_64-gettext-runtime-1.0-1-any.pkg.tar.zst",
+    "sha256": "be68d7f260633284b910c588c6d82ee304a81c8817a686d2cd9df83f872c27af"
+  },
+  {
+    "name": "mingw-w64-x86_64-giflib",
+    "file": "mingw-w64-x86_64-giflib-6.1.3-1-any.pkg.tar.zst",
+    "sha256": "bfa540ab9892bbc5161e3f81fcfb0ca71f44bd2e00478b5df79f899825c523f5"
+  },
+  {
+    "name": "mingw-w64-x86_64-glib2",
+    "file": "mingw-w64-x86_64-glib2-2.90.1-1-any.pkg.tar.zst",
+    "sha256": "152ba3b2cfb35feebc0fcb690889b16a6f0c2b89ced52e65aea45d089f86d219"
+  },
+  {
+    "name": "mingw-w64-x86_64-graphite2",
+    "file": "mingw-w64-x86_64-graphite2-1.3.15-1-any.pkg.tar.zst",
+    "sha256": "6ad20d6c16e559f7c4b06fe71248e1201c7edf494d04e5721ed7f9b3f7fd1f74"
+  },
+  {
+    "name": "mingw-w64-x86_64-harfbuzz",
+    "file": "mingw-w64-x86_64-harfbuzz-15.1.0-1-any.pkg.tar.zst",
+    "sha256": "ee718d4598d9e29fa53ad33b99034d8e036e8e5aa04038d908e8fcd74367608a"
+  },
+  {
+    "name": "mingw-w64-x86_64-jbigkit",
+    "file": "mingw-w64-x86_64-jbigkit-2.1-6-any.pkg.tar.zst",
+    "sha256": "3db9e32abca5d208920a096e5ae01952f2d8a361780428b9646b6da6750f7321"
+  },
+  {
+    "name": "mingw-w64-x86_64-lerc",
+    "file": "mingw-w64-x86_64-lerc-4.1.1-1-any.pkg.tar.zst",
+    "sha256": "5bc170650bc02812a7c674a5f7b8ff2781b4bfa259ab2da2264c3008e2a04c72"
+  },
+  {
+    "name": "mingw-w64-x86_64-libdatrie",
+    "file": "mingw-w64-x86_64-libdatrie-0.2.14-1-any.pkg.tar.zst",
+    "sha256": "fbbf30e9a911c1139ba5c38c5ae008309dd912f6c6b1e05f4310ec698e1b1339"
+  },
+  {
+    "name": "mingw-w64-x86_64-libdeflate",
+    "file": "mingw-w64-x86_64-libdeflate-1.26-1-any.pkg.tar.zst",
+    "sha256": "aa0d9b5e2d0413d5e01745a48ef0c8fa293172d48c13f87b61ada627ab7407ad"
+  },
+  {
+    "name": "mingw-w64-x86_64-libffi",
+    "file": "mingw-w64-x86_64-libffi-3.8.1-1-any.pkg.tar.zst",
+    "sha256": "92ba29c4a632a01affff6cb48617bcb62d65c02bfe6df2ed27fb087a9ba51de3"
+  },
+  {
+    "name": "mingw-w64-x86_64-libgcc",
+    "file": "mingw-w64-x86_64-libgcc-16.2.0-7-any.pkg.tar.zst",
+    "sha256": "6d1311b397ba33be542fd46bae3de60338bfd967e95e221847f01269e98983b8"
+  },
+  {
+    "name": "mingw-w64-x86_64-libiconv",
+    "file": "mingw-w64-x86_64-libiconv-1.19.1-1-any.pkg.tar.zst",
+    "sha256": "50e915aa36fdbe6c84acc8954e939275609ba051cdb4eeeff3884453c28efde0"
+  },
+  {
+    "name": "mingw-w64-x86_64-libjpeg-turbo",
+    "file": "mingw-w64-x86_64-libjpeg-turbo-3.2.1-1-any.pkg.tar.zst",
+    "sha256": "26474b95df3cb70abae8c74653d0ab0eb7ae22eeb2c2342c0d54313998a96b04"
+  },
+  {
+    "name": "mingw-w64-x86_64-libpng",
+    "file": "mingw-w64-x86_64-libpng-1.6.59-2-any.pkg.tar.zst",
+    "sha256": "8cf4e17ed9f592d23a5d1f1f8875c6a8da42eaf7772a997908565e94131cfc20"
+  },
+  {
+    "name": "mingw-w64-x86_64-libstdc++",
+    "file": "mingw-w64-x86_64-libstdc++-16.2.0-7-any.pkg.tar.zst",
+    "sha256": "578db695632bdb5bafd716958c4caa62560f3de2633680b258ae6f684201276d"
+  },
+  {
+    "name": "mingw-w64-x86_64-libsystre",
+    "file": "mingw-w64-x86_64-libsystre-1.0.2-3-any.pkg.tar.zst",
+    "sha256": "ea20a54127fe2a606ef0f2bef62b1abef77710840b661b832a933b4020bfe316"
+  },
+  {
+    "name": "mingw-w64-x86_64-libthai",
+    "file": "mingw-w64-x86_64-libthai-0.1.30-1-any.pkg.tar.zst",
+    "sha256": "e8cfad91934e24e9a88221b66f2d1c5a310c952ef86631107a632d3ff1738211"
+  },
+  {
+    "name": "mingw-w64-x86_64-libtiff",
+    "file": "mingw-w64-x86_64-libtiff-4.7.2-2-any.pkg.tar.zst",
+    "sha256": "e330307e569ea912f6911d6ceae994d96ac68c27b4860c1f805ce9078439786c"
+  },
+  {
+    "name": "mingw-w64-x86_64-libtre",
+    "file": "mingw-w64-x86_64-libtre-0.9.0-2-any.pkg.tar.zst",
+    "sha256": "c4051508d063258e1e02dd29615edb7d73c5c5f582ae42795fdd92e7ddce506b"
+  },
+  {
+    "name": "mingw-w64-x86_64-libwebp",
+    "file": "mingw-w64-x86_64-libwebp-1.6.0-1-any.pkg.tar.zst",
+    "sha256": "360b1690d41eb497dfe50526460a2424600a6a806cbb76c5b0fec9f14623ac59"
+  },
+  {
+    "name": "mingw-w64-x86_64-libwinpthread",
+    "file": "mingw-w64-x86_64-libwinpthread-14.0.0.r598.ge3d18511f-1-any.pkg.tar.zst",
+    "sha256": "942a62a3ecafbb4f5a80016685a0e3002a8de903012eed49c213e4f5b693668a"
+  },
+  {
+    "name": "mingw-w64-x86_64-lzo2",
+    "file": "mingw-w64-x86_64-lzo2-2.10-3-any.pkg.tar.zst",
+    "sha256": "445115c31e91486801af9493278c0eb86c6194c2644a54e92d5afac10edea630"
+  },
+  {
+    "name": "mingw-w64-x86_64-mpdecimal",
+    "file": "mingw-w64-x86_64-mpdecimal-4.0.1-3-any.pkg.tar.zst",
+    "sha256": "8da7e7f78434f188664c4d2779c03ea7a80f7f5837a115834ab734b352a613e5"
+  },
+  {
+    "name": "mingw-w64-x86_64-ncurses",
+    "file": "mingw-w64-x86_64-ncurses-6.6-4-any.pkg.tar.zst",
+    "sha256": "7bf5159441d00262085d2619f6c26877ea7595d4dafc6840637c6c5fccda5cf5"
+  },
+  {
+    "name": "mingw-w64-x86_64-openssl",
+    "file": "mingw-w64-x86_64-openssl-4.1.0-1-any.pkg.tar.zst",
+    "sha256": "d23a605bd7543ea1143324fd70f4db40d26b588321c6e4e8cdcadf9d15998daf"
+  },
+  {
+    "name": "mingw-w64-x86_64-opus",
+    "file": "mingw-w64-x86_64-opus-1.6.1-2-any.pkg.tar.zst",
+    "sha256": "fae981c518ed1ff2c5264eb5a0d590ec1d2ebb222defb2253ca85b2154fd8c04"
+  },
+  {
+    "name": "mingw-w64-x86_64-pango",
+    "file": "mingw-w64-x86_64-pango-1.58.2-1-any.pkg.tar.zst",
+    "sha256": "6aa68db02f6158dba802da406d25b29650011beb2d5d1b0a0050081e19874e57"
+  },
+  {
+    "name": "mingw-w64-x86_64-pcre2",
+    "file": "mingw-w64-x86_64-pcre2-10.49-2-any.pkg.tar.zst",
+    "sha256": "60211e4d11e0a891f9a55d8bbe8702c4cddace3a68967ac8eb82f1cffdcfca5f"
+  },
+  {
+    "name": "mingw-w64-x86_64-pixman",
+    "file": "mingw-w64-x86_64-pixman-0.46.4-3-any.pkg.tar.zst",
+    "sha256": "435715dd1ca4c55873cf3c38d644615196bc2d238e3366f8ff81cc0811260eb2"
+  },
+  {
+    "name": "mingw-w64-x86_64-python",
+    "file": "mingw-w64-x86_64-python-3.14.10-4-any.pkg.tar.zst",
+    "sha256": "aee40790d3c0a0c8afddaf84ed35eb44149c4e2b26834bb4d09434eca12154ea"
+  },
+  {
+    "name": "mingw-w64-x86_64-python-packaging",
+    "file": "mingw-w64-x86_64-python-packaging-26.3-1-any.pkg.tar.zst",
+    "sha256": "69e6eff5c623ebd1cc3cfca13d8bbc6c70b0ca1dfbc3704b251478a30a25b20e"
+  },
+  {
+    "name": "mingw-w64-x86_64-sdl2-compat",
+    "file": "mingw-w64-x86_64-sdl2-compat-2.32.74-5-any.pkg.tar.zst",
+    "sha256": "ed032e95719bb9333152a9665a085b58461733978c9c0ea00dbdbcef4688e044"
+  },
+  {
+    "name": "mingw-w64-x86_64-sdl3",
+    "file": "mingw-w64-x86_64-sdl3-3.4.20-1-any.pkg.tar.zst",
+    "sha256": "7dc0b32dd01cf7fdd256da2363a7497c6b1ba5a89364d3bb383d4c7cae6ed10b"
+  },
+  {
+    "name": "mingw-w64-x86_64-sqlite",
+    "file": "mingw-w64-x86_64-sqlite-3.54.1-2-any.pkg.tar.zst",
+    "sha256": "24e84a64427b44c94407873d53b6c98613682225c46696c0c5dbb5d9a1924182"
+  },
+  {
+    "name": "mingw-w64-x86_64-tcl",
+    "file": "mingw-w64-x86_64-tcl-8.6.18-1-any.pkg.tar.zst",
+    "sha256": "d95289300fd8e16bd5cb241b9928a256695aeebeca2885deef3326cd4a4d5ba8"
+  },
+  {
+    "name": "mingw-w64-x86_64-tk",
+    "file": "mingw-w64-x86_64-tk-8.6.18-1-any.pkg.tar.zst",
+    "sha256": "42aa79962e1679dd55e93f79a25dc1e50c7235f143ab501b3ec68debd0d32a3e"
+  },
+  {
+    "name": "mingw-w64-x86_64-tzdata",
+    "file": "mingw-w64-x86_64-tzdata-2026f-1-any.pkg.tar.zst",
+    "sha256": "ee33831fd41045555220d250a816a2a3a57116f8b1fb7f574bf3db7079299da2"
+  },
+  {
+    "name": "mingw-w64-x86_64-vulkan-loader",
+    "file": "mingw-w64-x86_64-vulkan-loader-1~1.4.363.0-1-any.pkg.tar.zst",
+    "sha256": "281fa31b1a023485d4fd04a092a8b5e9ca2f59804df7fcf9f2d4e5aaa5438af0"
+  },
+  {
+    "name": "mingw-w64-x86_64-wineditline",
+    "file": "mingw-w64-x86_64-wineditline-2.208-1-any.pkg.tar.zst",
+    "sha256": "dfe7fab66632eececc73d84053eae2be8dd2146ecefe0fc2133277706084d7ea"
+  },
+  {
+    "name": "mingw-w64-x86_64-xz",
+    "file": "mingw-w64-x86_64-xz-5.8.4-1-any.pkg.tar.zst",
+    "sha256": "2de0f26da60b7ff7aa192a226330d7de6b1099cb9b9f9de4145affb80146bbc8"
+  },
+  {
+    "name": "mingw-w64-x86_64-zlib-ng-compat",
+    "file": "mingw-w64-x86_64-zlib-ng-compat-2.3.3-3-any.pkg.tar.zst",
+    "sha256": "b0a6f6a83579ae657b3541639b8a380e8a1e3c588726e81c7f40656ecbf1b100"
+  },
+  {
+    "name": "mingw-w64-x86_64-zstd",
+    "file": "mingw-w64-x86_64-zstd-1.5.7-2-any.pkg.tar.zst",
+    "sha256": "1add6705b344664f6aca108c85f79ab5bdd9e1162662bb06a4cf40a34f6e0907"
+  }
+]

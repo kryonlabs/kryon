@@ -1,4 +1,4 @@
-Decode :: #import "image_decode_linux";
+Decode :: #import "image_decode_desktop";
 c :: #system_library "libc";
 Allocate :: (size: usize) -> *void #foreign c "malloc";
 Free :: (memory: *void) #foreign c "free";

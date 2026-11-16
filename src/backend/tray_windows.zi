@@ -100,7 +100,7 @@ AppendMenu :: (menu: *void, flags: u32, identifier: usize,
 CursorPosition :: (position: *Point) -> s32 #foreign user32 "GetCursorPos";
 SetForeground :: (window: *void) -> s32 #foreign user32 "SetForegroundWindow";
 TrackMenu :: (menu: *void, flags: u32, x: s32, y: s32, reserved: s32,
-    window: *void, bounds: *Bounds) -> s32 #foreign user32 "TrackPopupMenu";
+    window: *void, reserved_rect: *void) -> s32 #foreign user32 "TrackPopupMenu";
 PostMessage :: (window: *void, message: u32, wparam: usize,
     lparam: isize) -> s32 #foreign user32 "PostMessageW";
 DestroyMenu :: (menu: *void) -> s32 #foreign user32 "DestroyMenu";

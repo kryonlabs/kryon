@@ -1,0 +1,44 @@
+// The Windows clipboard's registered PNG format. Text uses SDL2 in the
+// desktop runtime. Bytes are copied while the clipboard is locked; no
+// borrowed Windows handle escapes the call.
+#import "std/c_string"
+user :: #system_library "user32";
+kernel :: #system_library "kernel32";
+RegisterFormat :: (name: *u8) -> u32 #foreign user "RegisterClipboardFormatA";
+OpenClipboard :: (window: *void) -> s32 #foreign user "OpenClipboard";
+CloseClipboard :: () -> s32 #foreign user "CloseClipboard";
+GetData :: (format: u32) -> *void #foreign user "GetClipboardData";
+GlobalSize :: (memory: *void) -> usize #foreign kernel "GlobalSize";
+GlobalLock :: (memory: *void) -> *u8 #foreign kernel "GlobalLock";
+GlobalUnlock :: (memory: *void) -> s32 #foreign kernel "GlobalUnlock";
+
+SystemClipboardImageResult :: struct {
+    available: bool
+    found: bool
+    png: []u8
+    size: s64
+}
+
+#program_export
+SystemClipboardImage :: (output: []u8) -> SystemClipboardImageResult {
+    result: SystemClipboardImageResult
+    name: [4]u8
+    if !CopyCString("PNG", name[:]) { return result }
+    format := RegisterFormat(*name[0])
+    if format == 0 || OpenClipboard(null) == 0 { return result }
+    defer { unused CloseClipboard() }
+    result.available = true
+    memory := GetData(format)
+    if memory == null { return result }
+    size := GlobalSize(memory)
+    if size == 0 || size > 268435456 { return result }
+    result.found = true
+    result.size = cast(s64)size
+    if cast(s64)size > cast(s64)output.count { return result }
+    source := GlobalLock(memory)
+    if source == null { result.found = false; return result }
+    defer { unused GlobalUnlock(memory) }
+    for index: 0..cast(s64)size - 1 { output[index] = source[index] }
+    result.png = output[0:size]
+    return result
+}

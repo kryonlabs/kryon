@@ -1,0 +1,77 @@
+// A compact pane is this application's own SDL window, anchored to its
+// monitor's work area. It never reparents or changes another process's window.
+Desktop :: #import "desktop_runtime";
+State :: #import "desktop_window_state";
+#import "geometry"
+sdl :: #system_library "SDL2";
+Size :: (window: *void, width: *s32, height: *s32) #foreign sdl "SDL_GetWindowSize";
+Position :: (window: *void, x: *s32, y: *s32) #foreign sdl "SDL_GetWindowPosition";
+Resize :: (window: *void, width: s32, height: s32) #foreign sdl "SDL_SetWindowSize";
+Move :: (window: *void, x: s32, y: s32) #foreign sdl "SDL_SetWindowPosition";
+Mouse :: (x: *s32, y: *s32) -> u32 #foreign sdl "SDL_GetGlobalMouseState";
+Top :: (window: *void, enabled: s32) #foreign sdl "SDL_SetWindowAlwaysOnTop";
+WindowId :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowID";
+pane_window: u32;
+compact: bool;
+saved_width: s32; saved_height: s32; saved_x: s32; saved_y: s32;
+offset_x: s32; offset_y: s32;
+dragging: bool; drag_x: s32; drag_y: s32;
+saved_top: bool;
+pane_width: s32; pane_height: s32;
+
+PaneWindow :: () -> *void {
+    window := Desktop.DesktopWindow()
+    identity := ifx window == null then cast(u32)0 else WindowId(window)
+    if identity != pane_window {
+        pane_window = identity
+        compact = false; dragging = false; offset_x = 0; offset_y = 0
+    }
+    return window
+}
+
+#program_export
+WindowCompactHost :: () -> bool { return PaneWindow() != null && compact }
+#program_export
+WindowBackgroundHost :: (width: s32, height: s32, dx: s32, dy: s32) {
+    window := PaneWindow()
+    if window == null { return }
+    if width <= 0 || height <= 0 {
+        if compact {
+            Resize(window, saved_width, saved_height)
+            Move(window, saved_x, saved_y)
+            Top(window, ifx saved_top then 1 else 0)
+        }
+        compact = false; offset_x = 0; offset_y = 0
+        return
+    }
+    if !compact {
+        saved_top = State.DesktopAlwaysOnTop()
+        Size(window, *saved_width, *saved_height)
+        Position(window, *saved_x, *saved_y)
+    }
+    area := State.DesktopMonitorUsable()
+    if area.width <= 0.0 || area.height <= 0.0 { return }
+    pane_width = width; pane_height = height
+    if width > cast(s32)area.width { width = cast(s32)area.width }
+    if height > cast(s32)area.height { height = cast(s32)area.height }
+    offset_x += dx; offset_y += dy
+    x := cast(s32)(area.x + area.width) - width + offset_x
+    y := cast(s32)(area.y + area.height) - height + offset_y
+    if x < cast(s32)area.x { x = cast(s32)area.x }
+    if y < cast(s32)area.y { y = cast(s32)area.y }
+    if x + width > cast(s32)(area.x + area.width) { x = cast(s32)(area.x + area.width) - width }
+    if y + height > cast(s32)(area.y + area.height) { y = cast(s32)(area.y + area.height) - height }
+    offset_x = x - (cast(s32)(area.x + area.width) - width)
+    offset_y = y - (cast(s32)(area.y + area.height) - height)
+    Resize(window, width, height); Move(window, x, y); Top(window, 1)
+    compact = true
+}
+#program_export
+WindowBackgroundDragHost :: (active: bool) {
+    if !active { dragging = false; return }
+    if PaneWindow() == null || !compact { dragging = false; return }
+    x: s32; y: s32
+    unused Mouse(*x, *y)
+    if dragging && compact { WindowBackgroundHost(pane_width, pane_height, x - drag_x, y - drag_y) }
+    drag_x = x; drag_y = y; dragging = true
+}

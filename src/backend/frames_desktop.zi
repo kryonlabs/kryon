@@ -5,7 +5,9 @@ Desktop :: #import "desktop_loop";
 using SessionModule :: #import "session";
 using Geometry :: #import "geometry";
 #import "tree_frame"
-#import "accessibility_tree_linux"
+#if OS == .LINUX {
+    using Access :: #import "desktop_accessibility_linux";
+}
 
 active_draw: App.Draw;
 
@@ -18,7 +20,9 @@ DrawFrame :: (session: Session, bounds: Rectangle) -> s32 {
 // a title opens untitled.
 Run :: (window: App.Window, draw: App.Draw) -> s32 {
     unused TreeFrameUse()
-    unused AccessibilityTreeUse()
+    #if OS == .LINUX {
+        Access.DesktopAccessibilityUse()
+    }
     width := window.width
     height := window.height
     if width <= 0 { width = 960 }

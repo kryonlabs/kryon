@@ -1,0 +1,10 @@
+// Optional OS accessibility publication, registered by the platform tree.
+// The frame loop carries no platform bus or accessibility tree itself.
+#import "session"
+
+AccessFrame :: #type (x: s32, y: s32) -> void;
+AccessPublish :: #type (session: Session, title: string) -> bool;
+AccessClose :: #type () -> void;
+access_frame: AccessFrame;
+access_publish: AccessPublish;
+access_close: AccessClose;

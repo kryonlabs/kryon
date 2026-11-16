@@ -2,11 +2,15 @@
 Desktop :: #import "desktop_loop";
 #import "frame_entry"
 #import "tree_frame"
-#import "accessibility_tree_linux"
+#if OS == .LINUX {
+    using Access :: #import "desktop_accessibility_linux";
+}
 
 #program_export
 main :: () -> s32 {
     unused TreeFrameUse()
-    unused AccessibilityTreeUse()
+    #if OS == .LINUX {
+        Access.DesktopAccessibilityUse()
+    }
     return Desktop.Run(Frame)
 }
