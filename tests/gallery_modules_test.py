@@ -35,13 +35,15 @@ for label, selected in [('core-only', {'kryon'}), ('without-plot', {'kryon', 'da
         assert name + '_examples' not in registry
         assert not any(e['moduleId'] == name for e in entries)
     assert {p.relative_to(target / 'site').as_posix() for p in (target / 'site/gallery-sources').rglob('*.zi')} == {entry['code'] for entry in entries}
-    roots = [PROJECT / 'src', target / 'catalog', core / 'src/ui', core / 'src/backend',
-             'kryon=' + str(core / 'src/ui'), 'kryon=' + str(core / 'src/backend'), ziran / 'std']
-    for name in selected - {'kryon'}:
-        path = package(name)
+    roots = [PROJECT / 'src', target / 'catalog', ziran / 'std']
+    # Each package's public names are its manifest exports, which need not
+    # match its source files (kryon/button_group is buttongroup/buttongroup.zi):
+    # an alias module per export imports the source through <name>_source.
+    for name in selected:
+        path = core if name == 'kryon' else package(name)
         manifest = tomllib.loads((path / 'ziran.toml').read_text())
-        source = path / manifest['package']['module_roots'][0]
-        roots.extend([source, name + '=' + str(source)])
+        for source in (path / root for root in manifest['package']['module_roots']):
+            roots.extend([source, name + '_source=' + str(source)])
         if gallery.export_aliases(name, path):
             roots.append(name + '=' + str(PROJECT / 'build/catalog/exports' / name))
     command = [str(ziran / 'build/bin/zi2zir'), '--root', str(PROJECT / 'tests')]
