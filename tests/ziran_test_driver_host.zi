@@ -2,7 +2,6 @@
 // commits frames without drawing them.
 #import "drawing_props"
 #import "geometry"
-#import "text_input_platform_host"
 
 #program_export
 ImageWidth :: (asset_path: string) -> s32 { return 0 }
