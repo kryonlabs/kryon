@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Builds from the pinned packages again: avif is pinned to the commit with
+  the encode and preview modules that image previews import.
 - Test-driver key commands retry after ordered-input backpressure instead of
   reporting success before an application can receive them.
 - Hosted widgets bundle to ZX again with the updated Ziran compiler.
