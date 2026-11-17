@@ -1,4 +1,4 @@
-Pixels :: #import "raylib_image_decode";
+Pixels :: #import "ziran_image_decode";
 #import "avif_title_fixture"
 #import "avif_engine_parity"
 
@@ -30,26 +30,26 @@ main :: (argc: s32, argv: **u8) -> s32 {
         tolerance: s32 = ifx name == "premultiplied" then 4 else ifx name == "rgba10" || name == "rgba12" || name[:4] == "gray" then 1 else 0
         paths: [3]string = .["assets/image.avif", "assets/image.png", "assets/extensionless"]
         for path: paths {
-            image := Pixels.RaylibDecodeImage(path, data)
-            if image.data == null { print("%: decode failed\n", name); return 3 }
-            if image.width != width || image.height != height || image.format != 7 {
+            image := Pixels.ImageDecodeEncoded(data, path)
+            if image.pixels == null { print("%: decode failed\n", name); return 3 }
+            if image.width != width || image.height != height {
                 print("%: dimensions/format %, %\n", name, image.width, image.height); return 4
             }
-            bytes := cast(*u8)image.data
+            bytes := cast(*u8)image.pixels
             for i: 0..golden.count - 1 {
                 difference := cast(s32)bytes[i] - cast(s32)golden[i]
                 if difference < -tolerance || difference > tolerance {
                     print("% pixel byte %: got % expected %\n", name, i, bytes[i], cast(u8)golden[i]); return 5
                 }
             }
-            Pixels.RaylibImageRelease(image)
+            Pixels.DecodedImageFree(image)
         }
     }
     bad: [5]string = .["oversized", "pixel-limit", "bad-crop", "truncated", "malformed"]
     for name: bad {
         data := Fixture(directory, name, ".avif")
-        image := Pixels.RaylibDecodeImage("extensionless", data)
-        if image.data != null { print("%: invalid accepted\n", name); return 9 }
+        image := Pixels.ImageDecodeEncoded(data, "extensionless")
+        if image.pixels != null { print("%: invalid accepted\n", name); return 9 }
     }
     print("AVIF source/IR RGBA, 8/10/12-bit gray, crop/rotate/mirror, alpha, first frame, extensionless and invalid inputs passed\n")
     return 0

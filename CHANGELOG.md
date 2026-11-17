@@ -15,6 +15,9 @@
   contours; both run on the CPU renderer and the translated GLES path.
   Desktop `LoadImagePixels` accepts an optional host path resolver for
   bundled assets.
+- Remove the raylib hosts, player, renderer artifact and dependency. Desktop,
+  Android and Canvas hosts retain shared image, shader and audio coverage;
+  browser asset and PCM audio use the Canvas WebAudio provider.
 - `SystemPaletteFollow()` (in `SystemThemeHostLinux` and the portable
   `SystemThemeHost`) applies the current palette, the host's while an app is
   embedded, once and again whenever the host changes it; one call per frame

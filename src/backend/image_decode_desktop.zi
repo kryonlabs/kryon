@@ -4,6 +4,8 @@
 ImagePixelLimit :: 67108864;
 #if OS == .WINDOWS {
     using Libraries :: #import "image_libraries_windows";
+} else #if OS == .MACOS {
+    using Libraries :: #import "image_libraries_macos";
 } else {
     using Libraries :: #import "image_libraries_linux";
 }

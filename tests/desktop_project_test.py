@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import tempfile
 
-from raylib_project_test import png_pixels, rgb, run, solid_png
+from image_test_tools import png_pixels, rgb, run, solid_png
 
 
 from toolchain import ZIRAN_ROOT
@@ -46,8 +46,6 @@ def main():
             "kryon": str(ROOT),
             "ziran": str(ZIRAN_ROOT),
         }
-        if os.environ.get("RAYLIB_SOURCE"):
-            overrides["raylib"] = os.environ["RAYLIB_SOURCE"]
         (project / "ziran.local.toml").write_text(
             "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
         )
@@ -119,7 +117,7 @@ def main():
         assert rgb(png, 200, 200) == (230, 30, 40), "desktop image failed"
         assert rgb(png, 10, 10) == (248, 250, 252), "desktop background failed"
         # A 40-pixel font's line box is 40 pixels tall, descenders included,
-        # as on the raylib and canvas hosts.
+        # as on the desktop and canvas hosts.
         ink = [y for y in range(90, 300) if any(
             sum(rgb(png, x, y)) < 400 for x in range(400, 700))]
         assert ink, "desktop text failed"

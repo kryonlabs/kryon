@@ -15,7 +15,7 @@
     Jni :: #import "android_jni";
 } else #if OS == .WEB {
     // The page decodes with the browser's codecs (photos upright by Exif)
-    // and copies straight RGBA into Wasm memory; no raylib is linked.
+    // and copies straight RGBA into Wasm memory.
     Page :: #import "page_texture";
     page_pixels_c :: #system_library "c";
     PagePixelRelease :: (pixels: *void) #foreign page_pixels_c "free";

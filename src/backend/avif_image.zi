@@ -1,4 +1,4 @@
-// Static codec selection for raylib and Android. Codec policy and native ABI
+// Static codec selection for native and Android. Codec policy and native ABI
 // live in the reusable package; Kryon only adapts backend pixel ownership.
 Avif :: #import "avif/api";
 #import "avif_decode"

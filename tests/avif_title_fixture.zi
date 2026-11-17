@@ -1,18 +1,18 @@
 // Actual large YUV420 input which faulted in libaom's ARMv7 CfL NEON path.
-Pixels :: #import "raylib_image_decode";
+Pixels :: #import "ziran_image_decode";
 #import "file"
 #import "text_tools"
 #if #defined(ANDROID_BUILD) {
     Threads :: #import "std/thread_linux";
 }
 
-AvifTitlePixels :: (image: Pixels.RaylibGlyphImage, golden: string) -> bool {
-    if image.data == null || image.width != 1024 || image.height != 1536 ||
-        image.format != 7 || golden.count != 256 {
-        print("Title dimensions/format: %, %, %; golden bytes: %\n", image.width, image.height, image.format, golden.count)
+AvifTitlePixels :: (image: Pixels.DecodedImage, golden: string) -> bool {
+    if image.pixels == null || image.width != 1024 || image.height != 1536 ||
+        golden.count != 256 {
+        print("Title dimensions: %, %; golden bytes: %\n", image.width, image.height, golden.count)
         return false
     }
-    pixels := cast(*u8)image.data
+    pixels := cast(*u8)image.pixels
     for y: 0..7 {
         for x: 0..7 {
             offset := ((y * 192 + 96) * 1024 + x * 128 + 64) * 4
@@ -42,21 +42,10 @@ AvifTitleFixture :: (directory: string) -> bool {
         return false
     }
     print("Decoding large YUV420 title fixture\n")
-    image := Pixels.RaylibDecodeImage("assets/extensionless", data)
+    image := Pixels.ImageDecodeEncoded(data, "assets/extensionless")
     good := AvifTitlePixels(image, golden)
-    Pixels.RaylibImageRelease(image)
+    Pixels.DecodedImageFree(image)
     if !good { return false }
-    #if #defined(ANDROID_BUILD) {
-        // Exercise the same background worker used by APK image loading.
-        job: Pixels.RaylibImageJob
-        if !Pixels.RaylibImageStart(*job, "assets/title.avif", data) { return false }
-        Threads.ThreadWait(*job.thread)
-        image = Pixels.RaylibImageTake(*job)
-        good = AvifTitlePixels(image, golden)
-        Pixels.RaylibImageRelease(image)
-        Pixels.RaylibImageClose(*job)
-        if !good { return false }
-    }
     print("Large YUV420 title pixels passed\n")
     return true
 }

@@ -1,20 +1,18 @@
-// Deterministic pressure on the actual Raylib buffers: pause device consumption
-// while filling them, then resume after returning the full-buffer status.
-#import "media_audio_raylib"
+// Hold this process's actual SDL sink while testing bounded stream pressure.
 #import "media_audio_host"
 #import "media_audio"
-pcm_test_raylib :: #system_library "raylib";
-PausePcm :: (stream: AssetAudioStream) #foreign pcm_test_raylib "PauseAudioStream";
-ResumePcm :: (stream: AssetAudioStream) #foreign pcm_test_raylib "ResumeAudioStream";
+sdl :: #system_library "SDL2";
+PauseDevice :: (device: u32, paused: s32) #foreign sdl "__real_SDL_PauseAudioDevice";
+pcm_device: u32;
+PcmBaseProvider: MediaAudioProvider;
+#program_export "__wrap_SDL_PauseAudioDevice"
+CaptureDevice :: (device: u32, paused: s32) {
+    pcm_device = device
+    PauseDevice(device, paused)
+}
 PcmTestProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: string) -> MediaAudioResult {
-    answer := AssetAudioProvider(voice, command, bytes)
-    if voice.pcm && answer.code == .Ok && command.operation == .Play {
-        resource := cast(*AssetAudioResource)voice.resource
-        PausePcm(resource.music.stream)
-    }
-    if voice.pcm && answer.code == .Ok && command.operation == .Status && voice.state == .Playing {
-        resource := cast(*AssetAudioResource)voice.resource
-        ResumePcm(resource.music.stream)
-    }
+    answer := PcmBaseProvider(voice, command, bytes)
+    if voice.pcm && answer.code == .Ok && command.operation == .Play { CaptureDevice(pcm_device, 1) }
+    if voice.pcm && answer.code == .Ok && command.operation == .Status && voice.state == .Playing { CaptureDevice(pcm_device, 0) }
     return answer
 }

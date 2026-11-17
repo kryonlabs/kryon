@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import tempfile
 
-from raylib_project_test import png_pixels, run
+from image_test_tools import png_pixels, run
 
 
 from toolchain import ZIRAN_ROOT
@@ -107,8 +107,6 @@ def main():
             "kryon": str(ROOT),
             "ziran": str(ZIRAN_ROOT),
         }
-        if os.environ.get("RAYLIB_SOURCE"):
-            overrides["raylib"] = os.environ["RAYLIB_SOURCE"]
         (project / "ziran.local.toml").write_text(
             "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
         )

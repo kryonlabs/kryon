@@ -8,57 +8,38 @@ Pixels :: #import "image_pixels_test";
 #import "kryon/drawing_props"
 #import "std/image"
 #import "std/vec"
-#if #defined(SHADER_CAIRO) {
-    Desktop :: #import "desktop_runtime";
-    Raster :: #import "cairo_raster";
-} else {
-    Raster :: #import "kryon/raylib_runtime";
-    #import "raylib_image_decode"
-    probe :: #system_library "raylib";
-    Capture :: () -> RaylibGlyphImage #foreign probe "LoadImageFromScreen";
-    FreeCapture :: (image: RaylibGlyphImage) #foreign probe "UnloadImage";
-}
+
+Desktop :: #import "desktop_runtime";
+Raster :: #import "cairo_raster";
+
 #if #defined(PLATFORM_WEB) {
     #import "std/web"
 }
 
 Open :: () -> bool {
-    #if #defined(SHADER_CAIRO) {
-        return Desktop.OpenDesktopSized(64,64)
-    } else {
-        return Raster.OpenRaylib(64,64)
-    }
+
+    return Desktop.OpenDesktopSized(64,64)
+
 }
 Close :: () {
-    #if #defined(SHADER_CAIRO) {
-        Desktop.CloseDesktop()
-    } else {
-        Raster.CloseRaylib()
-    }
+
+    Desktop.CloseDesktop()
+
 }
 Draw :: (image: Texture2D, clip: Rectangle) -> bool {
-    #if #defined(SHADER_CAIRO) {
-        Desktop.BeginDesktopFrame()
-    } else {
-        Raster.BeginRaylibFrame()
-    }
+
+    Desktop.BeginDesktopFrame()
+
     Raster.RasterImage("",image.id,.{0.0,0.0,16.0,16.0},.{0.0,0.0,64.0,64.0},clip,.{},0.0,0.0,.{255,255,255,255})
-    #if #defined(SHADER_CAIRO) {
-        return Desktop.EndDesktopFrame()
-    } else {
-        return Raster.EndRaylibFrame()
-    }
+
+    return Desktop.EndDesktopFrame()
+
 }
 Pixel :: (x: s32,y: s32) -> u32 {
-    #if #defined(SHADER_CAIRO) {
-        bytes:=cast(*u32)Raster.RasterSurfaceData()
-        return bytes[y*(Raster.RasterSurfaceStride()/4)+x] & cast(u32)0xffffff
-    } else {
-        capture:=Capture(); defer FreeCapture(capture)
-        if capture.data==null || capture.format!=7 { return cast(u32)0xffffffff }
-        bytes:=cast(*u8)capture.data; at:=(y*capture.width+x)*4
-        return (cast(u32)bytes[at]<<16)|(cast(u32)bytes[at+1]<<8)|cast(u32)bytes[at+2]
-    }
+
+    bytes:=cast(*u32)Raster.RasterSurfaceData()
+    return bytes[y*(Raster.RasterSurfaceStride()/4)+x] & cast(u32)0xffffff
+
 }
 Near :: (actual: u32, expected: u32) -> bool {
     for shift: 0..2 {
@@ -72,7 +53,7 @@ Test :: () -> s32 {
     scene: Scene
     if !Fixture.ShaderSceneBuild(*scene) { return 1 }
     defer { SceneFree(*scene); Fixture.ShaderSceneFree() }
-    picture: Image; picture.width=16; picture.height=16
+    picture: Image; picture.width = 16; picture.height = 16
     defer VecFree(picture.pixels)
     if !Open() { return 2 }
     defer Close()

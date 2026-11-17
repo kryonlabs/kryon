@@ -1,6 +1,6 @@
 // The room a canvas application has in the browser, in CSS pixels, and when
 // a new size has settled enough to resize to. For applications that draw
-// into one canvas themselves, such as raylib's web builds; Kryon's page
+// into one canvas themselves, such as native's web builds; Kryon's page
 // backend sizes its own canvas.
 BrowserViewport :: struct {
     width: s32

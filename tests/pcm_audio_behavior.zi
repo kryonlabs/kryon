@@ -49,8 +49,17 @@ PcmBehavior :: (session: Session) -> s32 {
         samples := WebCall1(buffer, WebName("getChannelData"), WebNumber(0.0))
         if WebAt(samples.aux, 0).number != 0.0 { return 122 }
     }
-    if PcmCall(session, .SubmitStream, 16, data).code != .Ok { return 111 }
-    if PcmCall(session, .SubmitStream, 16, data).code != .Backpressure { return 112 }
+    // Providers may queue different numbers of whole blocks; each must
+    // eventually reject another complete block while the device is held.
+    submitted := 1
+    pressured := false
+    while submitted < 16 {
+        reply := PcmCall(session, .SubmitStream, 16, data)
+        if reply.code == .Backpressure { pressured = true; break }
+        if reply.code != .Ok { return 111 }
+        submitted += 1
+    }
+    if !pressured || submitted < 2 { return 112 }
     if PcmCall(session, .Pause).state != .Paused { return 130 }
     #if #defined(PLATFORM_WEB) {
         WebSleep(250)

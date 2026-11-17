@@ -104,15 +104,15 @@ jobs:
           fetch: true
 
       - name: Install the AVIF decoder's dav1d build tools
-        run: brew install meson ninja $([ "$RUNNER_ARCH" = X64 ] && echo nasm)
+        run: brew install meson ninja pkgconf sdl2 cairo pango fontconfig freetype gdk-pixbuf webp $([ "$RUNNER_ARCH" = X64 ] && echo nasm)
 
       # No GUI launch or screenshot can reach a runner's inherited display.
       - name: Build native player and execute the portable VM with CPU pixels
         run: |
           export PATH="$ZIRAN_ROOT/build/bin:$PATH"
           env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-            make zx-headless-test
-          build/zx-raylib/zx --check build/scratch/zx-headless/app.zx
+            make zx-headless-test zx-player
+          build/bin/zx --check build/scratch/zx-headless/app.zx
 
   test-linux:
     name: Ziran library and host tests (${{ matrix.shard }})
@@ -312,7 +312,7 @@ jobs:
         run: env -u DISPLAY -u WAYLAND_DISPLAY make sanitize-test TEST_JOBS=4
 
   test-desktop-hosts:
-    name: Desktop and raylib hosts on private Xvfb
+    name: Desktop hosts on private Xvfb
     needs: push-check
     if: needs.push-check.outputs.code == 'true'
     runs-on: ubuntu-latest
@@ -362,12 +362,3 @@ jobs:
 
       - name: Desktop frame input snapshots
         run: make desktop-frame-input-test
-
-      - name: Raylib host
-        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY make raylib-project-test
-
-      - name: Raylib font coverage, collections and frame pipeline
-        run: |
-          RAYLIB_A="$PWD/build/raylib-ziran/libraylib.a" \
-          RAYLIB_LIBS="$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl -lpthread -lm" \
-          make raylib-typeface-test raylib-trace-test raylib-secondary-window-test raylib-frame-pixels-test raylib-frame-input-test

@@ -1,5 +1,5 @@
 OpusTypes :: #import "audio/types";
-// The desktop audio stack without raylib or an audio device: the mixer
+// The desktop audio stack with a simulated sink: the mixer
 // renders into this test's own buffer (gain, mixing, pitch, loop, pause,
 // PCM streams, the tap, WAV and streamed Ogg Opus), then the SDL sink plays
 // through SDL's disk driver, whose file must hold exactly what the tap saw,

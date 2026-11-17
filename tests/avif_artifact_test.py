@@ -38,7 +38,7 @@ ref = "master"
     helper=ZIRAN_ROOT/'scripts/ziran_artifacts.py'
     spec=importlib.util.spec_from_file_location('ziran_artifacts',helper)
     artifacts=importlib.util.module_from_spec(spec);spec.loader.exec_module(artifacts)
-    for name in ('renderer-raylib','renderer-desktop'):
+    for name in ('renderer-desktop',):
         artifact=artifacts.request('kryon:'+name,'linux-x86_64-gnu',project=WORK,ziran=ZIRAN,env=ENV)
         meta=renderer.renderer_metadata(artifact)
         print(name+': descriptor/output integrity verified',flush=True)
@@ -55,7 +55,7 @@ ref = "master"
             # A fresh packaged layout, with no absolute artifact/build rpath.
             run(['cc','-O1','-ffunction-sections','-fdata-sections','-Wl,--gc-sections',
                 '-I'+str(ZIRAN_ROOT/'include'),'-I'+str(generated),*generated.glob('*.c'),
-                ROOT/'build/raylib-ziran/libraylib.a',ROOT/'build/webp-ziran/libkryonwebp.a',
+                ROOT/'build/webp-ziran/libkryonwebp.a',
                 ROOT/'build/avif-ziran/avif/libavif.a',ROOT/'build/avif-ziran/aom/libaom.a',
                 *run(['pkg-config','--libs','sdl2']).split(),'-ldl','-lpthread','-lm',
                 '-Wl,--no-as-needed',lib/'libkryonavif.so','-Wl,--as-needed','-Wl,-rpath,$ORIGIN/../lib','-o',program])
@@ -65,48 +65,5 @@ ref = "master"
         else:
             assert all(Path(path).is_file() for path in meta['archives'])
             assert any(Path(path).name=='libavif.a' for path in meta['archives'])
-    compiler=os.environ.get('WINDOWS_CC') or shutil.which('x86_64-w64-mingw32-gcc')
-    if not compiler:
-        candidate=Path.home()/'.nix-profile/bin/x86_64-w64-mingw32-gcc'
-        if candidate.is_file(): compiler=str(candidate)
-    assert compiler, 'Windows AVIF packaging requires the installed MinGW compiler'
-    if compiler:
-        ar=str(Path(compiler).with_name('x86_64-w64-mingw32-ar'))
-        artifact=artifacts.request('kryon:renderer-raylib','windows-x86_64-mingw',project=WORK,ziran=ZIRAN,env={**ENV,'CC':compiler,'AR':ar})
-        meta=renderer.renderer_metadata(artifact)
-        generated=WORK/'windows-generated'
-        run([ZIRAN,'build',*image_module_args(),'--target=c','--define','_WIN32','--root',ROOT/'tests',
-            '--module-path',ROOT/'src/backend','-o',generated,ROOT/'tests/avif_codec_test.zi'])
-        program=WORK/'avif-windows.exe'
-        run([compiler,'-O1','-ffunction-sections','-fdata-sections','-I'+str(ZIRAN_ROOT/'include'),
-            '-I'+str(generated),*generated.glob('*.c'),*renderer.renderer_link(meta),'-Wl,--gc-sections','-o',program])
-        print('Windows x86_64 renderer artifact and actual image decoder linked',flush=True)
-        if wine := shutil.which('wine'):
-            server=shutil.which('wineserver')
-            if not server:
-                candidates=[Path(wine).resolve().parent/'wineserver',
-                            Path('/usr/lib/x86_64-linux-gnu/wine/wineserver'),
-                            Path('/usr/lib/wine/wineserver')]
-                server=next((str(path) for path in candidates if os.access(path,os.X_OK)),None)
-            if not server:
-                raise RuntimeError('Windows AVIF runtime test requires the matching Wine server (install wine64)')
-            prefix=WORK/'wine';prefix.mkdir(exist_ok=True)
-            fixture='Z:'+str(ROOT/'tests/fixtures/avif').replace('/','\\')
-            home=prefix/'home';home.mkdir(exist_ok=True)
-            wine_env={'WINEPREFIX':str(prefix),'WINESERVER':server,'HOME':str(home),'WINEDEBUG':'-all'}
-            # Debian Wine 10 frees TMPDIR's environment buffer during startup
-            # when /run/user/$uid is absent; keep it for Xvfb, unset for Wine.
-            try:
-                print(run(['xvfb-run','-a','env','-u','TMPDIR',wine,program,fixture],extra=wine_env),flush=True)
-                print('Windows x86_64 CPU AVIF golden/error fixtures passed in private Wine',flush=True)
-            finally:
-                stopped=subprocess.run(['env','-u','TMPDIR',server,'-k'],env={**ENV,**wine_env},
-                                       stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=10)
-                # Xvfb shutdown can already have stopped this private server.
-                # A bounded successful wait verifies it is gone in either case.
-                subprocess.run(['env','-u','TMPDIR',server,'-w'],env={**ENV,**wine_env},
-                               stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,check=True,timeout=10)
-                if stopped.returncode not in (0,1):
-                    stopped.check_returncode()
-    print('AVIF renderer artifact packaging and installed native layout passed')
+
 if __name__=='__main__':main()

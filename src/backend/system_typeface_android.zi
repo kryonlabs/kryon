@@ -2,7 +2,7 @@
 // Resolve API 29 entry points dynamically. Older Android versions have no font
 // lookup; their interface face is Roboto, found by its standard path, and
 // Chinese, Japanese and Korean faces come from the fonts.xml family for their
-// language. Applications may still bundle their own fonts. Raylib checks
+// language. Applications may still bundle their own fonts. native checks
 // actual glyph coverage.
 #scope_module
 CString :: #import "std/c_string";

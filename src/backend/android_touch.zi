@@ -221,9 +221,8 @@ AndroidPointerFrame :: () -> PointerFrame {
         .pressed = sample.pressed, .down = sample.down, .released = sample.released}
 }
 
-// Custom raylib hosts consume Android samples while publishing their own
-// generic pointer ABI. The software Android host publishes these entries.
-#if #defined(ANDROID_BUILD) && !#defined(KRYON_RAYLIB_HOST) {
+// The Android host publishes the generic pointer ABI.
+#if #defined(ANDROID_BUILD) {
     #program_export
     PollPointer :: () -> PointerFrame {
         return AndroidPointerFrame()

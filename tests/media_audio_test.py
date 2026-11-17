@@ -59,7 +59,7 @@ def main():
     WORK.mkdir(parents=True, exist_ok=True)
     lock = (WORK / 'lock').open('w')
     fcntl.flock(lock, fcntl.LOCK_EX)
-    # Miniaudio uses ALSA, not SDL. A private ALSA configuration exposes only
+    # SDL uses its private dummy device. A private ALSA configuration exposes only
     # the null PCM; Pulse/JACK destinations are also private and unreachable.
     (WORK / 'alsa.conf').write_text('pcm.!default { type null }\nctl.!default { type null }\n')
     with wave.open(str(WORK / 'tone.wav'), 'wb') as output:
@@ -72,7 +72,7 @@ def main():
         output.setsampwidth(2)
         output.setframerate(8000)
         output.writeframes(b'\0\0' * 160)
-    # media_audio_raylib routes Ogg Opus content through the audio package.
+    # media_audio_desktop routes Ogg Opus content through the audio package.
     audio = Path(subprocess.check_output(
         [str(ZIRAN), 'pkg', 'path', 'audio'], cwd=ROOT, text=True).strip()).resolve()
     if requested_audio := os.environ.get('AUDIO_PACKAGE'):
@@ -88,14 +88,6 @@ def main():
          '--root', 'MediaAudioResult', '--import', '"std/bundle_host"',
          '--import', '"std/byte_text_linux"', '--import', '"hosted_values"',
          '--import', '"media_audio"', '--output', ROOT / 'src/backend/media_audio_codec.zi', '--check'])
-    # Real Raylib decoder/mixer with miniaudio's paced null backend. ALSA's
-    # null PCM consumes as fast as possible and cannot verify playback time.
-    raylib = Path(os.environ.get('RAYLIB_A', ROOT / 'build/raylib-ziran/libraylib.a'))
-    audio_source = raylib.parent / 'source/raudio.c'
-    null_audio = WORK / 'null-audio.o'
-    run([os.environ.get('CC', 'cc'), '-O1', '-ffunction-sections', '-fdata-sections',
-         '-DMA_ENABLE_ONLY_SPECIFIC_BACKENDS', '-DMA_ENABLE_NULL',
-         '-I' + str(audio_source.parent), '-c', audio_source, '-o', null_audio])
     source = ROOT / 'tests/media_audio_test.zi'
     run([ZIRAN, 'ir', *common, '-o', ir, source])
     for form in ('source', 'saved'):
@@ -103,10 +95,10 @@ def main():
         paths = common if form == 'source' else ['--root', ir]
         file = source if form == 'source' else ir / 'media_audio_test.zir'
         run([ZIRAN, 'build', '--target=c', *paths, '--entry', 'media_audio_test:main', '-o', gen, file])
-        libs = subprocess.check_output(['pkg-config', '--libs', 'sdl2', 'libdrm', 'gbm', 'egl', 'glesv2'], text=True).split() + ['-lopus']
+        libs = subprocess.check_output(['pkg-config', '--libs', 'sdl2'], text=True).split() + ['-lopus']
         run([os.environ.get('CC', 'cc'), '-O1', '-ffunction-sections', '-fdata-sections',
              '-Wl,--gc-sections', '-I' + str(ZIRAN_ROOT / 'include'), '-I' + str(gen),
-             *sorted(gen.glob('*.c')), null_audio, Path(os.environ.get('RAYLIB_A', ROOT / 'build/raylib-ziran/libraylib.a')),
+             *sorted(gen.glob('*.c')), *(['-Wl,--wrap=SDL_PauseAudioDevice'] if options.pcm else []),
              Path(os.environ.get('ZIRAN_BUILD_DIR', ZIRAN_ROOT / 'build')) / 'libziran.a', *libs, '-ldl', '-lpthread', '-lm', '-o', gen / 'test'])
         run(['timeout', '--kill-after=2s', '25s', gen / 'test'])
     print('native asset audio source/saved: passed', flush=True)
@@ -116,10 +108,10 @@ def main():
          '--entry', 'media_audio_test:main', '-o', gen, ROOT / 'tests/media_audio_test.zi'])
     run([os.environ.get('CC', 'cc'), '-O1', '-ffunction-sections', '-fdata-sections',
          '-Wl,--gc-sections', '-I' + str(ZIRAN_ROOT / 'include'), '-I' + str(gen),
-         *sorted(gen.glob('*.c')), Path(os.environ.get('RAYLIB_A', ROOT / 'build/raylib-ziran/libraylib.a')),
+         *sorted(gen.glob('*.c')), *(['-Wl,--wrap=SDL_PauseAudioDevice'] if options.pcm else []),
          Path(os.environ.get('ZIRAN_BUILD_DIR', ZIRAN_ROOT / 'build')) / 'libziran.a', *libs,
          '-ldl', '-lpthread', '-lm', '-o', gen / 'test'])
-    run(['timeout', '--kill-after=2s', '25s', gen / 'test'], env=dict(ENV, ALSA_CONFIG_PATH=str(unavailable)))
+    run(['timeout', '--kill-after=2s', '25s', gen / 'test'], env=dict(ENV, SDL_AUDIODRIVER='kryon_test_no_driver'))
     print('actual native device failure: unavailable passed', flush=True)
     assets = WORK / 'assets/test'
     assets.mkdir(parents=True, exist_ok=True)
@@ -132,10 +124,9 @@ def main():
     shutil.copyfile(ROOT / 'tests/media_audio_guest.zi', guest)
     shutil.copyfile(ROOT / 'tests/pcm_audio_behavior.zi', consumer / 'src/pcm_audio_behavior.zi')
     (consumer / 'ziran.toml').write_text('[package]\nname = "audio_consumer"\nmodule_roots = ["src"]\n[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\nref = "master"\n[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\nref = "master"\n')
-    raylib = subprocess.check_output([str(ZIRAN), 'pkg', 'path', 'raylib'], cwd=ROOT, text=True).strip()
     (consumer / 'ziran.local.toml').write_text('[overrides]\n' + ''.join(
         name + ' = ' + json.dumps(str(path)) + '\n'
-        for name, path in [('kryon', ROOT), ('ziran', ZIRAN_ROOT), ('raylib', raylib), ('audio', audio)]))
+        for name, path in [('kryon', ROOT), ('ziran', ZIRAN_ROOT), ('audio', audio)]))
     run([ZIRAN, 'lock', '--offline'], cwd=consumer)
     host = ROOT / 'tests/media_audio_host_test.zi'
     for fake in (False, True):
@@ -152,7 +143,7 @@ def main():
             host_gen = WORK / 'host-c'
             run([os.environ.get('CC', 'cc'), '-O1', '-ffunction-sections', '-fdata-sections',
                  '-Wl,--gc-sections', '-I' + str(ZIRAN_ROOT / 'include'), '-I' + str(host_gen),
-                 *sorted(host_gen.glob('*.c')), null_audio, Path(os.environ.get('RAYLIB_A', ROOT / 'build/raylib-ziran/libraylib.a')),
+                 *sorted(host_gen.glob('*.c')), *(['-Wl,--wrap=SDL_PauseAudioDevice'] if options.pcm else []),
                  Path(os.environ.get('ZIRAN_BUILD_DIR', ZIRAN_ROOT / 'build')) / 'libziran.a', *libs, '-ldl', '-lpthread', '-lm', '-o', host_gen / 'test'])
             run(['timeout', '--kill-after=2s', '25s', host_gen / 'test'])
     print('hosted source/saved: real device + unavailable contract passed', flush=True)

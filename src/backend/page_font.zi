@@ -161,7 +161,7 @@ PageMaxOf :: (left: s32, right: s32) -> s32 {
 }
 
 // The CSS font size, in hundredths of a pixel, at which the face's ascent
-// plus descent spans `size` pixels. Kryon lays text out like raylib, whose
+// plus descent spans `size` pixels. Kryon lays text out like native, whose
 // fonts are scaled to that pixel height, while a CSS size is the em size;
 // browsers also disagree on a face's ascent and descent, so this is measured.
 PageFontHundredths :: (context: s32, face_id: s32, size: s32) -> s32 {
@@ -269,7 +269,7 @@ PageRound :: (value: float64) -> s32 {
 }
 
 // Rasterises one glyph as white-on-transparent RGBA into `pixels`. Returns 1
-// and fills the metrics, or 0 when the glyph does not fit. As in raylib, the
+// and fills the metrics, or 0 when the glyph does not fit. As in native, the
 // line box is `size` pixels tall with the baseline at the face's ascent, and
 // offset_y places the bitmap's top relative to the top of that box.
 PageGlyphMetrics :: (face_id: s32, codepoint: s32, size: s32, advance: *s32,

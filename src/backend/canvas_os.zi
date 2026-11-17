@@ -493,10 +493,6 @@
     UnloadDirectoryFiles :: (files: CanvasFilePathList) {
         FreeCanvasPaths(files)
     }
-    SetShapesTexture :: (texture: Texture2D, rectangle: Rectangle) {
-        unused texture
-        unused rectangle
-    }
 
     SetTraceLogCallback :: (callback: CanvasTraceCallback) {
         canvas_trace_callback = callback
@@ -535,15 +531,6 @@
             return
         }
         CanvasConsoleError(FormatCanvasLog(format, arguments))
-    }
-
-    // Canvas memory and logging controls.
-    CanvasMemAlloc :: (size: u32) -> *void {
-        return OsAllocate(cast(usize)size)
-    }
-
-    CanvasMemFree :: (memory: *void) {
-        OsRelease(memory)
     }
 
     SetCanvasTraceLevel :: (level: s32) {

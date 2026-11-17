@@ -79,8 +79,8 @@ ref = "{args.revision}"
         return descriptor, meta
 
     if not args.cross_only:
-        first, meta = artifact('renderer-raylib', 'linux-x86_64-gnu')
-        second, _ = artifact('renderer-raylib', 'linux-x86_64-gnu', app=apps[1])
+        first, meta = artifact('renderer-desktop', 'linux-x86_64-gnu')
+        second, _ = artifact('renderer-desktop', 'linux-x86_64-gnu', app=apps[1])
         assert (first == second) == args.clean, 'clean consumers must share a descriptor; dirty builds must isolate'
         artifact('renderer-desktop', 'linux-x86_64-gnu')
     web, webmeta = artifact('renderer-web', 'emscripten-wasm32-emscripten')
@@ -90,24 +90,10 @@ ref = "{args.revision}"
     varied, _ = artifact('renderer-web', 'emscripten-wasm32-emscripten')
     assert varied != web, 'resolved option variation must change the descriptor'
     manifest.write_text(original)
-    artifact('renderer-raylib', 'emscripten-wasm32-emscripten', success=False)
+    artifact('renderer-desktop', 'emscripten-wasm32-emscripten', success=False)
     artifact('renderer-web', 'linux-x86_64-gnu', success=False)
     app = apps[0]
     toolchain = Path(call([ziran, 'pkg', 'path', 'ziran', *(['--locked'] if args.clean else [])], app))
-    if not args.cross_only:
-        # Compile the actual maintained Kryon renderer through ordinary imports.
-        copy = app / 'src/probe.zi'
-        shutil.copyfile(ROOT / 'tests/renderer_artifact_probe.zi', copy)
-        generated = app / 'generated'
-        call([ziran, 'build', '--target=c', '-o', generated, copy], app)
-        binary = app / 'probe'
-        sources = sorted(generated.rglob('*.c'))
-        includes = sorted({p.parent for p in sources})
-        call(['cc', '-O2', '-ffunction-sections', '-fdata-sections', '-I' + str(toolchain / 'include'),
-              *['-iquote' + str(p) for p in includes], *meta['compile_flags'], *sources,
-              *[first.parent / p for p in meta['archives']], '-Wl,--gc-sections', *meta['link_flags'], '-o', binary], app)
-        call(['xvfb-run', '-a', binary], app, {'KRYON_FONT_PATH': str(first.parent / meta['resources']['font'])})
-        print('PASS actual Kryon Raylib renderer compiled/linked/ran on private Xvfb', flush=True)
     if args.cross or args.cross_only:
         websource = app / 'src/renderer_web_probe.zi'
         shutil.copyfile(ROOT / 'tests/renderer_web_probe.zi', websource)
@@ -134,16 +120,12 @@ ref = "{args.revision}"
                   *(['-shared', '-Wl,--no-undefined'] if shared else []), '-o', app / ('foreign-probe' + suffix)], app)
             print('PASS real foreign renderer cross compile/link', metadata['platform'], flush=True)
 
-        mingw = shutil.which('x86_64-w64-mingw32-gcc') or str(Path.home() / '.nix-profile/bin/x86_64-w64-mingw32-gcc')
-        ar = str(Path(mingw).with_name('x86_64-w64-mingw32-ar'))
-        win, wm = artifact('renderer-raylib', 'windows-x86_64-mingw', {'CC': mingw, 'AR': ar})
-        cross_link(win, wm, mingw, '.exe')
         ndk = Path.home() / 'Android/Sdk/ndk/28.2.13676358'
         with (app / 'ziran.toml').open('a') as stream:
             stream.write(f'\n[tool.kryon.renderer]\nandroid_ndk = "{ndk}"\nandroid_api = "21"\n')
         for arch, prefix in [('aarch64', 'aarch64-linux-android'), ('armv7', 'armv7a-linux-androideabi')]:
             compiler = ndk / f'toolchains/llvm/prebuilt/linux-x86_64/bin/{prefix}21-clang'
-            android, am = artifact('renderer-raylib', f'android-{arch}-bionic', {'CC': str(compiler)})
+            android, am = artifact('renderer-desktop', f'android-{arch}-bionic', {'CC': str(compiler)})
             cross_link(android, am, compiler, '-' + arch + '.so', shared=True)
     mode = 'cross compile/link only' if args.cross_only else ('clean two-consumer same-descriptor reuse' if args.clean else 'dirty isolation only')
     print('PASS renderer provider suite; ' + mode, flush=True)

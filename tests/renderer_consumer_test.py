@@ -49,7 +49,7 @@ class RendererConsumerTest(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
         (self.root / 'include').mkdir()
-        self.meta = dict(schema=1, artifact='renderer-raylib', platform='linux-x86_64-gnu',
+        self.meta = dict(schema=1, artifact='renderer-desktop', platform='linux-x86_64-gnu',
             compile_flags=['-I/sdk path'], link_flags=['-lm', '-pthread'], defines=['PLATFORM_DESKTOP_SDL'],
             archives=['lib/second.a', 'lib/first.a'], include_directories=['include'],
             resources=dict(font='font.ttf', font_license='font-license'))
@@ -58,8 +58,8 @@ class RendererConsumerTest(unittest.TestCase):
         return renderer.renderer_metadata(VerifiedArtifact(self.root, self.meta))
 
     def test_local_provider_identity_uses_the_root_locked_kryon_edges(self):
-        first = dict(id='old', name='kryon', dependencies={'raylib': 'old-raylib'})
-        selected = dict(id='selected', name='kryon', dependencies={'raylib': 'raylib'})
+        first = dict(id='old', name='kryon', dependencies={'libwebp': 'old-webp'})
+        selected = dict(id='selected', name='kryon', dependencies={'libwebp': 'webp'})
         lock = dict(packages=[first, selected], root=dict(dependencies={'kryon': 'selected'}))
         self.assertIs(renderer.locked_provider(lock, 'selected'), selected)
         self.assertIs(renderer.locked_provider(lock, 'local-override', local=True), selected)
@@ -142,24 +142,6 @@ class RendererConsumerTest(unittest.TestCase):
             with self.subTest(artifact=name):
                 self.assertNotIn('Makefile', inputs)
                 self.assertTrue(all((ROOT / path).is_file() for path in inputs))
-        # The Linux raylib recipe runs mk/renderer-artifact.mk; every make
-        # fragment it includes outside a conditional is an input.
-        inputs = manifest['artifacts']['renderer-raylib']['inputs']
-        pending, read = ['mk/renderer-artifact.mk'], set()
-        while pending:
-            path = pending.pop()
-            read.add(path)
-            depth = 0
-            for line in (ROOT / path).read_text().splitlines():
-                word = line.split(maxsplit=1)[0] if line.strip() else ''
-                depth += word in ('ifeq', 'ifneq', 'ifdef', 'ifndef')
-                depth -= word == 'endif'
-                if depth == 0 and word == 'include':
-                    included = line.split()[1].replace('$(KRYON_DIR)/', '')
-                    if included not in read:
-                        pending.append(included)
-        self.assertEqual(read, {'mk/renderer-artifact.mk', 'mk/raylib-library.mk', 'mk/codecs.mk'})
-        self.assertLessEqual(read, set(inputs))
 
     def test_invalid_virtual_mounts_are_rejected(self):
         for mount in ('relative', '/../outside', '/first/../outside', '/first/./second',

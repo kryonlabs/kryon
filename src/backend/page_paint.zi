@@ -1,5 +1,5 @@
 // Canvas 2D drawing for the application's shapes, gradients, transforms, and
-// clips. The operations mirror raylib's 2D drawing; each turns into calls on
+// clips. The operations mirror native's 2D drawing; each turns into calls on
 // the page's 2D context, which page_core.zi holds.
 #import "geometry"
 #import "page_core"

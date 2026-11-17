@@ -8,7 +8,7 @@ import shutil
 import subprocess
 
 from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
-from raylib_project_test import solid_png
+from image_test_tools import solid_png
 
 project = ROOT / 'build/zx-canvas-test'
 project.mkdir(parents=True, exist_ok=True)
@@ -42,10 +42,6 @@ assets = "assets"
 backend = "canvas"
 codegen = "zx"
 assets = "assets"
-[tool.kryon.profiles.native]
-backend = "raylib"
-codegen = "zx"
-assets = "assets"
 ''')
 (project / 'ziran.local.toml').write_text(f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
 env = os.environ.copy()
@@ -59,19 +55,14 @@ def run(command):
 
 
 run([ZIRAN, 'lock'])
-for profile in ('portable', 'web', 'native'):
+for profile in ('portable', 'web'):
     run([ZIRAN, 'tool', 'kryon', 'build', '--profile', profile])
 portable = project / 'build/zx_canvas_probe-portable.zx'
 web = project / 'build/zx_canvas_probe-web.zx'
-native = project / 'build/zx_canvas_probe-native.zx'
 (project / 'build/invalid.zx').write_bytes(b'invalid ZX')
 assert portable.read_bytes() == web.read_bytes(), 'Backend changed the portable app bundle'
-assert portable.read_bytes() == native.read_bytes(), 'Native renderer changed the portable app bundle'
-native_player = project / 'build/generated/native/player/zx'
-run([native_player, '--check', native])
-assert (native_player.parent / 'kryon-font.ttf').is_file()
-assert all(re.fullmatch(r'(?:p[0-9a-f]{16}_)?(?:bundle_app|hosted_app)\.c', path.name)
-           for path in (native_player.parent / 'generated/c').glob('*_app.c'))
+# Kryon's desktop player runs the identical bundle natively.
+run([ROOT / 'build/bin/zx', '--check', portable])
 # The web shell contains the renderer and VM, never native app/widget output.
 generated = project / 'build/generated/web/player/generated/c'
 assert all(re.fullmatch(r'(?:p[0-9a-f]{16}_)?(?:bundle_app|hosted_app)\.c', path.name)
@@ -85,4 +76,4 @@ run([JS_RUNTIME, ROOT / 'tests/zx_canvas_browser.mjs', ROOT / 'build/zx-canvas/p
      'file', web])
 run([JS_RUNTIME, ROOT / 'tests/zx_canvas_browser.mjs', ROOT / 'build/zx-canvas/player.html',
      'url', web])
-print('Desktop/native/web identical ZX, complete browser rendering and input passed')
+print('Desktop/web identical ZX, complete browser rendering and input passed')

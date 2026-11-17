@@ -18,7 +18,7 @@ ifndef ZIRAN_PACKAGE_ID
 $(error ZIRAN_PACKAGE_ID is required; run this through ziran tool kryon)
 endif
 
-ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 raylib/c99 canvas/c99 pixmap/c99 desktop/zx pixmap/zx canvas/zx raylib/zx),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
+ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 canvas/c99 pixmap/c99 desktop/zx pixmap/zx canvas/zx),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
 $(error backend $(PROJECT_BACKEND) with codegen $(PROJECT_CODEGEN) is not available)
 endif
 
@@ -48,27 +48,8 @@ ifeq ($(PROJECT_CODEGEN),c99)
 PROGRAM := $(PROJECT_BUILD_DIR)/$(PROJECT_NAME)-$(PROJECT_PROFILE).html
 endif
 endif
-# platform = "web" builds the raylib host as a WebGL browser page: raylib's
-# PLATFORM_WEB library (GLES2 on WebGL 1), linked by Emscripten with ASYNCIFY
-# so a host's own `while PollRaylib()` loop yields to the page every frame.
-# The page lands as index.html, index.js, index.wasm and, with preloaded
-# files, index.data in build/NAME-PROFILE/.
-RAYLIB_WEB :=
-ifneq ($(PROJECT_PLATFORM),)
-ifneq ($(PROJECT_BACKEND)/$(PROJECT_CODEGEN)/$(PROJECT_PLATFORM),raylib/c99/web)
-$(error platform $(PROJECT_PLATFORM) needs a raylib profile with c99 codegen)
-endif
-RAYLIB_WEB := web
-WEB_PAGE_DIR := $(PROJECT_BUILD_DIR)/$(PROJECT_NAME)-$(PROJECT_PROFILE)
-PROGRAM := $(WEB_PAGE_DIR)/index.html
-endif
-ifneq ($(PROJECT_PRELOAD),)
-ifeq ($(RAYLIB_WEB),)
-$(error preload needs platform web)
-endif
-endif
 HOST_MODULE := $(PROJECT_BACKEND)_run
-ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),desktop/zx canvas/zx raylib/zx),)
+ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),desktop/zx canvas/zx),)
 HOST_MODULE := zx_run
 endif
 BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas)
@@ -80,12 +61,6 @@ BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas)
 PROGRAM_TITLE_FILE := $(if $(filter %.html,$(PROGRAM)),,$(if $(filter %.zx,$(PROGRAM)),$(PROGRAM:.zx=.title),$(PROGRAM).title))
 PAGE_SHELL := $(if $(BROWSER_BACKEND),$(GEN_DIR)/page-shell.html)
 PAGE_SHELL_SOURCE := $(KRYON_DIR)/mk/$(if $(filter zx,$(PROJECT_CODEGEN)),zx,canvas)-shell.html
-ifneq ($(RAYLIB_WEB),)
-# The page reads the program's name from its virtual file system.
-PROGRAM_TITLE_FILE := $(GEN_DIR)/kryon.title
-PAGE_SHELL := $(GEN_DIR)/page-shell.html
-PAGE_SHELL_SOURCE := $(KRYON_DIR)/mk/raylib-shell.html
-endif
 HOST_ID := $(ZIRAN_PACKAGE_ID)_$(HOST_MODULE)
 PROJECT_CONFIG_FILES := ziran.toml ziran.lock
 # The test driver is test code: a build includes it only when
@@ -109,7 +84,7 @@ endif
 APP_SOURCES := $(shell find . -type d \( -name build -o -name .git -o -name vendor \) -prune -o -type f -name '*.zi' -print)
 UI_SOURCES := $(shell find $(KRYON_DIR)/src/ui -type f -name '*.zi')
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi $(KRYON_DIR)/src/backend/avif*.zi)
-ifneq ($(filter $(PROJECT_BACKEND),desktop raylib),)
+ifneq ($(filter $(PROJECT_BACKEND),desktop),)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/app_asset_path.zi $(KRYON_DIR)/src/backend/app_asset.zi $(KRYON_DIR)/src/backend/program_title.zi
 endif
 ifneq ($(filter $(PROJECT_BACKEND),desktop canvas),)
@@ -180,13 +155,7 @@ IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) $(WEB_TARGE
 	--entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
 C_COMMAND := $(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
-else ifneq ($(RAYLIB_WEB),)
-# The page has no POSIX threads: PLATFORM_WEB selects the single-threaded
-# image, Lanczos and file paths the browser runtime provides.
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) $(WEB_TARGET) --define PLATFORM_WEB \
-	--entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
-C_COMMAND := $(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB --entry $(HOST_ID):main \
-	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
+
 else
 # A program selects its kryon/app host by compiled target, so a C program's
 # IR names the native C target; a ZX program's and frame IR stay portable.
@@ -224,51 +193,12 @@ ASSET_DEPENDENCY := asset-content
 endif
 HOST_DEPS :=
 ifeq ($(PROJECT_BACKEND),desktop)
-include $(KRYON_DIR)/mk/raylib-library.mk
+include $(KRYON_DIR)/mk/codecs.mk
 HOST_DEPS := $(AVIF_SO)
 HOST_LIBS := -Wl,--no-as-needed $(AVIF_SO) -Wl,--as-needed -Wl,-rpath,$(AVIF_BUILD) -Wl,-rpath,'$$ORIGIN/../lib'
 HOST_LIBS += $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig gio-2.0 x11)
-HOST_LIBS += $(RAYLIB_HTTP_LIBS)
+HOST_LIBS += $(or $(shell pkg-config --libs libcurl 2>/dev/null),$(if $(filter Linux,$(shell uname -s)),-l:libcurl.so.4,-lcurl))
 RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
-endif
-ifeq ($(PROJECT_BACKEND),raylib)
-include $(KRYON_DIR)/mk/raylib-library.mk
-HOST_DEPS := $(RAYLIB_ARCHIVES)
-HOST_LIBS := $(RAYLIB_ARCHIVES) $(RAYLIB_PLATFORM_LIBS) $(RAYLIB_AUDIO_LIBS)
-ifeq ($(RAYLIB_WEB),)
-HOST_LIBS += $(RAYLIB_HTTP_LIBS)
-endif
-RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
-
-endif
-ifneq ($(RAYLIB_WEB),)
-EM_CACHE ?= $(KRYON_DIR)/build/emscripten-cache
-# assets and every preload entry mount at their project-relative path, or at
-# MOUNT for DIR@MOUNT, under the page's root, its working directory. Kryon's
-# font and the program title sit beside them.
-WEB_PRELOAD_ENTRIES := $(strip $(PROJECT_ASSETS) $(PROJECT_PRELOAD))
-WEB_PRELOAD_SOURCES := $(foreach entry,$(WEB_PRELOAD_ENTRIES),$(firstword $(subst @, ,$(entry))))
-$(foreach source,$(WEB_PRELOAD_SOURCES),$(if $(filter $(CURDIR)/%,$(realpath $(source))),,$(error preload $(source) must exist inside the project directory)))
-WEB_PRELOAD_FILES := $(if $(WEB_PRELOAD_SOURCES),$(shell find $(WEB_PRELOAD_SOURCES) -type f 2>/dev/null))
-WEB_PRELOAD_ARGS := $(foreach entry,$(WEB_PRELOAD_ENTRIES),--preload-file $(if $(findstring @,$(entry)),$(firstword $(subst @, ,$(entry)))@/$(lastword $(subst @, ,$(entry))),$(entry)@/$(entry))) \
-	--preload-file $(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf@/kryon-font.ttf \
-	--preload-file $(PROGRAM_TITLE_FILE)@/kryon.title
-HOST_DEPS += $(WEB_PRELOAD_FILES) $(PROGRAM_TITLE_FILE) $(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
-# ziran_web.js carries the browser side of Ziran's page capabilities, such as
-# HTTP transfers, for the modules a host imports.
-RAYLIB_WEB_LINK = EM_CACHE=$(EM_CACHE) $(EMCC) -O2 -I$(ZIRAN_DIR)/include -iquote $(C_DIR) \
-	$(C_DIR)/*.c $(RAYLIB_A) --js-library $(ZIRAN_DIR)/web/ziran_web.js \
-	-sUSE_GLFW=3 -sMIN_WEBGL_VERSION=1 -sGL_ENABLE_GET_PROC_ADDRESS=1 \
-	-sASYNCIFY -sEXIT_RUNTIME=1 -sENVIRONMENT=web -sSTACK_SIZE=8388608 \
-	-sALLOW_MEMORY_GROWTH=1 -sFORCE_FILESYSTEM=1 -sEXPORTED_RUNTIME_METHODS=FS \
-	--shell-file $(PAGE_SHELL) $(WEB_PRELOAD_ARGS)
-endif
-ifeq ($(PROJECT_BACKEND)/$(PROJECT_CODEGEN),raylib/zx)
-ZX_RAYLIB_DIR := $(abspath $(GEN_DIR)/player)
-ZX_RAYLIB_PROGRAM := $(ZX_RAYLIB_DIR)/zx
-ZX_RAYLIB_ARCHIVE := $(RAYLIB_ARCHIVES)
-include $(KRYON_DIR)/mk/zx-raylib.mk
-NATIVE_PLAYER := $(ZX_RAYLIB_PROGRAM)
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas),)
 EM_CACHE ?= $(KRYON_DIR)/build/emscripten-cache
@@ -287,7 +217,7 @@ endif
 # The package driver validates these system names and preserves manifest order.
 # Portable and browser profiles do not consume native system libraries.
 ifeq ($(PROJECT_CODEGEN),c99)
-ifeq ($(BROWSER_BACKEND)$(RAYLIB_WEB),)
+ifeq ($(BROWSER_BACKEND),)
 HOST_LIBS += $(addprefix -l,$(PROJECT_LINKS))
 endif
 endif
@@ -365,7 +295,7 @@ $(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bi
 .PHONY: native-assets
 native-assets:
 ifeq ($(PROJECT_CODEGEN),c99)
-ifeq ($(BROWSER_BACKEND)$(RAYLIB_WEB),)
+ifeq ($(BROWSER_BACKEND),)
 	sh $(KRYON_DIR)/scripts/copy-native-assets.sh "$(ASSET_PATH)" "$(PROGRAM).assets" "$(PROJECT_ASSETS)"
 endif
 endif
@@ -452,14 +382,7 @@ ifneq ($(filter $(PROJECT_BACKEND),canvas),)
 		sh $(KRYON_DIR)/mk/web-page.sh $(PAGE_SHELL) "$$modules/simd128.js" "$$modules/baseline.js" \
 				$(WEB_PAGE_EMBED_ARGS) > "$$modules/page.html" && \
 		chmod 644 "$$modules/page.html" && mv "$$modules/page.html" $@
-else ifneq ($(RAYLIB_WEB),)
-	@mkdir -p $(PROJECT_BUILD_DIR)
-	@page=$$(mktemp -d $(PROJECT_BUILD_DIR)/$(PROJECT_NAME).XXXXXX); \
-		trap 'rm -rf "$$page" "$$page.old"' EXIT; \
-		$(RAYLIB_WEB_LINK) -o "$$page/index.html" && \
-		chmod 755 "$$page" && chmod 644 "$$page"/index.* && \
-		{ test ! -d $(WEB_PAGE_DIR) || mv $(WEB_PAGE_DIR) "$$page.old"; } && \
-		mv "$$page" $(WEB_PAGE_DIR)
+
 else
 	@temporary=$$(mktemp $(PROJECT_BUILD_DIR)/$(PROJECT_NAME).XXXXXX.html); \
 		trap 'rm -f "$$temporary"' EXIT; \
@@ -475,18 +398,13 @@ ifeq ($(PROJECT_CODEGEN),zx)
 ifeq ($(PROJECT_BACKEND),desktop)
 run: zx-player
 	$(RUN_ENV) $(PLAYER) $(PROGRAM)
-else ifeq ($(PROJECT_BACKEND),raylib)
-run: zx-raylib
-	$(RUN_ENV) $(ZX_RAYLIB_PROGRAM) $(PROGRAM)
 else ifeq ($(PROJECT_BACKEND),canvas)
 	@echo "Kryon ZX browser app: $(BROWSER_PROGRAM)"
 else
 	$(ZIRAN) run $(PROGRAM)
 endif
 else
-ifneq ($(RAYLIB_WEB),)
-	@echo "Kryon raylib browser app: serve ./$(WEB_PAGE_DIR) over HTTP and open index.html"
-else ifneq ($(filter $(PROJECT_BACKEND),canvas),)
+ifneq ($(filter $(PROJECT_BACKEND),canvas),)
 	@echo "Kryon browser app: ./$@"
 else
 	$(RUN_ENV) ./$(PROGRAM)
@@ -495,7 +413,7 @@ endif
 
 # Check the complete bound graph through the same IR route as a build.
 check: toolchain $(PROGRAM_HOST)
-	$(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) -o $(GEN_DIR)/check-ir --entry $(HOST_ID):main $(if $(filter c99,$(PROJECT_CODEGEN)),$(if $(BROWSER_BACKEND)$(RAYLIB_WEB),$(WEB_TARGET) --define PLATFORM_WEB,$(if $(PROJECT_PROGRAM),--target=c))) $(HOST_ROOT_SOURCES)
+	$(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) -o $(GEN_DIR)/check-ir --entry $(HOST_ID):main $(if $(filter c99,$(PROJECT_CODEGEN)),$(if $(BROWSER_BACKEND),$(WEB_TARGET) --define PLATFORM_WEB,$(if $(PROJECT_PROGRAM),--target=c))) $(HOST_ROOT_SOURCES)
 
 # `ziran install` copies the built program to PREFIX/bin and describes it to
 # the desktop. The KRYON_INSTALL_* values come from [tool.kryon.install] and
@@ -510,7 +428,7 @@ install: build
 ifeq ($(PROJECT_CODEGEN),zx)
 install: zx-player
 endif
-ifneq ($(BROWSER_BACKEND)$(RAYLIB_WEB),)
+ifneq ($(BROWSER_BACKEND),)
 	@echo "kryon: browser profiles cannot be installed" >&2; exit 2
 else
 	@test -n "$$ZIRAN_INSTALL_PREFIX" && test -n "$$ZIRAN_INSTALL_BIN" || \

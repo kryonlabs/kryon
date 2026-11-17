@@ -17,7 +17,7 @@ import tempfile
 import time
 import zlib
 
-from raylib_project_test import png_pixels, run
+from image_test_tools import png_pixels, run
 from toolchain import ZIRAN_ROOT
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -286,8 +286,6 @@ def main():
             'ref = "master"\n'
         )
         overrides = {"kryon": str(ROOT), "ziran": str(ZIRAN_ROOT)}
-        if os.environ.get("RAYLIB_SOURCE"):
-            overrides["raylib"] = os.environ["RAYLIB_SOURCE"]
         (project / "ziran.local.toml").write_text(
             "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
         )

@@ -108,7 +108,7 @@ PageTarget :: struct {
     raster_clips: s32
 }
 
-// The application's camera: raylib's Camera2D as applied to the context.
+// The application's camera: Camera2D as applied to the context.
 PageMode :: struct {
     active: bool
     zoom_x: float64

@@ -2,174 +2,50 @@
 
 Owner, 2026-11-16: "well finish migaritng raylib isuse in breeze fulyl so we
 can have araylib free stuf also in kryno and remoev it so we have less codebas
-to mainait". Owner rule: "remove" means remove, never disable. Kryon ends with
-no raylib code at all.
+to mainait" and "each of these udpates pelaos ugparde to ont use ralybi at all
+updatenig them pfulyl and adning missing efatuers ot kryon or ziran moudels
+etc... please fulyl implemnit t". Owner rule: "remove" means remove, never
+disable. Owner, 2026-11-17 (relayed): "are yo udonig this please finsh removing
+rayilb".
 
-Planning audit of kryonlabs/kryon @ master (e865c067 working tree),
-2026-11-16, read-only measurements with rg/wc.
+## State
 
-## 1. Inventory inside Kryon
+Kryon has no raylib code. The deletion removed the ten raylib host modules,
+the raylib ZX player, the raylib audio sink and media provider, the
+`renderer-raylib` artifact, `backend = "raylib"`, `mk/raylib-library.mk`,
+`mk/zx-raylib.mk`, `mk/raylib-shell.html`, `cmake/renderer-artifact/`, the
+raylib tests, docs and CI steps, and `[dependencies.raylib]`. Shared codec
+rules live in `mk/codecs.mk`. Browser asset and PCM audio use
+`media_audio_web` over the Canvas WebAudio engine; native audio uses Ziran's
+core `std/audio_*` modules through `media_audio_desktop`, including the Android
+AAudio/OpenSL ES PCM sink. The Ziran toolchain pin is 7fbc8152. All maintained
+example locks are regenerated without raylib.
 
-### Host modules to delete
+## Open work
 
-| Module | Lines | Bytes | Role |
-| --- | --- | --- | --- |
-| `src/backend/raylib_runtime.zi` | 4,703 | 195,732 | Core raylib host: window, events, OpenGL ES 2 rendering, input, frame loop; `_WIN32` (9) and `PLATFORM_WEB` (7) branches; Android frame threads |
-| `src/backend/raylib_secondary_window.zi` | 870 | 29,766 | Secondary windows for the raylib host (already opens SDL windows internally) |
-| `src/backend/raylib_trace.zi` | 335 | 11,443 | `SetTraceLogCallback` routing to Kryon logging |
-| `src/backend/media_audio_raylib.zi` | 380 | 19,865 | MediaAudio provider over raylib/miniaudio |
-| `src/backend/bundle_raylib.zi` | 237 | 9,283 | Bundled-app host surface (`GetApplicationDirectory`, `GetTime`) |
-| `src/backend/raylib_image_decode.zi` | 194 | 7,508 | Image decode via raylib |
-| `src/backend/raylib_frame_render.zi` | 161 | 6,398 | Threaded frame render for Android/`KRYON_FRAME_THREADS` |
-| `src/backend/raylib_clip.zi` | 150 | 4,815 | Scissor/polygon clip via rlgl matrix + `BeginScissorMode`; `OS == .WEB` branch implements canvas clipping |
-| `src/backend/raylib_run.zi` | 107 | 3,411 | raylib host entry point |
-| `src/backend/audio_sink_raylib.zi` | 32 | 2,326 | Audio sink feeding the opus mixer into raylib/miniaudio |
-| **Total** | **7,169** | **286,547** | |
-
-### Modules importing raylib today (rewire, keep the feature)
-
-- `src/backend/media_audio_opus.zi` -> `audio_sink_raylib` (desktop SDL sink `audio_sink_sdl` already exists).
-- `src/backend/page_mesh.zi`, `src/backend/canvas_raster.zi`, `src/backend/Canvas/module.zi` -> `raylib_clip` (canvas branch must move into the canvas host; desktop host clips through Cairo and does not use it).
-- `src/backend/window_icon.zi`, `src/backend/image_export.zi` -> `raylib_image_decode` (`ziran_image_decode` exists; `ExportImage` needs a non-raylib export path).
-- `src/backend/notification_desktop.zi` -> raylib `IsWindowFocused` (SDL query instead).
-- `src/backend/android_jni.zi` -> raylib `GetAndroidApp` (lines 220-221, used by `JniGetAndroidApp` in 4 places). This is the only raylib tie in the Android host: `cmake/KryonAndroid.cmake` and `templates/droid/` are raylib-free.
-- `src/project/options.zi`, `src/project/cli_linux.zi` -> `backend = "raylib"` profile and the `platform = "web"` raylib validation.
-- Comment-only references: `src/ui/bitmap_store.zi`, `box/box_props.zi`, `frame_transition.zi`, `shape/*`, `shape_paint.zi`, `svgicon/svg_icon_behavior.zi`, `touch_replay.zi`, `test_driver.zi`, `test_driver_engine.zi` (raylib key-code/behavior parity notes).
-- Canvas-host raylib-ABI shims: `canvas_os.zi` (TraceLog/memory entry points), `canvas_events.zi` ("raylib-compatible reads"), `canvas_input.zi` (raylib key/gamepad IDs) - decide keep-as-ZX-compat or strip with the rest.
-
-### Build rules, artifact, manifests
-
-- `Makefile`: 89 raylib lines of 1,005. Targets to remove: `raylib-project-test`, `raylib-web-project-test`, `raylib-window-test`, `raylib-typeface-test`, `raylib-text-pixels-test`, `raylib-mesh-pixels-test`, `raylib-frame-input-test`, `raylib-frame-pixels-test`, `raylib-secondary-window-test`, `raylib-trace-test`, `raylib-clip-test`, `raylib-smooth-shape-test`, `raylib-webp-decode-test`, `android-raylib-host-link-test`, `android-raylib-jni-test`, `android-frame-input-test`, `zx-raylib`, `zx-raylib-test`; `zx-headless-test`, `zx-services-test`, `zx-hosted-test` depend on `zx-raylib`; `test:` pulls `raylib-web-project-test` and both android-raylib tests; `CI_SHARD_WEB` carries `zx-raylib-test` + `raylib-web-project-test`.
-- `mk/raylib-library.mk` (114 lines): builds the raylib package native and `PLATFORM_WEB`; also hosts the webp/avif/aom archive recipes and `RAYLIB_ARCHIVES` - codec recipes must move out before deletion.
-- `mk/renderer-artifact.mk` (1 line): includes `raylib-library.mk`.
-- `mk/zx-raylib.mk` (63 lines) + `mk/raylib-shell.html` (25): the raylib ZX native player and its web shell.
-- `cmake/renderer-artifact/CMakeLists.txt` (5) + `RaylibAndroid.cmake` (82).
-- `scripts/renderer_artifact.py` (364 lines, 18 raylib refs): provides/consumes the `renderer-raylib` artifact (linux-x86_64-gnu, windows-x86_64-mingw, android-aarch64/armv7).
-- `ziran.toml`: `[dependencies.raylib]` (lines 11-12), exports `Raylib`/`raylib_runtime` (94-95), `bundle_raylib` (118), `media_audio_raylib` (226), `raylib_secondary_window`/`raylib_trace` (295-296), `[artifacts.renderer-raylib]` (401-403, outputs `lib/libraylib.a` + raylib headers + codecs + fonts).
-- `ziran.lock`: raylib package entry and kryon's `raylib` dependency (lock 6,633 B).
-- `ziran.local.toml`: raylib source override (line 3).
-- 99 `examples/*/ziran.lock` files carry the transitive raylib entry; regenerate after the dependency drops.
-
-### Tests
-
-43 raylib test files, 5,168 lines, 206,545 bytes under `tests/` (`raylib_*` behavior/pixel/project suites, `ziran_raylib_graphics/retained/windows_typeface`, `android_raylib_host_link/jni/frame_pixels`, `bitmap_raylib`, `backend_render_benchmark_raylib`, `rotated_text_raylib`, renderer probes). Affected neighbors: `zx_native_test.py` (runs the raylib ZX player), `shader_host_test`, `renderer_consumer_test`, `project_static_archive_test`.
-
-### Docs and CI
-
-- Docs hits: `BACKENDS.md` 61, `API.md` 51, `PROJECTS.md` 23, `FEATURE_MATRIX.md` 4, `ARCHITECTURE.md` 3, plus `ACCESSIBILITY`, `BOUNDARIES`, `COMPOSITION_INPUT`, `WIDGET_CONFORMANCE`, `ZOOM`, `window-focus`; also `README.md`, `THIRD_PARTY_NOTICES.md`, `CHANGELOG.md`, `icons/README.md`.
-- CI `.github/workflows/ci.yml`: line 115 (`zx-raylib --check`), lines 315-373 ("Desktop and raylib hosts on private Xvfb" job, "Raylib host" step, and the typeface/trace/secondary-window/frame-pixels/frame-input step with SDL2/drm/gbm/egl/glesv2 libs).
-
-### Total
-
-About 13,000 tracked lines (~0.5 MB): 7,169 host-module lines, 5,168 test lines, ~654 build/tooling lines, plus Makefile/docs/manifest edits - and the `raysan5/raylib` source dependency disappears from every consumer lock.
-
-## 2. Consumers
-
-### Breeze (`waozixyz/apps/breeze`)
-
-- Linux desktop: raylib host today through its own build (Makefile builds `libraylib.a`, 45 raylib lines); `src/platform/{host_input,host_window,app_trace,radio_native,audio_runtime,app_host,app_breaks,application_frame}` and `src/screens/node_app_screen.zi` import `kryon/raylib_runtime`/window runtime. In flight: `plans/2026-11-15-breeze-desktop-without-raylib.md` moves Linux desktop to Kryon's desktop host (SDL2 + Cairo/Pango) with a before/after benchmark.
-- Windows: MinGW-cross-compiled raylib host (`mk/windows.mk`, `WINDOWS_RAYLIB_RULE`, raylib audio + AVIF_RAYLIB defines).
-- Web: canvas host already (`application_frame.zi` canvas branch, `mk/web.mk`) - no raylib.
-- Android: `KRYON_ANDROID_HOST` + `KRYON_RAYLIB_HOST`; builds its own `breeze_raylib` static lib (rcore/rshapes/rtextures/rtext/raudio) for its GL renderer; `droid/.../CMakeLists.txt` 19 raylib lines.
-
-### Wurm (`waozixyz/games/wurm`)
-
-- Linux desktop: `backend = "desktop"` but `native_artifacts = "kryon:renderer-raylib"` (pulls `libraylib.a` + opus/webp/avif archives) and `src/desktop_host.zi` imports `kryon/media_audio_raylib` directly (raylib/miniaudio provider on the SDL desktop host).
-- Portable: `codegen = "zx"` desktop bundle; Android `backend = "android"` (NativeActivity, raylib-free except the glue); web audio test uses `canvas_audio_host`.
-- Tests: `audio_transport_test.zi` imports `media_audio_raylib`.
-
-### Jungle (`waozixyz/learning/jungle`)
-
-- Android: Kryon's android host draws the Frame; sound calls raw raylib audio C API from `host/sound.zi` (`sound_raylib` system_library: `InitAudioDevice`, `LoadAudioStream`, `UpdateStream`, `LoadWaveFromMemory`/stb_vorbis); `droid` CMake compiles `raudio.c` (`jungle_audio`).
-- Linux desktop: its own `host/desktop.zi` entry (native_codegen), no Kryon raylib host; Makefile references `mk/raylib-library.mk` only as a dependency of the avif `.so` rule.
-- Treehouse 3D uses `scene_render` (raylib-free).
-
-### Shovey (`waozixyz/games/shovey`)
-
-- Linux desktop: ships Kryon's raylib ZX player (`make -C KRYON zx-raylib`, copies `build/zx-raylib/zx`).
-- Windows: `src/player_windows.zi` imports `kryon/raylib_runtime`; `player_sound.zi` uses raylib audio device.
-- Android: packaging links raylib through the `renderer-raylib` artifact metadata (`SHOVEY_RENDERER_LINK` feeds a fake `raylib` INTERFACE target).
-
-### Arcade (`waozixyz/games/arcade`)
-
-- Linux desktop: already raylib-free (`kryon/desktop_runtime` + Cairo in `src/desktop.zi`).
-- Windows: standalone player on Kryon's raylib host (`src/windows.zi` imports `kryon/raylib_runtime`); `src/sound.zi` uses raylib audio device; `scripts/build-windows.py` builds raylib from the locked package.
-- Android: `backend = "android"` (raylib-free except glue).
-
-### Werk (`waozixyz/apps/werk`)
-
-- Linux desktop: `backend = "desktop"` - no direct raylib code; `ziran.lock` carries the transitive raylib entry and `RAYLIB_DIR` is passed into the droid Gradle/Android build (6 lock hits, Makefile lines 14/216/223/228).
-
-### Apps (`waozixyz/modules/apps`)
-
-- Tests/hosts select the raylib provider on native: `tests/audio_host_behavior.zi` (`MediaAudioUseRaylib()`), `tests/art_host_behavior.zi` (`UnloadImage`, `RaylibDecodePixels`); README documents `MediaAudioUseRaylib()` and `RAYLIB_A` test setup.
-
-### Entity and other packages
-
-- Entity (`waozixyz/modules/entity`), auth, dew, gamekit: lock-only raylib entries - resolve automatically when Kryon drops the dependency.
-- Harmony clients: `harness/harmony/plugins/jobs/kryon` is the legacy C "Kryon" (raylib-style `kryon.h` support library) with its own vendored raylib submodule, `mk/raylib.mk`, generated compat wrappers, and a raylib conformance matrix. Separate codebase and repository from Ziran Kryon; removing its raylib is an independent Harmony-side decision, not a step of this plan.
-- Archived (`ARCHIVE/*`, `harmony-legacy`) and doc-only mentions (`ziranlang/packages/audio/README.md`): no open work.
-
-## 3. Platform status and gaps
-
-- Linux: complete non-raylib desktop stack exists - `desktop_run`/`desktop_loop`/`desktop_window` (SDL2), `cairo_raster`, `desktop_secondary_window` (SDL window + Cairo surface, up to 3), `audio_sink_sdl` + `media_audio_desktop`, Vorbis via `std/vorbis`, Opus via the audio package, GTK tray, clipboard, background windows, and the desktop-host ZX player (`zx-player` + `zx2native` linking the desktop host library, `zx-window-test`). Open gaps: `media_audio_opus` still sinks into `audio_sink_raylib`; `notification_desktop` focus query; `window_icon`/`image_export` decode/export rewires.
-- Web: complete canvas stack - `canvas_run` (Canvas2D + Emscripten/Asyncify), canvas audio host, canvas ZX player (`zx_canvas.zi`), browser ZX window via the canvas player (commit e865c067). The raylib WebGL page dies with the raylib host; the only loss is custom raylib-host WebGL content (Kryon's raylib-web 3D-cube demo) - no maintained consumer uses it.
-- Android: Kryon's host is already raylib-free at presentation - NativeActivity owned in `android_native.zi`, direct `ANativeWindow` pixels, Pixmap runtime, JNI services, `MediaPlayer` for portable guest audio. Single gap: `android_jni.zi` takes the `android_app` pointer from raylib's `GetAndroidApp` glue; replace with the NDK `native_app_glue` bridge. Consumer-side gap: Jungle's raw raudio calls need the Android media service (or AAudio/OpenSL).
-- Windows: no non-raylib host exists. The desktop host is Linux-only today (no `_WIN32`/Darwin paths in `desktop_loop`/`desktop_window`; sibling modules are `*_linux`). Gap: port the desktop host to Windows (SDL2 window, Cairo raster, `*_linux` platform modules) so Breeze/Arcade/Shovey Windows can leave the raylib host; `audio_sink_sdl`/`media_audio_desktop` already speak SDL2, which covers Windows audio.
-- macOS: no non-raylib host; raylib is currently the only macOS surface (`RAYLIB_HOST_OS = Darwin` handling in `zx-raylib.mk`). Scope decision needed from the owner: port desktop host to macOS or accept losing macOS until then.
-- ZX player: two native players exist - the raylib one (`tools/zx_raylib.zi` + `mk/zx-raylib.mk`) and the desktop-host one (`zx-player`, `zx2native`, canvas web player). Gap: point Kryon's `zx-headless/services/hosted` tests and Shovey's desktop packaging at the desktop-host player, then delete the raylib player.
-- GPU/3D `scene_render`: `src/ui/scene_render.zi` + `scene_gpu_math`/`scene_gpu_sources` are pure Ziran software rendering - no raylib imports, no foreign GL. Consumers (Jungle treehouse, Wurm terrain) are unaffected. The only raylib GL path is the raylib host itself; nothing else needs it.
-
-## 4. Ordered removal plan
-
-Consumers move first (non-raylib hosts already cover Linux/web/Android), Kryon host gaps close in parallel where they unblock consumers, raylib deletion is last.
-
-1. Finish Breeze Linux desktop on the desktop host - existing `plans/2026-11-15-breeze-desktop-without-raylib.md`, benchmark before/after, then remove Breeze's Linux raylib link. Size: port already scoped (13 `src/platform` files, Makefile 45 lines). Type: consumer port (Breeze).
-3. Switch Wurm and Apps to the desktop audio/decode path - Wurm `desktop_host.zi` to `media_audio_desktop`, Wurm `native_artifacts` to a codec-carrying non-raylib artifact, Apps tests to `media_audio_desktop` + `ziran_image_decode`; refresh locks. Size: ~4 files + locks. Type: consumer port. Proves `media_audio_desktop` parity before Kryon deletes the raylib provider.
-5. Jungle Android audio - replace `host/sound.zi` raw raudio calls with Kryon's Android media service and drop `raudio.c` from the droid CMake. Size: ~1 file + cmake. Type: consumer port (depends on step 2 for a raylib-free Android link).
-6. Desktop-host Windows port - SDL2 window + Cairo raster + platform modules so Breeze/Arcade/Shovey Windows builds leave the raylib host; then move those three Windows players and their raylib audio to it. Size: largest new surface (new platform backend; consumers ~3 files each). Type: Kryon host work, then consumer ports. Include the owner's macOS scope decision here.
-   - Windows host implementation works under Wine in the canonical checkout (private clones are prohibited by the session rules). SDL window creation/presentation and secondary windows are shared. Linux AT-SPI lifecycle is now an optional platform registration; Windows does not import the AT-SPI bus. Cairo/GdkPixbuf image storage is shared, with OS library loading in `image_libraries_linux.zi` and `image_libraries_windows.zi`; Windows resolves symbols from their actual DLL, including GObject and WebP's core/demux split.
-   - Build rule: `renderer-desktop-windows`, target `windows-x86_64-mingw`. The current Breeze `mk/windows.mk` and Arcade `scripts/build-windows.py` cross-build raylib, not SDL2/Cairo/Pango, so there was no existing Windows desktop SDK rule to reuse. Kryon's pinned MSYS2 package manifest downloads binary libraries into ignored build storage (no vendored source trees), verifies SHA-256, and publishes MinGW import libraries plus `runtime.tar` (DLLs, fontconfig data and dependency licenses), the Kryon font and `renderer.json`. Consumer interface: `ziran pkg artifact kryon:renderer-desktop-windows --platform windows-x86_64-mingw`; load its descriptor with Ziran's `ziran_artifacts.Artifact`, resolve metadata with `renderer_metadata`, and pass `renderer_link` to MinGW. Unpack `runtime.tar` into the installation root and place the executable in its `bin` directory with the DLLs, retaining `etc`/`share`. Ship `resources.font`/`resources.font_license` and set `KRYON_FONT_PATH` to the shipped font's Windows path. Generate C with `--target-os windows --target-cpu x64 --define _WIN32 --define PLATFORM_DESKTOP`. Import `kryon/app`: `App.Show(App.Window)` runs a clear window; `App.Run(App.Window, draw: App.Draw)` runs widgets, with `draw(frame: App.Frame)`. `desktop_run` binds `frame_entry.ProjectFrame` for frame projects; `desktop_loop.RunTitled` supports custom loops. Consumer ports remain separate.
-   - Platform modules: existing `tray_windows`; new `file_dialog_windows` (UTF-16 Windows common dialog), `system_clipboard_windows` (registered PNG clipboard), `background_window_windows` (owned SDL compact pane). Desktop text clipboard and audio use SDL2 directly. Consumer platform selection belongs in OS-specific imports, never Linux modules forced into a Windows build.
-   - Local test target: `build-queue -- make windows-desktop-host-test` passes. It cross-links raylib-free PE executables and, when its source is present, the ZX desktop-host DLL with MinGW, verifies the ordinary renderer artifact descriptor/hashes, and runs on Wine's private Xvfb. Pixel checks pass for the 320×160 `examples/window.zi` clear colour, public `App.Run` Text/Button glyphs and button surface, and an independent secondary Cairo surface; all windows close cleanly. Windows SDL text clipboard, PNG clipboard copy/capacity, compact-pane restore/reopen, native dialog cancellation, PNG/JPEG/WebP straight RGBA/invalid input, SDL sink and `media_audio_desktop` PCM also pass. Tray calls are exercised, but shell integration is not asserted on Xvfb. Windows native hardware/driver testing remains unverified.
-   - Open upstream frame-entry gap: compiling stock `desktop_run` with a bound project frame emits `std_file_linux.c:62:119` and `:65:99`: `error: unknown type name 'Overlapped'`. Ziran already declares the record in `std/file_linux.zi:66`, referenced by the `ReadFileRaw`/`WriteFileRaw` foreign signatures at lines 46–49, but closed-graph C output drops it when only sequential reads remain. The focused reproduction is saved under ignored `backup/windows-desktop-host`; it is excluded from the passing Wine target until the compiler fix lands. No generated-C patch or type keep-alive was added. Reported to the coordinator for Ziran.
-   - Open upstream ZX gap: the desktop host DLL cross-links, but `zx2native --target x86_64 --platform windows` rejects an external host: `assembly.gap.machine-host: machine ELF does not implement host capability ZxWindowOpenHost; no alternate engine was selected`. Ziran's `cmd/zx2native/main.c:310` enables host linking only for x86-64 Linux; lines 331–334 emit that rejection. The test records the gap and will run a linked Windows ZX executable when the capability arrives. Windows AVIF's optional `kryonavif.dll` is not supplied by this SDK rule; codec-artifact work belongs to the internals lane.
-   - Linux regression status: `desktop-windows-test`, `desktop-audio-test`, `native-text-test`, `native-accessibility-test`, `image-pixels-test`, `pay-per-import-test` (Linux and web), and `push-check` passed locally in the final checkpoint suite. The final Windows-target source check also passes. The dynamic image loader now imports the public `webp/native_api` directly, avoiding both static wrapper symbols and a POSIX loader on Windows. That prerequisite was [committed and pushed upstream](https://github.com/ziranlang/webp/commit/ec6ed304767e10c125ab2820f3b01d6fd773e147), with ordinary package-import and dynamic-contract source/saved native tests passing; CI not checked yet. Kryon's manifest and lock pin that export. Strict `build-queue -- sh tests/image_integration.sh image_dynamic_integration` passes ordinary package artifacts, source and saved IR, ASan/UBSan and leak detection. Full `build-queue -- make -j1 test` passed package-link/renderer-consumer stages, then stopped at `zx-services-test` failure 2 opening `assets/tone.wav`. Its Linux media dispatch and relative-path rejection are unchanged from `origin/master`; clean-baseline execution was not claimed because other lanes share this checkout. No media/player fix made here. The verified Windows feature is checkpointed separately from these upstream gaps; Kryon remains unpushed until `v0.4.0` is tagged and the coordinator routes integration.
-   - macOS assessment (not authorized to build): SDL2 window/events, Cairo raster, secondary windows and SDL audio can share this port. Supply an artifact built against SDL2/Cairo/Pango/Fontconfig/FreeType for the selected macOS architecture and minimum deployment target, choose Mach-O dynamic loading/library names, verify or port `std/file`/timer and executable-path lookup (currently `/proc/self/exe` outside Windows), implement Cocoa clipboard/PNG, native file dialog and menu-bar tray adapters, and validate on macOS. Windows common dialogs, tray and background pane need native macOS counterparts; Linux AT-SPI does not apply. This shares most raster/window code but still needs native adapters and platform validation. No macOS build or deployment is included in this task.
-7. Switch Shovey's desktop packaging to `zx-player`/`zx2native`. Kryon's player consolidation is complete; this consumer change belongs to Shovey.
-9. Delete raylib from Kryon - remove the 10 backend modules (7,169 lines), 43 test files (5,168 lines), `mk/raylib-library.mk`, `mk/renderer-artifact.mk`, `mk/zx-raylib.mk`, `mk/raylib-shell.html`, `cmake/renderer-artifact/*`, `renderer-raylib` artifact and `backend = "raylib"` support from `scripts/renderer_artifact.py`/`src/project`, docs sections, CI steps and shards, `[dependencies.raylib]` from `ziran.toml`, `ziran.lock`, `ziran.local.toml`, and regenerate the 99 example locks. Size: ~13,000 lines. Type: Kryon deletion + CI.
-
-Open work only; Breeze's Linux-desktop move, Wurm/Apps switches, and the Harmony legacy C tree are tracked as above - nothing in this plan assumes a raylib fallback stays behind.
-
-## Desktop image services and route snapshots (K5–K7)
-
-- Desktop cache invalidation removes exact files, folder descendants, or all
-  pictures, including Lanczos copies and pending jobs. Preview decoding shares
-  the bounded, oriented decoder and has an explicit release operation.
-- `frame_transition.FramePreviousSnapshot()` returns owned Cairo or Android
-  NativeActivity pixels. Captures preserve row orientation and alpha, survive
-  later painting/desktop resize, and draw through Image at logical camera
-  bounds. Web returns an invalid surface. Android composes the new route before
-  clearing its retained pixels. Session mutation cannot dispose host snapshots.
-- Local source/saved tests cover cache reloads, path boundaries, canceled smooth
-  jobs, independent copies, bounded storage, alpha/orientation, negative camera
-  origins, resize, repeated disposal, and host/session ownership. Android host
-  graphs also compile/link with the NDK; desktop windows use private Xvfb.
-
-## 2026-11-16: core audio ownership update
-
-Owner correction: “remember auido should be acore ziran moudle becasue ioaudio dosent nede a ui”. The Android PCM sink and the mixer, output devices and decoding now belong to Ziran's `audio` standard-module family. Kryon will retain its UI-facing media commands and owners, calling those modules directly; moved Kryon modules must be deleted without aliases.
-
-The scaffold defaults to minSdk 21 (`templates/droid/droid/app/build.gradle` and `scripts/android-build.sh`). AAudio is available from API 26, so retain OpenSL ES for API 21–25, resolving AAudio dynamically to preserve API-21 app loading. Moto `ZE2223BQZT` is connected to Omega and reports API 28. The Ziran coordinator cleared the upstream mixer/sink/decoder files. The API-21 armv7 binary has passed its PCM playback contract on the Moto through both AAudio and OpenSL ES; the host deterministic AAudio failure/lifecycle contract also passed. The std audio checkpoint is committed and [pushed](https://github.com/ziranlang/ziran/commit/dd0aff6424490d1dcda7b417d1207c4799fcef7c); CI not checked yet. It is not installed into a Kryon app yet.
-
-Local validation in Ziran: `build-queue -- make check CHECK_FILTER=audio_checks` passed the mixer/PCM/seek contracts, delayed no-device return and retry backoff, deterministic Android failures, SDL disk output on private Xvfb, MP3/Vorbis incremental decode and seek, rich Ogg/Vorbis validation/comments, and standalone WebAudio playback/lifecycle. `build-queue -- make check CHECK_FILTER=vorbis_linux` and `build-queue -- make check-bootstrap` passed after the inspector migration. `build-queue -- make audio-android-test ANDROID_NDK=/home/wao/Android/Sdk/ndk/28.2.13676358 ANDROID_SERIAL=ZE2223BQZT` passed actual armv7 PCM callbacks through AAudio and OpenSL ES, including the target-selected sink. `build-queue -- make android-parity ANDROID_ARCH=armv7 ANDROID_API=21 ANDROID_NDK=/home/wao/Android/Sdk/ndk/28.2.13676358 ANDROID_SERIAL=ZE2223BQZT` passed all 75 native/engine/cache parity programs on the Moto. These targets belong to Ziran, not Kryon.
-
-The full Ziran suite passed 283 of 284 retained tests; its sole failure was generated audio documentation, which was regenerated and passed the focused `site_pages` local test before the std commit. The std checkpoint also passed `make check-bootstrap`. Push order is Ziran std, the optional audio package, then Kryon's direct std imports and removal of its moved modules. Opus and quality sinc conversion stay optional in the audio package; std uses dr_mp3 and the existing guarded libvorbisfile implementation, without duplicate Vorbis implementations. The coordinator released Kryon's manifest for this audio switch; the active integration task retains its artifact changes. Final step 9 remains gated on the owner's confirmation that every consumer has migrated. Breeze K5–K8 and the Android codec artifact belong to another task.
-
-### Native codec follow-up and coordinated package switch
-
-Core codec sources and SHA256-pinned Xiph `ogg`, `vorbis` and `vorbisfile` recipes belong to Ziran. The Win64 C-long fix and official-header ABI contracts are [pushed](https://github.com/ziranlang/ziran/commit/b88ab90c92d05f51899767e84ee19f1a0f99f854). The IMA/MS ADPCM WAV support and external libvorbis shift-only sanitizer exception are [pushed](https://github.com/ziranlang/ziran/commit/2313b49cb005610853faeec46447fc38578a2a15), CI not checked yet. Local ASan/UBSan with leak detection passes; the fresh full std gate passes 284/284 retained tests and bootstrap matches. ADPCM contracts compare mono/stereo samples exactly with independent libsndfile/FFmpeg references and exercise source/saved mixer playback and seek, fact counts, partial blocks, malformed headers, coefficients, saturation and preserved output on failure.
-
-The optional audio package is migrating to direct std imports, keeping Opus and quality sinc conversion. Its full local suite, private Wine/Windows gate (official Xiph ABI included), all four API-21 Android ABI builds, actual Moto codec/resampling comparisons and sanitizer gate passed. The package migration is [pushed](https://github.com/ziranlang/audio/commit/1b2f35b7b39df6fb9af7a52324b4b7cf18e98df2), CI not checked yet; its final native/saved/portable/sanitizer, private Windows and actual Moto gates passed with the published std pin. The generated package page and index row are [pushed](https://github.com/ziranlang/ziran/commit/52aad2d6cff41d53761906a022acfe2a590d2318) after the focused local site test passed. Kryon consumers import std directly and delete the six moved mixer/sink/decoder modules. The coordinator released the shared manifest for this switch; the integration task retains its artifact edits.
-
-Kryon's desktop PCM/MP3/Vorbis mixer tests and complete private Wine/Windows-host source/saved regression gate pass locally. `build-queue -- make android-audio-test ANDROID_SERIAL=ZE2223BQZT ANDROID_NDK=/home/wao/Android/Sdk/ndk/28.2.13676358` passes source and saved IR on the Moto, checking stereo samples, asynchronous open, pause/resume, stop and joined callback shutdown. Kryon’s public pins select the published std and optional package checkpoints. Moto `android-parity` passed all 75 programs. The integration lane pushed the Opus cache-source and Canvas math-link fixes. The previously queued full-gate command was interrupted without a saved result and is not counted as passed. Fresh local `build-queue -- env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER HARMONY_DESKTOP_RECOVERY=0 YUE_DESKTOP_RECOVERY=0 xvfb-run -a make -j1 test push-check android-audio-test ANDROID_SERIAL=ZE2223BQZT ANDROID_NDK=/home/wao/Android/Sdk/ndk/28.2.13676358` passed codec-artifact source/saved consumers and native/browser ZX audio, then stopped at `program-entry-project-test`: the browser reported title `hello_program`, no boot signal and painted pixels, where the test expected `Hello`. The active CI task owns that failure. With the published std and optional audio pins, `desktop-audio-test`, `desktop-audio-mp3-test`, `desktop-audio-vorbis-test`, `windows-desktop-host-test`, `android-audio-test` and `push-check` all passed in one serialized local run under `build-queue`, with private Xvfb for windows. This covers source/saved Windows host and SDL PCM behavior and source/saved actual Moto PCM playback. The audio checkpoint excludes program-entry, window-title and Canvas build-rule changes; the broader full-suite failure is retained above and belongs to the separate Canvas entry fix. No full-suite success is claimed. The non-UI browser audio engine and host effects are approved for a separate follow-up after this switch is pushed. No aliases or compatibility shims are retained.
+1. Repin the five Kryon-based packages to the deletion commit, on one Kryon:
+   plot, entity, game2d, css and apps. Build on the Mesh rename worker's
+   pushed Entity/Apps commits (`daochi_client` becomes `mesh_client`) without
+   reverting them. Include Entity's native-crypto fix: Android and Windows
+   builds generate C with the host's `GEN_ZI2C` and target `ZIRAN_DEFINES`.
+   Breeze needs all five on one Kryon, and also practices and arcade, which
+   pin Kryon themselves.
+2. Desktop-host APIs the terminal and Harmony's terminal need before they
+   leave `kryon/Raylib` (replacement table in
+   `backup/raylib-gaps/terminal-api-map.md`): a wait on program descriptors
+   plus window input, a frame-rate setter, an exit key, middle-button polling,
+   open flags (undecorated, topmost, always-run), a fullscreen toggle and a
+   glyph pre-warm.
+3. Shovey standalone desktop: add the app/1 source-native desktop runner and
+   its build binding to Kryon (`ReadAppHost` plus the app UI and platform
+   capabilities `zx2native` needs; today `libkryon-desktop.so` exports only
+   the five `ZxWindow*` capabilities). The node/2 adapter belongs to Apps
+   (Kryon must not depend on Apps). Direct node/2 ZX to ELF (aggregate-return
+   host ABI plus a lifecycle entry) is a later Ziran item.
+4. Consumers off raylib, each in its own task: Breeze still has raylib in its
+   Android/Windows hosts, audio and build rules. Shovey, Jungle, Arcade, Wurm
+   and Werk have no active raylib references and need only their Kryon repin.
+5. macOS: CI builds the desktop ZX player and runs its headless bundle check;
+   native macOS execution is unverified.
+6. `tests/opus_audio_test.py` (not part of `make test` or CI) fails its
+   pause-position check (exit 8) against the local audio package checkout.

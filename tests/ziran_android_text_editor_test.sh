@@ -9,7 +9,7 @@ mkdir -p "$work"
 rm -rf "$work/c"
 
 # The device protocol compiles exactly as it does for the APK, with
-# ANDROID_BUILD active; the raylib JNI surface stays stubbed by the host
+# ANDROID_BUILD active; the desktop JNI surface stays stubbed by the host
 # file, and bionic's zero-initialized mutexes stand in as glibc ones.
 "$ziran" build --project --target=c --module-path "$repo/tests" --no-main --define ANDROID_BUILD \
     --root "$repo" \

@@ -9,8 +9,8 @@
 #import "page_input"
 #if OS == .WEB {
 
-    // Sample existing page gamepad APIs once per host poll. Their button
-    // Page button IDs map to standard Gamepad numbering for navigation.
+    // Sample page gamepad APIs once per host poll. Page button IDs map to
+    // standard Gamepad numbering for navigation.
     CanvasGamepadPoll :: () {
         buttons: [4]u32
         logical: [8]s32 = .{0, 1, 9, 12, 13, 14, 15, 8}

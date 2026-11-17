@@ -6,7 +6,7 @@ import subprocess
 import time
 
 from toolchain import ROOT
-from raylib_project_test import png_pixels, rgb
+from image_test_tools import png_pixels, rgb
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--serial', required=True)

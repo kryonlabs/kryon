@@ -198,9 +198,7 @@ ArgumentCount :: (command_line: string) -> s32 {
 
 BackendDescription :: (profile: ProjectProfile) -> string {
     backend := profile.backend
-    if backend == "raylib" && profile.platform == "web" { return "raylib WebGL browser page" }
     if backend == "desktop" { return "SDL2/Cairo window" }
-    if backend == "raylib" { return "raylib window" }
     if backend == "canvas" { return "Canvas2D browser page" }
     if backend == "terminal" { return "terminal" }
     if backend == "pixmap" { return "headless image, PPM on standard output" }
@@ -507,13 +505,12 @@ main :: () -> s32 {
         return AndroidCommand(config, profile, installed_kryon, installed_ziran, verb)
     }
     if (profile.backend != "terminal" && profile.backend != "desktop" &&
-        profile.backend != "raylib" &&
         profile.backend != "canvas" &&
         profile.backend != "pixmap") ||
     (profile.codegen != "c99" &&
         !(profile.codegen == "zx" &&
         (profile.backend == "desktop" || profile.backend == "pixmap" ||
-        profile.backend == "canvas" || profile.backend == "raylib"))) {
+        profile.backend == "canvas"))) {
         return Error("this backend/codegen pair is not available yet")
     }
     // Hosts name the program's window, page and menu entry after this.

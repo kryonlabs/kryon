@@ -4,7 +4,7 @@ Mono :: #import "pixmap_mono_font";
 #import "utf8"
 
 // Text for the pixmap host: Kryon's font, Liberation Sans, from its outlines.
-// It is laid out as the desktop, raylib, and canvas hosts lay text out: a
+// It is laid out as the desktop and canvas hosts lay text out: a
 // `font`-pixel line box runs from the top of the ascent to the bottom of the
 // descent, the baseline sits at the ascent, and glyphs advance by their
 // unhinted widths. Rasterizing uses only integer arithmetic -- positions in

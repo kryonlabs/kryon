@@ -1,5 +1,5 @@
 // Kryon's asset audio (kryon/media_audio) on the desktop mixer and SDL sink,
-// without raylib: voices load Ogg Opus and WAV by content, music streams,
+// Voices load Ogg Opus and WAV by content, music streams,
 // and PCM voices play the blocks a program submits. The device opens with
 // the first voice. MediaAudioUseDesktop installs the provider.
 #import "media_audio"

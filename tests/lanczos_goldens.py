@@ -4,12 +4,12 @@
     lanczos_goldens.py compare DIR OUTPUT  check each frame OUTPUT names
 
 Each OUTPUT line `BACKEND KIND INDEX X Y WIDTH HEIGHT` names a 128 by 128
-frame DIR/KIND-INDEX.bgra (Cairo, pixmap) or .rgba (Raylib, Canvas), drawn over the background
+frame DIR/KIND-INDEX.bgra (Cairo, pixmap) or .rgba (Canvas), drawn over the background
 (248, 250, 252) and clipped to (7, 9, 113, 103), whose picture covers the
 device pixels X, Y, WIDTH, HEIGHT. The expected copy is Pillow's
 Image.resize(LANCZOS, box) of the premultiplied picture (Cairo) or of the
 picture itself, which Pillow unpremultiplies as the straight-alpha hosts
-(pixmap, Raylib, Canvas) do, composited with the case's tint alpha. Opaque
+(pixmap, Canvas) do, composited with the case's tint alpha. Opaque
 pictures under an opaque tint must match exactly; blending a translucent copy
 may differ by the hosts' rounding. A browser also stores canvases
 premultiplied in 8 bits and blends with its own rounding (Firefox: about +0.6
@@ -85,7 +85,7 @@ def compare(directory, output):
     cases = 0
     for line in Path(output).read_text().splitlines():
         fields = line.split()
-        if len(fields) != 7 or fields[0] not in ('cairo', 'raylib', 'pixmap', 'canvas'):
+        if len(fields) != 7 or fields[0] not in ('cairo', 'pixmap', 'canvas'):
             continue
         backend, kind, index = fields[0], fields[1], int(fields[2])
         left, top, width, height = (int(float(value)) for value in fields[3:])
@@ -96,7 +96,7 @@ def compare(directory, output):
             failures += 1
             continue
         expected = expected_frame(directory, kind, index, left, top, width, height,
-                                  backend in ('pixmap', 'raylib', 'canvas'))
+                                  backend in ('pixmap', 'canvas'))
         exact = kind == 'opaque' and TINT_ALPHA[index] == 255
         worst = 0
         for at, color in enumerate(expected):

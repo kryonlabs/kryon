@@ -78,7 +78,7 @@ main :: () -> s32 {
     CanvasEventsEndFrame()
     key, modifiers = Take()
     if key != 0 || canvas_keys_pressed_count != 0 { return 10 }
-    // Raylib's GetKeyPressed reads this frame's presses beside session delivery.
+    // desktop's GetKeyPressed reads this frame's presses beside session delivery.
     unused CanvasKeyDown("KeyC", "c", false, 0)
     if GetKeyPressed() != 67 || GetKeyPressed() != 0 { return 16 }
     key, modifiers = Take()
@@ -151,7 +151,7 @@ main :: () -> s32 {
     key, modifiers = Take()
     bytes: [8]u8
     if key != KeyEnter || TypedTextTake(app_session, bytes[:]) != "h " { return 34 }
-    // Raylib's GetCharPressed takes this frame's characters; later ones survive.
+    // desktop's GetCharPressed takes this frame's characters; later ones survive.
     if GetCharPressed() != 104 || GetCharPressed() != 32 || GetCharPressed() != 0 { return 35 }
     CanvasTyped(120)
     CanvasEventsBeginFrame()

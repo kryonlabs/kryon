@@ -320,7 +320,6 @@ SyncAndroidSurfaceSize :: (width: *s32, height: *s32) -> s32 {
     h := surface_height
     synced: s32 = 0
     #if ANDROID_SURFACE {
-        AndroidNativeSyncSurface()
         if AndroidNativeSurfaceSize(*w, *h) {
             surface_width = w
             surface_height = h

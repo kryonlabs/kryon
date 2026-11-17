@@ -7,8 +7,7 @@ tool = "kryon"
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
-# Ziran v0.6.0
-ref = "d17c7aa1e093066ef03f307a45f6966dd9b29d4b"
+ref = "7fbc8152b0ab18b641a73d16d93ccda1e1c7f863"
 
 [tool.kryon]
 default_profile = "desktop"

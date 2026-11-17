@@ -1,0 +1,14 @@
+#scope_file
+dl :: #system_library "c";
+Load :: (path: *u8, flags: s32) -> *void #foreign dl "dlopen";
+Find :: (library: *void, name: *u8) -> *void #foreign dl "dlsym";
+#scope_export
+OpenLibrary :: (path: *u8) -> *void { return Load(path, 1) }
+Lookup :: (library: *void, name: *u8) -> *void { return Find(library, name) }
+PIXBUF_LIBRARY :: "libgdk_pixbuf-2.0.0.dylib"
+OBJECT_LIBRARY :: "libgobject-2.0.0.dylib"
+WEBP_LIBRARY :: "libwebpdemux.2.dylib"
+WEBP_CORE_LIBRARY :: "libwebp.7.dylib"
+AVIF_LIBRARY :: "libkryonavif.dylib"
+AVIF_LOCAL_LIBRARY :: "lib/libkryonavif.dylib"
+AVIF_PARENT_LIBRARY :: "../lib/libkryonavif.dylib"

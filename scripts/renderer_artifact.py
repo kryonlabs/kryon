@@ -11,8 +11,6 @@ import tempfile
 
 
 SUPPORTED_RENDERERS = {
-    'renderer-raylib': ('linux-x86_64-gnu', 'windows-x86_64-mingw',
-                        'android-aarch64-bionic', 'android-armv7-bionic'),
     'renderer-desktop': ('linux-x86_64-gnu', 'android-aarch64-bionic', 'android-armv7-bionic'),
     'renderer-desktop-windows': ('windows-x86_64-mingw',),
     'renderer-web': ('emscripten-wasm32-emscripten',),
@@ -288,111 +286,6 @@ def build(name, target, stage, root):
             copy(work / 'avif-codec/libkryonavif.so', stage / 'lib/libkryonavif.so')
         meta['archives'] = ['lib/libkryonwebp.a', 'lib/libavif.a', 'lib/libaom.a', 'lib/libopus.a']
         meta['shared_libraries'] = ['lib/libkryonavif.so']
-    else:
-        source = locked_source('raylib')
-        cc = os.environ.get('CC', 'cc')
-        triple = capture([cc, '-dumpmachine'])
-        if target == 'linux-x86_64-gnu' and ('x86_64' not in triple or 'linux' not in triple):
-            raise ValueError('CC must target Linux x86_64')
-        if target == 'windows-x86_64-mingw' and ('x86_64' not in triple or 'mingw' not in triple):
-            raise ValueError('CC must target Windows x86_64 MinGW')
-        headers = ['raylib.h', 'rlgl.h', 'raymath.h', 'rcamera.h']
-        for header in headers:
-            copy(source / 'src' / header, stage / 'include' / header)
-        copy(source / 'LICENSE', stage / 'resources/LICENSE-raylib')
-        meta.update(archives=['lib/libraylib.a', 'lib/libkryonwebp.a', 'lib/libavif.a', 'lib/libaom.a', 'lib/libopus.a'], include_directories=['include'])
-        # Intermediates are disposable and kept inside staging; only final files
-        # remain when the generic driver validates and publishes the descriptor.
-        with tempfile.TemporaryDirectory(prefix='.build-', dir=stage) as temporary:
-            work = Path(temporary)
-            if target == 'linux-x86_64-gnu':
-                flags = capture(['pkg-config', '--cflags', 'sdl2', 'libdrm', 'gbm', 'egl', 'glesv2'])
-                run(['make', '-j1', '-f', root / 'mk/renderer-artifact.mk',
-                     'RAYLIB_JOBS=1',
-                     *codec_arguments(work, cc), f'RAYLIB_PACKAGE={source}', f'RAYLIB_BUILD={work}',
-                     f'RAYLIB_CC={cc}', f'RAYLIB_AR={os.environ.get("AR", "ar")}',
-                     f'RAYLIB_CFLAGS={flags} -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_TTF=1',
-                     str(work / 'libraylib.a'), 'codec-archives'])
-                archive = work / 'libraylib.a'
-                webp_archive = work / 'webp/libkryonwebp.a'
-                avif_archive = work / 'avif-codec/avif/libavif.a'
-                aom_archive = work / 'avif-codec/aom/libaom.a'
-                meta['compile_flags'] = shlex.split(flags)
-                meta['link_flags'] = shlex.split(capture(['pkg-config', '--libs', 'sdl2', 'libdrm', 'gbm', 'egl', 'glesv2', 'fontconfig'])) + ['-ldl', '-lpthread', '-lm']
-                meta['defines'] = ['PLATFORM_DESKTOP_SDL', 'GRAPHICS_API_OPENGL_ES2']
-            else:
-                config = ['-DCMAKE_BUILD_TYPE=Release', '-DBUILD_SHARED_LIBS=OFF', '-DBUILD_EXAMPLES=OFF']
-                if target == 'windows-x86_64-mingw':
-                    compiler = Path(shutil.which(cc) or cc)
-                    prefix = triple + '-'
-                    variant = next((suffix for suffix in ('-posix', '-win32')
-                                    if compiler.name.endswith(suffix)), '')
-                    cxx = compiler.with_name(prefix + 'g++' + variant)
-                    if not cxx.is_file():
-                        cxx = compiler.with_name(prefix + 'g++')
-                    libraries = mingw_library_flags(cc)
-                    # dav1d's cross build validates the target processor.
-                    config += ['-DCMAKE_SYSTEM_NAME=Windows', '-DCMAKE_SYSTEM_PROCESSOR=AMD64', f'-DCMAKE_C_COMPILER={cc}',
-                               '-DCMAKE_CXX_COMPILER=' + os.environ.get('CXX', str(cxx)),
-                               '-DCMAKE_RC_COMPILER=' + os.environ.get('RC', str(compiler.with_name(prefix + 'windres'))),
-                               '-DCMAKE_AR=' + os.environ.get('AR', str(compiler.with_name(prefix + 'ar'))),
-                               '-DCMAKE_RANLIB=' + os.environ.get('RANLIB', str(compiler.with_name(prefix + 'ranlib'))),
-                               '-DCMAKE_EXE_LINKER_FLAGS=' + ' '.join(libraries),
-                               '-DPLATFORM=RGFW', '-DOPENGL_VERSION=1.1',
-                               '-DOPENGL_opengl_LIBRARY=opengl32', '-DOPENGL_gl_LIBRARY=opengl32',
-                               '-DCMAKE_C_FLAGS=-O2 -ffunction-sections -fdata-sections -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_TTF=1']
-                    cmake_source = source
-                    meta['defines'] = ['_WIN32', 'PLATFORM_DESKTOP_RGFW', 'GRAPHICS_API_OPENGL_11']
-                    # libssp: the audio package's MinGW libopus keeps its stack protector.
-                    meta['link_flags'] = libraries + ['-lssp', '-lopengl32', '-lgdi32', '-lwinmm', '-luser32', '-lshell32', '-lole32', '-luuid', '-lm']
-                else:
-                    ndk = Path(opts.get('renderer.android_ndk', ''))
-                    api = opts.get('renderer.android_api', '21')
-                    if not api.isdecimal() or int(api) < 21 or not (ndk / 'build/cmake/android.toolchain.cmake').is_file():
-                        raise ValueError('Android requires renderer.android_ndk and android_api >= 21')
-                    arch, abi, macro = ('aarch64', 'arm64-v8a', '__aarch64__') if 'aarch64' in target else ('arm', 'armeabi-v7a', '__arm__')
-                    if arch not in triple or 'android' not in triple:
-                        raise ValueError('CC must target the selected Android architecture')
-                    cmake_source = root / 'cmake/renderer-artifact'
-                    config += [f'-DCMAKE_TOOLCHAIN_FILE={ndk}/build/cmake/android.toolchain.cmake',
-                               f'-DANDROID_ABI={abi}', f'-DANDROID_PLATFORM=android-{api}',
-                               f'-DRAYLIB_DIR={source}/src', f'-DWEBP_DIR={webp_source}',
-                               f'-DKRYON_AVIF_PACKAGE_DIR={avif_package}', f'-DKRYON_WEBP_PACKAGE_DIR={webp_package}',
-                               f'-DAVIF_DIR={avif_source}', f'-DAOM_DIR={aom_source}', f'-DDAV1D_DIR={dav1d_source}',
-                               f'-DKRYON_ANDROID_AUDIO_DIR={audio_package}', f'-DKRYON_ANDROID_OPUS_DIR={opus_source}',
-                               f'-DKRYON_ANDROID_SAMPLERATE_DIR={samplerate_source}']
-                    meta['defines'] = ['ANDROID_BUILD', macro]
-                    meta['link_flags'] = ['-Wl,--wrap=fopen', '-lEGL', '-lGLESv2', '-landroid', '-llog', '-lOpenSLES', '-lm', '-ldl']
-                run(['cmake', '-S', cmake_source, '-B', work, *config])
-                targets = ['raylib']
-                if target.startswith('android-'):
-                    # kryon_android_raylib (cmake/renderer-artifact) also defines the codec targets.
-                    targets.extend(['kryonwebp', 'avif_static', 'opus'])
-                run(['cmake', '--build', work, '--target', *targets, '--parallel', '1'])
-                if target == 'windows-x86_64-mingw':
-                    # raylib's own CMake project builds raylib; the codec uses
-                    # Kryon's WebP project with the same cross toolchain.
-                    windows = [option for option in config
-                               if not option.startswith(('-DPLATFORM=', '-DOPENGL', '-DCMAKE_C_FLAGS='))]
-                    run(['cmake', '-S', root / 'cmake/webp', '-B', work / 'webp', *windows,
-                         f'-DKRYON_WEBP_PACKAGE_DIR={webp_package}',
-                         f'-DWEBP_DIR={webp_source}', '-DCMAKE_C_FLAGS=-O2'])
-                    run(['cmake', '--build', work / 'webp', '--target', 'kryonwebp', '--parallel', '1'])
-                    run(['cmake', '-S', root / 'cmake/avif', '-B', work / 'avif-codec', *windows,
-                         f'-DKRYON_AVIF_PACKAGE_DIR={avif_package}', f'-DDAV1D_DIR={dav1d_source}',
-                         f'-DAVIF_DIR={avif_source}', f'-DAOM_DIR={aom_source}'])
-                    run(['cmake', '--build', work / 'avif-codec', '--target', 'avif_static', '--parallel', '1'])
-                    run(['cmake', '-S', audio_package / 'native', '-B', work / 'audio', *windows, *opus_config])
-                    run(['cmake', '--build', work / 'audio', '--target', 'opus', '--parallel', '1'])
-                avif_archive = next(work.rglob('libavif.a'))
-                aom_archive = next(work.rglob('libaom.a'))
-                archive = next(work.rglob('libraylib.a'))
-                webp_archive = next(work.rglob('libkryonwebp.a'))
-            copy(archive, stage / 'lib/libraylib.a')
-            copy(webp_archive, stage / 'lib/libkryonwebp.a')
-            copy(avif_archive, stage / 'lib/libavif.a')
-            copy(aom_archive, stage / 'lib/libaom.a')
-            copy(next(work.rglob('libopus.a')), stage / 'lib/libopus.a')
     if name != 'renderer-web':
         copy(avif_source / 'LICENSE', stage / 'resources/LICENSE-libavif')
         copy(aom_source / 'LICENSE', stage / 'resources/LICENSE-libaom')

@@ -88,8 +88,6 @@ def main():
             "kryon": str(ROOT),
             "ziran": str(ZIRAN_ROOT),
         }
-        if os.environ.get("RAYLIB_SOURCE"):
-            overrides["raylib"] = os.environ["RAYLIB_SOURCE"]
         (project / "ziran.local.toml").write_text(
             "[overrides]\n"
             + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())

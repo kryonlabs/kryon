@@ -18,8 +18,10 @@
 Video :: #import "video_linux";
 Service :: #import "service_linux";
 Bitmaps :: #import "bitmap_image";
-Theme :: #import "system_theme_host_linux";
-Background :: #import "background_window_linux";
+#if OS == .LINUX {
+    Theme :: #import "system_theme_host_linux";
+    Background :: #import "background_window_linux";
+}
 Watch :: #import "bundle_watch";
 AppPlayer :: #import "app_player";
 WindowPlayer :: #import "window_player";
@@ -91,10 +93,12 @@ Supported :: (module: string, function: string) -> bool {
         function == "SystemClipboardWriteHost"
     }
     if ModuleName(module, "window") {
+        #if OS == .LINUX {
+            if function == "WindowCompactHost" || function == "WindowBackgroundHost" || function == "WindowBackgroundDragHost" { return true }
+        }
         return function == "WindowSetVisibleHost" || function == "WindowVisibleHost" || function == "WindowFocusedHost" ||
         function == "WindowInterceptCloseHost" ||
-        function == "WindowTakeCloseRequestHost" || function == "WindowQuitHost" ||
-        function == "WindowCompactHost" || function == "WindowBackgroundHost" || function == "WindowBackgroundDragHost"
+        function == "WindowTakeCloseRequestHost" || function == "WindowQuitHost"
     }
     if ModuleName(module, "media") {
         return function == "MediaOpenHost" || function == "MediaPauseHost" ||
@@ -108,7 +112,9 @@ Supported :: (module: string, function: string) -> bool {
     if ModuleName(module, "bitmap_image") {
         return function == "BitmapImageCreateHost" || function == "BitmapImageUpdateHost" || function == "BitmapImageReleaseHost"
     }
-    if ModuleName(module, "system_theme_host") { return function == "SystemThemeColorHost" }
+    #if OS == .LINUX {
+        if ModuleName(module, "system_theme_host") { return function == "SystemThemeColorHost" }
+    }
     return false
 }
 
@@ -150,8 +156,10 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         }
         return 0
     }
+    #if OS == .LINUX {
     if function == "SystemThemeColorHost" && count == 1 && args[0].kind == HostInteger {
         result.kind = HostUnsigned; result.bits = cast(u64)Theme.SystemThemeColorHost(cast(s32)args[0].integer); return 1
+    }
     }
     // This desktop player has no native snapshot editor. Its ordinary key
     // and Unicode path remains active; optional editor requests are empty.
@@ -214,6 +222,7 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         result.length = cast(usize)value.count
         return 1
     }
+    #if OS == .LINUX {
     if count == 0 && function == "WindowCompactHost" {
         result.kind = HostInteger
         result.integer = cast(s64)Background.WindowCompactHost()
@@ -227,6 +236,7 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         args[1].kind == HostInteger && args[2].kind == HostInteger && args[3].kind == HostInteger {
         Background.WindowBackgroundHost(cast(s32)args[0].integer, cast(s32)args[1].integer, cast(s32)args[2].integer, cast(s32)args[3].integer)
         return 1
+    }
     }
     if function == "ReadBundleInput" && count == 0 {
         viewport := DesktopViewport()

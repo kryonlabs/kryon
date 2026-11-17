@@ -288,7 +288,7 @@ TestDriverInput :: (queue: *InputDelivery) {
 }
 
 // Whether a test holds this key in this frame: its pressed key and the
-// Control or Shift keys held with it (raylib's left and right codes).
+// Control or Shift keys held with it (native's left and right codes).
 TestDriverKeyDown :: (key: s32) -> bool {
     if !TestDriverActive() || test_driver.key_frame != TestDriverCurrentFrame() {
         return false

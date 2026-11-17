@@ -620,7 +620,7 @@ using CompositionPhase;
         return canvas_touch_id[index]
     }
 
-    // The wheel axis with the larger travel, as Raylib reports one wheel.
+    // The wheel axis with the larger travel, as native reports one wheel.
     CanvasWheelDominant :: () -> float64 {
         x: float64 = canvas_wheel_x
         y: float64 = canvas_wheel_y

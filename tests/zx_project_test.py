@@ -9,7 +9,7 @@ import sys
 import time
 
 from toolchain import ROOT, ZIRAN_ROOT, ZIRAN
-from raylib_project_test import png_pixels, rgb, solid_png
+from image_test_tools import png_pixels, rgb, solid_png
 
 OUTPUT = ROOT / "build/zx-test"
 

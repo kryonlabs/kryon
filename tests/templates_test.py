@@ -31,14 +31,10 @@ def environment(work):
     # including their uncommitted changes, without copying/cloning them or
     # fetching a new toolchain. Explicit overrides are installed before locking.
     ziran = ZIRAN_ROOT / "build/bin/ziran"
-    raylib = subprocess.check_output(
-        [str(ziran), "pkg", "path", "raylib"], cwd=ROOT, env=env, text=True,
-    ).strip()
     # Resolve existing sources before isolating the new template projects.
-    # A fresh template cache must not redownload Raylib's entire history.
     env["XDG_CACHE_HOME"] = str(work / "cache")
     overrides = (f'[overrides]\nziran = "{ZIRAN_ROOT}"\n'
-                 f'Kryon = "{ROOT}"\nraylib = "{raylib}"\n')
+                 f'Kryon = "{ROOT}"\n')
     (work / "overrides.toml").write_text(overrides)
     return env
 

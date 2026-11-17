@@ -40,7 +40,7 @@
 //                               wheel_x is a sideways wheel, positive to the
 //                               right
 //     type text=                typed text, at most 8 codepoints a frame
-//     key code= control= shift= one key press, raylib's key codes
+//     key code= control= shift= one key press, native's key codes
 //     capture path=             the next finished frame as a PNG at path, on
 //                               hosts that draw into a raster (the desktop);
 //                               others reply "this host does not capture

@@ -4,7 +4,7 @@
 }
 #import "media_audio"
 #import "media_audio_host"
-#import "media_audio_raylib"
+#import "media_audio_web"
 #import "std/byte_text_linux"
 #import "canvas_audio_host"
 #import "session"
@@ -38,7 +38,7 @@ main :: () -> s32 {
     }
     if !ok { return 1 }
     fixture = data
-    MediaAudioUseRaylib()
+    MediaAudioUseWeb()
     session := SessionOpen()
     old: MediaAudioOwner
     MediaAudioBegin(*old, session, Allowed, Read, null)

@@ -6,7 +6,8 @@
 #import "hosted_app"
 #import "media_audio"
 #import "media_audio_host"
-#import "media_audio_raylib"
+#import "media_audio_desktop"
+native_provider: MediaAudioProvider;
 #import "media_audio_codec"
 #import "widget_host"
 #import "widget_codec"
@@ -73,8 +74,10 @@ main :: () -> s32 {
     #if #defined(AUDIO_UNAVAILABLE_TEST) {
         MediaAudioUseProvider(Unavailable)
     } else {
-        MediaAudioUseRaylib()
+        MediaAudioUseDesktop()
+        native_provider = media_audio_provider
     #if #defined(PCM_AUDIO_TEST) {
+        PcmBaseProvider = native_provider
         MediaAudioUseProvider(PcmTestProvider)
     }
     }

@@ -35,7 +35,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / 'build/scratch/backend-render-benchmark'
 WORK = ROOT / 'work/backend-render-benchmark'
 SCENES = ['text', 'images', 'shapes', 'scroll', 'zoom']
-BACKENDS = ['sdl2', 'sdl3', 'raylib']
+BACKENDS = ['sdl2', 'sdl3']
 BINDINGS = ['raster:RasterLine=pixmap:RasterLine',
             'raster_shape:RasterRoundedRectangle=pixmap:RasterRoundedRectangle',
             'raster_shape:RasterRoundedRectangleOutline=pixmap:RasterRoundedRectangleOutline',
@@ -151,11 +151,10 @@ def main():
                         help='software: llvmpipe/private Xvfb; hardware: offscreen EGL/Vulkan with DRM execution proof')
     parser.add_argument('--device', type=Path, help='hardware mode: exact /dev/dri/renderD* node (AMD/Linux DRM gfx counters required)')
     parser.add_argument('--backends', nargs='+', choices=BACKENDS,
-                        help='default: sdl2 sdl3 in hardware mode; all three in software mode')
+                        help='default: sdl2 sdl3 in hardware mode; both in software mode')
     parser.add_argument('--output', type=Path, default=WORK / 'results.json')
     parser.add_argument('--artifact-project', type=Path, default=ROOT / 'work/sdl3-integration')
     parser.add_argument('--sdl3-artifact', type=Path, help='explicit package descriptor, verified with Artifact API')
-    parser.add_argument('--raylib-artifact', type=Path, help='explicit package descriptor, verified with Artifact API')
     parser.add_argument('--trials', type=int)
     parser.add_argument('--frames', type=int)
     parser.add_argument('--warmup', type=int)
@@ -166,7 +165,7 @@ def main():
         parser.error('duplicate backends')
     device = None
     if args.mode == 'hardware':
-        if args.device is None or 'raylib' in backends:
+        if args.device is None:
             parser.error('hardware mode requires --device and supports only sdl2/sdl3')
         node = args.device.resolve()
         if node.parent != Path('/dev/dri') or not re.fullmatch(r'renderD[0-9]+', node.name) or not node.is_char_device():
@@ -220,7 +219,7 @@ def main():
     toolchain = load('benchmark_toolchain', ROOT / 'tests/toolchain.py')
     artifacts = load('benchmark_artifacts', toolchain.ZIRAN_ROOT / 'scripts/ziran_artifacts.py')
     renderer = load('benchmark_renderer_metadata', ROOT / 'scripts/renderer_artifact.py')
-    report = dict(schema=2, scope='common pixmap raster/geometry recorder; raylib is test-only rlgl sink, not existing high-level renderer',
+    report = dict(schema=2, scope='common pixmap raster/geometry recorder on SDL2 and SDL3',
                   status='pending', mode=args.mode, requested_device=device, software_only=not bool(device), hardware_fps_claim=False,
                   command=shlex.join([sys.executable, str(Path(__file__).relative_to(ROOT)), *sys.argv[1:]]),
                   size=[480, 320], period=120, vsync=0, window=('offscreen EGL/Vulkan headless surface' if device else 'hidden on private Xvfb') + '; no owner compositor', smoke=args.smoke,
@@ -261,8 +260,8 @@ def main():
             if backend == 'sdl2':
                 flags = shlex.split(capture(['pkg-config', '--libs', 'sdl2']))
             else:
-                recipe = 'native-sdl3' if backend == 'sdl3' else 'renderer-raylib'
-                explicit = args.sdl3_artifact if backend == 'sdl3' else args.raylib_artifact
+                recipe = 'native-sdl3'
+                explicit = args.sdl3_artifact
                 info['artifact_selection'] = 'kryon:' + recipe
                 info['artifact_project'] = str(args.artifact_project.resolve())
                 info['artifact_resolution'] = 'explicit verified descriptor' if explicit else 'package request API'
@@ -272,12 +271,9 @@ def main():
                 artifact = artifacts.Artifact(explicit.resolve(), artifact=recipe, platform='linux-x86_64-gnu') if explicit else request_artifact(artifacts, 'kryon:' + recipe, args.artifact_project, os.environ.get('ZIRAN_BIN', 'ziran'), env, artifact_log)
                 info['artifact_descriptor'] = str(artifact.descriptor)
                 info['artifact_descriptor_sha256'] = digest(artifact.descriptor)
-                if backend == 'sdl3':
-                    if not icds and not device:
-                        raise ValueError('software Vulkan ICD not available')
-                    flags = ['-L' + str(artifact.root / 'lib'), *artifact.link_flags(env=env)]
-                else:
-                    flags = ['-L' + str(artifact.root / 'lib'), *renderer.renderer_link(renderer.renderer_metadata(artifact))]
+                if not icds and not device:
+                    raise ValueError('software Vulkan ICD not available')
+                flags = ['-L' + str(artifact.root / 'lib'), *artifact.link_flags(env=env)]
             build_env['LDLIBS'] = shlex.join(flags)
             source = ROOT / 'tests' / ('backend_render_benchmark_' + backend + '.zi')
             target = BUILD / backend

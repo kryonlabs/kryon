@@ -213,12 +213,11 @@ renderer-artifact-test: build/bin/kryon
 
 .PHONY: zx-test zx-reload-test
 include mk/zx-canvas.mk
-include mk/raylib-library.mk
-include mk/zx-raylib.mk
+include mk/codecs.mk
 
 # Injected graphics hosts still link the production WebP and AVIF native ABIs.
 ziran-test behavior-tests: $(WEBP_A) $(AVIF_A) $(AOM_A)
-$(ZX_CANVAS_GENERATED)/.complete $(ZX_RAYLIB_GENERATED)/.complete: | project-toolchain
+$(ZX_CANVAS_GENERATED)/.complete: | project-toolchain
 zx-reload-test: zx-player
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zx_reload_test.py
@@ -258,14 +257,14 @@ zx-hosted-test: zx-player zx-canvas
 
 test: zx-services-test zx-hosted-test zx-headless-test
 
-.PHONY: zx-canvas-test zx-raylib-test zx-android-test gallery-zx gallery-zx-test
+.PHONY: zx-canvas-test zx-android-test gallery-zx gallery-zx-test
 gallery-zx: project-toolchain
 	python3 scripts/export-gallery-zx.py --ziran $(ZIRAN_BIN)
 
 gallery-zx-test: gallery-zx zx-player
 	python3 tests/gallery_zx_test.py
 
-zx-canvas-test: build/bin/kryon
+zx-canvas-test: build/bin/kryon zx-player
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zx_canvas_test.py
 
@@ -275,10 +274,6 @@ zx-native-test: zx-test zx-player
 
 test: zx-native-test
 
-
-zx-raylib-test: zx-test zx-raylib
-	@python3 tests/zx_native_test.py --player $(ZX_RAYLIB_PROGRAM) \
-		--bundle build/zx-test/download\ with\ spaces/app.zx
 
 # This gate builds only; a device test requires an explicit disposable emulator.
 zx-android-test: build/bin/kryon
@@ -372,8 +367,8 @@ check: all ziran-test header-check docs-check project-test public-surface-check 
 CI_SHARD_ZX := renderer-consumer-test zx-test zx-reload-test zx-window-test zx-services-test zx-hosted-test \
 	zx-headless-test native-text-test native-accessibility-test
 CI_SHARD_CHECK := check
-CI_SHARD_WEB := canvas-test canvas-project-test program-entry-project-test zx-canvas-test zx-raylib-test \
-	page-route-project-test raylib-web-project-test
+CI_SHARD_WEB := canvas-test canvas-project-test program-entry-project-test zx-canvas-test \
+	page-route-project-test
 .PHONY: test-shard-zx test-shard-check test-shard-web test-shard-hosts
 test-shard-zx: $(CI_SHARD_ZX)
 test-shard-check: $(CI_SHARD_CHECK)
@@ -549,95 +544,19 @@ test: native-text-test native-accessibility-test
 typeface-source-test: $(ZI2C_BIN)
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/typeface_source_link_test.sh
 
-.PHONY: raylib-project-test
-raylib-project-test: build/bin/kryon
-	@python3 tests/raylib_project_test.py
-
-# platform = "web": a custom raylib host's 3D cube under Kryon UI on WebGL, in
-# private headless Chromium.
-.PHONY: raylib-web-project-test
-raylib-web-project-test: build/bin/kryon
-	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-		YUE_DESKTOP_RECOVERY=0 python3 tests/raylib_web_project_test.py
-test: raylib-web-project-test
-
 .PHONY: program-title-test
 program-title-test: $(ZI2C_BIN)
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/program_title_test.sh
 
-.PHONY: raylib-window-test
-raylib-window-test: $(ZI2C_BIN) $(WEBP_A) $(AVIF_A) $(AOM_A)
-	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY ZIRAN_ROOT="$(ZIRAN_DIR)" \
-		ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_window_test.sh
-
-.PHONY: raylib-typeface-test
-raylib-typeface-test: $(ZI2C_BIN) $(RAYLIB_ARCHIVES)
-	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-		ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" \
-		sh tests/raylib_typeface_test.sh
-
-.PHONY: raylib-text-pixels-test
-raylib-text-pixels-test: $(ZI2C_BIN) $(RAYLIB_ARCHIVES)
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" WEBP_A="$(WEBP_A)" \
-		AVIF_A="$(AVIF_A)" AOM_A="$(AOM_A)" RAYLIB_AUDIO_LIBS="$(RAYLIB_AUDIO_LIBS)" \
-		sh tests/raylib_text_pixels_test.sh
-
-.PHONY: raylib-mesh-pixels-test
-raylib-mesh-pixels-test: $(ZI2C_BIN)
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" WEBP_A="$(WEBP_A)" \
-		sh tests/raylib_mesh_pixels_test.sh
-
-.PHONY: raylib-frame-input-test
-raylib-frame-input-test: project-toolchain $(RAYLIB_ARCHIVES)
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" WEBP_A="$(WEBP_A)" \
-		sh tests/raylib_frame_snapshot_test.sh
-
-# The canonical Android host's frame publication, on desktop raylib and Xvfb.
-.PHONY: android-raylib-host-link-test
-android-raylib-host-link-test: project-toolchain
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/android_raylib_host_link_test.sh
-
-test: android-raylib-host-link-test
-
-.PHONY: android-raylib-jni-test
-android-raylib-jni-test: project-toolchain
-	sh tests/android_raylib_jni_test.sh
-
-test: android-raylib-jni-test
-
 .PHONY: android-frame-input-test
-android-frame-input-test: project-toolchain $(RAYLIB_ARCHIVES)
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" WEBP_A="$(WEBP_A)" \
+android-frame-input-test: project-toolchain $(WEBP_A) $(AVIF_A) $(AOM_A)
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" WEBP_A="$(WEBP_A)" \
 		AVIF_A="$(AVIF_A)" AOM_A="$(AOM_A)" sh tests/android_frame_input_test.sh
 
 # Android's fopen, for a process with no running activity.
 .PHONY: android-fopen-test
 android-fopen-test: project-toolchain
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/android_fopen_test.sh
-
-.PHONY: raylib-frame-pixels-test
-raylib-frame-pixels-test: project-toolchain $(RAYLIB_ARCHIVES)
-	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/android_frame_pixels_test.py --host \
-		--raylib "$(RAYLIB_A)" --webp "$(WEBP_A)" --archive "$(AVIF_A)" --archive "$(AOM_A)" \
-		--runtime "$(ZIRAN_BUILD_DIR)/libziran.a"
-
-.PHONY: raylib-secondary-window-test
-raylib-secondary-window-test: $(ZI2C_BIN) $(RAYLIB_A)
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" sh tests/raylib_secondary_window_test.sh
-
-.PHONY: raylib-trace-test
-raylib-trace-test: $(ZI2C_BIN)
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_trace_test.sh
-
-.PHONY: raylib-clip-test
-raylib-clip-test: $(ZI2C_BIN)
-	@ZIRAN_DIR="$(abspath $(ZIRAN_DIR))" ZI2C_BIN="$(ZI2C_BIN)" WEBP_A="$(WEBP_A)" \
-		ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_clip_test.sh
-
-.PHONY: raylib-smooth-shape-test
-raylib-smooth-shape-test: $(ZI2C_BIN)
-	@ZIRAN_DIR="$(abspath $(ZIRAN_DIR))" ZI2C_BIN="$(ZI2C_BIN)" \
-		ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_smooth_shape_test.sh
 
 .PHONY: desktop-project-test
 desktop-project-test: build/bin/kryon
@@ -700,11 +619,11 @@ sanitize-test: project-toolchain
 # removes every other entry that nothing has written to for a day, so a build
 # another session is running keeps its files. Go's module cache is read-only,
 # so write permission comes back first.
-BUILD_OUTPUTS := ziran project bin tools test examples sanitize raylib-ziran webp-ziran avif-ziran opus zx-reload-test zx-raylib zx-native-test zx-android-test \
+BUILD_OUTPUTS := ziran project bin tools test examples sanitize webp-ziran avif-ziran opus zx-reload-test zx-native-test zx-android-test \
 	emscripten-cache android-surface-check text-input-platform-test zx-player zx-test zx-canvas zx-canvas-test gallery-zx \
 	accessibility text-shaping performance frame-replay frame-inspect frame-input-replay
 # Keep prior generated output while an installed or running app may use it.
-BUILD_OUTPUTS += zib-reload-test zib-raylib zib-native-test zib-android-test \
+BUILD_OUTPUTS += zib-reload-test zib-native-test zib-android-test \
 	zib-player zib-test zib-canvas zib-canvas-test gallery-zib
 .PHONY: clean-scratch
 clean-scratch:
@@ -736,7 +655,7 @@ pixmap-emoji: project-toolchain
 pixmap-surface-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY sh tests/pixmap_surface_test.sh
 
-test: check canvas-test canvas-project-test zx-canvas-test zx-raylib-test page-route-project-test typeface-source-test pixmap-surface-test program-title-test raylib-window-test system-clipboard-linux-test
+test: check canvas-test canvas-project-test zx-canvas-test page-route-project-test typeface-source-test pixmap-surface-test program-title-test system-clipboard-linux-test
 
 clean:
 	rm -rf $(BUILD_DIR)
@@ -785,21 +704,6 @@ android-webp-link-test: project-toolchain
 		ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/android_webp_link_test.py \
 		--ndk "$(or $(ANDROID_NDK),$(HOME)/Android/Sdk/ndk/28.2.13676358)"
 
-# Android NDK configure and raylib build of the kryon:renderer-raylib
-# artifact project (cmake/renderer-artifact) for arm64; needs ANDROID_NDK.
-.PHONY: android-renderer-artifact-test
-android-renderer-artifact-test: project-toolchain
-	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-		ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/android_renderer_artifact_cmake_test.py \
-		--ndk "$(or $(ANDROID_NDK),$(HOME)/Android/Sdk/ndk/28.2.13676358)"
-
-.PHONY: raylib-webp-decode-test
-raylib-webp-decode-test: project-toolchain $(RAYLIB_ARCHIVES)
-	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER \
-		ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" WEBP_A="$(WEBP_A)" \
-		RAYLIB_LIBS="$(RAYLIB_PLATFORM_LIBS) -lm" sh tests/raylib_webp_decode_test.sh
-test: raylib-webp-decode-test
-
 .PHONY: scene-image-material-test
 
 scene-image-material-test: project-toolchain
@@ -835,11 +739,9 @@ shader-scene-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS HARMONY_DESKTOP_RECOVERY=0 sh tests/shader_scene_test.sh
 test: shader-scene-test
 
-.PHONY: shader-host-test shader-web-test shader-android-test image-pixels-test
-shader-host-test: project-toolchain $(RAYLIB_ARCHIVES) $(AVIF_SO)
+.PHONY: shader-host-test shader-android-test image-pixels-test
+shader-host-test: project-toolchain $(WEBP_A) $(AVIF_A) $(AOM_A) $(AVIF_SO)
 	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/shader_host_test.sh
-shader-web-test: project-toolchain
-	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/shader_web_test.py
 # Explicit hardware test: USB Moto required; not part of the headless gate.
 shader-android-test: project-toolchain
 	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/shader_android_test.sh
@@ -879,8 +781,8 @@ test: window-focus-test
 # Asset audio uses actual decoders on a private null device and a muted private
 # browser. It never connects to the owner's audio session or desktop.
 .PHONY: asset-audio-test
-asset-audio-test: $(RAYLIB_A)
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" \
+asset-audio-test: project-toolchain
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" \
 		ZIRAN_BUILD_DIR="$(ZIRAN_BUILD_DIR)" python3 tests/media_audio_test.py --browser
 
 test: asset-audio-test
@@ -890,8 +792,8 @@ document-storage-test:
 	@ZIRAN_ROOT="$(abspath $(ZIRAN_DIR))" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/document_storage_test.py --browser
 
 .PHONY: pcm-audio-test
-pcm-audio-test: $(RAYLIB_A)
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" \
+pcm-audio-test: project-toolchain
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" \
 		ZIRAN_BUILD_DIR="$(ZIRAN_BUILD_DIR)" python3 tests/media_audio_test.py --browser --pcm
 
 test: pcm-audio-test document-storage-test
@@ -927,21 +829,16 @@ canvas-app-hooks-test:
 canvas-test: canvas-app-hooks-test
 
 .PHONY: rotated-text-test
-rotated-text-test: project-toolchain $(RAYLIB_ARCHIVES)
+rotated-text-test: project-toolchain $(WEBP_A) $(AVIF_A) $(AOM_A)
 	@sh tests/rotated_text_test.sh
-	@sh tests/rotated_text_raylib_test.sh
 	@sh tests/rotated_text_cairo_test.sh
 	@python3 tests/rotated_text_web_test.py
 test: rotated-text-test
 
-# Smooth images draw their shared Lanczos copies the same as Pillow on the
-# pixmap host, Raylib in a private Xvfb window and Canvas in private headless
-# Firefox; the behavior tests check the pixmap host's and Cairo's
-# (ziran_pixmap_lanczos_test, ziran_cairo_scaled_image_test), and
-# tests/lanczos_backend_goldens.sh runs all four.
+# Canvas, pixmap and Cairo compare shared Lanczos output against Pillow.
+# tests/lanczos_backend_goldens.sh runs all three renderers.
 .PHONY: lanczos-goldens-test
-lanczos-goldens-test: project-toolchain $(RAYLIB_ARCHIVES)
-	@RAYLIB_A="$(RAYLIB_A)" WEBP_A="$(WEBP_A)" AVIF_A="$(AVIF_A)" AOM_A="$(AOM_A)" sh tests/raylib_lanczos_test.sh
+lanczos-goldens-test: project-toolchain $(WEBP_A) $(AVIF_A) $(AOM_A)
 	@python3 tests/canvas_lanczos_test.py
 test: lanczos-goldens-test
 
@@ -959,7 +856,7 @@ lanczos-benchmark: project-toolchain
 	@sh tests/lanczos_benchmark.sh
 
 .PHONY: avif-decode-test
-avif-decode-test: project-toolchain $(RAYLIB_ARCHIVES) $(AVIF_SO)
+avif-decode-test: project-toolchain $(WEBP_A) $(AVIF_A) $(AOM_A) $(AVIF_SO)
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/avif_decode_test.sh
 test: avif-decode-test
 
@@ -987,7 +884,7 @@ avif-benchmark: project-toolchain
 		$(if $(AVIF_BENCHMARK_BROWSER),--browser)
 
 .PHONY: avif-render-test
-avif-render-test: project-toolchain $(RAYLIB_ARCHIVES) $(AVIF_SO) $(ZX_RAYLIB_RUNTIME)
+avif-render-test: project-toolchain $(WEBP_A) $(AVIF_A) $(AOM_A) $(AVIF_SO)
 	@sh tests/avif_render_test.sh
 
 .PHONY: bitmap-image-test
@@ -997,11 +894,6 @@ bitmap-image-test: project-toolchain
 	@ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran sh tests/bitmap_host_policy_test.sh
 	@ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran python3 tests/bitmap_image_browser_test.py
 test: bitmap-image-test
-
-.PHONY: bitmap-raylib-test
-bitmap-raylib-test: project-toolchain $(RAYLIB_ARCHIVES) $(AVIF_SO)
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/bitmap_raylib_test.sh
-test: bitmap-raylib-test
 
 .PHONY: native-assets-install-test
 native-assets-install-test: project-toolchain

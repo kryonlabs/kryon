@@ -230,9 +230,9 @@ PageDrawTexture :: (id: s32, sx: float64, sy: float64, sw: float64, sh: float64,
     source_h: float64 = sh
     dest_w: float64 = dw
     dest_h: float64 = dh
-    // Raylib re-anchors a negative source extent at the far corner and
+    // native re-anchors a negative source extent at the far corner and
     // mirrors it. Canvas textures are stored upright, so sprites mirror via
-    // the flip transform below. Render targets are the exception: raylib
+    // the flip transform below. Render targets are the exception: native
     // stores them bottom-up and the {0,0,w,-h} idiom exists to draw them
     // upright, which here is a plain copy of |sh| rows starting at sy.
     if source_w < 0.0 {

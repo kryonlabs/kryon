@@ -12,7 +12,7 @@ ProjectProfile :: struct {
     native_artifacts: string
     native_platform: string
     assets: string
-    // "web" builds the raylib backend into a WebGL browser page.
+    // "web" selects a Canvas browser page.
     platform: string
     // Space-separated DIR or DIR@MOUNT entries for the page's file system.
     preload: string
@@ -424,16 +424,16 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
             return config
         }
         if profile.platform != "" && (profile.platform != "web" ||
-            profile.backend != "raylib" ||
+            profile.backend != "canvas" ||
             (profile.codegen != "" && profile.codegen != "c99") ||
             profile.library != "" || profile.static_archive != "" ||
             profile.native_artifacts != "") {
-            config.error = "platform web needs a raylib c99 profile without native libraries"
+            config.error = "platform web needs a canvas c99 profile without native libraries"
             return config
         }
         if profile.preload != "" &&
-        (profile.platform != "web" || !ProjectPreloadValid(profile.preload)) {
-            config.error = "preload needs platform web and relative DIR or DIR@MOUNT entries"
+        (profile.backend != "canvas" || !ProjectPreloadValid(profile.preload)) {
+            config.error = "preload needs a canvas profile and relative DIR or DIR@MOUNT entries"
             return config
         }
         if profile.codegen == "" {

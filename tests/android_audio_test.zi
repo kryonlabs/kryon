@@ -1,5 +1,5 @@
 // The ordinary UI provider submits PCM through the Android-selected std sink.
-// Run source and saved IR on the USB Moto; no SDL or raylib is linked.
+// Run source and saved IR on the USB Moto; no SDL or native is linked.
 #import "kryon/media_audio"
 #import "kryon/media_audio_host"
 #import "kryon/media_audio_desktop"

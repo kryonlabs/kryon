@@ -7,7 +7,9 @@
 }
 #import "media"
 #import "media_audio_host"
-#import "media_audio_raylib"
+#import "media_audio_desktop"
+Sink :: #import "std/audio_sink";
+native_provider: MediaAudioProvider;
 #import "session"
 #import "hosted_app"
 #import "frame_replay"
@@ -18,7 +20,7 @@
 revoked_owner: *MediaAudioOwner;
 revoked_unloads: s32;
 RevokeProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: string) -> MediaAudioResult {
-    answer := AssetAudioProvider(voice, command, bytes)
+    answer := native_provider(voice, command, bytes)
     if (command.operation == .Load || command.operation == .CreateStream) && answer.code == .Ok { MediaAudioOwnerClose(revoked_owner) }
     if command.operation == .Unload { revoked_unloads += 1 }
     return answer
@@ -68,14 +70,19 @@ main :: () -> s32 {
     MediaAudioBegin(*owner, session, Allowed, Read, null)
     if Command(session, .Capabilities).code != .Unsupported { return 2 }
     MediaAudioEnd()
-    MediaAudioUseRaylib()
+    MediaAudioUseDesktop()
+    native_provider = media_audio_provider
+    unused Sink.AudioSinkOpen()
+    deadline := MonotonicMilliseconds() + 3000
+    while Sink.AudioSinkPending() && MonotonicMilliseconds() < deadline { unused SleepMilliseconds(1) }
     #if #defined(PCM_AUDIO_TEST) {
+        PcmBaseProvider = native_provider
         MediaAudioUseProvider(PcmTestProvider)
     }
     MediaAudioBegin(*owner, session, Allowed, Read, null)
     caps := Command(session, .Capabilities)
     #if #defined(AUDIO_DEVICE_UNAVAILABLE_TEST) {
-        if caps.code != .Unavailable { return 34 }
+        if Command(session, .Load).code != .Unavailable { return 34 }
         MediaAudioOwnerClose(*owner)
         MediaAudioEnd()
         unused SessionClose(session)

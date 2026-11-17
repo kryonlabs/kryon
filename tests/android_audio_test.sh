@@ -30,7 +30,7 @@ project = pathlib.Path(output)
     + json.dumps(manifest['toolchain']['ref']) + '\n'
     '[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\nref = "master"\n')
 overrides = {'kryon': repo}
-for name in ('ziran', 'audio', 'avif', 'webp', 'image_codec', 'raylib'):
+for name in ('ziran', 'audio', 'avif', 'webp', 'image_codec'):
     overrides[name] = subprocess.check_output([ziran, 'pkg', 'path', name, '--offline'],
         cwd=repo, text=True).strip()
 (project/'ziran.local.toml').write_text('[overrides]\n' + ''.join(

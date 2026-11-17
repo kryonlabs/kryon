@@ -1,6 +1,6 @@
 // Static WebP selection for native hosts. The package owns RIFF parsing,
 // native ABI and first-frame composition. Decode directly into host storage.
-// A raylib page links no native codec: it uses the package's authored still
+// A native page links no native codec: it uses the package's authored still
 // image engine, VP8L and keyframe VP8 with alpha.
 #if #defined(PLATFORM_WEB) {
     Authored :: #import "webp/authored";

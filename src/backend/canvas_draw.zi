@@ -147,7 +147,7 @@
         PageGetModelview(*values[0])
         return CanvasMatrix.{m0 = values[0], m1 = values[1], m4 = values[2], m5 = values[3], m10 = 1.0, m12 = values[4], m13 = values[5], m15 = 1.0}
     }
-    // raylib's Fade: the color with its alpha set from a 0..1 fraction.
+    // The color with its alpha set from a 0..1 fraction.
     #program_export
     Fade :: (color: Color, alpha: float32) -> Color {
         amount: float32 = alpha

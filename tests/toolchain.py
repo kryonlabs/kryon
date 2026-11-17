@@ -44,10 +44,7 @@ ref = "master"
 git = "https://github.com/kryonlabs/kryon.git"
 ref = "master"
 """)
-    raylib = subprocess.check_output(
-        [str(ZIRAN), "pkg", "path", "raylib", "--offline"], cwd=ROOT, text=True,
-    ).strip()
-    overrides = (("kryon", ROOT), ("ziran", ZIRAN_ROOT), ("raylib", Path(raylib)))
+    overrides = (("kryon", ROOT), ("ziran", ZIRAN_ROOT))
     (directory / "ziran.local.toml").write_text("[overrides]\n" + "".join(
         name + " = " + json.dumps(str(path)) + "\n" for name, path in overrides))
     subprocess.run([str(ZIRAN), "lock", "--offline"], cwd=directory, check=True)

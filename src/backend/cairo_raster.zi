@@ -431,7 +431,7 @@ RoundBox :: (bounds: Rectangle, requested_radius: float32) {
 font_library: *void;
 font_face: *void;
 
-// Kryon's font, Liberation Sans, as the raylib, canvas, and pixmap hosts use:
+// Kryon's font, Liberation Sans, as the canvas and pixmap hosts use:
 // the file KRYON_FONT_PATH names, else the system's copy, else whatever
 // fontconfig finds by that name. Glyphs are placed at their unhinted widths
 // and smoothed in gray, as a browser lays text out, so every host measures a

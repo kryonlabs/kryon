@@ -37,7 +37,7 @@ result = run([BIN / "ziran", "run", WORK / "policy.zx"], capture_output=True, te
 assert result.stdout.strip() == "42", result.stdout
 
 # Validate generated current native-surface code on every supported Android ABI.
-# The old private raylib CORE.Window prefix is no longer part of this API.
+# The old private desktop CORE.Window prefix is no longer part of this API.
 ndk_base = Path(os.environ.get("ANDROID_HOME", str(Path.home() / "Android/Sdk"))) / "ndk"
 ndks = sorted(ndk_base.glob("*/toolchains/llvm/prebuilt/linux-x86_64"))
 if ndks:

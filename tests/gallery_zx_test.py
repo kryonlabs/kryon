@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 from toolchain import ROOT
-from raylib_project_test import png_pixels, rgb
+from image_test_tools import png_pixels, rgb
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--player', type=Path, default=ROOT / 'build/bin/zx')

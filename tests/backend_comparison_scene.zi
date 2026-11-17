@@ -1,4 +1,4 @@
-// Shared pixmap paint workload for CPU, SDL2, raylib and SDL3 sinks. No clock, input,
+// Shared pixmap paint workload for CPU, SDL2 and SDL3 sinks. No clock, input,
 // resource loading or retained scene state. Call Describe for the workload key.
 // Hosts register BackendComparisonImagePixels as BackendComparisonImagePath
 // before timing, at the same free slot,

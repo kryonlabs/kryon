@@ -11,7 +11,7 @@ import subprocess
 import sys
 import tempfile
 
-from raylib_project_test import run
+from image_test_tools import run
 
 
 from toolchain import ZIRAN_ROOT

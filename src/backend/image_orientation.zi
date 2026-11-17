@@ -1,7 +1,7 @@
 // The Exif orientation of a JPEG file: how its stored pixels turn to stand
 // upright (1 to 8, 1 when the file does not say). Cameras store a portrait
 // photo sideways and say so here; browsers and GdkPixbuf apply it when they
-// decode, and the raylib host does the same with this reader. Only bounded
+// decode, and the native host does the same with this reader. Only bounded
 // reads of the file's own bytes.
 
 #scope_file

@@ -1,5 +1,5 @@
 // Gamepads, pointer visibility, and rumble for the canvas backend. Buttons
-// are compared with the previous frame here; which raylib button each browser
+// are compared with the previous frame here; which native button each browser
 // button stands for is a table in this module.
 #import "page_core"
 #import "byte_text_linux"
@@ -18,7 +18,7 @@ page_pad_released: [PAGE_PAD_MAX][PAGE_PAD_BUTTONS]bool;
 page_pad_seen: [PAGE_PAD_MAX]bool;
 page_pad_last: s32 = -1;
 
-// The browser button that a raylib gamepad button (1 to 17) is, or -1.
+// The browser button that a native gamepad button (1 to 17) is, or -1.
 PageBrowserButton :: (button: s32) -> s32 {
     if button == 1 { return 12 }
     if button == 2 { return 15 }
@@ -40,8 +40,8 @@ PageBrowserButton :: (button: s32) -> s32 {
     return -1
 }
 
-// The raylib gamepad button for a browser button, or 0.
-PageRaylibButton :: (button: s32) -> s32 {
+// The native gamepad button for a browser button, or 0.
+PageGamepadButton :: (button: s32) -> s32 {
     if button == 12 { return 1 }
     if button == 15 { return 2 }
     if button == 13 { return 3 }
@@ -122,7 +122,7 @@ PageGamepadQuery :: (gamepad: s32, which: s32, index: s32) -> s32 {
         if which == 1 && valid && page_pad_pressed[gamepad][mapped] { result = 1 }
         if which == 2 && valid && page_pad_now[gamepad][mapped] { result = 1 }
         if which == 3 && valid && page_pad_released[gamepad][mapped] { result = 1 }
-        if which == 4 { result = PageRaylibButton(page_pad_last) }
+        if which == 4 { result = PageGamepadButton(page_pad_last) }
         if which == 5 {
             axes: s32 = WebGetObject(pad, WebName("axes"))
             if axes != 0 { result = cast(s32)WebGetNumber(axes, WebName("length")) }

@@ -5,13 +5,8 @@ module_roots = ["src/ui", "src/backend", "src/ui/alert", "src/ui/avatar", "src/u
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
-# Core audio modules, Android PCM output and ADPCM WAV decoding.
-ref = "2313b49cb005610853faeec46447fc38578a2a15"
-
-[dependencies.raylib]
-git = "https://github.com/raysan5/raylib.git"
-ref = "fafa2cea97d0cb379d832086ba45a989fa6f9c8e"
-source = true
+# Optimizer fixes for spilled values and loop headers.
+ref = "7fbc8152b0ab18b641a73d16d93ccda1e1c7f863"
 
 [dependencies.libwebp]
 git = "https://github.com/webmproject/libwebp.git"
@@ -83,11 +78,10 @@ cairo_assets = "src/backend/cairo_assets.zi"
 cairo_typefaces = "src/backend/cairo_typefaces.zi"
 cairo_render_scale = "src/backend/cairo_render_scale.zi"
 media_audio_desktop = "src/backend/media_audio_desktop.zi"
+media_audio_web = "src/backend/media_audio_web.zi"
 test_driver_frame = "src/backend/test_driver_frame.zi"
 Cairo = "src/backend/cairo_raster.zi"
 Canvas = "src/backend/Canvas/module.zi"
-Raylib = "src/backend/raylib_runtime.zi"
-raylib_runtime = "src/backend/raylib_runtime.zi"
 ImageExport = "src/backend/image_export.zi"
 image_export = "src/backend/image_export.zi"
 AndroidSurface = "src/backend/android_surface.zi"
@@ -111,7 +105,6 @@ bundle_storage_web = "src/backend/bundle_storage_web.zi"
 page_core = "src/backend/page_core.zi"
 page_files = "src/backend/page_files.zi"
 bundle_resources = "src/backend/bundle_resources.zi"
-bundle_raylib = "src/backend/bundle_raylib.zi"
 app_asset = "src/backend/app_asset.zi"
 image_raster = "src/ui/image/image_raster.zi"
 vector_path = "src/ui/vector_path.zi"
@@ -227,7 +220,6 @@ Window = "src/ui/window.zi"
 Media = "src/ui/media.zi"
 media_audio = "src/ui/media_audio.zi"
 media_audio_host = "src/backend/media_audio_host.zi"
-media_audio_raylib = "src/backend/media_audio_raylib.zi"
 Video = "src/ui/video.zi"
 VideoLinux = "src/backend/video_linux.zi"
 Clock = "src/ui/clock.zi"
@@ -296,8 +288,6 @@ image_pixels = "src/backend/image_pixels.zi"
 text_pixels = "src/backend/text_pixels.zi"
 input_props = "src/ui/input_props.zi"
 page_socket = "src/backend/page_socket.zi"
-raylib_secondary_window = "src/backend/raylib_secondary_window.zi"
-raylib_trace = "src/backend/raylib_trace.zi"
 router = "src/ui/router.zi"
 router_props = "src/ui/router_props.zi"
 slider = "src/ui/slider/slider.zi"
@@ -404,10 +394,6 @@ autostart_env = "string"
 [options.renderer]
 android_ndk = "string"
 android_api = "string=21"
-
-[artifacts.renderer-raylib]
-inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "mk/renderer-artifact.mk", "mk/raylib-library.mk", "mk/codecs.mk", "scripts/codec_configure.py", "cmake/renderer-artifact/CMakeLists.txt", "cmake/KryonAndroid.cmake", "cmake/ImagePackages.cmake", "cmake/WebP.cmake", "cmake/webp/CMakeLists.txt", "cmake/AVIF.cmake", "cmake/avif/CMakeLists.txt", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
-outputs = ["lib/libraylib.a", "lib/libkryonwebp.a", "lib/libavif.a", "lib/libaom.a", "lib/libopus.a", "resources/LICENSE-opus", "resources/LICENSE-libavif", "resources/LICENSE-libaom", "resources/PATENTS-libaom", "resources/LICENSE-dav1d", "include/raylib.h", "include/rlgl.h", "include/raymath.h", "include/rcamera.h", "resources/LICENSE-raylib", "resources/LICENSE-libwebp", "resources/PATENTS-libwebp", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
 
 [artifacts.renderer-desktop]
 inputs = ["cmake/desktop-codecs/CMakeLists.txt", "mk/codecs.mk", "scripts/codec_configure.py", "cmake/WebP.cmake", "cmake/webp/CMakeLists.txt", "cmake/AVIF.cmake", "cmake/ImagePackages.cmake", "cmake/avif/CMakeLists.txt", "src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]

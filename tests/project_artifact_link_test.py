@@ -52,12 +52,12 @@ class ProjectArtifactTest(unittest.TestCase):
 
     def test_renderer_metadata_uses_same_verified_outputs(self):
         (self.root/'font.ttf').write_bytes(b'font');(self.root/'license').write_bytes(b'license')
-        meta=dict(schema=1,artifact='renderer-raylib',platform=self.args.platform,
+        meta=dict(schema=1,artifact='renderer-desktop',platform=self.args.platform,
             archives=['support.a'],compile_flags=[],link_flags=['-lm'],defines=[],include_directories=[],
             resources=dict(font='font.ttf',font_license='license'))
         (self.root/'renderer.json').write_text(json.dumps(meta))
-        self.save(['support.a','font.ttf','license','renderer.json'],artifact='renderer-raylib')
-        self.args.artifacts='kryon:renderer-raylib'
+        self.save(['support.a','font.ttf','license','renderer.json'],artifact='renderer-desktop')
+        self.args.artifacts='kryon:renderer-desktop'
         with patch.object(link_artifacts.subprocess,'check_output',return_value=str(self.descriptor)):
             self.assertEqual(link_artifacts.link(self.args),0)
         subprocess.run([str(self.root/'consumer')],check=True)

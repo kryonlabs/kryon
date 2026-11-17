@@ -1,13 +1,13 @@
-// Production native provider (media_audio_raylib) with real Ogg Opus content:
-// incremental audio/opus decoding into a paced miniaudio null PCM stream.
-#import "media_audio_raylib"
+// Production native provider (media_audio_desktop) with real Ogg Opus content:
+// incremental audio/opus decoding into a paced SDL dummy PCM stream.
+#import "media_audio_desktop"
 #import "media_audio_host"
 #import "media_audio"
 #import "session"
 #import "std/file"
 #import "std/byte_text_linux"
 #import "std/timer_linux"
-Sink :: #import "audio_sink_raylib"
+Sink :: #import "std/audio_sink"
 fixture: string;
 Allowed :: (path: string) -> bool { return path == "assets/test/tone.opus" }
 Read :: (context: *void, path: string) -> string { unused context; unused path; return fixture }
@@ -19,11 +19,13 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if argc != 3 { return 1 }
     bytes, valid := ReadEntireFile(TextFromCString(argv[1]))
     if !valid { return 2 }; fixture = bytes
-    Sink.DeviceOpen()
-    if !Sink.DeviceReady() { return 3 }
+    unused Sink.AudioSinkOpen()
+    opened := MonotonicMilliseconds() + 3000
+    while Sink.AudioSinkPending() && MonotonicMilliseconds() < opened { unused SleepMilliseconds(1) }
+    if !Sink.AudioSinkReady() { return 3 }
     session := SessionOpen()
     owner: MediaAudioOwner
-    MediaAudioUseRaylib()
+    MediaAudioUseDesktop()
     MediaAudioOwnerBind(*owner, session, Allowed, Read, null)
     if Call(*owner, session, .Load).state != .Ready { return 4 }
     if Call(*owner, session, .Play).state != .Playing { return 5 }
