@@ -1,0 +1,106 @@
+// A program's own assets under Wine: text drawn in a font given as bytes and
+// a picture given as bytes, both read by the raster's decoders from asset
+// files, and Winsock's connect working beside the image decoders, as in a
+// program that links ws2_32 for its own sockets. Run from the Kryon root by
+// tests/windows_desktop_test.py.
+Raster :: #import "cairo_raster";
+#import "cairo_assets"
+#import "cairo_typefaces"
+#import "typeface_source"
+#import "drawing_props"
+#import "file"
+#import "std/byte_text_linux"
+using Vectors :: #import "vec";
+
+#scope_file
+ws2 :: #system_library "ws2_32";
+SocketsStart :: (version: u16, data: *u8) -> s32 #foreign ws2 "WSAStartup";
+SocketsEnd :: () -> s32 #foreign ws2 "WSACleanup";
+Connect :: (socket: u64, address: *u8, length: s32) -> s32 #foreign ws2 "connect";
+SocketsError :: () -> s32 #foreign ws2 "WSAGetLastError";
+
+PICTURE :: "assets/embedded/rgba.png"
+picture: string;
+
+Read :: (path: string) -> string {
+    if path == PICTURE { return picture }
+    return ""
+}
+
+Fail :: (code: s32, message: string) -> s32 {
+    print("windows desktop assets: %\n", message)
+    return code
+}
+
+// Winsock's own connect answers: a closed socket is not a socket.
+Sockets :: () -> s32 {
+    data: [512]u8
+    if SocketsStart(0x0202, *data[0]) != 0 { return Fail(10, "Winsock did not start") }
+    address: [16]u8 = .[2, 0, 0, 9, 127, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+    result := Connect(0xffffffffffffffff, *address[0], 16)
+    error := SocketsError()
+    unused SocketsEnd()
+    if result != -1 || error != 10038 { return Fail(11, "connect is not Winsock's") } // WSAENOTSOCK
+    return 0
+}
+
+// Text in the face given as bytes: monospace widths, and drawn glyphs.
+Text :: () -> s32 {
+    sans_i := Raster.MeasureGlyphWidth("iiii", 20, "")
+    if sans_i <= 0 || sans_i == Raster.MeasureGlyphWidth("MMMM", 20, "") { return Fail(20, "Kryon's own font did not measure") }
+    mono: Vec(u8)
+    defer VecFree(mono)
+    if !ReadFileInto("assets/fonts/LiberationMono-Regular.ttf", *mono) { return Fail(21, "no monospace font") }
+    if !RegisterTypefaceData("mono", ".ttf", TextView(mono[:]), null, 0) || !UseTypeface("mono") {
+        return Fail(22, "the font given as bytes was not registered")
+    }
+    mono_i := Raster.MeasureGlyphWidth("iiii", 20, "")
+    if mono_i <= 0 || mono_i != Raster.MeasureGlyphWidth("MMMM", 20, "") { return Fail(23, "text is not set in the font given as bytes") }
+    pixels: [64 * 32 * 4]u8
+    if !Raster.RasterTextPixels("MM", 20, Color.{0, 0, 0, 255}, 64, 32, pixels[:]) { return Fail(24, "the text was not drawn") }
+    inked := 0
+    for at: 0..64 * 32 - 1 { if pixels[at * 4 + 3] > 128 { inked += 1 } }
+    if inked < 40 { return Fail(25, "the drawn text has no glyphs") }
+    ClearTypefaces()
+    return 0
+}
+
+// An asset file holds its bytes at a path of its own; the harness checks
+// that the program's exit removed it.
+File :: () -> s32 {
+    file := RasterAssetFile("kryon")
+    name: [512]u8
+    path := RasterAssetPath(file, name[:])
+    text, found := ReadEntireFile(path)
+    if file < 0 || !found || text != "kryon" { return Fail(40, "the asset file does not hold its bytes") }
+    return 0
+}
+
+// A picture given as bytes, decoded from its asset file.
+Picture :: () -> s32 {
+    data, found := ReadEntireFile("build/windows-desktop/fixtures/rgba.png")
+    if !found { return Fail(30, "no picture fixture") }
+    picture = data
+    if Raster.ImageWidth(PICTURE) != 0 { return Fail(31, "the picture was found before its reader") }
+    RasterUseAssets(Read)
+    if Raster.ImageWidth(PICTURE) != 2 || Raster.ImageHeight(PICTURE) != 1 { return Fail(32, "the picture given as bytes was not decoded") }
+    pixels: [2]u32
+    if !Raster.CairoImagePixels(PICTURE, 2, 1, pixels[:], false) || pixels[1] != 0xff13cb29 {
+        return Fail(33, "the picture's pixels are wrong")
+    }
+    RasterAssetsClose()
+    return 0
+}
+
+#scope_export
+#program_export
+main :: () -> s32 {
+    if !Raster.OpenRaster(64, 32) { return Fail(1, "the raster did not open") }
+    result := Sockets()
+    if result == 0 { result = Text() }
+    if result == 0 { result = Picture() }
+    if result == 0 { result = File() }
+    Raster.CloseRaster()
+    if result == 0 { print("windows desktop assets: passed\n") }
+    return result
+}

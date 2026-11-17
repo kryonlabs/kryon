@@ -3,7 +3,7 @@
 // UseTypeface and ClearTypefaces on Pango and fontconfig. A registered face
 // joins the program's fonts, so text in a script the selected face lacks
 // still finds it; UseTypeface makes one the family all text is set in.
-// A face given as bytes lives in an in-memory file (see cairo_assets) until
+// A face given as bytes lives in a file of its own (see cairo_assets) until
 // the program ends, and registering the same bytes again reuses it, so a
 // program that clears and registers its faces on each language change adds
 // no fonts.
@@ -29,7 +29,7 @@ Unref :: (object: *void) #foreign objects "g_object_unref";
 LayoutChanged :: (layout: *void) #foreign pango "pango_layout_context_changed";
 
 // One font file the program added: its bytes' address and length when it
-// came from bytes, its in-memory file, and its family.
+// came from bytes, its file's path, and its family.
 Face :: struct { data: *u8; count: s64; path: [4096]u8; family: [256]u8; }
 // A name the program registered, and the face it names.
 Name :: struct { name: [128]u8; length: s64; face: s32; }

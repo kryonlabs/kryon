@@ -1,0 +1,51 @@
+// A program's own assets as Linux in-memory files. Each file is a memfd that
+// decoders open by its /proc/self/fd path. The file stays open, and its path
+// keeps naming it, until AssetFileClose.
+#import "c_string"
+#import "byte_text_linux"
+
+#scope_file
+libc :: #system_library "c";
+MemoryFile :: (name: *u8, flags: u32) -> s32 #foreign libc "memfd_create";
+WriteFile :: (descriptor: s32, bytes: *u8, count: usize) -> s64 #foreign libc "write";
+CloseFile :: (descriptor: s32) -> s32 #foreign libc "close";
+
+#scope_export
+// An in-memory file holding BYTES, or -1 for no bytes or no room.
+AssetFileOpen :: (bytes: string) -> s32 {
+    if bytes.count == 0 { return -1 }
+    label: [16]u8
+    unused CopyCString("kryon-asset", label[:])
+    descriptor := MemoryFile(*label[0], 1) // MFD_CLOEXEC
+    if descriptor < 0 { return -1 }
+    data := cast(*TextDescriptor)(*bytes)
+    written: s64 = 0
+    while written < bytes.count {
+        count := WriteFile(descriptor, *data.data[written], cast(usize)(bytes.count - written))
+        if count <= 0 { unused CloseFile(descriptor); return -1 }
+        written += count
+    }
+    return descriptor
+}
+
+// The path decoders open FILE by, in OUTPUT; "" if it does not fit.
+AssetFilePath :: (file: s32, output: []u8) -> string {
+    prefix := "/proc/self/fd/"
+    digits: [12]u8
+    count: s64 = 0
+    value := file
+    while true {
+        digits[count] = cast(u8)(#char "0" + value % 10)
+        count += 1
+        value /= 10
+        if value == 0 || count == 12 { break }
+    }
+    if file < 0 || prefix.count + count >= output.count { return "" }
+    for index: 0..prefix.count - 1 { output[index] = prefix[index] }
+    for index: 0..count - 1 { output[prefix.count + index] = digits[count - 1 - index] }
+    return TextFromBytes(output[:prefix.count + count])
+}
+
+AssetFileClose :: (file: s32) {
+    if file >= 0 { unused CloseFile(file) }
+}

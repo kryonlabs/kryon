@@ -2,11 +2,16 @@
 // its executable. A picture whose bytes the program's reader returns is
 // decoded from memory, ahead of a file of the same name on disk, by the same
 // decoders as files: PNG, JPEG, WebP, AVIF and the rest. Each asset read
-// becomes an in-memory file that the decoders open by its /proc/self/fd
-// path; it stays open, and its path keeps naming it, until
-// RasterAssetsClose. cairo_typefaces keeps its font files the same way.
+// becomes a file of its own that the decoders open by path: an in-memory
+// file on Linux, a temporary file on Windows. It stays, and its path keeps
+// naming it, until RasterAssetsClose. cairo_typefaces keeps its font files
+// the same way.
 Raster :: #import "cairo_raster";
-#import "c_string"
+#if OS == .WINDOWS {
+    Files :: #import "asset_files_windows";
+} else {
+    Files :: #import "asset_files_linux";
+}
 #import "byte_text_linux"
 using Vectors :: #import "vec";
 
@@ -15,17 +20,12 @@ using Vectors :: #import "vec";
 RasterAssetRead :: #type (path: string) -> string;
 
 #scope_file
-libc :: #system_library "c";
-MemoryFile :: (name: *u8, flags: u32) -> s32 #foreign libc "memfd_create";
-WriteFile :: (descriptor: s32, bytes: *u8, count: usize) -> s64 #foreign libc "write";
-CloseFile :: (descriptor: s32) -> s32 #foreign libc "close";
-
-Entry :: struct { path: Vec(u8); descriptor: s32; }
+Entry :: struct { path: Vec(u8); file: s32; }
 
 reader: RasterAssetRead;
 reading: bool;
-// Every path asked for, with its in-memory file or -1 when the program has
-// no such asset, so the reader is asked once per name.
+// Every path asked for, with its file or -1 when the program has no such
+// asset, so the reader is asked once per name.
 entries: Vec(Entry);
 
 Lookup :: (path: string, output: []u8) -> string {
@@ -33,17 +33,17 @@ Lookup :: (path: string, output: []u8) -> string {
     for index: 0..entries.count - 1 {
         entry := *entries[index]
         if TextFromBytes(entry.path[:]) == path {
-            if entry.descriptor < 0 { return "" }
-            return RasterAssetPath(entry.descriptor, output)
+            if entry.file < 0 { return "" }
+            return RasterAssetPath(entry.file, output)
         }
     }
-    descriptor := RasterAssetFile(reader(path))
+    file := RasterAssetFile(reader(path))
     entry: Entry
     for byte: path { VecPush(entry.path, byte) }
-    entry.descriptor = descriptor
+    entry.file = file
     VecPush(entries, entry)
-    if descriptor < 0 { return "" }
-    return RasterAssetPath(descriptor, output)
+    if file < 0 { return "" }
+    return RasterAssetPath(file, output)
 }
 
 #scope_export
@@ -55,11 +55,11 @@ RasterUseAssets :: (read: RasterAssetRead) {
     Raster.raster_asset_path = lookup
 }
 
-// Closes every in-memory file and forgets the reader. Pictures already
+// Closes every asset's file and forgets the reader. Pictures already
 // decoded stay in the raster's cache under their names.
 RasterAssetsClose :: () {
     for index: 0..entries.count - 1 {
-        if entries[index].descriptor >= 0 { unused CloseFile(entries[index].descriptor) }
+        Files.AssetFileClose(entries[index].file)
         VecFree(entries[index].path)
     }
     VecFree(entries)
@@ -67,37 +67,9 @@ RasterAssetsClose :: () {
     reading = false
 }
 
-// An in-memory file holding BYTES, or -1 for no bytes or no room.
-RasterAssetFile :: (bytes: string) -> s32 {
-    if bytes.count == 0 { return -1 }
-    label: [16]u8
-    unused CopyCString("kryon-asset", label[:])
-    descriptor := MemoryFile(*label[0], 1) // MFD_CLOEXEC
-    if descriptor < 0 { return -1 }
-    data := cast(*TextDescriptor)(*bytes)
-    written: s64 = 0
-    while written < bytes.count {
-        count := WriteFile(descriptor, *data.data[written], cast(usize)(bytes.count - written))
-        if count <= 0 { unused CloseFile(descriptor); return -1 }
-        written += count
-    }
-    return descriptor
-}
+// A file holding BYTES that stays until RasterAssetsClose, or the program
+// ends when it is not a reader's asset; -1 for no bytes or no room.
+RasterAssetFile :: (bytes: string) -> s32 { return Files.AssetFileOpen(bytes) }
 
-// The path decoders open DESCRIPTOR's file by, in OUTPUT; "" if it does not fit.
-RasterAssetPath :: (descriptor: s32, output: []u8) -> string {
-    prefix := "/proc/self/fd/"
-    digits: [12]u8
-    count: s64 = 0
-    value := descriptor
-    while true {
-        digits[count] = cast(u8)(#char "0" + value % 10)
-        count += 1
-        value /= 10
-        if value == 0 || count == 12 { break }
-    }
-    if descriptor < 0 || prefix.count + count >= output.count { return "" }
-    for index: 0..prefix.count - 1 { output[index] = prefix[index] }
-    for index: 0..count - 1 { output[prefix.count + index] = digits[count - 1 - index] }
-    return TextFromBytes(output[:prefix.count + count])
-}
+// The path decoders open FILE by, in OUTPUT; "" if it does not fit.
+RasterAssetPath :: (file: s32, output: []u8) -> string { return Files.AssetFilePath(file, output) }

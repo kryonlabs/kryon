@@ -1476,7 +1476,11 @@ uppercase ASCII, named keys from 256 (Escape), as `desktop_keys` maps SDL's.
 - `kryon/cairo_assets`: `RasterUseAssets(read)` gives the raster the
   program's own assets, such as files embedded in its executable: a picture
   whose bytes `read(path)` returns decodes from memory in any format the
-  raster decodes. `RasterAssetsClose()` forgets them.
+  raster decodes. `RasterAssetsClose()` forgets them. Each asset the
+  decoders read, and each face `kryon/cairo_typefaces` is given as bytes,
+  is a file of its own: an in-memory file on Linux, and on Windows a file
+  in the user's temporary folder, removed when it is closed or when the
+  program exits.
 - `kryon/cairo_typefaces`: `kryon/typeface_source`'s `RegisterTypefaceData`,
   `RegisterTypefaceFile`, `RegisterSystemTypeface`, `UseTypeface` and
   `ClearTypefaces` on Pango and fontconfig. Registered faces also serve

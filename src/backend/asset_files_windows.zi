@@ -1,0 +1,89 @@
+// A program's own assets as files on Windows, which has no in-memory files.
+// Each asset is written to a new file of its own in the user's temporary
+// folder, which decoders open by its path. AssetFileClose deletes the file,
+// and the program deletes any still open when it exits. Paths stay ASCII, so
+// decoders read them alike whether they take UTF-8 or the ANSI code page.
+#import "c_string"
+#import "byte_text_linux"
+#import "file"
+using Vectors :: #import "vec";
+
+#scope_file
+kernel :: #system_library "kernel32";
+libc :: #system_library "c";
+TemporaryPath :: (count: u32, folder: *u16) -> u32 #foreign kernel "GetTempPathW";
+ShortPath :: (path: *u16, short: *u16, count: u32) -> u32 #foreign kernel "GetShortPathNameW";
+UniqueFile :: (folder: *u16, prefix: *u16, unique: u32, name: *u16) -> u32 #foreign kernel "GetTempFileNameW";
+ExitHandler :: #type () #c_call;
+AtExit :: (handler: ExitHandler) -> s32 #foreign libc "atexit";
+
+// GetTempFileNameW writes names of at most MAX_PATH characters.
+PATH_LIMIT :: 261
+Entry :: struct { path: [PATH_LIMIT]u8; count: s64; open: bool; }
+
+files: Vec(Entry);
+exit_registered: bool;
+
+Ascii :: (text: []u16) -> bool {
+    for unit: text { if unit == cast(u16)0 || unit >= cast(u16)128 { return false } }
+    return true
+}
+
+// The temporary folder in FOLDER, NUL-terminated, by its short name when
+// its long one is not ASCII.
+TemporaryFolder :: (folder: []u16) -> bool {
+    count := cast(s64)TemporaryPath(cast(u32)folder.count, *folder[0])
+    if count == 0 || count >= folder.count { return false }
+    if Ascii(folder[:count]) { return true }
+    count = cast(s64)ShortPath(*folder[0], *folder[0], cast(u32)folder.count)
+    return count > 0 && count < folder.count && Ascii(folder[:count])
+}
+
+RemoveOpenFiles :: () {
+    for index: 0..files.count - 1 {
+        entry := *files[index]
+        if entry.open { unused RemoveFile(TextFromBytes(entry.path[:entry.count])); entry.open = false }
+    }
+}
+
+#scope_export
+// A new temporary file holding BYTES, or -1 for no bytes or no room.
+AssetFileOpen :: (bytes: string) -> s32 {
+    if bytes.count == 0 { return -1 }
+    folder: [PATH_LIMIT]u16
+    if !TemporaryFolder(folder[:]) { return -1 }
+    prefix: [4]u16 = .[107, 114, 121, 0] // "kry"
+    name: [PATH_LIMIT]u16
+    if UniqueFile(*folder[0], *prefix[0], 0, *name[0]) == 0 { return -1 }
+    entry: Entry
+    while entry.count < PATH_LIMIT - 1 && name[entry.count] != cast(u16)0 {
+        entry.path[entry.count] = cast(u8)name[entry.count]
+        entry.count += 1
+    }
+    path := TextFromBytes(entry.path[:entry.count])
+    if !WriteEntireFile(path, bytes) { unused RemoveFile(path); return -1 }
+    if !exit_registered {
+        handler: ExitHandler = RemoveOpenFiles
+        exit_registered = AtExit(handler) == 0
+    }
+    entry.open = true
+    VecPush(files, entry)
+    return cast(s32)files.count - 1
+}
+
+// The path decoders open FILE by, in OUTPUT; "" once it is closed or if it
+// does not fit.
+AssetFilePath :: (file: s32, output: []u8) -> string {
+    if file < 0 || file >= files.count || !files[file].open { return "" }
+    entry := *files[file]
+    if entry.count >= output.count { return "" }
+    for index: 0..entry.count - 1 { output[index] = entry.path[index] }
+    return TextFromBytes(output[:entry.count])
+}
+
+AssetFileClose :: (file: s32) {
+    if file < 0 || file >= files.count || !files[file].open { return }
+    entry := *files[file]
+    unused RemoveFile(TextFromBytes(entry.path[:entry.count]))
+    entry.open = false
+}

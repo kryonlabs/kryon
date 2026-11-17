@@ -29,7 +29,7 @@ def run(command, **kwargs):
         raise SystemExit(f'{Path(str(command[0])).name} failed: {result.returncode}')
 
 
-def compile_source(source, name, *, library=False, options=(), sources=()):
+def compile_source(source, name, *, library=False, options=(), sources=(), libraries=()):
     generated = WORK / name
     run([ZIRAN, 'build', '--project', '--target=c', '--target-os', 'windows',
          '--target-cpu', 'x64', '--define', '_WIN32', '--define', 'PLATFORM_DESKTOP',
@@ -41,7 +41,7 @@ def compile_source(source, name, *, library=False, options=(), sources=()):
          *(['-shared', '-Wl,--export-all-symbols', '-Wl,--out-implib,' + str(WORK / 'libkryon-desktop.dll.a')] if library else []),
          '-I' + str(ZIRAN_ROOT / 'include'), '-I' + str(generated),
          *sorted(generated.glob('*.c')),
-         *[WORK / 'sdk/lib' / ('lib' + lib + '.dll.a') for lib in LIBRARIES],
+         *[WORK / 'sdk/lib' / ('lib' + lib + '.dll.a') for lib in LIBRARIES], *libraries,
          '-lcomdlg32', '-luser32', '-lshell32', '-lkernel32', '-lm', '-o', binary])
     imports = subprocess.check_output(['x86_64-w64-mingw32-objdump', '-p', binary], text=True)
     assert 'raylib' not in imports.lower(), f'{binary.name}: raylib dependency'
@@ -193,6 +193,10 @@ def private(zx_linked):
         test_dialog()
         run(['wine', WORK / 'images.exe'], timeout=25)
         print('PASS Wine PNG/JPEG/WebP straight RGBA and invalid images', flush=True)
+        run(['wine', WORK / 'assets.exe'], timeout=25)
+        left = sorted((WORK / 'wine-prefix/drive_c/users').rglob('kry*.tmp'))
+        assert not left, f'asset files stayed after the program ended: {left}'
+        print('PASS Wine text in a font given as bytes, a picture given as bytes, Winsock connect', flush=True)
         ENV.update(SDL_AUDIODRIVER='disk', SDL_DISKAUDIOFILE='Z:' + str(WORK / 'audio.raw'), SDL_DISKAUDIODELAY='10')
         (WORK / 'audio.raw').unlink(missing_ok=True)
         run(['wine', WORK / 'audio.exe'], timeout=25)
@@ -236,6 +240,7 @@ def main():
     compile_source(ROOT / 'tests/windows_desktop_services.zi', 'services')
     compile_source(ROOT / 'tests/windows_file_dialog.zi', 'dialog')
     compile_source(ROOT / 'tests/windows_desktop_images.zi', 'images')
+    compile_source(ROOT / 'tests/windows_desktop_assets.zi', 'assets', libraries=['-lws2_32'])
     snapshot = ROOT / 'tests/desktop_frame_texture_test.zi'
     saved = WORK / 'frame-snapshot-ir'
     run([ZIRAN, 'ir', '--project', '--root', snapshot.parent,
