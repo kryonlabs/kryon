@@ -7,6 +7,7 @@
 #import "system_theme"
 #import "system_theme_linux"
 #import "parent_theme_linux"
+Host :: #import "system_theme_host_linux";
 
 x11 :: #system_library "X11";
 libc :: #system_library "libc";
@@ -57,6 +58,18 @@ main :: () -> s32 {
     Property(container, "_HARMONY_APP_THEME", dark[:])
     SetText("HARMONY_APP_HOST_PID", R(cast(u64)ParentPid()))
     SetText("HARMONY_APP_CONTAINER", R(container))
+    light: [8]u64 = .[1, 0xfbf1e2ff, 0xe8dccaff, 0x302820ff, 0x706050ff, 0x704020ff, 0xe0d0baff, 0xd0b898ff]
+    if which == "follow" {
+        // Called each frame, SystemPaletteFollow installs the host's palette
+        // once and again only after the host changes it.
+        if !Host.SystemPaletteFollow() || Host.SystemPaletteFollow() { return 10 }
+        Property(container, "_HARMONY_APP_THEME", light[:])
+        if !Host.SystemPaletteFollow() || Host.SystemPaletteRead().background != cast(u32)0xfbf1e2ff { return 11 }
+        if Host.SystemPaletteFollow() { return 12 }
+        Property(container, "_HARMONY_APP_THEME", dark[:])
+        if !Host.SystemPaletteFollow() || Host.SystemPaletteRead().background != cast(u32)0x101418ff { return 13 }
+        return 0
+    }
     palette := SystemPaletteRead()
     if which == "spoofed" {
         // A host that is not this process's parent gives no theme.
@@ -68,7 +81,6 @@ main :: () -> s32 {
         palette.text != cast(u32)0xe8ecf0ff || palette.selected != cast(u32)0x6ab0f0ff ||
         palette.border != cast(u32)0x303840ff { return 3 }
     // The host changes its theme; the next read follows it.
-    light: [8]u64 = .[1, 0xfbf1e2ff, 0xe8dccaff, 0x302820ff, 0x706050ff, 0x704020ff, 0xe0d0baff, 0xd0b898ff]
     Property(container, "_HARMONY_APP_THEME", light[:])
     palette = SystemPaletteRead()
     if palette.dark || palette.background != cast(u32)0xfbf1e2ff || palette.text != cast(u32)0x302820ff { return 4 }

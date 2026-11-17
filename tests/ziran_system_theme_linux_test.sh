@@ -6,7 +6,7 @@ source=$repo/tests/system_theme_linux_behavior.zi
     $kryon_ui_args --module-path "$repo/src/backend" \
     --module-path "$ziran_root/std" -o "$work/c" "$source"
 "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$work/c" \
-    "$work/c"/*.c -o "$work/theme-test"
+    "$work/c"/*.c -lm -o "$work/theme-test"
 
 # Fixture themes and configuration; HOME and the XDG paths point at them so the
 # real desktop never leaks in.
@@ -55,8 +55,8 @@ run none
     $kryon_ui_args --module-path "$repo/src/backend" \
     --module-path "$ziran_root/std" -o "$work/parent-c" "$repo/tests/parent_theme_linux_behavior.zi"
 "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$work/parent-c" \
-    "$work/parent-c"/*.c -lX11 -o "$work/parent-theme-test"
-for scenario in hosted spoofed; do
+    "$work/parent-c"/*.c -lX11 -lm -o "$work/parent-theme-test"
+for scenario in hosted spoofed follow; do
     env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u GTK_THEME HOME="$work/home" \
         XDG_CONFIG_HOME="$config" XDG_DATA_HOME="$data" SCENARIO="$scenario" \
         timeout 30s xvfb-run -a -s '-screen 0 320x240x24 -nolisten tcp' "$work/parent-theme-test"

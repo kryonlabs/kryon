@@ -1230,6 +1230,10 @@ current palette, so an app that reads it again follows a theme change.
 `ParentThemeLinux.ParentThemeActive()` says whether a host supplies the theme,
 and `ParentPaletteRead(*palette)` reads only the host's palette. libX11 is
 loaded at run time and only when a host is named.
+`SystemThemeHostLinux.SystemPaletteFollow()`, called once per frame, installs
+that palette (the desktop's when not embedded) the first time and again
+whenever the host changes it, and returns true when it installed, so an app
+follows its host's theme change with one call.
 
 ## Cover carousels
 
