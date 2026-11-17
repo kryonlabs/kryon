@@ -440,14 +440,14 @@ Client :: (folder: string) -> s32 {
     ClearTypefaces()
 
     // K4: the render scale draws layout units at twice the pixels.
-    if !RasterSetScale(2.0) || RasterScale() != 2.0 { return Fail(66, "the render scale was not set") }
+    if !RasterSetTransform(2.0, 0.0, 0.0) || RasterScale() != 2.0 { return Fail(66, "the render scale was not set") }
     if !DrawMain(session, Rectangle.{0.0, 0.0, 20.0, 20.0}, green) { return Fail(67, "the scaled frame failed") }
     unused Poll(200)
     if Pixel(main_x + 30, main_y + 30) != 0x00c800 || Pixel(main_x + 50, main_y + 50) != 0x282828 {
         print("scaled pixels % %\n", Pixel(main_x + 30, main_y + 30), Pixel(main_x + 50, main_y + 50))
         return Fail(68, "the render scale did not scale the frame")
     }
-    unused RasterSetScale(1.0)
+    unused RasterSetTransform(1.0, 0.0, 0.0)
 
     CloseSecondarySession(second_session)
     CloseSecondaryWindow(second)

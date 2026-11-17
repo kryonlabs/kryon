@@ -1,24 +1,27 @@
-// The desktop window's render scale: layout units to pixels. Frames lay out
-// in the window's pixels divided by the scale and draw at its full
-// resolution, as a camera zoom would, and vector icons rasterize at the
-// scale too. The program maps its pointer into layout units itself. The
-// scale applies to the main window's paint, also after a resize; secondary
-// windows draw in their own pixels, so set it outside their frames.
+// The main desktop paint's camera: pixel = point * scale + offset. Custom
+// hosts use the inverse for their pointer before routing it to the widget tree.
+// Secondary windows keep their own paint, so set this outside their frames.
 Raster :: #import "cairo_raster";
 #import "drawing_props"
+#import "geometry"
+#import "math"
 
 #scope_file
 cairo :: #system_library "cairo";
 IdentityMatrix :: (paint: *void) #foreign cairo "cairo_identity_matrix";
+Translate :: (paint: *void, x: float64, y: float64) #foreign cairo "cairo_translate";
 Scale :: (paint: *void, x: float64, y: float64) #foreign cairo "cairo_scale";
 
 #scope_export
-// False for a scale outside (0, 16].
-RasterSetScale :: (scale: float32) -> bool {
-    if !(scale > 0.0) || scale > 16.0 { return false }
+// Reject invalid scale or nonfinite offsets before changing the saved camera.
+RasterSetTransform :: (scale: float32, offset_x: float32, offset_y: float32) -> bool {
+    if !(scale > 0.0) || scale > 16.0 || !Finite32(offset_x) || !Finite32(offset_y) { return false }
     Raster.raster_scale = cast(float64)scale
+    Raster.raster_offset_x = cast(float64)offset_x
+    Raster.raster_offset_y = cast(float64)offset_y
     if Raster.paint != null {
         IdentityMatrix(Raster.paint)
+        Translate(Raster.paint, cast(float64)offset_x, cast(float64)offset_y)
         Scale(Raster.paint, cast(float64)scale, cast(float64)scale)
     }
     SetPaintPixelScale(scale)
@@ -26,3 +29,10 @@ RasterSetScale :: (scale: float32) -> bool {
 }
 
 RasterScale :: () -> float32 { return cast(float32)Raster.raster_scale }
+
+// The exact inverse of the camera selected by RasterSetTransform, including
+// before the paint opens and after a resize replaces its Cairo context.
+RasterPointFromPixels :: (point: Vector2) -> Vector2 {
+    return .{cast(float32)((cast(float64)point.x - Raster.raster_offset_x) / Raster.raster_scale),
+        cast(float32)((cast(float64)point.y - Raster.raster_offset_y) / Raster.raster_scale)}
+}

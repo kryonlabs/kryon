@@ -1507,9 +1507,11 @@ uppercase ASCII, named keys from 256 (Escape), as `desktop_keys` maps SDL's.
   `RegisterTypefaceFile`, `RegisterSystemTypeface`, `UseTypeface` and
   `ClearTypefaces` on Pango and fontconfig. Registered faces also serve
   scripts the selected face lacks.
-- `kryon/cairo_render_scale`: `RasterSetScale(scale)` draws layout units at
-  `scale` pixels each, as a camera zoom does; `RasterScale()` reads it. The
-  program maps its pointer into layout units itself.
+- `kryon/cairo_render_scale`: `RasterSetTransform(scale, offset_x, offset_y)`
+  maps layout points to pixels as `point * scale + offset`. It rejects scales
+  outside `(0, 16]` and nonfinite offsets. The transform survives window resize;
+  `RasterScale()` reads its scale. Custom hosts map their raw pointer with
+  `RasterPointFromPixels(point)` before routing input to the widget tree.
 
 `make desktop-windows-test` checks these on a private Xvfb with XTest input.
 

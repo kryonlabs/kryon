@@ -133,6 +133,10 @@ CairoMatrix :: struct {
 }
 TransformBy :: (paint: *void, matrix: *CairoMatrix) #foreign cairo_library "cairo_transform";
 GetMatrix :: (paint: *void, matrix: *CairoMatrix) #foreign cairo_library "cairo_get_matrix";
+UserToDevice :: (paint: *void, x: *float64, y: *float64) #foreign cairo_library "cairo_user_to_device";
+DeviceToUser :: (paint: *void, x: *float64, y: *float64) #foreign cairo_library "cairo_device_to_user";
+math_library :: #system_library "m";
+RoundDown :: (value: float64) -> float64 #foreign math_library "floor";
 PatternForSurface :: (surface: *void) -> *void #foreign cairo_library "cairo_pattern_create_for_surface";
 PatternDestroy :: (pattern: *void) #foreign cairo_library "cairo_pattern_destroy";
 SetSource :: (paint: *void, pattern: *void) #foreign cairo_library "cairo_set_source";
@@ -254,6 +258,8 @@ RasterUseTarget :: (next: RasterTarget) -> RasterTarget {
 
 // Layout units to pixels for the window's paint (see cairo_render_scale).
 raster_scale: float64 = 1.0;
+raster_offset_x: float64;
+raster_offset_y: float64;
 // A program's asset reader (see cairo_assets): the path an embedded asset's
 // decoders read, ahead of the files on disk.
 RasterAssetPath :: #type (path: string, output: []u8) -> string;
@@ -294,6 +300,23 @@ CairoUseSmooth :: () {
         Lanczos.LanczosSetWake(RasterWakeWindow, null)
     }
 }
+// Snap axis-aligned image edges in actual device pixels, then return to
+// layout coordinates. A translated or scaled camera shares the same edge
+// between neighboring images; rounding layout coordinates leaves seams.
+RasterSnapRectangle :: (bounds: Rectangle) -> Rectangle {
+    if paint == null { return bounds }
+    left := cast(float64)bounds.x; top := cast(float64)bounds.y
+    right := cast(float64)bounds.x + cast(float64)bounds.width
+    bottom := cast(float64)bounds.y + cast(float64)bounds.height
+    UserToDevice(paint, *left, *top)
+    UserToDevice(paint, *right, *bottom)
+    left = RoundDown(left + 0.5); top = RoundDown(top + 0.5)
+    right = RoundDown(right + 0.5); bottom = RoundDown(bottom + 0.5)
+    DeviceToUser(paint, *left, *top)
+    DeviceToUser(paint, *right, *bottom)
+    return .{cast(float32)left, cast(float32)top, cast(float32)(right - left), cast(float32)(bottom - top)}
+}
+
 // The copy to draw for a smooth picture, and in SNAPPED the device pixels
 // it covers, or null to draw the picture with Cairo's filter.
 ScaledImageFor :: (image: *void, source: Rectangle, destination: Rectangle, snapped: *Rectangle) -> *Lanczos.LanczosEntry {
@@ -308,7 +331,7 @@ ScaledImageFor :: (image: *void, source: Rectangle, destination: Rectangle, snap
     if matrix.xx != 1.0 || matrix.yy != 1.0 || matrix.xy != 0.0 || matrix.yx != 0.0 ||
         matrix.x0 != 0.0 || matrix.y0 != 0.0 { return null }
     width := ImageSurfaceWidth(image); height := ImageSurfaceHeight(image)
-    snapped.* = RectangleSnap(destination)
+    snapped.* = RasterSnapRectangle(destination)
     if !Lanczos.LanczosEligible(source, width, height, snapped.*) { return null }
     key: Lanczos.LanczosKey = .{serial, 0, 0, source, cast(s32)snapped.width, cast(s32)snapped.height}
     CairoUseSmooth()
@@ -432,7 +455,10 @@ OpenRaster :: (width: s32, height: s32) -> bool {
     surface = ImageSurfaceCreate(0, width, height)
     if surface == null || SurfaceStatus(surface) != 0 { return false }
     paint = Create(surface)
-    if paint != null && raster_scale != 1.0 { Scale(paint, raster_scale, raster_scale) }
+    if paint != null {
+        Translate(paint, raster_offset_x, raster_offset_y)
+        Scale(paint, raster_scale, raster_scale)
+    }
     return paint != null && Status(paint) == 0
 }
 
@@ -958,11 +984,11 @@ RasterImage :: (asset_path: string, texture_id: u32,
     rectangular := radius <= 0.0 && rotation == 0.0 && polygon.count < 3
     if rectangular { SetAntialias(paint, 1) }
     matrix: CairoMatrix; GetMatrix(paint, *matrix)
-    device_pixels := rectangular && matrix.xx == 1.0 && matrix.yy == 1.0 &&
-        matrix.xy == 0.0 && matrix.yx == 0.0 && matrix.x0 == 0.0 && matrix.y0 == 0.0
+    device_pixels := rectangular && matrix.xx > 0.0 && matrix.yy > 0.0 &&
+        matrix.xy == 0.0 && matrix.yx == 0.0
     // Cairo's aliased clip and the cached copy disagree at exact half
     // pixels. Round both to the copy's device edges, also while it loads.
-    image_clip := ifx device_pixels then RectangleSnap(clip) else clip
+    image_clip := ifx device_pixels then RasterSnapRectangle(clip) else clip
     RoundBox(image_clip, radius)
     Clip(paint)
     if polygon.count >= 3 {
@@ -995,7 +1021,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
     if device_pixels {
         covered := destination
         covered.x -= origin.x; covered.y -= origin.y
-        covered = RectangleSnap(covered)
+        covered = RasterSnapRectangle(covered)
         CanvasRectangle(paint, covered.x, covered.y, covered.width, covered.height)
         Clip(paint)
     }

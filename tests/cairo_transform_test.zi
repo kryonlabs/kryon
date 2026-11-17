@@ -1,0 +1,88 @@
+// Run only through the private 1920x1080, 96-dpi Xvfb harness.
+Desktop :: #import "desktop_runtime";
+Raster :: #import "cairo_raster";
+Camera :: #import "cairo_render_scale";
+Button :: #import "kryon/button";
+#import "geometry"
+#import "drawing_props"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+
+sdl :: #system_library "SDL2";
+Warp :: (window: *void, x: s32, y: s32) #foreign sdl "SDL_WarpMouseInWindow";
+Delay :: (milliseconds: u32) #foreign sdl "SDL_Delay";
+GetRenderer :: (window: *void) -> *void #foreign sdl "SDL_GetRenderer";
+ReadPixel :: (renderer: *void, rect: *PixelBounds, format: u32, data: *u32, pitch: s32) -> s32 #foreign sdl "SDL_RenderReadPixels";
+PixelBounds :: struct { x: s32; y: s32; width: s32; height: s32; }
+
+Pixel :: (x: s32, y: s32) -> u32 {
+    data := Raster.RasterSurfaceData()
+    return (cast(*u32)*data[cast(s64)y * Raster.RasterSurfaceStride()])[x]
+}
+
+Draw :: (session: Session) -> s32 {
+    Desktop.BeginDesktopFrame()
+    Raster.ClearRasterFrame(.{255, 255, 255, 255})
+    Raster.RasterRoundedRectangle(.{-100.0, -20.0, 100.0, 900.0}, 0.0, 0, .{20, 30, 40, 255})
+    Raster.RasterRoundedRectangle(.{0.0, -20.0, 1300.0, 900.0}, 0.0, 0, .{80, 90, 100, 255})
+    if BeginFrame(session, cast(u64)1, .{-100.0, -20.0, 1400.0, 900.0}) != .FrameOk { return -1 }
+    props: Button.Props
+    props.key = cast(u64)7
+    props.id = 7
+    props.bounds = .{20.0, 50.0, 60.0, 30.0}
+    clicked := Button.Draw(session, props)
+    if EndFrame(session) != .FrameOk || !Desktop.EndDesktopFrame() { return -1 }
+    return clicked
+}
+
+#program_export
+main :: () -> s32 {
+    // Camera selection also works before the window/context is created.
+    if !Camera.RasterSetTransform(1.5, 150.0, 30.0) { return 1 }
+    if Camera.RasterSetTransform(0.0, 0.0, 0.0) || Camera.RasterSetTransform(-1.0, 0.0, 0.0) ||
+        Camera.RasterSetTransform(16.01, 0.0, 0.0) || Camera.RasterScale() != 1.5 { return 2 }
+    if !Desktop.OpenDesktopSized(1920, 1080) { return 3 }
+    session := SessionOpen()
+    if !SessionValid(session) || Draw(session) != 0 { return 4 }
+    // No unpainted white strip: the negative-X rail fills the left 150px,
+    // content begins exactly at the camera offset and reaches the right edge.
+    for x: cast(s32)0..1919 {
+        expected := ifx x < 150 then cast(u32)0xff141e28 else cast(u32)0xff505a64
+        if Pixel(x, 300) != expected { print("camera pixel % is % expected %\n", x, Pixel(x, 300), expected); return 5 }
+    }
+    at := PixelBounds.{149, 300, 1, 1}
+    shown: u32
+    if ReadPixel(GetRenderer(Desktop.DesktopWindow()), *at, cast(u32)0x16362004, *shown, 4) != 0 ||
+        shown != cast(u32)0xff141e28 { return 6 }
+    // An actual private-display pointer lands on the public button using
+    // exactly the inverse camera, then ordinary widget input yields a click.
+    Warp(Desktop.DesktopWindow(), 210, 120)
+    Delay(cast(u32)20)
+    if !Desktop.PollDesktop() { return 7 }
+    pointer := Desktop.PollPointer()
+    point := Camera.RasterPointFromPixels(.{pointer.x, pointer.y})
+    if point.x != 40.0 || point.y != 60.0 { return 8 }
+    pointer.x = point.x; pointer.y = point.y
+    pointer.down = false; pointer.pressed = false; pointer.released = false
+    unused TreePointerUpdate(session, pointer)
+    if !TreeHoveredAt(session, 1) { return 9 }
+    pointer.down = true; pointer.pressed = true
+    unused TreePointerUpdate(session, pointer)
+    pointer.down = false; pointer.pressed = false; pointer.released = true
+    unused TreePointerUpdate(session, pointer)
+    if Draw(session) != 1 { return 10 }
+    if !Desktop.ResizeDesktop(1600, 900) || Draw(session) < 0 { return 11 }
+    if Camera.RasterScale() != 1.5 || Pixel(149, 300) != cast(u32)0xff141e28 ||
+        Pixel(150, 300) != cast(u32)0xff505a64 || Pixel(1599, 300) != cast(u32)0xff505a64 { return 12 }
+    point = Camera.RasterPointFromPixels(.{210.0, 120.0})
+    if point.x != 40.0 || point.y != 60.0 { return 13 }
+    // A subsequent camera replaces rather than accumulates the old matrix.
+    if !Camera.RasterSetTransform(2.0, 200.0, 40.0) || Draw(session) < 0 ||
+        Pixel(199, 300) != cast(u32)0xff141e28 || Pixel(200, 300) != cast(u32)0xff505a64 { return 14 }
+    unused CloseSession(session)
+    Desktop.CloseDesktop()
+    unused Camera.RasterSetTransform(1.0, 0.0, 0.0)
+    return 0
+}
