@@ -78,11 +78,13 @@ AndroidFrameFailure :: (session: Session, step: string) {
 AndroidPresentPixmap :: (damage: Rectangle, width: s32, height: s32,
     zoom: float32) -> bool {
     if width <= 0 || height <= 0 { return false }
-    if zoom < 0.1 || zoom > 8.0 { zoom = 1.0 }
-    left := cast(s32)(damage.x * zoom)
-    top := cast(s32)(damage.y * zoom)
-    right := cast(s32)((damage.x + damage.width) * zoom) + 1
-    bottom := cast(s32)((damage.y + damage.height) * zoom) + 1
+    // EndPixmapFrame already rounds damage into device pixels. Applying
+    // density again misses changed pixels and leaves the previous page visible.
+    unused zoom
+    left := cast(s32)damage.x
+    top := cast(s32)damage.y
+    right := cast(s32)(damage.x + damage.width)
+    bottom := cast(s32)(damage.y + damage.height)
     if left < 0 { left = 0 }
     if top < 0 { top = 0 }
     if right > width { right = width }

@@ -1,0 +1,77 @@
+Host :: #import "android_run";
+Native :: #import "android_native";
+Jni :: #import "android_jni";
+#import "geometry"
+#import "drawing_props"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "paint_queue"
+#import "pixmap"
+#import "pixmap_frame"
+using FrameStatus;
+
+app: Jni.NativeAndroidApp;
+window: [1800]u32;
+requested: Native.NativeDirtyRectangle;
+posts: s32;
+
+#program_export
+ANativeWindow_getWidth :: (input: *void) -> s32 { unused input; return 48 }
+#program_export
+ANativeWindow_getHeight :: (input: *void) -> s32 { unused input; return 36 }
+#program_export
+ANativeWindow_setBuffersGeometry :: (input: *void, width: s32, height: s32, format: s32) -> s32 {
+    unused input; return ifx width == 48 && height == 36 && format == 1 then 0 else -1
+}
+#program_export
+ANativeWindow_lock :: (input: *void, output: *Native.NativeWindowBuffer, bounds: *void) -> s32 {
+    unused input
+    rectangle := cast(*Native.NativeDirtyRectangle)bounds
+    requested = rectangle.*
+    output.* = .{.width = 48, .height = 36, .stride = 50, .format = 1, .bits = cast(*u8)*window[0]}
+    return 0
+}
+#program_export
+ANativeWindow_unlockAndPost :: (input: *void) -> s32 { unused input; posts += 1; return 0 }
+
+Compose :: (session: Session, changed: bool) {
+    unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 32.0, 24.0})
+    PaintRoundedFill(session, -1, .{0.0, 0.0, 32.0, 24.0}, 0.0, 0, .{16, 32, 48, 255})
+    PaintRoundedFill(session, -1, .{10.0, 10.0, 7.0, 8.0}, 0.0, 0,
+        ifx changed then Color.{31, 91, 151, 255} else Color.{151, 31, 91, 255})
+}
+
+#program_export
+main :: () -> s32 {
+    app.window = cast(*void)cast(usize)1
+    Native.android_native_app = *app
+    if !Native.AndroidNativeEnsurePixels(48, 36) { return 1 }
+    pixels := Native.AndroidNativePixels()
+    session := SessionOpen()
+    if !SessionValid(session) { return 2 }
+    for at: 0..1799 { window[at] = cast(u32)0xdeadbeef }
+    for frame: 0..1 {
+        if !PixmapScale(1.5, 1.5) || !PixmapResumeInto(48, 36, pixels, true) { return 3 }
+        Compose(session, frame == 1)
+        result := EndPixmapFrame(session, frame != 0, cast(u32)0xff102030, true)
+        PixmapEndInto()
+        if result.status != cast(FrameStatus)FrameOk || result.paint_unchanged { return 4 }
+        if frame == 1 && (result.damage.x < 1.0 || result.damage.width >= 48.0) { return 5 }
+        if !Host.AndroidPresentPixmap(result.damage, 48, 36, 1.5) { return 6 }
+        if frame == 1 && (requested.left != cast(s32)result.damage.x || requested.top != cast(s32)result.damage.y ||
+            requested.right != cast(s32)(result.damage.x + result.damage.width) ||
+            requested.bottom != cast(s32)(result.damage.y + result.damage.height)) { return 7 }
+        for y: 0..35 {
+            for x: 0..47 {
+                pixel := pixels[y * 48 + x]
+                rgba := (pixel & cast(u32)0xff00ff00) | ((pixel & cast(u32)255) << 16) | ((pixel >> 16) & cast(u32)255)
+                if window[y * 50 + x] != rgba { return 8 }
+            }
+            if window[y * 50 + 48] != cast(u32)0xdeadbeef || window[y * 50 + 49] != cast(u32)0xdeadbeef { return 9 }
+        }
+    }
+    if posts != 2 { return 10 }
+    print("Android presentation: density 1.5 retained-frame damage copied once in device pixels with intact stride padding\n")
+    return 0
+}

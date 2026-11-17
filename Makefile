@@ -1077,3 +1077,8 @@ desktop-frame-texture-test: project-toolchain
 android-frame-texture-test: project-toolchain
 	@sh tests/ziran_android_frame_texture_test.sh
 test: cairo-picture-cache-test desktop-frame-texture-test android-frame-texture-test
+
+.PHONY: android-present-damage-test
+android-present-damage-test: project-toolchain
+	@sh tests/android_present_damage_test.sh
+test: android-present-damage-test
