@@ -30,10 +30,26 @@ OPUS_A ?= $(OPUS_BUILD)/libopus/libopus.a
 OPUS_INPUTS = $(KRYON_DIR)/mk/codecs.mk $(wildcard $(AUDIO_CODEC_PACKAGE)/native/*.cmake $(AUDIO_CODEC_PACKAGE)/native/CMakeLists.txt $(OPUS_PACKAGE)/CMakeLists.txt)
 CODEC_ARCHIVES = $(WEBP_A) $(AVIF_A) $(AOM_A) $(OPUS_A)
 
-.PHONY: codec-archives
+.PHONY: codec-archives codec-config-force
 codec-archives: $(CODEC_ARCHIVES)
 
-$(OPUS_A): $$(OPUS_INPUTS)
+# A suite can resolve the live packages first and installed immutable packages
+# later. Track source identities independently of their file timestamps.
+$(OPUS_BUILD)/kryon-config.json: codec-config-force
+	@python3 $(KRYON_DIR)/scripts/codec_configure.py "$(OPUS_BUILD)" \
+		"source=$(AUDIO_CODEC_PACKAGE)/native" "compiler=$(CODEC_CC)" \
+		"opus=$(OPUS_PACKAGE)" "samplerate=$(SAMPLERATE_PACKAGE)"
+$(WEBP_BUILD)/kryon-config.json: codec-config-force
+	@python3 $(KRYON_DIR)/scripts/codec_configure.py "$(WEBP_BUILD)" \
+		"source=$(KRYON_DIR)/cmake/webp" "compiler=$(CODEC_CC)" \
+		"webp=$(WEBP_PACKAGE)" "package=$(WEBP_CODEC_PACKAGE)" "flags=$(WEBP_CFLAGS)"
+$(AVIF_BUILD)/kryon-config.json: codec-config-force
+	@python3 $(KRYON_DIR)/scripts/codec_configure.py "$(AVIF_BUILD)" \
+		"source=$(KRYON_DIR)/cmake/avif" "compiler=$(CODEC_CC)" \
+		"avif=$(AVIF_PACKAGE)" "aom=$(AOM_PACKAGE)" \
+		"dav1d=$(DAV1D_PACKAGE)" "package=$(AVIF_CODEC_PACKAGE)"
+
+$(OPUS_A): $$(OPUS_INPUTS) $(OPUS_BUILD)/kryon-config.json $(KRYON_DIR)/scripts/codec_configure.py
 	cmake -S $(AUDIO_CODEC_PACKAGE)/native -B $(OPUS_BUILD) -DOPUS_DIR="$(OPUS_PACKAGE)" \
 		-DSAMPLERATE_DIR="$(SAMPLERATE_PACKAGE)" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
 		-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$(CODEC_CC)"
@@ -42,7 +58,7 @@ $(OPUS_A): $$(OPUS_INPUTS)
 
 # `command` runs cmake through the shell: GNU Make 4.3's own search stops at the
 # cmake folder Emscripten puts on PATH and fails with Permission denied.
-$(WEBP_A): $$(WEBP_INPUTS)
+$(WEBP_A): $$(WEBP_INPUTS) $(WEBP_BUILD)/kryon-config.json $(KRYON_DIR)/scripts/codec_configure.py
 	@test -n "$(WEBP_PACKAGE)" && test -f "$(WEBP_PACKAGE)/src/demux/anim_decode.c" || { echo "Run ziran fetch; Kryon needs the locked libwebp source package" >&2; exit 1; }
 	cmake -S $(KRYON_DIR)/cmake/webp -B $(WEBP_BUILD) -DWEBP_DIR="$(WEBP_PACKAGE)" \
 		-DKRYON_WEBP_PACKAGE_DIR="$(WEBP_CODEC_PACKAGE)" \
@@ -51,7 +67,7 @@ $(WEBP_A): $$(WEBP_INPUTS)
 	command cmake --build $(WEBP_BUILD) --target kryonwebp --parallel $(CODEC_JOBS)
 	@test -f $@
 
-$(AVIF_A): $$(AVIF_INPUTS)
+$(AVIF_A): $$(AVIF_INPUTS) $(AVIF_BUILD)/kryon-config.json $(KRYON_DIR)/scripts/codec_configure.py
 	cmake -S $(KRYON_DIR)/cmake/avif -B $(AVIF_BUILD) -DAVIF_DIR="$(AVIF_PACKAGE)" -DAOM_DIR="$(AOM_PACKAGE)" \
 		-DDAV1D_DIR="$(DAV1D_PACKAGE)" -DKRYON_AVIF_PACKAGE_DIR="$(AVIF_CODEC_PACKAGE)" \
 		-DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$(CODEC_CC)"
