@@ -36,12 +36,16 @@ DecodedImageFree :: (image: DecodedImage) { ImagePixelsFree(image.pixels) }
     LoaderSize :: #type (*void, s32, s32) -> void #c_call;
     Prepared :: #type (*void, s32, s32, *bool) -> void #c_call;
     Connect :: #type (*void, *u8, *void, *void, *void, s32) -> usize #c_call;
+    // File-scoped, so C gives these slots internal linkage: a program that also
+    // links a system library exporting the same name, such as ws2_32's
+    // connect, keeps both.
+    #scope_file
     loader_new: LoaderNew;
     loader_write: LoaderWrite;
     loader_close: LoaderClose;
     loader_image: LoaderImage;
     loader_size: LoaderSize;
-    connect: Connect;
+    signal_connect: Connect;
     loader_ready: bool;
 
     DecodeLoaderReady :: () -> bool {
@@ -52,7 +56,7 @@ DecodedImageFree :: (image: DecodedImage) { ImagePixelsFree(image.pixels) }
             Desktop.Resolve(Desktop.library, cast(*void)*loader_close, "gdk_pixbuf_loader_close") &&
             Desktop.Resolve(Desktop.library, cast(*void)*loader_image, "gdk_pixbuf_loader_get_pixbuf") &&
             Desktop.Resolve(Desktop.library, cast(*void)*loader_size, "gdk_pixbuf_loader_set_size") &&
-            Desktop.Resolve(Desktop.object_library, cast(*void)*connect, "g_signal_connect_data")
+            Desktop.Resolve(Desktop.object_library, cast(*void)*signal_connect, "g_signal_connect_data")
         return loader_ready
     }
     DecodePrepared :: (loader: *void, width: s32, height: s32, rejected: *bool) {
@@ -63,6 +67,7 @@ DecodedImageFree :: (image: DecodedImage) { ImagePixelsFree(image.pixels) }
         }
     }
 
+    #scope_export
     ImageDecodeEncoded :: (data: string, file_type: string) -> DecodedImage {
         unused file_type
         if data.count <= 0 || data.count > 268435456 { return .{} }
@@ -95,7 +100,7 @@ DecodedImageFree :: (image: DecodedImage) { ImagePixelsFree(image.pixels) }
         unused CopyCString("size-prepared", signal[:])
         callback: Prepared = DecodePrepared
         raw_callback := cast(**void)*callback
-        if connect(loader, *signal[0], raw_callback[0], cast(*void)*rejected, null, 0) == 0 { return .{} }
+        if signal_connect(loader, *signal[0], raw_callback[0], cast(*void)*rejected, null, 0) == 0 { return .{} }
         bytes := cast(*TextDescriptor)(*data)
         wrote := loader_write(loader, bytes.data, cast(usize)data.count, null) != 0
         closed := loader_close(loader, null) != 0
