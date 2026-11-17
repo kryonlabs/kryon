@@ -14,3 +14,6 @@ SystemPaletteRead :: () -> SystemPalette {
     palette.dark = CssLuminance(palette.background) < 128
     return palette
 }
+// Applies the host's palette as style rules and theme colours the first time
+// and again whenever it changes; true when it applied. Call it once per frame.
+SystemPaletteFollow :: () -> bool { return SystemPaletteUpdate(SystemPaletteRead()) }

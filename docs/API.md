@@ -1230,10 +1230,13 @@ current palette, so an app that reads it again follows a theme change.
 `ParentThemeLinux.ParentThemeActive()` says whether a host supplies the theme,
 and `ParentPaletteRead(*palette)` reads only the host's palette. libX11 is
 loaded at run time and only when a host is named.
-`SystemThemeHostLinux.SystemPaletteFollow()`, called once per frame, installs
+`SystemThemeHostLinux.SystemPaletteFollow()`, called once per frame, applies
 that palette (the desktop's when not embedded) the first time and again
-whenever the host changes it, and returns true when it installed, so an app
-follows its host's theme change with one call.
+whenever the host changes it, and returns true when it applied, so an app
+follows its host's theme change with one call; portable apps call
+`SystemThemeHost.SystemPaletteFollow()`. Applying installs the palette's style
+rules and sets the active theme's colours (`SystemPaletteApply`), so code
+that draws from `CurrentPalette()` follows too.
 `SystemTheme.SystemPaletteColors(palette)` expands a system palette into a full
 theme `Palette` (surfaces, text levels, borders, accent, controls) for an app
 that draws from one.

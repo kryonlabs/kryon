@@ -2,10 +2,12 @@
 
 ## Unreleased
 
-- `SystemThemeHostLinux.SystemPaletteFollow()` installs the current palette,
-  the host's while an app is embedded, once and again whenever the host
-  changes it; one call per frame makes an embedded app follow its host's
-  theme change.
+- `SystemPaletteFollow()` (in `SystemThemeHostLinux` and the portable
+  `SystemThemeHost`) applies the current palette, the host's while an app is
+  embedded, once and again whenever the host changes it; one call per frame
+  makes an embedded app follow its host's theme change. Applying
+  (`SystemPaletteApply`) installs the style rules and sets the active theme's
+  colours, so code drawing from `CurrentPalette()` follows too.
 - `SystemTheme.SystemPaletteColors(palette)` expands a system palette, such as
   a host's, into a full theme `Palette`, so an app that draws from one matches
   its host completely.

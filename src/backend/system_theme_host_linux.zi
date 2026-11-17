@@ -6,12 +6,6 @@ using Palette :: #import "system_theme";
 #scope_file
 palette: SystemPalette;
 ready: bool;
-installed: SystemPalette;
-installed_once: bool;
-Same :: (a: SystemPalette, b: SystemPalette) -> bool {
-    return a.dark == b.dark && a.background == b.background && a.base == b.base && a.text == b.text &&
-        a.selected == b.selected && a.selected_text == b.selected_text && a.border == b.border
-}
 // The desktop palette is read once; a parent's palette on every refresh, so
 // a theme change in the host reaches the app.
 Refresh :: () {
@@ -31,13 +25,7 @@ SystemThemeColorHost :: (role: s32) -> u32 {
     if role==7 { return palette.danger }; if role==8 { return palette.warning }; if role==9 { return palette.success }; return 0
 }
 SystemPaletteRead :: () -> SystemPalette { Refresh(); return palette }
-// Installs the current palette, the host's while embedded, the first time and
-// again whenever it changes; true when it installed. Called once per frame, it
-// makes an embedded app follow its host's theme change.
-SystemPaletteFollow :: () -> bool {
-    fresh := SystemPaletteRead()
-    if installed_once && Same(fresh, installed) { return false }
-    if !SystemPaletteInstall(fresh) { return false }
-    installed = fresh; installed_once = true
-    return true
-}
+// Applies the current palette, the host's while embedded, as style rules and
+// theme colours the first time and again whenever it changes; true when it
+// applied. Called once per frame, it makes an embedded app follow its host.
+SystemPaletteFollow :: () -> bool { return SystemPaletteUpdate(SystemPaletteRead()) }

@@ -5,6 +5,7 @@
 #import "byte_text_linux"
 #import "c_string"
 #import "system_theme"
+#import "theme"
 #import "system_theme_linux"
 #import "parent_theme_linux"
 Host :: #import "system_theme_host_linux";
@@ -71,6 +72,8 @@ main :: () -> s32 {
         if colors.background != cast(u32)0xfbf1e2ff || colors.surface != cast(u32)0xe8dccaff ||
             colors.foreground != cast(u32)0x302820ff || colors.accent != cast(u32)0x704020ff ||
             colors.border != cast(u32)0xe0d0baff { return 14 }
+        // Following also sets the active theme, so CurrentPalette() matches.
+        if CurrentPalette().background != cast(u32)0xfbf1e2ff || CurrentPalette().foreground != cast(u32)0x302820ff { return 15 }
         Property(container, "_HARMONY_APP_THEME", dark[:])
         if !Host.SystemPaletteFollow() || Host.SystemPaletteRead().background != cast(u32)0x101418ff { return 13 }
         return 0

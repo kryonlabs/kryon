@@ -553,3 +553,25 @@ SystemPaletteColors :: (palette: SystemPalette) -> Theme.Palette {
     if (palette.success & 255) != 0 { colors.success = palette.success; colors.on_success = Theme.OnColor(palette.success) }
     return colors
 }
+
+// Installs a system palette as style rules and as the active theme's colours,
+// so widgets and code that draws from CurrentPalette() both match it.
+SystemPaletteApply :: (palette: SystemPalette) -> bool {
+    if !SystemPaletteInstall(palette) { return false }
+    theme := Theme.CurrentTheme()
+    theme.dark = palette.dark; theme.colors = SystemPaletteColors(palette)
+    return Theme.InstallTheme(theme)
+}
+
+applied: SystemPalette;
+applied_once: bool;
+// Applies fresh the first time and again whenever it differs from the palette
+// applied last; true when it applied. SystemPaletteFollow feeds it each frame.
+SystemPaletteUpdate :: (fresh: SystemPalette) -> bool {
+    if applied_once && fresh.dark == applied.dark && fresh.background == applied.background &&
+        fresh.base == applied.base && fresh.text == applied.text && fresh.selected == applied.selected &&
+        fresh.selected_text == applied.selected_text && fresh.border == applied.border { return false }
+    if !SystemPaletteApply(fresh) { return false }
+    applied = fresh; applied_once = true
+    return true
+}
