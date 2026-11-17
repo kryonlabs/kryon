@@ -98,7 +98,7 @@ BackendComparisonImagesPaint :: (frame: s32) {
     for row: cast(s32)0..5 { for column: cast(s32)0..7 {
         x := cast(float32)(8 + column * 58); y := cast(float32)(8 + row * 50)
         source: Rectangle = .{0.0, 0.0, 16.0, 16.0}
-        if (row + column + frame) % 2 != 0 { source = .{16.0, 0.0, -16.0, 16.0} }
+        if (row + column + frame) % 2 != 0 { source = .{0.0, 0.0, -16.0, 16.0} }
         // Every fourth tile exercises a tight clip and rounded source coverage.
         radius: float32 = ifx column % 4 == 3 then 8.0 else 0.0
         clip: Rectangle = .{x, y, 48.0, 40.0}
