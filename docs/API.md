@@ -490,6 +490,10 @@ RGBA, and an animated WebP shows its first frame (Kryon images are still).
 See [WebP images](BACKENDS.md#webp-images) and [AVIF images](BACKENDS.md#avif-images) for each host's decoder.
 `Image.Props.radius` gives an image rounded corners in native and hosted UI;
 a positive value overrides its style radius.
+`kryon/image` brings file pictures, so a program that imports it links a host
+that measures them. Code that only needs the image placement rules, such as
+`ImageFitBounds` and `ImagePreviewSource`, imports `kryon/image_behavior`,
+which needs no host or picture.
 
 Import `kryon/bitmap_image` to create a runtime RGBA image for the same
 `Image.Draw(session, Image.Props.{.texture = image, .smooth = true, ...})`:
