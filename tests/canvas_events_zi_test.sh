@@ -27,6 +27,6 @@ int main(void)
 }
 C
 "${CC:-cc}" -std=c11 -Wall -Wextra -Wno-unused-function \
-    -I"$ziran_dir/include" -I"$work/c" "$work"/c/*.c -o "$work/test"
+    -I"$ziran_dir/include" -I"$work/c" "$work"/c/*.c -lm -o "$work/test"
 "$work/test"
 echo "Kryon browser input policy passed"
