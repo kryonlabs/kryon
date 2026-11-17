@@ -24,13 +24,6 @@ from PIL import Image, ImageChops
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / 'docs/site'
 PAGES = ['index', 'getting-started', 'widgets', 'modules', 'apps', 'docs', 'renderers']
-REDIRECT_TARGETS = {
-    'api': 'docs.html',
-    'components': 'widgets.html', 'demo': 'widgets.html', 'live-examples': 'widgets.html',
-    'language': 'docs.html', 'showcase': 'apps.html', 'matrices': 'renderers.html',
-    'benchmarks': 'docs.html',
-}
-REDIRECTS = list(REDIRECT_TARGETS)
 VIEWPORTS = (320, 390, 768, 1024, 1366)
 EXPECTED_SCENE_COUNT = 101
 
@@ -294,6 +287,8 @@ def check_picture(browser, name, shots):
 
 
 def check_files(site):
+    maintained = {name + '.html' for name in PAGES}
+    assert {path.name for path in site.rglob('*.html')} == maintained, 'Unmaintained website page'
     for name in PAGES:
         source = (site / (name + '.html')).read_text()
         assert source.count('<canvas ') == 1 and '<iframe' not in source

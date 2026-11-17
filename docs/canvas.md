@@ -10,7 +10,7 @@ them with Emscripten, and Ziran's Web bridge:
 -sASYNCIFY -sSINGLE_FILE=1 -sEXIT_RUNTIME=1 -sENVIRONMENT=web
 ```
 
-Kryon contains no JavaScript or C. The browser hosts (`page_core.zi`,
+The browser hosts (`page_core.zi`,
 `page_paint.zi`, `page_texture.zi`, `page_font.zi`, `page_events.zi`,
 `page_files.zi`, `page_input.zi`, `page_mesh.zi`, `canvas_audio_host.zi`, `dom_host.zi`) are
 written in Ziran and reach the page through `std/web.zi`; the one JavaScript
@@ -34,10 +34,9 @@ needed. Ordinary host paint and custom emitters use complete painting. Text
 measurement leaves retained pixels intact. This adds no extra full-size surface.
 The dedicated `canvas_raster.zi` provider
 calls the Canvas modules directly, so retained widgets use the same paint
-queue, font selection, and clipping path as the native host. Project builds do
-not pass an entry to IR or C generation: the selected `_run` module owns
-`main`, while `canvas_raster.zi` remains reachable as a second root for raster
-and typeface adapters.
+queue, font selection, and clipping path as the native host. Frame-profile builds retain the selected `_run` host and `canvas_raster.zi`
+as generation roots for raster and typeface adapters. A program entry owns
+its own `main`.
 
 `RequestWindowClose` is currently a raw browser host capability. An application
 may declare it against `host_api`; the host records the request and observes it

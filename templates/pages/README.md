@@ -11,7 +11,7 @@ kryon run web        # Canvas2D browser page (Emscripten)
 ```
 
 `kryon build portable` exports `build/{{name}}-portable.zx`. Copy or download
-that file and open it with `kryon run {{name}}-portable.zx` using the shared
+that file and open it with `ziran run {{name}}-portable.zx` using the shared
 Zx player; no app source is needed.
 
 Add a page by writing a procedure like `Library` and a `Tab` for it in

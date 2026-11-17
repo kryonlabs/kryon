@@ -14,7 +14,6 @@ library. The compiler and bundle loader have no Kryon-specific branches.
 | `src/project/*.zi` | Kryon project tool that builds an app through Ziran |
 | `tests/*_host.zi` | Ziran behavior-test hosts; not part of the library or application hosts |
 | Application repositories | Screens, assets, translations, product data, and workflows |
-| Game2D repository | Optional game API; Kryon determines its shared raylib revision when both packages are used |
 
 All maintained implementation files under `src/` are `.zi`. The core module
 inventory is [`src/ui/modules.txt`](../src/ui/modules.txt). Applications import
@@ -30,9 +29,10 @@ The host supplies system effects such as windows, terminal output, font and
 image loading, rasterization, and storage. A host should not implement a
 second set of widget decisions.
 
-An application exports `Frame(session: Session, viewport: Rectangle) -> s32`.
-The selected host calls it between `BeginFrame` and `EndFrame`. Package
-profiles choose the terminal, desktop, raylib or Canvas2D host;
+An application owns `main` and calls `App.Show` or `App.Run`, or exports
+`Frame(session: Session, viewport: Rectangle) -> s32` for a profile host.
+A frame host calls it between `BeginFrame` and `EndFrame`. Package
+profiles choose the terminal, desktop, Android or Canvas2D host;
 see [BACKENDS.md](BACKENDS.md). A non-graphical Ziran program can
 import a Kryon policy module without selecting any of these hosts.
 
@@ -42,8 +42,7 @@ import a Kryon policy module without selecting any of these hosts.
 compiles native objects, and creates a C archive from generated source.
 `make test` exercises the checked library through source, saved `.zir`, and
 portable `.zx` behavior, Canvas2D Wasm effects, and packaged Canvas2D
-browser applications in private headless Chromium. Desktop and
-raylib package tests run separately on private Xvfb displays;
+browser applications in private headless Chromium. Desktop package tests run on private Xvfb displays;
 CI runs them too. `make sanitize-test` repeats the behavior tests with AddressSanitizer and UndefinedBehaviorSanitizer.
 [FEATURE_MATRIX.md](FEATURE_MATRIX.md) states exactly what those checks cover.
 

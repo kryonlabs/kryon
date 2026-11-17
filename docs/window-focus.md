@@ -4,7 +4,7 @@ Import `kryon/Window` and call `WindowFocused()` to read whether the application
 own visible window has keyboard focus. The call changes no window, focus, input
 or desktop setting. Linux SDL and the desktop portable player inspect only the
 window created by their host. Hidden and minimized SDL windows report false.
-Raylib and browser canvas hosts use their existing window focus signals.
+Browser Canvas hosts use their existing window focus signals.
 
 An embedded pixel-surface player forwards `WindowFocusedHost` to its platform
 callback. The callback must return the focus of that child application, rather

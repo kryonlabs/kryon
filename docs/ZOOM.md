@@ -55,13 +55,8 @@ its UI scale setting, so the wheel and the Appearance slider drive one value,
 and hands that setting to `ZoomDPI` each frame.
 
 A host that draws an application unchanged applies the factor as a render
-scale and divides pointer positions and the viewport by it. Kryon's raylib
-runner does this for every application it runs, with no application code:
-`ZoomWheel` and `ZoomKey` run before each frame, the wheel and the shortcut
-keys they consume never reach the application, and `RaylibSetZoom` scales the
-frame, so layout reflows to the smaller viewport as a browser page does and
-text is rebaked at its scaled size to stay sharp. `KRYON_ZOOM=1.5` starts a
-window at 150%; the native ZX player draws a bundle at that density too.
+scale and divides pointer positions and the viewport by it. Layout reflows
+to the scaled viewport; text is rasterized at the scaled size.
 
 An application imports the module as `Zoom` (and `DPI` for the platform enum)
 from the Kryon package. To opt out, or to force zoom on every platform, call

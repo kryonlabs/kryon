@@ -1,10 +1,12 @@
 # Compact navigation
 
-`NavigationBar` can compose a compact vertical rail or horizontal dock using
+`Navigation.Draw` can compose a compact vertical rail or horizontal dock using
 the same themed buttons, keyboard activation and retained pointer capture as
 other Kryon controls.
 
-```ziran
+```zi
+Navigation :: #import "kryon/navigation";
+
 props: Navigation.Props
 props.key = KeyHash("navigation")
 props.compact = true

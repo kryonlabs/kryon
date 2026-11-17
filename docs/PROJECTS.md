@@ -119,13 +119,9 @@ for lock, cache, and override details.
 ### Foreign renderer artifacts
 
 Builders can request Kryon's foreign libraries and standard resources through
-the generic Ziran artifact API (toolchain revision 5461202417d48e2b31122354419179b262d7530c
-or later):
+the generic Ziran artifact API:
 
 ```sh
-ziran pkg artifact kryon:renderer-raylib --platform linux-x86_64-gnu --locked
-CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-ar \
-  ziran pkg artifact kryon:renderer-raylib --platform windows-x86_64-mingw --locked
 ziran pkg artifact kryon:renderer-desktop --platform linux-x86_64-gnu --locked
 ziran pkg artifact kryon:renderer-web --platform emscripten-wasm32-emscripten --locked
 ```
@@ -142,27 +138,12 @@ Ziran's ordinary compiler invocation. No generated Ziran source tree or object
 list is part of this contract.
 
 Every recipe includes `resources/kryon-font.ttf` and its Liberation license.
-`renderer-raylib` also includes `lib/libraylib.a`, the four public Raylib headers
-under `include/`, and the Raylib license. Linux uses SDL2/GLES2; Windows uses
-RGFW/OpenGL 1.1. Both preserve JPEG, TrueType and audio support. Linux
-`renderer-desktop` declares the existing SDL/Cairo/FreeType/Pango/Fontconfig/GIO
-system dependencies rather than redistributing system libraries.
+Linux desktop builds use SDL2, Cairo, FreeType, Pango, Fontconfig and GIO.
 
 `renderer-web` supplies `web/ziran_web.js` from the selected Ziran toolchain,
 `js_libraries`, browser link flags and `preload_files` entries (`path`, `mount`)
 for the standard font at `/kryon-font.ttf`. Feed these to Emscripten's
 `--js-library` and `--preload-file` arguments. Game resources remain separate.
-
-The Raylib recipe also accepts `android-aarch64-bionic` and
-`android-armv7-bionic`. Set `[tool.kryon.renderer] android_ndk` to the installed
-NDK directory and `android_api` to a decimal API level (default 21, minimum 21).
-Set `CC` to that ABI/API's NDK clang executable so compiler identity is keyed,
-for example `aarch64-linux-android21-clang`. This foreign Raylib artifact recipe
-is independent of Kryon's Android app host and retains its GLES2, image, font
-and audio options.
-NativeActivity glue, the application shared library, edition, packaging and
-signing remain with the app packaging build. Unsupported recipe/platform pairs
-fail explicitly. Other hosts and architectures are not yet provider targets.
 
 Widget and renderer Ziran code remains ordinary `kryon/...` imports. These
 artifacts do not provide a separately compiled Ziran component ABI: the current
@@ -170,16 +151,9 @@ generic artifact API stages provider files but does not define such a language
 component interface. Builders must not rewrite generated C/H or reconstruct a
 private module/object list to manufacture one.
 
-Run `make renderer-artifact-test` for real outputs, hashes, dirty isolation and
-a maintained Raylib renderer compiled and run on private Xvfb. Add `--cross`
-to `python3 tests/renderer_artifact_test.py` for installed MinGW and Android
-toolchains. After pushing, `--clean --revision COMMIT` uses normal immutable
-package resolution and requires two independent consumers to receive the exact
-same descriptor. A dirty canonical provider deliberately cannot prove reuse.
-
 Define each profile under `[tool.kryon.profiles.NAME]`. It requires `backend`;
 `codegen` defaults to `c99`. Supported backends are `terminal`, `desktop`,
-`raylib`, `canvas`, `pixmap`, and `android`. Set `default_profile` under `[tool.kryon]` when there
+`canvas`, `pixmap`, and `android`. Set `default_profile` under `[tool.kryon]` when there
 are several profiles. `--profile NAME` selects another. `run` asks for a
 profile when there are several, none is specified, and it runs in a
 terminal; otherwise it uses the default.
@@ -188,7 +162,6 @@ terminal; otherwise it uses the default.
 | --- | --- | --- |
 | `terminal` | 80 × 24 terminal cells | TTY for interactive input; redirected output renders once |
 | `desktop` | SDL2 window with Cairo raster | SDL2, Cairo, and FreeType development libraries |
-| `raylib` | raylib SDL2/OpenGL ES 2 window | the locked raylib source package and SDL2, DRM, EGL, GLESv2 |
 | `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
 | `pixmap` | headless 960 × 600 frame printed as a PPM image | nothing; `kryon run shot > frame.ppm` |
 | `android` | installable APK through a generated `droid/` Gradle project and direct NativeActivity host | a JDK, the Android SDK with NDK `28.2.13676358` and CMake `3.22.1`, the locked codec source packages, and `[tool.kryon.android] package`; see [Android host](BACKENDS.md#android-host) |
@@ -261,12 +234,11 @@ with `native_artifacts` and an explicit `native_platform`:
 ```toml
 [tool.kryon.profiles.desktop]
 backend = "desktop"
-native_artifacts = "kryon:renderer-raylib"
+native_artifacts = "kryon:renderer-desktop"
 native_platform = "linux-x86_64-gnu"
 ```
 
-This adds Raylib's foreign support, for example for `MediaAudio`, to the
-existing SDL/Cairo profile. It keeps that profile's host and rendering path.
+This adds the desktop codec support and resources to the SDL/Cairo profile.
 Use space-separated `package:artifact` selections for several providers.
 Selections come from the application's resolved package graph; no cache
 paths or prebuilt archive copies belong in its manifest. The toolchain must
@@ -290,7 +262,7 @@ default_profile = "tui"
 
 ## Zx applications
 
-Desktop, raylib, Canvas and Android profiles can package an ordinary `Frame`
+Desktop, Canvas and Android profiles can package an ordinary `Frame`
 application as the same portable program with its resources:
 
 ```toml
@@ -307,29 +279,14 @@ shell interprets the bundle and uses Canvas2D for rendering. It includes a
 file picker for opening another downloaded ZX without recompiling its UI.
 Unsupported required services are reported before replacing the running app.
 
-`backend = "raylib"` with `codegen = "zx"` builds a generic native player
-beside the bundle. `make zx-raylib` builds that player directly; pass a ZX
-path to it or use `--check FILE.zx` to validate without opening a window.
-Images are decoded directly from the bundle, with no resource extraction.
-The native player carries its host font beside the executable. Linux uses
-SDL/GLES; Windows and macOS use GLFW/OpenGL. HTTP uses libcurl; install its
-development package or supply `ZX_RAYLIB_HTTP_LIBS` for your target.
-Cross builds can supply
-`ZX_RAYLIB_CC`, `ZX_RAYLIB_AR`, `ZX_RAYLIB_OBJCOPY`,
-`ZX_RAYLIB_ARCHIVE`, `ZX_RAYLIB_DEFINES` and `ZX_RAYLIB_LIBS`.
-Use a separate `ZX_RAYLIB_DIR` for each target. macOS uses the same renderer
-and has platform build settings, but has not been executed in this checkout.
-
 An Android profile with `codegen = "zx"` builds its portable guest first,
-then packages `app.zx`, the VM and the raylib-free native host into the APK. Its
+then packages `app.zx`, the VM and the NativeActivity host into the APK. Its
 `Frame` is not compiled into native application code. The canonical scaffold
 handles display density, safe-area insets, touch, hardware/soft-keyboard input
 and graphics restoration without resetting bundle state. It also registers a
 ZX file opener: Android document URIs are copied into private cache and
 validated before replacing the running app. Invalid files retain the current
-instance. Existing customized Android scaffolds must adopt the updated
-Gradle/CMake and activity/manifest glue to use this profile.
-`make zx-android-test` builds ARM64, ARMv7 and x86-64 shells. Runtime testing
+instance. `make zx-android-test` builds ARM64, ARMv7 and x86-64 shells. Runtime testing
 uses `python3 tests/zx_android_test.py --serial emulator-NNNN` and accepts
 only an explicitly selected disposable emulator.
 
@@ -432,11 +389,10 @@ returns `{"status":"unavailable"}` when the harness does not grant one.
 `AppSupports("kryon.input.desktop")` is true when the device's main input is
 a keyboard and mouse: native desktop hosts answer yes, Android and the web
 no, and a harness that runs inside another host passes the question on.
-Older hosts answer no, so an app keeps its touch behaviour there.
 An app that imports `kryon/app_theme` follows the host's theme:
 `AppThemeColor(token, fallback)` returns the host stylesheet's colour for
 `canvas`, `surface`, `border`, `text`, `accent` or `link`, and `fallback` for
-a token the host lacks or on a host older than the module.
+a token the host lacks.
 An app with a look of its own, such as a game, imports `kryon/widget_palette`
 instead: `WidgetPaletteUse(session, palette)` asks the host to draw the
 widgets that follow in that palette's colours (as `SystemPalette`), until the
@@ -503,11 +459,6 @@ with `autostart` the login entry to `~/.config/autostart/example.desktop`.
 Setting `autostart = false` removes an autostart entry that `ziran install`
 wrote earlier. Browser profiles cannot be installed.
 
-The raylib profile builds its static raylib dependency in Kryon's `build/`
-directory. The Kryon host chooses and owns that backend. Game code belongs in
-the separate Game2D package; applications using both should rely on Kryon's
-selected backend and raylib revision.
-
 The project binary is `build/<package-name>-<profile>`. Checked Ziran modules
 are saved in `build/generated/<profile>/ir/` as `.zir`; generated C is in
 `build/generated/<profile>/c/`. `ziran inspect FILE.zir` displays a saved
@@ -534,7 +485,7 @@ all three images match; `build/pixmap-parity/grid.png` shows them side by side.
 `tools/image_tools.zi`, compiled to C, compares two PPM images, converts
 them to PNG, and lays out such grids.
 
-Kryon's `make desktop-project-test` and `make raylib-project-test` exercise the graphical hosts on private Xvfb
+Kryon's `make desktop-project-test` exercises the graphical host on private Xvfb
 displays, including keyboard and Unicode text input. `make canvas-project-test`
 builds a real Canvas2D project and loads it in private headless Chromium. Do
 not run graphical tests on the developer's live display.
@@ -586,7 +537,7 @@ Custom native hosts can import `kryon/app_asset_path` and call
 buffer: a resolved path borrows it; an unchanged path borrows the original text.
 `ResolveAppAssetForExecutable(path, executable, output)` supplies an explicit
 executable for hosts/tests. Neither changes the process working directory.
-The standard Cairo and Raylib image loaders use this resolver automatically;
+The standard native image loaders use this resolver automatically;
 a custom asset-reader callback still has exclusive ownership of its resources.
 
 A host embedding another UI packages that UI's referenced files under its own

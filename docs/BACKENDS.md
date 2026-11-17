@@ -20,22 +20,9 @@ backend = "desktop"
 Run `ziran tool kryon build` or `ziran tool kryon run` from the application.
 See [Ziran projects](PROJECTS.md) for the complete package manifest.
 
-MediaAudio's Raylib and Canvas providers support individual voice Pause/Resume.
-Raylib uses Pause/ResumeMusicStream and Pause/ResumeAudioStream, and reports
-GetMusicTimePlayed for asset music. Canvas retains music offsets against the
-AudioContext clock and re-creates only that voice's source on explicit Resume;
-paused PCM retains at most two immutable buffers and their remaining offsets.
-No owner pauses the shared context. See [MediaAudio](API.md) for capability
-bits and position availability. Native tests use Raylib/miniaudio's paced null
-backend; browser tests use a disposable muted headless context and trusted gesture.
-Ogg Opus assets decode through the `audio` package on native Linux and Windows;
-those targets link `-lopus -lm` (the `renderer-raylib` artifact ships a static
-`lib/libopus.a`). Android portable guests use the platform `MediaPlayer`
-service through JNI instead of carrying an audio codec.
-
 ## Renderer artifacts in build scripts
 
-The package exports `renderer-raylib`, `renderer-desktop` and `renderer-web`
+The package exports `renderer-desktop`, `renderer-desktop-windows` and `renderer-web`
 artifacts for the supported native and browser targets. Request them through
 `ziran pkg artifact kryon:NAME --platform OS-ARCH-ABI`, using the application's
 package wrapper and locked graph. Ziran's `scripts/ziran_artifacts.py` verifies
@@ -64,8 +51,6 @@ in the application.
 | --- | --- | --- |
 | `terminal` | `src/backend/terminal_run.zi` | 80 × 24 terminal cells via `terminal.zi` |
 | `desktop` | `src/backend/desktop_run.zi` | SDL2 window with Cairo raster |
-| `raylib` | `src/backend/raylib_run.zi` | raylib SDL2/OpenGL ES 2 window |
-| `raylib` with `platform = "web"` | `src/backend/raylib_run.zi` | raylib WebGL 1 page with Emscripten and Asyncify; see [raylib in the browser](#raylib-in-the-browser) |
 | `canvas` | `src/backend/canvas_run.zi` | Canvas2D page with Emscripten and Asyncify |
 | `android` | app `src/main.zi` → `android_run.zi` | Android NativeActivity package with direct `ANativeWindow` pixel presentation |
 
@@ -80,13 +65,12 @@ The returned key uses shared codes, including 320–329 for numeric-keypad
 digits, and carries the modifiers held when that key arrived.
 Standalone `AppContext` applications use the compiled host
 `canvas_app_run.zi`.
-Polygon-clipped images use native Cairo/Canvas path clips. Raylib caches bounded polygon triangulations and draws them directly on the
-GPU, including all Jungle puzzle pieces. Complex polygons and pixel hosts use
+Polygon-clipped images use native Cairo/Canvas path clips. Complex polygons and pixel hosts use
 clipped spans while preserving the original source mapping.
-SDL pixel hosts prefer accelerated texture presentation without blocking on
-vertical refresh. `SDL_RENDER_DRIVER` retains explicit driver selection,
-including `software`; hosts without an accelerated driver use software
-presentation automatically. Pixel rasterization remains on CPU workers.
+SDL pixel hosts use software presentation by default. `SDL_RENDER_DRIVER`
+retains explicit driver selection; `KRYON_PIXMAP_GPU=1` requests accelerated
+presentation. Pixel rasterization remains on CPU workers unless the host
+explicitly enables a GPU painter.
 Desktop windows become visible only after their first complete frame has
 been uploaded and presented. A failed initial upload or copy leaves the
 window hidden until presentation succeeds.
@@ -95,83 +79,12 @@ The `image_preview` module also supplies `ImageCompress` for smaller upright
 JPEG copies. It keeps transparent and animated originals intact and returns
 no replacement when encoding would increase file size.
 
-## raylib in the browser
-
-A `raylib` profile with `platform = "web"` builds the same raylib host, or a
-project's own raylib host, as a WebGL page. raylib's `PLATFORM_WEB` library
-(GLFW through Emscripten, OpenGL ES 2 on WebGL 1, with `rmodels` and `raudio`)
-builds once into `build/raylib-web/`, and the generated program is compiled
-with `PLATFORM_WEB` defined, so no POSIX threads are used.
-
-```toml
-[tool.kryon.profiles.web]
-backend = "raylib"
-platform = "web"
-host = "src/host.zi"                 # optional custom raylib host
-assets = "assets"                    # mounted at /assets
-preload = "client/bin/textures@textures mods"
-```
-
-| Key | Meaning |
-| --- | --- |
-| `platform` | `web` builds a browser page. It needs `backend = "raylib"` with c99 codegen; `library`, `static_archive` and `native_artifacts` are rejected. |
-| `host` | A project host as for native raylib. The default is `raylib_run.zi`. |
-| `assets` | One project directory, mounted at its own relative path. |
-| `preload` | Space-separated project directories, `DIR` or `DIR@MOUNT`, mounted at `/DIR` or `/MOUNT`. It needs `platform = "web"`. |
-
-`ziran tool kryon build --profile web` writes `index.html`, `index.js`,
-`index.wasm` and, when files are preloaded, `index.data` to
-`build/NAME-PROFILE/`. A new build replaces the directory only after the link
-succeeds. Serve that directory over HTTP, not `file://`, so the page can fetch
-its module and data. Copy it as a whole, for example to a site's `play/`
-directory. The page's working directory is `/`, so relative asset paths
-resolve as they do from the project directory on the desktop. Kryon's UI font
-is preloaded at `/kryon-font.ttf`. The page's `<title>` and raylib's window
-title come from `[tool.kryon.install] name` or else the package name. The page
-records how the program ended in `document.body.dataset.kryon` (`exit CODE` or
-`abort REASON`).
-
-The program keeps its ordinary blocking loop. Emscripten's ASYNCIFY suspends
-the program inside `PollRaylib()`: raylib's web `WindowShouldClose()` sleeps
-12 ms, which returns to the browser so it can present the frame and deliver
-input. The frame rate therefore depends on that sleep. Kryon sets raylib's
-target FPS to 0 in the page, because a frame limit would spin the browser's
-only thread. A custom host follows these rules:
-
-- Call `OpenRaylib(width, height, title, flags)` once. Pass
-  `FLAG_WINDOW_RESIZABLE` (4, the default) so the canvas follows the browser
-  window, and keep the result of `RaylibViewport()` per frame rather than the
-  opening size.
-- Loop on `while PollRaylib() { ... }` from `main` or a procedure called
-  directly by it. Each frame calls `PollRaylib()` once. Do not wait, sleep or
-  spin anywhere else in the loop.
-- Inside a frame call `RaylibFrameInputBegin(session)`, then
-  `BeginRaylibFrame()`. Draw the world after it: clear the background, then
-  call `BeginMode3D`, the 3D drawing and `EndMode3D`. Then call
-  `BeginFrame(session, ...)`, the app's `Frame`, `EndFrame`,
-  `FrameInputEnd(session)` and `EndRaylibFrame()`. Kryon paints above
-  whatever the host drew earlier in the frame.
-- Use only GLES2/WebGL 1 features: no geometry shaders, `#version 100`
-  shaders, and power-of-two textures when mipmaps or repeat wrapping are
-  needed.
-- Read files through the preloaded mounts. Writes stay in the page's memory
-  file system and are lost on reload.
-- Leave out native-only libraries: threads, `#system_library` libraries other
-  than raylib, libc and libm, and `RunRaylibAppFrame` worker pipelines. WebP assets
-  decode with the `webp` package's authored still-image engine; AVIF assets
-  do not decode in this host.
-- Return from `main` to end the page. `CloseRaylib()` releases the WebGL
-  context.
-
-`make raylib-web-project-test` builds such a host, with a 3D cube under a
-Kryon `Box` and `Image`, and checks the page in private headless Chromium.
-
 ## Experimental SDL3 GPU renderer
 
 Custom Linux x86_64 GNU hosts can import `kryon/pixmap_sdl3` and
 `kryon/pixmap_sdl3_gpu`. This is an opt-in rendering prototype, rather than a
 new project profile: the host supplies an SDL3 window, input loop and
-presentation. Existing desktop, SDL2 and Raylib profiles keep their behavior.
+presentation. Desktop profiles keep their behavior.
 The handwritten renderer is Ziran; SDL3 supplies the GPU API and shaders.
 
 Kryon's `native-sdl3` artifact builds static SDL 3.4.18 from its pinned official
@@ -230,16 +143,9 @@ texel ties in the 1.25× zoom scene can choose the adjacent texel, as in the SDL
 reference; the test accepts only analytically identified checker boundaries
 within the image and clip. The shared sampler is therefore not byte-exact at
 those ties. SDL3 also converts byte colors to float colors in 1536-vertex chunks,
-which can add draw calls; this does not establish a speedup over SDL2 or Raylib.
+which can add draw calls; this does not establish a speedup over SDL2.
 See the executable lifecycle example in
 [`tests/sdl3_renderer_host_test.zi`](../tests/sdl3_renderer_host_test.zi).
-
-After `make sdl3-test`, the separate comparison harness is available with
-`build-queue -- python3 tests/backend_render_benchmark.py --smoke`. It records
-device identity, parity and raw samples under ignored
-`work/backend-render-benchmark`. The test-only Raylib adapter currently fails
-the zoom scene's pixel oracle, so the comparison returns status 2 and excludes
-that scene's Raylib timings. This does not make the SDL3 integration test fail.
 
 For SDL2 versus SDL3 on a physical AMD GPU under Linux, use the explicit
 hardware mode (choose the render node from `/sys/class/drm/renderD*/device`):
@@ -261,8 +167,7 @@ The report records that device's render node, PCI address, vendor/device IDs,
 kernel driver, renderer/API and Mesa versions. A mismatched device, software
 renderer, missing execution evidence or failed pixel oracle blocks hardware
 timing. This qualification currently requires AMD's Linux DRM counters; it
-does not infer acceleration from the Vulkan API name. Raylib is excluded
-from this hardware comparison. The default software mode still forces
+does not infer acceleration from the Vulkan API name. The default software mode still forces
 llvmpipe on private Xvfb; `--backends sdl2 sdl3` restricts its smoke test.
 
 Every selected backend must pass all 120 frames of all five 480×320 scenes
@@ -275,28 +180,6 @@ the final synchronous readback and CPU conversion; it is not a GPU timestamp
 measurement. Offscreen results do not measure visible-window/compositor
 performance, and other running workloads and GPU clock changes remain
 uncontrolled. No backend default or SDL2 software fallback is changed.
-
-The 2026-11-02 hardware run used AMD Radeon Graphics
-(RAPHAEL_MENDOCINO), `/dev/dri/renderD129`, PCI `0000:7a:00.0`,
-vendor/device `1002:13c0`, kernel `amdgpu`, Mesa 25.0.7. SDL2 used
-radeonsi OpenGL 4.6; SDL3 used RADV Vulkan. Both passed 600 parity frames,
-with zero failures after the specified checker-boundary allowance. Five
-randomized trials per scene used 1,200 timed frames and 240 warmup frames.
-Median drained frames/s, SDL2 then SDL3, were:
-
-- Text: 7,709 / 7,115 (SDL3 −7.7%).
-- Images: 2,819 / 2,894 (+2.7%).
-- Shapes: 4,047 / 4,794 (+18.5%).
-- Scroll: 8,270 / 6,633 (−19.8%).
-- Zoom: 9,829 / 7,406 (−24.7%).
-
-These are scene-specific observations from this machine, with trial spread
-and concurrent workloads; the small image difference does not establish a
-general advantage. The old forced-software comparison is not hardware
-evidence. Raw frame samples and DRM counters are in ignored
-`work/backend-render-benchmark/hardware.json`; the compact
-`hardware-summary.json` includes every trial's throughput and CPU latency
-p50/p95. Load averages were approximately 6.3/6.1/5.9 at both ends of the run.
 
 ## AVIF images
 
@@ -322,9 +205,7 @@ before publishing any pixels. Browser codecs and pixel-renderer inputs retain
 their existing paths.
 
 `Image.Draw(Image.Props)` accepts AVIF assets through the same path as PNG/JPEG/WebP,
-including extensionless names and packaged bundle/APK assets. Raylib hosts opt
-in with `AVIF_RAYLIB` and the pinned archives; builds without it decode no AVIF
-and link no codec library. Native hosts
+including extensionless names and packaged bundle/APK assets. Native hosts
 decode with the locked libavif 1.3 and dav1d, its assembly selected at run time
 for the CPU (x86 SSE2 to AVX-512, ARMv7 and AArch64 NEON); Android 9 requires
 no OS AVIF support. libaom is linked as the explicit comparison oracle, never
@@ -336,7 +217,7 @@ and Release, including the original large YUV420 crash input and background
 image loading.
 8/10/12-bit color and monochrome decode to straight 8-bit RGBA; alpha and
 container clean aperture, rotation and mirroring are preserved. The renderer
-then premultiplies for Cairo or composites normally in Raylib. HDR tone mapping
+then premultiplies for Cairo. HDR tone mapping
 and ICC display color management are outside the existing 8-bit image surface.
 
 Encoded files are limited to 256 MiB, dimensions to 32768 per axis and pixel
@@ -357,19 +238,6 @@ bytes. Only the first decoded frame is retained.
 | Linux AArch64 | dav1d NEON, dotprod, i8mm | qemu-user: strict parity |
 | Windows, macOS | dav1d via the same recipe | unverified here |
 
-`mk/raylib-library.mk` builds `AVIF_A`, `AOM_A` and Linux `AVIF_SO` beside the
-existing renderer archives; `AVIF_A` contains dav1d. Building it needs Meson,
-Ninja and, on x86, NASM; `ZIRAN_AVIF_TOOLS` can name a directory holding the
-avif package's pinned Meson/Ninja. `kryon_android_codecs(webp, avif, aom)`
-links the static codec for each ABI; older scaffolds receive the source paths
-through `KRYON_ANDROID_AVIF_DIR`, `KRYON_ANDROID_AOM_DIR` and `KRYON_DAV1D_DIR`
-(otherwise dav1d comes from the locked package graph). The Raylib artifact
-includes the static codec archives. The desktop artifact includes the
-self-contained `libkryonavif.so`; `renderer_link` retains it as a runtime
-dependency so application packaging tools carry it into their lib directory.
-Cairo also searches beside the executable and its `lib`/`../lib` directories;
-`KRYON_AVIF_LIBRARY` can select an explicit codec file for custom hosts.
-
 Canvas uses the browser AVIF decoder through `PageImageDecode`; supported
 browsers (Firefox 93+, Chromium 85+, Safari 16.4+) supply their native AVIF
 implementation. In a browser without AVIF, every AVIF decode fails cleanly:
@@ -384,7 +252,7 @@ strict libavif digests in `tests/avif_strict_digests.zi`, tolerance 0. The
 independent goldens keep small documented tolerances: ±1 for 10/12-bit and
 grayscale (8-bit rounding of the source pattern), ±4 premultiplied (unpremultiply
 rounding) and ±3 for Jungle title samples (YUV420 conversion versus Pillow).
-`make avif-render-test` checks real Cairo and private-display Raylib rendering,
+`make avif-render-test` checks native rendering,
 including a portable bundle using the public Image widget. `make android-avif-test
 ANDROID_NDK=... ANDROID_SERIAL=ZE2223BQZT` builds all four ABIs and runs the
 ARMv7 strict-parity/golden-pixel tests on the Android 9 USB Moto, asserting each
@@ -411,20 +279,11 @@ its name. Lossy, lossless and alpha pictures decode to straight RGBA. An
 animated WebP decodes to its first complete frame, since Kryon images are
 still; `ImageCompress` keeps animated originals unchanged.
 
-- The raylib and Android hosts decode through `webp_image.zi` with libwebp's
-  decoder and animation demuxer, built from the locked `libwebp` source
-  package into the static `kryonwebp` archive (`cmake/WebP.cmake`, no
-  encoder or threads). Images above 67108864 pixels are refused. The static
-  adapter retains its 2147483647-byte input cap; Cairo retains its 256 MiB
-  encoded-file budget.
-	  `mk/raylib-library.mk` builds it as `WEBP_A` beside `RAYLIB_A`;
-	  `kryon_android_codecs` builds it for each ABI; the `renderer-raylib`
-  artifact lists `lib/libkryonwebp.a` in its archives.
 - The desktop (Cairo) host loads the system libwebp demuxer
   (`libwebpdemux.so.2`) on first use, like its other optional codecs.
 - The canvas host uses the browser's own WebP decoder.
 
-`make raylib-webp-decode-test` and `make test-focus TEST=ziran_image_decode_linux_test` decode the
+`make test-focus TEST=ziran_image_decode_linux_test` decode the
 `tests/fixtures/webp` pictures natively, `tests/webp_browser_test.py` does the
 same in headless Chromium, and `make android-webp-link-test` links the
 decoder for every Android ABI.
@@ -435,32 +294,6 @@ Sixteen-bit samples use their high byte; ancillary color profiles and gamma
 are ignored. `tests/ziran_png_test.sh` compares independent reference pixels
 for 33 fixtures through source and saved IR in bundles, C and Go, including
 malformed streams and bounded decoder output.
-
-The raylib host uses `raylib_runtime.zi` and the raylib revision pinned as a
-Ziran source dependency. The canvas host uses its dedicated `canvas_raster.zi` provider over
-a Canvas2D browser ABI; see [Canvas2D browser host](canvas.md). Backend build
-dependencies and link flags live in `mk/ziran-project.mk`. Platform calls are
-declared with Ziran foreign imports; handwritten host implementation is
-Ziran.
-
-On Linux, the Raylib host resolves system typefaces and missing characters
-through [Fontconfig](https://fontconfig.pages.freedesktop.org/fontconfig/fontconfig-devel/).
-Measurement and drawing use the same fallback face and advances. TrueType and
-OpenType collections are extracted into owned standalone font bytes following
-the [OpenType table and checksum rules](https://learn.microsoft.com/en-us/typography/opentype/spec/otff).
-Glyph atlases remain available for later frames, and queued text is flushed
-before replacing an atlas.
-Missing characters are checked against the source before rebuilding an atlas.
-Text measurement refreshes the base atlas; cached drawing sizes refresh only
-when used, so a new character cannot rebuild every cached zoom at once.
-
-`make raylib-typeface-test` decodes real fonts and checks mixed Latin/CJK text,
-supplementary characters, collection bounds and checksums, retained sources,
-and disposal in C from source and saved IR. It replaces only graphics
-submission and texture allocation, so it needs no display and does not verify
-rendered pixels. Supply `RAYLIB_A` for an existing Raylib archive (and
-`RAYLIB_LIBS` for its link flags); Fontconfig and an installed CJK outline font
-are required. Whole-application captures still require a private display.
 
 Browser projects save the selected `_run` host and `canvas_raster.zi` as
 generation roots without entry pruning. This keeps both the host `main` and
@@ -497,7 +330,6 @@ LRU budgets, so a large cover and its small marker do not evict each other.
 | Backend | Lanczos copy |
 | --- | --- |
 | Desktop/Cairo | Cached surface, drawn 1:1 |
-| Raylib | Uploaded texture; the CPU copy is freed after upload |
 | pixmap and SDL3 GPU | A copy slot drawn 1:1 (threaded builds only, `PIXMAP_LANCZOS`), so the CPU rows and GPU hosts show the same bytes |
 | Canvas | Ziran resampler in slices, from the texture's pixels read back, then uploaded |
 
@@ -525,7 +357,7 @@ already does this by pushing a wake event. `PixmapLanczosWait` and
 smooth picture is final.
 
 `make lanczos-goldens-test` (part of `make test`) compares Cairo, pixmap,
-Raylib on a private Xvfb display and Canvas in headless Firefox against
+Canvas in a private headless browser against
 Pillow goldens. `make lanczos-benchmark` times Kryon against Pillow,
 Pillow-SIMD, libvips and stb_image_resize2. It reports ms per output
 megapixel, extra peak memory and PSNR against a float64 reference, on
@@ -558,23 +390,6 @@ a JDK, the Android SDK with NDK `28.2.13676358` and CMake `3.22.1`
 (`ANDROID_HOME`, default `$HOME/Android/Sdk`), and the locked `libwebp`,
 `libavif` and `libaom` source packages. Scaffolds pass their source roots to
 `kryon_android_codecs`; the packaged host links no renderer or audio library.
-
-A custom raylib Android host defines `KRYON_RAYLIB_HOST` during Ziran generation.
-This selects raylib's pointer and clipboard exports while retaining Android
-platform services. Direct touch consumers call `AndroidPointerFrame()` and
-`AndroidSecondarySample()` from `android_touch`; those samples do not replace
-the selected renderer's generic input exports.
-JNI also selects raylib's `GetAndroidApp()` for this host, so private files,
-Java calls and process preparation use the raylib-owned NativeActivity.
-Before initializing graphics, custom hosts can read the announced native window
-with `GetAndroidPendingSurfaceSize(width, height)` from `android_surface`. It
-returns positive dimensions without consuming or acknowledging lifecycle commands.
-Once EGL is current, surface synchronization reads its drawing-buffer extent.
-If raylib's fixed buffer request no longer matches the native window after
-picture-in-picture, synchronization releases that request. Subsequent EGL
-buffers follow the native window size; software hosts use the native window.
-The same synchronization maps window-local touch samples into the decorated
-surface, including replayed quick taps and logical zoom.
 
 At runtime a `NativeActivity` subclass owns the Java side: it reports window
 insets, display cutouts, IME state, density, dark mode and orientation
@@ -636,9 +451,8 @@ input such as `KeyboardTake`, `TypedCodepointTake`,
 `PointerWheelTake`, and pointer state. `KeyboardModifiers` reports
 Shift, Control, and Alt keys as `KeyModifierShift`, `KeyModifierControl`, and
 `KeyModifierAlt` bits, so a shortcut such as Ctrl+S is a key press read with
-the modifiers that were down. Desktop, Canvas and Raylib custom loops call
-`DesktopInputTake(session)`, `CanvasInputTake(session)` or
-`RaylibInputTake(session)` before each frame. Each take transfers ordered text
+the modifiers that were down. Desktop and Canvas custom loops call
+`DesktopInputTake(session)` or `CanvasInputTake(session)` before each frame. Each take transfers ordered text
 to that session and returns the next key with the modifiers retained when the
 press or repeat arrived, so shortcuts remain intact even when every physical
 key is released before a frame. `CanvasModifiers()` and the immutable frame
@@ -653,7 +467,7 @@ window hosts and ignores terminal escape sequences. The project test drives
 this through a private PTY. The other hosts can capture a frame with
 `KRYON_CAPTURE_PATH`; the graphical integration tests run on private Xvfb
 displays. Run `make test` for the library, browser, and typeface gates, plus
-`make desktop-project-test` and `make raylib-project-test` for graphical
+`make desktop-project-test` for graphical
 capture and input.
 Never run graphical tests against the developer's live display.
 
@@ -666,7 +480,7 @@ buffer that is too small leaves the next path queued. Text drops are ignored.
 ## Portable programmable scene rendering
 
 `scene_render` executes `shader` material programs in Ziran on CPU before
-presentation. Cairo, Raylib (including WebAssembly), and Android's
+presentation. Cairo and Android's
 ANativeWindow/Pixmap host consume the resulting managed bitmap through the
 standard Image surface. These hosts do not need a shader-language bridge.
 This interface does not claim GPU execution, GLSL compilation, vertex-shader
@@ -683,8 +497,7 @@ materials and the Pixmap-to-ANativeWindow presentation path on the USB Moto. It
 uses a private offscreen AImageReader window, verifies posted RGBA pixels,
 clipping, alpha and binding changes, and destroys/recreates that window while
 keeping the CPU program and bitmap alive. It does not launch or alter an owner
-app. `make shader-web-test` exercises the corresponding Raylib WebGL presentation
-inside a private headless browser. These targets also load a real PNG through
+app. These targets also load a real PNG through
 `kryon/image_pixels`; activity-bound Android asset/JNI decoding is a separate
 application integration responsibility.
 

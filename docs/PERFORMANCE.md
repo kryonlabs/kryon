@@ -26,14 +26,14 @@ The build directory is stable and locked for the whole run. Desktop variables
 are scrubbed. RSS comes from the native runner's `/proc/self/status` VmHWM
 after the measured frames. Unlike a launcher's `wait4` high-water mark, it
 excludes the Python process's memory before exec. Schema 2 baselines use this
-measurement; capture a new baseline when migrating from schema 1. The timings
+measurement. The timings
 exclude warmup; the runner CPU-seconds counter includes initialization and all
 warmup/measured frames, and excludes compilation and the Python launcher. Timings
 cover the pixmap pipeline, not native window presentation, asset decoding,
 screen-reader overhead, process idle wakeups or GPU/browser rendering.
 
 The widget review harness measures actual public controls, rather than mock
-faces. It includes all 54 core gallery scenes plus light and dark system-palette
+faces. It includes the core gallery scenes plus light and dark system-palette
 compositions. Each interactive scene captures resting, disabled, hover, keyboard
 focus and held-press states, using the same 480 × 320 viewport.
 

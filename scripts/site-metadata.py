@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 
 SITE = Path(__file__).resolve().parents[1] / 'docs/site'
-PAGES = ['index', 'apps', 'modules', 'getting-started', 'docs', 'renderers', 'widgets', 'demo']
+PAGES = ['index', 'apps', 'modules', 'getting-started', 'docs', 'renderers', 'widgets']
 
 
 class Head(HTMLParser):

@@ -23,15 +23,8 @@ rejected frames, and 2 for invalid arguments or files. Files are limited to
 64 MiB each.
 
 The entry takes no arguments, returns an integer, and samples exactly one
-input record per frame. Existing entries may keep a module-local
-`PollPointer() -> PointerFrame`. Five-column traces remain supported:
-
-```
-x y down pressed released
-```
-
-For keyboard, text, composition, wheel, resize, clipboard and time, declare a
-module-local `PollFrameInput() -> FrameInput` and use the twenty-column format:
+input record per frame. Declare a module-local `PollFrameInput() -> FrameInput` and use the
+twenty-column format:
 
 ```
 x y down pressed released secondary_down secondary_pressed secondary_released key modifiers wheel width height elapsed_ms text_hex ime_phase ime_cursor ime_selection ime_hex clipboard_hex
@@ -50,8 +43,7 @@ are accepted. A trace holds at most 1,024 samples within 1 MiB.
 `FrameInputField` converts text and composition into a `TextField.Input`.
 Applications explicitly use the recorded viewport and elapsed time rather
 than reading wall time. Clipboard reads use the recorded input and clipboard
-writes appear in the JSON. Rich traces produce format version 2; legacy
-pointer traces keep version 1.
+writes appear in the JSON. Captures use format version 2.
 
 Capture includes focus, read-only state, selection and committed editor text.
 Secure editor values, lengths and selections are redacted. A document larger

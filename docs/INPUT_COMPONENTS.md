@@ -15,11 +15,13 @@ disabled component neither accepts text nor keeps focus.
 
 ## Tag input
 
-```ziran
-TagInput :: (session: Session, props: TagInputProps,
-    state: *TagInputState) -> TagInputResult
-TagInputApply :: (state: *TagInputState,
-    props: TagInputProps) -> TagInputResult
+```zi
+TagInput :: #import "kryon/tag_input";
+
+TagInput.Draw :: (session: Session, props: TagInput.Props,
+    state: *TagInput.TagInputState) -> TagInput.TagInputResult
+TagInput.TagInputApply :: (state: *TagInput.TagInputState,
+    props: TagInput.Props) -> TagInput.TagInputResult
 ```
 
 `TagInputState` owns up to 64 tags and their stable caller IDs, the editable
@@ -36,11 +38,13 @@ buttons, and nested field all honor disabled state and stylesheet cascade.
 
 ## One-time code
 
-```ziran
-OneTimeCode :: (session: Session, props: OneTimeCodeProps,
-    state: *OneTimeCodeState) -> OneTimeCodeResult
-OneTimeCodeApply :: (state: *OneTimeCodeState,
-    props: OneTimeCodeProps) -> OneTimeCodeResult
+```zi
+OneTimeCode :: #import "kryon/one_time_code";
+
+OneTimeCode.Draw :: (session: Session, props: OneTimeCode.Props,
+    state: *OneTimeCode.OneTimeCodeState) -> OneTimeCode.OneTimeCodeResult
+OneTimeCode.OneTimeCodeApply :: (state: *OneTimeCode.OneTimeCodeState,
+    props: OneTimeCode.Props) -> OneTimeCode.OneTimeCodeResult
 ```
 
 The state owns 1–12 alphanumeric slots, the cursor, focus, and prior completion.
@@ -58,11 +62,13 @@ real retained nodes.
 
 ## Inline edit
 
-```ziran
-InlineEdit :: (session: Session, props: InlineEditProps,
-    state: *InlineEditState) -> InlineEditResult
-InlineEditApply :: (state: *InlineEditState,
-    props: InlineEditProps) -> InlineEditResult
+```zi
+InlineEdit :: #import "kryon/inline_edit";
+
+InlineEdit.Draw :: (session: Session, props: InlineEdit.Props,
+    state: *InlineEdit.InlineEditState) -> InlineEdit.InlineEditResult
+InlineEdit.InlineEditApply :: (state: *InlineEdit.InlineEditState,
+    props: InlineEdit.Props) -> InlineEdit.InlineEditResult
 ```
 
 Activation selects the current value for replacement. Normal text and paste
@@ -74,11 +80,13 @@ and whether the committed value changed.
 
 ## Scrub field
 
-```ziran
-ScrubField :: (session: Session, props: ScrubFieldProps,
-    state: *ScrubFieldState) -> ScrubFieldResult
-ScrubFieldApply :: (state: *ScrubFieldState,
-    props: ScrubFieldProps) -> ScrubFieldResult
+```zi
+ScrubField :: #import "kryon/scrub_field";
+
+ScrubField.Draw :: (session: Session, props: ScrubField.Props,
+    state: *ScrubField.ScrubFieldState) -> ScrubField.ScrubFieldResult
+ScrubField.ScrubFieldApply :: (state: *ScrubField.ScrubFieldState,
+    props: ScrubField.Props) -> ScrubField.ScrubFieldResult
 ```
 
 Arrow-left/right, arrow-up/down, and horizontal drag use the same step. Shift
@@ -95,11 +103,13 @@ metrics and can be overridden by ID/class stylesheet rules.
 
 ## Money field
 
-```ziran
-MoneyField :: (session: Session, props: MoneyFieldProps,
-    state: *MoneyFieldState) -> MoneyFieldResult
-MoneyFieldApply :: (state: *MoneyFieldState,
-    props: MoneyFieldProps) -> MoneyFieldResult
+```zi
+MoneyField :: #import "kryon/money_field";
+
+MoneyField.Draw :: (session: Session, props: MoneyField.Props,
+    state: *MoneyField.MoneyFieldState) -> MoneyField.MoneyFieldResult
+MoneyField.MoneyFieldApply :: (state: *MoneyField.MoneyFieldState,
+    props: MoneyField.Props) -> MoneyField.MoneyFieldResult
 ```
 
 The state owns a `float64` value and the focused edit bytes. Blurred display
@@ -115,11 +125,13 @@ hidden in widget state.
 
 ## Shortcut recorder
 
-```ziran
-ShortcutRecorder :: (session: Session, props: ShortcutRecorderProps,
-    state: *ShortcutRecorderState) -> ShortcutRecorderResult
-ShortcutRecorderApply :: (state: *ShortcutRecorderState,
-    props: ShortcutRecorderProps) -> ShortcutRecorderResult
+```zi
+ShortcutRecorder :: #import "kryon/shortcut_recorder";
+
+ShortcutRecorder.Draw :: (session: Session, props: ShortcutRecorder.Props,
+    state: *ShortcutRecorder.ShortcutRecorderState) -> ShortcutRecorder.ShortcutRecorderResult
+ShortcutRecorder.ShortcutRecorderApply :: (state: *ShortcutRecorder.ShortcutRecorderState,
+    props: ShortcutRecorder.Props) -> ShortcutRecorder.ShortcutRecorderResult
 ```
 
 Activation records only while this widget is focused. A supported key plus

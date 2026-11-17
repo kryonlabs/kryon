@@ -22,18 +22,6 @@ MAINTAINED = [
     ('docs.html', 'Docs — Kryon', 'Kryon ownership, public surface, local commands and integration boundaries.'),
     ('renderers.html', 'Platforms — Kryon', 'Kryon runs through Ziran desktop and Canvas hosts; support varies by backend and target.'),
 ]
-REDIRECTS = {
-    'api.html': ('docs.html', 'API docs moved'),
-    'components.html': ('widgets.html', 'Components moved'),
-    'demo.html': ('widgets.html', 'Live editor moved'),
-    'live-examples.html': ('widgets.html', 'Examples moved'),
-    'language.html': ('docs.html', 'Language docs moved'),
-    'showcase.html': ('apps.html', 'Showcase moved'),
-    'matrices.html': ('renderers.html', 'Platform matrix moved'),
-    'benchmarks.html': ('docs.html', 'Benchmarks moved'),
-}
-
-
 
 def write(path, text):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -104,8 +92,6 @@ def main():
         revision = hashlib.file_digest(stream, 'sha256').hexdigest()[:16]
     for name, title, description in MAINTAINED:
         write(SITE / name, '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + html.escape(title) + '</title><meta name="description" content="' + html.escape(description, quote=True) + '"><link rel="stylesheet" href="current.css?v=' + revision + '"></head><body><input id="kryon-ime" type="text" tabindex="-1" aria-hidden="true" autocomplete="off" autocapitalize="off" spellcheck="false"><div id="canvas-frame"><canvas id="canvas" tabindex="0" aria-label="Kryon interactive website"></canvas></div><pre id="result" role="status"></pre><noscript>This website runs Ziran through WebAssembly. Enable JavaScript to use the live examples.</noscript><script src="current.js?v=' + revision + '"></script></body></html>\n')
-    for name, (target, title) in REDIRECTS.items():
-        write(SITE / name, '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=' + target + '"><title>' + title + '</title></head><body><a href="' + target + '">' + title + '</a></body></html>\n')
     print('Packaged live Ziran website: 7 routes, 101 shared widget examples')
 
 

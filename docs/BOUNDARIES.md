@@ -4,7 +4,6 @@
 | --- | --- |
 | Ziran | Language, compiler, standard library, `.zir`, `.zx`, and generic host capabilities |
 | Kryon | Reusable Ziran UI modules, widget decisions, and UI hosts |
-| Game2D | Optional game API and game behavior using Kryon's selected raylib backend |
 | Applications | Screens, copy, translations, assets, data storage, migrations, and product workflows |
 
 Kryon is imported by applications. It is not linked into programs that never
@@ -18,7 +17,6 @@ decisions. The host may call native libraries through declared Ziran foreign
 bindings, but must not duplicate widget policy.
 
 Make upstream Kryon changes on `master` and commit them there. A downstream
-app picks them up by updating its `ziran.lock`, or, if it still vendors
-Kryon, by moving its clean `vendor/kryon` submodule pointer. Never edit
+app picks them up by updating its `ziran.lock`. Never edit
 Kryon's source inside an application. See [ARCHITECTURE.md](ARCHITECTURE.md)
 for source modules and [PROJECTS.md](PROJECTS.md) for package use.

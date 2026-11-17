@@ -24,7 +24,7 @@ make -C examples widget-catalog      # desktop
 make -C examples widget-catalog-web  # Canvas/Wasm
 make gallery-zx                    # one complete portable ZX per example
 make site-gallery                   # stage the gallery for the existing site
-make site                           # rebuild the gallery, editor and initial demo
+make site                           # package the website, gallery and editor
 ```
 
 Run `./build/gallery-desktop` from `examples/gallery/`. The web output is
@@ -82,7 +82,7 @@ target also compiles both programs for Go, C/Web, and portable ZX.
 `Image.Draw(Image.Props)` with a path-backed PNG and red tint, then writes
 `build/examples/image-desktop.png`. The host imports Ziran's generic
 `c_string` module for safe C string arguments. It handles shapes, text, and
-path-backed PNG images. Texture handles and other image formats remain open.
+path-backed PNG images. See [image host support](../docs/BACKENDS.md#webp-images) for image formats.
 
 `make -C examples time-picker` builds `demo/time_picker_demo.zi`, Kryon's
 `TimePicker` without a time, with one, disabled and in a small form, with a

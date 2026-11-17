@@ -138,8 +138,6 @@ jobs:
       - name: Check static site assets
         run: |
           test -f docs/site/index.html
-          test -f docs/site/demo.html
-          test -f docs/site/assets/widgets.html
           test -f docs/site/runtime/playground-runtime.js
           test -f docs/site/runtime/playground-runtime.wasm
           test -f docs/site/demo-theme.js

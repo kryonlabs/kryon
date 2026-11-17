@@ -1,5 +1,7 @@
 # Kryon
 
+Documentation for Kryon 0.4.0 and Unreleased changes on master.
+
 Linux desktop and portable hosts can decode local videos with synchronized audio
 using the optional GStreamer service exported as `kryon/Video` and
 `kryon/VideoLinux`. Display the returned frame with `Image.Draw(Image.Props)`.
@@ -11,8 +13,7 @@ replay and lease revocation with a silent audio sink and no display access.
 Kryon is a UI library written in Ziran. Its source lives under `src/ui/` and
 imports Ziran modules normally. The Ziran compiler, `.zir` representation, and
 `.zx` bundle format belong to the separate
-[Ziran](https://github.com/ziranlang/ziran) repository. Kryon has no
-`.kry` runtime or language compiler.
+[Ziran](https://github.com/ziranlang/ziran) repository.
 
 ## Build
 
@@ -47,15 +48,14 @@ depend on Kryon: [Plot](https://github.com/kryonlabs/plot),
 in `ziran.toml`); see [writing a widget package](docs/API.md#widget-packages).
 
 Style sheets are the separate [CSS](https://github.com/kryonlabs/css)
-package: it parses and formats a subset of CSS, installs the rules, and ships
-the classic, lightfield, and material style packs. Kryon keeps the rule table and
+package: it parses and formats a subset of CSS, installs the rules. Kryon keeps the rule table and
 style resolution, so an app that builds its rules in code needs no parser.
 
-The optional [Game2D](https://github.com/kryonlabs/game2d) Ziran package owns
-the raylib game API. Kryon keeps its geometry, drawing values, UI primitives,
-and raylib UI host. Kryon exports `geometry` and `drawing_props` so Game2D can
-share their types without pulling in widget modules. The raylib game adapter
-uses a C ABI and does not support native Go.
+Kryon exports `geometry` and `drawing_props` for programs that need drawing
+values without importing widgets. Imports and use determine what a program
+carries. `App.Show(window)` carries only the window, events and presentation;
+`App.Run(window, Draw)` also brings the frame loop. Portable ZX windows run
+through the native desktop provider by default. See the [API](docs/API.md).
 
 `make test` builds the test host and runs the Ziran source, saved-IR, and
 portable bundle tests with four concurrent jobs. Set `TEST_JOBS=1` to run them
@@ -70,7 +70,7 @@ See [composition input](docs/COMPOSITION_INPUT.md) for the checked IME event
 contract and host queue lifetime.
 See [cursor input](docs/CURSOR.md) for the checked cursor decision and platform
 effect contract.
-See [style picker](docs/STYLE_PICKER.md) for caller-owned pack selection.
+See [theming](docs/THEMING.md) for palette and style customization.
 See [zoom](docs/ZOOM.md) for Ctrl and mouse-wheel zoom of a whole application.
 See [clipboard state](docs/CLIPBOARD.md) for the portable clipboard value and
 host effect contract.
@@ -86,8 +86,8 @@ file launches with `ziran run app.zx` after installing the desktop provider. See
 
 ## Website and widget gallery
 
-`make site` rebuilds the initial Canvas demo, the browser compiler and preview
-host, and the widget gallery into `docs/site/`. Emscripten is required; activate
+`make site` packages the Canvas website, browser compiler, preview host and
+widget gallery into `docs/site/`. Emscripten is required; activate
 emsdk or set `EMCC`. `make site-gallery` builds only the gallery, and
 `make site-gallery-test` prepares editable examples and exercises the gallery in
 a private Chromium/Xvfb session.
@@ -97,9 +97,8 @@ Its core scenes are shared by the desktop, web and review hosts. Examples are
 grouped by installed module and category, including core UI and 2D drawing.
 Optional package integrations are registered only while their dependencies
 are declared. Each selected example includes editable Ziran source and a live
-preview, using the same compiler and editor as `demo.html`. Plot and DataViews
-supply the additional charts, tree and Kanban; TableView's entry identifies its
-current API-only status. `make site` generates the scene metadata and editable
+preview, using the browser compiler and the gallery editor. Plot and DataViews
+supply charts, tree, Kanban and an interactive TableView. `make site` generates the scene metadata and editable
 snippets directly from these examples. The Pages workflow builds and tests the
 full website from fixed source revisions before publishing.
 
@@ -107,12 +106,10 @@ full website from fixed source revisions before publishing.
 
 The [feature matrix](docs/FEATURE_MATRIX.md) records package and host coverage.
 The Canvas2D browser host is covered by private headless Chromium, WebAudio,
-and Wasm tests. The [open-work plan](plan/README.md) lists
-the remaining platform-accessibility work.
+and Wasm tests. See [accessibility](docs/ACCESSIBILITY.md) for platform coverage.
 
 Kryon commits land upstream first. Applications then update their
-`ziran.lock` with Ziran's package commands; an app that still vendors Kryon
-moves only its clean `vendor/kryon` submodule pointer. This repository's tests
+`ziran.lock` with Ziran's package commands. This repository's tests
 verify Kryon itself, not every downstream application build.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the library boundary and
@@ -123,3 +120,13 @@ for language and portable runtime gaps.
 `kryon/breadcrumb` serves `Breadcrumb.Draw` for keyed label navigation, with measured
 ancestors and an accessible, virtualized overflow menu. Applications own
 selection, focus and navigation; see [the API](docs/API.md#breadcrumbs).
+
+## Documentation
+
+- [API reference and widget packages](docs/API.md)
+- [Architecture](docs/ARCHITECTURE.md) and [repository boundaries](docs/BOUNDARIES.md)
+- [Projects](docs/PROJECTS.md), [hosts](docs/BACKENDS.md) and [Canvas](docs/canvas.md)
+- [Feature matrix](docs/FEATURE_MATRIX.md) and [widget verification](docs/WIDGET_CONFORMANCE.md)
+- [Input components](docs/INPUT_COMPONENTS.md), [overlays](docs/OVERLAYS.md) and [compact navigation](docs/navigation.md)
+- [Component loading](docs/COMPONENTS.md), [window focus](docs/window-focus.md) and [accessibility](docs/ACCESSIBILITY.md)
+- [Raster workers](docs/THREADING.md) and [performance measurements](docs/PERFORMANCE.md)

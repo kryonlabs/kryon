@@ -14,6 +14,3 @@ support system, light and dark preferences. `SetReducedMotion` controls motion.
 
 Typed style rules and optional CSS remain available for application-specific
 colors and control styling, using the same components and interaction behavior.
-
-The former style-picker gallery route remains a single-style example so
-existing links continue to open.

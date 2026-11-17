@@ -1,5 +1,7 @@
 # Kryon API
 
+This reference covers 0.4.0 and Unreleased changes on master.
+
 Kryon is an ordinary Ziran package. An application imports the modules it
 uses; no widget names are recognized by the Ziran compiler or `.zx` loader.
 The public package imports are declared in [`ziran.toml`](../ziran.toml).
@@ -25,8 +27,7 @@ clears its whole surface before `PaintFlush`. `EndFrameDamaged` keeps its
 existing behavior of emitting a full repaint immediately.
 
 `frame_transition.FrameSurfaceCopy(surface)` copies a borrowed retained frame
-into an owned surface before its target is reused. The Raylib host performs
-the copy on its render thread. Capture before committing the destination
+into an owned surface before its target is reused. Capture before committing the destination
 frame, draw with `FrameTransition`, and call `FrameSurfaceRelease` when the
 transition ends. An invalid source or failed allocation returns an empty surface.
 
@@ -347,8 +348,7 @@ Applications must apply the edit and preserve the result's cursor and anchor.
 
 A `TextArea` can preview a markup language over its value without changing
 it. `hidden` bytes take no width or caret stop, `strong` bytes are bold and
-`italic` bytes slanted (backends that register a slant raster, as Raylib
-does, draw them leaning; others upright), and `colors` tint spans.
+`italic` bytes slanted when the host registers a slant raster (otherwise upright), and `colors` tint spans.
 `lines` draws a logical line at its own size (`TextArea.Line.scale`), such as
 a heading: its rows wrap, take caret stops and take height at that size.
 `blocks` adds boxes under a line, one under another in order, the first in
@@ -393,7 +393,7 @@ a fresh press; holding a key does not invent repeats. Indices use the existing
 uppercase ASCII and named `Key` codes; index zero is unused.
 
 The snapshot also carries `pointer`, `secondary`, `focused`, `modifiers`,
-`wheel`, and `elapsed_ms`, `delta_ms`, `sequence`. Desktop, Canvas and Raylib
+`wheel`, and `elapsed_ms`, `delta_ms`, `sequence`. Desktop and Canvas
 sample a monotonic clock once per successful host poll: first delta is zero,
 later deltas are nonnegative, and repeated captures have identical timing.
 Sequence starts at one for each opened host. Pointer coordinates use the
@@ -407,24 +407,21 @@ press and repeat flags, preventing a focus change from activating a shortcut.
 Hosts publish on the session's owning thread with `FrameInputBegin(session, snapshot) -> bool` and call
 `FrameInputEnd(session)` after the callback, including failure paths. Publishing
 copies the value and rejects replacement while that session's frame is open.
-Kryon's standard Desktop, Canvas and Raylib app loops do this automatically.
+Kryon's standard Desktop and Canvas app loops do this automatically.
 Desktop freezes raw SDL key events for its own window; Canvas freezes existing
 DOM held state and edge queues before widget reads. Both clear publication on
 callback cancellation, terminal polls and host teardown. Custom Desktop or
 Canvas loops call `DesktopFrameInputBegin(session)` or
 `CanvasFrameInputBegin(session)` after the matching successful poll, and
 `FrameInputEnd(session)` when their callback ends (including failure paths).
-The host also ends publication before presentation can yield. Custom Raylib
-loops call `RaylibFrameInputBegin(session)` after `PollRaylib`, then
-`FrameInputEnd` when their callback ends. Other providers must supply
+The host also ends publication before presentation can yield. Other providers must supply
 equivalent gathered state; this API does not infer held keys from consumed
 keyboard events. A hosted
 bundle requests only `frame_snapshot.CaptureFrameInputHost`; `WidgetHostCall`
 validates the session against the active `WidgetHostBegin` before returning
 that session's published snapshot. No input is queried outside that frame.
 
-Capturing never consumes `KeyboardTake`, `TypedTextTake`, Raylib's key/character
-queues, IME, clipboard, or Escape routing. Applications retain movement,
+Capturing never consumes `KeyboardTake`, `TypedTextTake`, IME, clipboard, or Escape routing. Applications retain movement,
 simulation, repeat cadence, and navigation policy. The existing `FrameInput`
 replay record and its apply/field helpers retain their contract.
 
@@ -503,9 +500,7 @@ row-major straight RGBA8 and copied/consumed synchronously; reuse the input buff
 after the call. Create failure returns a zero texture. Update returns true for
 accepted unchanged data, and false preserves the old pixels. Only successful
 changed data invalidates retained paint. Smooth sampling and alpha use the
-ordinary Image renderer on native Raylib, Desktop/Cairo, pixmap and Canvas.
-Raylib resolves managed IDs to bounded native RGBA textures lazily by image
-revision. Explicit `Image.Props.tint`, including white for original colors,
+ordinary Image renderer on Desktop/Cairo, pixmap and Canvas. Explicit `Image.Props.tint`, including white for original colors,
 applies to straight RGBA pixels. GPU reset and native window close/reopen
 preserve the session's CPU image; textures are recreated when next painted.
 Completed native worker frames own deduplicated copies of the revisions they
@@ -544,7 +539,7 @@ On hosts with a distinct selection clipboard, use
 `SystemPrimarySet(text) -> bool`. `SystemPrimaryText` returns a caller-owned,
 whole-UTF-8 prefix borrowed from `buffer`; an empty result can mean either an
 empty selection or an unsupported host, so use `SystemPrimaryAvailable` when
-that distinction matters. SDL desktop and Linux Raylib hosts connect these
+that distinction matters. Linux SDL desktop hosts connect these
 calls to the platform PRIMARY selection. Android, Canvas, terminal, pixmap,
 bundle and unsupported desktop hosts return unavailable rather than falling
 back to CLIPBOARD.
@@ -975,8 +970,8 @@ produces an empty mesh. Rotation and scale stay on the standard image surface.
 nearest-neighbour sampling for the whole map; `nearest_tiles` selects individual
 tile indices while the rest remain smooth. Sampling survives the hosted codec.
 A hosted map uses batched sampling only when its host advertises
-`tile_map.sampling`; older hosts draw the same standard Images individually.
-Pixel snapping also works on older hosts because the bundle fits the bounds.
+`tile_map.sampling`; hosts without mesh support draw the same standard Images individually.
+Pixel snapping uses bounds fitted by the bundle.
 
 `WidgetPaletteUse` scopes semantic colors along with widget rules. Hosted
 `AppThemeColor` calls and compositions using canvas, surface, text, border and
@@ -992,14 +987,13 @@ changing widget props. Retained frames then compose and paint again, including
 when a browser graphics context resets or an app updates its image assets.
 
 `Shape.Draw(Shape.Props)`, `Circle(Shape.CircleProps)`, `Shape.Ring(Shape.RingProps)` and
-`Shape.Triangle(Shape.TriangleProps)` draw shapes as raylib's `DrawLineEx`, `DrawCircle`
-and `DrawCircleGradient`, `DrawRing` and `DrawTriangle` do. Like `Box`, each
+`Shape.Triangle(Shape.TriangleProps)` draw lines, circles, radial gradients,
+rings and triangles. Like `Box`, each
 is decorative: it submits a node covering what it draws and queues one paint
 command. Kryon cuts the shape into triangles, clips them to its parent's clip
 and sends each colour's triangles to the host in one `RasterTriangles` call;
 a radial fade is drawn as rings of one colour each. `Box.Props.fill_bottom`
-with `has_fill_bottom` fades a box's fill from top to bottom, as
-`DrawRectangleGradientV` does.
+with `has_fill_bottom` fades a box's fill from top to bottom.
 Import `kryon/shape` to use these shapes, including in a portable hosted
 bundle.
 
@@ -1032,8 +1026,8 @@ A program carries only what it uses. `kryon/app` imports each platform's
 window (`desktop_window`, `page_window`) and frame loop (`frames_desktop`,
 `frames_web`) as separate modules, so `App.Show(window)` reaches only the
 window: on Linux the checked program of `examples/window.zi` is the window,
-`kryon/app`, `app_types`, `desktop_window`, `sdl_event`, `pixmap_sdl` and C
-strings. In a portable bundle the window is `zx_window`: the checked program is
+`kryon/app`, `app_types`, `desktop_window`, `desktop_process_linux`,
+`sdl_event`, `pixmap_sdl` and C strings. In a portable bundle the window is `zx_window`: the checked program is
 the window, `kryon/app`, `app_types` and `zx_window`, and the bundle asks its
 host only for the window, its events, clearing and presenting
 (`ZxWindowOpenHost`, `ZxWindowEventHost`, `ZxWindowClearHost`,
@@ -1052,7 +1046,7 @@ canvas player binds the window to the page's canvas (`window_page_player`),
 lowers the bundle to Wasm in the page and runs it, each wait for an event
 yielding to the page. `App.Run(window, Draw)` brings the frame loop, the widget tree's frame
 driver (`TreeFrameUse`) and, on Linux, the accessibility tree
-(`AccessibilityTreeUse`). The desktop raster loads pictures, smooth copies and
+(`DesktopAccessibilityUse`). The desktop raster loads pictures, smooth copies and
 fonts when a frame first draws them, video when it opens, and the test driver
 only with `KRYON_TEST_DRIVER`. `make pay-per-import-test` checks the examples'
 generated C, the window's checked programs and its bundle's modules and host
@@ -1061,16 +1055,16 @@ capabilities.
 The project tool accepts a program as a project's entry. When the entry module
 declares `main`, `kryon build --profile NAME` generates a host that only calls
 that `main`, for a `desktop` profile and for a `canvas` page alike. A program
-entry needs `codegen = "c99"`; a portable `zx` profile needs a `Frame` entry
-and is refused otherwise.
+entry uses `codegen = "c99"` for native source builds. Desktop and Canvas
+`codegen = "zx"` profiles also accept a program with its own `main`; the
+player binds its window capabilities. `Frame` entries use the frame host.
 
 The selected host owns the process entry point, calls `BeginFrame` and
 `EndFrame`, supplies input to the session, and presents paint operations.
 Every host reports the same key codes through `KeyboardTake`: letters as
 uppercase ASCII and named keys as `KeyEnter`, `KeyBackspace`, `KeyLeft`, and
 the other `Key` constants. A letter is the one the active keyboard layout types,
-not its physical position; on Raylib, `RaylibLayoutKey` converts a position from
-`RaylibKeyDown`. `TypedTextTake` collects pending text into the caller's byte
+not its physical position. `TypedTextTake` collects pending text into the caller's byte
 buffer, and `TextFieldInputFor(key, modifiers, text)` turns both into a
 focused `TextField`'s input.
 An entire Unicode scalar must fit before it is consumed; a buffer of at least
@@ -1079,8 +1073,7 @@ the next scalar without consuming it, and `TypedCodepointCapacity(session)`
 reports free slots in the bounded 32-scalar session queue.
 
 Every graphical host owns an ordered key/text queue and exposes one session
-delivery call: `DesktopInputTake(session)`, `CanvasInputTake(session)`, or
-`RaylibInputTake(session)`. Poll the host every frame, including while session
+delivery call: `DesktopInputTake(session)` or `CanvasInputTake(session)`. Poll the host every frame, including while session
 text remains unread, then call its take once before composition. The take
 transfers one editing action or a printable-key/text run into that session and
 returns `(key, modifiers)` using portable key and modifier codes. Unread text
@@ -1092,16 +1085,6 @@ Desktop's bounded 256-record delivery queue backpressures SDL key and text
 events without blocking window lifecycle events. Run
 `build-queue -- make test-focus TEST=desktop_input_backpressure` for the native
 SDL source and saved-IR regression.
-Raylib fills its ordered queue from the platform key, repeat and text streams
-during `PollRaylib()`, applying the active keyboard layout before delivery.
-A Raylib app that has nothing to animate can call
-`RaylibWaitForActivity(descriptors, milliseconds)` between frames instead of
-drawing: it returns `RaylibActivityDescriptor`, `RaylibActivityInput` or
-`RaylibActivityNone`, and `RaylibActivityUnsupported` on hosts that must keep
-drawing. After `RaylibActivityInput` draw two frames, since a frame uses input
-the previous one read. `RaylibPrepareGlyphs(text)` readies many characters at
-once, so drawing them one at a time does not rebuild a font for each.
-
 The Canvas app host retains unread key presses, repeats, IME commits and
 gamepad navigation across drawing frames. Pressed/released snapshot flags still
 expire at the frame boundary; delivery does not replay them. Each queued press
@@ -1109,9 +1092,7 @@ or repeat retains its browser event's Shift, Control/Meta and Alt modifiers.
 Custom loops call `CanvasInputTake(session)`; an empty take reports current held
 modifiers. `CanvasModifiers()` and `CaptureFrameInput(session).modifiers` still
 report held state at their own sampling time, so consuming a shortcut never
-changes held keys or snapshot flags. Canvas keeps raylib-named
-`GetKeyPressed`/`GetCharPressed` program exports only for raylib applications
-compiled for the browser; they are frame observations, not Kryon session input.
+changes held keys or snapshot flags.
 
 Application code owns its product state and calls widgets within `Frame`.
 The complete manifest and build commands are in [PROJECTS.md](PROJECTS.md).
@@ -1158,15 +1139,7 @@ screen's pixels and kept, with the 255 others painted most recently, as the
 rectangles it paints, so a screen with many icons does not rasterize them
 again every frame. A host that draws textures registers
 `SvgIconUseTextures(make, free)` and then paints each icon as one image of
-the same pixels; raylib's `OpenRaylib` does, and a raylib host that opens its
-own window calls `RaylibUseIconTextures()` after `InitWindow`.
-
-A native game host using `raylib_runtime` can enable
-`RaylibCompletePictureFrames(true)` for its `BeginRaylibFrame` /
-`EndRaylibFrame` loop. Two retained screen textures keep the last complete
-frame visible while newly requested images decode, including later animation
-sprites. Decoding continues while that frame is held. Hosts that want images
-to appear progressively keep the default, `false`.
+the same pixels.
 
 A bundle draws a row of choices, such as a week or calendar view, with
 `SegmentedControl.Draw(session, props, options)` from
@@ -1228,9 +1201,7 @@ Other platform services an application may import:
 | [`file_download`](../src/backend/file_download.zi) | `FileDownloadStart`, `FileDownloadPoll` and `FileDownloadRelease`: a large file downloaded to a path, appearing only when complete, through curl, the browser's streaming `fetch` into the page's file system, or the Android activity |
 | [`http_transfer`](../src/backend/http_transfer.zi) | `HttpTransferStart`, `HttpTransferPoll` and `HttpTransferCancel`: HTTP requests that run while the application draws, through curl on a worker thread, the Android activity's transport, or the browser's `fetch` |
 | [`page_socket`](../src/backend/page_socket.zi) | `PageSocketOpen`, `PageSocketPoll` and `PageSocketClose`: a browser WebSocket for text events, polled each frame, with bounded messages and a token carried as a subprotocol |
-| [`browser_viewport`](../src/backend/browser_viewport.zi) | `BrowserViewportMeasure` and `BrowserResizeSettled`: the room a canvas application has in the browser, and when a new size has settled enough to resize to, for applications such as raylib web builds that size their own canvas |
-| [`raylib_secondary_window`](../src/backend/raylib_secondary_window.zi) | Up to three extra SDL windows for a raylib application, such as a floating timer, each drawing its own Kryon tree with its own pointer (`SecondaryWindowInput`) |
-| [`raylib_trace`](../src/backend/raylib_trace.zi) | Where raylib's log goes: `RaylibTraceToConsole`, `RaylibTraceToFile` for Windows applications without a console, and `TraceLog(level, text)` |
+| [`browser_viewport`](../src/backend/browser_viewport.zi) | `BrowserViewportMeasure` and `BrowserResizeSettled`: the room a canvas application has in the browser, and when a new size has settled enough to resize to, for applications that size their own canvas |
 
 After a completed HTTP poll, `transfer.failure` distinguishes a response that
 exceeded the caller's buffer (`HTTP_TRANSFER_FAILURE_CAPACITY`) from a transport
@@ -1353,8 +1324,7 @@ an application does to request a cursor, registers the decoder through the
 `CursorPictureHost(asset_path, width, height, pixels, premultiplied) -> bool`
 host capability; the cursor module the hosts themselves import does not, so a
 program that requests no cursor links no image decoder. A host that shows no
-picture cursors exports the capability and returns false, as the raylib,
-Canvas, terminal and pixmap hosts do, and a custom host linked with a program
+picture cursors exports the capability and returns false, as the terminal and pixmap hosts do, and a custom host linked with a program
 that imports `kryon/cursor` exports it too. An application that hosts widget
 bundles imports `kryon/cursor` for its guests' picture cursors.
 
@@ -1425,8 +1395,7 @@ in logical units (56 by default). The app keeps its movement rules.
 `Text.Props.rotation` rotates text clockwise in degrees about `bounds` top left
 plus `Text.Props.origin` (logical units). Zero keeps horizontal text; `origin =
 Vector2.{bounds.width / 2.0, bounds.height / 2.0}` rotates about the box centre.
-Layout and font sizes stay unchanged. Native Raylib (including Android) and Canvas
-preserve the same pivot; local text clipping rotates with the text,
+Layout and font sizes stay unchanged. Native and Canvas rasters preserve the same pivot; local text clipping rotates with the text,
 while ancestor clipping stays in its original coordinate space.
 
 ## Reading pages
@@ -1439,7 +1408,7 @@ own content anchors and page indexes so reflow preserves the reading place.
 
 `Text.Props.line_gap` supplies extra units between lines. `typeface` names a
 registered face or a font asset. Hosted fonts pass the same asset policy as
-images; absolute host paths are refused. Raylib and Canvas select the face
+images; absolute host paths are refused. Native and Canvas hosts select the face
 for measurement and for queued paint, restoring the interface font afterward.
 
 `Text.Props.wrap = Text.Wrap.TextWrapAnywhere` wraps at extended Unicode grapheme
@@ -1451,16 +1420,6 @@ word boundaries and keeps oversized Latin words intact. Supply enough height
 for the resulting lines.
 
 ## View transforms
-
-`raylib_runtime.RaylibTouches(points: []Vector2) -> s32` reads the most recent
-successful `PollRaylib` touch snapshot. It returns the active count clamped to
-0–8 and writes only the first `min(count, points.count)` coordinates; an empty
-slice can query the count. Coordinates include the Android surface offset
-and use the current `RaylibZoom()`, like `PollPointer`. Unwritten entries stay
-unchanged. Repeated calls do not poll or consume input, including on the app
-worker. Before the first poll, after shutdown or a terminal poll, and while
-unfocused the count is zero. Point order follows raylib, without stable finger
-identities; applications own gesture tracking and pinch/pan behavior.
 
 `view_transform.ViewFit(viewport, page_width, page_height, maximum)` returns
 the state for a page that fills its viewport at zoom 1. The pure mapping and
@@ -1490,8 +1449,7 @@ uppercase ASCII, named keys from 256 (Escape), as `desktop_keys` maps SDL's.
   `DesktopMonitorUsable()` give the window's monitor in desktop pixels, and
   `DesktopDisplayScale()` its density over 96 dpi (X11's `Xft.dpi` when set).
 - `kryon/desktop_secondary_window`: up to three more windows, each with its
-  own Cairo surface, presenter and events, with the calls of
-  `raylib_secondary_window`: `OpenSecondaryWindow(title, x, y, width,
+  own Cairo surface, presenter and events: `OpenSecondaryWindow(title, x, y, width,
   height, flags, background, scale)`, `CloseSecondaryWindow`,
   `BeginSecondaryWindow`/`EndSecondaryWindow` around
   `BeginSecondaryFrame`/`EndSecondaryFrame`, `SecondaryWindowInput`,
@@ -1554,7 +1512,7 @@ effects, asset music and gain. Providers retain those capability bits when
 the device is unavailable or suspended. Bit 8 advertises bounded PCM streams.
 
 Bits 16, 32 and 64 advertise asset pause/resume, asset-music position, and
-PCM pause/resume respectively. An older or partial provider need not implement
+PCM pause/resume respectively. A partial provider need not implement
 these features; check its bits and result code. Existing operation/state wire
 values are unchanged; Pause, Resume and Paused are appended.
 
@@ -1622,24 +1580,6 @@ are copied/decoded into provider-owned storage; no native pointer or decoder
 handle crosses the VM. The host reply codec uses named fields, and the VM
 copies its strings before the host reuses the reply buffers.
 
-Hosts import `kryon/media_audio_raylib` and call `MediaAudioUseRaylib()` once
-on their owning thread. It reuses Raylib memory music streams on native
-Raylib hosts and the current Canvas WebAudio engine on the web. The decoder
-is chosen by content, not name: bytes starting with an Ogg page whose first
-packet is `OpusHead` decode through the `audio` package (libopus) on Linux,
-Windows and Android, streamed into a Raylib audio stream in two 2048-frame
-blocks that `Status` and `MediaAudioOwnerTick` refill. Other bytes, including
-Vorbis Ogg, stay on Raylib's decoders. These hosts link libopus: `-lopus -lm`
-from Kryon's makefiles, or the static `lib/libopus.a` in the `renderer-raylib`
-artifact (Android builds the package's `opus` target). On macOS, Ogg Opus
-currently returns `Unsupported`; the browser decodes Opus itself. Linux,
-Windows (MinGW under Wine), Android device and browser behavior is tested
-with null or muted audio. There is no Seek or duration operation. A browser
-reports `Suspended` before its context runs: the app can retry after a real
-user gesture; no play request is queued to run in another app later.
-The standalone `RaylibBundleOpen` installs this provider. Other hosts that
-have not installed one receive `Unsupported`, regardless of platform name.
-
 `HostedApp.audio` stores the owner for the actual VM instance. The existing
 `AppContextCall` dispatches audio only in an identified app's active widget
 frame, validates its session and existing widget asset policy, and reads
@@ -1673,7 +1613,7 @@ with `MediaAudioUseProvider`; existing owners retain their provider until
 closed. The caller retains cue selection, score/synthesis, volume UI, mute,
 phrase scheduling and any single-in-flight music transition policy.
 
-On the Linux desktop without raylib, `kryon/media_audio_desktop`'s
+On the desktop, `kryon/media_audio_desktop`'s
 `MediaAudioUseDesktop()` installs a provider on Kryon's own mixer and SDL2
 sink, opening the device with the first voice. Programs can also use them
 directly:
@@ -1788,10 +1728,8 @@ or delivered remain suppressed when the clock moves backward. Android allows at
 most 480 active Kryon rules per host package and 64 per authenticated hosted app;
 replacements do not consume another slot and cancellation frees it.
 
-The Android scaffold includes the notification receiver and permissions. Existing
-Android hosts must include `org.kryonlabs.notifications.NotificationReceiver`
-from the canonical scaffold, declare POST_NOTIFICATIONS and
-RECEIVE_BOOT_COMPLETED, and merge its receiver actions from the scaffold manifest.
+The Android scaffold declares the notification receiver, POST_NOTIFICATIONS
+and RECEIVE_BOOT_COMPLETED permissions, and receiver actions.
 Include `android_notifications` in the native graph so receiver exports survive
 linking. `notification_desktop` dispatches immediate notification effects to the
 Android implementation when ANDROID_BUILD is defined. Custom activities provide
@@ -2221,9 +2159,8 @@ renderers filter sRGB texels in linear light and use the same clamp/repeat and
 top-row/V-bottom rules. `SceneTextureCoordinate` exposes the exact object-space
 coordinate transform for procedural geometry and tests.
 
-`ImageMaterial` replaces the old raw-pixel texture attachment API. Shader
-samplers remain the separate programmable linear-RGBA surface; convert sRGB
-first when using those bindings.
+`ImageMaterial` attaches scene textures. Shader samplers use programmable
+linear-RGBA values; convert sRGB first when using those bindings.
 
 ### Light cookies
 
@@ -2303,9 +2240,7 @@ the hours, the sky and the grade on native and portable builds (`make
 daylight-test`).
 
 Linux uses the existing system image loader and packaged WebP/AVIF adapters,
-copying the original straight pixels before Cairo premultiplies them. The
-Raylib WASM target reads files in the Emscripten filesystem and uses its existing
-image decoder; assets must be preloaded. Android reads relative APK asset paths
+copying the original straight pixels before Cairo premultiplies them. Android reads relative APK asset paths
 through the current NativeActivity's asset manager, or absolute filesystem
 paths. It uses the existing PNG decoder and the activity's `decodeBundleImage`
 method for other supported formats, including JPEG orientation. Unsupported
@@ -2332,8 +2267,7 @@ while preserving the caller's clip for subsequent drawing. Android frames lock,
 paint and post NativeActivity pixels directly, and pause while the activity is
 paused or has no window. `SyncWindowSurface` refreshes Android's shared surface
 and touch transform. Closing requests activity shutdown, drains its lifecycle
-commands, then frees its native pixels. No native operation in this adapter
-requires raylib. Canvas keeps its page lifecycle.
+commands, then frees its native pixels. Canvas keeps its page lifecycle.
 
 Custom hosts import `kryon/window_icon` for
 `SetWindowIcon(encoded: string, file_type: string) -> bool`. Encoded bytes
@@ -2341,5 +2275,4 @@ are borrowed for the call; native hosts decode through their shared image
 codecs, apply JPEG orientation, and preserve full dimensions and straight
 alpha. The native window must already exist. False means invalid or
 unsupported data, a missing SDL window, or a browser/Android host where the
-application icon belongs to the page or package manifest. Native AVIF
-requires `AVIF_RAYLIB` and the codec archives used by the renderer.
+application icon belongs to the page or package manifest. Native AVIF uses the shared codec libraries.

@@ -10,7 +10,7 @@ module and host boundaries.
 
 | Package | Ziran source | Native code generation | Package verification |
 | --- | --- | --- | --- |
-| Core UI (`src/ui`) | ✅ `.zi` modules listed in `modules.txt` and two public import modules | ✅ C and Go generation in `make` | ✅ `make test` builds the library and runs source, saved `.zir`, and `.zx` behavior tests |
+| Core UI (`src/ui`) | ✅ `.zi` modules listed in `modules.txt` and named package exports | ✅ C and Go generation in `make` | ✅ `make test` builds the library and runs source, saved `.zir`, and `.zx` behavior tests |
 
 The generated C archive is a build output of Ziran source. Behavior tests use
 Ziran hosts in `tests/*_host.zi`. Code generation verifies that a module lowers
@@ -22,11 +22,11 @@ for a target; it does not prove that every native host runs on that target.
 | --- | --- | --- | --- |
 | Terminal | `src/backend/terminal_run.zi` | Private PTY project test covers ASCII, UTF-8, invalid input, and escape sequences | ✅ supported |
 | Desktop | `src/backend/desktop_run.zi` | Private Xvfb project test covers image capture, keyboard, UTF-8 text, and wheel input | ✅ supported on the tested Linux host |
-| Raylib | `src/backend/raylib_run.zi` | Private Xvfb project test covers image capture and input | ✅ supported on the tested Linux host |
 | Web Canvas | `src/backend/canvas_run.zi` | Headless Chromium checks Canvas2D pixels, clips, input, textures, fonts, lifecycle, WebAudio, and file behavior | ✅ supported through Emscripten on the tested browser |
-| Android | app `src/main.zi` + `src/backend/android_run.zi` | `tests/ziran_android_device_test.sh` checks the device text, lifecycle, and inset protocol with the Java side stubbed; a manual emulator run verifies install, rendering, touch, and back | ✅ supported through NativeActivity with raylib OpenGL ES 2 |
+| Android | app `src/main.zi` + `src/backend/android_run.zi` | `tests/ziran_android_device_test.sh` checks the device text, lifecycle, and inset protocol with the Java side stubbed; a manual emulator run verifies install, rendering, touch, and back | ✅ supported through NativeActivity with direct ANativeWindow pixel presentation |
 
-The desktop and raylib project tests run separately with
-`make desktop-project-test` and `make raylib-project-test`; they must use a
-private Xvfb display. CI runs both on every push in their own job. The Canvas2D
-project test runs in `make test` and launches only private headless Chromium.
+The desktop project test (`make desktop-project-test`) uses a private Xvfb
+display. The Canvas2D project test runs in `make test` and launches only private
+headless Chromium. `make zx-window-test` covers bare-window bundles through
+the native desktop player and host library. Code generation alone does not
+establish platform execution.

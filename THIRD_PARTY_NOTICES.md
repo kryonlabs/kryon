@@ -2,7 +2,6 @@
 
 The Kryon static package includes third-party code pinned by its package lock.
 
-- raylib: zlib/libpng license, see `LICENSE` in the locked raylib source package.
 - Noto fonts: SIL Open Font License 1.1, see `fonts/noto/LICENSE.txt` in the source tree.
 - Liberation Sans: SIL Open Font License 1.1, see `assets/fonts/LICENSE-Liberation`.
   `src/backend/pixmap_font.zi` holds outlines of its Latin glyphs for the

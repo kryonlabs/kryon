@@ -7,7 +7,7 @@ Shift+Tab traverse eligible controls; Enter and Space activate focused
 controls while editors keep their normal key handling. Modal scopes reject
 outside focus, activation and edit requests.
 
-The Linux desktop host now exposes an optional AT-SPI bridge through GIO.
+The Linux desktop host exposes an optional AT-SPI bridge through GIO.
 It registers the application with the accessibility bus, uses retained
 generations for object paths, reconciles reordered and removed objects, and
 provides Accessible, Application, Component, Action, Text and EditableText
@@ -37,5 +37,5 @@ readonly and disabled controls, modal blocking and password redaction.
 These checks establish the implemented protocol paths, not complete Orca or
 other screen-reader usability. Text boundary/extents methods, list Selection,
 table interfaces, and Windows/macOS/mobile accessibility remain unverified
-or unsupported. Raylib, Canvas2D and terminal hosts do not currently
+or unsupported. Canvas2D and terminal hosts do not currently
 provide the Linux bridge automatically.

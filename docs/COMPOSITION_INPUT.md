@@ -37,11 +37,10 @@ and Indic joins intact, including joins across preedit segments. Existing
 The native Cairo host uses Pango for shaping, bidirectional placement and
 font fallback. Caret measurement uses the full shaped line rather than a
 separately shaped prefix. `tests/native_text_test.sh` checks combining marks,
-Arabic joining, Hebrew caret/hit positions and text longer than the former
-1,024-byte draw limit through source/saved IR and C.
+Arabic joining, Hebrew caret/hit positions and long text through source/saved IR and C.
 
 Logical Left/Right movement is still by grapheme order. Mixed bidirectional
 selection uses a single highlight rectangle, and separately styled preedit
-runs are not shaped as one joined run. Pixmap, raylib and other hosts retain
+runs are not shaped as one joined run. Pixmap and other hosts retain
 their own font/rendering capabilities; Cairo shaping does not imply all-host
 bidirectional support.

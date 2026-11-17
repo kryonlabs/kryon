@@ -9,7 +9,7 @@ kryon run desktop      # the same page in a window
 ```
 
 `kryon build portable` exports `build/{{name}}-portable.zx`. Copy or download
-that file and open it with `kryon run {{name}}-portable.zx` using the shared
+that file and open it with `ziran run {{name}}-portable.zx` using the shared
 Zx player; no app source is needed.
 
 Serve `build/` with any static file server to publish it.

@@ -11,7 +11,7 @@ kryon install        # ~/.local/bin/{{name}} and a menu entry
 ```
 
 `kryon build portable` exports `build/{{name}}-portable.zx`. Copy or download
-that file and open it with `kryon run {{name}}-portable.zx` using the shared
+that file and open it with `ziran run {{name}}-portable.zx` using the shared
 Zx player; no app source is needed.
 
 `ziran run`, `ziran build`, and `ziran install` do the same, because
