@@ -9,7 +9,7 @@
 #import "std/format"
 #import "std/math"
 #import "drawing_props"
-// The GPU path is desktop EGL/GLES3; the web draws scenes with RenderScene.
+// The native GPU path uses EGL/GLES3; the web draws scenes with RenderScene.
 #if OS != .WEB {
     G :: #import "scene_gpu_gl";
 }
@@ -103,7 +103,7 @@ SceneGpuProbe :: (gpu: *SceneGpuContext)->SceneGpuCapabilities {
  gpu.attempted=true
  gpu.capabilities.diagnostic="EGL surfaceless ES3 context unavailable"
  saved:=G.SaveContext()
- gpu.display=G.EGetPlatformDisplay(0x31dd,null,null)
+ gpu.display=G.ESceneDisplay()
  if gpu.display==null { return gpu.capabilities }
  major: s32;minor: s32
  if G.EInitialize(gpu.display,*major,*minor)==0 { gpu.display=null;return gpu.capabilities }

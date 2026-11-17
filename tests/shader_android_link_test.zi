@@ -1,0 +1,15 @@
+// NativeActivity link root: exercise the scene renderer's Android EGL imports.
+#import, file "../src/backend/scene_gpu.zi";
+#import "kryon/scene"
+#import "kryon/scene_render"
+#import "std/image"
+#import "std/vec"
+#program_export
+android_main :: (application: *void) {
+    unused application
+    gpu: SceneGpuContext; defer SceneGpuRelease(*gpu)
+    scene: Scene; SceneInit(*scene); defer SceneFree(*scene)
+    image:=NewImage(8,8); defer VecFree(image.pixels)
+    camera:=OrthographicCamera(-1.0,1.0,1.0,-1.0,0.1,10.0)
+    unused SceneGpuRender(*gpu,*scene,camera,*image)
+}

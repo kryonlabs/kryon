@@ -1,11 +1,22 @@
 // System EGL/GLES bindings. No window creation or host renderer state.
 #import "std/vec"
 egl :: #system_library "EGL";
-gl :: #system_library "GLESv2";
-glx :: #system_library "GLX";
+SCENE_GPU_ANDROID :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__)
+#if SCENE_GPU_ANDROID {
+ gl :: #system_library "GLESv3";
+} else {
+ gl :: #system_library "GLESv2";
+ glx :: #system_library "GLX";
+}
 c :: #system_library "c";
 #scope_export
-RawEGetPlatformDisplay :: (platform: u32, native: *void, attributes: *s64)->*void #foreign egl "eglGetPlatformDisplay";
+#if SCENE_GPU_ANDROID {
+    // Use Android's default native display so the scene path also links at
+    // API 21, without the newer EGL platform entry point or desktop GLX.
+    RawEGetDisplay :: (native: *void)->*void #foreign egl "eglGetDisplay";
+} else {
+    RawEGetPlatformDisplay :: (platform: u32, native: *void, attributes: *s64)->*void #foreign egl "eglGetPlatformDisplay";
+}
 RawEInitialize :: (display: *void, major: *s32, minor: *s32)->u32 #foreign egl "eglInitialize";
 RawEBindAPI :: (api: u32)->u32 #foreign egl "eglBindAPI";
 RawEChooseConfig :: (display: *void, attrs: *s32, configs: **void, count: s32, found: *s32)->u32 #foreign egl "eglChooseConfig";
@@ -17,11 +28,13 @@ RawEGetCurrentDisplay :: ()->*void #foreign egl "eglGetCurrentDisplay";
 RawEGetCurrentContext :: ()->*void #foreign egl "eglGetCurrentContext";
 RawEGetCurrentSurface :: (which: s32)->*void #foreign egl "eglGetCurrentSurface";
 RawEQueryAPI :: ()->u32 #foreign egl "eglQueryAPI";
+#if !SCENE_GPU_ANDROID {
 RawGLXCurrentDisplay :: ()->*void #foreign glx "glXGetCurrentDisplay";
 RawGLXCurrentContext :: ()->*void #foreign glx "glXGetCurrentContext";
 RawGLXCurrentDrawable :: ()->u64 #foreign glx "glXGetCurrentDrawable";
 RawGLXCurrentReadDrawable :: ()->u64 #foreign glx "glXGetCurrentReadDrawable";
 RawGLXMakeCurrent :: (display: *void,draw: u64,read: u64,context: *void)->s32 #foreign glx "glXMakeContextCurrent";
+}
 RawGetString :: (name: u32)->*u8 #foreign gl "glGetString";
 RawGetInteger :: (name: u32, value: *s32) #foreign gl "glGetIntegerv";
 RawGetError :: ()->u32 #foreign gl "glGetError";
@@ -97,7 +110,16 @@ RawFinish :: () #foreign gl "glFinish";
 RawCompareMemory :: (a: *void, b: *void, bytes: usize)->s32 #foreign c "memcmp";
 RawCopyMemory :: (a: *void, b: *void, bytes: usize)->*void #foreign c "memcpy";
 
-EGetPlatformDisplay :: (platform: u32, native: *void, attributes: *s64) ->*void {return RawEGetPlatformDisplay(platform,native,attributes)}
+#if !SCENE_GPU_ANDROID {
+ EGetPlatformDisplay :: (platform: u32, native: *void, attributes: *s64) ->*void {return RawEGetPlatformDisplay(platform,native,attributes)}
+}
+ESceneDisplay :: () ->*void {
+ #if SCENE_GPU_ANDROID {
+  return RawEGetDisplay(null)
+ } else {
+  return RawEGetPlatformDisplay(0x31dd,null,null)
+ }
+}
 EInitialize :: (display: *void, major: *s32, minor: *s32) ->u32 {return RawEInitialize(display,major,minor)}
 EBindAPI :: (api: u32) ->u32 {return RawEBindAPI(api)}
 EChooseConfig :: (display: *void, attrs: *s32, configs: **void, count: s32, found: *s32) ->u32 {return RawEChooseConfig(display,attrs,configs,count,found)}
@@ -109,11 +131,13 @@ EGetCurrentDisplay :: () ->*void {return RawEGetCurrentDisplay()}
 EGetCurrentContext :: () ->*void {return RawEGetCurrentContext()}
 EGetCurrentSurface :: (which: s32) ->*void {return RawEGetCurrentSurface(which)}
 EQueryAPI :: () ->u32 {return RawEQueryAPI()}
+#if !SCENE_GPU_ANDROID {
 GLXCurrentDisplay :: ()->*void {return RawGLXCurrentDisplay()}
 GLXCurrentContext :: ()->*void {return RawGLXCurrentContext()}
 GLXCurrentDrawable :: ()->u64 {return RawGLXCurrentDrawable()}
 GLXCurrentReadDrawable :: ()->u64 {return RawGLXCurrentReadDrawable()}
 GLXMakeCurrent :: (display: *void,draw: u64,read: u64,context: *void)->s32 {return RawGLXMakeCurrent(display,draw,read,context)}
+}
 GetString :: (name: u32) ->*u8 {return RawGetString(name)}
 GetInteger :: (name: u32, value: *s32)  {RawGetInteger(name,value)}
 GetError :: () ->u32 {return RawGetError()}
@@ -194,12 +218,18 @@ SavedContext :: struct {
  glx_display: *void; glx_context: *void; glx_draw: u64; glx_read: u64
 }
 SaveContext :: ()->SavedContext {
- return .{EGetCurrentDisplay(),EGetCurrentContext(),EGetCurrentSurface(0x3059),EGetCurrentSurface(0x305a),EQueryAPI(),
-  GLXCurrentDisplay(),GLXCurrentContext(),GLXCurrentDrawable(),GLXCurrentReadDrawable()}
+ #if SCENE_GPU_ANDROID {
+  return .{display=EGetCurrentDisplay(),context=EGetCurrentContext(),draw=EGetCurrentSurface(0x3059),read=EGetCurrentSurface(0x305a),api=EQueryAPI()}
+ } else {
+  return .{EGetCurrentDisplay(),EGetCurrentContext(),EGetCurrentSurface(0x3059),EGetCurrentSurface(0x305a),EQueryAPI(),
+   GLXCurrentDisplay(),GLXCurrentContext(),GLXCurrentDrawable(),GLXCurrentReadDrawable()}
+ }
 }
 MakeSceneCurrent :: (display: *void,context: *void)->bool {
- glx_context:=GLXCurrentContext()
- if glx_context!=null&&GLXMakeCurrent(GLXCurrentDisplay(),0,0,null)==0 {return false}
+ #if !SCENE_GPU_ANDROID {
+  glx_context:=GLXCurrentContext()
+  if glx_context!=null&&GLXMakeCurrent(GLXCurrentDisplay(),0,0,null)==0 {return false}
+ }
  unused EBindAPI(0x30a0)
  return EMakeCurrent(display,null,null,context)!=0
 }
@@ -208,7 +238,9 @@ RestoreContext :: (saved: SavedContext, own: *void) {
  else {
   if own!=null {unused EMakeCurrent(own,null,null,null)}
   unused EBindAPI(saved.api)
-  if saved.glx_context!=null {unused GLXMakeCurrent(saved.glx_display,saved.glx_draw,saved.glx_read,saved.glx_context)}
+  #if !SCENE_GPU_ANDROID {
+   if saved.glx_context!=null {unused GLXMakeCurrent(saved.glx_display,saved.glx_draw,saved.glx_read,saved.glx_context)}
+  }
  }
 }
 Location :: (id: u32, name: string)->s32 {

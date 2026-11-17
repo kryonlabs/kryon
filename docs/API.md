@@ -2033,13 +2033,17 @@ Translation is portable Ziran; it does not create a graphics context. GPU
 highp arithmetic has different precision from the CPU's binary64 arithmetic,
 so GPU comparisons use documented pixel tolerances rather than exact hashes.
 
-Native applications can explicitly import `kryon/scene_gpu` and link
+Native desktop applications can explicitly import `kryon/scene_gpu` and link
 `-lEGL -lGLESv2 -lGLX -lm`. This optional host is separate from the core UI, portable
 CPU renderer and WebAssembly path. It owns a surfaceless EGL/GLES3 context and
 renders the existing `Scene`, materials and `SceneCamera` into a reusable
 `std/image.Image` for ordinary Kryon Image presentation. A web build (`OS ==
 .WEB`) links none of EGL or GL: `SceneGpuProbe` reports the GPU unavailable,
 and `SceneGpuRenderOrCPU` draws with `RenderScene`.
+
+Android code generation defines `ANDROID_BUILD` and uses the default EGL display
+through `eglGetDisplay`, including at API 21. `kryon_android_app` supplies the
+`EGL` and `GLESv3` system libraries; the Android path has no GLX imports.
 
 Keep one `SceneGpuContext` at a stable address on its owning thread.
 `SceneGpuProbe(context)` reports availability, diagnostic, renderer labels,

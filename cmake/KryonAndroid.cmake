@@ -103,7 +103,9 @@ function(kryon_android_app target)
         -Wl,--wrap=fopen64)
     # Gradle strips the packaged library. Keep this original, with line
     # information, so native startup failures can be symbolicated.
-    target_link_libraries(${target} PUBLIC android log atomic dl m)
+    # Imported scene shaders use EGL and GLES directly, including when the
+    # Android host itself presents through a software surface.
+    target_link_libraries(${target} PUBLIC android log atomic dl m EGL GLESv3)
 endfunction()
 
 # Adopt Kryon's canonical Android host for a shared-library target whose
