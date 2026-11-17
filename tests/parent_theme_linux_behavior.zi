@@ -66,6 +66,11 @@ main :: () -> s32 {
         Property(container, "_HARMONY_APP_THEME", light[:])
         if !Host.SystemPaletteFollow() || Host.SystemPaletteRead().background != cast(u32)0xfbf1e2ff { return 11 }
         if Host.SystemPaletteFollow() { return 12 }
+        // The full palette an app draws from carries the host's colours.
+        colors := SystemPaletteColors(Host.SystemPaletteRead())
+        if colors.background != cast(u32)0xfbf1e2ff || colors.surface != cast(u32)0xe8dccaff ||
+            colors.foreground != cast(u32)0x302820ff || colors.accent != cast(u32)0x704020ff ||
+            colors.border != cast(u32)0xe0d0baff { return 14 }
         Property(container, "_HARMONY_APP_THEME", dark[:])
         if !Host.SystemPaletteFollow() || Host.SystemPaletteRead().background != cast(u32)0x101418ff { return 13 }
         return 0

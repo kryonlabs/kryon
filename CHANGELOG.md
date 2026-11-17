@@ -6,6 +6,9 @@
   the host's while an app is embedded, once and again whenever the host
   changes it; one call per frame makes an embedded app follow its host's
   theme change.
+- `SystemTheme.SystemPaletteColors(palette)` expands a system palette, such as
+  a host's, into a full theme `Palette`, so an app that draws from one matches
+  its host completely.
 - A program entry builds in a profile with `codegen = "zx"`: its bundle is
   the program's own `main`, with portable IR, so `kryon/app` gives it the ZX
   window. In a canvas profile the ZX canvas player binds `zx_window` to the

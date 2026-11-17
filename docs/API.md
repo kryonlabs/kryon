@@ -1234,6 +1234,9 @@ loaded at run time and only when a host is named.
 that palette (the desktop's when not embedded) the first time and again
 whenever the host changes it, and returns true when it installed, so an app
 follows its host's theme change with one call.
+`SystemTheme.SystemPaletteColors(palette)` expands a system palette into a full
+theme `Palette` (surfaces, text levels, borders, accent, controls) for an app
+that draws from one.
 
 ## Cover carousels
 
