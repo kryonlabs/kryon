@@ -69,7 +69,7 @@ Draw :: (session: Session, props: Overlay.Props) -> Overlay.DismissibleOverlayRe
         if release.ended {
             policy: DismissibleOverlayPolicy =
             DismissibleOverlayPolicyFor(true, false,
-                props.dismiss_disabled,
+                props.dismiss_disabled || props.outside_dismiss_disabled,
                 PointInBounds(release.x, release.y, props.bounds) ||
                 PointInBounds(release.x, release.y, props.keep_bounds))
             result.closed = policy.closed

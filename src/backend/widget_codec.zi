@@ -3436,7 +3436,7 @@ WidgetTypeDismissibleOverlayProps :: "overlay_props.Props"
 WidgetSliceTypeDismissibleOverlayProps :: "[]overlay_props.Props"
 
 WidgetDismissibleOverlayPropsCodec :: struct {
-    fields: [10]HostField
+    fields: [11]HostField
     bounds: WidgetRectangleCodec
     keep_bounds: WidgetRectangleCodec
     scrim: WidgetColorCodec
@@ -3456,7 +3456,8 @@ WidgetEncodeDismissibleOverlayProps :: (data: Overlay.Props, codec: *WidgetDismi
     codec.fields[7].name = HostTextData("scrim")
     codec.fields[7].value = WidgetEncodeColor(data.scrim, *codec.scrim)
     codec.fields[8] = HostField.{.name = HostTextData("dismiss_disabled"), .value = HostScalar("bool", ifx data.dismiss_disabled then 1 else 0)}
-    codec.fields[9] = HostField.{.name = HostTextData("non_modal"), .value = HostScalar("bool", ifx data.non_modal then 1 else 0)}
+    codec.fields[9] = HostField.{.name = HostTextData("outside_dismiss_disabled"), .value = HostScalar("bool", ifx data.outside_dismiss_disabled then 1 else 0)}
+    codec.fields[10] = HostField.{.name = HostTextData("non_modal"), .value = HostScalar("bool", ifx data.non_modal then 1 else 0)}
     return value
 }
 
@@ -3472,7 +3473,8 @@ WidgetDecodeDismissibleOverlayProps :: (value: HostValue, codec: *WidgetDismissi
     data.view_height = cast(s32)HostFieldValue(*value, 6, "view_height", *zero).integer
     data.scrim = WidgetDecodeColor(HostFieldValue(*value, 7, "scrim", *zero).*, *codec.scrim)
     data.dismiss_disabled = HostFieldValue(*value, 8, "dismiss_disabled", *zero).integer != 0
-    data.non_modal = HostFieldValue(*value, 9, "non_modal", *zero).integer != 0
+    data.outside_dismiss_disabled = HostFieldValue(*value, 9, "outside_dismiss_disabled", *zero).integer != 0
+    data.non_modal = HostFieldValue(*value, 10, "non_modal", *zero).integer != 0
     return data
 }
 
@@ -3487,7 +3489,8 @@ WidgetValidDismissibleOverlayProps :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 6, "view_height", "s32", cast(s32)HostInteger) { return false }
     if !HostFieldRecordValid(*value, 7, "scrim", WidgetValidColor) { return false }
     if !HostFieldScalarValid(*value, 8, "dismiss_disabled", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 9, "non_modal", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 9, "outside_dismiss_disabled", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 10, "non_modal", "bool", cast(s32)HostInteger) { return false }
     return true
 }
 

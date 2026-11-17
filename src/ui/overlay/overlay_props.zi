@@ -12,7 +12,10 @@ Props :: struct {
     view_width: s32
     view_height: s32
     scrim: Color
+    // Disable every dismissal route, including Escape.
     dismiss_disabled: bool
+    // Keep outside releases while allowing Escape to dismiss the overlay.
+    outside_dismiss_disabled: bool
     // A floating panel can share the viewport with controls submitted later
     // (for example a persistent rail), without becoming a modal input layer.
     non_modal: bool

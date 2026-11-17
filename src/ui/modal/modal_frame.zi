@@ -136,8 +136,8 @@ Draw :: (session: Session, props: Modal.Props) -> ModalFrameResult {
     overlay_props.id = props.id
     overlay_props.class_name = props.class_name
     overlay_props.bounds = result.layout.panel
-    overlay_props.dismiss_disabled = ModalOutsideDismissDisabledFor(
-        props.dismiss_on_outside, props.dismiss_disabled)
+    overlay_props.dismiss_disabled = props.dismiss_disabled
+    overlay_props.outside_dismiss_disabled = !props.dismiss_on_outside
     overlay_props.scrim = ColorFromPacked(Opacity(
         scrim.value.background,
         StyleOpacityValue(scrim.value.fields,

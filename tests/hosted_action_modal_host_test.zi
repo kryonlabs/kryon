@@ -10,6 +10,7 @@
 #import "font_metrics"
 #import "tree"
 #import "tree_draw"
+#import "tree_input"
 #import "drawing_props"
 #import "ziran_widget_noop_host"
 #import "system_clipboard_host"
@@ -28,10 +29,12 @@ titlebar_calls: s32;
 titlebar_accepted: s32;
 titlebar_record_name: string;
 titlebar_slice_name: string;
+frame: s32;
 
 Allows :: (context: *void, module: string, function: string) -> bool {
     unused context
-    return function == "TestSessionHost" || WidgetHostSupports(module, function)
+    return function == "TestSessionHost" || function == "TestFrameHost" ||
+        WidgetHostSupports(module, function)
 }
 
 Call :: (context: *void, module: *u8, function: *u8,
@@ -40,6 +43,10 @@ Call :: (context: *void, module: *u8, function: *u8,
     name := TextFromCString(function)
     if name == "TestSessionHost" && count == 0 {
         result.* = WidgetEncodeSession(session, *session_codec)
+        return 1
+    }
+    if name == "TestFrameHost" && count == 0 {
+        result.* = HostScalar("s32", cast(s64)frame)
         return 1
     }
     if name == "ActionModalHostedHost" && count == 3 {
@@ -99,6 +106,28 @@ main :: () -> s32 {
     }
     print("packaged titlebar record % expected % slice % expected %\n",
         titlebar_record_name, WidgetTypeTitleBarProps, titlebar_slice_name, WidgetSliceTypeDropdownOption)
+    frame = 1
+    while frame <= 4 {
+        escape := frame == 1 || frame == 4
+        if escape && !KeyboardSend(session, KeyEscape) { return 6 }
+        if frame == 2 {
+            // Outside dismissal remains opt-in for an ordinary modal.
+            unused TreePointerUpdate(session, PointerFrame.{1.0, 1.0, true, true, true})
+        }
+        BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 480.0, 320.0})
+        WidgetHostBegin(session, AllowNone)
+        ran = HostedAppRun(*app, *answer)
+        WidgetHostEnd()
+        if EndFrame(session) != cast(FrameStatus)FrameOk { return 7 }
+        if !ran || answer != 7 {
+            print("hosted modal frame % ran % answer %\n", frame, ran, answer)
+            return 8
+        }
+        if escape && (!TreeEscapeCaptured(session) || KeyboardTake(session) != 0) {
+            return 9
+        }
+        frame += 1
+    }
     HostedAppClose(*app)
     return 0
 }
