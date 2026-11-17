@@ -155,9 +155,3 @@ Open work only; Breeze's Linux-desktop move, Wurm/Apps switches, and the Harmony
   jobs, independent copies, bounded storage, alpha/orientation, negative camera
   origins, resize, repeated disposal, and host/session ownership. Android host
   graphs also compile/link with the NDK; desktop windows use private Xvfb.
-- Known upstream gap: with published Ziran ebd19223fa18432066f5dfa53124640eea36fa94,
-  the portable bitmap Image test rejects `PixmapGpuCorners` with
-  `assembly.gap.machine-copy` (function 300, block 5978, instruction 27407).
-  The same failure reproduces with its full source module closure matching
-  origin/master 216c190c43b4381721751c11aab148a5b2b03e3a, before these changes.
-  Command: `build-queue -- sh tests/bitmap_image_test.sh` using that toolchain.

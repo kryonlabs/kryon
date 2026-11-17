@@ -6,7 +6,7 @@ module_roots = ["src/ui", "src/backend", "src/ui/alert", "src/ui/avatar", "src/u
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
 # Foreign C record reachability and Windows named DLL hosts.
-ref = "ebd19223fa18432066f5dfa53124640eea36fa94"
+ref = "e0367fa9c5731dcf9bb84ed7f3d294570d8c0bda"
 
 [dependencies.raylib]
 git = "https://github.com/raysan5/raylib.git"
