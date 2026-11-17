@@ -1,0 +1,241 @@
+// Indexed anatomical surfaces and four-weight affine skinning. The owning
+// render thread supplies final bind-to-pose transforms, independent of its IK.
+#import "scene"
+#import "std/math"
+#import "std/vec"
+
+SkinAffine :: struct {
+    x: Vector3
+    y: Vector3
+    z: Vector3
+    translation: Vector3
+}
+
+SkinInfluence :: struct {
+    joints: [4]s32
+    weights: [4]float64
+}
+
+SceneSkin :: struct {
+    node: s32
+    ready: bool
+    bone_count: s32
+    positions: Vec(Vector3)
+    normals: Vec(Vector3)
+    influences: Vec(SkinInfluence)
+    normal_transforms: Vec(SkinAffine)
+}
+
+SkinIdentity :: () -> SkinAffine {
+    return .{x = .{1.0, 0.0, 0.0}, y = .{0.0, 1.0, 0.0}, z = .{0.0, 0.0, 1.0}}
+}
+
+SkinDirection :: (transform: SkinAffine, value: Vector3) -> Vector3 {
+    return SkinAdd3(SkinAdd3(SkinScale3(transform.x, value.x), SkinScale3(transform.y, value.y)),
+        SkinScale3(transform.z, value.z))
+}
+
+SkinPoint :: (transform: SkinAffine, value: Vector3) -> Vector3 {
+    return SkinAdd3(SkinDirection(transform, value), transform.translation)
+}
+
+SkinFinite :: (value: Vector3) -> bool {
+    return Finite64(value.x) && Finite64(value.y) && Finite64(value.z)
+}
+
+// Validates before appending; malformed input leaves the scene unchanged.
+// Indices are local to this mesh. Positions, normals and UVs are copied.
+SceneIndexedMesh :: (scene: *Scene, positions: []Vector3, normals: []Vector3,
+    uvs: []ShapePoint, indices: []s32, material: SceneMaterial) -> s32 {
+    if scene == null || scene.failed || positions.count == 0 ||
+    positions.count > 2147483647 || normals.count != positions.count ||
+    uvs.count != positions.count || indices.count == 0 || indices.count % 3 != 0 ||
+    indices.count > 2147483647 || scene.positions.count + positions.count > 2147483647 ||
+    scene.indices.count + indices.count > 2147483647 {
+        return -1
+    }
+    for index: 0..positions.count - 1 {
+        if !SkinFinite(positions[index]) || !SkinFinite(normals[index]) ||
+        !Finite64(uvs[index].x) || !Finite64(uvs[index].y) {
+            return -1
+        }
+    }
+    for index: indices {
+        if index < 0 || index >= positions.count {
+            return -1
+        }
+    }
+    first := cast(s32)scene.positions.count
+    first_index := cast(s32)scene.indices.count
+    for index: 0..positions.count - 1 {
+        if !VecPush(scene.positions, positions[index]) || !VecPush(scene.normals, normals[index]) ||
+        !VecPush(scene.uvs, uvs[index]) || !VecPush(scene.colors, Vector3.{1.0, 1.0, 1.0}) {
+            scene.failed = true
+            return -1
+        }
+    }
+    for index: indices {
+        if !VecPush(scene.indices, first + index) {
+            scene.failed = true
+            return -1
+        }
+    }
+    mesh: SceneMesh
+    mesh.first_vertex = first
+    mesh.vertex_count = cast(s32)positions.count
+    mesh.first_index = first_index
+    mesh.index_count = cast(s32)indices.count
+    mesh.material = material
+    if !VecPush(scene.meshes, mesh) {
+        scene.failed = true
+        return -1
+    }
+    node: SceneNode
+    node.parent = -1
+    if scene.open.count > 0 {
+        node.parent = scene.open[scene.open.count - 1]
+    }
+    node.mesh = cast(s32)scene.meshes.count - 1
+    node.scale = .{1.0, 1.0, 1.0}
+    node.visible = true
+    node.cast_shadow = true
+    node.receive_shadow = true
+    if !VecPush(scene.nodes, node) {
+        scene.failed = true
+        return -1
+    }
+    scene.geometry_frozen = false
+    return cast(s32)scene.nodes.count - 1
+}
+
+SceneSkinCreate :: (scene: *Scene, skin: *SceneSkin, bone_count: s32,
+    positions: []Vector3, normals: []Vector3, uvs: []ShapePoint,
+    indices: []s32, influences: []SkinInfluence, material: SceneMaterial) -> bool {
+    if skin == null || skin.ready || bone_count <= 0 || influences.count != positions.count {
+        return false
+    }
+    for influence: influences {
+        sum: float64
+        for lane: 0..3 {
+            weight := influence.weights[lane]
+            if !Finite64(weight) || weight < 0.0 ||
+            influence.joints[lane] < 0 || influence.joints[lane] >= bone_count {
+                return false
+            }
+            sum += weight
+        }
+        if SkinAbs(sum - 1.0) > 0.00001 {
+            return false
+        }
+    }
+    if !VecResize(skin.positions, positions.count) || !VecResize(skin.normals, normals.count) ||
+    !VecResize(skin.influences, influences.count) || !VecResize(skin.normal_transforms, cast(s64)bone_count) {
+        SceneSkinRelease(skin)
+        return false
+    }
+    for index: 0..positions.count - 1 {
+        skin.positions[index] = positions[index]
+        skin.normals[index] = normals[index]
+        skin.influences[index] = influences[index]
+    }
+    node := SceneIndexedMesh(scene, positions, normals, uvs, indices, material)
+    if node < 0 {
+        SceneSkinRelease(skin)
+        return false
+    }
+    skin.node = node
+    skin.ready = true
+    skin.bone_count = bone_count
+    return true
+}
+
+// Re-evaluates from immutable bind positions every time, without accumulating
+// error. Normals use the inverse transpose, including nonuniform bone scale.
+// Invalid transforms leave all scene vertices and the previous pose intact.
+SceneSkinDeform :: (scene: *Scene, skin: *SceneSkin, transforms: []SkinAffine) -> bool {
+    if scene == null || skin == null || !skin.ready || skin.node < 0 || skin.node >= scene.nodes.count ||
+    transforms.count != skin.bone_count || scene.failed {
+        return false
+    }
+    mesh_index := scene.nodes[skin.node].mesh
+    if mesh_index < 0 || mesh_index >= scene.meshes.count {
+        return false
+    }
+    mesh := scene.meshes[mesh_index]
+    if mesh.vertex_count != skin.positions.count || mesh.first_vertex < 0 ||
+    mesh.first_vertex + cast(s64)mesh.vertex_count > scene.positions.count {
+        return false
+    }
+    for index: 0..transforms.count - 1 {
+        transform := transforms[index]
+        cross := SkinCross3(transform.y, transform.z)
+        determinant := SkinDot3(transform.x, cross)
+        if !SkinFinite(transform.x) || !SkinFinite(transform.y) || !SkinFinite(transform.z) ||
+        !SkinFinite(transform.translation) || !Finite64(determinant) || SkinAbs(determinant) < 0.000000001 {
+            return false
+        }
+        normal: SkinAffine
+        normal.x = SkinScale3(cross, 1.0 / determinant)
+        normal.y = SkinScale3(SkinCross3(transform.z, transform.x), 1.0 / determinant)
+        normal.z = SkinScale3(SkinCross3(transform.x, transform.y), 1.0 / determinant)
+        skin.normal_transforms[index] = normal
+    }
+    for index: 0..skin.positions.count - 1 {
+        position: Vector3
+        normal: Vector3
+        influence := skin.influences[index]
+        for lane: 0..3 {
+            weight := influence.weights[lane]
+            if weight == 0.0 {
+                continue
+            }
+            joint := influence.joints[lane]
+            position = SkinAdd3(position, SkinScale3(SkinPoint(transforms[joint], skin.positions[index]), weight))
+            normal = SkinAdd3(normal, SkinScale3(SkinDirection(skin.normal_transforms[joint], skin.normals[index]), weight))
+        }
+        scene.positions[mesh.first_vertex + index] = position
+        scene.normals[mesh.first_vertex + index] = SkinNormalize3(normal)
+    }
+    scene.geometry_frozen = false
+    return true
+}
+
+// Release the bind data before releasing or replacing its owning scene.
+// The scene owns the resulting mesh, so its usual SceneFree frees that surface.
+SceneSkinRelease :: (skin: *SceneSkin) {
+    if skin == null {
+        return
+    }
+    VecFree(skin.positions)
+    VecFree(skin.normals)
+    VecFree(skin.influences)
+    VecFree(skin.normal_transforms)
+    skin.node = -1
+    skin.ready = false
+    skin.bone_count = 0
+}
+
+#scope_file
+SkinAdd3 :: (a: Vector3, b: Vector3) -> Vector3 {
+    return .{a.x + b.x, a.y + b.y, a.z + b.z}
+}
+SkinScale3 :: (a: Vector3, scale: float64) -> Vector3 {
+    return .{a.x * scale, a.y * scale, a.z * scale}
+}
+SkinDot3 :: (a: Vector3, b: Vector3) -> float64 {
+    return a.x * b.x + a.y * b.y + a.z * b.z
+}
+SkinCross3 :: (a: Vector3, b: Vector3) -> Vector3 {
+    return .{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x}
+}
+SkinNormalize3 :: (a: Vector3) -> Vector3 {
+    length := Sqrt(SkinDot3(a, a))
+    if length <= 0.000000001 {
+        return .{0.0, 1.0, 0.0}
+    }
+    return SkinScale3(a, 1.0 / length)
+}
+
+SkinAbs :: (value: float64) -> float64 {
+    return ifx value < 0.0 then -value else value
+}

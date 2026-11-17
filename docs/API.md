@@ -2351,3 +2351,37 @@ painting, draw it with `FrameTransition` using the full logical frame bounds
 (including a negative camera origin), and call `FrameSurfaceRelease` when the
 transition ends or is canceled. `FrameSurfaceCopy` owns an independent copy.
 The Web host returns an invalid surface, so callers skip the fade there.
+
+### Indexed animated surfaces and watercolor
+
+Import `kryon/scene_skin` for `SceneIndexedMesh`, `SceneSkinCreate`,
+`SceneSkinDeform` and `SceneSkinRelease`. Indexed surfaces copy positions,
+normals, UVs and triangle indices into their owning `Scene`. A `SceneSkin`
+retains bind positions and four normalized joint weights per vertex. Supply
+final bind-to-pose `SkinAffine` transforms; deformation always starts from
+bind data and uses inverse-transpose normal transforms, including nonuniform
+scale. Invalid indices, weights and singular transforms are rejected before
+changing visible geometry. Release the skin before reusing or freeing its
+scene. Bone animation and inverse kinematics belong to the caller.
+
+Import `kryon/watercolor` for `WatercolorMaterialCompile` and
+`WatercolorFinish`. The portable material samples real paper and pigment
+RGBA bitmaps and supplies soft directional light and a Fresnel rim. Uniform
+0 is UV repetition, 1 light direction, 2 view direction, and 3 rim RGB with
+zero W; samplers 0 and 1 are repeated linear paper and pigment images. Keep
+the program, uniforms and images alive while rendering. Use an unlit scene
+material when this program supplies the final lighting. The finishing pass
+uses caller-owned retained scratch, brush radius 0–2, and brush, grain,
+edge, pooling and contour strengths 0–1. Pooling darkens pigment within two
+pixels of the silhouette; contour draws a graphite pencil line on the
+silhouette and where neighbouring washes differ. It preserves source alpha
+and excludes transparent samples from pigment filtering. CPU and translated GLSL share the material;
+no window or platform graphics dependency is required.
+
+Desktop `LoadImagePixels` accepts the host's optional
+`ImagePixelsUsePathResolver` callback, so the same loader can read bundled
+assets and disk files. A resolver borrows its input path and an output buffer
+and returns a retained file path (or empty to keep the original). Loading and
+resolver registration belong to one owner thread; the host retains resolved
+files until decoding finishes. `ImagePixelsClearPathResolver` restores disk loading.
+The image loader does not import a raster backend or open a window.

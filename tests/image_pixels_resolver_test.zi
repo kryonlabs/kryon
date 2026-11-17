@@ -1,0 +1,37 @@
+#import "kryon/image_pixels"
+#import "std/image"
+#import "std/vec"
+#import "std/text"
+
+Resolve :: (path: string, output: []u8) -> string {
+    if path == "embedded/paint" {
+        name := "build/scratch/image-pixels/rgba.png"
+        for index: 0..name.count - 1 {
+            output[index] = name[index]
+        }
+        return TextView(output[:name.count])
+    }
+    return ""
+}
+
+main :: () -> s32 {
+    ImagePixelsUsePathResolver(Resolve)
+    image := LoadImagePixels("embedded/paint")
+    defer VecFree(image.pixels)
+    if !ImageValid(*image) || image.width != 2 || image.height != 1 ||
+    image.pixels[0] != 173 || image.pixels[3] != 97 {
+        return 1
+    }
+    disk := LoadImagePixels("build/scratch/image-pixels/rgba.png")
+    defer VecFree(disk.pixels)
+    if !ImageValid(*disk) || disk.pixels[3] != 97 {
+        return 2
+    }
+    ImagePixelsClearPathResolver()
+    missing := LoadImagePixels("embedded/paint")
+    defer VecFree(missing.pixels)
+    if ImageValid(*missing) {
+        return 3
+    }
+    return 0
+}

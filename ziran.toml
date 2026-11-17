@@ -118,6 +118,8 @@ vector_path = "src/ui/vector_path.zi"
 # Portable scenes/materials and an optional native GPU-to-Image renderer.
 scene = "src/ui/scene.zi"
 scene_render = "src/ui/scene_render.zi"
+scene_skin = "src/ui/scene_skin.zi"
+watercolor = "src/ui/watercolor.zi"
 shader = "src/ui/shader.zi"
 shader_glsl = "src/ui/shader_glsl.zi"
 # Time of day: sun path, storybook sky shader and the matching SceneGrade.

@@ -28,6 +28,21 @@
     #import "std/byte_text_linux"
 }
 
+// An optional host path resolver, for example an embedded asset's retained
+// memory-file path. The returned path may borrow OUTPUT until decoding ends.
+// Returning empty keeps the original file path. Set before loading images;
+// the callback and all image loading belong to their owning thread.
+ImagePixelsPathResolver :: #type (path: string, output: []u8) -> string;
+image_pixels_path_resolver: ImagePixelsPathResolver;
+image_pixels_path_resolver_enabled: bool;
+ImagePixelsUsePathResolver :: (resolve: ImagePixelsPathResolver) {
+    image_pixels_path_resolver = resolve
+    image_pixels_path_resolver_enabled = true
+}
+ImagePixelsClearPathResolver :: () {
+    image_pixels_path_resolver_enabled = false
+}
+
 // Empty means missing, unsupported or invalid. Caller frees image.pixels.
 LoadImagePixels :: (path: string) -> Image {
     #if OS == .WEB || #defined(ANDROID_BUILD) {
@@ -70,14 +85,24 @@ LoadImagePixels :: (path: string) -> Image {
         return CopyRgba(pixels,width,height,width*4,4)
         }
     } else {
+        // Resolve host-owned embedded assets without importing a window or
+        // raster backend. The host keeps any returned file alive for decoding.
+        resolved_path := path
+        resolved_bytes: [4096]u8
+        if image_pixels_path_resolver_enabled && image_pixels_path_resolver != null {
+            resolved := image_pixels_path_resolver(path, resolved_bytes[:])
+            if resolved.count > 0 {
+                resolved_path = resolved
+            }
+        }
         // The packaged WebP/AVIF adapters already produce straight RGBA.
-        still:=Decode.OpenStill(path)
+        still:=Decode.OpenStill(resolved_path)
         if still.pixels!=null {
             defer Decode.CloseStill(still)
             return CopyRgba(still.pixels,still.width,still.height,still.width*4,4)
         }
         name: [4096]u8
-        if !CopyCString(path,name[:]) { return .{} }
+        if !CopyCString(resolved_path,name[:]) { return .{} }
         decoded:=Decode.OpenImage(*name[0])
         if decoded==null { return .{} }
         defer Decode.CloseImage(decoded)

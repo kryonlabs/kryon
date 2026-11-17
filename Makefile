@@ -1112,3 +1112,14 @@ mirrored-image-test: project-toolchain
 	@sh tests/ziran_cairo_mirrored_image_test.sh
 	@sh tests/pixmap_mirrored_image_test.sh
 test: mirrored-image-test
+
+.PHONY: scene-skin-test watercolor-test practice-material-gpu-test image-pixels-resolver-test
+scene-skin-test: project-toolchain
+	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/scene_skin_test.sh
+watercolor-test: project-toolchain
+	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/watercolor_test.sh
+practice-material-gpu-test: project-toolchain
+	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/practice_material_gpu_test.py
+image-pixels-resolver-test: project-toolchain
+	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/image_pixels_resolver_test.sh
+test: scene-skin-test watercolor-test practice-material-gpu-test image-pixels-resolver-test

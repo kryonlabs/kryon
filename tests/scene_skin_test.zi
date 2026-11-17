@@ -1,0 +1,88 @@
+#import, file "../src/ui/scene_skin.zi";
+#import "scene"
+#import "scene_render"
+#import "std/image"
+#import "std/vec"
+#import "std/math"
+
+Check :: (value: bool, label: string) -> s32 {
+    if value {
+        return 0
+    }
+    print("scene skin: %\n", label)
+    return 1
+}
+
+Near :: (value: float64, expected: float64) -> bool {
+    difference := value - expected
+    return difference > -0.000001 && difference < 0.000001
+}
+
+main :: () -> s32 {
+    scene: Scene
+    SceneInit(*scene)
+    skin: SceneSkin
+    defer {
+        SceneSkinRelease(*skin)
+        SceneSkinRelease(*skin)
+        SceneFree(*scene)
+        RenderSceneRelease()
+    }
+    positions: [4]Vector3 = .[.{-0.5, -0.5, 0.0}, .{0.5, -0.5, 0.0},
+    .{0.5, 0.5, 0.0}, .{-0.5, 0.5, 0.0}]
+    normals: [4]Vector3
+    uvs: [4]ShapePoint = .[.{0.0, 0.0}, .{1.0, 0.0}, .{1.0, 1.0}, .{0.0, 1.0}]
+    influences: [4]SkinInfluence
+    for index: 0..3 {
+        normals[index] = .{0.0, 0.0, 1.0}
+        influences[index].joints[0] = 0
+        influences[index].joints[1] = 1
+        influences[index].weights[0] = 0.5
+        influences[index].weights[1] = 0.5
+    }
+    indices: [6]s32 = .[0, 1, 2, 0, 2, 3]
+    material := UnlitMaterial(.{180, 70, 40, 255})
+    bad: [3]s32 = .[0, 1, 4]
+    fail := Check(SceneIndexedMesh(*scene, positions[:], normals[:], uvs[:], bad[:], material) < 0 &&
+        scene.positions.count == 0 && scene.meshes.count == 0, "bad indices are atomic")
+    influences[0].weights[0] = -1.0
+    fail += Check(!SceneSkinCreate(*scene, *skin, 2, positions[:], normals[:], uvs[:], indices[:],
+        influences[:], material) && scene.nodes.count == 0, "negative weight rejected")
+    influences[0].weights[0] = 0.5
+    fail += Check(SceneSkinCreate(*scene, *skin, 2, positions[:], normals[:], uvs[:], indices[:],
+        influences[:], material), "indexed skin created")
+    if fail != 0 {
+        return fail
+    }
+    transforms: [2]SkinAffine
+    transforms[0] = SkinIdentity()
+    transforms[1] = SkinIdentity()
+    transforms[1].translation.x = 0.4
+    fail += Check(SceneSkinDeform(*scene, *skin, transforms[:]) &&
+        Near(scene.positions[0].x, -0.3) && Near(scene.positions[2].x, 0.7), "four weight bind blend")
+    fail += Check(SceneSkinDeform(*scene, *skin, transforms[:]) &&
+        Near(scene.positions[0].x, -0.3), "no cumulative deformation")
+    transforms[1].x = .{0.0, 0.0, 0.0}
+    fail += Check(!SceneSkinDeform(*scene, *skin, transforms[:]) &&
+        Near(scene.positions[0].x, -0.3), "singular transform preserves previous frame")
+    transforms[1] = SkinIdentity()
+    transforms[0].x.x = 2.0
+    normals[0] = .{0.707106781, 0.707106781, 0.0}
+    skin.normals[0] = normals[0]
+    influences[0].weights[0] = 1.0
+    influences[0].weights[1] = 0.0
+    skin.influences[0] = influences[0]
+    fail += Check(SceneSkinDeform(*scene, *skin, transforms[:]) &&
+        Near(scene.normals[0].x, 0.447213595) && Near(scene.normals[0].y, 0.894427191),
+        "inverse transpose for scaled bones")
+    picture := NewImage(32, 32)
+    defer VecFree(picture.pixels)
+    camera := OrthographicCamera(-1.0, 1.0, 1.0, -1.0, 0.1, 10.0)
+    camera.position = .{0.0, 0.0, 3.0}
+    camera.target = .{0.0, 0.0, 0.0}
+    fail += Check(RenderScene(*scene, camera, *picture) && picture.pixels[(16 * 32 + 16) * 4 + 3] == 255,
+        "skinned indexed surface renders through the scene pipeline")
+    SceneClear(*scene)
+    fail += Check(!SceneSkinDeform(*scene, *skin, transforms[:]), "cleared owner rejected")
+    return fail
+}

@@ -1,0 +1,114 @@
+// Real CPU/GLES execution of the indexed skin and portable watercolor material.
+#import "kryon/scene"
+#import "kryon/scene_skin"
+#import "kryon/scene_render"
+#import "kryon/scene_gpu"
+#import "kryon/watercolor"
+#import "kryon/shader"
+#import "std/image"
+#import "std/vec"
+
+main :: () -> s32 {
+    scene: Scene
+    SceneInit(*scene)
+    skin: SceneSkin
+    program: ShaderProgram
+    gpu: SceneGpuContext
+    cpu := NewImage(96, 96)
+    image := NewImage(96, 96)
+    defer {
+        SceneGpuRelease(*gpu)
+        SceneSkinRelease(*skin)
+        SceneFree(*scene)
+        ShaderFree(*program)
+        VecFree(cpu.pixels)
+        VecFree(image.pixels)
+        RenderSceneRelease()
+    }
+    if !WatercolorMaterialCompile(*program).ok {
+        return 1
+    }
+    paper: [16]u8 = .[255, 255, 255, 255, 220, 230, 235, 255,
+    245, 238, 230, 255, 230, 225, 220, 255]
+    pigment: [16]u8 = .[100, 140, 180, 255, 180, 125, 110, 255,
+    140, 190, 110, 255, 160, 120, 200, 255]
+    samplers: [2]ShaderSampler = .[.{2, 2, paper[:], true}, .{2, 2, pigment[:], true}]
+    uniforms: [4]ShaderValue = .[.{2.0, 2.0, 0.0, 0.0}, .{-0.4, 0.7, 0.8, 0.0},
+    .{0.0, 0.0, 1.0, 0.0}, .{0.04, 0.06, 0.08, 0.0}]
+    material := UnlitMaterial(.{180, 120, 80, 255})
+    material.shader = *program
+    material.shader_uniforms = uniforms[:]
+    material.shader_samplers = samplers[:]
+    positions: [4]Vector3 = .[.{-0.5, -0.5, 0.0}, .{0.5, -0.5, 0.0},
+    .{0.5, 0.5, 0.0}, .{-0.5, 0.5, 0.0}]
+    normals: [4]Vector3 = .[.{0.0, 0.0, 1.0}, .{0.0, 0.0, 1.0},
+    .{0.0, 0.0, 1.0}, .{0.0, 0.0, 1.0}]
+    uvs: [4]ShapePoint = .[.{0.0, 0.0}, .{1.0, 0.0}, .{1.0, 1.0}, .{0.0, 1.0}]
+    indices: [6]s32 = .[0, 1, 2, 0, 2, 3]
+    influences: [4]SkinInfluence
+    for index: cast(s32)0..3 {
+        influences[index].joints[0] = index / 2
+        influences[index].weights[0] = 1.0
+    }
+    if !SceneSkinCreate(*scene, *skin, 2, positions[:], normals[:], uvs[:], indices[:],
+        influences[:], material) {
+        return 2
+    }
+    camera := OrthographicCamera(-1.0, 1.0, 1.0, -1.0, 0.1, 10.0)
+    camera.position = .{0.0, 0.0, 3.0}
+    previous: u64
+    for state: cast(s32)0..2 {
+        transforms: [2]SkinAffine = .[SkinIdentity(), SkinIdentity()]
+        transforms[1].translation.x = cast(float64)state * 0.16
+        if state == 2 {
+            material.opacity = 0.58
+            material.transparent = true
+            SetMaterial(*scene, skin.node, material)
+            uniforms[3] = .{0.20, 0.50, 0.72, 0.0}
+        }
+        if !SceneSkinDeform(*scene, *skin, transforms[:]) || !RenderScene(*scene, camera, *cpu) {
+            return 3
+        }
+        result := SceneGpuRender(*gpu, *scene, camera, *image)
+        if !result.ok || !result.accelerated {
+            print("Practice material GPU failure: %\n", result.diagnostic)
+            return 4
+        }
+        error: s64
+        large: s64
+        painted: s64
+        hash: u64 = 1469598103934665603
+        for at: 0..image.pixels.count - 1 {
+            difference := cast(s32)image.pixels[at] - cast(s32)cpu.pixels[at]
+            if difference < 0 {
+                difference = -difference
+            }
+            error += difference
+            if difference > 16 {
+                large += 1
+            }
+            hash = (hash ^ cast(u64)image.pixels[at]) * cast(u64)1099511628211
+        }
+        for pixel: cast(s32)0..96 * 96 - 1 {
+            if image.pixels[pixel * 4 + 3] > 100 {
+                painted += 1
+            }
+        }
+        if error > image.pixels.count || large > image.pixels.count / 200 ||
+        painted < 1500 || (state > 0 && hash == previous) {
+            print("Practice GPU parity failure: state=% error=% large=% painted=%\n",
+                state, error, large, painted)
+            return 5
+        }
+        previous = hash
+        print("Practice skin/watercolor CPU-GLES state %: mean error %, painted %\n",
+            state, cast(float64)error / cast(float64)image.pixels.count, painted)
+    }
+    SceneGpuRelease(*gpu)
+    usage := SceneGpuMemoryUsage(*gpu)
+    if usage.cpu_bytes != 0 || usage.gpu_bytes != 0 || usage.textures != 0 || usage.programs != 0 {
+        return 6
+    }
+    print("Practice skin/material deformation, translucency and GPU cleanup passed\n")
+    return 0
+}

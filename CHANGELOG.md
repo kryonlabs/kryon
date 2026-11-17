@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- `kryon/scene_skin` adds indexed scene surfaces with four-influence skinning
+  from bind data, and `kryon/watercolor` a portable paper/pigment material
+  with a finishing pass for brush, grain, pigment pooling and pencil
+  contours; both run on the CPU renderer and the translated GLES path.
+  Desktop `LoadImagePixels` accepts an optional host path resolver for
+  bundled assets.
 - `SystemPaletteFollow()` (in `SystemThemeHostLinux` and the portable
   `SystemThemeHost`) applies the current palette, the host's while an app is
   embedded, once and again whenever the host changes it; one call per frame

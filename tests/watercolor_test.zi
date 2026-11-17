@@ -1,0 +1,82 @@
+#import, file "../src/ui/watercolor.zi";
+#import "shader"
+#import "shader_glsl"
+#import "std/image"
+#import "std/vec"
+
+Check :: (value: bool, label: string) -> s32 {
+    if value {
+        return 0
+    }
+    print("watercolor: %\n", label)
+    return 1
+}
+
+main :: () -> s32 {
+    program: ShaderProgram
+    fail := Check(WatercolorMaterialCompile(*program).ok, "material compiles")
+    defer ShaderFree(*program)
+    translated: ShaderGLSLResult = ShaderGLSLTranslate(*program)
+    fail += Check(translated.diagnostic.ok && translated.sampler_count == 2 &&
+        translated.uniform_count == 4, "same material translates to GLSL")
+    white: [4]u8 = .[255, 255, 255, 255]
+    pigment: [4]u8 = .[100, 140, 180, 255]
+    samplers: [2]ShaderSampler
+    samplers[0] = .{width = 1, height = 1, pixels = white[:], repeat = true}
+    samplers[1] = .{width = 1, height = 1, pixels = pigment[:], repeat = true}
+    uniforms: [4]ShaderValue = .[.{4.0, 6.0, 0.0, 0.0}, .{0.0, 0.0, 1.0, 0.0},
+    .{0.0, 0.0, 1.0, 0.0}, .{0.05, 0.06, 0.07, 0.0}]
+    input: ShaderInputs
+    input.color = .{0.6, 0.4, 0.2, 0.45}
+    input.normal = .{0.0, 0.0, 1.0, 0.0}
+    bright := ShaderRun(*program, input, uniforms[:], samplers[:])
+    input.normal = .{0.0, 1.0, 0.0, 0.0}
+    dark := ShaderRun(*program, input, uniforms[:], samplers[:])
+    fail += Check(!bright.discard && !dark.discard && bright.color.x > dark.color.x &&
+        bright.color.w == 0.45 && dark.color.w == 0.45, "soft light, pigment, rim and exact opacity")
+    pigment[0] = 255
+    changed := ShaderRun(*program, input, uniforms[:], samplers[:])
+    fail += Check(changed.color.x > dark.color.x, "real bitmap material responds to texture")
+    image := NewImage(5, 5, 100, 120, 140, 255)
+    paper := NewImage(2, 2, 240, 240, 240, 255)
+    scratch: Image
+    defer {
+        VecFree(image.pixels)
+        VecFree(paper.pixels)
+        VecFree(scratch.pixels)
+    }
+    settings: WatercolorSettings
+    image.pixels[3] = 0
+    original := image.pixels[4]
+    fail += Check(WatercolorFinish(*image, *scratch, *paper, settings) && image.pixels[3] == 0 &&
+        image.pixels[4] == original, "zero finish and transparent silhouette are exact")
+    at := (2 * 5 + 2) * 4
+    image.pixels[at] = 255
+    settings.brush_radius = 1
+    settings.brush_strength = 0.8
+    settings.grain_strength = 0.12
+    settings.edge_strength = 0.2
+    fail += Check(WatercolorFinish(*image, *scratch, *paper, settings) && image.pixels[at] < 200 &&
+        image.pixels[3] == 0 && image.pixels[at + 3] == 255, "brush smooths pigment while preserving alpha")
+    original = image.pixels[at]
+    settings.brush_radius = 3
+    fail += Check(!WatercolorFinish(*image, *scratch, *paper, settings) && image.pixels[at] == original,
+        "invalid setting is atomic")
+    settings.brush_radius = 1
+    fail += Check(!WatercolorFinish(*image, *image, *paper, settings), "aliased scratch rejected")
+    // Pigment pools and a pencil line form only beside the silhouette.
+    wash := NewImage(11, 11, 100, 120, 140, 255)
+    defer VecFree(wash.pixels)
+    wash.pixels[(2 * 11 + 2) * 4 + 3] = 0
+    finish: WatercolorSettings
+    finish.pooling_strength = 0.6
+    finish.contour_strength = 0.8
+    beside := (3 * 11 + 3) * 4
+    inside := (7 * 11 + 7) * 4
+    fail += Check(WatercolorFinish(*wash, *scratch, *paper, finish) && wash.pixels[beside] < 95 &&
+        wash.pixels[inside] == 100 && wash.pixels[beside + 3] == 255 &&
+        wash.pixels[(2 * 11 + 2) * 4 + 3] == 0, "silhouette pooling and pencil contour keep alpha")
+    finish.contour_strength = 1.5
+    fail += Check(!WatercolorFinish(*wash, *scratch, *paper, finish), "contour strength is a unit value")
+    return fail
+}

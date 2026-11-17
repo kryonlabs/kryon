@@ -1,0 +1,212 @@
+// Portable watercolor materials and a retained RGBA finishing pass. Materials
+// translate through shader_glsl; the final brush uses owned image pixels.
+#import "shader"
+#import "std/image"
+#import "std/math"
+#import "std/vec"
+
+WatercolorSettings :: struct {
+    // 0 keeps surface detail; 1 or 2 smooth pigment into small brush regions.
+    brush_radius: s32
+    brush_strength: float64
+    grain_strength: float64
+    edge_strength: float64
+    // Pigment pooling: washes darken within two pixels of their silhouette.
+    pooling_strength: float64
+    // Pencil contour on the silhouette and where neighbouring washes differ.
+    contour_strength: float64
+}
+
+// Uniform 0: UV repeat XY. Uniform 1: light direction XYZ. Uniform 2: view
+// direction XYZ. Uniform 3: rim RGB, W=0. Sampler 0: paper, 1: pigment;
+// both are repeated linear RGBA images owned by the caller for each render.
+WatercolorMaterialCompile :: (program: *ShaderProgram) -> ShaderDiagnostic {
+    code: [35]ShaderInstruction
+    code[0] = .{op = .ShaderUniform, dest = 4, slot = 0}
+    code[1] = .{op = .ShaderMultiply, dest = 5, a = 3, b = 4}
+    code[2] = .{op = .ShaderSample, dest = 6, a = 5, slot = 0}
+    code[3] = .{op = .ShaderSample, dest = 7, a = 5, slot = 1}
+    code[4] = .{op = .ShaderLiteral, dest = 8, value = .{0.16, 0.16, 0.16, 0.0}}
+    code[5] = .{op = .ShaderMultiply, dest = 6, a = 6, b = 8}
+    code[6] = .{op = .ShaderLiteral, dest = 8, value = .{0.84, 0.84, 0.84, 1.0}}
+    code[7] = .{op = .ShaderAdd, dest = 6, a = 6, b = 8}
+    code[8] = .{op = .ShaderLiteral, dest = 8, value = .{0.26, 0.26, 0.26, 0.0}}
+    code[9] = .{op = .ShaderMultiply, dest = 7, a = 7, b = 8}
+    code[10] = .{op = .ShaderLiteral, dest = 8, value = .{0.74, 0.74, 0.74, 1.0}}
+    code[11] = .{op = .ShaderAdd, dest = 7, a = 7, b = 8}
+    code[12] = .{op = .ShaderUniform, dest = 8, slot = 1}
+    code[13] = .{op = .ShaderNormalize, dest = 8, a = 8}
+    code[14] = .{op = .ShaderDot, dest = 9, a = 2, b = 8}
+    code[15] = .{op = .ShaderLiteral, dest = 10, value = .{0.0, 0.0, 0.0, 0.0}}
+    code[16] = .{op = .ShaderMax, dest = 9, a = 9, b = 10}
+    code[17] = .{op = .ShaderLiteral, dest = 10, value = .{0.36, 0.36, 0.36, 0.0}}
+    code[18] = .{op = .ShaderMultiply, dest = 9, a = 9, b = 10}
+    code[19] = .{op = .ShaderLiteral, dest = 10, value = .{0.64, 0.64, 0.64, 1.0}}
+    code[20] = .{op = .ShaderAdd, dest = 9, a = 9, b = 10}
+    code[21] = .{op = .ShaderMultiply, dest = 11, a = 0, b = 6}
+    code[22] = .{op = .ShaderMultiply, dest = 11, a = 11, b = 7}
+    code[23] = .{op = .ShaderMultiply, dest = 11, a = 11, b = 9}
+    code[24] = .{op = .ShaderUniform, dest = 8, slot = 2}
+    code[25] = .{op = .ShaderNormalize, dest = 8, a = 8}
+    code[26] = .{op = .ShaderDot, dest = 9, a = 2, b = 8}
+    code[27] = .{op = .ShaderLiteral, dest = 10, value = .{1.0, 1.0, 1.0, 1.0}}
+    code[28] = .{op = .ShaderSubtract, dest = 9, a = 10, b = 9}
+    code[29] = .{op = .ShaderMultiply, dest = 9, a = 9, b = 9}
+    code[30] = .{op = .ShaderMultiply, dest = 9, a = 9, b = 9}
+    code[31] = .{op = .ShaderUniform, dest = 10, slot = 3}
+    code[32] = .{op = .ShaderMultiply, dest = 9, a = 9, b = 10}
+    code[33] = .{op = .ShaderAdd, dest = 11, a = 11, b = 9}
+    code[34] = .{op = .ShaderOutput, a = 11}
+    return ShaderCompile(program, code[:])
+}
+
+// The lowest-variance of four small quadrants follows painted regions while
+// retaining silhouettes. RGB filtering excludes transparent samples; the
+// source alpha stays exact, so finishing a cutout never darkens a UI halo.
+// Scratch is retained by its owner; source and scratch must be distinct.
+WatercolorFinish :: (image: *Image, scratch: *Image, paper: *Image,
+    settings: WatercolorSettings) -> bool {
+    if !ImageValid(image) || scratch == null || scratch == image || paper == image ||
+    paper == scratch || !ImageValid(paper) || settings.brush_radius < 0 ||
+    settings.brush_radius > 2 || !WatercolorUnit(settings.brush_strength) ||
+    !WatercolorUnit(settings.grain_strength) || !WatercolorUnit(settings.edge_strength) ||
+    !WatercolorUnit(settings.pooling_strength) || !WatercolorUnit(settings.contour_strength) {
+        return false
+    }
+    if !VecResize(scratch.pixels, image.pixels.count) {
+        return false
+    }
+    scratch.width = image.width
+    scratch.height = image.height
+    for index: 0..image.pixels.count - 1 {
+        scratch.pixels[index] = image.pixels[index]
+    }
+    for y: cast(s32)0..image.height - 1 {
+        for x: cast(s32)0..image.width - 1 {
+            at := (cast(s64)y * image.width + x) * 4
+            if scratch.pixels[at + 3] == 0 {
+                continue
+            }
+            best: [3]float64
+            for channel: 0..2 {
+                best[channel] = cast(float64)scratch.pixels[at + channel]
+            }
+            minimum: float64 = 1000000000.0
+            if settings.brush_radius > 0 && settings.brush_strength > 0.0 {
+                for quadrant: 0..3 {
+                    total: [3]float64
+                    square: [3]float64
+                    weight: float64
+                    sign_x: s32 = ifx quadrant % 2 == 0 then -1 else 1
+                    sign_y: s32 = ifx quadrant < 2 then -1 else 1
+                    for oy: 0..1 {
+                        sy := WatercolorBound(y + cast(s32)oy * sign_y * settings.brush_radius, image.height)
+                        for ox: 0..1 {
+                            sx := WatercolorBound(x + cast(s32)ox * sign_x * settings.brush_radius, image.width)
+                            source := (cast(s64)sy * image.width + sx) * 4
+                            alpha := cast(float64)scratch.pixels[source + 3] / 255.0
+                            weight += alpha
+                            for channel: 0..2 {
+                                value := cast(float64)scratch.pixels[source + channel]
+                                total[channel] += value * alpha
+                                square[channel] += value * value * alpha
+                            }
+                        }
+                    }
+                    if weight > 0.0 {
+                        variance: float64
+                        for channel: 0..2 {
+                            mean := total[channel] / weight
+                            variance += square[channel] / weight - mean * mean
+                        }
+                        if variance < minimum {
+                            minimum = variance
+                            for channel: 0..2 {
+                                best[channel] = total[channel] / weight
+                            }
+                        }
+                    }
+                }
+            }
+            paper_at := (cast(s64)(y % paper.height) * paper.width + x % paper.width) * 4
+            grain := cast(float64)paper.pixels[paper_at] / 255.0 - 0.7
+            edge := (WatercolorDifference(scratch, x - 1, y, x + 1, y) +
+                WatercolorDifference(scratch, x, y - 1, x, y + 1)) / 2.0
+            // Transparent neighbours mark the silhouette: one pixel for the
+            // pencil line, two for the darker pigment that pools inside it.
+            outside: float64
+            pooled: float64
+            ring_x: [8]s32 = .[-1, 0, 1, -1, 1, -1, 0, 1]
+            ring_y: [8]s32 = .[-1, -1, -1, 0, 0, 1, 1, 1]
+            for direction: 0..7 {
+                if WatercolorAlpha(scratch, x + ring_x[direction], y + ring_y[direction]) < 32 {
+                    outside += 1.0
+                }
+                if WatercolorAlpha(scratch, x + ring_x[direction] * 2, y + ring_y[direction] * 2) < 32 {
+                    pooled += 1.0
+                }
+            }
+            line := WatercolorClamp(WatercolorClamp(outside / 3.0) + WatercolorClamp((edge - 0.08) * 5.0))
+            pooling := WatercolorClamp((outside + pooled) / 6.0) * settings.pooling_strength
+            pencil := line * settings.contour_strength
+            graphite: [3]float64 = .[62.0, 54.0, 50.0]
+            for channel: 0..2 {
+                original := cast(float64)scratch.pixels[at + channel]
+                value := original + (best[channel] - original) * settings.brush_strength
+                value *= 1.0 + grain * settings.grain_strength - edge * settings.edge_strength
+                value *= 1.0 - pooling * 0.38
+                value += (graphite[channel] - value) * pencil
+                if value < 0.0 {
+                    value = 0.0
+                }
+                if value > 255.0 {
+                    value = 255.0
+                }
+                image.pixels[at + channel] = cast(u8)(value + 0.5)
+            }
+        }
+    }
+    return true
+}
+
+#scope_file
+WatercolorUnit :: (value: float64) -> bool {
+    return Finite64(value) && value >= 0.0 && value <= 1.0
+}
+
+WatercolorClamp :: (value: float64) -> float64 {
+    return ifx value < 0.0 then 0.0 else ifx value > 1.0 then 1.0 else value
+}
+
+// Outside the image counts as transparent, so frames keep a closed contour.
+WatercolorAlpha :: (image: *Image, x: s32, y: s32) -> u8 {
+    if x < 0 || y < 0 || x >= image.width || y >= image.height {
+        return 0
+    }
+    return image.pixels[(cast(s64)y * image.width + x) * 4 + 3]
+}
+
+// Mean RGB difference of two painted samples, 0 when either is transparent.
+WatercolorDifference :: (image: *Image, ax: s32, ay: s32, bx: s32, by: s32) -> float64 {
+    if WatercolorAlpha(image, ax, ay) == 0 || WatercolorAlpha(image, bx, by) == 0 {
+        return 0.0
+    }
+    a := (cast(s64)ay * image.width + ax) * 4
+    b := (cast(s64)by * image.width + bx) * 4
+    total: float64
+    for channel: 0..2 {
+        difference := cast(float64)image.pixels[a + channel] - cast(float64)image.pixels[b + channel]
+        total += ifx difference < 0.0 then -difference else difference
+    }
+    return total / 765.0
+}
+
+WatercolorBound :: (value: s32, size: s32) -> s32 {
+    if value < 0 {
+        return 0
+    }
+    if value >= size {
+        return size - 1
+    }
+    return value
+}
