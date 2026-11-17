@@ -1,5 +1,6 @@
 // Decode ZX still assets into stable Pixmap slots.
 #import "android_jni"
+#import "android_native"
 #import "avif_image"
 #import "bundle_resources"
 #import "image_orientation"
@@ -163,6 +164,9 @@ AndroidImageDecodePNG :: (data: []u8, width: *s32, height: *s32) -> *u32 {
     return converted
 }
 
+// The activity decodes formats the linked codecs do not, such as JPEG, with
+// decodeBundleImage(byte[]): width, height, then ARGB_8888 pixels, or null.
+android_bitmap_bridge_reported: bool;
 AndroidImageDecodeBitmap :: (data: string, width: *s32, height: *s32) -> *u32 {
     width.* = 0
     height.* = 0
@@ -170,8 +174,15 @@ AndroidImageDecodeBitmap :: (data: string, width: *s32, height: *s32) -> *u32 {
     if AndroidJniAttachCurrent(*session) == 0 { return null }
     defer { AndroidJniDetachCurrent(*session) }
     method := AndroidJniMethod(*session, "decodeBundleImage", "([B)[I")
+    if method == null {
+        if !android_bitmap_bridge_reported {
+            android_bitmap_bridge_reported = true
+            AndroidNativeLog("The activity has no decodeBundleImage(byte[]); Android Bitmap fallback is unavailable")
+        }
+        return null
+    }
     input := cast(*TextDescriptor)(*data)
-    if method == null || input.data == null || data.count > 2147483647 { return null }
+    if input.data == null || data.count > 2147483647 { return null }
     env := session.env
     array := env.functions.NewByteArray(env, cast(s32)data.count)
     if array == null || env.functions.ExceptionCheck(env) != 0 {

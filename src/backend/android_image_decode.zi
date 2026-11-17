@@ -57,17 +57,24 @@ AndroidImageBitmapSize :: (data: string) -> AndroidImageSize {
     return .{}
 }
 
-AndroidImageDecodeEncoded :: (data: string, file_type: string) -> DecodedImage {
+// File textures can also use formats recognized only by Android BitmapFactory.
+// APK picture and preview callers keep their preflight dimension requirement.
+AndroidImageDecodeEncoded :: (data: string, file_type: string,
+    allow_platform_bitmap: bool = false) -> DecodedImage {
     unused file_type
     if data.count <= 0 || data.count > 268435456 { return .{} }
     image: DecodedImage
-    if ImageWebpSignature(data) {
+    webp := ImageWebpSignature(data)
+    avif := Images.AndroidImageIsAVIF(data)
+    if webp {
         image.pixels = WebPImageDecode(data, *image.width, *image.height)
-    } else if Images.AndroidImageIsAVIF(data) {
+    } else if avif {
         image.pixels = AvifImageDecode(data, *image.width, *image.height)
-    } else {
+    }
+    if image.pixels == null {
+        if (webp || avif) && !allow_platform_bitmap { return .{} }
         size := AndroidImageBitmapSize(data)
-        if !AndroidImageSizeAllowed(size) { return .{} }
+        if !allow_platform_bitmap && !AndroidImageSizeAllowed(size) { return .{} }
         width: s32; height: s32
         text := cast(*TextDescriptor)(*data)
         bytes := BytesFromPointer(text.data, cast(u64)data.count)
@@ -78,7 +85,8 @@ AndroidImageDecodeEncoded :: (data: string, file_type: string) -> DecodedImage {
             orientation = ImageExifOrientation(data)
         }
         if words == null { return .{} }
-        if cast(s64)width != size.width || cast(s64)height != size.height {
+        if !AndroidImageSizeAllowed(.{cast(s64)width, cast(s64)height}) ||
+            (!allow_platform_bitmap && (cast(s64)width != size.width || cast(s64)height != size.height)) {
             ImagePixelsFree(cast(*u8)words); return .{}
         }
         words = Images.AndroidImageOrient(words, width, height, orientation)

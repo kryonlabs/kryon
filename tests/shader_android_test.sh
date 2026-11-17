@@ -13,8 +13,14 @@ if [ "$serial" != ZE2223BQZT ]; then echo 'Shader test is scoped to USB Moto ZE2
 adb -s "$serial" get-state
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS SESSION_MANAGER
 export HARMONY_DESKTOP_RECOVERY=0 YUE_DESKTOP_RECOVERY=0
-"$ziran" build --project --module-path "$repo/tests" --root "$repo/tests" --target=c --define POSIX_THREADS --define ANDROID_BUILD --define __arm__ --no-main -o "$out" "$repo/tests/shader_android_test.zi"
-"$toolchain/bin/armv7a-linux-androideabi26-clang" -std=c11 -O1 -ffunction-sections -fdata-sections -Wl,--gc-sections -I"$ziran_root/include" -iquote "$out" "$out"/*.c -landroid -lmediandk -llog -ldl -lm -lz -o "$out/shader-test"
+"$ziran" build --project --module-path "$repo/tests" --root "$repo/tests" --target=c \
+    --target-os android --target-cpu none --define POSIX_THREADS --define ANDROID_BUILD --define __arm__ \
+    --no-main -o "$out" "$repo/tests/shader_android_test.zi"
+# Image pixels decode WebP and AVIF in process with the app's codecs.
+codecs=$(python3 "$repo/tests/android_codec_artifact_test.py" --link armv7)
+bridges=$(python3 "$repo/tests/android_codec_artifact_test.py" --shared armv7)
+# shellcheck disable=SC2086
+"$toolchain/bin/armv7a-linux-androideabi26-clang" -std=c11 -O1 -ffunction-sections -fdata-sections -Wl,--gc-sections -I"$ziran_root/include" -iquote "$out" "$out"/*.c $codecs -landroid -lmediandk -llog -ldl -lm -lz -o "$out/shader-test"
 remote=/data/local/tmp/kryon-shader-test
 fixtures=/data/local/tmp/kryon-shader-fixtures
 python3 "$repo/tests/image_pixels_fixtures.py"
@@ -23,5 +29,7 @@ adb -s "$serial" push "$out/shader-test" "$remote"
 adb -s "$serial" shell chmod 700 "$remote"
 adb -s "$serial" shell mkdir -p "$fixtures/build/scratch/image-pixels"
 adb -s "$serial" push "$repo/build/scratch/image-pixels/rgba.png" "$repo/build/scratch/image-pixels/invalid.png" "$fixtures/build/scratch/image-pixels/"
-adb -s "$serial" shell "cd $fixtures && $remote"
+# shellcheck disable=SC2086
+adb -s "$serial" push $bridges "$fixtures/"
+adb -s "$serial" shell "cd $fixtures && LD_LIBRARY_PATH=$fixtures $remote"
 printf 'Physical Moto shader Pixmap/ANativeWindow: clip, alpha, bindings and window recreation passed\n'

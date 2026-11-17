@@ -41,9 +41,10 @@ AMotionEvent_getX :: (event: *NativeTestEvent, pointer: usize) -> float32 { unus
 AMotionEvent_getY :: (event: *NativeTestEvent, pointer: usize) -> float32 { unused pointer; return event.y }
 #program_export
 ANativeActivity_finish :: (activity: *void) { unused activity; native_test_finish_calls += 1 }
+native_test_log_lines: s32;
 #program_export
 __android_log_write :: (priority: s32, tag: *u8, text: *u8) -> s32 {
-    unused priority; unused tag; unused text; return 1
+    unused priority; unused tag; unused text; native_test_log_lines += 1; return 1
 }
 #program_export
 ALooper_pollAll :: (timeout: s32, file: *s32, events: *s32, data: **void) -> s32 {

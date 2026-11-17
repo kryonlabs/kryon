@@ -1,4 +1,5 @@
 Services :: #import "pixmap_assets_android";
+Pixels :: #import "image_pixels";
 Decode :: #import "android_image_decode";
 Raster :: #import "pixmap";
 Jni :: #import "android_jni";
@@ -18,6 +19,7 @@ frames: s32;
 references: s32;
 bitmap_calls: s32;
 bad_bitmap: bool;
+bridge_missing: bool;
 bitmap: [4]u32 = .[2, 1, 0x80341256, 0xff090807];
 
 GetEnv :: (input: *Jni.JniVm, output: **Jni.JniEnv, version: s32) -> s32 {
@@ -32,7 +34,7 @@ ObjectClass :: (input: *Jni.JniEnv, object: *void) -> *void {
 }
 Method :: (input: *Jni.JniEnv, klass: *void, name: *u8, signature: *u8) -> *void {
     unused input; unused klass
-    if TextFromCString(name) != "decodeBundleImage" || TextFromCString(signature) != "([B)[I" { return null }
+    if bridge_missing || TextFromCString(name) != "decodeBundleImage" || TextFromCString(signature) != "([B)[I" { return null }
     return cast(*void)cast(usize)2
 }
 Delete :: (input: *Jni.JniEnv, object: *void) { unused input; unused object; references -= 1 }
@@ -66,7 +68,7 @@ MockActivity :: () {
     app.activity = *activity; Jni.jni_android_app = *app
 }
 
-// APK assets: only pictures/shipped.png is packaged.
+// APK assets: only pictures/shipped.* is packaged, holding asset_pointer.
 asset_manager: u8;
 asset_pointer: *u8;
 asset_count: s32;
@@ -77,7 +79,8 @@ asset_closes: s32;
 AAssetManager_open :: (manager: *void, path: *u8, mode: s32) -> *void {
     unused mode
     asset_opens += 1
-    if manager != cast(*void)*asset_manager || TextFromCString(path) != "pictures/shipped.png" { return null }
+    name := TextFromCString(path)
+    if manager != cast(*void)*asset_manager || name.count < 17 || name[0:17] != "pictures/shipped." { return null }
     return cast(*void)asset_pointer
 }
 #program_export
@@ -89,6 +92,8 @@ AAsset_read :: (asset: *void, output: *void, count: s32) -> s32 {
     for at: cast(s32)0..count - 1 { bytes[at] = asset_pointer[at] }
     return count
 }
+#program_export
+AAsset_getBuffer :: (asset: *void) -> *u8 { unused asset; return asset_pointer }
 #program_export
 AAsset_close :: (asset: *void) { unused asset; asset_closes += 1 }
 
@@ -172,7 +177,36 @@ main :: () -> s32 {
     if Raster.ImageWidth("pictures/shipped.png") != 2 || asset_opens != 6 { return 25 }
     Cleanup.AndroidHostResourcesClose()
     if Services.android_picture_bytes != 0 || Raster.PixmapImageIndex("pictures/shipped.png") >= 0 { return 26 }
+
+    // Scene textures and CPU images decode PNG, WebP and AVIF in process,
+    // without the activity's Bitmap bridge.
+    asset_pointer = *avif[0]; asset_count = cast(s32)avif.count
+    avif_texture := Pixels.LoadImagePixels("pictures/shipped.avif"); defer VecFree(avif_texture.pixels)
+    if avif_texture.width != 4 || avif_texture.height != 4 || avif_texture.pixels.count != 64 || bitmap_calls != 2 { return 27 }
+    for at: 0..63 { if avif_texture.pixels[at] != golden[at] { return 28 } }
+    asset_pointer = *webp[0]; asset_count = cast(s32)webp.count
+    webp_texture := Pixels.LoadImagePixels("pictures/shipped.webp"); defer VecFree(webp_texture.pixels)
+    if webp_texture.pixels.count == 0 || bitmap_calls != 2 ||
+        WebPFixtureCheck("lossless", *webp_texture.pixels[0], webp_texture.width, webp_texture.height, 0).count != 0 { return 29 }
+    asset_pointer = *png[0]; asset_count = cast(s32)png.count
+    png_texture := Pixels.LoadImagePixels("pictures/shipped.png"); defer VecFree(png_texture.pixels)
+    if png_texture.width != 2 || png_texture.height != 1 || png_texture.pixels.count != 8 || bitmap_calls != 2 { return 30 }
+    for at: 0..7 { if png_texture.pixels[at] != expected[at] { return 31 } }
+    // A texture can still go through the activity's Bitmap bridge.
+    asset_pointer = *jpeg[0]; asset_count = cast(s32)jpeg.count
+    jpeg_texture := Pixels.LoadImagePixels("pictures/shipped.jpg"); defer VecFree(jpeg_texture.pixels)
+    if jpeg_texture.width != 1 || jpeg_texture.height != 2 || jpeg_texture.pixels.count != 8 ||
+        bitmap_calls != 3 || frames != 0 || references != 0 { return 32 }
+    for at: 0..7 { if jpeg_texture.pixels[at] != jpeg_expected[at] { return 33 } }
+    // Without the bridge, repeated failures return an empty image and log once.
+    bridge_missing = true
+    logs := native_test_log_lines
+    missing_bridge := Pixels.LoadImagePixels("pictures/shipped.jpg"); defer VecFree(missing_bridge.pixels)
+    if missing_bridge.pixels.count != 0 || native_test_log_lines != logs + 1 || frames != 0 || references != 0 { return 34 }
+    again := Pixels.LoadImagePixels("pictures/shipped.jpg"); defer VecFree(again.pixels)
+    if again.pixels.count != 0 || native_test_log_lines != logs + 1 || bitmap_calls != 3 { return 35 }
+    bridge_missing = false
     Services.ImagePreviewRelease(null)
-    print("Android image services: native RGBA/orientation, bounded bitmap JNI, owned cache replacement, folder invalidation, lazy APK pictures and cleanup passed\n")
+    print("Android image services: native RGBA/orientation, bounded bitmap JNI, owned cache replacement, folder invalidation, lazy APK pictures, in-process textures, missing bridge and cleanup passed\n")
     return 0
 }

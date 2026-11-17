@@ -1,13 +1,28 @@
 // Shipped pictures decode through Android's real AssetManager inside its VM,
 // without a window. The system framework's own PNG asset stands in for an
-// application's APK asset.
+// application's APK asset. Scene textures decode AVIF in process, which
+// BitmapFactory cannot before API 31.
 Services :: #import "pixmap_assets_android";
 Raster :: #import "pixmap";
+Pixels :: #import "image_pixels";
+#import "std/vec"
 Cleanup :: #import "android_host_cleanup";
 #import "android_jni"
 
 android :: #system_library "android";
 AssetManagerFromJava :: (env: *JniEnv, assets: *void) -> *void #foreign android "AAssetManager_fromJava";
+
+// The texture's straight RGBA matches its golden byte for byte.
+TextureMatches :: (texture: string, golden: string) -> bool {
+    image := Pixels.LoadImagePixels(texture)
+    defer VecFree(image.pixels)
+    expected := Pixels.ReadPixelsFile(golden)
+    defer VecFree(expected)
+    if expected.count == 0 || image.pixels.count != expected.count ||
+        cast(s64)image.width * image.height * 4 != expected.count { return false }
+    for at: 0..expected.count - 1 { if image.pixels[at] != expected[at] { return false } }
+    return true
+}
 
 TestPictures :: (width: s32, height: s32, checksum: u32) -> s32 {
     picture := "images/android-logo-mask.png"
@@ -21,18 +36,34 @@ TestPictures :: (width: s32, height: s32, checksum: u32) -> s32 {
     if Raster.ImageWidth(missing) != 0 || Raster.PixmapPaintImageSlot(missing, 0) >= 0 { return 4 }
     Cleanup.AndroidHostResourcesClose()
     if Services.android_picture_bytes != 0 || Raster.PixmapImageIndex(picture) >= 0 { return 5 }
+    if !TextureMatches("/data/local/tmp/kryon-android-pictures-test/opaque.avif",
+        "/data/local/tmp/kryon-android-pictures-test/opaque.rgba") { return 6 }
+    if !TextureMatches("/data/local/tmp/kryon-android-pictures-test/transform31.avif",
+        "/data/local/tmp/kryon-android-pictures-test/transform31.rgba") { return 7 }
+    jungle := Pixels.LoadImagePixels("/data/local/tmp/kryon-android-pictures-test/jungle-title.avif")
+    defer VecFree(jungle.pixels)
+    if jungle.width < 64 || jungle.height < 64 || jungle.pixels.count != cast(s64)jungle.width * jungle.height * 4 { return 8 }
+    if !TextureMatches("/data/local/tmp/kryon-android-pictures-test/lossless.webp",
+        "/data/local/tmp/kryon-android-pictures-test/lossless.rgba") { return 9 }
+    // This VM host has no decodeBundleImage bridge, so JPEG fails empty.
+    for attempt: 0..1 {
+        unused attempt
+        jpeg := Pixels.LoadImagePixels("/data/local/tmp/kryon-android-pictures-test/plain.jpg")
+        defer VecFree(jpeg.pixels)
+        if jpeg.pixels.count != 0 || jpeg.width != 0 || jpeg.height != 0 { return 10 }
+    }
     return 0
 }
 
 #program_export
-Java_PictureHost_run :: (env: *JniEnv, kind: *void, assets: *void, width: s32, height: s32,
+Java_PictureHost_run :: (env: *JniEnv, host: *void, assets: *void, width: s32, height: s32,
     checksum: s32) -> s32 {
     vm: *JniVm
     if env.functions.GetJavaVM(env, *vm) != 0 || vm == null { return 90 }
     manager := AssetManagerFromJava(env, assets)
     if manager == null { return 91 }
     activity: NativeActivity
-    activity.vm = vm; activity.activity = kind; activity.asset_manager = manager
+    activity.vm = vm; activity.activity = host; activity.asset_manager = manager
     app: NativeAndroidApp; app.activity = *activity
     jni_android_app = *app
     result := TestPictures(width, height, cast(u32)checksum)

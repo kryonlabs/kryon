@@ -52,7 +52,7 @@ android_api = "21"
             [str(ZIRAN), "pkg", "path", package, "--offline"], cwd=ROOT, env=env, text=True).strip()
     (project / "ziran.local.toml").write_text("[overrides]\n" + "".join(
         f"{name} = {json.dumps(path)}\n" for name, path in overrides.items()))
-    subprocess.run([str(ZIRAN), "lock", "--offline"], cwd=project, env=env, check=True)
+    subprocess.run([str(ZIRAN), "lock", "--offline"], cwd=project, env=env, check=True, stdout=sys.stderr)
     return project
 
 
@@ -113,4 +113,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 3 and sys.argv[1] in ("--link", "--shared"):
+        # Another Android test's codec link flags or shared libraries, one per line.
+        environment = codec_environment()
+        _, meta, flags = codec_artifact(codec_consumer(environment), sys.argv[2], environment)
+        print("\n".join(flags if sys.argv[1] == "--link" else meta["shared_libraries"]))
+    else:
+        main()

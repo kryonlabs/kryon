@@ -23,10 +23,11 @@ FONT_HOST = '''public final class FontHost {
 }
 '''
 PICTURE_HOST = '''public final class PictureHost {
-    private static native int run(android.content.res.AssetManager assets, int width, int height, int checksum);
+    private native int run(android.content.res.AssetManager assets, int width, int height, int checksum);
     public static void main(String[] args) {
         System.load(args[0]);
-        int result = run(android.content.res.Resources.getSystem().getAssets(),
+        System.out.println("PictureHost pid=" + android.os.Process.myPid());
+        int result = new PictureHost().run(android.content.res.Resources.getSystem().getAssets(),
             Integer.parseInt(args[1]), Integer.parseInt(args[2]), (int) Long.parseLong(args[3]));
         System.out.println("Android device test result=" + result);
         if (result != 0) System.exit(result);
@@ -39,13 +40,26 @@ SUITES = {
              "UTF-16, metrics, masks and cleanup passed without a window"),
     "pictures": dict(host="PictureHost", java=PICTURE_HOST, codecs=True,
         done="USB Moto: source/saved real AssetManager PNG asset decoded on first use, "
+             "AVIF and WebP textures match RGBA goldens, missing bridge reported once, "
              "missing asset and cleanup passed without a window"),
 }
 
 
-def picture_expectation(run, adb, out):
-    """The framework asset's size and ARGB checksum, decoded independently."""
+def prepare_pictures(run, adb, out, remote):
+    """Push the texture fixtures; return the framework asset's size and ARGB
+    checksum, decoded independently."""
     from PIL import Image
+    for name in ("opaque.avif", "opaque.rgba", "transform31.avif", "transform31.rgba", "jungle-title.avif"):
+        run([*adb, "push", ROOT / "tests/fixtures/avif" / name, remote + "/" + name], "device-" + name)
+    webp = ROOT / "tests/fixtures/webp/lossless.webp"
+    golden = out / "lossless.rgba"
+    with Image.open(webp) as image:
+        golden.write_bytes(image.convert("RGBA").tobytes())
+    for path in (webp, golden):
+        run([*adb, "push", path, remote + "/" + path.name], "device-" + path.name)
+    jpeg = out / "plain.jpg"
+    Image.new("RGB", (2, 1), (200, 40, 10)).save(jpeg, quality=90)
+    run([*adb, "push", jpeg, remote + "/plain.jpg"], "device-jpeg")
     apk = out / "framework-res.apk"
     run([*adb, "pull", "/system/framework/framework-res.apk", apk], "device-framework")
     with zipfile.ZipFile(apk) as archive, archive.open("assets/images/android-logo-mask.png") as stream:
@@ -123,7 +137,7 @@ def main():
             run([tools / (prefix + "21-clang"), "-std=c11", "-O1", "-fPIC", "-shared",
                  "-ffunction-sections", "-fdata-sections", "-Wl,--gc-sections", "-Wl,--no-undefined",
                  "-I" + str(cache / "include"), *["-iquote" + str(p) for p in sorted({s.parent for s in sources})],
-                 *sources, *flags, "-landroid", "-ldl", "-lm", "-lz", "-o", library], name + "-link")
+                 *sources, *flags, "-landroid", "-llog", "-ldl", "-lm", "-lz", "-o", library], name + "-link")
             run([tools / "llvm-nm", "-D", "--defined-only", library], name + "-symbols")
             with (out / (name + "-symbols.log")).open() as symbols:
                 assert any(line.rstrip().endswith(f" Java_{suite['host']}_run") for line in symbols), library
@@ -152,7 +166,7 @@ def main():
             run([*adb, "push", ROOT / "assets/fonts/LiberationSans-Regular.ttf",
                  remote + "/LiberationSans-Regular.ttf"], "device-font")
         else:
-            arguments = picture_expectation(run, adb, out)
+            arguments = prepare_pictures(run, adb, out, remote)
         for library in shared:
             run([*adb, "push", library, remote + "/" + library.name], "device-" + library.stem)
         run([*adb, "push", dex / "classes.dex", remote + "/classes.dex"], "device-dex")
@@ -162,6 +176,12 @@ def main():
                           "/system/bin/app_process", "/system/bin",
                           suite["host"], remote + "/libdevicetest.so", *arguments], form + "-device-run", capture=True)
             assert "Android device test result=0" in result, result[-3000:]
+            if args.suite == "pictures":
+                pid = next(line.removeprefix("PictureHost pid=") for line in result.splitlines()
+                           if line.startswith("PictureHost pid="))
+                assert pid.isdecimal(), result
+                log = run([*adb, "logcat", "-d", f"--pid={pid}", "-s", "Kryon"], form + "-logcat", capture=True)
+                assert log.count("has no decodeBundleImage") == 1, log[-2000:]
             if args.suite == "typefaces":
                 leftovers = run([*adb, "shell", "find", remote, "-name", "kryon-font-*"], form + "-temporary-fonts", capture=True)
                 assert not leftovers, leftovers

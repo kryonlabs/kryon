@@ -28,6 +28,8 @@ AAsset_read :: (asset: *void, output: *void, count: s32) -> s32 { unused asset; 
 #program_export
 AAsset_close :: (asset: *void) { unused asset }
 #program_export
+__android_log_write :: (priority: s32, tag: *u8, text: *u8) -> s32 { unused priority; unused tag; unused text; return 1 }
+#program_export
 ANativeWindow_getWidth :: (input: *void) -> s32 { unused input; return 48 }
 #program_export
 ANativeWindow_getHeight :: (input: *void) -> s32 { unused input; return 36 }

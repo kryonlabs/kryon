@@ -3,16 +3,16 @@
 #import "std/vec"
 #import "std/c_string"
 #if #defined(ANDROID_BUILD) {
-    Decode :: #import "android_bundle_images";
+    // PNG, WebP and AVIF decode in process with the linked codecs; other
+    // formats, such as JPEG, use the activity's decodeBundleImage bridge.
+    Decode :: #import "android_image_decode";
+    Decoded :: #import "ziran_image_decode";
     android_pixels :: #system_library "android";
-    pixels_c :: #system_library "c";
     PixelAssetOpen :: (manager: *void,name: *u8,mode: s32) -> *void #foreign android_pixels "AAssetManager_open";
     PixelAssetClose :: (asset: *void) #foreign android_pixels "AAsset_close";
     PixelAssetLength :: (asset: *void) -> s32 #foreign android_pixels "AAsset_getLength";
     PixelAssetBuffer :: (asset: *void) -> *u8 #foreign android_pixels "AAsset_getBuffer";
-    PixelRelease :: (pixels: *void) #foreign pixels_c "free";
     Jni :: #import "android_jni";
-    Orientation :: #import "image_orientation";
 } else #if OS == .WEB {
     // The page decodes with the browser's codecs (photos upright by Exif)
     // and copies straight RGBA into Wasm memory; no raylib is linked.
@@ -50,32 +50,11 @@ LoadImagePixels :: (path: string) -> Image {
         defer VecFree(encoded)
         if encoded.count==0 { return .{} }
         #if #defined(ANDROID_BUILD) {
-            width: s32; height: s32
-            words:=Decode.AndroidImageDecodePNG(encoded[:],*width,*height)
-            orientation: s32=1
-            if words==null {
-                words=Decode.AndroidImageDecodeBitmap(TextView(encoded[:]),*width,*height)
-                orientation=Orientation.ImageExifOrientation(TextView(encoded[:]))
-            }
-            if words==null || width<=0 || height<=0 || cast(s64)width*height>67108864 {
-                if words!=null { PixelRelease(cast(*void)words) }
-                return .{}
-            }
-            words=Decode.AndroidImageOrient(words,width,height,orientation)
-            if words==null { return .{} }
-            defer PixelRelease(cast(*void)words)
-            if orientation>=5 && orientation<=8 { swap:=width; width=height; height=swap }
-            result: Image
-            result.width=width; result.height=height
-            if !VecResize(result.pixels,cast(s64)width*height*4) { VecFree(result.pixels); return .{} }
-            for at:0..cast(s64)width*height-1 {
-                pixel:=words[at]
-                result.pixels[at*4]=cast(u8)((pixel>>16)&cast(u32)255)
-                result.pixels[at*4+1]=cast(u8)((pixel>>8)&cast(u32)255)
-                result.pixels[at*4+2]=cast(u8)(pixel&cast(u32)255)
-                result.pixels[at*4+3]=cast(u8)(pixel>>24)
-            }
-            return result
+            allow_platform_bitmap := true
+            decoded:=Decode.AndroidImageDecodeEncoded(TextView(encoded[:]),"",allow_platform_bitmap)
+            if decoded.pixels==null { return .{} }
+            defer Decoded.DecodedImageFree(decoded)
+            return CopyRgba(decoded.pixels,decoded.width,decoded.height,decoded.width*4,4)
         } else {
         if encoded.count>2147483647 { return .{} }
         width: s32; height: s32

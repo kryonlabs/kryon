@@ -114,6 +114,10 @@
   record host calls start; opening a bundle rewrites only changed assets; the
   time picker and desktop image examples build; Android renderer artifacts
   configure again; the website's live preview and gallery build again.
+- On Android, `kryon/image_pixels` uses the linked WebP and AVIF codecs for
+  scene textures, including on Android 9. If a texture requires the Android
+  Bitmap fallback and the activity lacks `decodeBundleImage`, Kryon returns
+  an empty image and logs the missing method once.
 
 ## [0.3.0] - 2026-11-12
 
