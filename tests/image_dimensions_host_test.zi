@@ -1,0 +1,17 @@
+Metrics :: #import "image_raster";
+Pixels :: #import "pixmap";
+
+picture: [6]u32;
+
+#program_export
+main :: () -> s32 {
+    // The ordinary software raster is also a display-free image provider.
+    // Dimensions need neither a borrowed framebuffer nor a native window.
+    if Metrics.AssetWidth("absent") != 0 || Metrics.AssetHeight("absent") != 0 { return 1 }
+    if !Pixels.PixmapSetImage(0, "picture", 3, 2, picture[:]) { return 2 }
+    if Metrics.AssetWidth("picture") != 3 || Metrics.AssetHeight("picture") != 2 { return 3 }
+    Pixels.PixmapClearImage(0)
+    if Metrics.AssetWidth("picture") != 0 || Metrics.AssetHeight("picture") != 0 { return 4 }
+    print("Headless image dimensions: explicit Pixmap host bindings, registered and absent assets passed\n")
+    return 0
+}

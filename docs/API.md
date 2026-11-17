@@ -2114,6 +2114,18 @@ Pixels are tightly packed, top-down, straight RGBA in the source's sRGB encoding
 On the web the page decodes the file's bytes with the browser's own codecs
 (photos turned upright by Exif), so a canvas build links no image library.
 
+Headless image-widget tests can use the ordinary `kryon/pixmap` provider for
+`image_raster`'s `ImageWidth` and `ImageHeight` capabilities. Import both modules
+and bind `image_raster:ImageWidth=pixmap:ImageWidth` and
+`image_raster:ImageHeight=pixmap:ImageHeight` with `--bind` when compiling source
+or generating saved IR. For a package consumer, prefix **both** module names
+with Kryon's package ID from `ziran.lock` and an underscore, for example
+`p…_image_raster:ImageWidth=p…_pixmap:ImageWidth`; the ID depends on the locked
+revision. Saved IR already contains those bindings. `PixmapSetImage` registers
+fixture dimensions; absent paths return `0`. This needs no window or borrowed
+framebuffer. A desktop application uses the same capabilities from
+`kryon/Cairo`, which loads its picture assets.
+
 ### Text as pixels
 
 `#import "kryon/text_pixels"` exposes `TextPixels(value, font, color, width,

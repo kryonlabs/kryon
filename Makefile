@@ -1082,3 +1082,8 @@ test: cairo-picture-cache-test desktop-frame-texture-test android-frame-texture-
 android-present-damage-test: project-toolchain
 	@sh tests/android_present_damage_test.sh
 test: android-present-damage-test
+
+.PHONY: image-dimensions-host-test
+image-dimensions-host-test: project-toolchain
+	@sh tests/image_dimensions_host_test.sh
+test: image-dimensions-host-test
