@@ -22,3 +22,16 @@ for form in source saved; do
     cp "$out/$form/test" "$out/test"
     (cd /; timeout 30s "$out/test" "$repo/tests/fixtures/avif")
 done
+
+# Codecs linked into the program: libavif, libaom and libwebp in the
+# executable, run where no libkryonavif exists.
+linked="$repo/build/scratch/linked-codecs"
+rm -rf "$linked"
+image_ziran build --target=c --root "$repo/tests" --module-path "$repo/src/backend" \
+    --define KRYON_AVIF_LINKED --define KRYON_WEBP_LINKED -o "$linked" "$repo/tests/linked_codecs_test.zi"
+"${CC:-cc}" -std=c11 -O1 -ffunction-sections -fdata-sections -Wl,--gc-sections \
+    -I"$ziran_root/include" -I"$linked" "$linked"/*.c \
+    "$repo/build/webp-ziran/libkryonwebp.a" \
+    "$repo/build/avif-ziran/avif/libavif.a" "$repo/build/avif-ziran/aom/libaom.a" \
+    -ldl -lpthread -lm -o "$linked/test"
+(cd /; env -u KRYON_AVIF_LIBRARY timeout 30s "$linked/test" "$repo/tests/fixtures/avif" "$repo/tests/fixtures/webp")

@@ -215,6 +215,14 @@ AOM/NDK combination emits unaligned NEON loads which fault on real Android
 hardware; dav1d's own NEON runs there. The ARMv7 device suite covers both Debug
 and Release, including the original large YUV420 crash input and background
 image loading.
+
+Desktop hosts load the AVIF bridge (`libkryonavif.so`, `kryonavif.dll`) on
+first use, from `KRYON_AVIF_LIBRARY`, the library search path or beside the
+executable, and WebP from the system libwebp. A program that links the codecs
+itself builds with `--define KRYON_AVIF_LINKED` (libavif and its AV1 codec)
+and `--define KRYON_WEBP_LINKED` (libwebp and libwebpdemux), and loads
+neither; `make avif-decode-test` runs such a build, linked with the static
+archives, where no `libkryonavif` exists.
 8/10/12-bit color and monochrome decode to straight 8-bit RGBA; alpha and
 container clean aperture, rotation and mirroring are preserved. The renderer
 then premultiplies for Cairo. HDR tone mapping

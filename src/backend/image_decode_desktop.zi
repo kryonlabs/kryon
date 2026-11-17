@@ -104,7 +104,9 @@ CopyPixels :: (image: *void, destination: *u8, stride: s32) -> bool {
 
 // WebP through the system libwebp demuxer (libwebpdemux.so.2 and its
 // libwebp.so.7), also loaded on first use: lossy, lossless and alpha pictures
-// decode to straight RGBA, and an animation to its first complete frame.
+// decode to straight RGBA, and an animation to its first complete frame. A
+// program built with KRYON_WEBP_LINKED links libwebp and libwebpdemux itself
+// and loads neither.
 #import "std/file_linux"
 #import "std/byte_text_linux"
 NativeWebp :: #import "webp/native_api";
@@ -124,32 +126,44 @@ webp_available: bool;
 // allocator discriminator for callers that share the still-image close path.
 WebPImage :: struct { pixels: *u8; width: s32; height: s32; avif: bool; }
 
-WebpResolve :: (handle: *void, slot: *void, name: string) -> bool {
-    bytes: [128]u8
-    if !CopyCString(name, bytes[:]) { return false }
-    symbol := Libraries.Lookup(handle, *bytes[0])
-    if symbol == null { return false }
-    unused Copy(slot, cast(*void)*symbol, size_of(*void))
-    return true
-}
+#if #defined(KRYON_WEBP_LINKED) {
+    WebpLinked :: #import "webp_linked";
+    WebPInit :: () -> bool {
+        if !webp_initialized {
+            webp_initialized = true
+            webp_api = WebpLinked.WebpLinkedApi()
+            webp_available = true
+        }
+        return webp_available
+    }
+} else {
+    WebpResolve :: (handle: *void, slot: *void, name: string) -> bool {
+        bytes: [128]u8
+        if !CopyCString(name, bytes[:]) { return false }
+        symbol := Libraries.Lookup(handle, *bytes[0])
+        if symbol == null { return false }
+        unused Copy(slot, cast(*void)*symbol, size_of(*void))
+        return true
+    }
 
-WebPInit :: () -> bool {
-    if webp_initialized { return webp_available }
-    webp_initialized = true
-    bytes: [128]u8
-    unused CopyCString(WEBP_LIBRARY, bytes[:])
-    webp_demux = Libraries.OpenLibrary(*bytes[0])
-    unused CopyCString(WEBP_CORE_LIBRARY, bytes[:])
-    webp_library = Libraries.OpenLibrary(*bytes[0])
-    if webp_demux == null || webp_library == null { return false }
-    webp_available = WebpResolve(webp_library, cast(*void)*webp_api.version, "WebPGetDecoderVersion") &&
-        WebpResolve(webp_library, cast(*void)*webp_api.decode_into, "WebPDecodeRGBAInto") &&
-        WebpResolve(webp_demux, cast(*void)*webp_api.options_init, "WebPAnimDecoderOptionsInitInternal") &&
-        WebpResolve(webp_demux, cast(*void)*webp_api.new_decoder, "WebPAnimDecoderNewInternal") &&
-        WebpResolve(webp_demux, cast(*void)*webp_api.get_info, "WebPAnimDecoderGetInfo") &&
-        WebpResolve(webp_demux, cast(*void)*webp_api.next_frame, "WebPAnimDecoderGetNext") &&
-        WebpResolve(webp_demux, cast(*void)*webp_api.delete_decoder, "WebPAnimDecoderDelete")
-    return webp_available
+    WebPInit :: () -> bool {
+        if webp_initialized { return webp_available }
+        webp_initialized = true
+        bytes: [128]u8
+        unused CopyCString(WEBP_LIBRARY, bytes[:])
+        webp_demux = Libraries.OpenLibrary(*bytes[0])
+        unused CopyCString(WEBP_CORE_LIBRARY, bytes[:])
+        webp_library = Libraries.OpenLibrary(*bytes[0])
+        if webp_demux == null || webp_library == null { return false }
+        webp_available = WebpResolve(webp_library, cast(*void)*webp_api.version, "WebPGetDecoderVersion") &&
+            WebpResolve(webp_library, cast(*void)*webp_api.decode_into, "WebPDecodeRGBAInto") &&
+            WebpResolve(webp_demux, cast(*void)*webp_api.options_init, "WebPAnimDecoderOptionsInitInternal") &&
+            WebpResolve(webp_demux, cast(*void)*webp_api.new_decoder, "WebPAnimDecoderNewInternal") &&
+            WebpResolve(webp_demux, cast(*void)*webp_api.get_info, "WebPAnimDecoderGetInfo") &&
+            WebpResolve(webp_demux, cast(*void)*webp_api.next_frame, "WebPAnimDecoderGetNext") &&
+            WebpResolve(webp_demux, cast(*void)*webp_api.delete_decoder, "WebPAnimDecoderDelete")
+        return webp_available
+    }
 }
 
 OpenWebP :: (path: string) -> WebPImage {
@@ -213,68 +227,82 @@ CloseWebP :: (image: WebPImage) {
 }
 
 // Packaged CPU AVIF decoder. It is independent of GdkPixbuf's loader set.
+// The bridge library is found on first use; a program built with
+// KRYON_AVIF_LINKED links libavif and its AV1 codec itself instead.
 #import "avif_decode"
 avif_api: AvifAPI;
 avif_library: *void;
 avif_initialized: bool;
 avif_available: bool;
-AvifGetEnv :: (name: *u8) -> *u8 #foreign c "getenv";
-AvifResolve :: (slot: *void, name: string) -> bool {
-    bytes: [64]u8
-    if !CopyCString(name, bytes[:]) { return false }
-    symbol := Libraries.Lookup(avif_library, *bytes[0])
-    if symbol == null { return false }
-    unused Copy(slot, cast(*void)*symbol, size_of(*void))
-    return true
-}
-AvifOpenLibrary :: (path: string) -> *void {
-    bytes: [4096]u8
-    if !CopyCString(path, bytes[:]) { return null }
-    return Libraries.OpenLibrary(*bytes[0])
-}
-AvifInit :: () -> bool {
-    if avif_initialized { return avif_available }
-    avif_initialized = true
-    name: [32]u8
-    unused CopyCString("KRYON_AVIF_LIBRARY", name[:])
-    explicit := AvifGetEnv(*name[0])
-    if explicit != null { avif_library = AvifOpenLibrary(TextFromCString(explicit)) }
-    if avif_library == null { avif_library = AvifOpenLibrary(AVIF_LIBRARY) }
-    // Installed binaries and AppDirs can carry the codec next to the executable
-    // or in their lib directory. Never depend on the process working directory.
-    if avif_library == null {
-        executable: [4096]u8
-        program := Program.ProgramPath(executable[:])
-        count := cast(s64)program.count
-        if count > 0 && count < 4095 {
-            slash := count - 1
-            while slash >= 0 && executable[slash] != 47 && executable[slash] != 92 { slash -= 1 }
-            if slash >= 0 {
-                directory := TextFromBytes(executable[:slash + 1])
-                suffixes: [3]string = .[AVIF_LIBRARY, AVIF_LOCAL_LIBRARY, AVIF_PARENT_LIBRARY]
-                for suffix: suffixes {
-                    full: [4096]u8
-                    if directory.count + suffix.count + 1 > full.count { continue }
-                    for i: 0..directory.count - 1 { full[i] = directory[i] }
-                    for i: 0..suffix.count - 1 { full[directory.count + i] = suffix[i] }
-                    full[directory.count + suffix.count] = 0
-                    avif_library = Libraries.OpenLibrary(*full[0])
-                    if avif_library != null { break }
+#if #defined(KRYON_AVIF_LINKED) {
+    AvifLinked :: #import "avif/bridge/static";
+    AvifInit :: () -> bool {
+        if !avif_initialized {
+            avif_initialized = true
+            avif_api = AvifLinked.StaticAPI()
+            avif_available = true
+        }
+        return avif_available
+    }
+} else {
+    AvifGetEnv :: (name: *u8) -> *u8 #foreign c "getenv";
+    AvifResolve :: (slot: *void, name: string) -> bool {
+        bytes: [64]u8
+        if !CopyCString(name, bytes[:]) { return false }
+        symbol := Libraries.Lookup(avif_library, *bytes[0])
+        if symbol == null { return false }
+        unused Copy(slot, cast(*void)*symbol, size_of(*void))
+        return true
+    }
+    AvifOpenLibrary :: (path: string) -> *void {
+        bytes: [4096]u8
+        if !CopyCString(path, bytes[:]) { return null }
+        return Libraries.OpenLibrary(*bytes[0])
+    }
+    AvifInit :: () -> bool {
+        if avif_initialized { return avif_available }
+        avif_initialized = true
+        name: [32]u8
+        unused CopyCString("KRYON_AVIF_LIBRARY", name[:])
+        explicit := AvifGetEnv(*name[0])
+        if explicit != null { avif_library = AvifOpenLibrary(TextFromCString(explicit)) }
+        if avif_library == null { avif_library = AvifOpenLibrary(AVIF_LIBRARY) }
+        // Installed binaries and AppDirs can carry the codec next to the executable
+        // or in their lib directory. Never depend on the process working directory.
+        if avif_library == null {
+            executable: [4096]u8
+            program := Program.ProgramPath(executable[:])
+            count := cast(s64)program.count
+            if count > 0 && count < 4095 {
+                slash := count - 1
+                while slash >= 0 && executable[slash] != 47 && executable[slash] != 92 { slash -= 1 }
+                if slash >= 0 {
+                    directory := TextFromBytes(executable[:slash + 1])
+                    suffixes: [3]string = .[AVIF_LIBRARY, AVIF_LOCAL_LIBRARY, AVIF_PARENT_LIBRARY]
+                    for suffix: suffixes {
+                        full: [4096]u8
+                        if directory.count + suffix.count + 1 > full.count { continue }
+                        for i: 0..directory.count - 1 { full[i] = directory[i] }
+                        for i: 0..suffix.count - 1 { full[directory.count + i] = suffix[i] }
+                        full[directory.count + suffix.count] = 0
+                        avif_library = Libraries.OpenLibrary(*full[0])
+                        if avif_library != null { break }
+                    }
                 }
             }
         }
+        if avif_library == null { return false }
+        avif_available = AvifResolve(cast(*void)*avif_api.version, "avifVersion") &&
+            AvifResolve(cast(*void)*avif_api.create, "avifDecoderCreate") &&
+            AvifResolve(cast(*void)*avif_api.destroy, "avifDecoderDestroy") &&
+            AvifResolve(cast(*void)*avif_api.memory, "avifDecoderSetIOMemory") &&
+            AvifResolve(cast(*void)*avif_api.parse, "avifDecoderParse") &&
+            AvifResolve(cast(*void)*avif_api.next, "avifDecoderNextImage") &&
+            AvifResolve(cast(*void)*avif_api.defaults, "avifRGBImageSetDefaults") &&
+            AvifResolve(cast(*void)*avif_api.convert, "avifImageYUVToRGB") &&
+            AvifResolve(cast(*void)*avif_api.crop, "avifCropRectConvertCleanApertureBox")
+        return avif_available
     }
-    if avif_library == null { return false }
-    avif_available = AvifResolve(cast(*void)*avif_api.version, "avifVersion") &&
-        AvifResolve(cast(*void)*avif_api.create, "avifDecoderCreate") &&
-        AvifResolve(cast(*void)*avif_api.destroy, "avifDecoderDestroy") &&
-        AvifResolve(cast(*void)*avif_api.memory, "avifDecoderSetIOMemory") &&
-        AvifResolve(cast(*void)*avif_api.parse, "avifDecoderParse") &&
-        AvifResolve(cast(*void)*avif_api.next, "avifDecoderNextImage") &&
-        AvifResolve(cast(*void)*avif_api.defaults, "avifRGBImageSetDefaults") &&
-        AvifResolve(cast(*void)*avif_api.convert, "avifImageYUVToRGB") &&
-        AvifResolve(cast(*void)*avif_api.crop, "avifCropRectConvertCleanApertureBox")
-    return avif_available
 }
 OpenAVIF :: (path: string) -> WebPImage {
     file := OpenRead(path)

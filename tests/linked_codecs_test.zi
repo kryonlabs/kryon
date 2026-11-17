@@ -1,0 +1,85 @@
+// Codecs linked into the program: built with KRYON_AVIF_LINKED and
+// KRYON_WEBP_LINKED, the desktop decoders read AVIF and WebP, from bytes and
+// from files, with the libavif, libaom and libwebp the program links, and
+// load neither libkryonavif nor the system libwebp. tests/avif_decode_test.sh
+// builds it with static archives and runs it with no libkryonavif present;
+// built without the two defines, it fails on the loaded libraries.
+Pixels :: #import "ziran_image_decode";
+Decode :: #import "image_decode_desktop";
+#import "file"
+#import "text_tools"
+#import "std/byte_text_linux"
+
+#scope_file
+Fixture :: (directory: string, name: string) -> string {
+    parts: [3]string = .[directory, "/", name]
+    data, found := ReadEntireFile(TextJoin(parts[:], ""))
+    if !found { return "" }
+    return data
+}
+
+// The WebP fixture's premultiplied ARGB32 pixel at INDEX, or 0 when it does
+// not decode.
+WebPPixel :: (directory: string, name: string, index: s32, width: s32, height: s32) -> u32 {
+    parts: [4]string = .[directory, "/", name, ".webp"]
+    image := Decode.OpenWebP(TextJoin(parts[:], ""))
+    if image.pixels == null { return 0 }; defer { Decode.CloseWebP(image) }
+    if image.width != width || image.height != height { return 1 }
+    pixels: [256]u32
+    if !Decode.CopyWebP(image, cast(*u8)*pixels[0], width * 4) { return 2 }
+    return pixels[index]
+}
+
+// Whether the process mapped a library whose path holds NAME.
+Mapped :: (maps: string, name: string) -> bool {
+    if name.count == 0 || maps.count < name.count { return false }
+    for at: 0..maps.count - name.count {
+        if maps[at:at + name.count] == name { return true }
+    }
+    return false
+}
+
+#scope_export
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 3 { return 2 }
+    avif := TextFromCString(argv[1])
+    webp := TextFromCString(argv[2])
+
+    data := Fixture(avif, "rgba8.avif")
+    golden := Fixture(avif, "rgba8.rgba")
+    image := Pixels.ImageDecodeEncoded(data, "assets/image.avif")
+    if image.pixels == null || image.width != 8 || image.height != 6 || golden.count != 8 * 6 * 4 {
+        print("AVIF from bytes did not decode\n"); return 3
+    }
+    for at: 0..golden.count - 1 {
+        if image.pixels[at] != cast(u8)golden[at] { print("AVIF byte % differs\n", at); return 4 }
+    }
+    Pixels.DecodedImageFree(image)
+    parts: [2]string = .[avif, "/rgba8.avif"]
+    still := Decode.OpenStill(TextJoin(parts[:], ""))
+    if still.pixels == null || still.width != 8 || still.height != 6 { print("AVIF file did not decode\n"); return 5 }
+    Decode.CloseStill(still)
+
+    if WebPPixel(webp, "lossless", 0, 3, 2) != cast(u32)0xff0a141e ||
+        WebPPixel(webp, "lossless", 3, 3, 2) != cast(u32)0x8032373c ||
+        WebPPixel(webp, "animated", 9, 8, 8) != cast(u32)0xfffac800 ||
+        WebPPixel(webp, "lossy-alpha", 8 * 16 + 13, 16, 16) >> 24 != cast(u32)64 {
+        print("WebP files did not decode\n"); return 6
+    }
+    lossless := Fixture(webp, "lossless.webp")
+    picture := Pixels.ImageDecodeEncoded(lossless, "assets/image.webp")
+    if picture.pixels == null || picture.width != 3 || picture.height != 2 ||
+        picture.pixels[0] != 10 || picture.pixels[1] != 20 || picture.pixels[2] != 30 || picture.pixels[3] != 255 {
+        print("WebP from bytes did not decode\n"); return 7
+    }
+    Pixels.DecodedImageFree(picture)
+
+    maps, found := ReadEntireFile("/proc/self/maps")
+    if !found { print("no memory map to read\n"); return 8 }
+    if Mapped(maps, "kryonavif") || Mapped(maps, "libwebp") {
+        print("a codec library was loaded instead of the linked codecs\n"); return 9
+    }
+    print("linked codecs: passed\n")
+    return 0
+}

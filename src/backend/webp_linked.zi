@@ -1,0 +1,36 @@
+// libwebp and libwebpdemux linked into the program, as webp/native_api's
+// procedure table. image_decode_desktop uses it under KRYON_WEBP_LINKED in
+// place of loading the system libraries.
+NativeWebp :: #import "webp/native_api";
+
+#scope_file
+webp :: #system_library "webp";
+demux :: #system_library "webpdemux";
+Version :: () -> s32 #foreign webp "WebPGetDecoderVersion";
+Into :: (data: *u8, size: usize, output: *u8, capacity: usize, stride: s32) -> *u8 #foreign webp "WebPDecodeRGBAInto";
+OptionsInit :: (options: *NativeWebp.NativeOptions, abi: s32) -> s32 #foreign demux "WebPAnimDecoderOptionsInitInternal";
+New :: (data: *NativeWebp.NativeSource, options: *NativeWebp.NativeOptions, abi: s32) -> *void #foreign demux "WebPAnimDecoderNewInternal";
+GetInfo :: (decoder: *void, info: *NativeWebp.NativeInfo) -> s32 #foreign demux "WebPAnimDecoderGetInfo";
+Next :: (decoder: *void, pixels: **u8, timestamp: *s32) -> s32 #foreign demux "WebPAnimDecoderGetNext";
+Delete :: (decoder: *void) #foreign demux "WebPAnimDecoderDelete";
+
+LinkedVersion :: () -> s32 { return Version() }
+LinkedInto :: (data: *u8, size: usize, output: *u8, capacity: usize, stride: s32) -> *u8 {
+    return Into(data, size, output, capacity, stride)
+}
+LinkedOptionsInit :: (options: *NativeWebp.NativeOptions, abi: s32) -> s32 { return OptionsInit(options, abi) }
+LinkedNew :: (data: *NativeWebp.NativeSource, options: *NativeWebp.NativeOptions, abi: s32) -> *void {
+    return New(data, options, abi)
+}
+LinkedGetInfo :: (decoder: *void, info: *NativeWebp.NativeInfo) -> s32 { return GetInfo(decoder, info) }
+LinkedNext :: (decoder: *void, pixels: **u8, timestamp: *s32) -> s32 { return Next(decoder, pixels, timestamp) }
+LinkedDelete :: (decoder: *void) { Delete(decoder) }
+
+#scope_export
+WebpLinkedApi :: () -> NativeWebp.WebpNativeApi {
+    api: NativeWebp.WebpNativeApi
+    api.version = LinkedVersion; api.decode_into = LinkedInto
+    api.options_init = LinkedOptionsInit; api.new_decoder = LinkedNew
+    api.get_info = LinkedGetInfo; api.next_frame = LinkedNext; api.delete_decoder = LinkedDelete
+    return api
+}

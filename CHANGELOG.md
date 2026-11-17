@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Windows desktop programs link fonts and pictures given as bytes: their
+  files are temporary files there, as they are in-memory files on Linux.
+  The image decoders keep their GdkPixbuf slots private to their module, so
+  a program that links ws2_32 keeps Winsock's `connect`. Building with
+  `--define KRYON_AVIF_LINKED` and `--define KRYON_WEBP_LINKED` binds the
+  libavif and libwebp the program links instead of loading `libkryonavif`
+  and the system libwebp.
 - `kryon/scene_skin` adds indexed scene surfaces with four-influence skinning
   from bind data, and `kryon/watercolor` a portable paper/pigment material
   with a finishing pass for brush, grain, pigment pooling and pencil
