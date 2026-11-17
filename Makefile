@@ -449,11 +449,14 @@ desktop-audio-mp3-test: $(MP3_A)
 test: desktop-audio-mp3-test
 
 # The core Xiph Vorbis archives, built through std/native/AudioCodecs.cmake.
+# libvorbis 1.3.7 asks for CMake 2.8, which CMake 4 configures only with a
+# policy floor; earlier CMake ignores the variable.
 VORBIS_DIR := $(BUILD_DIR)/vorbis
 VORBIS_A := $(VORBIS_DIR)/libvorbisfile.a
 $(VORBIS_A): ziran.lock
 	@mkdir -p $(VORBIS_DIR)
 	@cmake -S "$(AUDIO_PACKAGE)/native" -B $(VORBIS_DIR) -DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
 		-DZIRAN_STDLIB="$(ZIRAN_ROOT)/std" -DAUDIO_CORE_VORBIS=ON > $(VORBIS_DIR)/configure.log
 	@cmake --build $(VORBIS_DIR) --target vorbisfile > $(VORBIS_DIR)/build.log
 
