@@ -45,8 +45,9 @@
   `BeginAndroidFrame`/`EndAndroidFrame` paint and present Pixmap's
   device-pixel damage. Pixmap's `RasterSetTransform` and
   `RasterPointFromPixels` share one camera for painting and input.
-- On Android, `kryon/pixmap_assets_android` decodes owned PNG, WebP and AVIF
-  pictures on first use, and `kryon/pixmap_typefaces_android` shapes text with
+- On Android, pictures an app ships decode from its APK assets the first time
+  they are measured or drawn, through `kryon/pixmap_assets_android`, which the
+  Frame host imports. `kryon/pixmap_typefaces_android` shapes text with
   Android's Paint and Canvas through the ordinary `typeface_source`
   capabilities, with system font fallback.
 - The `renderer-desktop` artifact also builds for Android ARMv7 and AArch64:

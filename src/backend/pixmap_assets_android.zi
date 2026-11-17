@@ -1,11 +1,13 @@
-// Optional Android picture services. An application supplies bytes from APK
-// assets, its downloads or a user file; the host owns each decoded cache entry.
+// Optional Android picture services. Pictures the application ships load
+// from its APK assets on first use; it can also supply bytes from downloads
+// or a user file. The host owns each decoded cache entry.
 #import "android_image_decode"
 Images :: #import "android_bundle_images";
 #import "ziran_image_decode"
 #import "android_host_cleanup"
 #import "pixmap_image_owner"
 #import "pixmap"
+#import "app_asset"
 #import "paint_queue"
 #import "std/byte_text_linux"
 
@@ -24,6 +26,7 @@ AndroidPictureReplacing :: (slot: s32, next: *u32) {
     android_picture_sizes[slot] = 0
 }
 AndroidPicturesClose :: () {
+    PixmapImageSourceRetry()
     for slot: cast(s32)0..1023 {
         if android_picture_pixels[slot] != null { PixmapClearImage(slot) }
     }
@@ -34,6 +37,15 @@ AndroidPicturesUse :: () {
     AndroidImagesCleanupUse(AndroidPicturesClose)
     android_picture_ready = true
 }
+// Decodes a shipped picture the first time Pixmap is asked for its path.
+AndroidPictureLoad :: (path: string) -> bool {
+    data := ReadAppAsset(path)
+    if data.count == 0 { return false }
+    loaded := PixmapLoadImageBytes(path, data, "")
+    FreeAppAsset(data)
+    return loaded
+}
+android_picture_source: bool = PixmapImageSourceUse(AndroidPictureLoad);
 
 #program_export
 PixmapLoadImageBytes :: (path: string, data: string, file_type: string) -> bool {
@@ -72,6 +84,7 @@ PixmapLoadImageBytes :: (path: string, data: string, file_type: string) -> bool 
 
 #program_export
 RasterInvalidateImage :: (path: string) -> bool {
+    PixmapImageSourceRetry()
     slot := PixmapImageIndex(path)
     if slot < 0 { return false }
     PixmapClearImage(slot)
@@ -81,6 +94,7 @@ RasterInvalidateImage :: (path: string) -> bool {
 #program_export
 RasterInvalidateImagesIn :: (folder: string) -> s32 {
     if folder.count == 0 { return 0 }
+    PixmapImageSourceRetry()
     while folder.count > 1 && folder[folder.count - 1] == cast(u8)47 { folder = folder[0:folder.count - 1] }
     removed: s32
     for slot: cast(s32)0..1023 {
@@ -96,6 +110,7 @@ RasterInvalidateImagesIn :: (folder: string) -> s32 {
 }
 #program_export
 RasterInvalidateImages :: () -> s32 {
+    PixmapImageSourceRetry()
     removed: s32
     for slot: cast(s32)0..1023 {
         if pixmap_image_lengths[slot] > 0 { PixmapClearImage(slot); removed += 1 }

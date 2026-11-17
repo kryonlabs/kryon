@@ -208,7 +208,7 @@ PixmapSourceCount :: (slot: s32) -> s64 {
     return pixmap_image_pixels[slot].value.count
 }
 PixmapPaintImageSlot :: (path: string, id: u32) -> s32 {
-    if id == cast(u32)0 { return PixmapImageIndex(path) }
+    if id == cast(u32)0 { return PixmapImageFind(path) }
     at := Bitmaps.BitmapSlot(id)
     if at < 0 { return -1 }
     PixmapSyncBitmaps()
@@ -226,6 +226,30 @@ PixmapClearImage :: (slot: s32) {
     pixmap_image_lengths[slot] = 0; pixmap_image_widths[slot] = 0
     pixmap_image_heights[slot] = 0; pixmap_image_pixels[slot].value = pixmap_pixels[0:0]
     pixmap_image_index_built = false
+}
+
+// A picture source is asked once per missing path, until invalidation or
+// host cleanup lets it try those paths again.
+PixmapImageMissingLimit :: 256;
+pixmap_image_missing: [PixmapImageMissingLimit]u64;
+pixmap_image_missing_count: s32;
+PixmapImageSourceRetry :: () { pixmap_image_missing_count = 0 }
+PixmapImageFind :: (path: string) -> s32 {
+    slot := PixmapImageIndex(path)
+    if slot >= 0 || pixmap_image_load == null || path.count == 0 { return slot }
+    hash := PixmapImageHash(path)
+    for at: cast(s32)0..pixmap_image_missing_count - 1 {
+        if pixmap_image_missing[at] == hash { return -1 }
+    }
+    if pixmap_image_load(path) {
+        slot = PixmapImageIndex(path)
+        if slot >= 0 { return slot }
+    }
+    if pixmap_image_missing_count < PixmapImageMissingLimit {
+        pixmap_image_missing[pixmap_image_missing_count] = hash
+        pixmap_image_missing_count += 1
+    }
+    return -1
 }
 
 PixmapImageHash :: (path: string) -> u64 {
@@ -1640,13 +1664,13 @@ PixmapImageTransformedRange :: (start: s32, end: s32, data: PixmapImageRowsData)
 
 #program_export
 ImageWidth :: (asset_path: string) -> s32 {
-    slot := PixmapImageIndex(asset_path); if slot >= 0 { return pixmap_image_widths[slot] }
+    slot := PixmapImageFind(asset_path); if slot >= 0 { return pixmap_image_widths[slot] }
     return 0
 }
 
 #program_export
 ImageHeight :: (asset_path: string) -> s32 {
-    slot := PixmapImageIndex(asset_path); if slot >= 0 { return pixmap_image_heights[slot] }
+    slot := PixmapImageFind(asset_path); if slot >= 0 { return pixmap_image_heights[slot] }
     return 0
 }
 

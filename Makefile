@@ -1081,7 +1081,7 @@ android-frame-texture-test: project-toolchain
 test: cairo-picture-cache-test desktop-frame-texture-test android-frame-texture-test
 
 .PHONY: android-present-damage-test
-android-present-damage-test: project-toolchain
+android-present-damage-test: project-toolchain codec-archives
 	@sh tests/android_present_damage_test.sh
 test: android-present-damage-test
 
@@ -1090,7 +1090,7 @@ image-dimensions-host-test: project-toolchain
 	@sh tests/image_dimensions_host_test.sh
 test: image-dimensions-host-test
 
-.PHONY: android-runtime-test pixmap-camera-test android-image-services-test pixmap-typeface-test android-codec-artifact-test android-typefaces-link-test android-typefaces-device-test
+.PHONY: android-runtime-test pixmap-camera-test android-image-services-test pixmap-typeface-test android-codec-artifact-test android-typefaces-link-test android-typefaces-device-test android-pictures-link-test android-pictures-device-test
 android-runtime-test: project-toolchain
 	@sh tests/ziran_android_runtime_test.sh
 pixmap-camera-test: project-toolchain
@@ -1102,9 +1102,13 @@ pixmap-typeface-test: project-toolchain
 android-codec-artifact-test: project-toolchain
 	@python3 tests/android_codec_artifact_test.py
 android-typefaces-link-test: project-toolchain
-	@python3 tests/android_typefaces_device_test.py
+	@python3 tests/android_vm_device_test.py typefaces
 android-typefaces-device-test: project-toolchain
-	@python3 tests/android_typefaces_device_test.py --serial ZE2223BQZT
+	@python3 tests/android_vm_device_test.py typefaces --serial ZE2223BQZT
+android-pictures-link-test: project-toolchain
+	@python3 tests/android_vm_device_test.py pictures
+android-pictures-device-test: project-toolchain
+	@python3 tests/android_vm_device_test.py pictures --serial ZE2223BQZT
 test: android-runtime-test pixmap-camera-test android-image-services-test pixmap-typeface-test
 
 .PHONY: mirrored-image-test

@@ -8,6 +8,7 @@ import shutil
 import sys
 
 from toolchain import ROOT, ZIRAN, ZIRAN_ROOT, kryon_test_project
+from android_codec_artifact_test import codec_artifact, codec_consumer, codec_environment
 
 WORK = ROOT / "build/scratch/android-source-generation"
 ENV = dict(os.environ, YUE_DESKTOP_RECOVERY="0")
@@ -31,6 +32,13 @@ def link_contract(kind, project, manifest, ndk):
     # A ZX player also links the app's codecs and the ZX runtime, which this
     # test does not build; the map still requires every name it lists defined.
     external = "-Wl,--unresolved-symbols=ignore-all" if kind == "zx" else ""
+    # The native Frame host decodes the pictures an app ships, so it links the
+    # app's codecs and zlib as the droid template does.
+    codecs = ""
+    if kind == "native":
+        environment = codec_environment()
+        _, _, flags = codec_artifact(codec_consumer(environment), "aarch64", environment)
+        codecs = "target_link_libraries(main PRIVATE z " + " ".join(f'"{flag}"' for flag in flags) + ")"
     (project / "CMakeLists.txt").write_text(f'''cmake_minimum_required(VERSION 3.22)
 project(GenerationLink C)
 set(ZI2C_BIN "{ZIRAN_ROOT}/build/bin/zi2c")
@@ -41,6 +49,7 @@ target_include_directories(main PRIVATE ${{APP_ZIRAN_INCLUDE_DIRS}} "{ZIRAN_ROOT
 target_link_options(main PRIVATE -Wl,--no-undefined {external})
 kryon_android_app(main)
 kryon_android_host(main ${{APP_ZIRAN_GENERATED_SOURCES}})
+{codecs}
 ''')
     build = project / "build/link"
     shutil.rmtree(build, ignore_errors=True)

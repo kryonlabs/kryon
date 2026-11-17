@@ -2159,7 +2159,11 @@ The inverse takes physical pixels, including a negative logical origin. The
 held camera survives frame borrows and surface resize. Device damage is
 already scaled and must not be scaled again by the presenter.
 
-`kryon/pixmap_assets_android` adds owned decoded pictures on first use.
+`kryon/pixmap_assets_android` adds owned decoded pictures. A picture the
+application ships decodes from its APK assets the first time Pixmap measures
+or draws its path; a missing asset is looked up once, until invalidation or
+host cleanup. The Android Frame host imports it, and an application that owns
+its loop imports it to show pictures.
 `PixmapLoadImageBytes(path, data, file_type)` replaces a registered Pixmap
 picture only after a successful bounded decode. Preview decoding returns owned,
 upright straight RGBA through the ordinary image-preview capabilities.

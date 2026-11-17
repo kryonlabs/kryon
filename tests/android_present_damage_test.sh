@@ -13,8 +13,11 @@ for form in source saved; do
     output="$out/$form"
     "$ziran" build $kryon_project_args --target=c --root "$root" --define ANDROID_BUILD --entry android_present_damage_test:main --prune-stale -o "$output" "$input"
     includes=$(find "$output" -type d -printf ' -iquote %p')
+    # The Frame host decodes the pictures an app ships with the app's codecs.
     # shellcheck disable=SC2046,SC2086
     "${CC:-cc}" -std=c11 -O1 -ffunction-sections -fdata-sections -I"$ziran_root/include" $includes \
-        $(find "$output" -name '*.c') "$ziran_root/build/libziran.a" -Wl,--gc-sections -ldl -lm -lpthread -o "$output/test"
+        $(find "$output" -name '*.c') "$repo/build/webp-ziran/libkryonwebp.a" \
+        "$repo/build/avif-ziran/avif/libavif.a" "$repo/build/avif-ziran/aom/libaom.a" \
+        "$ziran_root/build/libziran.a" -Wl,--gc-sections -lz -ldl -lm -lpthread -o "$output/test"
     "$output/test"
 done

@@ -66,6 +66,32 @@ MockActivity :: () {
     app.activity = *activity; Jni.jni_android_app = *app
 }
 
+// APK assets: only pictures/shipped.png is packaged.
+asset_manager: u8;
+asset_pointer: *u8;
+asset_count: s32;
+not_a_picture: [8]u8;
+asset_opens: s32;
+asset_closes: s32;
+#program_export
+AAssetManager_open :: (manager: *void, path: *u8, mode: s32) -> *void {
+    unused mode
+    asset_opens += 1
+    if manager != cast(*void)*asset_manager || TextFromCString(path) != "pictures/shipped.png" { return null }
+    return cast(*void)asset_pointer
+}
+#program_export
+AAsset_getLength :: (asset: *void) -> s32 { unused asset; return asset_count }
+#program_export
+AAsset_read :: (asset: *void, output: *void, count: s32) -> s32 {
+    unused asset
+    bytes := cast(*u8)output
+    for at: cast(s32)0..count - 1 { bytes[at] = asset_pointer[at] }
+    return count
+}
+#program_export
+AAsset_close :: (asset: *void) { unused asset; asset_closes += 1 }
+
 CheckPreview :: (data: string, width: s32, height: s32, expected: []u8) -> bool {
     w: s32; h: s32; channels: s32; upright: bool
     pixels := Services.ImagePreviewDecode(data, ".wrong", *w, *h, *channels, *upright)
@@ -124,7 +150,29 @@ main :: () -> s32 {
     Cleanup.AndroidHostResourcesClose()
     if Services.android_picture_bytes != 0 || Raster.PixmapImageIndex("relative") >= 0 { return 18 }
     if Services.RasterInvalidateImages() != 0 || Services.PixmapLoadImageBytes("", png_data, "") { return 19 }
+
+    // A shipped picture decodes from the APK the first time it is measured
+    // or drawn; a missing one is asked for once until a picture is cleared.
+    activity.asset_manager = cast(*void)*asset_manager
+    asset_pointer = *png[0]; asset_count = cast(s32)png.count
+    if Raster.ImageWidth("pictures/shipped.png") != 2 || Raster.ImageHeight("pictures/shipped.png") != 1 ||
+        asset_opens != 1 || asset_closes != 1 || Services.android_picture_bytes != 8 { return 20 }
+    slot = Raster.PixmapImageIndex("pictures/shipped.png")
+    if slot < 0 || Raster.pixmap_image_pixels[slot].value[0] != cast(u32)0x61ad3ddb ||
+        Raster.PixmapPaintImageSlot("pictures/shipped.png", 0) != slot || asset_opens != 1 { return 21 }
+    if Raster.ImageWidth("pictures/missing.png") != 0 || Raster.ImageHeight("pictures/missing.png") != 0 ||
+        Raster.PixmapPaintImageSlot("pictures/missing.png", 0) >= 0 || asset_opens != 2 { return 22 }
+    if !Services.RasterInvalidateImage("pictures/shipped.png") || Services.android_picture_bytes != 0 ||
+        Raster.PixmapPaintImageSlot("pictures/shipped.png", 0) < 0 || asset_opens != 3 ||
+        Raster.ImageWidth("pictures/missing.png") != 0 || asset_opens != 4 { return 23 }
+    asset_pointer = *not_a_picture[0]; asset_count = 8; unused Services.RasterInvalidateImages()
+    if Raster.ImageWidth("pictures/shipped.png") != 0 || asset_opens != 5 || asset_closes != 3 { return 24 }
+    asset_pointer = *png[0]; asset_count = cast(s32)png.count
+    Cleanup.AndroidHostResourcesClose()
+    if Raster.ImageWidth("pictures/shipped.png") != 2 || asset_opens != 6 { return 25 }
+    Cleanup.AndroidHostResourcesClose()
+    if Services.android_picture_bytes != 0 || Raster.PixmapImageIndex("pictures/shipped.png") >= 0 { return 26 }
     Services.ImagePreviewRelease(null)
-    print("Android image services: native RGBA/orientation, bounded bitmap JNI, owned cache replacement, folder invalidation and cleanup passed\n")
+    print("Android image services: native RGBA/orientation, bounded bitmap JNI, owned cache replacement, folder invalidation, lazy APK pictures and cleanup passed\n")
     return 0
 }

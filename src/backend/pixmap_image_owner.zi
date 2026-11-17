@@ -1,4 +1,5 @@
-// Optional decoded-picture ownership. Borrowed Pixmap images need no owner.
+// Optional decoded-picture ownership and sources. Borrowed Pixmap images need
+// no owner, and a program without a source shows only registered pictures.
 PixmapImageReplace :: #type (slot: s32, next: *u32) -> void;
 pixmap_image_replace: PixmapImageReplace;
 PixmapImageOwnerUse :: (replace: PixmapImageReplace) {
@@ -6,4 +7,13 @@ PixmapImageOwnerUse :: (replace: PixmapImageReplace) {
 }
 PixmapImageReplacing :: (slot: s32, next: *u32) {
     if pixmap_image_replace != null { pixmap_image_replace(slot, next) }
+}
+
+// Registers the picture at a path Pixmap has not registered, such as a file
+// the application ships, and says whether it did.
+PixmapImageLoad :: #type (path: string) -> bool;
+pixmap_image_load: PixmapImageLoad;
+PixmapImageSourceUse :: (load: PixmapImageLoad) -> bool {
+    pixmap_image_load = load
+    return true
 }

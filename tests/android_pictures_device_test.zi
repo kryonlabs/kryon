@@ -1,0 +1,41 @@
+// Shipped pictures decode through Android's real AssetManager inside its VM,
+// without a window. The system framework's own PNG asset stands in for an
+// application's APK asset.
+Services :: #import "pixmap_assets_android";
+Raster :: #import "pixmap";
+Cleanup :: #import "android_host_cleanup";
+#import "android_jni"
+
+android :: #system_library "android";
+AssetManagerFromJava :: (env: *JniEnv, assets: *void) -> *void #foreign android "AAssetManager_fromJava";
+
+TestPictures :: (width: s32, height: s32, checksum: u32) -> s32 {
+    picture := "images/android-logo-mask.png"
+    if Raster.ImageWidth(picture) != width || Raster.ImageHeight(picture) != height { return 1 }
+    slot := Raster.PixmapImageIndex(picture)
+    if slot < 0 || Raster.PixmapPaintImageSlot(picture, 0) != slot { return 2 }
+    sum: u32
+    for pixel: Raster.pixmap_image_pixels[slot].value { sum = sum * cast(u32)31 + pixel }
+    if sum != checksum { return 3 }
+    missing := "images/kryon-missing.png"
+    if Raster.ImageWidth(missing) != 0 || Raster.PixmapPaintImageSlot(missing, 0) >= 0 { return 4 }
+    Cleanup.AndroidHostResourcesClose()
+    if Services.android_picture_bytes != 0 || Raster.PixmapImageIndex(picture) >= 0 { return 5 }
+    return 0
+}
+
+#program_export
+Java_PictureHost_run :: (env: *JniEnv, kind: *void, assets: *void, width: s32, height: s32,
+    checksum: s32) -> s32 {
+    vm: *JniVm
+    if env.functions.GetJavaVM(env, *vm) != 0 || vm == null { return 90 }
+    manager := AssetManagerFromJava(env, assets)
+    if manager == null { return 91 }
+    activity: NativeActivity
+    activity.vm = vm; activity.activity = kind; activity.asset_manager = manager
+    app: NativeAndroidApp; app.activity = *activity
+    jni_android_app = *app
+    result := TestPictures(width, height, cast(u32)checksum)
+    jni_android_app = null
+    return result
+}

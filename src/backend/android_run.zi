@@ -22,6 +22,8 @@
 #import "paint_queue"
 #import "pixmap"
 #import "pixmap_frame"
+// Pictures the application ships load from its APK on first use.
+#import "pixmap_assets_android"
 #import "scroll_device"
 #import "secondary_pointer"
 #import "session"

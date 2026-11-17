@@ -16,6 +16,17 @@ window: [1800]u32;
 requested: Native.NativeDirtyRectangle;
 posts: s32;
 
+// The application ships no packaged pictures.
+#program_export
+AAssetManager_open :: (manager: *void, path: *u8, mode: s32) -> *void {
+    unused manager; unused path; unused mode; return null
+}
+#program_export
+AAsset_getLength :: (asset: *void) -> s32 { unused asset; return 0 }
+#program_export
+AAsset_read :: (asset: *void, output: *void, count: s32) -> s32 { unused asset; unused output; unused count; return 0 }
+#program_export
+AAsset_close :: (asset: *void) { unused asset }
 #program_export
 ANativeWindow_getWidth :: (input: *void) -> s32 { unused input; return 48 }
 #program_export
