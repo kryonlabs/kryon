@@ -3320,6 +3320,12 @@ RetainedPreviousFrameTexture :: () -> Texture2D {
     return retained_frame_targets[retained_frame_previous_index].texture
 }
 
+FrameSurfaceProps :: #import "frame_surface";
+#program_export
+FramePreviousSnapshotHost :: () -> FrameSurfaceProps.FrameSurface {
+    return FrameSurfaceProps.FrameSurface.{CopyFrameTexture(RetainedPreviousFrameTexture()), false}
+}
+
 #program_export
 CopyFrameTexture :: (texture: Texture2D) -> Texture2D {
     if texture.id == cast(u32)0 || texture.width <= 0 || texture.height <= 0 {

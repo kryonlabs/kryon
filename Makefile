@@ -1067,3 +1067,13 @@ BUILD_OUTPUTS += windows-desktop
 windows-desktop-host-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		HARMONY_DESKTOP_RECOVERY=0 python3 tests/windows_desktop_test.py
+
+# Owned frame snapshots and desktop file-picture cache services.
+.PHONY: cairo-picture-cache-test desktop-frame-texture-test android-frame-texture-test
+cairo-picture-cache-test: project-toolchain
+	@sh tests/ziran_cairo_picture_cache_test.sh
+desktop-frame-texture-test: project-toolchain
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER HARMONY_DESKTOP_RECOVERY=0 YUE_DESKTOP_RECOVERY=0 sh tests/ziran_desktop_frame_texture_test.sh
+android-frame-texture-test: project-toolchain
+	@sh tests/ziran_android_frame_texture_test.sh
+test: cairo-picture-cache-test desktop-frame-texture-test android-frame-texture-test

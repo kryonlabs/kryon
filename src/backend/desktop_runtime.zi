@@ -685,6 +685,7 @@ CloseDesktop :: () {
         desktop_cursors[index] = null
     }
     RasterPictureStop()
+    RasterFramesClose()
     StopTextInput()
     CloseRaster()
     if texture != null { DestroyTexture(texture) }
@@ -1163,6 +1164,7 @@ EndDesktopFrame :: () -> bool {
         if desktop_first_frame_show { ShowWindow(window) }
     }
     RenderPresent(renderer)
+    RasterFramePresented()
     desktop_present_pending = false
     return true
 }

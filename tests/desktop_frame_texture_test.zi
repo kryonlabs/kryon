@@ -1,0 +1,93 @@
+Desktop :: #import "desktop_runtime";
+Raster :: #import "cairo_raster";
+#import "frame_transition"
+#import "session"
+#import "geometry"
+#import "tree_draw"
+Camera :: #import "cairo_render_scale";
+
+Pixel :: (x: s32, y: s32) -> u32 {
+    data := Raster.RasterSurfaceData()
+    return (cast(*u32)*data[cast(s64)y * Raster.RasterSurfaceStride()])[x]
+}
+
+Transition :: (session: Session, image: FrameSurface, width: s32, height: s32, elapsed: float32) -> bool {
+    Desktop.BeginDesktopFrame()
+    Raster.ClearRasterFrame(.{})
+    bounds := Rectangle.{0.0, 0.0, cast(float32)width, cast(float32)height}
+    if BeginFrame(session, cast(u64)1, bounds) != .FrameOk { return false }
+    FrameTransition(session, image, bounds, elapsed, 0.12)
+    return EndFrame(session) == .FrameOk && Desktop.EndDesktopFrame()
+}
+
+#program_export
+main :: () -> s32 {
+    if Raster.RetainedPreviousFrameTexture().id != cast(u32)0 ||
+        Raster.CopyFrameTexture(.{}).id != cast(u32)0 { return 1 }
+    if !Desktop.OpenDesktopTitled(80, 60, "Frame texture test") { return 2 }
+    if FrameSurfaceValid(FramePreviousSnapshot()) { return 17 }
+    session := SessionOpen()
+    Desktop.BeginDesktopFrame()
+    Raster.ClearRasterFrame(.{})
+    Raster.RasterRoundedRectangle(.{0.0, 0.0, 80.0, 30.0}, 0.0, 0, .{255, 0, 0, 255})
+    Raster.RasterRoundedRectangle(.{0.0, 30.0, 80.0, 30.0}, 0.0, 0, .{0, 0, 255, 128})
+    // Enable tracking before the first completed frame.
+    unused Raster.RetainedPreviousFrameTexture()
+    if !Desktop.EndDesktopFrame() { return 3 }
+    captured := FramePreviousSnapshot()
+    // A completed raster that was never presented must not replace the cache.
+    Desktop.BeginDesktopFrame()
+    Raster.ClearRasterFrame(.{0, 255, 0, 255})
+    if !Raster.FinishRasterFrame(true) { return 18 }
+    presented := FramePreviousSnapshot()
+    if !Transition(session, presented, 80, 60, 0.0) ||
+        Pixel(10, 10) != cast(u32)0xffff0000 { return 19 }
+    unused FrameSurfaceRelease(presented)
+    copy := FrameSurfaceCopy(captured)
+    if !FrameSurfaceValid(copy) || copy.texture.id == captured.texture.id { return 4 }
+    second := FrameSurfaceCopy(copy)
+    if !FrameSurfaceValid(second) || second.texture.id == copy.texture.id { return 5 }
+    if !Transition(session, copy, 80, 60, 0.0) ||
+        Pixel(10, 10) != cast(u32)0xffff0000 || Pixel(10, 50) != cast(u32)0x80000080 { return 6 }
+    if !Transition(session, copy, 80, 60, 0.06) ||
+        Pixel(10, 10) != cast(u32)0x80800000 || Pixel(10, 50) != cast(u32)0x40000040 { return 7 }
+    stale := copy
+    copy = FrameSurfaceRelease(copy)
+    if FrameSurfaceValid(copy) || FrameSurfaceValid(FrameSurfaceCopy(stale)) { return 8 }
+    unused FrameSurfaceRelease(stale) // Safe repeated disposal; the second copy stays alive.
+    if !Desktop.ResizeDesktop(50, 40) || !Transition(session, second, 50, 40, 0.0) ||
+        Pixel(10, 5) != cast(u32)0xffff0000 || Pixel(10, 35) != cast(u32)0x80000080 { return 9 }
+    // A snapshot fills the logical frame even when the camera starts at -X.
+    if !Camera.RasterSetTransform(1.25, 125.0, 25.0) { return 14 }
+    Desktop.BeginDesktopFrame()
+    Raster.ClearRasterFrame(.{})
+    logical := Rectangle.{-100.0, -20.0, 40.0, 32.0}
+    if BeginFrame(session, cast(u64)1, logical) != .FrameOk { return 15 }
+    FrameTransition(session, second, logical, 0.0, 0.12)
+    if EndFrame(session) != .FrameOk || !Desktop.EndDesktopFrame() ||
+        Pixel(0, 0) != cast(u32)0xffff0000 || Pixel(49, 39) != cast(u32)0x80000080 { return 16 }
+    unused Camera.RasterSetTransform(1.0, 0.0, 0.0)
+    malformed := second.texture
+    malformed.width += 1
+    if Raster.CopyFrameTexture(malformed).id != cast(u32)0 { return 10 }
+    // Storage is bounded and a disposed slot becomes available again.
+    copies: [16]FrameSurface
+    count: s32
+    while count < 16 {
+        copies[count] = FrameSurfaceCopy(second)
+        if !FrameSurfaceValid(copies[count]) { break }
+        count += 1
+    }
+    if count == 0 || count == 16 { return 11 }
+    copies[0] = FrameSurfaceRelease(copies[0])
+    copies[0] = FrameSurfaceCopy(second)
+    if !FrameSurfaceValid(copies[0]) { return 12 }
+    for at: cast(s32)0..count - 1 { unused FrameSurfaceRelease(copies[at]) }
+    unused FrameSurfaceRelease(second)
+    unused FrameSurfaceRelease(captured)
+    unused CloseSession(session)
+    Desktop.CloseDesktop()
+    if FrameSurfaceValid(FrameSurfaceCopy(captured)) { return 13 }
+    print("Desktop frame textures: previous frame, independent copies, upright alpha fade, resize, bounded storage and disposal passed\n")
+    return 0
+}

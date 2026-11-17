@@ -1,5 +1,6 @@
 // Real memory decoding, export and SDL window services on a private display.
 Decode :: #import "ziran_image_decode";
+Raster :: #import "cairo_raster";
 Export :: #import "image_export";
 Icon :: #import "window_icon";
 Desktop :: #import "desktop_runtime";
@@ -19,6 +20,11 @@ CheckPixels :: (bytes: string, width: s32, height: s32, expected: []u8) -> bool 
     defer Decode.DecodedImageFree(image)
     if image.pixels == null || image.width != width || image.height != height { return false }
     for at: 0..expected.count - 1 { if image.pixels[at] != expected[at] { return false } }
+    preview_width: s32; preview_height: s32; channels: s32; upright: bool
+    preview := Raster.ImagePreviewDecode(bytes, ".png", *preview_width, *preview_height, *channels, *upright)
+    defer Raster.ImagePreviewRelease(preview)
+    if preview == null || preview_width != width || preview_height != height || channels != 4 || !upright { return false }
+    for at: 0..expected.count - 1 { if preview[at] != expected[at] { return false } }
     return true
 }
 main :: () -> s32 {
@@ -48,12 +54,21 @@ main :: () -> s32 {
     defer VecFree(webp)
     webp_image := Decode.ImageDecodeEncoded(TextFromBytes(webp[:]), ".webp")
     if webp_image.pixels == null || webp_image.width != 3 || webp_image.height != 2 { return 9 }
+    webp_expected: [24]u8
+    for at: 0..23 { webp_expected[at] = webp_image.pixels[at] }
+    if !CheckPixels(TextFromBytes(webp[:]), 3, 2, webp_expected[:]) { return 18 }
     Decode.DecodedImageFree(webp_image)
     avif := Fixture("tests/fixtures/avif", "transform31", ".avif")
     golden := Fixture("tests/fixtures/avif", "transform31", ".rgba")
     defer VecFree(avif)
     defer VecFree(golden)
     if golden.count != 64 || !CheckPixels(TextFromBytes(avif[:]), 4, 4, golden[:]) { return 10 }
+    width: s32 = 123; height: s32 = 123; channels: s32 = 123; upright: bool
+    if Raster.ImagePreviewDecode("invalid", ".png", *width, *height, *channels, *upright) != null ||
+        width != 0 || height != 0 || channels != 0 { return 17 }
+    if Raster.ImagePreviewDecode(TextFromBytes(huge[:]), ".png", *width, *height, *channels, *upright) != null ||
+        width != 0 || height != 0 || channels != 0 { return 19 }
+    Raster.ImagePreviewRelease(null)
     if Notify.NotificationWindowFocusedHost() || Icon.SetWindowIcon(bytes, ".png") { return 11 }
     if !Desktop.OpenDesktopTitled(80, 60, "Image services test") { return 12 }
     defer Desktop.CloseDesktop()

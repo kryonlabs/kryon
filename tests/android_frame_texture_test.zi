@@ -1,0 +1,58 @@
+Native :: #import "android_native";
+Frames :: #import "frame_texture_android";
+Bitmaps :: #import "bitmap_store";
+Pixels :: #import "pixmap";
+#import "frame_transition"
+#import "session"
+#import "geometry"
+#import "tree_draw"
+
+source: [8]u32 = .[0xffff0000, 0xffff0000, 0xffff0000, 0xffff0000,
+    0x800000ff, 0x800000ff, 0x800000ff, 0x800000ff];
+target: [8]u32;
+
+#program_export
+main :: () -> s32 {
+    if FrameSurfaceValid(FramePreviousSnapshot()) { return 1 }
+    Native.android_pixel_width = 4
+    Native.android_pixel_height = 2
+    Native.android_pixels = source[:]
+    captured := FramePreviousSnapshot()
+    if !FrameSurfaceValid(captured) || !captured.upright ||
+        captured.texture.width != 4 || captured.texture.height != 2 { return 2 }
+    at := Bitmaps.BitmapHostSlot(captured.texture)
+    if at < 0 || Bitmaps.bitmap_images[at].pixels[7] != cast(u32)0x800000ff { return 11 }
+    copy := FrameSurfaceCopy(captured)
+    if !FrameSurfaceValid(copy) || copy.texture.id == captured.texture.id { return 3 }
+    // Replacing the live NativeActivity pixels cannot change either snapshot.
+    for at: cast(s32)0..7 { source[at] = cast(u32)0xff00ff00 }
+    if !Pixels.PixmapResumeInto(4, 2, target[:], true) { return 4 }
+    session := SessionOpen()
+    bounds := Rectangle.{0.0, 0.0, 4.0, 2.0}
+    if BeginFrame(session, cast(u64)1, bounds) != .FrameOk { return 5 }
+    FrameTransition(session, copy, bounds, 0.0, 0.12)
+    if EndFrame(session) != .FrameOk { return 6 }
+    Pixels.PixmapEndInto()
+    // Android presents an opaque target: straight-alpha blue blends over black.
+    if target[0] != cast(u32)0xffff0000 || target[7] != cast(u32)0xff000080 {
+        print("snapshot pixels % %\n", target[0], target[7]); return 7
+    }
+    unused FrameSurfaceRelease(captured)
+    stale := copy
+    copy = FrameSurfaceRelease(copy)
+    if FrameSurfaceValid(copy) || FrameSurfaceValid(FrameSurfaceCopy(stale)) { return 8 }
+    unused FrameSurfaceRelease(stale)
+    // Frame disposal must not delete an application's managed Image.
+    rgba: [4]u8 = .[1, 2, 3, 255]
+    other := Bitmaps.BitmapCreateOwned(session.slot, session.epoch, 1, 1, rgba[:])
+    Frames.DisposeFrameTexture(other)
+    if Bitmaps.BitmapSlot(other.id) < 0 { return 9 }
+    unused FramePreviousSnapshot()
+    Frames.AndroidFrameTexturesClose()
+    if Bitmaps.BitmapSlot(other.id) < 0 { return 10 }
+    unused CloseSession(session)
+    Native.android_pixels = Native.WordsFromPointer(null, 0)
+    Native.android_pixel_width = 0; Native.android_pixel_height = 0
+    print("NativeActivity frame snapshots: independent owned pixels, upright Image fade, disposal and owner isolation passed\n")
+    return 0
+}

@@ -140,3 +140,24 @@ Consumers move first (non-raylib hosts already cover Linux/web/Android), Kryon h
 9. Delete raylib from Kryon - remove the 10 backend modules (7,169 lines), 43 test files (5,168 lines), `mk/raylib-library.mk`, `mk/renderer-artifact.mk`, `mk/zx-raylib.mk`, `mk/raylib-shell.html`, `cmake/renderer-artifact/*`, `renderer-raylib` artifact and `backend = "raylib"` support from `scripts/renderer_artifact.py`/`src/project`, docs sections, CI steps and shards, `[dependencies.raylib]` from `ziran.toml`, `ziran.lock`, `ziran.local.toml`, and regenerate the 99 example locks. Size: ~13,000 lines. Type: Kryon deletion + CI.
 
 Open work only; Breeze's Linux-desktop move, Wurm/Apps switches, and the Harmony legacy C tree are tracked as above - nothing in this plan assumes a raylib fallback stays behind.
+
+## Desktop image services and route snapshots (K5–K7)
+
+- Desktop cache invalidation removes exact files, folder descendants, or all
+  pictures, including Lanczos copies and pending jobs. Preview decoding shares
+  the bounded, oriented decoder and has an explicit release operation.
+- `frame_transition.FramePreviousSnapshot()` returns owned Cairo or Android
+  NativeActivity pixels. Captures preserve row orientation and alpha, survive
+  later painting/desktop resize, and draw through Image at logical camera
+  bounds. Web returns an invalid surface. Android composes the new route before
+  clearing its retained pixels. Session mutation cannot dispose host snapshots.
+- Local source/saved tests cover cache reloads, path boundaries, canceled smooth
+  jobs, independent copies, bounded storage, alpha/orientation, negative camera
+  origins, resize, repeated disposal, and host/session ownership. Android host
+  graphs also compile/link with the NDK; desktop windows use private Xvfb.
+- Known upstream gap: with published Ziran ebd19223fa18432066f5dfa53124640eea36fa94,
+  the portable bitmap Image test rejects `PixmapGpuCorners` with
+  `assembly.gap.machine-copy` (function 300, block 5978, instruction 27407).
+  The same failure reproduces with its full source module closure matching
+  origin/master 216c190c43b4381721751c11aab148a5b2b03e3a, before these changes.
+  Command: `build-queue -- sh tests/bitmap_image_test.sh` using that toolchain.

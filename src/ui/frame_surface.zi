@@ -1,0 +1,8 @@
+#import "drawing_props"
+
+// An owned or borrowed runtime picture. Hosts report row orientation; callers
+// keep the value opaque and release owned snapshots after their transition.
+FrameSurface :: struct {
+    texture: Texture2D
+    upright: bool
+}

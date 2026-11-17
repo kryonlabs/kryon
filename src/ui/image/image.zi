@@ -148,7 +148,8 @@ Draw :: (session: Session, image: Image.Props) {
     // A zx bundle's pictures live in its player, which checks them when it paints.
     #if !#defined(KRYON_ZX) {
         if Bitmaps.BitmapTagged(image.texture.id) &&
-            (!SessionValid(session) || Bitmaps.BitmapOwnedSlot(session.slot, session.epoch, image.texture) < 0) { return }
+            (!SessionValid(session) || (Bitmaps.BitmapOwnedSlot(session.slot, session.epoch, image.texture) < 0 &&
+                Bitmaps.BitmapHostSlot(image.texture) < 0)) { return }
     }
     node: s32 = -1
     if TreeIsBuilding(session) {

@@ -14,6 +14,7 @@
 #import "android_surface"
 #import "android_touch"
 #import "frame_entry"
+#import "frame_texture_android"
 #import "std/byte_text_linux"
 #import "drawing_props"
 #import "frame_snapshot"
@@ -102,10 +103,6 @@ DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
     pixels := AndroidNativePixels()
     if !PixmapScale(zoom, zoom) ||
     !PixmapResumeInto(width, height, pixels, true) { return false }
-    if !reuse {
-        AndroidNativeFill(cast(u32)0xff000000)
-        ClearAndroidFrame(viewport, AndroidCanvas())
-    }
 
     ok: bool = true
     finished: PixmapFrameResult
@@ -140,6 +137,12 @@ DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
             TreeCancel(session)
             ok = false
         } else {
+            // Compose against the last presented pixels; route changes may
+            // capture them before the queued paint replaces them.
+            if !reuse {
+                AndroidNativeFill(cast(u32)0xff000000)
+                ClearAndroidFrame(viewport, AndroidCanvas())
+            }
             finished = EndPixmapFrame(session, reuse, AndroidCanvas())
             if finished.status != cast(FrameStatus)FrameOk {
                 AndroidFrameFailure(session, "the frame could not finish")
@@ -169,6 +172,7 @@ android_main :: (app: *NativeAndroidApp) {
     if app == null { return }
     AndroidNativeStart(app)
     defer { AndroidNativeClose() }
+    defer { AndroidFrameTexturesClose() }
     defer { AndroidNativeFinish() }
     AndroidJniKeepHostThread()
     defer { AndroidJniReleaseHostThread() }

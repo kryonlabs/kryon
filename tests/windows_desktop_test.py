@@ -187,6 +187,9 @@ def private(zx_linked):
         test_window(WORK / 'services.exe', 'Kryon Windows Services', services=True)
         if zx_linked:
             test_window(WORK / 'window-zx.exe', 'Window')
+        for form in ('source', 'saved'):
+            run(['wine', WORK / ('frame-snapshot-' + form + '.exe')], timeout=25)
+        print('PASS Wine source/saved owned frame snapshots and camera fade', flush=True)
         test_dialog()
         run(['wine', WORK / 'images.exe'], timeout=25)
         print('PASS Wine PNG/JPEG/WebP straight RGBA and invalid images', flush=True)
@@ -233,6 +236,13 @@ def main():
     compile_source(ROOT / 'tests/windows_desktop_services.zi', 'services')
     compile_source(ROOT / 'tests/windows_file_dialog.zi', 'dialog')
     compile_source(ROOT / 'tests/windows_desktop_images.zi', 'images')
+    snapshot = ROOT / 'tests/desktop_frame_texture_test.zi'
+    saved = WORK / 'frame-snapshot-ir'
+    run([ZIRAN, 'ir', '--project', '--root', snapshot.parent,
+         '--target-os', 'windows', '--target-cpu', 'x64',
+         '--define', '_WIN32', '--define', 'PLATFORM_DESKTOP', '-o', saved, snapshot])
+    compile_source(snapshot, 'frame-snapshot-source')
+    compile_source(saved / 'desktop_frame_texture_test.zir', 'frame-snapshot-saved')
     zx_source = ROOT / 'src/backend/zx_window_host.zi'
     zx_linked = False
     if zx_source.is_file():

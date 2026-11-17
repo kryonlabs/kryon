@@ -286,6 +286,11 @@ Bitmaps :: #import "bitmap_store";
         }
     }
 
+    FrameSurfaceProps :: #import "frame_surface";
+    // Web route changes may skip their fade until the page exposes capture.
+    #program_export
+    FramePreviousSnapshotHost :: () -> FrameSurfaceProps.FrameSurface { return .{} }
+
     // A frame texture the retained transition no longer needs.
     #program_export
     DisposeFrameTexture :: (texture: Texture2D) {

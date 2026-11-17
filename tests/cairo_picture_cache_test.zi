@@ -1,0 +1,63 @@
+Raster :: #import "cairo_raster";
+Texture :: #import "paint_texture";
+Lanczos :: #import "lanczos_cache";
+#import "geometry"
+#import "drawing_props"
+#import "std/file_linux"
+
+Replace :: (source: string, destination: string) -> bool {
+    input := OpenRead(source)
+    if !input.valid { return false }
+    bytes: [4096]u8
+    count := Read(input, bytes[:])
+    if !CloseFile(input) || count <= 0 { return false }
+    output := OpenReplace(destination)
+    if !output.valid { return false }
+    written := Write(output, bytes[:count])
+    return CloseFile(output) && written == count
+}
+
+Draw :: (path: string) -> bool {
+    width := Raster.ImageWidth(path); height := Raster.ImageHeight(path)
+    if width <= 0 || height <= 0 { return false }
+    Raster.BeginRasterFrame()
+    Texture.emitting_smooth = true
+    box := Rectangle.{0.0, 0.0, 12.0, 12.0}
+    Raster.RasterImage(path, 0, Rectangle.{0.0, 0.0, cast(float32)width, cast(float32)height},
+        box, box, .{}, 0.0, 0.0, Color.{255, 255, 255, 255})
+    return Raster.FinishRasterFrame()
+}
+
+Pixel :: () -> u32 {
+    pixels := Raster.RasterSurfaceData()
+    return (cast(*u32)*pixels[6 * Raster.RasterSurfaceStride() + 24]).*
+}
+
+#program_export
+main :: () -> s32 {
+    if !Raster.OpenRaster(12, 12) { return 1 }
+    defer Raster.CloseRaster()
+    if !Draw("icons/pic.png") { return 2 }
+    unused Lanczos.LanczosWait()
+    if !Draw("icons/pic.png") || Pixel() != cast(u32)0xffd01020 { return 3 }
+    if !Replace("blue.png", "icons/pic.png") || Raster.ImageWidth("icons/pic.png") != 1 { return 4 }
+    if Raster.RasterInvalidateImage("") || Raster.RasterInvalidateImage("missing.png") ||
+        !Raster.RasterInvalidateImage("icons/pic.png") || Raster.RasterInvalidateImage("icons/pic.png") { return 5 }
+    if Raster.ImageWidth("icons/pic.png") != 3 || !Draw("icons/pic.png") { return 6 }
+    unused Lanczos.LanczosWait()
+    if !Draw("icons/pic.png") || Pixel() != cast(u32)0xff1264da { return 7 }
+    if Raster.ImageWidth("icons/sub/pic.png") != 1 || Raster.ImageWidth("icons-old/pic.png") != 1 { return 8 }
+    if !Replace("blue.png", "icons/sub/pic.png") || !Replace("blue.png", "icons-old/pic.png") { return 9 }
+    if Raster.RasterInvalidateImagesIn("") != 0 || Raster.RasterInvalidateImagesIn("icons/") != 2 ||
+        Raster.RasterInvalidateImagesIn("icons") != 0 { return 10 }
+    if Raster.ImageWidth("icons/sub/pic.png") != 3 || Raster.ImageWidth("icons-old/pic.png") != 1 { return 11 }
+    // Forget a source while its new smooth copy is pending, then reload it.
+    if !Replace("red.png", "icons/pic.png") || !Draw("icons/pic.png") ||
+        !Raster.RasterInvalidateImage("icons/pic.png") || !Draw("icons/pic.png") { return 12 }
+    unused Lanczos.LanczosWait()
+    if !Draw("icons/pic.png") || Pixel() != cast(u32)0xffd01020 { return 13 }
+    if Raster.RasterInvalidateImagesIn("icons-old") != 1 { return 14 }
+    if Raster.RasterInvalidateImages() != 2 || Raster.RasterInvalidateImages() != 0 { return 15 }
+    print("Cairo picture invalidation: exact path, folder boundaries, reload and smooth-copy eviction passed\n")
+    return 0
+}

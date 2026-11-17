@@ -74,6 +74,7 @@ ImageSurfaceFormat :: (surface: *void) -> s32 #foreign cairo_library "cairo_imag
 SurfaceMarkDirty :: (surface: *void) #foreign cairo_library "cairo_surface_mark_dirty";
 SurfaceWritePNG :: (surface: *void, path: *u8) -> s32 #foreign cairo_library "cairo_surface_write_to_png";
 SurfaceDestroy :: (surface: *void) #foreign cairo_library "cairo_surface_destroy";
+SurfaceReference :: (surface: *void) -> *void #foreign cairo_library "cairo_surface_reference";
 Create :: (surface: *void) -> *void #foreign cairo_library "cairo_create";
 Destroy :: (paint: *void) #foreign cairo_library "cairo_destroy";
 Status :: (paint: *void) -> s32 #foreign cairo_library "cairo_status";
@@ -244,6 +245,12 @@ surface: *void;
 paint: *void;
 image_error: bool;
 frame_pending: bool;
+raster_presented_surface: *void;
+RasterFrameImage :: #type (id: u32) -> *void;
+RasterFramePresent :: #type (finished: *void) -> void;
+raster_frame_image: RasterFrameImage;
+raster_frame_present: RasterFramePresent;
+raster_frames_close: RasterRelease;
 
 // The surface and paint frames draw into. A secondary window swaps its own in
 // for its frame and gives the previous back after (see
@@ -267,7 +274,16 @@ raster_asset_path: RasterAssetPath;
 // A typeface the program selected (see cairo_typefaces), else Kryon's font.
 raster_family: *u8;
 Decode :: #import "image_decode_desktop";
-CachedImage :: struct { path: [4096]u8; length: s32; image: *void; used: u64; bytes: s64; serial: u64; }
+CachedImage :: struct {
+    path: [4096]u8
+    length: s32
+    source: [4096]u8
+    source_length: s32
+    image: *void
+    used: u64
+    bytes: s64
+    serial: u64
+}
 cached_images: [128]CachedImage;
 
 // Smooth pictures drawn under a plain translation show their Lanczos copy
@@ -370,7 +386,13 @@ CairoUsePictures :: () {
 }
 // A file picture once pictures are in use; a managed one always.
 CairoPictureFor :: (asset_path: string, texture_id: u32) -> *void {
-    if texture_id != cast(u32)0 { return CairoManagedImage(texture_id) }
+    if texture_id != cast(u32)0 {
+        if raster_frame_image != null {
+            frame := raster_frame_image(texture_id)
+            if frame != null { return frame }
+        }
+        return CairoManagedImage(texture_id)
+    }
     if raster_picture_load == null { return null }
     return raster_picture_load(asset_path)
 }
@@ -533,6 +555,7 @@ CloseRaster :: () {
     if surface != null { SurfaceDestroy(surface) }
     paint = null
     surface = null
+    raster_presented_surface = null
 }
 
 #program_export
@@ -549,6 +572,7 @@ BeginRasterFrame :: (retain: bool = false) {
 PrepareRasterPaint :: () {
     if !frame_pending { return }
     frame_pending = false
+    raster_presented_surface = null
     Save(paint)
     SetSourceRGBA(paint, 248.0 / 255.0, 250.0 / 255.0,
         252.0 / 255.0, 1.0)
@@ -562,6 +586,7 @@ PrepareRasterPaint :: () {
 ClearRasterFrame :: (color: Color) {
     if paint == null { return }
     frame_pending = false
+    raster_presented_surface = null
     Save(paint)
     ResetClip(paint)
     SetOperator(paint, 1) // CAIRO_OPERATOR_SOURCE
@@ -577,7 +602,15 @@ FinishRasterFrame :: (retain: bool = false) -> bool {
     if !retain { PrepareRasterPaint() }
     if image_error || text_error || Status(paint) != 0 { return false }
     SurfaceFlush(surface)
-    return SurfaceStatus(surface) == 0
+    if SurfaceStatus(surface) != 0 { return false }
+    return true
+}
+
+// The presenter calls this only after a successful display update. Finished
+// off-screen or failed frames must not replace the previous presented frame.
+RasterFramePresented :: () {
+    raster_presented_surface = surface
+    if raster_frame_present != null { raster_frame_present(surface) }
 }
 
 #program_export
@@ -825,6 +858,211 @@ CairoSourcePicture :: (picture: RasterPicture) -> *void {
     return picture_surface
 }
 
+// Retained frame textures use a separate ID range from managed Image uploads.
+// Surfaces keep premultiplied Cairo pixels, so capturing never loses alpha.
+CairoFrameTexture :: struct { texture: Texture2D; image: *void; bytes: s64; }
+frame_textures: [16]CairoFrameTexture;
+frame_texture_next: u32 = 1073741825;
+frame_texture_bytes: s64;
+frame_previous: Texture2D;
+frame_source: *void;
+frame_memory :: #system_library "c";
+FrameCopyMemory :: (destination: *u8, source: *u8, size: usize) -> *void #foreign frame_memory "memcpy";
+
+CairoFrameSlot :: (id: u32) -> s32 {
+    if id == cast(u32)0 { return -1 }
+    for index: cast(s32)0..15 {
+        if frame_textures[index].texture.id == id { return index }
+    }
+    return -1
+}
+CairoFrameDrop :: (index: s32) {
+    item := *frame_textures[index]
+    if item.image == null { return }
+    frame_texture_bytes -= item.bytes
+    SurfaceDestroy(item.image)
+    item.* = .{}
+}
+CairoFrameOwn :: (original: *void) -> Texture2D {
+    if original == null || SurfaceStatus(original) != 0 { return .{} }
+    width := ImageSurfaceWidth(original); height := ImageSurfaceHeight(original)
+    bytes := cast(s64)width * cast(s64)height * 4
+    if width <= 0 || height <= 0 || bytes > 268435456 - frame_texture_bytes ||
+        frame_texture_next >= cast(u32)2147483648 { return .{} }
+    index: s32 = -1
+    for at: cast(s32)0..15 { if frame_textures[at].image == null { index = at; break } }
+    if index < 0 { return .{} }
+    copy := ImageSurfaceCreate(0, width, height)
+    if copy == null || SurfaceStatus(copy) != 0 {
+        if copy != null { SurfaceDestroy(copy) }
+        return .{}
+    }
+    SurfaceFlush(original)
+    input := ImageSurfaceData(original); output := ImageSurfaceData(copy)
+    input_stride := ImageSurfaceStride(original); output_stride := ImageSurfaceStride(copy)
+    for y: cast(s32)0..height - 1 {
+        unused FrameCopyMemory(*output[cast(s64)y * output_stride],
+            *input[cast(s64)y * input_stride], cast(usize)width * 4)
+    }
+    SurfaceMarkDirty(copy)
+    texture := Texture2D.{frame_texture_next, width, height, 1, 7}
+    frame_texture_next += cast(u32)1
+    frame_textures[index] = CairoFrameTexture.{texture, copy, bytes}
+    frame_texture_bytes += bytes
+    return texture
+}
+CairoFrameImage :: (id: u32) -> *void {
+    index := CairoFrameSlot(id)
+    if index < 0 { return null }
+    // RasterImage releases one reference after the synchronous draw.
+    return SurfaceReference(frame_textures[index].image)
+}
+CairoFramePresented :: (finished: *void) {
+    // A secondary window must not replace the main window's previous frame.
+    if finished != frame_source { return }
+    previous := CairoFrameSlot(frame_previous.id)
+    if previous >= 0 { CairoFrameDrop(previous) }
+    frame_previous = CairoFrameOwn(finished)
+}
+CairoFramesClose :: () {
+    for index: cast(s32)0..15 { CairoFrameDrop(index) }
+    frame_previous = .{}
+    frame_source = null
+}
+// The desktop closes the optional frame store at final shutdown. Raster
+// resize replaces the paint target, while independent transition copies live.
+RasterFramesClose :: () {
+    if raster_frames_close != null { raster_frames_close() }
+}
+
+#program_export
+RetainedPreviousFrameTexture :: () -> Texture2D {
+    raster_frame_image = CairoFrameImage
+    raster_frame_present = CairoFramePresented
+    raster_frames_close = CairoFramesClose
+    frame_source = surface
+    // First use can copy an intact presented frame. Otherwise begin tracking
+    // at the next successful presentation, leaving the snapshot invalid.
+    if frame_previous.id == cast(u32)0 && surface != null &&
+        raster_presented_surface == surface {
+        frame_previous = CairoFrameOwn(surface)
+    }
+    return frame_previous
+}
+
+FrameSurfaceProps :: #import "frame_surface";
+#program_export
+FramePreviousSnapshotHost :: () -> FrameSurfaceProps.FrameSurface {
+    return FrameSurfaceProps.FrameSurface.{CopyFrameTexture(RetainedPreviousFrameTexture()), true}
+}
+
+#program_export
+CopyFrameTexture :: (texture: Texture2D) -> Texture2D {
+    index := CairoFrameSlot(texture.id)
+    if index < 0 { return .{} }
+    item := frame_textures[index]
+    if item.texture.width != texture.width || item.texture.height != texture.height ||
+        texture.mipmaps != 1 || texture.format != 7 { return .{} }
+    return CairoFrameOwn(item.image)
+}
+
+#program_export
+DisposeFrameTexture :: (texture: Texture2D) {
+    index := CairoFrameSlot(texture.id)
+    if index < 0 || texture.id == frame_previous.id { return }
+    stored := frame_textures[index].texture
+    if stored.width == texture.width && stored.height == texture.height &&
+        texture.mipmaps == 1 && texture.format == 7 { CairoFrameDrop(index) }
+}
+
+// Image previews share the desktop's bounded, oriented memory decoder.
+PreviewDecode :: #import "ziran_image_decode";
+
+#program_export
+ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s32,
+    channels: *s32, upright: *bool) -> *u8 {
+    width.* = 0; height.* = 0; channels.* = 0
+    upright.* = true
+    image := PreviewDecode.ImageDecodeEncoded(data, file_type)
+    if image.pixels == null { return null }
+    width.* = image.width; height.* = image.height; channels.* = 4
+    return image.pixels
+}
+
+#program_export
+ImagePreviewRelease :: (pixels: *u8) {
+    PreviewDecode.ImagePixelsFree(pixels)
+}
+
+// File and folder invalidation release both the original and any in-flight
+// smooth copies. A fresh load receives a new serial, never the old job's ID.
+CairoForgetCachedImage :: (index: s32) {
+    item := *cached_images[index]
+    if item.image == null { return }
+    image_bytes -= item.bytes
+    Lanczos.LanczosForget(item.serial)
+    SurfaceDestroy(item.image)
+    item.* = .{}
+}
+
+CairoImageInFolder :: (path: string, folder: string) -> bool {
+    length := folder.count
+    while length > 1 && (folder[length - 1] == cast(u8)47 ||
+        folder[length - 1] == cast(u8)92) { length -= 1 }
+    if length == 0 || path.count < length || path[:length] != folder[:length] { return false }
+    return path.count == length || folder[length - 1] == cast(u8)47 ||
+        folder[length - 1] == cast(u8)92 || path[length] == cast(u8)47 || path[length] == cast(u8)92
+}
+
+#program_export
+RasterInvalidateImages :: () -> s32 {
+    removed: s32
+    for index: cast(s32)0..127 {
+        if cached_images[index].image != null {
+            CairoForgetCachedImage(index)
+            removed += 1
+        }
+    }
+    if removed > 0 { PaintResourcesChanged() }
+    return removed
+}
+
+#program_export
+RasterInvalidateImage :: (path: string) -> bool {
+    if path.count == 0 { return false }
+    removed := false
+    for index: cast(s32)0..127 {
+        item := *cached_images[index]
+        if item.image == null { continue }
+        if TextView(item.path[:item.length]) == path ||
+        TextView(item.source[:item.source_length]) == path {
+            CairoForgetCachedImage(index)
+            removed = true
+        }
+    }
+    if removed { PaintResourcesChanged() }
+    return removed
+}
+
+// Folder boundaries matter: invalidating icons/ never discards icons-old/.
+// Both requested asset names and resolved file paths identify cached pictures.
+#program_export
+RasterInvalidateImagesIn :: (folder: string) -> s32 {
+    if folder.count == 0 { return 0 }
+    removed: s32
+    for index: cast(s32)0..127 {
+        item := *cached_images[index]
+        if item.image == null { continue }
+        if CairoImageInFolder(TextView(item.path[:item.length]), folder) ||
+        CairoImageInFolder(TextView(item.source[:item.source_length]), folder) {
+            CairoForgetCachedImage(index)
+            removed += 1
+        }
+    }
+    if removed > 0 { PaintResourcesChanged() }
+    return removed
+}
+
 LoadPNG :: (original_path: string) -> *void {
     raster_pictures_close = CairoPicturesClose
     if raster_picture_source != null {
@@ -894,12 +1132,13 @@ LoadPNG :: (original_path: string) -> *void {
         }
         if slot >= 0 && image_bytes + bytes <= 268435456 { break }
         if oldest < 0 { SurfaceDestroy(image); return null }
-        image_bytes -= cached_images[oldest].bytes
-        Lanczos.LanczosForget(cached_images[oldest].serial)
-        SurfaceDestroy(cached_images[oldest].image); cached_images[oldest] = .{}
+        CairoForgetCachedImage(oldest)
         if slot < 0 { slot = oldest }
     }
     cached_images[slot].path = path; cached_images[slot].length = length
+    if original_path.count < 4096 && CopyCString(original_path, cached_images[slot].source[:]) {
+        cached_images[slot].source_length = cast(s32)original_path.count
+    }
     cached_images[slot].image = image; cached_images[slot].used = image_clock; cached_images[slot].bytes = bytes
     image_serial += 1; cached_images[slot].serial = image_serial
     image_bytes += bytes

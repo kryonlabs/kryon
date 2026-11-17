@@ -11,6 +11,9 @@ BITMAP_IMAGE_MAX_PIXELS :: 4194304
 BITMAP_IMAGE_BYTE_BUDGET :: 67108864
 BITMAP_IMAGE_SESSION_BUDGET :: 33554432
 BITMAP_IMAGE_TAG :: 2147483648
+// A native host's immutable pictures are readable in its UI sessions. Session
+// mutation/disposal still requires that exact session owner and epoch.
+BITMAP_IMAGE_HOST_OWNER :: 2147483647
 
 BitmapUpload :: #type (width: s32, height: s32, rgba: []u8) -> u32;
 BitmapReplace :: #type (id: u32, width: s32, height: s32, rgba: []u8) -> bool;
@@ -66,6 +69,11 @@ BitmapOwnedSlot :: (slot: s32, epoch: u64, image: Texture2D) -> s32 {
         item.image.width != image.width || item.image.height != image.height ||
         image.mipmaps != 1 || image.format != 7 { return -1 }
     return at
+}
+BitmapHostSlot :: (image: Texture2D) -> s32 {
+    at := BitmapSlot(image.id)
+    if at < 0 { return -1 }
+    return BitmapOwnedSlot(BITMAP_IMAGE_HOST_OWNER, bitmap_images[at].owner_epoch, image)
 }
 BitmapPublish :: (at: s32) {
     bitmap_revision += 1

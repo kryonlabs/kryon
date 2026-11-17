@@ -2276,3 +2276,17 @@ codecs, apply JPEG orientation, and preserve full dimensions and straight
 alpha. The native window must already exist. False means invalid or
 unsupported data, a missing SDL window, or a browser/Android host where the
 application icon belongs to the page or package manifest. Native AVIF uses the shared codec libraries.
+
+Desktop image services include `RasterInvalidateImage(path) -> bool`,
+`RasterInvalidateImagesIn(folder) -> s32`, and `RasterInvalidateImages() -> s32`.
+They remove cached file pictures and their pending smooth copies; folder matching
+respects path boundaries. Counts report entries removed. `ImagePreviewDecode`
+uses the desktop image decoder's bounded, oriented RGBA output; release its
+pixels with `ImagePreviewRelease`.
+
+`FramePreviousSnapshot() -> FrameSurface` captures an owned copy of the previous
+frame on desktop and Android. Call it after composing a new route and before
+painting, draw it with `FrameTransition` using the full logical frame bounds
+(including a negative camera origin), and call `FrameSurfaceRelease` when the
+transition ends or is canceled. `FrameSurfaceCopy` owns an independent copy.
+The Web host returns an invalid surface, so callers skip the fade there.
