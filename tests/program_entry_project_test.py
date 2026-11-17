@@ -110,9 +110,11 @@ with tempfile.TemporaryDirectory(prefix="program-entry-", dir=ROOT / "build") as
     run([ZIRAN, "tool", "kryon", "build", "--profile", "web"], project)
     page = project / "build/window_program-web.html"
     assert page.is_file() and page.stat().st_size > 100_000
-    host = project / "build/generated/web/c/kryon_program_host.c"
-    assert host.is_file(), "the page has no generated program host"
-    assert (project / "build/generated/web/ir/kryon_program_host.zir").is_file()
+    host = project / "build/generated/web/c/window.c"
+    assert host.is_file(), "the page has no generated program entry"
+    assert (project / "build/generated/web/ir/window.zir").is_file()
+    assert not (host.parent / "kryon_program_host.c").exists(), \
+        "a program entry must not also link a generated main"
     assert not list((project / "build/generated/web/c").glob("*_canvas_run.c")), \
         "a program entry must not also link the frame host"
     browse(page, "Window", "opaque")
@@ -148,12 +150,12 @@ with tempfile.TemporaryDirectory(prefix="program-entry-", dir=ROOT / "build") as
     run([ZIRAN, "tool", "kryon", "build", "--profile", "desktop"], project)
     assert generated() == plain, "the test driver stayed after an ordinary rebuild"
 
-    # A portable bundle has no window host, so the tool names the mismatch.
-    portable = subprocess.run(
-        [str(ZIRAN), "tool", "kryon", "build", "--profile", "portable"],
-        cwd=project, env=ENV, capture_output=True, text=True)
-    assert portable.returncode != 0
-    assert "needs codegen c99" in portable.stdout + portable.stderr, \
-        portable.stdout + portable.stderr
+    # A zx profile's bundle is the program's own main; kryon/app gives it the
+    # ZX window, so the tool builds it without a generated host.
+    run([ZIRAN, "tool", "kryon", "build", "--profile", "portable"], project)
+    bundle = project / "build/window_program-portable.zx"
+    assert bundle.is_file() and bundle.stat().st_size > 0, "the zx profile built no bundle"
+    assert not (project / "build/generated/portable/ir/kryon_program_host.zir").exists(), \
+        "a zx program bundle must not add a generated main"
 print("Program entry: canvas page runs main, opaque unless its canvas is transparent, "
-      "desktop executable maps its window, portable profile is refused")
+      "desktop executable maps its window, zx profile bundles the program's main")

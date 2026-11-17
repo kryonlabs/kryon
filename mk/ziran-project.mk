@@ -127,6 +127,10 @@ endif
 # selects the host for the compiled target. A frame entry declares Frame and
 # the profile's host owns main.
 PROJECT_PROGRAM := $(shell grep -Eqs '^main[[:space:]]*::' '$(PROJECT_ENTRY)' && echo program)
+# Track the export annotation belonging to main, rather than unrelated exports.
+# Every make version reads \# in an assignment as a literal number sign.
+PROJECT_HASH := \#
+PROJECT_EXPORTED_MAIN := $(shell awk '/^$(PROJECT_HASH)program_export([[:space:]]*("main")?[[:space:]]*;?[[:space:]]*)$$/ { exported=1; next } /^main[[:space:]]*::/ { if (exported) print "main"; exit } !/^[[:space:]]*($$|\/\/|$(PROJECT_HASH))/ { exported=0 }' '$(PROJECT_ENTRY)')
 ifneq ($(PROJECT_PROGRAM),)
 ifeq ($(PROJECT_CODEGEN),zx)
 # A portable program's bundle is its own main, which kryon/app gives the
@@ -136,6 +140,11 @@ PROJECT_FRAME_BIND :=
 HOST_ROOT_SOURCES := $(PROJECT_ENTRY)
 else ifneq ($(PROJECT_CODEGEN),c99)
 $(error a program entry ($(PROJECT_ENTRY) declares main) needs codegen c99 or zx)
+else ifneq ($(PROJECT_EXPORTED_MAIN),)
+# An exported main already supplies the process entry; do not add another.
+HOST_ID := $(PROJECT_ENTRY_MODULE)
+PROJECT_FRAME_BIND :=
+HOST_ROOT_SOURCES := $(PROJECT_ENTRY)
 else
 # The generated host is the process entry; it only calls the program's main.
 PROGRAM_HOST := $(GEN_DIR)/program-host/kryon_program_host.zi
