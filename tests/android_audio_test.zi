@@ -1,0 +1,69 @@
+// The ordinary UI provider submits PCM through the Android-selected std sink.
+// Run source and saved IR on the USB Moto; no SDL or raylib is linked.
+#import "kryon/media_audio"
+#import "kryon/media_audio_host"
+#import "kryon/media_audio_desktop"
+#import "kryon/session"
+#import "std/audio"
+#import "std/audio_sink"
+#import "std/timer_linux"
+#import "std/byte_text_linux"
+
+heard: s64;
+bad: bool;
+Tap :: (samples: []float32, frames: s64) {
+    for frame: 0..frames - 1 {
+        left := samples[frame * 2]; right := samples[frame * 2 + 1]
+        if left != 0.0 || right != 0.0 {
+            heard += 1
+            if left < 0.249 || left > 0.251 || right < -0.251 || right > -0.249 { bad = true }
+        }
+    }
+}
+
+#program_export
+main :: () -> s32 {
+    MediaAudioUseDesktop()
+    AudioUseTap(Tap)
+    session := SessionOpen()
+    if !SessionValid(session) { return 1 }
+    defer { unused SessionClose(session) }
+    owner: MediaAudioOwner
+    MediaAudioOwnerBind(*owner, session, owner.allowed, owner.read, null)
+    defer { MediaAudioOwnerClose(*owner) }
+    defer { AudioSinkClose() }
+    command := MediaAudioCommand.{.operation = .CreateStream, .voice = 1,
+        .gain = 1.0, .sample_rate = 48000, .channels = 2,
+        .frames_per_block = 2048, .format = .S16LE}
+    result := MediaAudioOwnerCall(*owner, session, command)
+    if result.code != .Ok || result.state != .Ready { return 2 }
+    command.operation = .Play
+    if MediaAudioOwnerCall(*owner, session, command).code != .Ok { return 3 }
+    samples: [8192]u8
+    for frame: 0..2047 {
+        samples[frame * 4] = 0; samples[frame * 4 + 1] = 32
+        samples[frame * 4 + 2] = 0; samples[frame * 4 + 3] = 224
+    }
+    command.operation = .SubmitStream
+    command.pcm = TextView(samples[:])
+    if MediaAudioOwnerCall(*owner, session, command).code != .Ok { return 4 }
+    deadline := MonotonicMilliseconds() + 3000
+    while !AudioSinkReady() && !AudioSinkUnavailable() && MonotonicMilliseconds() < deadline {
+        unused SleepMilliseconds(5)
+    }
+    if !AudioSinkReady() { return 5 }
+    unused SleepMilliseconds(200)
+    command.operation = .Pause
+    result = MediaAudioOwnerCall(*owner, session, command)
+    if result.code != .Ok || result.state != .Paused { return 6 }
+    command.operation = .Resume
+    result = MediaAudioOwnerCall(*owner, session, command)
+    if result.code != .Ok || result.state != .Playing { return 7 }
+    command.operation = .Stop
+    result = MediaAudioOwnerCall(*owner, session, command)
+    if result.code != .Ok || result.state != .Stopped { return 8 }
+    AudioSinkClose() // Joins callbacks before reading their tap counters.
+    if AudioSinkReady() || heard < 2047 || bad { return 9 }
+    print("Android UI PCM provider: stereo blocks, asynchronous open, pause/resume and close passed\n")
+    return 0
+}

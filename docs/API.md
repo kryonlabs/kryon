@@ -1613,37 +1613,30 @@ with `MediaAudioUseProvider`; existing owners retain their provider until
 closed. The caller retains cue selection, score/synthesis, volume UI, mute,
 phrase scheduling and any single-in-flight music transition policy.
 
-On the desktop, `kryon/media_audio_desktop`'s
-`MediaAudioUseDesktop()` installs a provider on Kryon's own mixer and SDL2
-sink, opening the device with the first voice. Programs can also use them
-directly:
+`kryon/media_audio_desktop`'s `MediaAudioUseDesktop()` installs the UI
+provider over `std/audio` and `std/audio_sink`. The same provider works on
+Android: the selected sink uses AAudio from API 26 and OpenSL ES for the
+minSdk-21 scaffold. Device opening is asynchronous; voices and PCM blocks can
+be queued during opening. A confirmed device failure returns `Unavailable`.
+Kryon owns the UI commands and resource lifetime; audio works without a UI:
 
-- `kryon/audio_mixer` mixes voices into 48 kHz float32 stereo with no device.
-  `AudioLoad(bytes, stream)` and `AudioLoadFile(path, stream)` recognize the
-  content: a sound (`stream = false`) decodes whole, music decodes while it
-  plays. `AudioOpenStream(rate, channels, frames)` plays signed 16-bit blocks
-  given to `AudioStreamSubmit(voice, samples)` while `AudioStreamWritable`
-  says there is room, and waits in silence between them. Each voice has
-  `AudioPlay` (from the start), `AudioStop`, `AudioPause`, `AudioResume`,
-  `AudioState`, `AudioPlaying`, `AudioSetGain`, `AudioSetPitch` (speed and
-  pitch together), `AudioSetLooping`, `AudioPosition`, `AudioLength` and
-  `AudioUnload`. `AudioUseTap(tap)` sees every mixed block on the sink's
-  audio thread, `AudioSetMasterGain` scales the mix, and `AudioRender(output,
-  frames)` mixes into a caller's buffer, as the sink does.
-- `kryon/audio_sink_sdl`: `AudioSinkOpen()`, `AudioSinkReady()` and
-  `AudioSinkClose()`. With `SDL_AUDIODRIVER=disk` SDL writes the device's
-  blocks to `SDL_DISKAUDIOFILE`.
-- Decoders join by import: `kryon/audio_decode_opus` (Ogg Opus, streamed,
-  links libopus), `kryon/audio_decode_wav` (PCM16 or float32 WAV),
-  `kryon/audio_decode_mp3` (MP3 and MPEG Layers I and II at the stream's own
-  rate, streamed through `audio/mp3`; links the audio package's
-  `libziran_mp3.a`, which `make` builds as `$(MP3_A)`) and
-  `kryon/audio_decode_vorbis` (Ogg Vorbis at the stream's own rate, streamed
-  through `audio/vorbis`; links `libziran_vorbis.a`, `make`'s `$(VORBIS_A)`).
-  A decoder registers `AudioUseDecoder(probe, open)` over an `AudioSource`.
+- `std/audio` mixes voices into 48 kHz float32 stereo. It provides decoded
+  clips, streaming music, signed PCM16 blocks, gain, pitch, looping,
+  pause/resume, position, length, seeking and a mixed-output tap.
+- `std/audio_sink` selects SDL, Android or WebAudio. `AudioSinkOpen()` starts
+  opening; `AudioSinkPending()`, `AudioSinkReady()` and
+  `AudioSinkUnavailable()` report progress. `AudioSinkClose()` explicitly
+  joins device teardown. SDL's disk driver supports deterministic tests.
+- Decoders register by import: `std/audio_decode_wav` (PCM16, float32 and
+  IMA/MS ADPCM), `std/audio_decode_mp3` and `std/audio_decode_vorbis`.
+  MP3 uses the core `ziran_mp3` archive; Vorbis links the core recipe's
+  `vorbisfile`, `vorbis` and `ogg` archives. `audio/decode_opus` optionally
+  registers Ogg Opus decoding and links libopus. A custom decoder registers
+  `AudioUseDecoder(probe, open)` with an `AudioSource`.
 
-`make desktop-audio-test` renders into its own buffer and plays through SDL's
-disk driver.
+`make desktop-audio-test` exercises the mixer and UI provider through SDL's
+disk driver. `make android-audio-test ANDROID_SERIAL=ZE2223BQZT` exercises
+the same UI PCM provider, source and saved IR, on the USB Moto.
 
 ## Document persistence
 

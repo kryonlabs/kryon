@@ -23,10 +23,10 @@
 #if #defined(PLATFORM_WEB) {
     #import "canvas_audio_engine"
 } else {
-    Mixer :: #import "audio_mixer";
-    Sink :: #import "audio_sink_sdl";
-    #import "audio_decode_wav"
-    #import "audio_decode_opus"
+    Mixer :: #import "std/audio";
+    Sink :: #import "std/audio_sink";
+    #import "std/audio_decode_wav"
+    #import "audio/decode_opus"
 }
 
 media_c :: #system_library "c";
@@ -101,7 +101,8 @@ BundleMediaDecode :: (media: *BundleMedia, bytes: string) -> bool {
         if media.audio == 0 { return false }
         AudioEngineMusicPlay(media.audio, 0)
     } else {
-        if !Sink.AudioSinkOpen() { return false }
+        unused Sink.AudioSinkOpen()
+        if Sink.AudioSinkUnavailable() { return false }
         media.music = Mixer.AudioLoad(bytes, true)
         if media.music.slot < 0 { return false }
         if !Mixer.AudioPlay(media.music) {
@@ -154,9 +155,15 @@ BundleMediaTick :: (media: *BundleMedia) {
         #if #defined(PLATFORM_WEB) {
             playing = AudioEngineMusicPlaying(media.audio) != 0
         } else {
-            playing = Mixer.AudioPlaying(media.music)
+            unused Sink.AudioSinkOpen()
+            if Sink.AudioSinkUnavailable() {
+                media.state = -1
+                media.message = "Audio device unavailable"
+            } else {
+                playing = Mixer.AudioPlaying(media.music)
+            }
         }
-        if !playing { media.state = 0; media.message = "Finished" }
+        if media.state == 2 && !playing { media.state = 0; media.message = "Finished" }
     }
     if media.fetch_state == 1 {
         status: s32; length: s64

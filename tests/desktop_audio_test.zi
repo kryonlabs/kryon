@@ -1,3 +1,4 @@
+OpusTypes :: #import "audio/types";
 // The desktop audio stack without raylib or an audio device: the mixer
 // renders into this test's own buffer (gain, mixing, pitch, loop, pause,
 // PCM streams, the tap, WAV and streamed Ogg Opus), then the SDL sink plays
@@ -12,19 +13,19 @@
 #import "timer_linux"
 #import "math"
 using Vectors :: #import "vec";
-#import "audio_mixer"
-#import "audio_sink_sdl"
-#import "audio_decode_wav"
-#import "audio_decode_opus"
+#import "std/audio"
+#import "std/audio_sink"
+#import "std/audio_decode_wav"
+#import "audio/decode_opus"
 #import "media_audio"
 #import "media_audio_host"
 #import "media_audio_desktop"
 Transport :: #import "media_audio_opus";
 #import "session"
-Types :: #import "audio/types";
-Wav :: #import "audio/wav";
+Types :: #import "std/audio_types";
+Wav :: #import "std/audio_wav";
 Opus :: #import "audio/opus";
-Ogg :: #import "audio/ogg";
+Ogg :: #import "std/ogg";
 
 #scope_file
 libc :: #system_library "libc";
@@ -55,7 +56,7 @@ WavBytes :: (pcm: *Types.PCM, output: *Vec(u8)) -> bool { return Wav.WavEncode(p
 // its resampler.
 OpusBytes :: (pcm: *Types.PCM, output: *Vec(u8)) -> bool {
     encoder: Opus.Encoder
-    if Opus.EncoderOpen(*encoder, pcm.channels, Types.DefaultOptions()) != Types.OK { return false }
+    if Opus.EncoderOpen(*encoder, pcm.channels, OpusTypes.DefaultOptions()) != Types.OK { return false }
     defer Opus.EncoderClose(*encoder)
     header: [19]u8
     text := "OpusHead"
@@ -265,7 +266,13 @@ main :: (argc: s32, argv: **u8) -> s32 {
     AudioSetGain(sound, 1.0)
     unused AudioPlay(sound)
     tapped_count = 0
-    if !AudioSinkOpen() || !AudioSinkReady() { return Fail(39, "the SDL sink did not open") }
+    unused AudioSinkOpen()
+    for attempt: 0..199 {
+        unused attempt
+        if AudioSinkReady() || AudioSinkUnavailable() { break }
+        unused SleepMilliseconds(5)
+    }
+    if !AudioSinkReady() { return Fail(39, "the SDL sink did not open") }
     unused SleepMilliseconds(400)
     AudioSinkClose()
     if AudioSinkReady() { return Fail(40, "the SDL sink did not close") }
@@ -356,6 +363,30 @@ main :: (argc: s32, argv: **u8) -> s32 {
     unused SleepMilliseconds(600)
     if Transport.OpusAssetReply(asset, *voice, .Ok).state != .Finished { return Fail(63, "the Opus transport did not finish") }
     Transport.OpusAssetDispose(asset)
+    AudioSinkClose()
+    // Confirmed asynchronous device failure reaches the UI provider, and
+    // explicit reopening permits another device without losing owners.
+    Env("SDL_AUDIODRIVER", "kryon-test-no-driver")
+    MediaAudioOwnerBind(*owner, session, Allowed, Read, null)
+    failed := Call(*owner, session, .{.operation = .CreateStream, .format = .S16LE,
+        .sample_rate = 48000, .channels = 1, .frames_per_block = 2048, .gain = 1.0})
+    for attempt: 0..199 {
+        if AudioSinkUnavailable() { break }
+        unused SleepMilliseconds(5)
+    }
+    if !AudioSinkUnavailable() { return Fail(64, "the missing SDL driver did not fail") }
+    if failed.code == .Ok {
+        failed = Call(*owner, session, .{.operation = .Status})
+    }
+    if failed.code != .Unavailable { return Fail(65, "the provider hid device failure") }
+    MediaAudioOwnerClose(*owner)
+    AudioSinkClose()
+    Env("SDL_AUDIODRIVER", "disk")
+    MediaAudioOwnerBind(*owner, session, Allowed, Read, null)
+    created = Call(*owner, session, .{.operation = .CreateStream, .format = .S16LE,
+        .sample_rate = 48000, .channels = 1, .frames_per_block = 2048, .gain = 1.0})
+    if created.code != .Ok { return Fail(66, "the provider did not reopen") }
+    MediaAudioOwnerClose(*owner)
     AudioSinkClose()
     print("desktop audio: passed\n")
     return 0

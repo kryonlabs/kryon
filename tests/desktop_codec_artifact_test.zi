@@ -4,7 +4,8 @@
 #import "ziran_image_decode"
 #import "image_integration_fixture"
 Opus :: #import "audio/opus";
-Types :: #import "audio/types";
+Types :: #import "std/audio_types";
+OpusTypes :: #import "audio/types";
 #import "std/vec"
 #import "std/byte_text_linux"
 
@@ -27,7 +28,7 @@ main :: () -> s32 {
     ImagePixelsFree(pixels)
     if !matches { return 4 }
     encoder: Opus.Encoder
-    if Opus.EncoderOpen(*encoder, 2, Types.DefaultOptions()) != Types.OK { return 5 }
+    if Opus.EncoderOpen(*encoder, 2, OpusTypes.DefaultOptions()) != Types.OK { return 5 }
     defer Opus.EncoderClose(*encoder)
     pcm: [5760]float32
     packet: [4096]u8

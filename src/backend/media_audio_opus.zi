@@ -2,9 +2,9 @@
 // audio_decode_opus supplies the streaming decoder used by the mixer.
 #import "media_audio"
 #import "media_audio_host"
-#import "audio_decode_opus"
-Mixer :: #import "audio_mixer";
-Sink :: #import "audio_sink_sdl";
+#import "audio/decode_opus"
+Mixer :: #import "std/audio";
+Sink :: #import "std/audio_sink";
 
 #scope_file
 libc :: #system_library "c";
@@ -23,7 +23,8 @@ OpusAssetDispose :: (asset: *OpusAsset) {
 OpusAssetLoad :: (bytes: string, gain: float32, code: *MediaAudioCode) -> *OpusAsset {
     code.* = .Failed
     if bytes.count <= 0 || bytes.count > MEDIA_AUDIO_ASSET_LIMIT { code.* = .Limit; return null }
-    if !Sink.AudioSinkOpen() { code.* = .Unavailable; return null }
+    unused Sink.AudioSinkOpen()
+    if Sink.AudioSinkUnavailable() { code.* = .Unavailable; return null }
     asset := cast(*OpusAsset)Allocate(1, size_of(OpusAsset))
     if asset == null { code.* = .Limit; return null }
     asset.voice = Mixer.AudioLoad(bytes, true)
@@ -56,11 +57,11 @@ OpusAssetCommand :: (asset: *OpusAsset, voice: *MediaAudioVoice, command: MediaA
     }
     if command.operation == .Resume {
         if voice.state != .Paused && voice.state != .Playing { return OpusAssetReply(asset, voice, .Invalid) }
-        if device != .Ok || !Sink.AudioSinkReady() { return OpusAssetReply(asset, voice, .Unavailable) }
+        if device != .Ok || Sink.AudioSinkUnavailable() { return OpusAssetReply(asset, voice, .Unavailable) }
         Mixer.AudioResume(asset.voice); voice.state = .Playing
     } else if command.operation == .Play {
         if command.looping && !voice.music { return OpusAssetReply(asset, voice, .Invalid) }
-        if device != .Ok || !Sink.AudioSinkReady() { return OpusAssetReply(asset, voice, .Unavailable) }
+        if device != .Ok || Sink.AudioSinkUnavailable() { return OpusAssetReply(asset, voice, .Unavailable) }
         Mixer.AudioSetLooping(asset.voice, command.looping)
         if !Mixer.AudioPlay(asset.voice) { return OpusAssetReply(asset, voice, .Failed) }
         voice.state = .Playing

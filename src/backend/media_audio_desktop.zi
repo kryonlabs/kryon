@@ -5,10 +5,10 @@
 #import "media_audio"
 #import "media_audio_host"
 #import "std/byte_text_linux"
-Mixer :: #import "audio_mixer";
-Sink :: #import "audio_sink_sdl";
-#import "audio_decode_opus"
-#import "audio_decode_wav"
+Mixer :: #import "std/audio";
+Sink :: #import "std/audio_sink";
+#import "audio/decode_opus"
+#import "std/audio_decode_wav"
 
 #scope_file
 libc :: #system_library "c";
@@ -23,7 +23,8 @@ Reply :: (voice: *MediaAudioVoice, code: MediaAudioCode = .Ok) -> MediaAudioResu
 }
 
 Device :: () -> MediaAudioCode {
-    return ifx Sink.AudioSinkOpen() then MediaAudioCode.Ok else MediaAudioCode.Unavailable
+    unused Sink.AudioSinkOpen()
+    return ifx Sink.AudioSinkUnavailable() then MediaAudioCode.Unavailable else MediaAudioCode.Ok
 }
 
 // A finished voice reports Finished once its mixer voice has played out.

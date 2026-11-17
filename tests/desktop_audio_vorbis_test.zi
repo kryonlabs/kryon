@@ -12,15 +12,15 @@
 #import "file_tree_linux"
 #import "timer_linux"
 using Vectors :: #import "vec";
-#import "audio_mixer"
-#import "audio_decode_vorbis"
-#import "audio_decode_opus"
+#import "std/audio"
+#import "std/audio_decode_vorbis"
+#import "audio/decode_opus"
 #import "media_audio"
 #import "media_audio_host"
 #import "media_audio_desktop"
 #import "session"
-Types :: #import "audio/types";
-Vorbis :: #import "audio/vorbis";
+Types :: #import "std/audio_types";
+Vorbis :: #import "std/vorbis_linux";
 
 #scope_file
 libc :: #system_library "libc";
@@ -50,7 +50,7 @@ Fixture :: (folder: string, name: string) -> string {
 
 Reference :: (bytes: string, pcm: *Types.PCM) -> bool {
     view := BytesFromPointer((cast(*TextDescriptor)(*bytes)).data, cast(u64)bytes.count)
-    return Vorbis.VorbisDecode(view, Types.MaxFrames, pcm) == Types.OK
+    return Vorbis.VorbisDecodeFloat(view, Types.MaxFrames, pcm) == Types.OK
 }
 
 Clamp :: (value: float32) -> float32 {

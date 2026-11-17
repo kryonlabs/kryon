@@ -428,18 +428,17 @@ desktop-audio-test:
 		"$(ZIRAN_BIN)" run --target=c tests/desktop_audio_test.zi -- build/test/desktop-audio
 test: desktop-audio-test
 
-# The static dr_mp3 archive that programs importing audio_decode_mp3 link,
-# built from the audio package's native/ and its pinned dr_libs source.
+# The core MP3 archive, built through std/native/AudioCodecs.cmake.
 AUDIO_PACKAGE = $$("$(ZIRAN_BIN)" pkg path audio --offline)
 MP3_DIR := $(BUILD_DIR)/mp3
 MP3_A := $(MP3_DIR)/libziran_mp3.a
 $(MP3_A): ziran.lock
 	@mkdir -p $(MP3_DIR)
 	@cmake -S "$(AUDIO_PACKAGE)/native" -B $(MP3_DIR) -DCMAKE_BUILD_TYPE=Release \
-		-DDR_LIBS_DIR="$$("$(ZIRAN_BIN)" pkg path dr_libs --offline)" > $(MP3_DIR)/configure.log
+		-DZIRAN_STDLIB="$(ZIRAN_ROOT)/std" -DAUDIO_CORE_VORBIS=OFF > $(MP3_DIR)/configure.log
 	@cmake --build $(MP3_DIR) --target ziran_mp3 > $(MP3_DIR)/build.log
 
-# MPEG audio streamed through the mixer equals audio/mp3's own decode of the
+# MPEG audio streamed through the mixer equals std/audio_mp3's own decode of the
 # audio package's fixtures, and plays as asset audio, with no audio device.
 .PHONY: desktop-audio-mp3-test
 desktop-audio-mp3-test: $(MP3_A)
@@ -449,25 +448,28 @@ desktop-audio-mp3-test: $(MP3_A)
 		"$(AUDIO_PACKAGE)/tests/fixtures/mp3" build/test/desktop-audio-mp3
 test: desktop-audio-mp3-test
 
-# The static stb_vorbis archive that programs importing audio_decode_vorbis
-# link, built from the audio package's native/ and its pinned stb source.
+# The core Xiph Vorbis archives, built through std/native/AudioCodecs.cmake.
 VORBIS_DIR := $(BUILD_DIR)/vorbis
-VORBIS_A := $(VORBIS_DIR)/libziran_vorbis.a
+VORBIS_A := $(VORBIS_DIR)/libvorbisfile.a
 $(VORBIS_A): ziran.lock
 	@mkdir -p $(VORBIS_DIR)
 	@cmake -S "$(AUDIO_PACKAGE)/native" -B $(VORBIS_DIR) -DCMAKE_BUILD_TYPE=Release \
-		-DSTB_DIR="$$("$(ZIRAN_BIN)" pkg path stb --offline)" > $(VORBIS_DIR)/configure.log
-	@cmake --build $(VORBIS_DIR) --target ziran_vorbis > $(VORBIS_DIR)/build.log
+		-DZIRAN_STDLIB="$(ZIRAN_ROOT)/std" -DAUDIO_CORE_VORBIS=ON > $(VORBIS_DIR)/configure.log
+	@cmake --build $(VORBIS_DIR) --target vorbisfile > $(VORBIS_DIR)/build.log
 
-# Ogg Vorbis streamed through the mixer equals audio/vorbis's own decode of
+# Ogg Vorbis streamed through the mixer equals std/vorbis_linux's own decode of
 # the audio package's fixtures, and plays as asset audio, with no audio device.
 .PHONY: desktop-audio-vorbis-test
 desktop-audio-vorbis-test: $(VORBIS_A)
 	@rm -rf build/test/desktop-audio-vorbis
-	@env -u DISPLAY -u WAYLAND_DISPLAY LDLIBS="-L$(VORBIS_DIR) -lziran_vorbis -lopus -lm" \
+	@env -u DISPLAY -u WAYLAND_DISPLAY LDLIBS="-L$(VORBIS_DIR) -lvorbisfile -lvorbis -logg -lopus -lm" \
 		"$(ZIRAN_BIN)" run --target=c tests/desktop_audio_vorbis_test.zi -- \
 		"$(AUDIO_PACKAGE)/tests/fixtures/vorbis" build/test/desktop-audio-vorbis
 test: desktop-audio-vorbis-test
+
+.PHONY: android-audio-test
+android-audio-test:
+	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/android_audio_test.sh
 
 .PHONY: cursor-api-test
 cursor-api-test:
