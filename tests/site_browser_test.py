@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise the compiled Ziran website in a private Chromium session."""
 import argparse
+from contextlib import contextmanager
 import base64
 import functools
 import hashlib
@@ -11,6 +12,7 @@ import os
 import re
 from pathlib import Path
 import select
+import signal
 import shutil
 import subprocess
 import sys
@@ -26,6 +28,28 @@ SITE = ROOT / 'docs/site'
 PAGES = ['index', 'getting-started', 'widgets', 'modules', 'apps', 'docs', 'renderers']
 VIEWPORTS = (320, 390, 768, 1024, 1366)
 EXPECTED_SCENE_COUNT = 101
+
+
+@contextmanager
+def test_step(name, seconds=180):
+    """Interrupt blocked browser I/O as well as waits, and identify the phase."""
+    started = time.monotonic()
+    print('Starting ' + name + ' (deadline ' + str(seconds) + 's)', flush=True)
+    def expired(signum, frame):
+        raise TimeoutError(name + ': exceeded ' + str(seconds) + 's')
+    previous = signal.signal(signal.SIGALRM, expired)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+    print('Passed ' + name + ' (' + str(round(time.monotonic() - started, 1)) + 's)', flush=True)
+
+
+def run_step(name, function, *args, seconds=180):
+    with test_step(name, seconds):
+        return function(*args)
 
 
 class DevToolsError(RuntimeError):
@@ -58,6 +82,7 @@ class Browser:
              '--user-data-dir=' + str(runtime_profile), 'about:blank'],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.log,
             env=environment, start_new_session=True)
+        os.set_blocking(self.process.stdin.fileno(), False)
         self.received, self.sequence, self.session, self.errors = b'', 0, None, []
         self.console_messages = []
         try:
@@ -89,9 +114,16 @@ class Browser:
         self.sequence += 1
         message = {'id': self.sequence, 'method': method, 'params': params}
         if self.session: message['sessionId'] = self.session
-        self.process.stdin.write(json.dumps(message).encode() + b'\0')
-        self.process.stdin.flush()
         deadline = time.monotonic() + timeout
+        request = json.dumps(message).encode() + b'\0'
+        sent = 0
+        descriptor = self.process.stdin.fileno()
+        while sent < len(request):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0: raise TimeoutError(method + ': writing browser request')
+            if select.select([], [descriptor], [], min(.2, remaining))[1]:
+                try: sent += os.write(descriptor, request[sent:sent + 4096])
+                except BlockingIOError: pass
         while time.monotonic() < deadline:
             while b'\0' in self.received:
                 raw, self.received = self.received.split(b'\0', 1)
@@ -113,9 +145,9 @@ class Browser:
                 self.received += data
         raise TimeoutError(method)
 
-    def evaluate(self, expression):
+    def evaluate(self, expression, timeout=30):
         result = self.command('Runtime.evaluate', expression=expression,
-                              returnByValue=True, awaitPromise=True)
+                              returnByValue=True, awaitPromise=True, timeout=timeout)
         if 'exceptionDetails' in result:
             raise RuntimeError(str(result['exceptionDetails'])[:1200])
         return result.get('result', {}).get('value')
@@ -124,7 +156,9 @@ class Browser:
         deadline = time.monotonic() + seconds
         value = None
         while time.monotonic() < deadline:
-            try: value = self.evaluate(expression)
+            try: value = self.evaluate(expression, timeout=max(.001, min(30, deadline - time.monotonic())))
+            except TimeoutError as error:
+                raise TimeoutError(what + ': ' + str(error)) from error
             except DevToolsError as error:
                 if error.method != 'Runtime.evaluate' or error.code != -32000:
                     raise
@@ -348,6 +382,7 @@ def check_compiler(browser, base, scenes):
     from gallery import compiler_paths, enabled_modules
     search = '\n'.join(compiler_paths(enabled_modules()))
     for index, scene in enumerate(scenes):
+        print('Compiling source ' + str(index + 1) + '/' + str(len(scenes)) + ': ' + scene['name'], flush=True)
         browser.evaluate('fetch(' + json.dumps(scene['code']) + ').then(r => r.text()).then(source => { window.compilerReply = null; compilerWorker.postMessage({id:' + str(index + 1) + ',source,search:' + json.dumps(search) + '}); })')
         reply = browser.until('window.compilerReply', 'source compile ' + scene['name'], 120)
         assert reply['status'] == 0 and reply['bytes'] > 0, (scene['name'], reply)
@@ -692,6 +727,7 @@ def check_live(browser, base, scenes, shots):
             mouse(browser, selected)
             browser.key('ArrowDown', 40)
             browser.until('Module.gallerySceneRendered === ' + str(index), 'source selection')
+        print('Compiling source ' + str(position + 1) + '/' + str(len(scenes)) + ': ' + scene['name'], flush=True)
         compile_ready(browser)
     ready(browser, base)
     mouse(browser, node_for(browser, label='Source'))
@@ -854,8 +890,10 @@ def check_followup(browser, base, scenes, shots):
 
 
 def main():
+    from site_browser_timeout_test import main as check_timeout_guards
+    check_timeout_guards()
     from widget_examples_source_test import main as check_source_preservation
-    check_source_preservation()
+    run_step('maintained example sources', check_source_preservation, seconds=600)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--followup-only', action='store_true')
     parser.add_argument('--polish-only', action='store_true')
@@ -879,35 +917,40 @@ def main():
     assert chromium, 'Chromium or Chrome is required for the integrated browser test'
     args.shots.mkdir(parents=True, exist_ok=True)
     server = serve(args.site)
-    browser = Browser(args.shots / 'profile', chromium)
+    browser = run_step('browser startup', Browser, args.shots / 'profile', chromium, seconds=60)
     try:
         base = 'http://127.0.0.1:' + str(server.server_port) + '/'
         if args.followup_only:
-            check_followup(browser, base, scenes, args.shots)
+            run_step('followup examples', check_followup, browser, base, scenes, args.shots, seconds=600)
             return
         if args.polish_only:
-            check_visual_polish(browser, base, scenes, args.shots)
+            run_step('visual polish', check_visual_polish, browser, base, scenes, args.shots, seconds=600)
             return
         if args.compiler_only:
-            check_compiler(browser, base, scenes)
+            run_step('browser compiler', check_compiler, browser, base, scenes, seconds=1200)
             return
         if args.routes_only:
-            check_clean_routes(browser, base)
+            run_step('current routes', check_clean_routes, browser, base)
             return
         if not args.options_only:
-            check_clean_routes(browser, base)
-            check_document_layout(browser, base, args.shots)
-            check_preview_containment(browser, base, args.shots)
-            check_scroll_drag(browser, base)
-            check_apps(browser, base, args.shots)
-            check_live(browser, base, scenes, args.shots)
-        check_example_options(browser, base, scenes, args.shots)
+            run_step('current routes', check_clean_routes, browser, base)
+            run_step('document layout', check_document_layout, browser, base, args.shots, seconds=300)
+            run_step('preview containment', check_preview_containment, browser, base, args.shots, seconds=300)
+            run_step('scroll dragging', check_scroll_drag, browser, base)
+            run_step('application cards', check_apps, browser, base, args.shots)
+            run_step('live examples and source editing', check_live, browser, base, scenes, args.shots, seconds=1200)
+        run_step('example options', check_example_options, browser, base, scenes, args.shots, seconds=600)
         print('Local website options tests: disabled flags, motion and contrast passed' if args.options_only else 'Local website browser tests: routes, 101 live scenes/sources, mobile, theme, editing, diagnostics, portable preview, disabled flags, motion and contrast passed')
     except Exception:
         print('Browser runtime errors:', browser.errors[-6:])
         print('Browser console diagnostics:', browser.console_messages)
-        print('Browser failure state:', browser.evaluate('window.compilerReply') if args.compiler_only else browser.evaluate("({scene:Module.gallerySceneRendered,key:Module.lastInputKey,pickerKey:Module.lastPickerKey,active:document.activeElement?.id,focused:Module.siteTree?.filter(n=>n.focused).map(n=>({key:n.key,parent:n.parent,label:n.label})),errors:document.querySelector('#result')?.textContent,compileBusy:Module.compileBusy,compileRevision:Module.compileRevision,editorRevision:Module.editorRevision,compilerResult:Module.compilerResult,diagnostic:Module.compileDiagnostic})"))
-        capture(browser, args.shots / 'failure.webp')
+        try:
+            with test_step('failure diagnostics', 10):
+                print('Browser failure state:', browser.evaluate('window.compilerReply') if args.compiler_only else browser.evaluate("({scene:Module.gallerySceneRendered,key:Module.lastInputKey,pickerKey:Module.lastPickerKey,active:document.activeElement?.id,focused:Module.siteTree?.filter(n=>n.focused).map(n=>({key:n.key,parent:n.parent,label:n.label})),errors:document.querySelector('#result')?.textContent,compileBusy:Module.compileBusy,compileRevision:Module.compileRevision,editorRevision:Module.editorRevision,compilerResult:Module.compilerResult,diagnostic:Module.compileDiagnostic})"))
+                capture(browser, args.shots / 'failure.webp')
+        except Exception as diagnostic:
+            print('Browser diagnostics unavailable:', diagnostic, flush=True)
+
         raise
     finally:
         browser.close(); server.shutdown(); server.server_close()
