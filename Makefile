@@ -242,7 +242,7 @@ zx-window-test: zx-player zx-window-host
 test: zx-window-test
 
 .PHONY: zx-services-test zx-hosted-test zx-headless-test
-zx-headless-test: zx-player
+zx-headless-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran \
 		python3 tests/zx_headless_test.py

@@ -1,5 +1,13 @@
 # Build the reusable native player, never the downloaded application's code.
 CC ?= cc
+PLAYER_HOST_OS ?= $(shell uname -s)
+ifeq ($(PLAYER_HOST_OS),Darwin)
+PLAYER_LDFLAGS ?= -Wl,-dead_strip
+PLAYER_PACKAGES := sdl2 cairo freetype2 pangocairo fontconfig glib-2.0
+else
+PLAYER_LDFLAGS ?= -Wl,--gc-sections
+PLAYER_PACKAGES := sdl2 cairo freetype2 pangocairo fontconfig glib-2.0 x11
+endif
 ZIRAN := $(ZIRAN_DIR)/build/bin/ziran
 PLAYER_HTTP_LIBS := $(or $(shell pkg-config --libs libcurl 2>/dev/null),$(if $(filter Linux,$(shell uname -s)),-l:libcurl.so.4,-lcurl))
 PLAYER_DIR := $(KRYON_DIR)/build/zx-player
@@ -17,8 +25,8 @@ $(PLAYER): $(PLAYER_SOURCES) $(KRYON_DIR)/mk/zx-player.mk $(KRYON_DIR)/ziran.tom
 		trap 'rm -f "$$temporary"' EXIT; \
 		$(CC) -std=c99 -pedantic-errors -Wno-main -O2 -ffunction-sections -fdata-sections \
 		-I$(ZIRAN_DIR)/include -I$(PLAYER_DIR) $(PLAYER_DIR)/*.c \
-		$(ZIRAN_DIR)/build/libziran.a $(OPUS_A) -Wl,--gc-sections \
-		$$(pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig glib-2.0 x11) $(PLAYER_HTTP_LIBS) -lm -lpthread -o "$$temporary" && \
+		$(ZIRAN_DIR)/build/libziran.a $(OPUS_A) $(PLAYER_LDFLAGS) \
+		$$(pkg-config --libs $(PLAYER_PACKAGES)) $(PLAYER_HTTP_LIBS) -lm -lpthread -o "$$temporary" && \
 		chmod 755 "$$temporary" && mv "$$temporary" $@
 
 # The desktop host library: zx_window's capabilities, which a ZX program's
