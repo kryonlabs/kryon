@@ -35,7 +35,8 @@ codec-archives: $(CODEC_ARCHIVES)
 
 $(OPUS_A): $$(OPUS_INPUTS)
 	cmake -S $(AUDIO_CODEC_PACKAGE)/native -B $(OPUS_BUILD) -DOPUS_DIR="$(OPUS_PACKAGE)" \
-		-DSAMPLERATE_DIR="$(SAMPLERATE_PACKAGE)" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$(CODEC_CC)"
+		-DSAMPLERATE_DIR="$(SAMPLERATE_PACKAGE)" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+		-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$(CODEC_CC)"
 	command cmake --build $(OPUS_BUILD) --target opus --parallel $(CODEC_JOBS)
 	@test -f $@
 
@@ -45,7 +46,7 @@ $(WEBP_A): $$(WEBP_INPUTS)
 	@test -n "$(WEBP_PACKAGE)" && test -f "$(WEBP_PACKAGE)/src/demux/anim_decode.c" || { echo "Run ziran fetch; Kryon needs the locked libwebp source package" >&2; exit 1; }
 	cmake -S $(KRYON_DIR)/cmake/webp -B $(WEBP_BUILD) -DWEBP_DIR="$(WEBP_PACKAGE)" \
 		-DKRYON_WEBP_PACKAGE_DIR="$(WEBP_CODEC_PACKAGE)" \
-		-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$(CODEC_CC)" \
+		-DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$(CODEC_CC)" \
 		-DCMAKE_C_FLAGS="$(WEBP_CFLAGS)" >/dev/null
 	command cmake --build $(WEBP_BUILD) --target kryonwebp --parallel $(CODEC_JOBS)
 	@test -f $@
@@ -53,7 +54,7 @@ $(WEBP_A): $$(WEBP_INPUTS)
 $(AVIF_A): $$(AVIF_INPUTS)
 	cmake -S $(KRYON_DIR)/cmake/avif -B $(AVIF_BUILD) -DAVIF_DIR="$(AVIF_PACKAGE)" -DAOM_DIR="$(AOM_PACKAGE)" \
 		-DDAV1D_DIR="$(DAV1D_PACKAGE)" -DKRYON_AVIF_PACKAGE_DIR="$(AVIF_CODEC_PACKAGE)" \
-		-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$(CODEC_CC)"
+		-DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$(CODEC_CC)"
 	command cmake --build $(AVIF_BUILD) --target avif_static $(if $(filter Linux,$(CODEC_HOST_OS)),kryonavif) --parallel $(CODEC_JOBS)
 	@test -f $@
 
