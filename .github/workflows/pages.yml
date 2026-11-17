@@ -151,7 +151,7 @@ jobs:
           test -f docs/site/gallery-sources/kryon/0.zi
 
       - name: Test the Canvas website
-        timeout-minutes: 30
+        timeout-minutes: 45
         env:
           CHROMIUM: google-chrome
           # Chrome creates Unix sockets below TMPDIR; keep them clear of the

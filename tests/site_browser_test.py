@@ -938,7 +938,10 @@ def main():
             run_step('preview containment', check_preview_containment, browser, base, args.shots, seconds=300)
             run_step('scroll dragging', check_scroll_drag, browser, base)
             run_step('application cards', check_apps, browser, base, args.shots)
-            run_step('live examples and source editing', check_live, browser, base, scenes, args.shots, seconds=1200)
+            # GitHub runners compile each of the 101 sources in about 14s, so
+            # this phase takes about 24 minutes there (under 15 locally).
+            # compile_ready still bounds each compile to 120s.
+            run_step('live examples and source editing', check_live, browser, base, scenes, args.shots, seconds=2400)
         run_step('example options', check_example_options, browser, base, scenes, args.shots, seconds=600)
         print('Local website options tests: disabled flags, motion and contrast passed' if args.options_only else 'Local website browser tests: routes, 101 live scenes/sources, mobile, theme, editing, diagnostics, portable preview, disabled flags, motion and contrast passed')
     except Exception:
