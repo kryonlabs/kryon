@@ -22,7 +22,7 @@ for target in c; do
     "$ziran" build --target="$target" --root "$repo/tests" \
         $kryon_project_args -o "$work/$target" "$source"
         "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$work/c" \
-            "$work/c"/*.c -o "$work/c/test"
+            "$work/c"/*.c -o "$work/c/test" -lm
     env -u DISPLAY -u WAYLAND_DISPLAY "$work/$target/test"
 done
 "$ziran" build --target=go --root "$repo/tests" $kryon_project_args \

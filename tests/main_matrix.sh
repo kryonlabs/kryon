@@ -67,14 +67,14 @@ for matrix_form in source saved; do
             --root "$matrix_root" $matrix_modules \
              -o "$matrix_output" "$matrix_module"
         "${CC:-cc}" -O2 -std=c11 -ffunction-sections -fdata-sections -I"$matrix_output" \
-            "$matrix_output"/*.c -Wl,--gc-sections -o "$matrix_output/run"
+            "$matrix_output"/*.c -Wl,--gc-sections -o "$matrix_output/run" -lm
         "$matrix_output/run"
     elif test "$matrix_c" = linked; then
         "$ziran" build --target=c --root "$matrix_root" $matrix_modules \
              -o "$matrix_output" "$matrix_module"
         "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections -Wl,--gc-sections \
             -I"$ziran_root/include" -I"$matrix_output" "$matrix_output"/*.c \
-            -o "$matrix_output/$matrix_name"
+            -o "$matrix_output/$matrix_name" -lm
         env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
             "$matrix_output/$matrix_name"
         printf 'c %s: passed\n' "$matrix_report"

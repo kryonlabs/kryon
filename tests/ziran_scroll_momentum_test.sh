@@ -272,7 +272,7 @@ for input in source saved; do
         -o "$output" "$source"
     cp "$work/native_main.h" "$output/main.c"
     "${CC:-cc}" -std=c11 -I"$ziran_root/include" \
-        -I"$output" "$output"/*.c -o "$output/app"
+        -I"$output" "$output"/*.c -o "$output/app" -lm
     if ! "$output/app"; then
         echo "scroll momentum ($input) failed" >&2
         exit 1

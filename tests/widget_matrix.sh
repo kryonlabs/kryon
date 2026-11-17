@@ -26,7 +26,7 @@ if test "${widget_native:-0}" = 1; then
             -o "$output" "$source"
             "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections \
                 -Wl,--gc-sections -I"$ziran_root/include" -I"$output" \
-                "$output"/*.c -o "$output/app"
+                "$output"/*.c -o "$output/app" -lm
         env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
     done
 fi

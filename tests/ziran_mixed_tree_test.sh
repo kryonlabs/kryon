@@ -22,7 +22,7 @@ test "$("$ziran" run "$work/saved.zx")" = 0
 "$ziran" build --target=c --root "$repo/tests" \
     $kryon_project_args  -o "$work/c" "$source"
 "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$work/c" \
-    "$work/c"/*.c -o "$work/c/app"
+    "$work/c"/*.c -o "$work/c/app" -lm
 "$work/c/app"
 
 

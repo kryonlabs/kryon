@@ -162,7 +162,7 @@ void RasterLine(Rectangle line, Color color) { (void)line; (void)color; }
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
-                "$output"/*.c -o "$output/app"
+                "$output"/*.c -o "$output/app" -lm
             "$output/app"
         fi
     done

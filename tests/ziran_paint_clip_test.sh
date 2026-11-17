@@ -135,7 +135,7 @@ for target in c go; do
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
-            "$output"/*.c -o "$output/app"
+            "$output"/*.c -o "$output/app" -lm
         "$output/app"
     else
         cat > "$output/paint_clip_test.go" <<'GO'

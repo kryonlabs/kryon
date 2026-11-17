@@ -67,14 +67,14 @@ for form in source saved; do
     "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections -Wl,--gc-sections \
         -I"$ziran_root/include" -I"$library" \
         "$library"/*.c "$work/count.c" -Wl,--wrap=realloc -Wl,--wrap=malloc \
-        -Wl,--wrap=calloc -Wl,--wrap=free -o "$work/count-$form"
+        -Wl,--wrap=calloc -Wl,--wrap=free -o "$work/count-$form" -lm
     echo "$form:"
     timeout 60 "$work/count-$form"
     "${CC:-cc}" -std=c11 -g -O1 -ffunction-sections -fdata-sections -Wl,--gc-sections \
         -fsanitize=address,undefined \
         -fno-sanitize-recover=all -fno-omit-frame-pointer \
         -I"$ziran_root/include" -I"$library" "$library"/*.c "$work/plain.c" \
-        -o "$work/asan-$form"
+        -o "$work/asan-$form" -lm
     ASAN_OPTIONS=detect_leaks=0 timeout 120 "$work/asan-$form"
 done
 echo 'Text frees a fresh label after painting it, through ellipsis and the selection painter'

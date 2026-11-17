@@ -36,7 +36,7 @@ for input in source saved; do
                 $module_dir \
                 --module-path "$ziran_root/std" -o "$output" "$module"
                 "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
-                    "$output"/*.c -o "$output/app"
+                    "$output"/*.c -o "$output/app" -lm
             env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
         fi
     done

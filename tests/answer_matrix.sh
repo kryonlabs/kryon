@@ -27,7 +27,7 @@ for input in source saved; do
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
             "${CC:-cc}" -std=c11 -I"$ziran_root/include" \
-                -I"$output" "$output"/*.c -o "$output/app"
+                -I"$output" "$output"/*.c -o "$output/app" -lm
             "$output/app"
         else
             cp "$work/answer_test.go" "$output/$answer_go_file"

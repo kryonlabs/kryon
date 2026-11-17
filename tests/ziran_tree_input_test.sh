@@ -354,7 +354,7 @@ int main(int argc, char **argv) {
 }
 C
 "${CC:-cc}" ${VM_CFLAGS:-} -std=c11 -I"$include" \
-    "$work/portable.c" "$ziran_lib" ${VM_LDFLAGS:-} -o "$work/portable"
+    "$work/portable.c" "$ziran_lib" ${VM_LDFLAGS:-} -o "$work/portable" -lm
 "$work/portable" "$work/source.zx"
 "$work/portable" "$work/saved.zx"
 
@@ -369,7 +369,7 @@ for target in c go; do
 int main(void) { assert(Answer() == 42); return 0; }
 C
         "${CC:-cc}" -std=c11 -I"$include" -I"$output" \
-            "$output"/*.c -o "$output/app"
+            "$output"/*.c -o "$output/app" -lm
         "$output/app"
     else
         cat > "$output/tree_input_test.go" <<'GO'

@@ -427,7 +427,7 @@ for input in source saved; do
         if test "$target" = c; then
             cp "$work/native_main.h" "$output/main.c"
             "${CC:-cc}" -std=c11 -I"$include" \
-                -I"$output" "$output"/*.c -o "$output/app"
+                -I"$output" "$output"/*.c -o "$output/app" -lm
             "$output/app"
         else
             cat > "$output/scroll_test.go" <<'GO'

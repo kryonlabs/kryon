@@ -56,10 +56,10 @@ library=$work/c
     -o "$library" "$repo/tests/$name.zi"
 "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections -Wl,--gc-sections \
     -I"$ziran_root/include" -I"$library" "$library"/*.c "$work/count.c" \
-    -Wl,--wrap=realloc -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=free -o "$work/count"
+    -Wl,--wrap=realloc -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=free -o "$work/count" -lm
 timeout 60 "$work/count"
 "${CC:-cc}" -std=c11 -g -O1 -ffunction-sections -fdata-sections -Wl,--gc-sections \
     -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer \
-    -I"$ziran_root/include" -I"$library" "$library"/*.c "$work/plain.c" -o "$work/asan"
+    -I"$ziran_root/include" -I"$library" "$library"/*.c "$work/plain.c" -o "$work/asan" -lm
 ASAN_OPTIONS=detect_leaks=0 timeout 120 "$work/asan"
 echo 'Fresh Text passed to AppService, DocumentWrite, DocumentRead and AppReply is freed after the call'

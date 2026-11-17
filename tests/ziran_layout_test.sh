@@ -231,7 +231,7 @@ EOF
         "$work/c-$input/geometry.c" "$work/c-$input/math.c" "$work/c-$input/layout_behavior.c" \
         "$work/c-$input/group.c" \
         "$work/c-$input/use_layout.c" "$work/c-$input/main.c" \
-        -o "$work/c-$input/app"
+        -o "$work/c-$input/app" -lm
     "$work/c-$input/app"
 
 

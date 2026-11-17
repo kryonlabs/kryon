@@ -16,7 +16,7 @@ widget_std="$ziran_root/std"
 "$ziran" build --target=c --root "$work/ir" --module-path "$work/ir" \
     -o "$work/saved-c" "$work/ir/ziran_tab_bar_widget_test.zir"
 "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections -Wl,--gc-sections \
-    -I"$ziran_root/include" -I"$work/saved-c" "$work/saved-c"/*.c -o "$work/saved-c/app"
+    -I"$ziran_root/include" -I"$work/saved-c" "$work/saved-c"/*.c -o "$work/saved-c/app" -lm
 env -u DISPLAY -u WAYLAND_DISPLAY "$work/saved-c/app"
 
 # The same Tab routing contract also executes in WebAssembly in Chromium.

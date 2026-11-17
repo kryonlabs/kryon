@@ -61,7 +61,7 @@ for input in source saved; do
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
             "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
-                "$output"/*.c -o "$output/app"
+                "$output"/*.c -o "$output/app" -lm
             "$output/app"
         else
             cat > "$output/tree_test.go" <<'GO'
