@@ -243,7 +243,6 @@ ShapedCaret :: (value: string, byte: s32, font: s32, typeface: string) -> s32 {
 
 surface: *void;
 paint: *void;
-image_error: bool;
 frame_pending: bool;
 raster_presented_surface: *void;
 RasterFrameImage :: #type (id: u32) -> *void;
@@ -562,7 +561,6 @@ CloseRaster :: () {
 BeginRasterFrame :: (retain: bool = false) {
     if raster_smooth_pump != null { unused raster_smooth_pump() }
     frame_pending = true
-    image_error = false
     text_error = false
     if !retain { PrepareRasterPaint() }
 }
@@ -600,7 +598,7 @@ ClearRasterFrame :: (color: Color) {
 FinishRasterFrame :: (retain: bool = false) -> bool {
     // A changed frame with no commands still replaces the previous picture.
     if !retain { PrepareRasterPaint() }
-    if image_error || text_error || Status(paint) != 0 { return false }
+    if text_error || Status(paint) != 0 { return false }
     SurfaceFlush(surface)
     if SurfaceStatus(surface) != 0 { return false }
     return true
@@ -1197,20 +1195,28 @@ RasterImage :: (asset_path: string, texture_id: u32,
     origin: Vector2, rotation: float32, radius: float32, tint: Color) {
     PrepareRasterPaint()
     if (texture_id == cast(u32)0 && asset_path.count == 0) ||
-        source.width <= 0.0 || source.height <= 0.0 ||
+        !Finite32(source.x) || !Finite32(source.y) || !Finite32(source.width) || !Finite32(source.height) ||
+        !Finite32(destination.x) || !Finite32(destination.y) || !Finite32(destination.width) || !Finite32(destination.height) ||
+        !Finite32(clip.x) || !Finite32(clip.y) || !Finite32(clip.width) || !Finite32(clip.height) ||
+        !Finite32(origin.x) || !Finite32(origin.y) || !Finite32(rotation) || !Finite32(radius) ||
+        source.width == 0.0 || source.height == 0.0 ||
         destination.width <= 0.0 || destination.height <= 0.0 ||
         clip.width <= 0.0 || clip.height <= 0.0 {
-        image_error = true
+        print("Kryon: skipped image: invalid or unavailable picture\n")
         return
     }
     image := CairoPictureFor(asset_path, texture_id)
     if image == null {
-        image_error = true
+        print("Kryon: skipped image: invalid or unavailable picture\n")
         return
     }
+    mirror_x := source.width < 0.0; mirror_y := source.height < 0.0
+    if mirror_x { source.width = -source.width }
+    if mirror_y { source.height = -source.height }
     sampled: *Lanczos.LanczosEntry
     snapped: Rectangle
-    if texture_id == cast(u32)0 && raster_picture_smooth != null && rotation == 0.0 &&
+    // Mirrored sources keep Cairo's filter; cached copies have positive axes.
+    if !mirror_x && !mirror_y && texture_id == cast(u32)0 && raster_picture_smooth != null && rotation == 0.0 &&
         origin.x == 0.0 && origin.y == 0.0 && CurrentPaintSmooth() {
         sampled = raster_picture_smooth(image, source, destination, *snapped)
     }
@@ -1276,6 +1282,8 @@ RasterImage :: (asset_path: string, texture_id: u32,
             destination.height)
         Clip(paint)
     }
+    if mirror_x { Translate(paint, cast(float64)destination.width, 0.0); Scale(paint, -1.0, 1.0) }
+    if mirror_y { Translate(paint, 0.0, cast(float64)destination.height); Scale(paint, 1.0, -1.0) }
     Scale(paint, cast(float64)destination.width /
         cast(float64)source.width,
         cast(float64)destination.height / cast(float64)source.height)
@@ -1286,7 +1294,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
     if pattern == null {
         Restore(paint)
         CairoReleaseManaged(texture_id, image)
-        image_error = true
+        print("Kryon: skipped image: invalid or unavailable picture\n")
         return
     }
     PatternFilter(pattern, ifx CurrentPaintSmooth() then 1 else 3)
@@ -1306,16 +1314,21 @@ RasterImage :: (asset_path: string, texture_id: u32,
 RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) {
     PrepareRasterPaint()
-    if columns < 2 || rows < 2 || clip.width <= 0.0 || clip.height <= 0.0 { return }
+    if columns < 2 || rows < 2 || !Finite32(clip.x) || !Finite32(clip.y) ||
+        !Finite32(clip.width) || !Finite32(clip.height) || clip.width <= 0.0 || clip.height <= 0.0 ||
+        !Finite32(source.x) || !Finite32(source.y) || !Finite32(source.width) || !Finite32(source.height) ||
+        source.width == 0.0 || source.height == 0.0 {
+        print("Kryon: skipped image mesh: invalid geometry\n"); return
+    }
     count: s64 = cast(s64)columns * cast(s64)rows
     if count > cast(s64)ImageSchema.IMAGE_MESH_POINT_LIMIT || points.count < count { return }
     if texture_id == cast(u32)0 && asset_path.count == 0 {
-        image_error = true
+        print("Kryon: skipped image: invalid or unavailable picture\n")
         return
     }
     image := CairoPictureFor(asset_path, texture_id)
     if image == null {
-        image_error = true
+        print("Kryon: skipped image: invalid or unavailable picture\n")
         return
     }
     Save(paint)
@@ -1393,7 +1406,7 @@ CairoMeshTriangle :: (image: *void, a: Vector2, a_source: Vector2,
     pattern: *void = PatternForSurface(image)
     if pattern == null {
         Restore(paint)
-        image_error = true
+        print("Kryon: skipped image: invalid or unavailable picture\n")
         return
     }
     PatternFilter(pattern, ifx CurrentPaintSmooth() then 4 else 3)

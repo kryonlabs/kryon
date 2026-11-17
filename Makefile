@@ -1087,3 +1087,9 @@ test: android-present-damage-test
 image-dimensions-host-test: project-toolchain
 	@sh tests/image_dimensions_host_test.sh
 test: image-dimensions-host-test
+
+.PHONY: mirrored-image-test
+mirrored-image-test: project-toolchain
+	@sh tests/ziran_cairo_mirrored_image_test.sh
+	@sh tests/pixmap_mirrored_image_test.sh
+test: mirrored-image-test

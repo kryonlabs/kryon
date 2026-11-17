@@ -1,0 +1,70 @@
+Raster :: #import "cairo_raster";
+Pictures :: #import "raster_picture";
+Texture :: #import "paint_texture";
+#import "geometry"
+#import "drawing_props"
+
+pixels: [6]u32 = .{0xffd01020, 0xff20b030, 0xff3040e0, 0xffd0a020, 0xff20a0c0, 0xffa030c0};
+white :: Color.{255, 255, 255, 255};
+clip :: Rectangle.{0.0, 0.0, 8.0, 8.0};
+Picture :: (path: string, picture: *Pictures.RasterPicture) -> bool {
+    if path != "mirror" { return false }
+    picture.* = .{cast(*u8)*pixels[0], 3, 2, 1}
+    return true
+}
+Playing :: () -> bool { return false }
+Stop :: () {}
+Pixel :: (x: s32, y: s32) -> u32 {
+    data := Raster.RasterSurfaceData()
+    pixel := cast(*u32)*data[y * Raster.RasterSurfaceStride() + x * 4]
+    return pixel.*
+}
+
+#program_export
+main :: () -> s32 {
+    source: Pictures.RasterPictureSource = Picture
+    playing: Pictures.RasterSourcePlaying = Playing
+    stop: Pictures.RasterSourceStop = Stop
+    unused Pictures.RasterUsePictureSource(source, playing, stop)
+    if !Raster.OpenRaster(8, 8) || Raster.ImageWidth("mirror") != 3 { return 1 }
+    defer { Raster.CloseRaster() }
+    for smooth: cast(s32)0..1 {
+        Texture.emitting_smooth = smooth == 1
+        for crop: cast(s32)0..1 {
+            width := 3 - crop
+            for flip: cast(s32)0..3 {
+                Raster.BeginRasterFrame()
+                box := Rectangle.{cast(float32)crop, 0.0,
+                    cast(float32)(ifx (flip & 1) == 0 then width else -width),
+                    ifx (flip & 2) == 0 then 2.0 else -2.0}
+                Raster.RasterImage("mirror", 0, box, .{1.0, 1.0, cast(float32)width, 2.0}, clip, .{}, 0.0, 0.0, white)
+                if !Raster.FinishRasterFrame() { return 2 }
+                for y: cast(s32)0..1 {
+                    for x: cast(s32)0..width - 1 {
+                        sx := crop + (ifx (flip & 1) == 0 then x else width - 1 - x)
+                        sy := ifx (flip & 2) == 0 then y else 1 - y
+                        if Pixel(x + 1, y + 1) != pixels[sy * 3 + sx] {
+                            print("Cairo mirror mismatch: smooth % crop % flip % at %, %\n", smooth, crop, flip, x, y)
+                            return 3
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Missing pictures and invalid geometry must not poison the context or
+    // discard the valid drawing that follows them in the same frame.
+    Raster.BeginRasterFrame()
+    Raster.RasterImage("missing", 0, .{0.0, 0.0, 3.0, 2.0}, .{0.0, 0.0, 3.0, 2.0}, clip, .{}, 0.0, 0.0, white)
+    Raster.RasterImage("mirror", 0, .{}, .{0.0, 0.0, 3.0, 2.0}, clip, .{}, 0.0, 0.0, white)
+    invalid_bits: u32 = 0x7fc00000
+    invalid_pointer := cast(*float32)*invalid_bits
+    invalid := invalid_pointer.*
+    Raster.RasterImage("mirror", 0, .{invalid, 0.0, 3.0, 2.0}, .{0.0, 0.0, 3.0, 2.0}, clip, .{}, 0.0, 0.0, white)
+    points: [4]Vector2 = .{.{0.0, 0.0}, .{3.0, 0.0}, .{0.0, 2.0}, .{3.0, 2.0}}
+    Raster.RasterImageMesh("missing", 0, .{0.0, 0.0, 3.0, 2.0}, points[:], 2, 2, clip, white)
+    Raster.RasterImage("mirror", 0, .{0.0, 0.0, -3.0, -2.0}, .{1.0, 1.0, 3.0, 2.0}, clip, .{}, 0.0, 0.0, white)
+    if !Raster.FinishRasterFrame() || Pixel(1, 1) != pixels[5] { return 4 }
+    print("Cairo mirrored images: both axes, crops, smooth/sharp and invalid draw isolation passed\n")
+    return 0
+}

@@ -1305,11 +1305,14 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32, source: Rectangle,
             !Finite32(destination.x) || !Finite32(destination.y) || !Finite32(destination.width) || !Finite32(destination.height) ||
             !Finite32(clip.x) || !Finite32(clip.y) || !Finite32(clip.width) || !Finite32(clip.height) ||
             !Finite32(origin.x) || !Finite32(origin.y) || !Finite32(rotation) || !Finite32(radius) ||
-            destination.width <= 0.0 || destination.height <= 0.0 || clip.width <= 0.0 || clip.height <= 0.0 { return }
+            source.width == 0.0 || source.height == 0.0 ||
+            destination.width <= 0.0 || destination.height <= 0.0 || clip.width <= 0.0 || clip.height <= 0.0 {
+            print("Kryon: skipped image: invalid geometry\n"); return
+        }
         smooth := CurrentPaintSmooth()
         #if PIXMAP_LANCZOS {
             // A smooth unrotated image draws its Lanczos copy pixel for pixel.
-            if smooth && rotation == 0.0 {
+            if smooth && rotation == 0.0 && source.width > 0.0 && source.height > 0.0 {
                 shown: Rectangle = .{destination.x - origin.x, destination.y - origin.y, destination.width, destination.height}
                 copy_source: Rectangle; snapped: Rectangle; stretched: bool
                 copy := PixmapLanczosSlot(slot, source, shown, *copy_source, *snapped, *stretched)
@@ -1319,6 +1322,11 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32, source: Rectangle,
                 }
             }
         }
+        // Negative source sizes mirror the positive source rectangle, as
+        // in ImageCanvas and meshes. Both CPU sampling and GPU UVs then walk
+        // from its far edge back toward its unchanged source origin.
+        if source.width < 0.0 { source.x -= source.width }
+        if source.height < 0.0 { source.y -= source.height }
         // Clamp floats before converting them to pixel indexes.
         left := clip.x; top := clip.y; right := clip.x + clip.width; bottom := clip.y + clip.height
         if !Finite32(right) || !Finite32(bottom) { return }

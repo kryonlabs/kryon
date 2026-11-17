@@ -1,0 +1,44 @@
+using Pixels :: #import "pixmap";
+Texture :: #import "paint_texture";
+#import "geometry"
+#import "drawing_props"
+
+image: [6]u32 = .{0xffd01020, 0xff20b030, 0xff3040e0, 0xffd0a020, 0xff20a0c0, 0xffa030c0};
+frame: [64]u32;
+white :: Color.{255, 255, 255, 255};
+clip :: Rectangle.{0.0, 0.0, 8.0, 8.0};
+#program_export
+main :: () -> s32 {
+    if !PixmapSetImage(0, "mirror", 3, 2, image[:]) { return 1 }
+    for smooth: cast(s32)0..1 {
+        Texture.emitting_smooth = smooth == 1
+        for crop: cast(s32)0..1 {
+            width := 3 - crop
+            for flip: cast(s32)0..3 {
+                if !PixmapBeginInto(0, 8, 8, frame[:], true) { return 2 }
+                box := Rectangle.{cast(float32)crop, 0.0,
+                    cast(float32)(ifx (flip & 1) == 0 then width else -width),
+                    ifx (flip & 2) == 0 then 2.0 else -2.0}
+                RasterImage("mirror", 0, box, .{1.0, 1.0, cast(float32)width, 2.0}, clip, .{}, 0.0, 0.0, white)
+                PixmapEndInto()
+                for y: cast(s32)0..1 {
+                    for x: cast(s32)0..width - 1 {
+                        sx := crop + (ifx (flip & 1) == 0 then x else width - 1 - x)
+                        sy := ifx (flip & 2) == 0 then y else 1 - y
+                        if frame[(y + 1) * 8 + x + 1] != image[sy * 3 + sx] {
+                            print("Pixmap mirror mismatch: smooth % crop % flip % at %, %\n", smooth, crop, flip, x, y)
+                            return 3
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if !PixmapBeginInto(0, 8, 8, frame[:], true) { return 4 }
+    RasterImage("mirror", 0, .{}, .{1.0, 1.0, 3.0, 2.0}, clip, .{}, 0.0, 0.0, white)
+    RasterImage("mirror", 0, .{0.0, 0.0, -3.0, -2.0}, .{1.0, 1.0, 3.0, 2.0}, clip, .{}, 0.0, 0.0, white)
+    PixmapEndInto()
+    if frame[9] != image[5] { return 5 }
+    print("Pixmap mirrored images: both axes, crops, smooth/sharp and invalid draw isolation passed\n")
+    return 0
+}
