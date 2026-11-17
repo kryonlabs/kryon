@@ -38,6 +38,7 @@ JniCallObjectMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> *void #c_c
 JniCallBooleanMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> u8 #c_call;
 JniCallIntMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> s32 #c_call;
 JniCallLongMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> s64 #c_call;
+JniCallFloatMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> float32 #c_call;
 JniCallVoidMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> void #c_call;
 JniGetFieldIDFn :: #type (*JniEnv, *void, *u8, *u8) -> *void #c_call;
 JniGetIntFieldFn :: #type (*JniEnv, *void, *void) -> s32 #c_call;
@@ -48,6 +49,7 @@ JniCallStaticVoidMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> void #
 JniGetStaticFieldIDFn :: #type (*JniEnv, *void, *u8, *u8) -> *void #c_call;
 JniGetStaticObjectFieldFn :: #type (*JniEnv, *void, *void) -> *void #c_call;
 JniGetStaticIntFieldFn :: #type (*JniEnv, *void, *void) -> s32 #c_call;
+JniNewStringFn :: #type (*JniEnv, *u16, s32) -> *void #c_call;
 JniNewStringUTFFn :: #type (*JniEnv, *u8) -> *void #c_call;
 JniGetStringUTFCharsFn :: #type (*JniEnv, *void, *u8) -> *u8 #c_call;
 JniReleaseStringUTFCharsFn :: #type (*JniEnv, *void, *u8) -> void #c_call;
@@ -90,7 +92,9 @@ JniFunctions :: struct {
     CallIntMethodA: JniCallIntMethodAFn
     reserved_52: [2]*void
     CallLongMethodA: JniCallLongMethodAFn
-    reserved_55: [8]*void
+    reserved_55: [2]*void
+    CallFloatMethodA: JniCallFloatMethodAFn
+    reserved_58: [5]*void
     CallVoidMethodA: JniCallVoidMethodAFn
     reserved_64: [30]*void
     GetFieldID: JniGetFieldIDFn
@@ -108,7 +112,9 @@ JniFunctions :: struct {
     GetStaticObjectField: JniGetStaticObjectFieldFn
     reserved_146: [4]*void
     GetStaticIntField: JniGetStaticIntFieldFn
-    reserved_151: [16]*void
+    reserved_151: [12]*void
+    NewString: JniNewStringFn
+    reserved_164: [3]*void
     NewStringUTF: JniNewStringUTFFn
     reserved_168: [1]*void
     GetStringUTFChars: JniGetStringUTFCharsFn

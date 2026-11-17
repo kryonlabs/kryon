@@ -1,7 +1,9 @@
+TypefaceSlots :: #import "pixmap_typeface_slots";
 #import "drawing_props"
 #import "geometry"
 #import "utf8"
 #import "pixmap_text"
+#import "pixmap_image_owner"
 #import "pixmap_gpu"
 ImageCanvas :: #import "image_canvas";
 Metrics :: #import "font_metrics";
@@ -93,14 +95,52 @@ pixmap_alpha: u32;
 // Measures deliberately remain logical, so density never changes wrapping.
 pixmap_scale_x: float32 = 1.0;
 pixmap_scale_y: float32 = 1.0;
+pixmap_offset_x: float32;
+pixmap_offset_y: float32;
+// A custom camera survives EndInto and surface replacement. The effective
+// borrowed-surface state still resets for ordinary offscreen Pixmap users.
+pixmap_camera_set: bool;
+pixmap_camera_scale: float32 = 1.0;
+pixmap_camera_x: float32;
+pixmap_camera_y: float32;
+
+#program_export
+RasterSetTransform :: (scale: float32, offset_x: float32, offset_y: float32) -> bool {
+    if !(scale > 0.0) || scale > 16.0 || !Finite32(offset_x) || !Finite32(offset_y) { return false }
+    pixmap_camera_set = true; pixmap_camera_scale = scale
+    pixmap_camera_x = offset_x; pixmap_camera_y = offset_y
+    PixmapApplyCamera()
+    SetPaintPixelScale(scale)
+    return true
+}
+PixmapApplyCamera :: () {
+    pixmap_scale_x = pixmap_camera_scale; pixmap_scale_y = pixmap_camera_scale
+    pixmap_offset_x = pixmap_camera_x; pixmap_offset_y = pixmap_camera_y
+}
+#program_export
+RasterScale :: () -> float32 { return pixmap_camera_scale }
+#program_export
+RasterPointFromPixels :: (point: Vector2) -> Vector2 {
+    return .{(point.x - pixmap_camera_x) / pixmap_camera_scale,
+        (point.y - pixmap_camera_y) / pixmap_camera_scale}
+}
+PixmapDevicePoint :: (point: Vector2) -> Vector2 {
+    return .{point.x * pixmap_scale_x + pixmap_offset_x,
+        point.y * pixmap_scale_y + pixmap_offset_y}
+}
 #program_export
 PixmapScale :: (x: float32, y: float32) -> bool {
     if !Finite32(x) || !Finite32(y) || x < 0.1 || y < 0.1 || x > 8.0 || y > 8.0 { return false }
-    pixmap_scale_x = x; pixmap_scale_y = y; return true
+    pixmap_scale_x = x; pixmap_scale_y = y
+    pixmap_offset_x = 0.0; pixmap_offset_y = 0.0; return true
 }
 PixmapDeviceBounds :: (bounds: Rectangle) -> Rectangle {
-    return .{bounds.x * pixmap_scale_x, bounds.y * pixmap_scale_y,
+    return .{bounds.x * pixmap_scale_x + pixmap_offset_x, bounds.y * pixmap_scale_y + pixmap_offset_y,
         bounds.width * pixmap_scale_x, bounds.height * pixmap_scale_y}
+}
+PixmapLogicalBounds :: () -> Rectangle {
+    return .{-pixmap_offset_x / pixmap_scale_x, -pixmap_offset_y / pixmap_scale_y,
+        cast(float32)pixmap_width / pixmap_scale_x, cast(float32)pixmap_height / pixmap_scale_y}
 }
 PixmapDeviceFont :: (font: s32) -> s32 { return PixmapRound(cast(float32)font * pixmap_scale_y) }
 // The host owns these decoded 0xAARRGGBB pixels and keeps them alive until
@@ -181,6 +221,7 @@ PixmapClearImage :: (slot: s32) {
     #if PIXMAP_LANCZOS {
         Lanczos.LanczosForget(PixmapLanczosContent(slot))
     }
+    PixmapImageReplacing(slot, null)
     if pixmap_image_lengths[slot] > 0 { pixmap_image_revision += 1; pixmap_image_revisions[slot] = pixmap_image_revision }
     pixmap_image_lengths[slot] = 0; pixmap_image_widths[slot] = 0
     pixmap_image_heights[slot] = 0; pixmap_image_pixels[slot].value = pixmap_pixels[0:0]
@@ -241,6 +282,7 @@ PixmapSetImage :: (slot: s32, path: string, width: s32, height: s32, pixels: []u
     #if PIXMAP_LANCZOS {
         Lanczos.LanczosForget(PixmapLanczosContent(slot))
     }
+    PixmapImageReplacing(slot, *pixels[0])
     for i: 0..cast(s32)path.count - 1 { pixmap_image_paths[slot][i] = path[i] }
     pixmap_image_lengths[slot] = cast(s32)path.count
     pixmap_image_widths[slot] = width; pixmap_image_heights[slot] = height
@@ -404,6 +446,7 @@ PixmapResumeInto :: (width: s32, height: s32, pixels: []u32,
         // A finished copy replaces what the last frame drew.
         if Lanczos.LanczosPump() { PaintResourcesChanged() }
     }
+    if pixmap_camera_set { PixmapApplyCamera() }
     pixmap_surface = pixels; pixmap_width = width; pixmap_height = height
     pixmap_alpha = ifx opaque then cast(u32)0xff000000 else cast(u32)0
     pixmap_damage_active = false
@@ -415,6 +458,7 @@ PixmapResumeInto :: (width: s32, height: s32, pixels: []u32,
 PixmapEndInto :: () {
     pixmap_surface = pixmap_pixels[:]; pixmap_width = PixmapWidth; pixmap_height = PixmapHeight
     pixmap_scale_x = 1.0; pixmap_scale_y = 1.0
+    pixmap_offset_x = 0.0; pixmap_offset_y = 0.0
     pixmap_alpha = cast(u32)0
     pixmap_damage_active = false
     PixmapClipAll()
@@ -880,6 +924,7 @@ PixmapLabelSlot :: (value: string) -> s32 {
 
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    if TypefaceSlots.active { return TypefaceSlots.PixmapTypefaceWidth(value, font, typeface) }
     unused typeface
     bounded: bool = value.count <= PixmapMeasureBytes
     units: s64 = 0
@@ -957,15 +1002,15 @@ PixmapDrawEmoji :: (emoji: s32, x: s32, y: s32, size: s32) {
     color: Color
     color.a = cast(u8)255
     if pixmap_text_rotation != 0.0 {
-        bounds := Rectangle.{cast(float32)x/pixmap_scale_x,cast(float32)y/pixmap_scale_y,
+        bounds := Rectangle.{(cast(float32)x-pixmap_offset_x)/pixmap_scale_x,(cast(float32)y-pixmap_offset_y)/pixmap_scale_y,
             cast(float32)size/pixmap_scale_x,cast(float32)size/pixmap_scale_y}
         area := PixmapDeviceBounds(RotatedRectangleBounds(bounds,pixmap_text_origin,pixmap_text_rotation))
         camera: Camera = .{.offset=pixmap_text_origin,.target=pixmap_text_origin,.rotation=pixmap_text_rotation,.zoom=1.0}
         for row: cast(s32)area.y-1..cast(s32)(area.y+area.height)+1 {
             for column: cast(s32)area.x-1..cast(s32)(area.x+area.width)+1 {
-                point := ScreenToWorld(Vector2.{(cast(float32)column+0.5)/pixmap_scale_x,(cast(float32)row+0.5)/pixmap_scale_y},camera)
+                point := ScreenToWorld(Vector2.{(cast(float32)column+0.5-pixmap_offset_x)/pixmap_scale_x,(cast(float32)row+0.5-pixmap_offset_y)/pixmap_scale_y},camera)
                 clip := pixmap_text_local_clip
-                sx := cast(s32)(point.x*pixmap_scale_x)-x; sy := cast(s32)(point.y*pixmap_scale_y)-y
+                sx := cast(s32)(point.x*pixmap_scale_x+pixmap_offset_x)-x; sy := cast(s32)(point.y*pixmap_scale_y+pixmap_offset_y)-y
                 if sx >= 0 && sy >= 0 && sx < size && sy < size && point.x >= clip.x && point.y >= clip.y &&
                 point.x < clip.x+clip.width && point.y < clip.y+clip.height {
                     pixel := pixmap_emoji_pool[offset+sy*size+sx]
@@ -1088,6 +1133,15 @@ PixmapBlendMask :: (mask: PixmapGlyphMask, coverage: []u8, color: Color) {
 // move the glyphs off them.
 PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, pen_font: s64, color: Color) {
     if font <= 0 || pen_font <= 0 { return }
+    if TypefaceSlots.active {
+        shape: TypefaceSlots.PixmapTypefaceMask
+        if TypefaceSlots.PixmapTypefacePixels(value, cast(float32)pen_font / 256.0, *shape) &&
+        shape.coverage.count > 0 {
+            mask := PixmapGlyphMask.{x + shape.left, y + shape.top, shape.width, shape.height, 0}
+            PixmapBlendMask(mask, shape.coverage, color)
+        }
+        return
+    }
     // A glyph stays well within two font sizes of its line box and advance,
     // so text past the clip draws nothing and is not rasterized.
     reach: s32 = font * 2
@@ -1120,8 +1174,8 @@ PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, pen_font: s64, colo
 RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
     if font <= 0 { return }
     pen_font := cast(s64)(cast(float64)font * cast(float64)pixmap_scale_x * 256.0 + 0.5)
-    PixmapDrawText(value, PixmapRound(cast(float32)x * pixmap_scale_x),
-        PixmapRound(cast(float32)y * pixmap_scale_y), PixmapDeviceFont(font), pen_font, color)
+    PixmapDrawText(value, PixmapRound(cast(float32)x * pixmap_scale_x + pixmap_offset_x),
+        PixmapRound(cast(float32)y * pixmap_scale_y + pixmap_offset_y), PixmapDeviceFont(font), pen_font, color)
 }
 
 #program_export
@@ -1198,12 +1252,9 @@ RasterTriangles :: (points: []Vector2, color: Color) {
     no_source: Vector2 = Vector2.{0.0, 0.0}
     at: s64 = 0
     while at < count {
-        a: Vector2 = Vector2.{points[at].x * pixmap_scale_x,
-            points[at].y * pixmap_scale_y}
-        b: Vector2 = Vector2.{points[at + 1].x * pixmap_scale_x,
-            points[at + 1].y * pixmap_scale_y}
-        c: Vector2 = Vector2.{points[at + 2].x * pixmap_scale_x,
-            points[at + 2].y * pixmap_scale_y}
+        a := PixmapDevicePoint(points[at])
+        b := PixmapDevicePoint(points[at + 1])
+        c := PixmapDevicePoint(points[at + 2])
         triangle := ImageCanvas.MeshTriangleFor(a, no_source, b,
             no_source, c, no_source)
         if triangle.valid { PixmapFillTriangle(triangle, color) }
@@ -1413,7 +1464,8 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
         for column: cast(s32)0..columns - 2 {
             for half: cast(s32)0..1 {
                 triangle := ImageCanvas.MeshCellTriangle(points, columns, rows,
-                    source, column, row, half == 1, Vector2.{0.0, 0.0},
+                    source, column, row, half == 1,
+                    Vector2.{-pixmap_offset_x / pixmap_scale_x, -pixmap_offset_y / pixmap_scale_y},
                     pixmap_scale_x, pixmap_scale_y)
                 if !triangle.valid { continue }
                 PixmapMeshTriangle(slot, triangle, left, top, right, bottom, clip, tint, smooth)
@@ -1703,17 +1755,17 @@ pixmap_text_origin: Vector2;
 pixmap_text_local_clip: Rectangle;
 PixmapBlendRotatedMask :: (mask: PixmapGlyphMask, coverage: []u8, color: Color) {
     // Rotate in logical units so nonuniform device density preserves the angle.
-    local := Rectangle.{cast(float32)mask.left/pixmap_scale_x,cast(float32)mask.top/pixmap_scale_y,
+    local := Rectangle.{(cast(float32)mask.left-pixmap_offset_x)/pixmap_scale_x,(cast(float32)mask.top-pixmap_offset_y)/pixmap_scale_y,
         cast(float32)mask.width/pixmap_scale_x,cast(float32)mask.height/pixmap_scale_y}
     bounds := PixmapDeviceBounds(RotatedRectangleBounds(local,pixmap_text_origin,pixmap_text_rotation))
     camera: Camera = .{.offset=pixmap_text_origin,.target=pixmap_text_origin,.rotation=pixmap_text_rotation,.zoom=1.0}
     for y: cast(s32)bounds.y-1..cast(s32)(bounds.y+bounds.height)+1 {
         for x: cast(s32)bounds.x-1..cast(s32)(bounds.x+bounds.width)+1 {
-            point := ScreenToWorld(Vector2.{(cast(float32)x+0.5)/pixmap_scale_x,(cast(float32)y+0.5)/pixmap_scale_y},camera)
+            point := ScreenToWorld(Vector2.{(cast(float32)x+0.5-pixmap_offset_x)/pixmap_scale_x,(cast(float32)y+0.5-pixmap_offset_y)/pixmap_scale_y},camera)
             clip := pixmap_text_local_clip
             if point.x >= clip.x && point.y >= clip.y && point.x < clip.x+clip.width && point.y < clip.y+clip.height {
-                column := cast(s32)(point.x*pixmap_scale_x)-mask.left
-                row := cast(s32)(point.y*pixmap_scale_y)-mask.top
+                column := cast(s32)(point.x*pixmap_scale_x+pixmap_offset_x)-mask.left
+                row := cast(s32)(point.y*pixmap_scale_y+pixmap_offset_y)-mask.top
                 if column >= 0 && row >= 0 && column < mask.width && row < mask.height {
                     PixmapBlend(x,y,color,cast(s32)coverage[row*mask.width+column])
                 }

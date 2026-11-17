@@ -1,0 +1,408 @@
+// Optional NativeActivity font services. Android's Paint shapes the same run
+// for both layout and rasterization; Canvas supplies coverage to Pixmap's
+// existing camera, clipping, rotation and compositing paths.
+#import "android_jni"
+#import "android_host_cleanup"
+#import "font_metrics"
+#import "paint_queue"
+#import "utf8"
+#import "std/byte_text_linux"
+CString :: #import "std/c_string";
+SystemFonts :: #import "system_typeface_android";
+Slots :: #import "pixmap_typeface_slots";
+
+font_c :: #system_library "c";
+FontAllocate :: (size: usize) -> *u8 #foreign font_c "malloc";
+FontFree :: (pixels: *void) #foreign font_c "free";
+FontTemporary :: (path: *u8) -> s32 #foreign font_c "mkstemp";
+FontWrite :: (file: s32, data: *u8, size: usize) -> isize #foreign font_c "write";
+FontClose :: (file: s32) -> s32 #foreign font_c "close";
+FontUnlink :: (path: *u8) -> s32 #foreign font_c "unlink";
+FontFileOpen :: (path: *u8, mode: *u8) -> *void #foreign font_c "fopen";
+FontFileRead :: (data: *u8, size: usize, count: usize, file: *void) -> usize #foreign font_c "fread";
+FontFileSeek :: (file: *void, offset: isize, origin: s32) -> s32 #foreign font_c "fseek";
+FontFileTell :: (file: *void) -> isize #foreign font_c "ftell";
+FontFileClose :: (file: *void) -> s32 #foreign font_c "fclose";
+
+
+AndroidPixmapFace :: struct { name: [128]u8; length: s32; face: *void }
+android_pixmap_faces: [32]AndroidPixmapFace;
+android_pixmap_selected: s32 = -1;
+android_pixmap_paint: *void;
+android_pixmap_font_line: float32;
+android_pixmap_font_ascent: float32;
+android_pixmap_mask: *u8;
+android_pixmap_mask_size: s64;
+android_pixmap_mask_text: [32768]u8;
+android_pixmap_mask_count: s32 = -1;
+android_pixmap_mask_font: float32;
+android_pixmap_mask_shape: Slots.PixmapTypefaceMask;
+
+AndroidFontOk :: (env: *JniEnv) -> bool {
+    if env.functions.ExceptionCheck(env) == 0 { return true }
+    env.functions.ExceptionClear(env)
+    return false
+}
+AndroidFontClass :: (env: *JniEnv, name: string) -> *void {
+    bytes: [256]u8
+    if !CString.CopyCString(name, bytes[:]) { return null }
+    result := env.functions.FindClass(env, *bytes[0])
+    if !AndroidFontOk(env) { return null }
+    return result
+}
+AndroidFontMethod :: (env: *JniEnv, kind: *void, name: string,
+    signature: string, shared: bool = false) -> *void {
+    method: [128]u8; descriptor: [256]u8
+    if kind == null || !CString.CopyCString(name, method[:]) ||
+    !CString.CopyCString(signature, descriptor[:]) { return null }
+    result: *void
+    if shared { result = env.functions.GetStaticMethodID(env, kind, *method[0], *descriptor[0]) }
+    else { result = env.functions.GetMethodID(env, kind, *method[0], *descriptor[0]) }
+    if !AndroidFontOk(env) { return null }
+    return result
+}
+// NewString consumes UTF-16, including surrogate pairs. NewStringUTF expects
+// modified UTF-8 and cannot accept an ordinary four-byte UTF-8 code point.
+AndroidFontString :: (env: *JniEnv, value: string, count: *s32) -> *void {
+    count.* = 0
+    if value.count > 32768 { return null }
+    characters: [32768]u16
+    at: s32
+    while at < cast(s32)value.count {
+        decoded := Decode(value, at)
+        if decoded.after <= at { return null }
+        at = decoded.after
+        point := decoded.value
+        if point > cast(u32)0x10ffff || (point >= cast(u32)0xd800 && point <= cast(u32)0xdfff) {
+            point = cast(u32)0xfffd
+        }
+        if point > cast(u32)0xffff {
+            point -= cast(u32)0x10000
+            characters[count.*] = cast(u16)(cast(u32)0xd800 + (point >> 10)); count.* += 1
+            characters[count.*] = cast(u16)(cast(u32)0xdc00 + (point & cast(u32)1023)); count.* += 1
+        } else { characters[count.*] = cast(u16)point; count.* += 1 }
+    }
+    result := env.functions.NewString(env, *characters[0], count.*)
+    if !AndroidFontOk(env) { return null }
+    return result
+}
+AndroidFontForgetMask :: () {
+    android_pixmap_mask_count = -1
+    android_pixmap_mask_shape = .{}
+}
+AndroidFontChanged :: () {
+    AndroidFontForgetMask()
+    GlyphMetricsChanged(); PaintResourcesChanged()
+}
+AndroidFontPaint :: (env: *JniEnv, font: float32) -> *void {
+    if android_pixmap_selected < 0 || !(font > 0.0 && font <= 1024.0) { return null }
+    kind := AndroidFontClass(env, "android/graphics/Paint")
+    if kind == null { return null }
+    if android_pixmap_paint == null {
+        constructor := AndroidFontMethod(env, kind, "<init>", "(I)V")
+        if constructor == null { return null }
+        flags: JniValue; flags.integer = 193 // anti-alias, linear and subpixel text
+        local := env.functions.NewObjectA(env, kind, constructor, *flags)
+        if !AndroidFontOk(env) || local == null { return null }
+        android_pixmap_paint = env.functions.NewGlobalRef(env, local)
+        if !AndroidFontOk(env) || android_pixmap_paint == null { return null }
+    }
+    set_face := AndroidFontMethod(env, kind, "setTypeface", "(Landroid/graphics/Typeface;)Landroid/graphics/Typeface;")
+    set_size := AndroidFontMethod(env, kind, "setTextSize", "(F)V")
+    ascent := AndroidFontMethod(env, kind, "ascent", "()F")
+    descent := AndroidFontMethod(env, kind, "descent", "()F")
+    if set_face == null || set_size == null || ascent == null || descent == null { return null }
+    argument: JniValue; argument.reference = android_pixmap_faces[android_pixmap_selected].face
+    unused env.functions.CallObjectMethodA(env, android_pixmap_paint, set_face, *argument)
+    argument.single = 1024.0
+    env.functions.CallVoidMethodA(env, android_pixmap_paint, set_size, *argument)
+    upper := env.functions.CallFloatMethodA(env, android_pixmap_paint, ascent, null)
+    lower := env.functions.CallFloatMethodA(env, android_pixmap_paint, descent, null)
+    if !AndroidFontOk(env) || !(lower > upper && lower - upper < 16384.0) { return null }
+    android_pixmap_font_line = lower - upper
+    android_pixmap_font_ascent = -upper / android_pixmap_font_line
+    argument.single = font * 1024.0 / android_pixmap_font_line
+    env.functions.CallVoidMethodA(env, android_pixmap_paint, set_size, *argument)
+    if !AndroidFontOk(env) { return null }
+    return android_pixmap_paint
+}
+AndroidFontWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    unused typeface
+    if font <= 0 || value.count == 0 { return 0 }
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return 0 }
+    defer AndroidJniDetachCurrent(*session)
+    env := session.env
+    paint := AndroidFontPaint(env, cast(float32)font)
+    count: s32; text := AndroidFontString(env, value, *count)
+    if paint == null || text == null { return 0 }
+    kind := env.functions.GetObjectClass(env, paint)
+    method := AndroidFontMethod(env, kind, "measureText", "(Ljava/lang/String;)F")
+    if method == null { return 0 }
+    argument: JniValue; argument.reference = text
+    width := env.functions.CallFloatMethodA(env, paint, method, *argument)
+    if !AndroidFontOk(env) || !(width >= 0.0 && width < 2147483000.0) { return 0 }
+    return cast(s32)(width + 0.5)
+}
+AndroidFontInteger :: (env: *JniEnv, kind: *void, object: *void, name: string) -> s32 {
+    field: [32]u8; signature: [4]u8
+    unused CString.CopyCString(name, field[:]); unused CString.CopyCString("I", signature[:])
+    id := env.functions.GetFieldID(env, kind, *field[0], *signature[0])
+    if !AndroidFontOk(env) || id == null { return 0 }
+    return env.functions.GetIntField(env, object, id)
+}
+AndroidFontRaster :: (value: string, font: float32, output: *Slots.PixmapTypefaceMask) -> bool {
+    output.* = .{}
+    if value.count > 32768 { return false }
+    if android_pixmap_mask_count == value.count && android_pixmap_mask_font == font &&
+    TextView(android_pixmap_mask_text[0:android_pixmap_mask_count]) == value {
+        output.* = android_pixmap_mask_shape; return true
+    }
+    AndroidFontForgetMask()
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return false }
+    defer AndroidJniDetachCurrent(*session)
+    env := session.env
+    paint := AndroidFontPaint(env, font)
+    count: s32; text := AndroidFontString(env, value, *count)
+    if paint == null || text == null { return false }
+    paint_kind := env.functions.GetObjectClass(env, paint)
+    rect_kind := AndroidFontClass(env, "android/graphics/Rect")
+    constructor := AndroidFontMethod(env, rect_kind, "<init>", "()V")
+    bounds_method := AndroidFontMethod(env, paint_kind, "getTextBounds", "(Ljava/lang/String;IILandroid/graphics/Rect;)V")
+    if constructor == null || bounds_method == null { return false }
+    bounds := env.functions.NewObjectA(env, rect_kind, constructor, null)
+    if !AndroidFontOk(env) || bounds == null { return false }
+    args: [7]JniValue
+    args[0].reference = text; args[1].integer = 0; args[2].integer = count; args[3].reference = bounds
+    env.functions.CallVoidMethodA(env, paint, bounds_method, *args[0])
+    left := AndroidFontInteger(env, rect_kind, bounds, "left")
+    top := AndroidFontInteger(env, rect_kind, bounds, "top")
+    right := AndroidFontInteger(env, rect_kind, bounds, "right")
+    bottom := AndroidFontInteger(env, rect_kind, bounds, "bottom")
+    width := right - left; height := bottom - top
+    if !AndroidFontOk(env) || width < 0 || height < 0 || width > 32768 || height > 2048 ||
+    cast(s64)width * height > 4194304 { return false }
+    total := cast(s64)width * height
+    if total > 0 {
+        config_kind := AndroidFontClass(env, "android/graphics/Bitmap$Config")
+        config_method := AndroidFontMethod(env, config_kind, "valueOf", "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;", true)
+        bitmap_kind := AndroidFontClass(env, "android/graphics/Bitmap")
+        create := AndroidFontMethod(env, bitmap_kind, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;", true)
+        canvas_kind := AndroidFontClass(env, "android/graphics/Canvas")
+        canvas_constructor := AndroidFontMethod(env, canvas_kind, "<init>", "(Landroid/graphics/Bitmap;)V")
+        draw := AndroidFontMethod(env, canvas_kind, "drawText", "(Ljava/lang/String;FFLandroid/graphics/Paint;)V")
+        pixels := AndroidFontMethod(env, bitmap_kind, "getPixels", "([IIIIIII)V")
+        recycle := AndroidFontMethod(env, bitmap_kind, "recycle", "()V")
+        if config_method == null || create == null || canvas_constructor == null || draw == null || pixels == null || recycle == null { return false }
+        args[0].reference = AndroidFontString(env, "ARGB_8888", *count)
+        if args[0].reference == null { return false }
+        config := env.functions.CallStaticObjectMethodA(env, config_kind, config_method, *args[0])
+        if !AndroidFontOk(env) || config == null { return false }
+        args[0].integer = width; args[1].integer = height; args[2].reference = config
+        bitmap := env.functions.CallStaticObjectMethodA(env, bitmap_kind, create, *args[0])
+        if !AndroidFontOk(env) || bitmap == null { return false }
+        defer env.functions.CallVoidMethodA(env, bitmap, recycle, null)
+        args[0].reference = bitmap
+        canvas := env.functions.NewObjectA(env, canvas_kind, canvas_constructor, *args[0])
+        if !AndroidFontOk(env) || canvas == null { return false }
+        args[0].reference = text; args[1].single = -cast(float32)left
+        args[2].single = -cast(float32)top; args[3].reference = paint
+        env.functions.CallVoidMethodA(env, canvas, draw, *args[0])
+        if !AndroidFontOk(env) { return false }
+        array := env.functions.NewIntArray(env, cast(s32)total)
+        if !AndroidFontOk(env) || array == null { return false }
+        args[0].reference = array; args[1].integer = 0; args[2].integer = width
+        args[3].integer = 0; args[4].integer = 0; args[5].integer = width; args[6].integer = height
+        env.functions.CallVoidMethodA(env, bitmap, pixels, *args[0])
+        if !AndroidFontOk(env) { return false }
+        if total > android_pixmap_mask_size {
+            memory := FontAllocate(cast(usize)total)
+            if memory == null { return false }
+            FontFree(cast(*void)android_pixmap_mask)
+            android_pixmap_mask = memory; android_pixmap_mask_size = total
+        }
+        values: [1024]s32
+        at: s64
+        while at < total {
+            length := total - at; if length > 1024 { length = 1024 }
+            env.functions.GetIntArrayRegion(env, array, cast(s32)at, cast(s32)length, *values[0])
+            if !AndroidFontOk(env) { AndroidFontForgetMask(); return false }
+            for index: cast(s64)0..length - 1 {
+                android_pixmap_mask[at + index] = cast(u8)(cast(u32)values[index] >> 24)
+            }
+            at += length
+        }
+    }
+    shape := Slots.PixmapTypefaceMask.{left, top + cast(s32)(font * android_pixmap_font_ascent + 0.5),
+        width, height, BytesFromPointer(android_pixmap_mask, cast(u64)total)}
+    for at: cast(s64)0..value.count - 1 { android_pixmap_mask_text[at] = value[at] }
+    android_pixmap_mask_count = cast(s32)value.count; android_pixmap_mask_font = font
+    android_pixmap_mask_shape = shape; output.* = shape
+    return true
+}
+
+AndroidFontNumber :: (data: string, at: s64, count: s64) -> s64 {
+    value: s64
+    for index: cast(s64)0..count - 1 { value = value * 256 + cast(s64)data[at + index] }
+    return value
+}
+// Reject truncated or foreign bytes before Android's older createFromFile,
+// which can silently substitute the default face for an invalid font file.
+AndroidFontDataValid :: (data: string) -> bool {
+    if data.count < 12 || data.count > 33554432 { return false }
+    base: s64
+    if data[0:4] == "ttcf" {
+        if data.count < 16 { return false }
+        faces := AndroidFontNumber(data, 8, 4)
+        if faces < 1 || faces > 256 || 12 + faces * 4 > data.count { return false }
+        base = AndroidFontNumber(data, 12, 4)
+    }
+    if base < 0 || base + 12 > data.count { return false }
+    signature := AndroidFontNumber(data, base, 4)
+    if signature != 65536 && data[base:base + 4] != "OTTO" && data[base:base + 4] != "true" { return false }
+    count := AndroidFontNumber(data, base + 4, 2)
+    if count < 1 || count > 256 || base + 12 + count * 16 > data.count { return false }
+    required: s32; glyf: bool; loca: bool; cff: bool
+    for index: cast(s64)0..count - 1 {
+        at := base + 12 + index * 16
+        offset := AndroidFontNumber(data, at + 8, 4); size := AndroidFontNumber(data, at + 12, 4)
+        if offset < 0 || size < 0 || offset + size > data.count { return false }
+        tag := data[at:at + 4]
+        if tag == "head" && size >= 54 { required = required | 1 }
+        if tag == "hhea" && size >= 36 { required = required | 2 }
+        if tag == "hmtx" && size >= 4 { required = required | 4 }
+        if tag == "maxp" && size >= 6 { required = required | 8 }
+        if tag == "cmap" && size >= 4 { required = required | 16 }
+        if tag == "glyf" { glyf = true }
+        if tag == "loca" { loca = true }
+        if tag == "CFF " || tag == "CFF2" { cff = true }
+    }
+    return required == 31 && ((glyf && loca) || cff)
+}
+AndroidFontFileValid :: (path: string) -> bool {
+    bytes: [4096]u8; mode: [4]u8
+    if !CString.CopyCString(path, bytes[:]) { return false }
+    unused CString.CopyCString("rb", mode[:])
+    file := FontFileOpen(*bytes[0], *mode[0])
+    if file == null { return false }
+    defer { unused FontFileClose(file) }
+    if FontFileSeek(file, 0, 2) != 0 { return false }
+    size := FontFileTell(file)
+    if size < 12 || size > 33554432 || FontFileSeek(file, 0, 0) != 0 { return false }
+    data := FontAllocate(cast(usize)size)
+    if data == null { return false }
+    defer FontFree(cast(*void)data)
+    if FontFileRead(data, 1, cast(usize)size, file) != cast(usize)size { return false }
+    return AndroidFontDataValid(TextView(BytesFromPointer(data, cast(u64)size)))
+}
+
+AndroidFontName :: (name: string) -> s32 {
+    for at: cast(s32)0..31 {
+        if android_pixmap_faces[at].length == name.count &&
+        TextView(android_pixmap_faces[at].name[0:android_pixmap_faces[at].length]) == name { return at }
+    }
+    return -1
+}
+AndroidFontRemember :: (name: string, path: string, checked: bool = false) -> bool {
+    if name.count <= 0 || name.count > 128 || path.count <= 0 || path.count >= 4096 { return false }
+    for byte: name { if byte == cast(u8)0 { return false } }
+    for byte: path { if byte == cast(u8)0 { return false } }
+    slot := AndroidFontName(name)
+    if slot < 0 {
+        for at: cast(s32)0..31 { if android_pixmap_faces[at].length == 0 { slot = at; break } }
+    }
+    if slot < 0 || (!checked && !AndroidFontFileValid(path)) { return false }
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return false }
+    defer AndroidJniDetachCurrent(*session)
+    env := session.env
+    kind := AndroidFontClass(env, "android/graphics/Typeface")
+    create := AndroidFontMethod(env, kind, "createFromFile", "(Ljava/lang/String;)Landroid/graphics/Typeface;", true)
+    count: s32; text := AndroidFontString(env, path, *count)
+    if create == null || text == null { return false }
+    arg: JniValue; arg.reference = text
+    face := env.functions.CallStaticObjectMethodA(env, kind, create, *arg)
+    if !AndroidFontOk(env) || face == null { return false }
+    owned := env.functions.NewGlobalRef(env, face)
+    if !AndroidFontOk(env) || owned == null { return false }
+    previous := android_pixmap_faces[slot].face
+    entry: AndroidPixmapFace
+    for at: cast(s64)0..name.count - 1 { entry.name[at] = name[at] }
+    entry.length = cast(s32)name.count; entry.face = owned; android_pixmap_faces[slot] = entry
+    if previous != null { env.functions.DeleteGlobalRef(env, previous) }
+    AndroidTypefacesCleanupUse(ReleaseTypefaces)
+    if slot == android_pixmap_selected { AndroidFontChanged() }
+    return true
+}
+
+#program_export
+LoadTypefaceFile :: (name: string, path: string, seed: *s32, seed_count: s32) -> bool {
+    if seed_count < 0 || (seed_count > 0 && seed == null) { return false }
+    return AndroidFontRemember(name, path)
+}
+#program_export
+LoadTypefaceData :: (name: string, extension: string, data: string, seed: *s32, seed_count: s32) -> bool {
+    if name.count <= 0 || name.count > 128 || extension.count <= 0 || !AndroidFontDataValid(data) ||
+    seed_count < 0 || (seed_count > 0 && seed == null) { return false }
+    app := JniGetAndroidApp()
+    if app == null || app.activity == null || app.activity.internal_data_path == null { return false }
+    directory := TextFromCString(app.activity.internal_data_path)
+    if directory.count <= 0 || directory.count > 4000 { return false }
+    path: [4096]u8
+    suffix := "/kryon-font-XXXXXX"
+    for at: cast(s64)0..directory.count - 1 { path[at] = directory[at] }
+    for at: cast(s64)0..suffix.count - 1 { path[directory.count + at] = suffix[at] }
+    file := FontTemporary(*path[0])
+    if file < 0 { return false }
+    defer { unused FontUnlink(*path[0]) }
+    bytes := cast(*TextDescriptor)(*data)
+    at: s64
+    while at < data.count {
+        written := FontWrite(file, *bytes.data[at], cast(usize)(data.count - at))
+        if written <= 0 { unused FontClose(file); return false }
+        at += cast(s64)written
+    }
+    if FontClose(file) != 0 { return false }
+    return AndroidFontRemember(name, TextFromCString(*path[0]), true)
+}
+#program_export
+LoadSystemTypeface :: (name: string) -> bool {
+    path: [4096]u8; face: s32
+    file := SystemFonts.FileFor("ui", 65, path[:], *face)
+    if face != 0 { return false } // createFromFile selects face zero in a collection
+    return AndroidFontRemember(name, file)
+}
+#program_export
+SelectTypeface :: (name: string) -> bool {
+    slot := AndroidFontName(name)
+    if slot < 0 { return false }
+    android_pixmap_selected = slot
+    Slots.PixmapTypefaceUse(AndroidFontWidth, AndroidFontRaster)
+    AndroidFontChanged()
+    return true
+}
+#program_export
+ReleaseTypefaceCpu :: () {
+    FontFree(cast(*void)android_pixmap_mask)
+    android_pixmap_mask = null; android_pixmap_mask_size = 0
+    AndroidFontForgetMask()
+}
+#program_export
+ReleaseTypefaces :: () {
+    Slots.PixmapTypefaceClear()
+    android_pixmap_selected = -1
+    ReleaseTypefaceCpu()
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) != 0 {
+        env := session.env
+        for at: cast(s32)0..31 {
+            if android_pixmap_faces[at].face != null { env.functions.DeleteGlobalRef(env, android_pixmap_faces[at].face) }
+            android_pixmap_faces[at] = .{}
+        }
+        if android_pixmap_paint != null { env.functions.DeleteGlobalRef(env, android_pixmap_paint) }
+        android_pixmap_paint = null
+        AndroidJniDetachCurrent(*session)
+    }
+    AndroidFontChanged()
+}

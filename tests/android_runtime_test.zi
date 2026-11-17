@@ -1,0 +1,165 @@
+// Only the NDK/NativeActivity boundary is supplied by this display-free test.
+// Custom host polling, Pixmap frames, insets, input and lifecycle run normally.
+Runtime :: #import "android_runtime";
+Raster :: #import "pixmap";
+Device :: #import "android_device";
+Surface :: #import "android_surface";
+Native :: #import "android_native";
+Jni :: #import "android_jni";
+#import "drawing_props"
+
+app: Jni.NativeAndroidApp;
+activity: Jni.NativeActivity;
+width: s32 = 3;
+height: s32 = 2;
+buffer: [1600]u32;
+queued_destroy: bool;
+last_timeout: s32;
+locks: s32;
+posts: s32;
+polls: s32;
+finishes: s32;
+fail_lock: bool;
+source: Native.AndroidPollSource;
+
+#program_export
+ANativeWindow_getWidth :: (window: *void) -> s32 { unused window; return width }
+#program_export
+ANativeWindow_getHeight :: (window: *void) -> s32 { unused window; return height }
+#program_export
+ANativeWindow_setBuffersGeometry :: (window: *void, w: s32, h: s32, format: s32) -> s32 {
+    if window != app.window || w != width || h != height || format != 1 { return -1 }
+    return 0
+}
+#program_export
+ANativeWindow_lock :: (window: *void, out: *Native.NativeWindowBuffer, bounds: *void) -> s32 {
+    if fail_lock || window != app.window || bounds == null { return -1 }
+    out.* = .{.width = width, .height = height, .stride = 40, .format = 1, .bits = cast(*u8)*buffer[0]}
+    locks += 1
+    return 0
+}
+#program_export
+ANativeWindow_unlockAndPost :: (window: *void) -> s32 {
+    if window != app.window { return -1 }
+    posts += 1
+    return 0
+}
+#program_export
+ANativeActivity_finish :: (native_activity: *void) {
+    if native_activity == cast(*void)*activity { finishes += 1 }
+}
+DeliverDestroy :: (native_app: *Jni.NativeAndroidApp, poll: *Native.AndroidPollSource) {
+    unused poll
+    Native.AndroidNativeOnCommand(native_app, Native.AndroidNativeCommandDestroy)
+}
+#program_export
+ALooper_pollAll :: (timeout: s32, file: *s32, events: *s32, data: **void) -> s32 {
+    unused file; unused events
+    polls += 1; last_timeout = timeout
+    if !queued_destroy { return -1 }
+    queued_destroy = false
+    source.app = *app
+    source.process = DeliverDestroy
+    data[0] = cast(*void)*source
+    return 1
+}
+NativeTestEvent :: struct {
+    kind: s32
+    action: s32
+    key: s32
+    x: float32
+    y: float32
+    source: s32
+    buttons: s32
+    modifiers: s32
+    repeat: s32
+}
+
+#program_export
+AInputEvent_getType :: (event: *NativeTestEvent) -> s32 { return event.kind }
+#program_export
+AInputEvent_getSource :: (event: *NativeTestEvent) -> s32 { return ifx event.source == 0 then 0x1002 else event.source }
+#program_export
+AInputEvent_getDeviceId :: (event: *NativeTestEvent) -> s32 { unused event; return -1 }
+#program_export
+AKeyEvent_getAction :: (event: *NativeTestEvent) -> s32 { return event.action }
+#program_export
+AKeyEvent_getKeyCode :: (event: *NativeTestEvent) -> s32 { return event.key }
+#program_export
+AKeyEvent_getMetaState :: (event: *NativeTestEvent) -> s32 { return event.modifiers }
+#program_export
+AKeyEvent_getRepeatCount :: (event: *NativeTestEvent) -> s32 { return event.repeat }
+#program_export
+AMotionEvent_getAction :: (event: *NativeTestEvent) -> s32 { return event.action }
+#program_export
+AMotionEvent_getButtonState :: (event: *NativeTestEvent) -> s32 { return event.buttons }
+#program_export
+AMotionEvent_getX :: (event: *NativeTestEvent, pointer: usize) -> float32 { unused pointer; return event.x }
+#program_export
+AMotionEvent_getY :: (event: *NativeTestEvent, pointer: usize) -> float32 { unused pointer; return event.y }
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    unused argc; unused argv
+    activity.activity = cast(*void)*activity
+    app.activity = *activity
+    app.window = cast(*void)cast(usize)1
+    Native.AndroidNativeStart(*app)
+    if !Runtime.PollAndroidHost(7) || Runtime.AndroidHostPaused() ||
+        !Runtime.AndroidHostFocused() || polls != 2 || last_timeout != 0 { return 1 }
+    Runtime.BeginAndroidFrame()
+    if !Runtime.EndAndroidFrame() || locks != 0 || posts != 0 { return 2 }
+    Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandInitWindow)
+    bounds := Runtime.AndroidHostViewport()
+    if bounds.width != 3.0 || bounds.height != 2.0 { return 3 }
+    for i: 0..1599 { buffer[i] = cast(u32)0xdeadbeef }
+    Runtime.BeginAndroidFrame()
+    Runtime.BeginAndroidFrame()
+    if Runtime.AndroidFrameReusable() { return 4 }
+    Raster.RasterRoundedRectangle(.{0.0, 0.0, 3.0, 2.0}, 0.0, 0, .{11, 22, 33, 255})
+    if !Runtime.EndAndroidFrame() || !Runtime.AndroidFrameReusable() || locks != 1 || posts != 1 { return 5 }
+    for y: 0..1 {
+        for x: 0..2 { if buffer[y * 40 + x] != cast(u32)0xff21160b { return 6 } }
+        if buffer[y * 40 + 3] != cast(u32)0xdeadbeef { return 7 }
+    }
+    Runtime.BeginAndroidFrame()
+    Runtime.AndroidFrameUnchanged(true)
+    if !Runtime.EndAndroidFrame() || posts != 1 { return 8 }
+    // Damage is already in native pixels. A density factor must not be
+    // applied a second time by the presenter.
+    width = 12; height = 10
+    Device.AndroidNativeSetDensity(null, null, 2.0)
+    Device.AndroidNativeSetInsets(null, null, 2, 2, 2, 2, 4, 0, 0, 0, 0)
+    Surface.SetAndroidViewportPolicy(Surface.AndroidViewportPolicyResizeForIme())
+    Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandWindowResized)
+    bounds = Runtime.AndroidHostViewport()
+    if bounds.x != 1.0 || bounds.y != 1.0 || bounds.width != 4.0 || bounds.height != 2.0 { return 9 }
+    Runtime.BeginAndroidFrame()
+    if Runtime.AndroidFrameReusable() { return 10 }
+    Raster.RasterRoundedRectangle(.{0.0, 0.0, 6.0, 5.0}, 0.0, 0, .{100, 110, 120, 255})
+    if !Runtime.EndAndroidFrame() || posts != 2 || buffer[9 * 40 + 11] != cast(u32)0xff786e64 { return 11 }
+    Runtime.BeginAndroidFrame()
+    Raster.PixmapDamageBegin(.{4.0, 3.0, 1.0, 1.0}, cast(u32)0xff010203)
+    Raster.PixmapDamageEnd()
+    if !Runtime.EndAndroidFrame() || posts != 3 || buffer[6 * 40 + 8] != cast(u32)0xff030201 ||
+        buffer[6 * 40 + 7] != cast(u32)0xff786e64 { return 12 }
+    Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandLostFocus)
+    if Runtime.AndroidHostFocused() { return 13 }
+    Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandPause)
+    Runtime.BeginAndroidFrame()
+    if !Runtime.AndroidHostPaused() || !Runtime.PollAndroidHost(0) || !Runtime.EndAndroidFrame() || posts != 3 { return 14 }
+    Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandResume)
+    Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandTermWindow)
+    Runtime.BeginAndroidFrame()
+    if !Runtime.PollAndroidHost(0) || !Runtime.EndAndroidFrame() || posts != 3 { return 15 }
+    Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandInitWindow)
+    Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandGainedFocus)
+    Runtime.BeginAndroidFrame()
+    fail_lock = true
+    if Runtime.EndAndroidFrame() || Runtime.AndroidFrameReusable() || posts != 3 { return 16 }
+    fail_lock = false
+    queued_destroy = true
+    if Runtime.PollAndroidHost(0) || Runtime.EndAndroidFrame() { return 17 }
+    Native.AndroidNativeClose()
+    return 0
+}

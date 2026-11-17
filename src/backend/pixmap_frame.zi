@@ -25,6 +25,8 @@ frame_widths: [9]s32;
 frame_heights: [9]s32;
 frame_scales_x: [9]float32;
 frame_scales_y: [9]float32;
+frame_offsets_x: [9]float32;
+frame_offsets_y: [9]float32;
 frame_backgrounds: [9]u32;
 frame_opaque: [9]bool;
 
@@ -77,7 +79,7 @@ PixmapPaintBounds :: (command: PaintCommand, viewport: Rectangle) -> Rectangle {
     device := PixmapDeviceBounds(bounds)
     left := FloorInteger(device.x); top := FloorInteger(device.y)
     right := CeilInteger(device.x + device.width); bottom := CeilInteger(device.y + device.height)
-    bounds = .{cast(float32)left / pixmap_scale_x, cast(float32)top / pixmap_scale_y,
+    bounds = .{(cast(float32)left - pixmap_offset_x) / pixmap_scale_x, (cast(float32)top - pixmap_offset_y) / pixmap_scale_y,
         cast(float32)(right - left) / pixmap_scale_x, cast(float32)(bottom - top) / pixmap_scale_y}
     return RectangleIntersection(bounds, viewport)
 }
@@ -93,14 +95,15 @@ EndPixmapFrame :: (session: Session, reuse: bool,
     result: PixmapFrameResult; result.status = CommitFrame(session)
     if result.status != cast(FrameStatus)FrameOk { PaintSnapshotInvalidate(session); return result }
     slot := SessionIndex(session)
-    viewport: Rectangle = .{0.0, 0.0, cast(float32)pixmap_width / pixmap_scale_x,
-        cast(float32)pixmap_height / pixmap_scale_y}
+    viewport := PixmapLogicalBounds()
     if frame_widths[slot] != pixmap_width || frame_heights[slot] != pixmap_height ||
         frame_scales_x[slot] != pixmap_scale_x || frame_scales_y[slot] != pixmap_scale_y ||
+        frame_offsets_x[slot] != pixmap_offset_x || frame_offsets_y[slot] != pixmap_offset_y ||
         frame_backgrounds[slot] != background ||
         frame_opaque[slot] != (pixmap_alpha != cast(u32)0) { PaintSnapshotInvalidate(session) }
     frame_widths[slot] = pixmap_width; frame_heights[slot] = pixmap_height
     frame_scales_x[slot] = pixmap_scale_x; frame_scales_y[slot] = pixmap_scale_y
+    frame_offsets_x[slot] = pixmap_offset_x; frame_offsets_y[slot] = pixmap_offset_y
     frame_backgrounds[slot] = background
     frame_opaque[slot] = pixmap_alpha != cast(u32)0
     result.paint_count = PendingPaintCount(session)
@@ -140,7 +143,7 @@ EndPixmapFrame :: (session: Session, reuse: bool,
             result.emitted_count = result.paint_count
             PaintFlush(session); PixmapDamageEnd(); return result
         }
-        raster_damage: Rectangle = .{result.damage.x / pixmap_scale_x, result.damage.y / pixmap_scale_y,
+        raster_damage: Rectangle = .{(result.damage.x - pixmap_offset_x) / pixmap_scale_x, (result.damage.y - pixmap_offset_y) / pixmap_scale_y,
             result.damage.width / pixmap_scale_x, result.damage.height / pixmap_scale_y}
         for index: 0..result.paint_count - 1 {
             command := pending_paint[slot].items[index]

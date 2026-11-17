@@ -1,0 +1,9 @@
+// Optional decoded-picture ownership. Borrowed Pixmap images need no owner.
+PixmapImageReplace :: #type (slot: s32, next: *u32) -> void;
+pixmap_image_replace: PixmapImageReplace;
+PixmapImageOwnerUse :: (replace: PixmapImageReplace) {
+    pixmap_image_replace = replace
+}
+PixmapImageReplacing :: (slot: s32, next: *u32) {
+    if pixmap_image_replace != null { pixmap_image_replace(slot, next) }
+}

@@ -2,6 +2,7 @@
 // only the tiny process/looper bridge; lifecycle, input, window, and pixels
 // stay in Ziran and the current Pixmap runtime.
 #import "android_jni"
+#import "android_host_cleanup"
 #import "android_touch"
 #import "std/c_string"
 
@@ -376,6 +377,7 @@ AndroidNativeUnlock :: () -> bool {
 }
 
 AndroidNativeClose :: () {
+    AndroidHostResourcesClose()
     AndroidNativeUnlock()
     if android_pixels.count > 0 {
         descriptor := cast(*WordDescriptor)(*android_pixels)

@@ -16,7 +16,7 @@ function(kryon_avif_decoder avif_dir aom_dir)
         kryon_ziran_package_path(dav1d_dir dav1d)
     endif()
     set(shared)
-    if(NOT ANDROID AND NOT WIN32 AND NOT APPLE)
+    if(ARGV2 STREQUAL "BUILD_SHARED_BRIDGE" OR (NOT ANDROID AND NOT WIN32 AND NOT APPLE))
         # Cairo lazily opens the same self-contained library as before.
         set(shared BUILD_SHARED_BRIDGE SHARED_TARGET_NAME kryonavif)
     endif()

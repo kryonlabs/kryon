@@ -1,0 +1,88 @@
+Fonts :: #import "pixmap_typefaces_android";
+#import "android_jni"
+Cleanup :: #import "android_host_cleanup";
+Slots :: #import "pixmap_typeface_slots";
+System :: #import "system_typeface_android";
+Pixels :: #import "pixmap";
+#import "drawing_props"
+#import "std/byte_text_linux"
+CString :: #import "std/c_string";
+c :: #system_library "c";
+Open :: (path: *u8, mode: *u8) -> *void #foreign c "fopen";
+Read :: (data: *u8, size: usize, count: usize, file: *void) -> usize #foreign c "fread";
+Close :: (file: *void) -> s32 #foreign c "fclose";
+font_bytes: [1048576]u8;
+pixels: [32768]u32;
+
+TestFonts :: (env: *JniEnv) -> s32 {
+    latin := "Hello world café"
+    builtin := Pixels.MeasureGlyphWidth(latin, 28, "")
+    if Slots.active || builtin <= 0 { return 1 }
+    if !Fonts.LoadTypefaceFile("latin", "/data/local/tmp/kryon-android-typefaces-test/LiberationSans-Regular.ttf", null, 0) ||
+    !Fonts.SelectTypeface("latin") { return 2 }
+    width := Pixels.MeasureGlyphWidth(latin, 28, "")
+    if width < builtin - 1 || width > builtin + 1 || Pixels.MeasureGlyphLineHeight(28, "") != 28 { return 3 }
+    if Fonts.LoadTypefaceFile("latin", "/data/local/tmp/kryon-android-typefaces-test/absent.ttf", null, 0) ||
+    Pixels.MeasureGlyphWidth(latin, 28, "") != width { return 4 }
+    count: s32
+    text := Fonts.AndroidFontString(env, "A𝄞中", *count)
+    if text == null || count != 4 { return 5 }
+    if !Pixels.PixmapBeginInto(0, 256, 128, pixels[:]) { return 6 }
+    Pixels.RasterText("Latin café 中文 العربية 𝄞", 3, 3, 28, Color.{255, 255, 255, 255})
+    Pixels.PixmapEndInto()
+    drawn: s32
+    for pixel: pixels { if pixel != cast(u32)0 { drawn += 1 } }
+    if drawn < 100 { return 7 }
+    first: Slots.PixmapTypefaceMask; second: Slots.PixmapTypefaceMask
+    if !Fonts.AndroidFontRaster("Cache café", 28.0, *first) || first.coverage.count <= 0 ||
+    !Fonts.AndroidFontRaster("Cache café", 28.0, *second) || first.coverage.count != second.coverage.count { return 8 }
+    descriptor1 := cast(*TextDescriptor)(*first.coverage)
+    descriptor2 := cast(*TextDescriptor)(*second.coverage)
+    if descriptor1.data != descriptor2.data { return 9 }
+    Fonts.ReleaseTypefaceCpu()
+    if Fonts.android_pixmap_mask != null || Fonts.android_pixmap_mask_count != -1 ||
+    !Fonts.AndroidFontRaster("Cache café", 28.0, *second) { return 10 }
+    path: [4096]u8; face: s32
+    if System.FileFor("ui", 0x4e2d, path[:], *face) == "" { return 11 }
+    if !Fonts.LoadSystemTypeface("system") || !Fonts.SelectTypeface("system") ||
+    Pixels.MeasureGlyphWidth("中文 العربية", 28, "") <= 0 { return 12 }
+    if !Fonts.AndroidFontRaster("中文", 28.0, *second) || second.coverage.count <= 0 { return 13 }
+    filename: [256]u8; mode: [4]u8
+    unused CString.CopyCString("/data/local/tmp/kryon-android-typefaces-test/LiberationSans-Regular.ttf", filename[:])
+    unused CString.CopyCString("rb", mode[:])
+    file := Open(*filename[0], *mode[0])
+    if file == null { return 14 }
+    size := Read(*font_bytes[0], 1, cast(usize)1048576, file)
+    unused Close(file)
+    if size <= 0 || size >= cast(usize)1048576 { return 151 }
+    if Fonts.AndroidFontDataValid(TextView(font_bytes[0:12])) { return 155 }
+    if !Fonts.LoadTypefaceData("bytes", "ttf", TextView(font_bytes[0:cast(s64)size]), null, 0) { return 152 }
+    if !Fonts.SelectTypeface("bytes") { return 153 }
+    if Pixels.MeasureGlyphWidth(latin, 28, "") != width { return 154 }
+    if Fonts.LoadTypefaceData("bytes", "ttf", "not a font", null, 0) ||
+    Fonts.SelectTypeface("absent") || Pixels.MeasureGlyphWidth(latin, 28, "") != width { return 16 }
+    Fonts.ReleaseTypefaces()
+    if Slots.active || Pixels.MeasureGlyphWidth(latin, 28, "") != builtin { return 17 }
+    for entry: Fonts.android_pixmap_faces { if entry.face != null { return 18 } }
+    Cleanup.AndroidHostResourcesClose(); Cleanup.AndroidHostResourcesClose()
+    return 0
+}
+
+#program_export
+Java_FontHost_run :: (env: *JniEnv, kind: *void) -> s32 {
+    vm: *JniVm
+    if env.functions.GetJavaVM(env, *vm) != 0 || vm == null { return 90 }
+    directory: [128]u8
+    unused CString.CopyCString("/data/local/tmp/kryon-android-typefaces-test", directory[:])
+    activity: NativeActivity
+    activity.vm = vm; activity.activity = kind; activity.internal_data_path = *directory[0]
+    app: NativeAndroidApp; app.activity = *activity
+    jni_android_app = *app
+    result := TestFonts(env)
+    Fonts.ReleaseTypefaces()
+    jni_android_app = null
+    return result
+}
+
+#program_export
+main :: () -> s32 { return 0 }

@@ -1,0 +1,103 @@
+// Bounded, upright RGBA from caller-owned encoded bytes. Reuse the same
+// native codecs and NativeActivity bitmap bridge as packaged ZX pictures.
+Images :: #import "android_bundle_images";
+#import "ziran_image_decode"
+#import "avif_image"
+#import "webp_image"
+#import "image_orientation"
+#import "std/byte_text_linux"
+
+AndroidImageSize :: struct { width: s64; height: s64 }
+AndroidImageSizeAllowed :: (size: AndroidImageSize) -> bool {
+    return size.width > 0 && size.height > 0 && size.width <= 32768 && size.height <= 32768 &&
+        size.width * size.height <= 67108864
+}
+AndroidImageNumber :: (data: string, at: s64, count: s64, little: bool) -> s64 {
+    if at < 0 || count < 1 || at + count > data.count { return 0 }
+    value: s64
+    for index: cast(s64)0..count - 1 {
+        value = value * 256 + cast(s64)data[at + (ifx little then count - 1 - index else index)]
+    }
+    return value
+}
+// Check dimensions before handing common bitmap formats to the Android VM.
+// Unknown formats fail empty, rather than allocating an unbounded bitmap.
+AndroidImageBitmapSize :: (data: string) -> AndroidImageSize {
+    if data.count >= 24 && data[0] == cast(u8)137 && data[1:4] == "PNG" &&
+        data[4] == cast(u8)13 && data[5] == cast(u8)10 && data[6] == cast(u8)26 && data[7] == cast(u8)10 &&
+        data[12:16] == "IHDR" {
+        return .{AndroidImageNumber(data, 16, 4, false), AndroidImageNumber(data, 20, 4, false)}
+    }
+    if data.count >= 10 && (data[0:6] == "GIF87a" || data[0:6] == "GIF89a") {
+        return .{AndroidImageNumber(data, 6, 2, true), AndroidImageNumber(data, 8, 2, true)}
+    }
+    if data.count >= 54 && data[0:2] == "BM" && AndroidImageNumber(data, 14, 4, true) >= 40 {
+        width := AndroidImageNumber(data, 18, 4, true)
+        height := AndroidImageNumber(data, 22, 4, true)
+        if height >= 2147483648 { height = 4294967296 - height }
+        return .{width, height}
+    }
+    if data.count < 4 || data[0] != cast(u8)255 || data[1] != cast(u8)216 { return .{} }
+    at: s64 = 2
+    while at + 1 < data.count {
+        if data[at] != cast(u8)255 { return .{} }
+        while at < data.count && data[at] == cast(u8)255 { at += 1 }
+        if at >= data.count { return .{} }
+        marker := cast(s32)data[at]; at += 1
+        if marker == 217 || marker == 218 { return .{} }
+        if marker == 1 || (marker >= 208 && marker <= 215) { continue }
+        length := AndroidImageNumber(data, at, 2, false)
+        if length < 2 || at + length > data.count { return .{} }
+        if marker >= 192 && marker <= 207 && marker != 196 && marker != 200 && marker != 204 {
+            if length < 8 { return .{} }
+            return .{AndroidImageNumber(data, at + 5, 2, false), AndroidImageNumber(data, at + 3, 2, false)}
+        }
+        at += length
+    }
+    return .{}
+}
+
+AndroidImageDecodeEncoded :: (data: string, file_type: string) -> DecodedImage {
+    unused file_type
+    if data.count <= 0 || data.count > 268435456 { return .{} }
+    image: DecodedImage
+    if ImageWebpSignature(data) {
+        image.pixels = WebPImageDecode(data, *image.width, *image.height)
+    } else if Images.AndroidImageIsAVIF(data) {
+        image.pixels = AvifImageDecode(data, *image.width, *image.height)
+    } else {
+        size := AndroidImageBitmapSize(data)
+        if !AndroidImageSizeAllowed(size) { return .{} }
+        width: s32; height: s32
+        text := cast(*TextDescriptor)(*data)
+        bytes := BytesFromPointer(text.data, cast(u64)data.count)
+        words := Images.AndroidImageDecodePNG(bytes, *width, *height)
+        orientation: s32 = 1
+        if words == null {
+            words = Images.AndroidImageDecodeBitmap(data, *width, *height)
+            orientation = ImageExifOrientation(data)
+        }
+        if words == null { return .{} }
+        if cast(s64)width != size.width || cast(s64)height != size.height {
+            ImagePixelsFree(cast(*u8)words); return .{}
+        }
+        words = Images.AndroidImageOrient(words, width, height, orientation)
+        if words == null { return .{} }
+        if orientation >= 5 && orientation <= 8 { swap := width; width = height; height = swap }
+        image = .{cast(*u8)words, width, height}
+        // The PNG/Bitmap bridge owns ARGB words; convert that same allocation
+        // in place to the shared preview contract's straight RGBA bytes.
+        for at: cast(s64)0..cast(s64)width * height - 1 {
+            pixel := words[at]
+            image.pixels[at * 4] = cast(u8)((pixel >> 16) & cast(u32)255)
+            image.pixels[at * 4 + 1] = cast(u8)((pixel >> 8) & cast(u32)255)
+            image.pixels[at * 4 + 2] = cast(u8)(pixel & cast(u32)255)
+            image.pixels[at * 4 + 3] = cast(u8)(pixel >> 24)
+        }
+    }
+    if image.pixels == null { return .{} }
+    if !AndroidImageSizeAllowed(.{cast(s64)image.width, cast(s64)image.height}) {
+        DecodedImageFree(image); return .{}
+    }
+    return image
+}

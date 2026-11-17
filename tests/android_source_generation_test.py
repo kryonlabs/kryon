@@ -69,7 +69,7 @@ def main():
         raise RuntimeError("Android source generation tests require the NDK")
     ndk = ndks[-1]
     clang = ndk / "bin/clang"
-    for kind in ("native", "custom", "zx"):
+    for kind in ("native", "custom", "runtime", "zx"):
         project = WORK / kind
         identity = kryon_test_project(project)
         source = project / "src"
@@ -91,7 +91,17 @@ def main():
                 'Frame :: (session: Session, viewport: Rectangle) -> s32 {',
                 '    unused session; unused viewport',
                 '    return ifx ThreadFinished(null) then 1 else 0', '}\n']))
-        if kind == "custom":
+        if kind == "runtime":
+            (source / "main.zi").write_text(
+                '#import "kryon/android_runtime"\n#program_export\n'
+                'main :: (argc: s32, argv: **u8) -> s32 {\n'
+                '    unused argc; unused argv\n'
+                '    while PollAndroidHost(16) {\n'
+                '        unused AndroidHostViewport(); BeginAndroidFrame()\n'
+                '        if !EndAndroidFrame() { return 1 }\n'
+                '    }\n    return 0\n}\n')
+            custom = ["--host", ROOT / "src/backend/android_runtime.zi"]
+        elif kind == "custom":
             host = source / "custom_host.zi"
             host.write_text('#program_export\nCustomEntry :: () -> s32 { return 77 }\n')
             (source / "main.zi").write_text(

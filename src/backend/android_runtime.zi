@@ -1,0 +1,168 @@
+// NativeActivity host for applications that own their main loop. Lifecycle
+// polling never runs a widget frame or decides the application's pacing.
+#import "android_native"
+#import "android_jni"
+#import "input_protocol"
+#import "android_device"
+#import "android_process"
+#import "android_surface"
+#import "android_touch"
+#import "frame_texture_android"
+#import "geometry"
+#import "pixmap"
+
+// The application's own C main, linked into the same library. Naming the
+// symbol keeps C from seeing a second, differently typed declaration of main.
+android_application :: #system_library "c";
+AndroidApplicationMain :: (argc: s32, argv: **u8) -> s32 #foreign android_application "main";
+
+android_host_frame_open: bool;
+android_host_pixels_valid: bool;
+android_host_unchanged: bool;
+android_host_width: s32;
+android_host_height: s32;
+android_host_zoom: float32;
+android_host_viewport: Rectangle;
+android_host_scale_x: float32;
+android_host_scale_y: float32;
+android_host_offset_x: float32;
+android_host_offset_y: float32;
+
+#program_export
+android_main :: (app: *NativeAndroidApp) {
+    if app == null { return }
+    AndroidNativeStart(app)
+    android_host_pixels_valid = false
+    android_host_frame_open = false
+    defer { AndroidNativeClose() }
+    defer { AndroidFrameTexturesClose() }
+    defer { PixmapCloseWorkers() }
+    defer { AndroidNativeFinish() }
+    AndroidJniKeepHostThread()
+    defer { AndroidJniReleaseHostThread() }
+    AndroidProcessPrepare()
+    unused AndroidApplicationMain(0, null)
+    if android_host_frame_open { PixmapEndInto(); android_host_frame_open = false }
+}
+
+#program_export
+AndroidHostPaused :: () -> bool { return AndroidNativePaused() }
+
+#program_export
+AndroidHostFocused :: () -> bool {
+    return AndroidNativeApp() != null && !AndroidHostPaused() && android_frame_input.focused
+}
+
+// A timeout or missing window is not application shutdown. Drain queued
+// lifecycle/input events, but return false only when the activity is gone.
+#program_export
+PollAndroidHost :: (timeout_ms: s32) -> bool {
+    app := AndroidNativeApp()
+    if app == null || app.destroy_requested != 0 || AndroidNativeDestroyRequested() { return false }
+    unused AndroidNativePoll(timeout_ms)
+    while !AndroidNativeDestroyRequested() && app.destroy_requested == 0 && AndroidNativePoll(0) {}
+    resized := AndroidNativeTakeResized()
+    redraw := AndroidNativeTakeRedraw()
+    graphics := AndroidTakeGraphicsInvalidate()
+    PollAndroidWindowInsets()
+    if resized || redraw || graphics != 0 {
+        android_host_pixels_valid = false
+    }
+    if AndroidHostPaused() || !AndroidNativeWindowReady() { android_host_pixels_valid = false }
+    return app.destroy_requested == 0 && !AndroidNativeDestroyRequested()
+}
+
+#program_export
+AndroidHostViewport :: () -> Rectangle {
+    if !AndroidNativeWindowReady() { return .{} }
+    viewport: AndroidViewport
+    unused SyncAndroidViewport(*viewport)
+    if viewport.ready == 0 {
+        unused AndroidNativeSurfaceSize(*viewport.width, *viewport.height)
+        viewport.x = 0; viewport.y = 0
+    }
+    zoom := AndroidLayoutZoom()
+    return .{cast(float32)viewport.x / zoom, cast(float32)viewport.y / zoom,
+        cast(float32)viewport.width / zoom, cast(float32)viewport.height / zoom}
+}
+
+#program_export
+BeginAndroidFrame :: () {
+    if android_host_frame_open { return }
+    android_host_unchanged = false
+    if AndroidHostPaused() || !AndroidNativeWindowReady() || AndroidNativeDestroyRequested() { return }
+    width: s32; height: s32
+    if !AndroidNativeSurfaceSize(*width, *height) || !AndroidNativeEnsurePixels(width, height) { return }
+    zoom := AndroidLayoutZoom()
+    viewport := AndroidHostViewport()
+    if width != android_host_width || height != android_host_height || zoom != android_host_zoom ||
+        viewport.x != android_host_viewport.x || viewport.y != android_host_viewport.y ||
+        viewport.width != android_host_viewport.width || viewport.height != android_host_viewport.height {
+        android_host_pixels_valid = false
+    }
+    android_host_width = width; android_host_height = height
+    android_host_zoom = zoom; android_host_viewport = viewport
+    AndroidTouchSetZoom(zoom)
+    if !PixmapScale(zoom, zoom) || !PixmapResumeInto(width, height, AndroidNativePixels(), true) { return }
+    // Direct drawing changes the whole frame. EndPixmapFrame narrows this to
+    // retained paint damage when the application uses the widget paint queue.
+    PixmapDamageBegin(PixmapLogicalBounds(), 0, false)
+    PixmapDamageEnd()
+    android_host_frame_open = true
+}
+
+#program_export
+AndroidFrameReusable :: () -> bool {
+    if AndroidNativeApp() == null || AndroidHostPaused() || !AndroidNativeWindowReady() || AndroidNativeDestroyRequested() { return false }
+    if !android_host_frame_open && !pixmap_camera_set { return android_host_pixels_valid }
+    scale_x := ifx android_host_frame_open then pixmap_scale_x else pixmap_camera_scale
+    scale_y := ifx android_host_frame_open then pixmap_scale_y else pixmap_camera_scale
+    offset_x := ifx android_host_frame_open then pixmap_offset_x else pixmap_camera_x
+    offset_y := ifx android_host_frame_open then pixmap_offset_y else pixmap_camera_y
+    return android_host_pixels_valid && android_host_scale_x == scale_x &&
+        android_host_scale_y == scale_y && android_host_offset_x == offset_x &&
+        android_host_offset_y == offset_y
+}
+
+#program_export
+AndroidFrameUnchanged :: (unchanged: bool) {
+    android_host_unchanged = unchanged && AndroidFrameReusable()
+}
+
+#program_export
+EndAndroidFrame :: () -> bool {
+    app := AndroidNativeApp()
+    if app == null || app.destroy_requested != 0 || AndroidNativeDestroyRequested() {
+        if android_host_frame_open { PixmapEndInto(); android_host_frame_open = false }
+        AndroidTouchFrameEnd()
+        return false
+    }
+    if !android_host_frame_open { AndroidTouchFrameEnd(); return true }
+    damage := PixmapDamageBounds()
+    reusable := AndroidFrameReusable()
+    scale_x := pixmap_scale_x; scale_y := pixmap_scale_y
+    offset_x := pixmap_offset_x; offset_y := pixmap_offset_y
+    PixmapEndInto()
+    android_host_frame_open = false
+    AndroidTouchFrameEnd()
+    // The app keeps ticking while paused or windowless. Presenting requires
+    // the same live surface that BeginAndroidFrame borrowed.
+    if AndroidHostPaused() || !AndroidNativeWindowReady() {
+        android_host_pixels_valid = false
+        return true
+    }
+    if android_host_unchanged && reusable { return true }
+    if !reusable { damage = .{0.0, 0.0, cast(float32)android_host_width, cast(float32)android_host_height} }
+    left := cast(s32)damage.x; top := cast(s32)damage.y
+    right := cast(s32)(damage.x + damage.width); bottom := cast(s32)(damage.y + damage.height)
+    if left >= right || top >= bottom { return true }
+    if !AndroidNativeLock(left, top, right, bottom) { android_host_pixels_valid = false; return false }
+    copied := AndroidNativePresentDamage(left, top, right, bottom)
+    presented := AndroidNativeUnlock()
+    android_host_pixels_valid = copied && presented
+    if android_host_pixels_valid {
+        android_host_scale_x = scale_x; android_host_scale_y = scale_y
+        android_host_offset_x = offset_x; android_host_offset_y = offset_y
+    }
+    return android_host_pixels_valid
+}

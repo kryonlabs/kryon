@@ -1,0 +1,26 @@
+// Optional text rasterizers install on first use. Pixmap itself imports no
+// platform font loader, VM or font files.
+PixmapTypefaceMask :: struct {
+    left: s32
+    top: s32
+    width: s32
+    height: s32
+    coverage: []u8
+}
+PixmapTypefaceMeasure :: #type (string, s32, string) -> s32;
+PixmapTypefaceRaster :: #type (string, float32, *PixmapTypefaceMask) -> bool;
+active: bool;
+measure: PixmapTypefaceMeasure;
+raster: PixmapTypefaceRaster;
+PixmapTypefaceUse :: (width: PixmapTypefaceMeasure, pixels: PixmapTypefaceRaster) {
+    measure = width; raster = pixels; active = true
+}
+PixmapTypefaceClear :: () { active = false }
+PixmapTypefaceWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    callback: PixmapTypefaceMeasure = measure
+    return callback(value, font, typeface)
+}
+PixmapTypefacePixels :: (value: string, font: float32, mask: *PixmapTypefaceMask) -> bool {
+    callback: PixmapTypefaceRaster = raster
+    return callback(value, font, mask)
+}

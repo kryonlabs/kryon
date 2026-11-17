@@ -27,6 +27,17 @@
   window use that executable. `make zx-window-test` also runs it on a private
   Xvfb and checks that with no library registered `zx2native` stops at the
   gap naming `ZxWindowOpenHost`.
+- Android apps can own their main loop: `kryon/android_runtime` polls
+  NativeActivity lifecycle and input with `PollAndroidHost`, and
+  `BeginAndroidFrame`/`EndAndroidFrame` paint and present Pixmap's
+  device-pixel damage. Pixmap's `RasterSetTransform` and
+  `RasterPointFromPixels` share one camera for painting and input.
+- On Android, `kryon/pixmap_assets_android` decodes owned PNG, WebP and AVIF
+  pictures on first use, and `kryon/pixmap_typefaces_android` shapes text with
+  Android's Paint and Canvas through the ordinary `typeface_source`
+  capabilities, with system font fallback.
+- The `renderer-desktop` artifact also builds for Android ARMv7 and AArch64:
+  WebP, AVIF and Opus archives and the shared AVIF bridge, with no renderer.
 
 ## [0.4.0] - 2026-11-16
 

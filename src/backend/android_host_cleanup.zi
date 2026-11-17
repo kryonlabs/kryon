@@ -1,0 +1,10 @@
+// Optional host resources register their own teardown on first use.
+AndroidHostCleanup :: #type () -> void;
+android_images_close: AndroidHostCleanup;
+android_typefaces_close: AndroidHostCleanup;
+AndroidImagesCleanupUse :: (close: AndroidHostCleanup) { android_images_close = close }
+AndroidTypefacesCleanupUse :: (close: AndroidHostCleanup) { android_typefaces_close = close }
+AndroidHostResourcesClose :: () {
+    if android_images_close != null { android_images_close() }
+    if android_typefaces_close != null { android_typefaces_close() }
+}

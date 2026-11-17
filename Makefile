@@ -1090,6 +1090,23 @@ image-dimensions-host-test: project-toolchain
 	@sh tests/image_dimensions_host_test.sh
 test: image-dimensions-host-test
 
+.PHONY: android-runtime-test pixmap-camera-test android-image-services-test pixmap-typeface-test android-codec-artifact-test android-typefaces-link-test android-typefaces-device-test
+android-runtime-test: project-toolchain
+	@sh tests/ziran_android_runtime_test.sh
+pixmap-camera-test: project-toolchain
+	@sh tests/pixmap_camera_test.sh
+android-image-services-test: project-toolchain codec-archives
+	@sh tests/android_image_services_test.sh
+pixmap-typeface-test: project-toolchain
+	@sh tests/pixmap_typeface_test.sh
+android-codec-artifact-test: project-toolchain
+	@python3 tests/android_codec_artifact_test.py
+android-typefaces-link-test: project-toolchain
+	@python3 tests/android_typefaces_device_test.py
+android-typefaces-device-test: project-toolchain
+	@python3 tests/android_typefaces_device_test.py --serial ZE2223BQZT
+test: android-runtime-test pixmap-camera-test android-image-services-test pixmap-typeface-test
+
 .PHONY: mirrored-image-test
 mirrored-image-test: project-toolchain
 	@sh tests/ziran_cairo_mirrored_image_test.sh

@@ -1,0 +1,57 @@
+using Pixels :: #import "pixmap";
+#import "geometry"
+#import "drawing_props"
+
+actual: [49152]u32;
+expected: [49152]u32;
+image: [4]u32 = .{0x80ff0000, 0xff00ff00, 0xff0000ff, 0xffffffff};
+white :: Color.{255, 255, 255, 255};
+
+Draw :: (dx: float32, dy: float32) {
+    clip := Rectangle.{dx - 10.0, dy, 100.0, 70.0}
+    // A negative-X rail plus fractional seams and alpha exercise transformed
+    // clip coverage, rather than only drawing a rectangle at positive X.
+    RasterRoundedRectangle(.{dx - 10.0, dy, 10.0, 70.0}, 0.0, 0, .{11, 22, 33, 255})
+    RasterRoundedRectangle(.{dx, dy + 0.25, 12.25, 9.5}, 0.0, 0, .{80, 90, 100, 128})
+    RasterRoundedRectangle(.{dx + 12.25, dy + 0.25, 12.25, 9.5}, 0.0, 0, .{80, 90, 100, 128})
+    RasterRoundedRectangleOutline(.{dx + 1.0, dy + 11.0, 20.0, 12.0}, 3.0, 8, 1.0, white)
+    RasterLine(.{dx - 8.0, dy + 30.0, 25.0, 3.0}, white)
+    points: [3]Vector2 = .{.{dx + 25.0, dy + 11.0}, .{dx + 40.0, dy + 11.0}, .{dx + 32.0, dy + 25.0}}
+    RasterTriangles(points[:], .{20, 190, 90, 255})
+    RasterImage("camera", cast(u32)0, .{0.0, 0.0, 2.0, 2.0},
+        .{dx + 45.0, dy + 2.0, 16.0, 16.0}, clip, .{}, 0.0, 1.0, white)
+    mesh: [4]Vector2 = .{.{dx + 65.0, dy + 2.0}, .{dx + 80.0, dy + 4.0},
+        .{dx + 67.0, dy + 20.0}, .{dx + 82.0, dy + 18.0}}
+    RasterImageMesh("camera", cast(u32)0, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2, clip, white)
+    RasterTextClipped("Negative rail café", cast(s32)dx - 8, cast(s32)dy + 38, 12, white, clip)
+    RasterTextRotated("Tilt", cast(s32)dx + 45, cast(s32)dy + 37, 12, white,
+        clip, .{dx + 45.0, dy + 37.0}, 21.0, clip, false, false, false)
+}
+
+#program_export
+main :: () -> s32 {
+    if !PixmapSetImage(0, "camera", 2, 2, image[:]) { return 1 }
+    if !RasterSetTransform(2.0, 24.0, 8.0) || RasterScale() != 2.0 { return 2 }
+    point := RasterPointFromPixels(.{8.0, 18.0})
+    if point.x != -8.0 || point.y != 5.0 { return 3 }
+    if RasterSetTransform(0.0, 0.0, 0.0) || RasterSetTransform(17.0, 0.0, 0.0) { return 4 }
+    if !PixmapBeginInto(cast(u32)0xff181818, 256, 192, actual[:]) { return 5 }
+    Draw(0.0, 0.0); PixmapEndInto()
+    point = RasterPointFromPixels(.{8.0, 18.0})
+    if point.x != -8.0 || point.y != 5.0 { return 6 }
+    if !RasterSetTransform(2.0, 0.0, 0.0) || !PixmapBeginInto(cast(u32)0xff181818, 256, 192, expected[:]) { return 7 }
+    Draw(12.0, 4.0); PixmapEndInto()
+    for at: 0..49151 {
+        if actual[at] != expected[at] { print("Camera mismatch at %: % != %\n", at, actual[at], expected[at]); return 8 }
+    }
+    // Resize/reborrow applies the held camera without requiring the app to
+    // set it every frame. The inverse remains valid outside a borrowed frame.
+    if !RasterSetTransform(1.5, 15.0, 6.0) || !PixmapBeginInto(0, 128, 96, actual[:], true) { return 9 }
+    RasterRoundedRectangle(.{-8.0, 0.0, 4.0, 4.0}, 0.0, 0, white)
+    if actual[7 * 128 + 4] != cast(u32)0xffffffff { return 10 }
+    PixmapEndInto()
+    if !PixmapResumeInto(160, 100, actual[:]) || pixmap_offset_x != 15.0 || pixmap_scale_x != 1.5 { return 11 }
+    PixmapEndInto()
+    print("Pixmap camera: negative rail, inverse input, shapes, images, mesh, text, alpha and resize passed\n")
+    return 0
+}

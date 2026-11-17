@@ -2129,6 +2129,44 @@ fixture dimensions; absent paths return `0`. This needs no window or borrowed
 framebuffer. A desktop application uses the same capabilities from
 `kryon/Cairo`, which loads its picture assets.
 
+### Android frames owned by the application
+
+`kryon/android_runtime` hosts applications with their own main loop. Select it
+as the Android host when generating native sources. `PollAndroidHost(timeout_ms)`
+drains lifecycle and input events and returns false only on destruction;
+a missing window, pause or lost focus does not end the loop. Query
+`AndroidHostPaused()`, `AndroidHostFocused()` and `AndroidHostViewport()` before
+composing. `BeginAndroidFrame()` borrows the NativeActivity surface for Pixmap;
+`EndAndroidFrame()` presents its device-pixel damage. The app owns its widgets,
+state and pacing. Resizing, density, insets, redraw and surface replacement
+invalidate retained pixels; an unchanged frame skips presentation.
+
+Pixmap's `RasterSetTransform(scale, offset_x, offset_y)` and
+`RasterPointFromPixels(point)` use the same camera for painting and input.
+The inverse takes physical pixels, including a negative logical origin. The
+held camera survives frame borrows and surface resize. Device damage is
+already scaled and must not be scaled again by the presenter.
+
+`kryon/pixmap_assets_android` adds owned decoded pictures on first use.
+`PixmapLoadImageBytes(path, data, file_type)` replaces a registered Pixmap
+picture only after a successful bounded decode. Preview decoding returns owned,
+upright straight RGBA through the ordinary image-preview capabilities.
+Path, folder and full image invalidation share the raster-cache API; replacing
+or closing owned entries releases their pixels and sampling cache. A borrowed
+picture installed with `PixmapSetImage` remains borrowed.
+
+`kryon/pixmap_typefaces_android` provides the ordinary `typeface_source`
+capabilities: register a font file, borrowed font bytes or the system face,
+then select its registered name. Bind those capabilities to this provider.
+Selection installs Pixmap's optional text rasterizer; the default Pixmap font
+needs no Android font service. Android Paint shapes and measures the same run
+that Canvas rasterizes into coverage for Pixmap's camera, clipping, rotation
+and alpha composition. The line box is the requested font size, matching the
+desktop layout contract. System font lookup uses `system_typeface_android`,
+and Android supplies script fallback for the selected face. Clearing faces
+restores the built-in Pixmap font. CPU discard clears raster masks while
+retaining registered faces; host teardown releases owned references and masks.
+
 ### Text as pixels
 
 `#import "kryon/text_pixels"` exposes `TextPixels(value, font, color, width,

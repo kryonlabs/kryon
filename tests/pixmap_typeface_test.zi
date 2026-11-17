@@ -1,0 +1,57 @@
+Pixels :: #import "pixmap";
+Slots :: #import "pixmap_typeface_slots";
+#import "geometry"
+#import "drawing_props"
+#import "std/byte_text_linux"
+
+coverage: [65536]u8;
+actual: [16384]u32;
+expected: [16384]u32;
+seen_font: float32;
+width_calls: s32;
+
+Width :: (value: string, font: s32, typeface: string) -> s32 {
+    unused typeface; width_calls += 1
+    return cast(s32)value.count * font / 2
+}
+Raster :: (value: string, font: float32, output: *Slots.PixmapTypefaceMask) -> bool {
+    seen_font = font
+    width := cast(s32)(cast(float32)value.count * font / 2.0 + 0.5)
+    height := cast(s32)(font + 0.5)
+    if width <= 0 || height <= 0 || width * height > 65536 { return false }
+    for at: 0..width * height - 1 {
+        coverage[at] = ifx (at / width + at % width) % 2 == 0 then cast(u8)255 else cast(u8)128
+    }
+    output.* = .{-2, 1, width, height, coverage[0:width * height]}
+    return true
+}
+Draw :: (dx: s32, dy: s32) {
+    Pixels.RasterTextClipped("ab", dx, dy, 12, .{200, 80, 30, 128}, .{cast(float32)dx - 1.0, cast(float32)dy, 20.0, 20.0})
+    Pixels.RasterTextRotated("cd", dx + 20, dy + 20, 12, .{40, 200, 60, 128},
+        .{cast(float32)dx + 20.0, cast(float32)dy + 20.0, 20.0, 20.0},
+        .{cast(float32)dx + 20.0, cast(float32)dy + 20.0}, 21.0,
+        .{0.0, 0.0, 128.0, 128.0}, false, false, false)
+}
+#program_export
+main :: () -> s32 {
+    builtin := Pixels.MeasureGlyphWidth("ab", 12, "")
+    if Slots.active || builtin <= 0 { return 1 }
+    Slots.PixmapTypefaceUse(Width, Raster)
+    if Pixels.MeasureGlyphWidth("ab", 12, "") != 12 || width_calls != 1 ||
+    Pixels.MeasureGlyphLineHeight(12, "") != 12 { return 2 }
+    if !Pixels.RasterSetTransform(1.5, 12.0, 6.0) || !Pixels.PixmapBeginInto(0, 128, 128, actual[:]) { return 3 }
+    Draw(0, 0); Pixels.PixmapEndInto()
+    if seen_font != 18.0 { return 4 }
+    if !Pixels.RasterSetTransform(1.5, 0.0, 0.0) || !Pixels.PixmapBeginInto(0, 128, 128, expected[:]) { return 5 }
+    Draw(8, 4); Pixels.PixmapEndInto()
+    drawn: s32
+    for at: 0..16383 {
+        if actual[at] != expected[at] { return 6 }
+        if actual[at] != cast(u32)0 { drawn += 1 }
+    }
+    if drawn < 100 { return 7 }
+    Slots.PixmapTypefaceClear()
+    if Slots.active || Pixels.MeasureGlyphWidth("ab", 12, "") != builtin { return 8 }
+    print("Optional Pixmap typefaces: shared layout metrics, fractional camera, clipping, rotation, alpha and clear passed\n")
+    return 0
+}

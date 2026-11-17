@@ -1,0 +1,116 @@
+// Optional Android picture services. An application supplies bytes from APK
+// assets, its downloads or a user file; the host owns each decoded cache entry.
+#import "android_image_decode"
+Images :: #import "android_bundle_images";
+#import "ziran_image_decode"
+#import "android_host_cleanup"
+#import "pixmap_image_owner"
+#import "pixmap"
+#import "paint_queue"
+#import "std/byte_text_linux"
+
+AndroidPictureBudget :: 268435456;
+android_picture_pixels: [1024]*u8;
+android_picture_sizes: [1024]s64;
+android_picture_bytes: s64;
+android_picture_ready: bool;
+
+AndroidPictureReplacing :: (slot: s32, next: *u32) {
+    previous := android_picture_pixels[slot]
+    if previous == null || previous == cast(*u8)next { return }
+    ImagePixelsFree(previous)
+    android_picture_pixels[slot] = null
+    android_picture_bytes -= android_picture_sizes[slot]
+    android_picture_sizes[slot] = 0
+}
+AndroidPicturesClose :: () {
+    for slot: cast(s32)0..1023 {
+        if android_picture_pixels[slot] != null { PixmapClearImage(slot) }
+    }
+}
+AndroidPicturesUse :: () {
+    if android_picture_ready { return }
+    PixmapImageOwnerUse(AndroidPictureReplacing)
+    AndroidImagesCleanupUse(AndroidPicturesClose)
+    android_picture_ready = true
+}
+
+#program_export
+PixmapLoadImageBytes :: (path: string, data: string, file_type: string) -> bool {
+    if path.count <= 0 || path.count >= 256 { return false }
+    for byte: path { if byte == cast(u8)0 { return false } }
+    AndroidPicturesUse()
+    slot := PixmapImageIndex(path)
+    if slot < 0 {
+        for candidate: cast(s32)0..1023 {
+            if pixmap_image_lengths[candidate] == 0 { slot = candidate; break }
+        }
+    }
+    if slot < 0 { return false }
+    image := AndroidImageDecodeEncoded(data, file_type)
+    if image.pixels == null { return false }
+    size := cast(s64)image.width * image.height * 4
+    if image.width > 16384 || image.height > 16384 ||
+        android_picture_bytes - android_picture_sizes[slot] + size > AndroidPictureBudget {
+        DecodedImageFree(image); return false
+    }
+    words := cast(*u32)image.pixels
+    for at: cast(s64)0..size / 4 - 1 {
+        pixel := at * 4
+        color := (cast(u32)image.pixels[pixel + 3] << 24) | (cast(u32)image.pixels[pixel] << 16) |
+            (cast(u32)image.pixels[pixel + 1] << 8) | cast(u32)image.pixels[pixel + 2]
+        words[at] = color
+    }
+    if !PixmapSetImage(slot, path, image.width, image.height, Images.AndroidImageWords(words, size / 4)) {
+        DecodedImageFree(image); return false
+    }
+    android_picture_pixels[slot] = image.pixels
+    android_picture_sizes[slot] = size; android_picture_bytes += size
+    PaintResourcesChanged()
+    return true
+}
+
+#program_export
+RasterInvalidateImage :: (path: string) -> bool {
+    slot := PixmapImageIndex(path)
+    if slot < 0 { return false }
+    PixmapClearImage(slot)
+    PaintResourcesChanged()
+    return true
+}
+#program_export
+RasterInvalidateImagesIn :: (folder: string) -> s32 {
+    if folder.count == 0 { return 0 }
+    while folder.count > 1 && folder[folder.count - 1] == cast(u8)47 { folder = folder[0:folder.count - 1] }
+    removed: s32
+    for slot: cast(s32)0..1023 {
+        count := pixmap_image_lengths[slot]
+        if count < folder.count { continue }
+        path := TextView(pixmap_image_paths[slot][0:count])
+        if path[0:folder.count] != folder { continue }
+        if path.count != folder.count && folder != "/" && path[folder.count] != cast(u8)47 { continue }
+        PixmapClearImage(slot); removed += 1
+    }
+    if removed > 0 { PaintResourcesChanged() }
+    return removed
+}
+#program_export
+RasterInvalidateImages :: () -> s32 {
+    removed: s32
+    for slot: cast(s32)0..1023 {
+        if pixmap_image_lengths[slot] > 0 { PixmapClearImage(slot); removed += 1 }
+    }
+    if removed > 0 { PaintResourcesChanged() }
+    return removed
+}
+#program_export
+ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s32,
+    channels: *s32, upright: *bool) -> *u8 {
+    width.* = 0; height.* = 0; channels.* = 0; upright.* = true
+    image := AndroidImageDecodeEncoded(data, file_type)
+    if image.pixels == null { return null }
+    width.* = image.width; height.* = image.height; channels.* = 4
+    return image.pixels
+}
+#program_export
+ImagePreviewRelease :: (pixels: *u8) { ImagePixelsFree(pixels) }
