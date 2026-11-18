@@ -1,0 +1,215 @@
+// The desktop host services a terminal needs, on a private Xvfb: waiting on
+// a program's descriptors and window input together, the frame rate, the
+// exit key, the middle button, window options, fullscreen, keeping the
+// cadence while hidden, and preparing glyphs before a frame draws them.
+Desktop :: #import "desktop_runtime";
+State :: #import "desktop_window_state";
+Activity :: #import "desktop_activity";
+Clock :: #import "frame_clock";
+Raster :: #import "cairo_raster";
+#import "timer_linux"
+#import "format"
+
+sdl :: #system_library "SDL2";
+libc :: #system_library "c";
+Delay :: (milliseconds: u32) #foreign sdl "SDL_Delay";
+WindowID :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowID";
+WindowFlags :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowFlags";
+Push :: (event: *void) -> s32 #foreign sdl "SDL_PushEvent";
+Pipe :: (fds: *s32) -> s32 #foreign libc "pipe";
+WriteRaw :: (fd: s32, data: *u8, count: u64) -> s64 #foreign libc "write";
+ReadRaw :: (fd: s32, data: *u8, count: u64) -> s64 #foreign libc "read";
+CloseRaw :: (fd: s32) -> s32 #foreign libc "close";
+
+Event :: struct {
+    kind: u32; timestamp: u32; window_id: u32; which: u32
+    button: u8; state: u8; clicks: u8; padding: u8
+    x: s32; y: s32; payload: [28]u8
+}
+
+// SDL_WINDOW_BORDERLESS, SDL_WINDOW_RESIZABLE and SDL_WINDOW_ALWAYS_ON_TOP.
+BORDERLESS :: 0x10;
+RESIZABLE :: 0x20;
+ON_TOP :: 0x8000;
+
+PushButton :: (button: u8, released: bool) -> bool {
+    event: Event
+    event.window_id = WindowID(Desktop.DesktopWindow())
+    event.button = button
+    event.kind = ifx released then cast(u32)0x402 else cast(u32)0x401
+    return Push(cast(*void)*event) == 1
+}
+
+PushKey :: (sym: s32) -> bool {
+    event: Event
+    event.window_id = WindowID(Desktop.DesktopWindow())
+    event.kind = cast(u32)0x300
+    event.which = cast(u32)1 // pressed, not a repeat
+    event.x = sym
+    return Push(cast(*void)*event) == 1
+}
+
+// An SDL user event, as a finished background job wakes the window.
+PushWake :: () -> bool {
+    event: Event
+    event.kind = cast(u32)0x8000
+    return Push(cast(*void)*event) == 1
+}
+
+Frame :: () -> bool {
+    Desktop.BeginDesktopFrame()
+    return Desktop.EndDesktopFrame()
+}
+
+// Configured rates pace the clock exactly; 0 draws without waiting.
+FrameRates :: () -> s32 {
+    frequency := cast(u64)1000000
+    standard: Clock.FrameClock
+    Clock.Begin(*standard, cast(u64)0, frequency)
+    if Clock.Wait(*standard, cast(u64)0, frequency, true, false) != cast(u32)17 { return 10 }
+    slow: Clock.FrameClock
+    slow.limit = cast(u64)10
+    Clock.Begin(*slow, cast(u64)0, frequency)
+    if Clock.Wait(*slow, cast(u64)0, frequency, true, false) != cast(u32)100 { return 11 }
+    // A stable screen never settles faster than its configured rate.
+    unused Clock.Wait(*slow, cast(u64)100000, frequency, true, true)
+    unused Clock.Wait(*slow, cast(u64)200000, frequency, true, true)
+    if slow.rate != cast(u64)10 { return 12 }
+    fast: Clock.FrameClock
+    fast.unpaced = true
+    Clock.Begin(*fast, cast(u64)0, frequency)
+    if Clock.Wait(*fast, cast(u64)0, frequency, true, false) != cast(u32)0 { return 13 }
+    if Desktop.DesktopFrameRate(-1) || Desktop.DesktopFrameRate(1001) { return 14 }
+    if !Desktop.DesktopFrameRate(30) || !Desktop.DesktopFrameRate(60) { return 15 }
+    return 0
+}
+
+// Undecorated and topmost windows, and the resizable default.
+WindowOptions :: () -> s32 {
+    if !Desktop.OpenDesktopWindow(240, 160, "gaps",
+        cast(u32)(Desktop.DesktopWindowUndecorated | Desktop.DesktopWindowTopmost)) { return 20 }
+    flags := WindowFlags(Desktop.DesktopWindow())
+    Desktop.CloseDesktop()
+    if (flags & cast(u32)BORDERLESS) == cast(u32)0 || (flags & cast(u32)ON_TOP) == cast(u32)0 { return 21 }
+    if (flags & cast(u32)RESIZABLE) != cast(u32)0 { return 22 }
+    if !Desktop.OpenDesktopTitled(240, 160, "gaps") { return 23 }
+    flags = WindowFlags(Desktop.DesktopWindow())
+    Desktop.CloseDesktop()
+    if (flags & cast(u32)RESIZABLE) == cast(u32)0 || (flags & cast(u32)BORDERLESS) != cast(u32)0 { return 24 }
+    return 0
+}
+
+Fullscreen :: () -> s32 {
+    if State.DesktopToggleFullscreen() { return 25 }
+    if !Desktop.OpenDesktopTitled(240, 160, "gaps") { return 26 }
+    defer Desktop.CloseDesktop()
+    if State.DesktopFullscreen() { return 27 }
+    if !State.DesktopToggleFullscreen() || !State.DesktopFullscreen() { return 28 }
+    if !State.DesktopToggleFullscreen() || State.DesktopFullscreen() { return 29 }
+    return 0
+}
+
+ExitKey :: () -> s32 {
+    if Desktop.DesktopExitKey(-1) || Desktop.DesktopExitKey(512) { return 30 }
+    if !Desktop.DesktopExitKey(256) { return 31 }
+    if !Desktop.OpenDesktopTitled(240, 160, "gaps") { return 32 }
+    if !Desktop.PollDesktop() { Desktop.CloseDesktop(); return 33 }
+    // Another key leaves the loop running; Escape ends it.
+    if !PushKey(97) || !Desktop.PollDesktop() { Desktop.CloseDesktop(); return 34 }
+    if !PushKey(27) { Desktop.CloseDesktop(); return 35 }
+    stopped := !Desktop.PollDesktop()
+    Desktop.CloseDesktop()
+    if !stopped { return 36 }
+    if !Desktop.DesktopExitKey(0) { return 37 }
+    if !Desktop.OpenDesktopTitled(240, 160, "gaps") { return 38 }
+    defer Desktop.CloseDesktop()
+    if !PushKey(27) || !Desktop.PollDesktop() { return 39 }
+    return 0
+}
+
+MiddleButton :: () -> s32 {
+    if !Desktop.OpenDesktopTitled(240, 160, "gaps") { return 40 }
+    defer Desktop.CloseDesktop()
+    if !Desktop.PollDesktop() || !Frame() { return 41 }
+    if !PushButton(cast(u8)2, false) || !Desktop.PollDesktop() { return 42 }
+    middle := Desktop.PollMiddlePointer()
+    if !middle.pressed || middle.released { return 43 }
+    // The right button is its own.
+    if Desktop.PollSecondaryPointer().pressed { return 44 }
+    if !Frame() || Desktop.PollMiddlePointer().pressed { return 45 }
+    if !PushButton(cast(u8)2, true) || !Desktop.PollDesktop() { return 46 }
+    middle = Desktop.PollMiddlePointer()
+    if middle.pressed || !middle.released { return 47 }
+    if !Frame() || Desktop.PollMiddlePointer().released { return 48 }
+    return 0
+}
+
+// Descriptor output, window input and the time limit each end the wait.
+WaitForActivity :: () -> s32 {
+    fds: [2]s32
+    if Pipe(*fds[0]) != 0 { return 50 }
+    defer { unused CloseRaw(fds[0]); unused CloseRaw(fds[1]) }
+    if !Desktop.OpenDesktopTitled(240, 160, "gaps") { return 51 }
+    defer Desktop.CloseDesktop()
+    watched: [2]s32 = .[-1, fds[0]]
+    settled := false
+    for attempt: 0..200 {
+        unused Desktop.PollDesktop()
+        if Activity.DesktopWaitForActivity(watched[:], 10) == Activity.DesktopActivityNone { settled = true; break }
+    }
+    if !settled { return 52 }
+    started := MonotonicMilliseconds()
+    if Activity.DesktopWaitForActivity(watched[:], 60) != Activity.DesktopActivityNone { return 53 }
+    if MonotonicMilliseconds() - started < 50 { return 54 }
+    byte: [1]u8 = .[cast(u8)65]
+    if WriteRaw(fds[1], *byte[0], cast(u64)1) != 1 { return 55 }
+    if Activity.DesktopWaitForActivity(watched[:], 2000) != Activity.DesktopActivityDescriptor { return 56 }
+    if ReadRaw(fds[0], *byte[0], cast(u64)1) != 1 { return 57 }
+    if !PushWake() { return 58 }
+    if Activity.DesktopWaitForActivity(watched[:], 2000) != Activity.DesktopActivityInput { return 59 }
+    // Waiting leaves the event for the frame that reads it.
+    if Activity.DesktopWaitForActivity(watched[:], 0) != Activity.DesktopActivityInput { return 60 }
+    unused Desktop.PollDesktop()
+    return 0
+}
+
+// A hidden always-run window keeps the configured cadence instead of the
+// hidden window's 100 ms rest.
+AlwaysRun :: () -> s32 {
+    if !Desktop.OpenDesktopWindow(240, 160, "gaps",
+        cast(u32)(Desktop.DesktopWindowResizable | Desktop.DesktopWindowAlwaysRun)) { return 70 }
+    defer Desktop.CloseDesktop()
+    if Desktop.WindowVisibleHost() { return 71 }
+    if !Desktop.DesktopFrameRate(500) { return 72 }
+    defer { unused Desktop.DesktopFrameRate(60) }
+    started := MonotonicMilliseconds()
+    for index: 0..9 {
+        unused Desktop.PollDesktop()
+        Desktop.PauseDesktop()
+    }
+    if MonotonicMilliseconds() - started >= 500 { return 73 }
+    return 0
+}
+
+Glyphs :: () -> s32 {
+    if !Desktop.OpenDesktopTitled(240, 160, "gaps") { return 80 }
+    defer Desktop.CloseDesktop()
+    Desktop.DesktopPrepareGlyphs("")
+    Desktop.DesktopPrepareGlyphs("plain ASCII")
+    Desktop.DesktopPrepareGlyphs("漢字 ✓ Ω")
+    if Raster.MeasureGlyphWidth("漢字 ✓ Ω", 16, "") <= 0 { return 81 }
+    return 0
+}
+
+main :: () -> s32 {
+    result := FrameRates()
+    if result == 0 { result = WindowOptions() }
+    if result == 0 { result = Fullscreen() }
+    if result == 0 { result = ExitKey() }
+    if result == 0 { result = MiddleButton() }
+    if result == 0 { result = WaitForActivity() }
+    if result == 0 { result = AlwaysRun() }
+    if result == 0 { result = Glyphs() }
+    if result != 0 { print("desktop host gaps: failure %\n", result) }
+    return result
+}

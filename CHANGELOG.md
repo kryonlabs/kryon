@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- The desktop host gives terminal-style apps what they used raylib for:
+  `OpenDesktopWindow` opens undecorated, always-on-top or always-running
+  windows, `kryon/desktop_activity`'s `DesktopWaitForActivity` sleeps until
+  the program's own descriptors, such as a PTY, or window input are ready,
+  `DesktopFrameRate` sets the drawing rate, `DesktopExitKey` ends the loop on
+  a key, `PollMiddlePointer` reports the middle button,
+  `DesktopSetFullscreen` and `DesktopToggleFullscreen` fill the screen, and
+  `DesktopPrepareGlyphs` loads fallback fonts before a frame draws them.
 - Windows desktop programs link fonts and pictures given as bytes: their
   files are temporary files there, as they are in-memory files on Linux.
   The image decoders keep their GdkPixbuf slots private to their module, so

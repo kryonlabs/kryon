@@ -1453,13 +1453,32 @@ uppercase ASCII, named keys from 256 (Escape), as `desktop_keys` maps SDL's.
   `DesktopWheelMoveX()` gives the poll's sideways wheel steps (positive to
   the right) beside `DesktopWheelMove()`. Over another window of the program
   the main window's pointer is at -1, -1 and presses nothing.
+  `OpenDesktopWindow(width, height, title, options)` opens the window with
+  any of `DesktopWindowResizable`, `DesktopWindowUndecorated`,
+  `DesktopWindowTopmost` and `DesktopWindowAlwaysRun` (keep the frame cadence
+  while hidden or minimized); `OpenDesktopTitled` is the resizable window.
+  `DesktopFrameRate(fps)` caps drawing at `fps` frames a second, or draws
+  without waiting with 0 (the default is 60, settling to 15 while nothing
+  changes). `DesktopExitKey(key)` makes a key end the loop as closing the
+  window does (0 turns that off). `PollMiddlePointer()` reports the middle
+  button like `PollSecondaryPointer()` the right one, and
+  `DesktopPrepareGlyphs(text)` loads the fallback faces non-ASCII text needs
+  before a frame draws it.
+- `kryon/desktop_activity`: `DesktopWaitForActivity(descriptors, milliseconds)`
+  sleeps until one of the program's own descriptors (such as a terminal's
+  PTY) is readable, window input is queued, or the time ends, and returns
+  `DesktopActivityDescriptor`, `DesktopActivityInput` or
+  `DesktopActivityNone`. Queued input stays for the next `PollDesktop`.
+  Windows and Android return `DesktopActivityUnsupported`; keep drawing there.
 - `kryon/desktop_keyboard`: `DesktopKeyDown(key)`, `DesktopKeyPressed(key)`
   (the first press), `DesktopKeyRepeated(key)` (keyboard auto-repeat) and
   `DesktopKeyReleased(key)`, for the last `PollDesktop`.
 - `kryon/desktop_window_state`: `DesktopMinimize`, `DesktopMaximize`,
   `DesktopRestore`, `DesktopRaise` and `DesktopSetAlwaysOnTop(enabled)` ask
   the window manager; `DesktopMinimized`, `DesktopMaximized` and
-  `DesktopAlwaysOnTop` report what it did. `DesktopMonitorBounds()` and
+  `DesktopAlwaysOnTop` report what it did. `DesktopSetFullscreen(enabled)`
+  and `DesktopToggleFullscreen()` fill the monitor at the desktop's own
+  resolution and `DesktopFullscreen()` reports it. `DesktopMonitorBounds()` and
   `DesktopMonitorUsable()` give the window's monitor in desktop pixels, and
   `DesktopDisplayScale()` its density over 96 dpi (X11's `Xft.dpi` when set).
 - `kryon/desktop_secondary_window`: up to three more windows, each with its

@@ -73,6 +73,7 @@ desktop_loop = "src/backend/desktop_loop.zi"
 # import it.
 desktop_keyboard = "src/backend/desktop_keyboard.zi"
 desktop_window_state = "src/backend/desktop_window_state.zi"
+desktop_activity = "src/backend/desktop_activity.zi"
 desktop_secondary_window = "src/backend/desktop_secondary_window.zi"
 cairo_assets = "src/backend/cairo_assets.zi"
 cairo_typefaces = "src/backend/cairo_typefaces.zi"

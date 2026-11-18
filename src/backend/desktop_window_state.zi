@@ -1,5 +1,5 @@
 // The desktop window among the desktop's windows: minimize, maximize,
-// restore, raise and keep above others, the state its window manager
+// restore, fill the screen, raise and keep above others, the state its window manager
 // reports, and the monitor it is on. Only the window desktop_runtime opened
 // is touched. The window manager decides; a desktop without one leaves the
 // state as it was, and the queries say so.
@@ -13,6 +13,7 @@ MaximizeWindow :: (window: *void) #foreign sdl "SDL_MaximizeWindow";
 RestoreWindow :: (window: *void) #foreign sdl "SDL_RestoreWindow";
 RaiseWindow :: (window: *void) #foreign sdl "SDL_RaiseWindow";
 SetAlwaysOnTop :: (window: *void, on_top: s32) #foreign sdl "SDL_SetWindowAlwaysOnTop";
+SetFullscreen :: (window: *void, flags: u32) -> s32 #foreign sdl "SDL_SetWindowFullscreen";
 WindowFlags :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowFlags";
 WindowDisplay :: (window: *void) -> s32 #foreign sdl "SDL_GetWindowDisplayIndex";
 DisplayArea :: struct { x: s32; y: s32; width: s32; height: s32; }
@@ -21,10 +22,12 @@ DisplayUsable :: (display: s32, area: *DisplayArea) -> s32 #foreign sdl "SDL_Get
 DisplayDPI :: (display: s32, diagonal: *float32, horizontal: *float32,
     vertical: *float32) -> s32 #foreign sdl "SDL_GetDisplayDPI";
 
-// SDL_WINDOW_MINIMIZED, SDL_WINDOW_MAXIMIZED and SDL_WINDOW_ALWAYS_ON_TOP.
+// SDL_WINDOW_MINIMIZED, SDL_WINDOW_MAXIMIZED, SDL_WINDOW_ALWAYS_ON_TOP and
+// SDL_WINDOW_FULLSCREEN_DESKTOP (the desktop's own resolution, no mode change).
 MINIMIZED :: 0x40
 MAXIMIZED :: 0x80
 ON_TOP :: 0x8000
+FULLSCREEN :: 0x1001
 
 Flagged :: (flag: u32) -> bool {
     window := Desktop.DesktopWindow()
@@ -80,6 +83,21 @@ DesktopSetAlwaysOnTop :: (enabled: bool) -> bool {
     if window == null { return false }
     SetAlwaysOnTop(window, ifx enabled then 1 else 0)
     return true
+}
+
+// Fills the monitor at the desktop's own resolution, or returns to the
+// window it was.
+DesktopSetFullscreen :: (enabled: bool) -> bool {
+    window := Desktop.DesktopWindow()
+    if window == null { return false }
+    return SetFullscreen(window, ifx enabled then cast(u32)FULLSCREEN else cast(u32)0) == 0
+}
+
+DesktopToggleFullscreen :: () -> bool { return DesktopSetFullscreen(!DesktopFullscreen()) }
+
+DesktopFullscreen :: () -> bool {
+    window := Desktop.DesktopWindow()
+    return window != null && (WindowFlags(window) & cast(u32)FULLSCREEN) == cast(u32)FULLSCREEN
 }
 
 DesktopMinimized :: () -> bool { return Flagged(MINIMIZED) }

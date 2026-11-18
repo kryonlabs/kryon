@@ -5,6 +5,15 @@ FrameClock :: struct {
     started: u64
     rate: u64
     quiet_frames: s32
+    // Frames per second while drawing; 0 keeps the default 60.
+    limit: u64
+    // Draws without waiting between frames.
+    unpaced: bool
+}
+
+// The drawing rate, and the slower one a stable screen settles to.
+ActiveRate :: (clock: *FrameClock) -> u64 {
+    return ifx clock.limit > cast(u64)0 then clock.limit else cast(u64)60
 }
 
 FrameActivity :: struct { quiet_frames: s32 }
@@ -20,9 +29,10 @@ Observe :: (activity: *FrameActivity, active: bool) -> bool {
 
 Begin :: (clock: *FrameClock, now: u64, frequency: u64) {
     clock.started = now
-    if clock.deadline == cast(u64)0 && frequency >= cast(u64)60 {
-        clock.deadline = now + frequency / cast(u64)60
-        clock.rate = cast(u64)60
+    rate := ActiveRate(clock)
+    if clock.deadline == cast(u64)0 && frequency >= rate {
+        clock.deadline = now + frequency / rate
+        clock.rate = rate
     }
 }
 
@@ -37,13 +47,15 @@ Wait :: (clock: *FrameClock, now: u64, frequency: u64,
         Wake(clock)
         return cast(u32)100
     }
-    if frequency < cast(u64)60 { return cast(u32)0 }
+    if clock.unpaced || frequency < cast(u64)60 { return cast(u32)0 }
     if unchanged {
         if clock.quiet_frames < 2 { clock.quiet_frames += 1 }
     } else {
         clock.quiet_frames = 0
     }
-    rate := ifx clock.quiet_frames >= 2 then cast(u64)15 else cast(u64)60
+    active := ActiveRate(clock)
+    idle := ifx active < cast(u64)15 then active else cast(u64)15
+    rate := ifx clock.quiet_frames >= 2 then idle else active
     period := frequency / rate
     if rate != clock.rate {
         clock.deadline = clock.started + period

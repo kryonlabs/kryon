@@ -1,0 +1,65 @@
+// Waits for a program's own descriptors and its desktop window together:
+// a terminal sleeps until its PTY has output, the window has input or the
+// time ends, without drawing a frame. The desktop host keeps every queued
+// event for the next PollDesktop, so the wait only looks at SDL's queue.
+
+// What ended DesktopWaitForActivity. Unsupported means this platform can't
+// wait on descriptors, so its caller keeps drawing every frame.
+DesktopActivityNone :: 0;
+DesktopActivityDescriptor :: 1;
+DesktopActivityInput :: 2;
+DesktopActivityUnsupported :: 3;
+
+#if OS == .WINDOWS || OS == .WEB || OS == .ANDROID {
+    DesktopWaitForActivity :: (descriptors: []s32, milliseconds: s32) -> s32 {
+        unused descriptors; unused milliseconds
+        return DesktopActivityUnsupported
+    }
+} else {
+    #scope_file
+    activity_libc :: #system_library "c";
+    activity_sdl :: #system_library "SDL2";
+    PumpEvents :: () #foreign activity_sdl "SDL_PumpEvents";
+    PeepEvents :: (events: *void, count: s32, action: s32, first: u32, last: u32) -> s32 #foreign activity_sdl "SDL_PeepEvents";
+    PollDescriptor :: struct { fd: s32; events: s16; returned: s16 }
+    Poll :: (descriptors: *PollDescriptor, count: u64, milliseconds: s32) -> s32 #foreign activity_libc "poll";
+    // SDL has no descriptor of its own to wait on, so its queue is checked
+    // between short sleeps on the program's descriptors.
+    WAIT_SLICE :: 4;
+    WAIT_DESCRIPTORS :: 64;
+    POLL_READABLE :: 1;
+    PEEK :: 1;
+    // SDL_POLLSENTINEL is SDL's own bookkeeping, never input.
+    SENTINEL :: 0x7F00;
+
+    InputQueued :: () -> bool {
+        PumpEvents()
+        return PeepEvents(null, 0, PEEK, cast(u32)0, cast(u32)(SENTINEL - 1)) > 0 ||
+            PeepEvents(null, 0, PEEK, cast(u32)(SENTINEL + 1), cast(u32)0xFFFF) > 0
+    }
+
+    #scope_export
+    // Sleeps up to `milliseconds` until one of `descriptors` is readable or
+    // window input is queued. Negative descriptors are skipped; at most 64
+    // are watched.
+    DesktopWaitForActivity :: (descriptors: []s32, milliseconds: s32) -> s32 {
+        waits: [WAIT_DESCRIPTORS]PollDescriptor
+        count: u64
+        for index: cast(s64)0..descriptors.count - 1 {
+            if count < cast(u64)WAIT_DESCRIPTORS && descriptors[index] >= 0 {
+                waits[count].fd = descriptors[index]
+                waits[count].events = cast(s16)POLL_READABLE
+                count += cast(u64)1
+            }
+        }
+        remaining := milliseconds
+        while true {
+            if InputQueued() { return DesktopActivityInput }
+            if remaining <= 0 { return DesktopActivityNone }
+            slice := ifx remaining < WAIT_SLICE then remaining else WAIT_SLICE
+            if Poll(*waits[0], count, slice) > 0 { return DesktopActivityDescriptor }
+            remaining -= slice
+        }
+        return DesktopActivityNone
+    }
+}

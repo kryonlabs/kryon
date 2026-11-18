@@ -23,29 +23,26 @@ example locks are regenerated without raylib.
 
 ## Open work
 
-1. Repin the five Kryon-based packages to the deletion commit, on one Kryon:
-   plot, entity, game2d, css and apps. Build on the Mesh rename worker's
-   pushed Entity/Apps commits (`daochi_client` becomes `mesh_client`) without
-   reverting them. Include Entity's native-crypto fix: Android and Windows
-   builds generate C with the host's `GEN_ZI2C` and target `ZIRAN_DEFINES`.
-   Breeze needs all five on one Kryon, and also practices and arcade, which
-   pin Kryon themselves.
-2. Desktop-host APIs the terminal and Harmony's terminal need before they
-   leave `kryon/Raylib` (replacement table in
-   `backup/raylib-gaps/terminal-api-map.md`): a wait on program descriptors
-   plus window input, a frame-rate setter, an exit key, middle-button polling,
-   open flags (undecorated, topmost, always-run), a fullscreen toggle and a
-   glyph pre-warm.
-3. Shovey standalone desktop: add the app/1 source-native desktop runner and
+1. Breeze needs one Kryon: Plot, Game2D, CSS, Entity and Apps are on the
+   deletion commit 3627ea8a with Ziran 7fbc8152; practices and arcade, which
+   pin Kryon themselves, still need it.
+2. Shovey standalone desktop: add the app/1 source-native desktop runner and
    its build binding to Kryon (`ReadAppHost` plus the app UI and platform
    capabilities `zx2native` needs; today `libkryon-desktop.so` exports only
    the five `ZxWindow*` capabilities). The node/2 adapter belongs to Apps
    (Kryon must not depend on Apps). Direct node/2 ZX to ELF (aggregate-return
    host ABI plus a lifecycle entry) is a later Ziran item.
-4. Consumers off raylib, each in its own task: Breeze still has raylib in its
+3. Consumers off raylib, each in its own task: Breeze still has raylib in its
    Android/Windows hosts, audio and build rules. Shovey, Jungle, Arcade, Wurm
    and Werk have no active raylib references and need only their Kryon repin.
-5. macOS: CI builds the desktop ZX player and runs its headless bundle check;
+   kryonlabs/terminal and Harmony's terminal (`terminal_app_linux.zi`,
+   `terminal_window_linux.zi`) still import `kryon/Raylib`; their desktop-host
+   replacements, including `kryon/desktop_activity` and `OpenDesktopWindow`,
+   are listed in `backup/raylib-gaps/terminal-api-map.md`. Game2D's own
+   `Raylib` module (used by neon and kasaival) took its raylib version from
+   Kryon's lock; it needs its own decision: port those games and remove it, or
+   pin raylib in Game2D.
+4. macOS: CI builds the desktop ZX player and runs its headless bundle check;
    native macOS execution is unverified.
-6. `tests/opus_audio_test.py` (not part of `make test` or CI) fails its
+5. `tests/opus_audio_test.py` (not part of `make test` or CI) fails its
    pause-position check (exit 8) against the local audio package checkout.

@@ -170,6 +170,12 @@ pointer: PointerFrame;
 desktop_physical_buttons: u32;
 desktop_physical_sampled: bool;
 secondary: SecondaryPointerFrame;
+// The middle button, sampled like the right one.
+middle: SecondaryPointerFrame;
+// A key that ends the program's loop as closing the window does; 0 is none.
+desktop_exit_key: s32;
+// Keeps the frame cadence while the window is hidden or minimized.
+desktop_always_run: bool;
 desktop_wheel: float32;
 // Sideways wheel steps, positive to the right.
 desktop_wheel_x: float32;
@@ -467,7 +473,19 @@ DesktopOpenFailed :: (step: string, sdl: bool) -> bool {
     return false
 }
 
+// Options for OpenDesktopWindow, combined with |.
+DesktopWindowResizable :: 1;
+DesktopWindowUndecorated :: 2;
+DesktopWindowTopmost :: 4;
+// Keeps the frame cadence while the window is hidden or minimized.
+DesktopWindowAlwaysRun :: 8;
+
 OpenDesktopTitled :: (width: s32, height: s32, title_text: string) -> bool {
+    return OpenDesktopWindow(width, height, title_text, cast(u32)DesktopWindowResizable)
+}
+
+// Opens the window titled `title_text` with `options`, any DesktopWindow* values.
+OpenDesktopWindow :: (width: s32, height: s32, title_text: string, options: u32) -> bool {
     DesktopTestDriverMissing()
     if width <= 0 || height <= 0 { return false }
     if size_of(Event) != 56 { return false }
@@ -495,7 +513,12 @@ OpenDesktopTitled :: (width: s32, height: s32, title_text: string) -> bool {
     unused SetHint(*hint[0], *enabled[0])
     title: [512]u8
     if !CopyCString(title_text, title[:]) { return false }
-    window_flags := cast(u32)0x28 // RESIZABLE | HIDDEN until transport is ready
+    window_flags := cast(u32)0x8 // HIDDEN until transport is ready
+    if (options & cast(u32)DesktopWindowResizable) != cast(u32)0 { window_flags |= cast(u32)0x20 }
+    // SDL_WINDOW_BORDERLESS and SDL_WINDOW_ALWAYS_ON_TOP.
+    if (options & cast(u32)DesktopWindowUndecorated) != cast(u32)0 { window_flags |= cast(u32)0x10 }
+    if (options & cast(u32)DesktopWindowTopmost) != cast(u32)0 { window_flags |= cast(u32)0x8000 }
+    desktop_always_run = (options & cast(u32)DesktopWindowAlwaysRun) != cast(u32)0
     window = CreateWindow(*title[0], cast(s32)0x2fff0000,
         cast(s32)0x2fff0000, width, height, window_flags)
     if window == null { return DesktopOpenFailed("create its SDL window", true) }
@@ -785,6 +808,8 @@ PollDesktop :: () -> bool {
     released: bool = false
     right_pressed: bool = false
     right_released: bool = false
+    middle_pressed: bool = false
+    middle_released: bool = false
     desktop_wheel = 0.0
     desktop_wheel_x = 0.0
     desktop_key_modifiers = -1
@@ -929,8 +954,10 @@ PollDesktop :: () -> bool {
             // keysym.mod the low 16 bits at offset 24. Super (KMOD_GUI)
             // makes a printable key a shortcut, as Control and Alt do.
             desktop_key_modifiers = event.y & 65535
-            InputDeliveryKey(*desktop_input, DesktopKeyWithModifiers(event.x, desktop_key_modifiers),
+            pressed_key := DesktopKeyWithModifiers(event.x, desktop_key_modifiers)
+            InputDeliveryKey(*desktop_input, pressed_key,
                 DesktopKeyModifierBits(desktop_key_modifiers), (desktop_key_modifiers & 0xFC0) != 0)
+            if desktop_exit_key > 0 && pressed_key == desktop_exit_key { desktop_quit = true }
         }
         if event.kind == cast(u32)0x303 {
             // SDL_TextInputEvent.text is a NUL-terminated UTF-8 array at
@@ -965,6 +992,11 @@ PollDesktop :: () -> bool {
             if event.kind == cast(u32)0x401 { right_pressed = true }
             if event.kind == cast(u32)0x402 { right_released = true }
         }
+        // SDL_BUTTON_MIDDLE
+        if event.button == cast(u8)2 {
+            if event.kind == cast(u32)0x401 { middle_pressed = true }
+            if event.kind == cast(u32)0x402 { middle_released = true }
+        }
     }
     x: s32 = 0
     y: s32 = 0
@@ -987,6 +1019,8 @@ PollDesktop :: () -> bool {
             if (buttons&cast(u32)1)==0 && (desktop_physical_buttons&cast(u32)1)!=0 { released=true }
             if (buttons&cast(u32)4)!=0 && (desktop_physical_buttons&cast(u32)4)==0 { right_pressed=true }
             if (buttons&cast(u32)4)==0 && (desktop_physical_buttons&cast(u32)4)!=0 { right_released=true }
+            if (buttons&cast(u32)2)!=0 && (desktop_physical_buttons&cast(u32)2)==0 { middle_pressed=true }
+            if (buttons&cast(u32)2)==0 && (desktop_physical_buttons&cast(u32)2)!=0 { middle_released=true }
         }
         desktop_physical_buttons=buttons; desktop_physical_sampled=true
     }
@@ -999,6 +1033,9 @@ PollDesktop :: () -> bool {
     secondary.down = (buttons & cast(u32)4) != cast(u32)0
     secondary.pressed = right_pressed
     secondary.released = right_released
+    middle.down = (buttons & cast(u32)2) != cast(u32)0
+    middle.pressed = middle_pressed
+    middle.released = middle_released
     if desktop_quit {
         FrameInputProviderReset(*desktop_frame_input)
         DesktopCursorRelease()
@@ -1129,6 +1166,8 @@ EndDesktopFrame :: () -> bool {
     pointer.released = false
     secondary.pressed = false
     secondary.released = false
+    middle.pressed = false
+    middle.released = false
     desktop_wheel = 0.0
     desktop_wheel_x = 0.0
     if !FinishRasterFrame(desktop_frame_unchanged && desktop_pixels_valid) { return false }
@@ -1181,10 +1220,42 @@ DesktopRequestFrame :: () {
     desktop_frame_requested = true
 }
 
+// Draws at most `fps` frames each second, or as fast as frames come with 0.
+// The default is 60, settling to 15 while nothing changes.
+#program_export
+DesktopFrameRate :: (fps: s32) -> bool {
+    if fps < 0 || fps > 1000 { return false }
+    frame_clock.limit = cast(u64)fps
+    frame_clock.unpaced = fps == 0
+    Clock.Wake(*frame_clock)
+    return true
+}
+
+// Ends the program's loop when `key`, a Kryon key code such as 256 for
+// Escape, is pressed, as closing the window does; 0 turns that off.
+#program_export
+DesktopExitKey :: (key: s32) -> bool {
+    if key < 0 || key >= 512 { return false }
+    desktop_exit_key = key
+    return true
+}
+
+// Shapes `value` once with the default typeface, so Pango loads the fallback
+// faces its characters need before a frame draws them. ASCII needs none.
+#program_export
+DesktopPrepareGlyphs :: (value: string) {
+    for index: cast(s64)0..value.count - 1 {
+        if value[index] >= cast(u8)0x80 {
+            unused RasterCursor.MeasureGlyphWidth(value, 16, "")
+            return
+        }
+    }
+}
+
 #program_export
 PauseDesktop :: () {
     milliseconds := Clock.Wait(*frame_clock, PerformanceCounter(),
-        frame_frequency, WindowVisibleHost(), desktop_frame_unchanged && !desktop_frame_requested)
+        frame_frequency, WindowVisibleHost() || desktop_always_run, desktop_frame_unchanged && !desktop_frame_requested)
     if milliseconds > cast(u32)0 {
         // A null event pointer leaves the first event queued for PollDesktop.
         // Input wakes a stable screen immediately rather than waiting for its
@@ -1364,3 +1435,7 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame {
     if desktop_frame_input.sample.available { return desktop_frame_input.sample.secondary }
     return secondary
 }
+
+// The middle button this frame: held, and pressed or released since the last.
+#program_export
+PollMiddlePointer :: () -> SecondaryPointerFrame { return middle }
