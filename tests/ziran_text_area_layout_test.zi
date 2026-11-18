@@ -1,8 +1,45 @@
+// Text area layout cases in one table: hidden bytes, then boxes and lines
+// at their own size.
 Text :: #import "kryon/text";
 TextArea :: #import "kryon/text_area";
 #import "text_input"
 #import "font_metrics"
 Host :: #import "ziran_text_area_cache_host";
+
+// Hidden bytes stay in the value but take no width, caret stop or wrap space,
+// as Markdown markers away from the edited line. The test font is 5 px a byte.
+HiddenBytes :: () -> s32 {
+    GlyphMetricsChanged()
+    value := "**bold** end\nnext"
+    hidden: [2]Text.Range = .[Text.Range.{.start = 0, .end = 2}, Text.Range.{.start = 6, .end = 8}]
+    if TextArea.TextAreaShownWidth(value, 0, 12, 10, "", hidden[:]) != 40 { return 1 }
+    caret := TextArea.TextAreaCaretForWith(value, 8, 0, 10, "", 10, hidden[:])
+    if caret.x != 20 || caret.row_index != 0 { return 2 }
+    // A click right after "bold" stops before the hidden closing marker,
+    // never inside it.
+    if TextArea.TextAreaCursorAtPointWith(value, 20, 1, 0, 10, "", 10, hidden[:]) != 6 { return 3 }
+    if TextArea.TextAreaCursorAtPointWith(value, 0, 1, 0, 10, "", 10, hidden[:]) != 0 { return 4 }
+    // Wrapping measures shown text: 22 px holds "bold" but not "bold ".
+    row := TextArea.TextAreaNextRowWith(value, 0, 22, 10, "", hidden[:])
+    if row.end != 8 || row.next != 8 || !row.soft_wrap { return 5 }
+    if TextArea.TextAreaNextRow(value, 0, 22, 10, "").end != 4 { return 6 }
+    // The row cache keeps layouts with and without hidden bytes apart.
+    if TextArea.TextAreaNextRowWith(value, 0, 22, 10, "", hidden[:]).end != 8 { return 7 }
+    if TextArea.TextAreaRowCountWith(value, 22, 10, "", hidden[:]) != TextArea.TextAreaRowCount(value, 22, 10, "") - 1 { return 8 }
+    // An unsorted, overlapping or split-character list is ignored as a whole.
+    unsorted: [2]Text.Range = .[Text.Range.{.start = 6, .end = 8}, Text.Range.{.start = 0, .end = 2}]
+    if TextArea.TextAreaRangesFor(value, unsorted[:]).count != 0 { return 9 }
+    if TextArea.TextAreaRangesFor(value, hidden[:]).count != 2 { return 10 }
+    accented := "é**"
+    split: [1]Text.Range = .[Text.Range.{.start = 1, .end = 3}]
+    if TextArea.TextAreaRangesFor(accented, split[:]).count != 0 { return 11 }
+    // A composition on another line measures the same hidden bytes.
+    view := TextArea.TextAreaViewFor(value, 13, 13, CompositionState.{active = true, text = "xy"})
+    view.hidden = hidden[:]
+    if TextArea.TextAreaViewSpanWidth(view, 0, 12, 10, "") != 40 { return 12 }
+    if TextArea.TextAreaViewSpanWidth(view, 13, 15, 10, "") != 10 { return 13 }
+    return 0
+}
 
 // Boxes under or over lines and lines at their own size change only where
 // rows are placed; without them the layout is the plain area's. The test
@@ -48,8 +85,7 @@ CheckPlain :: (value: string, wrap_width: s32, hidden: []Text.Range) -> bool {
     return true
 }
 
-#program_export
-main :: () -> s32 {
+Blocks :: () -> s32 {
     GlyphMetricsChanged()
     none_hidden: []Text.Range
     none_blocks: []TextArea.Block
@@ -173,5 +209,17 @@ main :: () -> s32 {
     replacing := TextArea.TextAreaViewFor(value, 1, 5, CompositionState.{.active = true, .text = "q"})
     if TextArea.TextAreaViewOffset(replacing, 3) != -1 { return 53 }
     if TextArea.TextAreaContentHeight(layout, replacing) != 20 { return 54 }
+    return 0
+}
+
+// Each case returns 0 or its own failure code; a failure reports the case
+// number in the hundreds.
+#program_export
+main :: () -> s32 {
+    for index: cast(s32)0..1 {
+        failure: s32
+        if index == 0 { failure = HiddenBytes() } else { failure = Blocks() }
+        if failure != 0 { return (index + 1) * 100 + failure }
+    }
     return 0
 }

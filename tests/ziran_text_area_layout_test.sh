@@ -5,8 +5,8 @@ repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
-source=$repo/tests/ziran_text_area_hidden_test.zi
+source=$repo/tests/ziran_text_area_layout_test.zi
 set -- --bind kryon/font_metrics:MeasureGlyphWidth=ziran_text_area_cache_host:MeasureGlyphWidth \
     --bind kryon/font_metrics:MeasureGlyphLineHeight=ziran_text_area_cache_host:MeasureGlyphLineHeight
 matrix_forms=both matrix_c=cc matrix_bundles=after-native matrix_std="$ziran_root/std" . "$repo/tests/main_matrix.sh"
-echo 'Hidden text area bytes passed native and portable execution'
+echo 'Text area hidden bytes, boxes and line sizes passed native and portable execution'

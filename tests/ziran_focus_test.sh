@@ -1,6 +1,6 @@
 #!/bin/sh
 . "$(dirname -- "$0")/test_context.sh"
-source=$repo/tests/ziran_press_focus_test.zi
+source=$repo/tests/ziran_focus_test.zi
 
 widget_host=ziran_composition_widget_host
 widget_mesh_host=ziran_mesh_noop_host

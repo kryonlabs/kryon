@@ -1,16 +1,21 @@
+// Game controls run as one table of cases: direction pad layout and swipe
+// feedback, then SwipeArea taps and swipes.
 #import "session"
 #import "geometry"
+Box :: #import "kryon/box";
 DirectionPad :: #import "kryon/direction_pad";
 Joystick :: #import "kryon/joystick";
+#import "drawing_props"
 #import "paint_queue"
 #import "tree"
 #import "tree_draw"
+#import "tree_input"
 #import "ziran_keyboard_navigation_host"
 
 Near :: (a: float32, b: float32) -> bool { return a - b < 0.01 && b - a < 0.01 }
 
-#program_export
-main :: () -> s32 {
+// Direction pad sizing and swipe feedback across phone viewports.
+PadLayout :: () -> s32 {
     // Phone portrait and landscape, including an inset usable viewport.
     viewports: [4]Rectangle = .[Rectangle.{0.0, 0.0, 320.0, 568.0},
         Rectangle.{0.0, 0.0, 390.0, 844.0}, Rectangle.{0.0, 0.0, 844.0, 390.0},
@@ -25,26 +30,105 @@ main :: () -> s32 {
     tiny := DirectionPad.DirectionPadBounds(Rectangle.{10.0, 20.0, 100.0, 60.0})
     if tiny.x < 10.0 || tiny.y < 20.0 || tiny.x + tiny.width > 110.0 || tiny.y + tiny.height > 80.0 { return 5 }
 
-    session := SessionOpen()
-    unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 400.0})
+    pads := SessionOpen()
+    unused BeginFrame(pads, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 400.0})
     gesture := Joystick.SwipeAreaResult.{.down = true, .start_x = 100.0, .start_y = 120.0, .at_x = 300.0, .at_y = 120.0}
-    Joystick.SwipeFeedback(session, Joystick.SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture, .size = 60.0})
-    if PendingPaintCount(session) != 5 { return 6 }
-    base := PendingPaintAt(session, 0).bounds
-    ball := PendingPaintAt(session, 3).bounds
+    Joystick.SwipeFeedback(pads, Joystick.SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture, .size = 60.0})
+    if PendingPaintCount(pads) != 5 { return 6 }
+    base := PendingPaintAt(pads, 0).bounds
+    ball := PendingPaintAt(pads, 3).bounds
     if !Near(base.x, 70.0) || !Near(base.y, 90.0) || !Near(base.width, 60.0) { return 7 }
     if !Near(ball.x + ball.width / 2.0, 125.2) || !Near(ball.y + ball.height / 2.0, 120.0) { return 8 }
-    if EndFrame(session) != FrameStatus.FrameOk { return 9 }
-    unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 400.0})
+    if EndFrame(pads) != FrameStatus.FrameOk { return 9 }
+    unused BeginFrame(pads, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 400.0})
     gesture.at_x = gesture.start_x
-    Joystick.SwipeFeedback(session, Joystick.SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture})
-    ball = PendingPaintAt(session, 3).bounds
+    Joystick.SwipeFeedback(pads, Joystick.SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture})
+    ball = PendingPaintAt(pads, 3).bounds
     if !Near(ball.x + ball.width / 2.0, 100.0) { return 10 }
-    if EndFrame(session) != FrameStatus.FrameOk { return 11 }
-    unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 400.0})
+    if EndFrame(pads) != FrameStatus.FrameOk { return 11 }
+    unused BeginFrame(pads, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 400.0})
     gesture.down = false
-    Joystick.SwipeFeedback(session, Joystick.SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture})
-    if PendingPaintCount(session) != 0 { return 12 }
-    if EndFrame(session) != FrameStatus.FrameOk { return 13 }
+    Joystick.SwipeFeedback(pads, Joystick.SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture})
+    if PendingPaintCount(pads) != 0 { return 12 }
+    if EndFrame(pads) != FrameStatus.FrameOk { return 13 }
+    return 0
+}
+
+session: Session;
+result: Joystick.SwipeAreaResult;
+secondary_tap: bool;
+disabled: bool;
+shown: bool = true;
+
+Frame :: (now: float64) -> bool {
+    unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
+    if shown {
+        result = Joystick.SwipeAreaResult.{}
+        result = Joystick.SwipeArea(session, Joystick.SwipeAreaProps.{.key = cast(u64)70,
+                .bounds = Rectangle.{10.0, 10.0, 100.0, 40.0}, .label = "Board", .now = now,
+                .repeat_seconds = 0.2, .secondary_tap = secondary_tap, .disabled = disabled})
+    } else {
+        unused Box.Draw(session, Box.Props.{.key = cast(u64)71,
+                .bounds = Rectangle.{0.0, 0.0, 400.0, 300.0}, .fill = Color.{0, 0, 0, 255}})
+    }
+    return EndFrame(session) == FrameStatus.FrameOk
+}
+
+Secondary :: (x: float32, y: float32, released: bool) {
+    unused TreePointerUpdate(session, PointerFrame.{.x = x, .y = y})
+    TreeSecondaryPointerUpdate(session, SecondaryPointerFrame.{.released = released})
+}
+
+// Secondary taps, repeats and swipes on a SwipeArea.
+SwipeAreaCases :: () -> s32 {
+    session = SessionOpen()
+    if !Frame(0.0) { return 1 }
+    Secondary(40.0, 30.0, true)
+    if !Frame(0.1) || result.tapped { return 2 }
+    secondary_tap = true
+    Secondary(40.0, 30.0, true)
+    if !Frame(0.2) || !result.tapped || result.x != 40.0 || result.y != 30.0 || result.swiped != -1 { return 3 }
+    Secondary(40.0, 30.0, false)
+    if !Frame(0.3) || result.tapped { return 4 }
+    Secondary(300.0, 200.0, true)
+    if !Frame(0.4) || result.tapped { return 5 }
+    disabled = true
+    Secondary(40.0, 30.0, true)
+    if !Frame(0.5) || result.tapped { return 6 }
+    disabled = false
+    TreeSecondaryPointerUpdate(session, SecondaryPointerFrame.{})
+    if !Frame(0.6) { return 9 }
+    unused TreePointerUpdate(session, PointerFrame.{.x = 40.0, .y = 30.0, .down = true, .pressed = true})
+    if !Frame(1.0) { return 7 }
+    unused TreePointerUpdate(session, PointerFrame.{.x = 40.0, .y = 30.0, .released = true})
+    if !Frame(1.1) || !result.tapped { return 8 }
+    unused TreePointerUpdate(session, PointerFrame.{.x = 40.0, .y = 30.0, .down = true, .pressed = true})
+    if !Frame(1.2) { return 10 }
+    shown = false
+    unused TreePointerUpdate(session, PointerFrame.{.x = 40.0, .y = 30.0, .released = true})
+    if !Frame(1.3) { return 11 }
+    TreePointerCancel(session)
+    shown = true
+    unused TreePointerUpdate(session, PointerFrame.{})
+    if !Frame(1.4) || result.down { return 12 }
+    unused TreePointerUpdate(session, PointerFrame.{.x = 100.0, .y = 35.0, .down = true, .pressed = true})
+    if !Frame(1.5) || !result.down || result.start_x != 100.0 || result.start_y != 35.0 { return 13 }
+    unused TreePointerUpdate(session, PointerFrame.{.x = 100.0, .y = 90.0, .down = true})
+    if !Frame(1.6) || result.start_x != 100.0 || result.start_y != 35.0 ||
+            result.lean != 3 || result.swiped != 3 { return 14 }
+    unused TreePointerUpdate(session, PointerFrame.{.x = 100.0, .y = 90.0, .released = true})
+    if !Frame(1.7) || result.down { return 15 }
+    return 0
+}
+
+// Each case returns 0 or its own failure code; a failure reports the case
+// number in the hundreds.
+#program_export
+main :: () -> s32 {
+    for index: cast(s32)0..1 {
+        failure: s32
+        if index == 0 { failure = PadLayout() } else { failure = SwipeAreaCases() }
+        if failure != 0 { return (index + 1) * 100 + failure }
+    }
     return 0
 }
