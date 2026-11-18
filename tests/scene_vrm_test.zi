@@ -1,0 +1,169 @@
+// VRM 0.x avatar checks over a small committed fixture: the humanoid bone
+// map, blend shape expressions, lookAt, and spring bones that droop under
+// gravity, keep their lengths, stay out of colliders, stay stable while the
+// body moves, and settle back at rest after a seek.
+#import, file "../src/ui/scene_vrm.zi";
+#import "scene"
+#import "scene_gltf"
+#import "std/finite"
+#import "std/math"
+#import "std/vec"
+
+FIXTURE :: "tests/fixtures/gltf/vrm_avatar.gltf"
+
+Check :: (value: bool, label: string) -> s32 {
+    if value {
+        return 0
+    }
+    print("scene vrm: %\n", label)
+    return 1
+}
+
+Near :: (value: float64, expected: float64, within: float64) -> bool {
+    difference := value - expected
+    return difference > -within && difference < within
+}
+
+Distance :: (a: Vector3, b: Vector3) -> float64 {
+    x := a.x - b.x
+    y := a.y - b.y
+    z := a.z - b.z
+    return Sqrt(x * x + y * y + z * z)
+}
+
+// Every spring tail is at its joint's length from the joint, and finite.
+LengthsKept :: (avatar: *VrmAvatar) -> bool {
+    for at: 0..avatar.joints.count - 1 {
+        joint := *avatar.joints[at]
+        tail := joint.current
+        if !Finite64(tail.x) || !Finite64(tail.y) || !Finite64(tail.z) ||
+        !Near(Distance(tail, avatar.world_at[joint.node]), joint.length, 0.0001) {
+            return false
+        }
+    }
+    return true
+}
+
+// The nearest any spring tail comes to the fixture's collider, less its
+// reach (collider radius plus the hair's hit radius).
+ColliderClearance :: (avatar: *VrmAvatar) -> float64 {
+    collider := avatar.colliders[0]
+    center := avatar.world_at[collider.node]
+    center = .{center.x + collider.offset.x, center.y + collider.offset.y, center.z + collider.offset.z}
+    nearest: float64 = 1000.0
+    for at: 0..avatar.joints.count - 1 {
+        nearest = ifx Distance(avatar.joints[at].current, center) < nearest then Distance(avatar.joints[at].current, center) else nearest
+    }
+    return nearest - collider.radius - avatar.groups[0].hit_radius
+}
+
+Settle :: (avatar: *VrmAvatar, model: *GltfModel, instance: *GltfSceneInstance, seconds: float64) {
+    clock: float64
+    while clock < seconds {
+        VrmSpringsUpdate(avatar, model, instance, 1.0 / 60.0)
+        clock += 1.0 / 60.0
+    }
+}
+
+main :: () -> s32 {
+    fail: s32
+    model := GltfReadFile(FIXTURE)
+    defer GltfModelRelease(*model)
+    scene: Scene
+    SceneInit(*scene)
+    defer SceneFree(*scene)
+    instance: GltfSceneInstance
+    defer GltfInstanceRelease(*instance)
+    fail += Check(model.valid && GltfSceneCreate(*scene, *model, *instance), "the avatar's glTF loads")
+    avatar: VrmAvatar
+    defer VrmAvatarRelease(*avatar)
+    fail += Check(VrmReadFile(*avatar, FIXTURE) && avatar.ready, "the VRM extension is read")
+    if fail != 0 {
+        return fail
+    }
+    // The humanoid bone map.
+    fail += Check(VrmBoneNode(*avatar, "hips") == 0 && VrmBoneNode(*avatar, "head") == 2 &&
+        VrmBoneNode(*avatar, "leftEye") == 3 && VrmBoneNode(*avatar, "rightEye") == 4 &&
+        VrmBoneNode(*avatar, "leftHand") == -1 && VrmBoneNode(*avatar, "tail") == -1, "humanoid bones map to nodes")
+    // Expressions by preset and by name; a binary one snaps.
+    face := cast(s32)1
+    blink := instance.morph_offsets[face]
+    fail += Check(VrmSetExpression(*avatar, *model, *instance, "blink", 0.5) &&
+        Near(instance.morph_weights[blink], 0.5, 0.000001), "blink half closes the eyes")
+    fail += Check(VrmSetExpression(*avatar, *model, *instance, "Blink", 1.0) &&
+        Near(instance.morph_weights[blink], 1.0, 0.000001), "an expression is found by its name")
+    fail += Check(VrmSetExpression(*avatar, *model, *instance, "joy", 0.4) &&
+        Near(instance.morph_weights[blink + 1], 0.0, 0.000001) &&
+        VrmSetExpression(*avatar, *model, *instance, "joy", 0.7) &&
+        Near(instance.morph_weights[blink + 1], 0.6, 0.000001), "a binary expression snaps, at its bind weight")
+    fail += Check(!VrmSetExpression(*avatar, *model, *instance, "sorrow", 1.0), "a missing expression is refused")
+    fail += Check(GltfUpdateScene(*model, *instance, *scene), "the scene updates with the expression")
+    // lookAt: looking 45 degrees to her left turns the left eye outward by
+    // its outer curve (5 degrees) and the right eye inward (4 degrees).
+    VrmLookAtSet(*avatar, *model, *instance, 45.0, 0.0)
+    left := instance.rotations[3]
+    right := instance.rotations[4]
+    fail += Check(Near(left.y, Sin(2.5 * 0.017453292519943295), 0.000001) &&
+        Near(right.y, Sin(2.0 * 0.017453292519943295), 0.000001) && Near(left.x, 0.0, 0.000001),
+        "the eyes turn to the left by the lookAt curves")
+    // Looking up 45 degrees turns the eyes' -Z gaze upwards by 5 degrees.
+    VrmLookAtSet(*avatar, *model, *instance, 0.0, 45.0)
+    up := instance.rotations[3]
+    fail += Check(up.x > 0.0 && Near(up.x, Sin(2.5 * 0.017453292519943295), 0.000001), "the eyes look up")
+    VrmLookAtSet(*avatar, *model, *instance, 0.0, -90.0)
+    down := instance.rotations[3]
+    fail += Check(Near(down.x, -Sin(6.0 * 0.017453292519943295), 0.000001), "looking down is limited by its curve")
+    // Spring bones: three hair joints from Hair0, sticking straight back;
+    // the last ends in a virtual tail 7 cm on.
+    fail += Check(VrmSpringsReset(*avatar, *model, *instance) && avatar.joints.count == 3,
+        "the hair chain becomes three spring joints")
+    rest_tip := avatar.joints[2].current
+    fail += Check(Near(rest_tip.y, 1.55, 0.000001) && Near(rest_tip.z, 0.37, 0.000001), "the springs start at rest")
+    // Without its collider the hair droops into the sphere behind her.
+    avatar.groups[0].link_count = 0
+    Settle(*avatar, *model, *instance, 3.0)
+    fail += Check(avatar.joints[2].current.y < 1.4 && LengthsKept(*avatar), "the hair droops under gravity")
+    fail += Check(ColliderClearance(*avatar) < -0.01, "without the collider the hair passes through it")
+    // With it, every tail stays outside, but for the few millimetres that
+    // keeping each joint's length after the push allows (as in UniVRM).
+    avatar.groups[0].link_count = 1
+    VrmSpringsUpdate(*avatar, *model, *instance, -1.0)
+    Settle(*avatar, *model, *instance, 3.0)
+    fail += Check(ColliderClearance(*avatar) > -0.0025 && LengthsKept(*avatar), "the collider keeps the hair out")
+    // Whole-body motion: the frame swings and turns her at uneven steps.
+    clock: float64
+    steps: [5]float64 = .[1.0 / 30.0, 1.0 / 144.0, 0.05, 1.0 / 60.0, 0.011]
+    swung := false
+    count: s64
+    while clock < 6.0 {
+        dt := steps[count % 5]
+        count += 1
+        clock += dt
+        turn := Sin(clock * 3.0) * 0.6
+        VrmSetFrame(*avatar, .{0.0, Sin(turn * 0.5), 0.0, Cos(turn * 0.5)}, .{Sin(clock * 2.0) * 0.3, 0.0, 0.0}, 1.0)
+        VrmSpringsUpdate(*avatar, *model, *instance, dt)
+        if !LengthsKept(*avatar) {
+            fail += Check(false, "the springs stay finite and keep their lengths while she moves")
+            break
+        }
+        swung = swung || Distance(avatar.joints[2].current, avatar.joints[2].previous) > 0.01
+    }
+    fail += Check(swung, "moving her swings the hair")
+    // Standing still again, the hair comes to rest.
+    VrmSetFrame(*avatar, .{0.0, 0.0, 0.0, 1.0}, .{}, 1.0)
+    Settle(*avatar, *model, *instance, 5.0)
+    fail += Check(Distance(avatar.joints[2].current, avatar.joints[2].previous) < 0.00001, "the hair settles")
+    // A seek puts every spring back at rest.
+    VrmSpringsUpdate(*avatar, *model, *instance, 3.0)
+    fail += Check(Distance(avatar.joints[2].current, rest_tip) < 0.000001, "a seek resets the springs to rest")
+    fail += Check(GltfUpdateScene(*model, *instance, *scene), "the scene updates with the springs")
+    // A glTF without the VRM extension is refused.
+    plain: VrmAvatar
+    defer VrmAvatarRelease(*plain)
+    fail += Check(!VrmReadFile(*plain, "tests/fixtures/gltf/morph_target.gltf") && !plain.ready &&
+        !VrmReadFile(*plain, "tests/fixtures/gltf/no-such.vrm"), "a model without VRM data is refused")
+    if fail == 0 {
+        print("Scene VRM local tests passed\n")
+    }
+    return fail
+}

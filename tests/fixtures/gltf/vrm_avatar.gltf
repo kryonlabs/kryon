@@ -1,0 +1,63 @@
+{
+  "asset": {"version": "2.0", "generator": "Kryon VRM test"},
+  "extensionsUsed": ["VRM"],
+  "buffers": [{"uri": "morph_target.bin", "byteLength": 140}],
+  "bufferViews": [
+    {"buffer": 0, "byteOffset": 0, "byteLength": 36},
+    {"buffer": 0, "byteOffset": 36, "byteLength": 8},
+    {"buffer": 0, "byteOffset": 44, "byteLength": 36},
+    {"buffer": 0, "byteOffset": 80, "byteLength": 36}
+  ],
+  "accessors": [
+    {"bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3"},
+    {"bufferView": 1, "componentType": 5123, "count": 3, "type": "SCALAR"},
+    {"bufferView": 2, "componentType": 5126, "count": 3, "type": "VEC3"},
+    {"bufferView": 3, "componentType": 5126, "count": 3, "type": "VEC3"}
+  ],
+  "meshes": [
+    {"name": "Face", "weights": [0.0, 0.0],
+     "primitives": [{"attributes": {"POSITION": 0}, "indices": 1, "targets": [{"POSITION": 2}, {"POSITION": 3}]}]}
+  ],
+  "nodes": [
+    {"name": "Hips", "translation": [0.0, 1.0, 0.0], "children": [1, 2]},
+    {"name": "Face", "mesh": 0},
+    {"name": "Head", "translation": [0.0, 0.5, 0.0], "children": [3, 4, 5]},
+    {"name": "LeftEye", "translation": [-0.03, 0.05, -0.08]},
+    {"name": "RightEye", "translation": [0.03, 0.05, -0.08]},
+    {"name": "Hair0", "translation": [0.0, 0.05, 0.1], "children": [6]},
+    {"name": "Hair1", "translation": [0.0, 0.0, 0.1], "children": [7]},
+    {"name": "Hair2", "translation": [0.0, 0.0, 0.1]}
+  ],
+  "scenes": [{"nodes": [0]}],
+  "scene": 0,
+  "extensions": {
+    "VRM": {
+      "specVersion": "0.0",
+      "meta": {"title": "Kryon spring test", "licenseName": "CC0"},
+      "humanoid": {"humanBones": [
+        {"bone": "hips", "node": 0}, {"bone": "head", "node": 2},
+        {"bone": "leftEye", "node": 3}, {"bone": "rightEye", "node": 4}
+      ]},
+      "firstPerson": {
+        "lookAtTypeName": "Bone",
+        "lookAtHorizontalInner": {"xRange": 90, "yRange": 8},
+        "lookAtHorizontalOuter": {"xRange": 90, "yRange": 10},
+        "lookAtVerticalDown": {"xRange": 90, "yRange": 12},
+        "lookAtVerticalUp": {"xRange": 90, "yRange": 10}
+      },
+      "blendShapeMaster": {"blendShapeGroups": [
+        {"name": "Blink", "presetName": "blink", "isBinary": false, "binds": [{"mesh": 0, "index": 0, "weight": 100}]},
+        {"name": "Joy", "presetName": "joy", "isBinary": true, "binds": [{"mesh": 0, "index": 1, "weight": 60}]}
+      ]},
+      "secondaryAnimation": {
+        "boneGroups": [
+          {"comment": "hair", "stiffiness": 1.0, "gravityPower": 1.0, "gravityDir": {"x": 0, "y": -1, "z": 0},
+           "dragForce": 0.4, "center": -1, "hitRadius": 0.02, "bones": [5], "colliderGroups": [0]}
+        ],
+        "colliderGroups": [
+          {"node": 0, "colliders": [{"offset": {"x": 0, "y": 0.35, "z": -0.3}, "radius": 0.08}]}
+        ]
+      }
+    }
+  }
+}

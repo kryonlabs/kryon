@@ -1,0 +1,712 @@
+// VRM 0.x avatars on top of scene_gltf: the humanoid bone map, expressions
+// (blend shape groups such as blink), lookAt for the eye bones, and
+// spring-bone physics so hair and skirts sway and settle.
+//
+//   model := GltfReadFile(path)            // the avatar's glTF
+//   GltfSceneCreate(*scene, *model, *instance)
+//   avatar: VrmAvatar
+//   VrmReadFile(*avatar, path)            // the VRM extension of the same file
+//   VrmSpringsReset(*avatar, *model, *instance)
+//   ... pose the instance's bones, GltfUpdateScene ...
+//   VrmSpringsUpdate(*avatar, *model, *instance, seconds_since_last)
+//   VrmSetExpression(*avatar, *model, *instance, "blink", 1.0)
+//   GltfUpdateScene(*model, *instance, *scene)
+//
+// The spring bones follow VRM 0.x's reference (UniVRM's VRMSpringBone): each
+// joint's tail is moved by Verlet inertia less drag, a stiffness pull back
+// toward its rest direction and gravity, kept at its length and pushed out
+// of sphere colliders; the joint then turns to point at its tail. VRM 0.x
+// stores collider offsets and gravity with Z mirrored, as three-vrm reads
+// them. Physics runs at a fixed 60 steps a second, in the world the model
+// is placed in (VrmSetFrame), so moving or turning the whole body sways the
+// hair too. Node positions come from the instance's translations, rotations
+// and scales, so one GltfUpdateScene after posing and springs is enough.
+#import "scene"
+#import "scene_gltf"
+#import "std/binary"
+#import "std/file"
+#import "std/float_text"
+#import "std/json_document"
+#import "std/math"
+#import "std/vec"
+
+VRM_BONE_COUNT :: 55
+VRM_STEP :: 0.016666666666666666
+
+VrmBind :: struct {
+    mesh: s32
+    index: s32
+    weight: float64
+}
+
+VrmExpression :: struct {
+    name: Vec(u8)
+    preset: Vec(u8)
+    first: s32
+    count: s32
+    binary: bool
+}
+
+VrmCollider :: struct {
+    node: s32
+    offset: Vector3
+    radius: float64
+}
+
+VrmSpringGroup :: struct {
+    stiffness: float64
+    gravity_power: float64
+    gravity_dir: Vector3
+    drag: float64
+    hit_radius: float64
+    // The collider groups it collides with: a run of avatar.group_links.
+    first_link: s32
+    link_count: s32
+}
+
+VrmSpringJoint :: struct {
+    node: s32
+    group: s32
+    // The node whose position is the tail, or -1 for a leaf's virtual tail.
+    child: s32
+    // The tail in the node's own space at rest, its direction and length.
+    tail_local: Vector3
+    axis: Vector3
+    length: float64
+    current: Vector3
+    previous: Vector3
+}
+
+// Where the model stands in the world: world = at + turn * (scale * model).
+VrmFrame :: struct {
+    turn: GltfQuat
+    at: Vector3
+    scale: float64
+}
+
+VrmCurve :: struct {
+    x_range: float64
+    y_range: float64
+}
+
+VrmAvatar :: struct {
+    ready: bool
+    // The glTF node of each VRM humanoid bone (VrmBoneName order), or -1.
+    bones: [VRM_BONE_COUNT]s32
+    expressions: Vec(VrmExpression)
+    binds: Vec(VrmBind)
+    colliders: Vec(VrmCollider)
+    // Each collider group's run of colliders.
+    collider_first: Vec(s32)
+    collider_count: Vec(s32)
+    groups: Vec(VrmSpringGroup)
+    group_links: Vec(s32)
+    // The bones each spring group starts from, as runs per group.
+    roots: Vec(s32)
+    root_first: Vec(s32)
+    root_count: Vec(s32)
+    joints: Vec(VrmSpringJoint)
+    // Eye bones turn (lookAtTypeName "Bone"); the curves limit them.
+    look_bone: bool
+    look_inner: VrmCurve
+    look_outer: VrmCurve
+    look_down: VrmCurve
+    look_up: VrmCurve
+    // Physics clock, the model's place in the world, and scratch: each
+    // node's world rotation and position.
+    frame: VrmFrame
+    leftover: float64
+    world_turn: Vec(GltfQuat)
+    world_at: Vec(Vector3)
+}
+
+VrmAvatarRelease :: (avatar: *VrmAvatar) {
+    for at: 0..avatar.expressions.count - 1 {
+        VecFree(avatar.expressions[at].name)
+        VecFree(avatar.expressions[at].preset)
+    }
+    VecFree(avatar.expressions)
+    VecFree(avatar.binds)
+    VecFree(avatar.colliders)
+    VecFree(avatar.collider_first)
+    VecFree(avatar.collider_count)
+    VecFree(avatar.groups)
+    VecFree(avatar.group_links)
+    VecFree(avatar.roots)
+    VecFree(avatar.root_first)
+    VecFree(avatar.root_count)
+    VecFree(avatar.joints)
+    VecFree(avatar.world_turn)
+    VecFree(avatar.world_at)
+    avatar.ready = false
+}
+
+// The VRM 0.x humanoid bone names, in the order of avatar.bones.
+VrmBoneName :: (bone: s32) -> string {
+    names: [VRM_BONE_COUNT]string = .["hips", "spine", "chest", "upperChest", "neck", "head", "leftEye", "rightEye",
+        "jaw", "leftShoulder", "leftUpperArm", "leftLowerArm", "leftHand", "rightShoulder", "rightUpperArm",
+        "rightLowerArm", "rightHand", "leftUpperLeg", "leftLowerLeg", "leftFoot", "leftToes", "rightUpperLeg",
+        "rightLowerLeg", "rightFoot", "rightToes", "leftThumbProximal", "leftThumbIntermediate", "leftThumbDistal",
+        "leftIndexProximal", "leftIndexIntermediate", "leftIndexDistal", "leftMiddleProximal",
+        "leftMiddleIntermediate", "leftMiddleDistal", "leftRingProximal", "leftRingIntermediate", "leftRingDistal",
+        "leftLittleProximal", "leftLittleIntermediate", "leftLittleDistal", "rightThumbProximal",
+        "rightThumbIntermediate", "rightThumbDistal", "rightIndexProximal", "rightIndexIntermediate",
+        "rightIndexDistal", "rightMiddleProximal", "rightMiddleIntermediate", "rightMiddleDistal",
+        "rightRingProximal", "rightRingIntermediate", "rightRingDistal", "rightLittleProximal",
+        "rightLittleIntermediate", "rightLittleDistal"]
+    return ifx bone >= 0 && bone < VRM_BONE_COUNT then names[bone] else ""
+}
+
+// The index of the VRM humanoid bone called NAME, or -1.
+VrmBoneIndex :: (name: string) -> s32 {
+    for bone: cast(s32)0..VRM_BONE_COUNT - 1 {
+        if VrmBoneName(bone) == name {
+            return bone
+        }
+    }
+    return -1
+}
+
+// The glTF node of humanoid bone NAME, or -1.
+VrmBoneNode :: (avatar: *VrmAvatar, name: string) -> s32 {
+    bone := VrmBoneIndex(name)
+    return ifx bone >= 0 then avatar.bones[bone] else -1
+}
+
+// Reads the VRM extension of the .vrm/.glb file at PATH. False (and nothing
+// kept) when the file has no valid VRM 0.x extension.
+VrmReadFile :: (avatar: *VrmAvatar, path: string) -> bool {
+    bytes: Vec(u8)
+    defer VecFree(bytes)
+    if !ReadFileInto(path, *bytes) {
+        VrmAvatarRelease(avatar)
+        return false
+    }
+    return VrmReadBytes(avatar, bytes[:])
+}
+
+// Reads the VRM extension from a GLB's JSON chunk, or from glTF JSON text.
+VrmReadBytes :: (avatar: *VrmAvatar, bytes: []u8) -> bool {
+    VrmAvatarRelease(avatar)
+    json := TextView(bytes)
+    if bytes.count >= 20 && bytes[0] == 0x67 && bytes[1] == 0x6c && bytes[2] == 0x54 && bytes[3] == 0x46 {
+        length := cast(s64)ReadU32LE(json, 12)
+        if ReadU32LE(json, 16) != 0x4E4F534A || length <= 0 || 20 + length > bytes.count {
+            return false
+        }
+        json = TextView(bytes[20:20 + length])
+    }
+    doc: JsonDocument
+    defer JsonReset(*doc)
+    if !JsonRead(*doc, json) || JsonKindOf(*doc, doc.root) != .Object {
+        return false
+    }
+    extensions := JsonMember(*doc, doc.root, "extensions")
+    vrm := ifx extensions >= 0 then JsonMember(*doc, extensions, "VRM") else -1
+    if vrm < 0 || JsonKindOf(*doc, vrm) != .Object {
+        return false
+    }
+    for bone: 0..VRM_BONE_COUNT - 1 {
+        avatar.bones[bone] = -1
+    }
+    avatar.frame = .{turn = .{0.0, 0.0, 0.0, 1.0}, scale = 1.0}
+    if !VrmReadHumanoid(avatar, *doc, vrm) || !VrmReadExpressions(avatar, *doc, vrm) ||
+    !VrmReadSprings(avatar, *doc, vrm) {
+        VrmAvatarRelease(avatar)
+        return false
+    }
+    VrmReadLookAt(avatar, *doc, vrm)
+    avatar.ready = true
+    return true
+}
+
+// Sets expression NAME (its preset such as "blink", or its name) to VALUE
+// (0..1) on INSTANCE's morph weights; binary expressions snap at a half.
+// False when the avatar has no such expression.
+VrmSetExpression :: (avatar: *VrmAvatar, model: *GltfModel, instance: *GltfSceneInstance, name: string,
+    value: float64) -> bool {
+    for at: 0..avatar.expressions.count - 1 {
+        expression := *avatar.expressions[at]
+        if TextView(expression.preset[:]) != name && TextView(expression.name[:]) != name {
+            continue
+        }
+        amount := VrmClamp(value, 0.0, 1.0)
+        if expression.binary {
+            amount = ifx amount >= 0.5 then 1.0 else 0.0
+        }
+        for bind: expression.first..expression.first + expression.count - 1 {
+            VrmApplyBind(model, instance, avatar.binds[bind], amount)
+        }
+        return true
+    }
+    return false
+}
+
+// Turns the eye bones to look YAW degrees to the avatar's left (negative to
+// its right) and PITCH degrees up, within the lookAt curves' ranges.
+VrmLookAtSet :: (avatar: *VrmAvatar, model: *GltfModel, instance: *GltfSceneInstance, yaw: float64, pitch: float64) {
+    if !avatar.look_bone {
+        return
+    }
+    vertical := ifx pitch >= 0.0 then VrmCurveOut(avatar.look_up, pitch) else -VrmCurveOut(avatar.look_down, -pitch)
+    for side: 0..1 {
+        node := avatar.bones[ifx side == 0 then 6 else 7]
+        if node < 0 || node >= model.nodes.count {
+            continue
+        }
+        // Towards the eye's own side is outward.
+        outward := ifx side == 0 then yaw >= 0.0 else yaw < 0.0
+        horizontal := VrmCurveOut(ifx outward then avatar.look_outer else avatar.look_inner, VrmAbs(yaw))
+        horizontal = ifx yaw >= 0.0 then horizontal else -horizontal
+        turn := VrmMultiply(VrmAxisAngle(.{0.0, 1.0, 0.0}, horizontal * VRM_DEGREE),
+            VrmAxisAngle(.{1.0, 0.0, 0.0}, vertical * VRM_DEGREE))
+        instance.rotations[node] = VrmMultiply(model.nodes[node].rotation, turn)
+        instance.trs_dirty[node] = true
+    }
+}
+
+// Places the model in the world: rotated by TURN, scaled by SCALE and moved
+// by AT. Springs swing when this moves, as they do when bones move.
+VrmSetFrame :: (avatar: *VrmAvatar, turn: GltfQuat, at: Vector3, scale: float64) {
+    avatar.frame = .{turn = VrmQuatNormalize(turn), at = at, scale = ifx scale > 0.0 then scale else 1.0}
+}
+
+// Sets up the spring joints from INSTANCE's current pose, which should be
+// the rest pose, and puts every tail at rest.
+VrmSpringsReset :: (avatar: *VrmAvatar, model: *GltfModel, instance: *GltfSceneInstance) -> bool {
+    VecClear(avatar.joints)
+    avatar.leftover = 0.0
+    if !avatar.ready || !VecResize(avatar.world_turn, model.nodes.count) || !VecResize(avatar.world_at, model.nodes.count) {
+        return false
+    }
+    VrmWorld(avatar, model, instance)
+    for group: 0..avatar.groups.count - 1 {
+        for at: avatar.root_first[group]..avatar.root_first[group] + avatar.root_count[group] - 1 {
+            root := avatar.roots[at]
+            if root >= 0 && root < model.nodes.count && !VrmAddJoints(avatar, model, instance, root, cast(s32)group) {
+                return false
+            }
+        }
+    }
+    return true
+}
+
+// Advances the spring bones by SECONDS after the body has been posed in
+// INSTANCE, turning the spring joints there; then run GltfUpdateScene. A jump backwards or of more than a quarter second (a
+// seek) settles the springs at rest instead of flinging them.
+VrmSpringsUpdate :: (avatar: *VrmAvatar, model: *GltfModel, instance: *GltfSceneInstance, seconds: float64) {
+    if avatar.joints.count == 0 || avatar.world_turn.count != model.nodes.count {
+        return
+    }
+    if seconds < 0.0 || seconds > 0.25 || !Finite64(seconds) {
+        VrmSpringsSettle(avatar, model, instance)
+        return
+    }
+    avatar.leftover += seconds
+    steps: s32
+    while avatar.leftover >= VRM_STEP && steps < 8 {
+        avatar.leftover -= VRM_STEP
+        VrmSpringsStep(avatar, model, instance, VRM_STEP)
+        steps += 1
+    }
+    if steps == 8 {
+        avatar.leftover = 0.0
+    }
+}
+
+// Puts every spring tail back at rest under the current pose.
+VrmSpringsSettle :: (avatar: *VrmAvatar, model: *GltfModel, instance: *GltfSceneInstance) {
+    for at: 0..avatar.joints.count - 1 {
+        joint := *avatar.joints[at]
+        instance.rotations[joint.node] = model.nodes[joint.node].rotation
+        instance.trs_dirty[joint.node] = true
+    }
+    VrmWorld(avatar, model, instance)
+    for at: 0..avatar.joints.count - 1 {
+        joint := *avatar.joints[at]
+        tail := VrmTail(avatar, joint)
+        joint.current = tail
+        joint.previous = tail
+    }
+    avatar.leftover = 0.0
+}
+
+#scope_file
+VRM_DEGREE :: 0.017453292519943295
+
+VrmClamp :: (value: float64, low: float64, high: float64) -> float64 {
+    return ifx value < low then low else ifx value > high then high else value
+}
+
+VrmAbs :: (value: float64) -> float64 {
+    return ifx value < 0.0 then -value else value
+}
+
+VrmAdd :: (a: Vector3, b: Vector3) -> Vector3 { return .{a.x + b.x, a.y + b.y, a.z + b.z} }
+VrmSub :: (a: Vector3, b: Vector3) -> Vector3 { return .{a.x - b.x, a.y - b.y, a.z - b.z} }
+VrmScale :: (a: Vector3, k: float64) -> Vector3 { return .{a.x * k, a.y * k, a.z * k} }
+VrmDot :: (a: Vector3, b: Vector3) -> float64 { return a.x * b.x + a.y * b.y + a.z * b.z }
+VrmCross :: (a: Vector3, b: Vector3) -> Vector3 { return .{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x} }
+VrmLength :: (a: Vector3) -> float64 { return Sqrt(VrmDot(a, a)) }
+
+VrmNormalize :: (a: Vector3) -> Vector3 {
+    length := VrmLength(a)
+    return ifx length > 0.000000001 then VrmScale(a, 1.0 / length) else Vector3.{0.0, 1.0, 0.0}
+}
+
+VrmQuatNormalize :: (q: GltfQuat) -> GltfQuat {
+    length := Sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w)
+    if length < 0.000000001 {
+        return .{0.0, 0.0, 0.0, 1.0}
+    }
+    return .{q.x / length, q.y / length, q.z / length, q.w / length}
+}
+
+VrmMultiply :: (a: GltfQuat, b: GltfQuat) -> GltfQuat {
+    return .{a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y, a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+        a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w, a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z}
+}
+
+VrmConjugate :: (q: GltfQuat) -> GltfQuat {
+    return .{-q.x, -q.y, -q.z, q.w}
+}
+
+VrmRotate :: (q: GltfQuat, v: Vector3) -> Vector3 {
+    u: Vector3 = .{q.x, q.y, q.z}
+    t := VrmScale(VrmCross(u, v), 2.0)
+    return VrmAdd(VrmAdd(v, VrmScale(t, q.w)), VrmCross(u, t))
+}
+
+VrmAxisAngle :: (axis: Vector3, angle: float64) -> GltfQuat {
+    unit := VrmNormalize(axis)
+    s := Sin(angle * 0.5)
+    return .{unit.x * s, unit.y * s, unit.z * s, Cos(angle * 0.5)}
+}
+
+// The shortest rotation carrying direction FROM onto direction TO.
+VrmFromTo :: (from: Vector3, to: Vector3) -> GltfQuat {
+    a := VrmNormalize(from)
+    b := VrmNormalize(to)
+    cosine := VrmDot(a, b)
+    if cosine < -0.999999 {
+        side := VrmCross(.{1.0, 0.0, 0.0}, a)
+        if VrmLength(side) < 0.000001 {
+            side = VrmCross(.{0.0, 1.0, 0.0}, a)
+        }
+        return VrmAxisAngle(side, 3.141592653589793)
+    }
+    axis := VrmCross(a, b)
+    return VrmQuatNormalize(.{axis.x, axis.y, axis.z, 1.0 + cosine})
+}
+
+VrmCurveOut :: (curve: VrmCurve, input: float64) -> float64 {
+    if curve.x_range <= 0.0 {
+        return 0.0
+    }
+    return VrmClamp(input / curve.x_range, 0.0, 1.0) * curve.y_range
+}
+
+VrmNumber :: (doc: *JsonDocument, object: s32, field: string, fallback: float64) -> float64 {
+    member := JsonMember(doc, object, field)
+    if member < 0 || JsonKindOf(doc, member) != .Number {
+        return fallback
+    }
+    value, ok := ParseFloat64(JsonNumberText(doc, member))
+    return ifx ok && Finite64(value) then value else fallback
+}
+
+VrmInteger :: (doc: *JsonDocument, object: s32, field: string, fallback: s32) -> s32 {
+    return cast(s32)RoundToInteger(VrmNumber(doc, object, field, cast(float64)fallback))
+}
+
+VrmVector :: (doc: *JsonDocument, object: s32, field: string, fallback: Vector3) -> Vector3 {
+    member := JsonMember(doc, object, field)
+    if member < 0 || JsonKindOf(doc, member) != .Object {
+        return fallback
+    }
+    return .{VrmNumber(doc, member, "x", fallback.x), VrmNumber(doc, member, "y", fallback.y),
+        VrmNumber(doc, member, "z", fallback.z)}
+}
+
+VrmText :: (doc: *JsonDocument, object: s32, field: string, out: *Vec(u8)) {
+    VecClear(<<out)
+    member := JsonMember(doc, object, field)
+    if member >= 0 && JsonKindOf(doc, member) == .String {
+        unused JsonStringInto(doc, member, out)
+    }
+}
+
+VrmReadHumanoid :: (avatar: *VrmAvatar, doc: *JsonDocument, vrm: s32) -> bool {
+    humanoid := JsonMember(doc, vrm, "humanoid")
+    bones := ifx humanoid >= 0 then JsonMember(doc, humanoid, "humanBones") else -1
+    if bones < 0 || JsonKindOf(doc, bones) != .Array {
+        return false
+    }
+    name: Vec(u8)
+    defer VecFree(name)
+    for at: 0..JsonCount(doc, bones) - 1 {
+        entry := JsonElement(doc, bones, cast(s32)at)
+        VrmText(doc, entry, "bone", *name)
+        bone := VrmBoneIndex(TextView(name[:]))
+        node := VrmInteger(doc, entry, "node", -1)
+        if bone >= 0 && node >= 0 {
+            avatar.bones[bone] = node
+        }
+    }
+    return true
+}
+
+VrmReadExpressions :: (avatar: *VrmAvatar, doc: *JsonDocument, vrm: s32) -> bool {
+    master := JsonMember(doc, vrm, "blendShapeMaster")
+    groups := ifx master >= 0 then JsonMember(doc, master, "blendShapeGroups") else -1
+    if groups < 0 || JsonKindOf(doc, groups) != .Array {
+        return true
+    }
+    for at: 0..JsonCount(doc, groups) - 1 {
+        group := JsonElement(doc, groups, cast(s32)at)
+        expression: VrmExpression
+        VrmText(doc, group, "name", *expression.name)
+        VrmText(doc, group, "presetName", *expression.preset)
+        binary := JsonMember(doc, group, "isBinary")
+        if binary >= 0 {
+            value, ok := JsonBool(doc, binary)
+            expression.binary = ok && value
+        }
+        expression.first = cast(s32)avatar.binds.count
+        binds := JsonMember(doc, group, "binds")
+        if binds >= 0 && JsonKindOf(doc, binds) == .Array {
+            for bind_at: 0..JsonCount(doc, binds) - 1 {
+                entry := JsonElement(doc, binds, cast(s32)bind_at)
+                bind: VrmBind = .{mesh = VrmInteger(doc, entry, "mesh", -1), index = VrmInteger(doc, entry, "index", -1),
+                    weight = VrmNumber(doc, entry, "weight", 100.0) / 100.0}
+                if bind.mesh >= 0 && bind.index >= 0 && !VecPush(avatar.binds, bind) {
+                    return false
+                }
+            }
+        }
+        expression.count = cast(s32)avatar.binds.count - expression.first
+        if !VecPush(avatar.expressions, expression) {
+            return false
+        }
+    }
+    return true
+}
+
+VrmReadSprings :: (avatar: *VrmAvatar, doc: *JsonDocument, vrm: s32) -> bool {
+    secondary := JsonMember(doc, vrm, "secondaryAnimation")
+    if secondary < 0 {
+        return true
+    }
+    collider_groups := JsonMember(doc, secondary, "colliderGroups")
+    if collider_groups >= 0 && JsonKindOf(doc, collider_groups) == .Array {
+        for at: 0..JsonCount(doc, collider_groups) - 1 {
+            entry := JsonElement(doc, collider_groups, cast(s32)at)
+            node := VrmInteger(doc, entry, "node", -1)
+            if !VecPush(avatar.collider_first, cast(s32)avatar.colliders.count) {
+                return false
+            }
+            colliders := JsonMember(doc, entry, "colliders")
+            if colliders >= 0 && JsonKindOf(doc, colliders) == .Array {
+                for collider_at: 0..JsonCount(doc, colliders) - 1 {
+                    shape := JsonElement(doc, colliders, cast(s32)collider_at)
+                    offset := VrmVector(doc, shape, "offset", .{})
+                    collider: VrmCollider = .{node = node, offset = .{offset.x, offset.y, -offset.z},
+                        radius = VrmNumber(doc, shape, "radius", 0.0)}
+                    if !VecPush(avatar.colliders, collider) {
+                        return false
+                    }
+                }
+            }
+            if !VecPush(avatar.collider_count, cast(s32)avatar.colliders.count - avatar.collider_first[at]) {
+                return false
+            }
+        }
+    }
+    bone_groups := JsonMember(doc, secondary, "boneGroups")
+    if bone_groups < 0 || JsonKindOf(doc, bone_groups) != .Array {
+        return true
+    }
+    for at: 0..JsonCount(doc, bone_groups) - 1 {
+        entry := JsonElement(doc, bone_groups, cast(s32)at)
+        gravity := VrmVector(doc, entry, "gravityDir", .{0.0, -1.0, 0.0})
+        group: VrmSpringGroup = .{stiffness = VrmNumber(doc, entry, "stiffiness", 1.0),
+            gravity_power = VrmNumber(doc, entry, "gravityPower", 0.0),
+            gravity_dir = VrmNormalize(.{gravity.x, gravity.y, -gravity.z}),
+            drag = VrmClamp(VrmNumber(doc, entry, "dragForce", 0.4), 0.0, 1.0),
+            hit_radius = VrmNumber(doc, entry, "hitRadius", 0.02), first_link = cast(s32)avatar.group_links.count}
+        links := JsonMember(doc, entry, "colliderGroups")
+        if links >= 0 && JsonKindOf(doc, links) == .Array {
+            for link_at: 0..JsonCount(doc, links) - 1 {
+                element := JsonElement(doc, links, cast(s32)link_at)
+                value, ok := ParseFloat64(JsonNumberText(doc, element))
+                link := cast(s32)value
+                if ok && link >= 0 && link < avatar.collider_first.count && !VecPush(avatar.group_links, link) {
+                    return false
+                }
+            }
+        }
+        group.link_count = cast(s32)avatar.group_links.count - group.first_link
+        if !VecPush(avatar.groups, group) || !VecPush(avatar.root_first, cast(s32)avatar.roots.count) {
+            return false
+        }
+        bones := JsonMember(doc, entry, "bones")
+        if bones >= 0 && JsonKindOf(doc, bones) == .Array {
+            for bone_at: 0..JsonCount(doc, bones) - 1 {
+                element := JsonElement(doc, bones, cast(s32)bone_at)
+                value, ok := ParseFloat64(JsonNumberText(doc, element))
+                if ok && !VecPush(avatar.roots, cast(s32)value) {
+                    return false
+                }
+            }
+        }
+        if !VecPush(avatar.root_count, cast(s32)avatar.roots.count - avatar.root_first[at]) {
+            return false
+        }
+    }
+    return true
+}
+
+VrmReadCurve :: (doc: *JsonDocument, look: s32, field: string) -> VrmCurve {
+    member := JsonMember(doc, look, field)
+    if member < 0 {
+        return .{90.0, 10.0}
+    }
+    return .{VrmNumber(doc, member, "xRange", 90.0), VrmNumber(doc, member, "yRange", 10.0)}
+}
+
+VrmReadLookAt :: (avatar: *VrmAvatar, doc: *JsonDocument, vrm: s32) {
+    look := JsonMember(doc, vrm, "firstPerson")
+    if look < 0 {
+        return
+    }
+    kind: Vec(u8)
+    defer VecFree(kind)
+    VrmText(doc, look, "lookAtTypeName", *kind)
+    avatar.look_bone = TextView(kind[:]) == "Bone" && avatar.bones[6] >= 0 && avatar.bones[7] >= 0
+    avatar.look_inner = VrmReadCurve(doc, look, "lookAtHorizontalInner")
+    avatar.look_outer = VrmReadCurve(doc, look, "lookAtHorizontalOuter")
+    avatar.look_down = VrmReadCurve(doc, look, "lookAtVerticalDown")
+    avatar.look_up = VrmReadCurve(doc, look, "lookAtVerticalUp")
+}
+
+VrmApplyBind :: (model: *GltfModel, instance: *GltfSceneInstance, bind: VrmBind, amount: float64) {
+    for node: 0..model.nodes.count - 1 {
+        if model.nodes[node].mesh != bind.mesh || bind.index >= instance.morph_counts[node] {
+            continue
+        }
+        instance.morph_weights[instance.morph_offsets[node] + bind.index] = bind.weight * amount
+    }
+}
+
+// Every node's world rotation and position from INSTANCE's translations,
+// rotations and scales, placed by the avatar's frame.
+VrmWorld :: (avatar: *VrmAvatar, model: *GltfModel, instance: *GltfSceneInstance) {
+    frame := avatar.frame
+    for node: 0..model.nodes.count - 1 {
+        turn := instance.rotations[node]
+        at := instance.translations[node]
+        parent := model.nodes[node].parent
+        while parent >= 0 {
+            size := instance.scales[parent]
+            at = VrmAdd(instance.translations[parent], VrmRotate(instance.rotations[parent],
+                .{at.x * size.x, at.y * size.y, at.z * size.z}))
+            turn = VrmMultiply(instance.rotations[parent], turn)
+            parent = model.nodes[parent].parent
+        }
+        avatar.world_turn[node] = VrmQuatNormalize(VrmMultiply(frame.turn, turn))
+        avatar.world_at[node] = VrmAdd(frame.at, VrmRotate(frame.turn, VrmScale(at, frame.scale)))
+    }
+}
+
+VrmParentTurn :: (avatar: *VrmAvatar, model: *GltfModel, node: s32) -> GltfQuat {
+    parent := model.nodes[node].parent
+    return ifx parent >= 0 then avatar.world_turn[parent] else GltfQuat.{0.0, 0.0, 0.0, 1.0}
+}
+
+// The joint's tail where its current rotation puts it.
+VrmTail :: (avatar: *VrmAvatar, joint: *VrmSpringJoint) -> Vector3 {
+    return VrmAdd(avatar.world_at[joint.node], VrmRotate(avatar.world_turn[joint.node],
+        VrmScale(joint.tail_local, avatar.frame.scale)))
+}
+
+// Adds NODE and the nodes under it as spring joints of GROUP.
+VrmAddJoints :: (avatar: *VrmAvatar, model: *GltfModel, instance: *GltfSceneInstance, node: s32, group: s32) -> bool {
+    named := *model.nodes[node]
+    joint: VrmSpringJoint
+    joint.node = node
+    joint.group = group
+    joint.child = -1
+    if named.children.count > 0 {
+        joint.child = named.children[0]
+        joint.tail_local = instance.translations[joint.child]
+    } else {
+        // A leaf gets a virtual tail 7 cm on, along its offset from its parent.
+        offset := VrmRotate(VrmConjugate(instance.rotations[node]), VrmNormalize(instance.translations[node]))
+        joint.tail_local = VrmScale(offset, 0.07)
+    }
+    joint.axis = VrmNormalize(joint.tail_local)
+    tail := VrmTail(avatar, *joint)
+    joint.length = VrmLength(VrmSub(tail, avatar.world_at[node]))
+    joint.current = tail
+    joint.previous = tail
+    if joint.length < 0.000001 || !VecPush(avatar.joints, joint) {
+        return joint.length < 0.000001
+    }
+    for at: 0..named.children.count - 1 {
+        if !VrmAddJoints(avatar, model, instance, named.children[at], group) {
+            return false
+        }
+    }
+    return true
+}
+
+// One fixed physics step over every joint, parents before children.
+VrmSpringsStep :: (avatar: *VrmAvatar, model: *GltfModel, instance: *GltfSceneInstance, step: float64) {
+    VrmWorld(avatar, model, instance)
+    for at: 0..avatar.joints.count - 1 {
+        joint := *avatar.joints[at]
+        group := avatar.groups[joint.group]
+        node := joint.node
+        // Where the head is now, carried by its (already updated) parent.
+        parent := model.nodes[node].parent
+        parent_turn := VrmParentTurn(avatar, model, node)
+        if parent >= 0 {
+            avatar.world_at[node] = VrmAdd(avatar.world_at[parent], VrmRotate(parent_turn,
+                VrmScale(instance.translations[node], avatar.frame.scale)))
+        }
+        head := avatar.world_at[node]
+        rest_turn := VrmMultiply(parent_turn, model.nodes[node].rotation)
+        inertia := VrmScale(VrmSub(joint.current, joint.previous), 1.0 - group.drag)
+        pull := VrmScale(VrmRotate(rest_turn, joint.axis), group.stiffness * step * avatar.frame.scale)
+        fall := VrmScale(group.gravity_dir, group.gravity_power * step * avatar.frame.scale)
+        next := VrmAdd(VrmAdd(VrmAdd(joint.current, inertia), pull), fall)
+        next = VrmAdd(head, VrmScale(VrmNormalize(VrmSub(next, head)), joint.length))
+        // Out of the colliders it meets, then back to its length.
+        for link: group.first_link..group.first_link + group.link_count - 1 {
+            collider_group := avatar.group_links[link]
+            first := avatar.collider_first[collider_group]
+            for index: first..first + avatar.collider_count[collider_group] - 1 {
+                collider := avatar.colliders[index]
+                if collider.node < 0 || collider.node >= model.nodes.count {
+                    continue
+                }
+                center := VrmAdd(avatar.world_at[collider.node], VrmRotate(avatar.world_turn[collider.node],
+                    VrmScale(collider.offset, avatar.frame.scale)))
+                reach := (group.hit_radius + collider.radius) * avatar.frame.scale
+                away := VrmSub(next, center)
+                if VrmDot(away, away) <= reach * reach {
+                    pushed := VrmAdd(center, VrmScale(VrmNormalize(away), reach))
+                    next = VrmAdd(head, VrmScale(VrmNormalize(VrmSub(pushed, head)), joint.length))
+                }
+            }
+        }
+        joint.previous = joint.current
+        joint.current = next
+        // Turn the joint to point at its tail.
+        world := VrmMultiply(VrmFromTo(VrmRotate(rest_turn, joint.axis), VrmSub(next, head)), rest_turn)
+        local := VrmQuatNormalize(VrmMultiply(VrmConjugate(parent_turn), world))
+        instance.rotations[node] = local
+        instance.trs_dirty[node] = true
+        avatar.world_turn[node] = VrmQuatNormalize(world)
+    }
+}

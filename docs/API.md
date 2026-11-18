@@ -2521,3 +2521,55 @@ compares it with `tests/fixtures/gltf/skinned_reference.png`. Both run through
 upstream README files; models carrying a non-Khronos trademark are never
 committed and run only from a local sample-assets checkout named by
 `KRYON_GLTF_SAMPLE_ASSETS`.
+
+### VRM avatars
+
+Import `kryon/scene_vrm` for VRM 0.x avatars (`.vrm` files such as VRoid
+exports) loaded through `scene_gltf`: the humanoid bone map, expressions,
+eye lookAt and spring-bone physics for hair and clothes.
+
+```ziran
+#import "kryon/scene_gltf"
+#import "kryon/scene_vrm"
+
+model := GltfReadFile("models/avatar.vrm")
+instance: GltfSceneInstance
+unused GltfSceneCreate(*scene, *model, *instance)
+avatar: VrmAvatar
+defer VrmAvatarRelease(*avatar)
+if VrmReadFile(*avatar, "models/avatar.vrm") {
+    unused VrmSpringsReset(*avatar, *model, *instance)
+}
+// Each frame: pose the bones in instance.rotations, then
+VrmSetFrame(*avatar, turn, position, scale)
+VrmSpringsUpdate(*avatar, *model, *instance, seconds_since_last_frame)
+unused VrmSetExpression(*avatar, *model, *instance, "blink", closed)
+VrmLookAtSet(*avatar, *model, *instance, yaw_degrees, pitch_degrees)
+unused GltfUpdateScene(*model, *instance, *scene)
+```
+
+`VrmReadFile(avatar, path)` and `VrmReadBytes(avatar, bytes)` read the `VRM`
+extension of a GLB or glTF JSON document and return false when there is
+none. `VrmBoneNode(avatar, "leftUpperArm")` gives the glTF node of a VRM
+humanoid bone or -1; `avatar.bones` holds all of them in `VrmBoneName`
+order. `VrmSetExpression` sets a blend shape group, found by its preset
+(`blink`, `joy`, `a`, ...) or its name, to a weight from 0 to 1 in the
+instance's morph weights; binary groups snap at one half.
+`VrmLookAtSet` turns the eye bones of a `Bone` lookAt avatar by degrees to
+the avatar's left and up, mapped through its lookAt range curves.
+
+Spring bones follow the VRM 0.x reference: each joint's tail moves by Verlet
+inertia less drag, a stiffness pull back to its rest direction and gravity,
+keeps its length and is pushed out of the sphere colliders of the collider
+groups its bone group names. Physics runs at a fixed 60 steps a second in
+the world placed by `VrmSetFrame(avatar, turn, at, scale)`, so moving or
+turning the whole model swings the hair as well. A step backwards or of more
+than a quarter second, as after a seek, puts the springs back at rest, as
+`VrmSpringsSettle` does. Node positions come from the instance's
+translations, rotations and scales, so one `GltfUpdateScene` after posing
+and springs is enough. VRM 1.0 (`VRMC_vrm`) files are not read.
+
+`make scene-gltf-test` also checks the VRM layer against
+`tests/fixtures/gltf/vrm_avatar.gltf`: the bone map, expressions, lookAt
+curves, gravity, colliders, stability while the body moves at uneven frame
+steps, and settling after a seek.
