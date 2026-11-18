@@ -98,7 +98,7 @@ AndroidPresentPixmap :: (damage: Rectangle, width: s32, height: s32,
 }
 
 DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
-    bounds: Rectangle, zoom: float32, reuse: bool) -> bool {
+    bounds: Rectangle, zoom: float32, reuse: bool, paint_unchanged: *bool = null) -> bool {
     width := viewport.x + viewport.width
     height := viewport.y + viewport.height
     if !AndroidNativeSurfaceSize(*width, *height) ||
@@ -161,7 +161,16 @@ DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
     PixmapEndInto()
     if ok && !finished.paint_unchanged { ok = AndroidPresentPixmap(finished.damage, width, height, zoom) }
     if ok { TestDriverFrame(session) }
+    if paint_unchanged != null { paint_unchanged[0] = ok && reuse && finished.paint_unchanged }
     return ok
+}
+
+AndroidNextFrame :: (quiet_frames: *s32, started_ms: s64, finished_ms: s64,
+    paint_unchanged: bool, events: bool) -> s64 {
+    if events || !paint_unchanged { quiet_frames[0] = 0 }
+    else if quiet_frames[0] < 2 { quiet_frames[0] += 1 }
+    if quiet_frames[0] >= 2 { return finished_ms + 100 }
+    return started_ms + 16
 }
 
 AndroidViewportSignature :: (viewport: AndroidViewport, zoom: float32) -> u64 {
@@ -201,8 +210,9 @@ android_main :: (app: *NativeAndroidApp) {
         now := Clock.MonotonicMilliseconds()
         timeout := ifx next_frame_ms > now then cast(s32)(next_frame_ms - now) else 0
         if timeout > 1000 { timeout = 1000 }
-        unused AndroidNativePoll(timeout)
+        events := AndroidNativePoll(timeout)
         if AndroidNativeDestroyRequested() { break }
+        frame_started_ms := Clock.MonotonicMilliseconds()
 
         width: s32
         height: s32
@@ -241,7 +251,8 @@ android_main :: (app: *NativeAndroidApp) {
         }
 
         AndroidTextInputBeginFrame(session)
-        ok = DrawAndroidFrame(session, viewport, bounds, zoom, reuse)
+        paint_unchanged: bool
+        ok = DrawAndroidFrame(session, viewport, bounds, zoom, reuse, *paint_unchanged)
         AndroidTextInputFrame(session, TreeTextInputActive(session))
         if !ok { break }
         if first_frame {
@@ -249,10 +260,9 @@ android_main :: (app: *NativeAndroidApp) {
             AndroidNotifyFirstFrame()
         }
 
-        if reuse { quiet_frames += 1 } else { quiet_frames = 0 }
         reuse = true
-        next_frame_ms = Clock.MonotonicMilliseconds() +
-            ifx quiet_frames >= 2 then cast(s64)100 else cast(s64)16
+        next_frame_ms = AndroidNextFrame(*quiet_frames, frame_started_ms,
+            Clock.MonotonicMilliseconds(), paint_unchanged, events)
     }
     if !ok { unused AndroidError("kryon: android frame rendering failed") }
 }

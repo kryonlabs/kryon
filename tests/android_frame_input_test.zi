@@ -45,6 +45,18 @@ ANativeWindow_unlockAndPost :: (window: *void) -> s32 {
 #program_export
 ANativeActivity_finish :: (activity: *void) { unused activity }
 #program_export
+AAssetManager_open :: (manager: *void, path: *u8, mode: s32) -> *void {
+    unused manager; unused path; unused mode; return null
+}
+#program_export
+AAsset_getLength :: (asset: *void) -> s32 { unused asset; return 0 }
+#program_export
+AAsset_read :: (asset: *void, output: *void, count: s32) -> s32 {
+    unused asset; unused output; unused count; return 0
+}
+#program_export
+AAsset_close :: (asset: *void) { unused asset }
+#program_export
 AInputEvent_getType :: (event: *Event) -> s32 { return event.kind }
 #program_export
 AInputEvent_getSource :: (event: *Event) -> s32 { unused event; return 0x1002 }
@@ -74,12 +86,42 @@ Send :: (kind: s32, action: s32, key: s32 = 0, x: float32 = 0.0, y: float32 = 0.
     event := Event.{kind, action, key, x, y}
     return AndroidTouchInput(null, cast(*void)(*event)) == 1
 }
-Draw :: (session: Session) -> bool {
+Draw :: (session: Session, reuse: bool = false, paint_unchanged: *bool = null) -> bool {
     viewport := AndroidViewport.{.width = 320, .height = 200, .ready = 1}
-    return DrawAndroidFrame(session, viewport, Rectangle.{0.0, 0.0, 320.0, 200.0}, 1.0, false)
+    return DrawAndroidFrame(session, viewport, Rectangle.{0.0, 0.0, 320.0, 200.0}, 1.0, reuse, paint_unchanged)
 }
+FramePacingCase :: struct {
+    finished_ms: s64
+    paint_unchanged: bool
+    events: bool
+    expected_quiet: s32
+    expected_deadline: s64
+}
+
+FramePacing :: () -> bool {
+    // An animated retained frame resets idle pacing, including an overrun.
+    // A looper event restores the active budget even if its paint is stable.
+    cases: [8]FramePacingCase = .[
+        .{105, true, false, 1, 116},
+        .{105, true, false, 2, 205},
+        .{105, true, false, 2, 205},
+        .{140, false, false, 0, 116},
+        .{105, true, false, 1, 116},
+        .{105, true, false, 2, 205},
+        .{105, true, true, 0, 116},
+        .{105, false, false, 0, 116},
+    ]
+    quiet_frames: s32
+    for item: cases {
+        deadline := AndroidNextFrame(*quiet_frames, 100, item.finished_ms, item.paint_unchanged, item.events)
+        if quiet_frames != item.expected_quiet || deadline != item.expected_deadline { return false }
+    }
+    return true
+}
+
 #program_export
 main :: () -> s32 {
+    if !FramePacing() { return Failure(28) }
     app: NativeAndroidApp
     app.window = cast(*void)(*app)
     AndroidNativeStart(*app)
@@ -113,6 +155,15 @@ main :: () -> s32 {
     if !Draw(session) || !Probe.seen.pointer.released || Probe.seen.pointer.down ||
     Probe.seen.pointer.x != 35.0 || !Probe.pointer_matches { return Failure(12) }
     if Probe.foreign_seen || CaptureFrameInput(session).available || presented_open { return Failure(13) }
+    // Keeping the surface reusable still presents new paint from the same app.
+    paint: [4]u8 = .[40, 40, 180, 180]
+    for tint, index: paint {
+        Probe.paint_red = tint
+        before := presents
+        unchanged: bool
+        if !Draw(session, index != 0, *unchanged) || unchanged != (index % 2 != 0) ||
+        (presents == before) != unchanged { return Failure(29) }
+    }
     // Surface insets are added to both replayed tap positions, before the
     // host's camera mapping. The Android host's own zoom scales the offset.
     AndroidTouchSetZoom(2.0)

@@ -3,6 +3,7 @@
 ## Unreleased
 
 - GLES scenes keep GPU shadow filtering on devices without hardware depth comparison filtering.
+- Android keeps the active frame budget while retained paint changes and backs off when paint becomes stable.
 - Desktop animations continue presenting text and images without input.
   Retained paint compares each bitmap's content revision, so changed pixels
   repaint through the same handle and identical frames still skip presentation.

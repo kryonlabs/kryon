@@ -21,6 +21,6 @@ rm -f "$work/c"/*.c "$work/c"/*.h
     --module-path "$repo/tests" --no-main -o "$work/c" "$repo/tests/android_frame_input_test.zi" "$repo/tests/android_frame_input/android_frame_app.zi"
 "${CC:-cc}" -std=c11 -O1 -ffunction-sections -fdata-sections -I"$ziran_root/include" -I"$work/c" \
     "$work/c"/*.c "$webp" "$avif" "$aom" "${ZIRAN_LIB:-$ziran_root/build/libziran.a}" \
-    -Wl,--gc-sections -ldl -lpthread -lm -o "$work/c/test"
+    -Wl,--gc-sections -ldl -lpthread -lz -lm -o "$work/c/test"
 (cd "$work" && timeout --kill-after=2s 45s ./c/test)
 printf '%s\n' 'Android frame input: canonical host publication and revocation passed'
