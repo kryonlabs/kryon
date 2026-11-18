@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `make gallery-zx` exports all 101 gallery examples again. It binds the
+  frame entry by Ziran's package-scoped module names, and an example that
+  imports an export such as `kryon/modal` gets that export's own module.
 - The website's Apps page plays every published Kryon web app in the
   browser: Werkzeug, Inner Breeze, Jungle Academy, Arcade, Shovey, Apfelwurm
   and Choano. Each Kryon Labs desktop app says why it has no browser build yet.

@@ -10,6 +10,14 @@ import tomllib
 import gallery
 
 
+def scoped(package, module):
+    """Name a module loaded through `--module-path PACKAGE=DIR`, as Ziran does."""
+    digest = 1469598103934665603
+    for byte in package.encode():
+        digest = ((digest ^ byte) * 1099511628211) & 0xffffffffffffffff
+    return f'p{digest:016x}_{module}'
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=gallery.ROOT / 'build/gallery-zx')
@@ -36,30 +44,37 @@ def main():
              '--module-path', str(gallery.ROOT / 'src/ui'),
              '--module-path', str(gallery.ROOT / 'src/backend'),
              '--module-path', str(gallery.ROOT / 'examples/shared')]
+    renames = {}
     for module in modules:
         name = module['dependency']
         source_package = package(name)
         manifest = tomllib.loads((source_package / 'ziran.toml').read_text())
-        for root in manifest['package']['module_roots']:
-            paths += ['--module-path', name + '=' + str(source_package / root)]
-            paths += ['--module-path', str(source_package / root)]
-        # Exports may name a facade rather than a same-named source file.
-        # Materialize only those tiny import facades in this build output.
+        roots = [source_package / root for root in manifest['package']['module_roots']]
+        for root in roots:
+            paths += ['--module-path', name + '=' + str(root)]
+            paths += ['--module-path', str(root)]
+        # An export may name a module other than its same-named file, as
+        # `modal` names modal_frame.zi, or a module with no file of its name.
         aliases = output / 'exports' / name
         for exported, target in manifest.get('exports', {}).items():
-            for root in manifest['package']['module_roots']:
-                source = source_package / root
-                if (source / (exported + '.zi')).exists() or (source / exported / 'module.zi').exists():
-                    break
+            source = source_package / target
+            if any(source in (root / (exported + '.zi'), root / exported / 'module.zi') for root in roots):
+                continue
+            # Name the target as it is known in the deepest root holding it:
+            # a slash in an import names another package.
+            root = max((root for root in roots if source.is_relative_to(root)),
+                       key=lambda root: len(root.parts), default=None)
+            if root is None:
+                continue
+            local = source.relative_to(root).with_suffix('').as_posix()
+            if any((root / (exported + '.zi')).exists() or (root / exported / 'module.zi').exists() for root in roots):
+                # The package keeps its own same-named module; the example
+                # imports the export's target by that target's name.
+                renames['#import "' + name + '/' + exported + '"'] = '#import "' + name + '/' + local + '"'
             else:
-                for root in manifest['package']['module_roots']:
-                    try:
-                        local = (source_package / target).relative_to(source_package / root).with_suffix('').as_posix()
-                    except ValueError:
-                        continue
-                    aliases.mkdir(parents=True, exist_ok=True)
-                    (aliases / (exported + '.zi')).write_text('using Export :: #import "' + local + '";\n')
-                    break
+                facade = aliases / (exported + '.zi')
+                facade.parent.mkdir(parents=True, exist_ok=True)
+                facade.write_text('using Export :: #import "' + local + '";\n')
         if aliases.is_dir():
             paths += ['--module-path', name + '=' + str(aliases)]
     (output / 'app').mkdir(exist_ok=True)
@@ -75,12 +90,14 @@ def main():
         source = source.replace('example_input.theme == 2', 'false')
         source = source.replace('example_input.disabled', 'false')
         source = source.replace('scene_image = "catalog-image.png"', 'scene_image = "assets/pfp.webp"')
+        for package_import, target_import in renames.items():
+            source = source.replace(package_import, target_import)
         app = output / 'app/app.zi'
         app.write_text(source)
         bundle = output / (entry['id'] + '.zx')
         bundle.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run([compiler, 'bundle', *paths, '--entry', 'zx_run:main',
-                        '--bind', 'frame_entry:ProjectFrame=app:Frame',
+        subprocess.run([compiler, 'bundle', *paths, '--entry', scoped('kryon', 'zx_run') + ':main',
+                        '--bind', scoped('kryon', 'frame_entry') + ':ProjectFrame=app:Frame',
                         '--asset-dir', 'assets=' + str(gallery.PROJECT / 'assets'),
                         '-o', str(bundle), str(gallery.ROOT / 'src/backend/zx_run.zi'), str(app)],
                        cwd=gallery.PROJECT, env=compile_env, check=True)

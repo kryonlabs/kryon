@@ -313,8 +313,8 @@ does not provide return the existing explicit unavailable response.
 `make gallery-zx` exports every enabled gallery example with its full source
 behavior and embedded assets under `build/gallery-zx/`; `index.json` maps
 example IDs to their bundle paths. The entire gallery also has a `portable`
-profile. The website build stages both these downloads and the generic
-browser player; generating them does not publish the website.
+profile. Each bundle embeds the gallery's assets, so the website runs the
+examples live on its Components page rather than publishing these files.
 The exporter and player use the gallery's configured Ziran toolchain, including
 its lock or local override. A ZX's embedded IR format must match its player;
 the installed compiler on `PATH` can use a different format.

@@ -37,8 +37,8 @@ sources can be selected in its ignored `ziran.local.toml`.
 example's behavior and assets and opens in the generic desktop, browser or
 Android ZX player. The gallery's `portable` profile also builds the complete
 catalog as one ZX. See [ZX applications](../docs/PROJECTS.md#zx-applications)
-for player and platform build commands. The website build stages a download
-and a browser-player link for every example; a local build does not publish it.
+for player and platform build commands. The website runs every example live
+on its Components page instead of publishing these bundles.
 
 The desktop host supports `KRYON_CATALOG_SCENE` and `KRYON_CAPTURE_PATH` for
 repeatable captures. Scrub the inherited display and session environment and
