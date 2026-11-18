@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.6.0] - 2026-11-18
+
 - Kryon builds with Ziran 0.7.0.
 - Web pages scroll by the browser's pixel wheel distance, mouse drags select
   text while scrollbar thumbs stay draggable, and selected text copies with
