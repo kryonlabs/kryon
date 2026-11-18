@@ -4,6 +4,7 @@
 
 - AVIF pictures decode faster on phones: 8-bit 4:2:0 and 4:2:2 colour
   converts across the cores with exactly the same bytes as before.
+
 ## [0.6.0] - 2026-11-18
 
 - Kryon builds with Ziran 0.7.0.
