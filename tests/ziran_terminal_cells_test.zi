@@ -1,0 +1,53 @@
+// Terminal grid support in one table of cases: cell writes, then list
+// scrolling. Success is 42, as the ZX check expects.
+#import "cell"
+#import "terminallist"
+#import "utf8"
+
+CellCases :: () -> s32 {
+    buffer: [12]Cell
+    cells: []Cell = buffer[0:12]
+    base: Cell = .{.glyph = cast(u32)32, .foreground = cast(u32)7, .background = cast(u32)1}
+    CellFill(cells, 4, 3, 0, 0, 4, 3, base)
+    if buffer[11].glyph != cast(u32)32 { return 1 }
+    if CellWrite(cells, 4, 3, 2, 1, "aé", cast(u32)2, cast(u32)1, cast(u32)0) != 2 {
+        return 2
+    }
+    if buffer[6].glyph != cast(u32)97 || buffer[7].glyph != cast(u32)233 ||
+       buffer[7].foreground != cast(u32)2 { return 3 }
+    if CellWrite(cells, 4, 3, 3, 2, "long", cast(u32)2, cast(u32)1, cast(u32)0) != 1 {
+        return 4
+    }
+    emoji: Decoded = Decode("\xf0\x9f\x92\xa1", 0)
+    if emoji.value != cast(u32)128161 {
+        return 5
+    }
+    if CellPut(cells, 4, 3, 4, 0, base) { return 6 }
+    return 42
+}
+
+ListCases :: () -> s32 {
+    state: TerminalListState
+    state = TerminalListMove(state, 8, 3, 2)
+    if state.selected != 1 || state.first != 0 { return 1 }
+    state = TerminalListMove(state, 8, 3, 4)
+    if state.selected != 4 || state.first != 2 { return 2 }
+    state = TerminalListMove(state, 8, 3, 6)
+    if state.selected != 7 || state.first != 5 { return 3 }
+    state = TerminalListMove(state, 2, 10, 0)
+    if state.selected != 1 || state.first != 0 { return 4 }
+    state = TerminalListMove(state, 0, 0, 1)
+    if state.selected != 0 || state.first != 0 { return 5 }
+    return 42
+}
+
+// A failure reports the case number in the hundreds.
+#program_export
+SelfTest :: () -> s32 {
+    for index: cast(s32)0..1 {
+        result: s32
+        if index == 0 { result = CellCases() } else { result = ListCases() }
+        if result != 42 { return (index + 1) * 100 + result }
+    }
+    return 42
+}

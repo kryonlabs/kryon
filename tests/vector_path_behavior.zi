@@ -494,8 +494,7 @@ CheckMalformed :: () -> s32 {
     return 0
 }
 
-#program_export
-main :: () -> s32 {
+VectorPathCases :: () -> s32 {
     result: s32 = CheckSquareScales()
     if result != 0 { return result }
     result = CheckCircle()

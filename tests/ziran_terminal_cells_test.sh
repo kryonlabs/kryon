@@ -2,14 +2,14 @@
 . "$(dirname -- "$0")/test_context.sh"
 
 "$ziran" check --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
-    "$repo/tests/ziran_cell_test.zi"
+    "$repo/tests/ziran_terminal_cells_test.zi"
 "$ziran" ir --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
-    -o "$work/ir" "$repo/tests/ziran_cell_test.zi"
+    -o "$work/ir" "$repo/tests/ziran_terminal_cells_test.zi"
 "$ziran" bundle --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
-    --entry ziran_cell_test:SelfTest -o "$work/source.zx" \
-    "$repo/tests/ziran_cell_test.zi"
+    --entry ziran_terminal_cells_test:SelfTest -o "$work/source.zx" \
+    "$repo/tests/ziran_terminal_cells_test.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry ziran_cell_test:SelfTest -o "$work/saved.zx" \
-    "$work/ir/ziran_cell_test.zir"
+    --entry ziran_terminal_cells_test:SelfTest -o "$work/saved.zx" \
+    "$work/ir/ziran_terminal_cells_test.zir"
 cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 42
