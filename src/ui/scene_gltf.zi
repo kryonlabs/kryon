@@ -289,6 +289,8 @@ GltfMeshInstance :: struct {
     skin_index: s32
     has_skin: bool
     skin: SceneSkin
+    // Local vertex to shared accessor vertex, preserving accessor order.
+    source_vertices: Vec(s32)
     morphed_positions: Vec(Vector3)
     morphed_normals: Vec(Vector3)
 }
@@ -2426,31 +2428,89 @@ GltfInstantiateMeshForNode :: (model: *GltfModel, instance: *GltfSceneInstance, 
     if n.mesh < 0 || n.mesh >= model.meshes.count { return true }
     mesh := *model.meshes[n.mesh]
     uv_flipped: Vec(ShapePoint)
-    defer VecFree(uv_flipped)
+    remap: Vec(s32)
+    positions: Vec(Vector3)
+    normals: Vec(Vector3)
+    influences: Vec(SkinInfluence)
+    indices: Vec(s32)
+    defer {
+        VecFree(uv_flipped)
+        VecFree(remap)
+        VecFree(positions)
+        VecFree(normals)
+        VecFree(influences)
+        VecFree(indices)
+    }
 
     for p: 0..mesh.primitives.count - 1 {
         prim := *mesh.primitives[p]
-        v_count := prim.positions.count
-        if !VecResize(uv_flipped, v_count) { return false }
+        pending: GltfMeshInstance
+        pending.gltf_node = node_idx
+        pending.mesh_index = n.mesh
+        pending.primitive_index = cast(s32)p
+        pending.skin_index = n.skin
+        pending.has_skin = n.skin >= 0 && n.skin < model.skins.count
+        // Own allocations immediately, including failure cleanup by the caller.
+        if !VecPush(instance.meshes, pending) {
+            return false
+        }
+        inst := *instance.meshes[instance.meshes.count - 1]
+        if inst.has_skin && prim.influences.count != prim.positions.count {
+            return false
+        }
+        // A material primitive often shares its entire accessor with many
+        // other primitives. Keep only its referenced vertices; otherwise each
+        // material skins and uploads the whole mesh on every animation frame.
+        if !VecResize(remap, prim.positions.count) {
+            return false
+        }
+        for v: 0..remap.count - 1 {
+            remap[v] = -1
+        }
+        for vertex: prim.indices {
+            if vertex < 0 || vertex >= remap.count {
+                return false
+            }
+            remap[vertex] = 0
+        }
+        for v: 0..remap.count - 1 {
+            if remap[v] < 0 {
+                continue
+            }
+            remap[v] = cast(s32)inst.source_vertices.count
+            if !VecPush(inst.source_vertices, cast(s32)v) {
+                return false
+            }
+        }
+        v_count := inst.source_vertices.count
+        if !VecResize(positions, v_count) || !VecResize(normals, v_count) ||
+            !VecResize(uv_flipped, v_count) || !VecResize(indices, prim.indices.count) {
+            return false
+        }
+        if inst.has_skin && !VecResize(influences, v_count) {
+            return false
+        }
         use_uv1 := false
         if prim.material >= 0 && prim.material < model.materials.count {
             use_uv1 = model.materials[prim.material].base_color_texture.tex_coord == 1 && prim.has_uv1
         }
         for v: 0..v_count - 1 {
-            uv := ifx use_uv1 then prim.uv1[v] else prim.uv0[v]
+            source := inst.source_vertices[v]
+            positions[v] = prim.positions[source]
+            normals[v] = prim.normals[source]
+            if inst.has_skin {
+                influences[v] = prim.influences[source]
+            }
+            uv := ifx use_uv1 then prim.uv1[source] else prim.uv0[source]
             uv_flipped[v] = .{uv.x, 1.0 - uv.y}
+        }
+        for at: 0..indices.count - 1 {
+            indices[at] = remap[prim.indices[at]]
         }
         mat := GltfMaterialToScene(scene, model, prim.material)
         if prim.has_colors {
             mat.vertex_colors = true
         }
-        inst: GltfMeshInstance
-        inst.gltf_node = node_idx
-        inst.mesh_index = n.mesh
-        inst.primitive_index = cast(s32)p
-        inst.skin_index = n.skin
-        inst.has_skin = n.skin >= 0 && n.skin < model.skins.count
-
         if prim.targets.count > 0 {
             if !VecResize(inst.morphed_positions, v_count) || !VecResize(inst.morphed_normals, v_count) {
                 return false
@@ -2463,11 +2523,11 @@ GltfInstantiateMeshForNode :: (model: *GltfModel, instance: *GltfSceneInstance, 
                 scene,
                 *inst.skin,
                 bone_count,
-                VecSlice(prim.positions, 0, v_count),
-                VecSlice(prim.normals, 0, v_count),
+                VecSlice(positions, 0, v_count),
+                VecSlice(normals, 0, v_count),
                 VecSlice(uv_flipped, 0, v_count),
-                VecSlice(prim.indices, 0, prim.indices.count),
-                VecSlice(prim.influences, 0, prim.influences.count),
+                VecSlice(indices, 0, indices.count),
+                VecSlice(influences, 0, influences.count),
                 mat
             ) {
                 return false
@@ -2477,10 +2537,10 @@ GltfInstantiateMeshForNode :: (model: *GltfModel, instance: *GltfSceneInstance, 
         } else {
             created := SceneIndexedMesh(
                 scene,
-                VecSlice(prim.positions, 0, v_count),
-                VecSlice(prim.normals, 0, v_count),
+                VecSlice(positions, 0, v_count),
+                VecSlice(normals, 0, v_count),
                 VecSlice(uv_flipped, 0, v_count),
-                VecSlice(prim.indices, 0, prim.indices.count),
+                VecSlice(indices, 0, indices.count),
                 mat
             )
             if created < 0 { return false }
@@ -2490,10 +2550,9 @@ GltfInstantiateMeshForNode :: (model: *GltfModel, instance: *GltfSceneInstance, 
 
         scene_mesh := scene.meshes[scene.nodes[inst.scene_node].mesh]
         for v: 0..v_count - 1 {
-            c := prim.colors[v]
+            c := prim.colors[inst.source_vertices[v]]
             scene.colors[scene_mesh.first_vertex + v] = .{c.r, c.g, c.b}
         }
-        VecPush(instance.meshes, inst)
     }
     return true
 }
@@ -2572,24 +2631,25 @@ GltfUpdateScene :: (model: *GltfModel, instance: *GltfSceneInstance, scene: *Sce
     for m: 0..instance.meshes.count - 1 {
         inst := *instance.meshes[m]
         prim := *model.meshes[inst.mesh_index].primitives[inst.primitive_index]
-        v_count := prim.positions.count
+        v_count := inst.source_vertices.count
         t_count := prim.targets.count
         if t_count > 0 {
             w_off := instance.morph_offsets[inst.gltf_node]
             w_cnt := instance.morph_counts[inst.gltf_node]
             for v: 0..v_count - 1 {
-                pos := prim.positions[v]
-                norm := prim.normals[v]
+                source := inst.source_vertices[v]
+                pos := prim.positions[source]
+                norm := prim.normals[source]
                 for t: 0..t_count - 1 {
                     if t >= w_cnt { break }
                     w := instance.morph_weights[w_off + t]
                     if GltfAbs(w) <= 0.000000001 { continue }
                     target := *prim.targets[t]
-                    if v < target.positions.count {
-                        pos = GltfAdd3(pos, GltfScale3(target.positions[v], w))
+                    if source < target.positions.count {
+                        pos = GltfAdd3(pos, GltfScale3(target.positions[source], w))
                     }
-                    if v < target.normals.count {
-                        norm = GltfAdd3(norm, GltfScale3(target.normals[v], w))
+                    if source < target.normals.count {
+                        norm = GltfAdd3(norm, GltfScale3(target.normals[source], w))
                     }
                 }
                 inst.morphed_positions[v] = pos
@@ -2900,6 +2960,7 @@ GltfInstanceRelease :: (instance: *GltfSceneInstance) {
     VecFree(instance.morph_weights)
     for i: 0..instance.meshes.count - 1 {
         SceneSkinRelease(*instance.meshes[i].skin)
+        VecFree(instance.meshes[i].source_vertices)
         VecFree(instance.meshes[i].morphed_positions)
         VecFree(instance.meshes[i].morphed_normals)
     }

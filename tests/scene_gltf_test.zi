@@ -572,6 +572,121 @@ CheckKhronosModelAbsolute :: (path: string, label: string) -> s32 {
     return Check(GltfSceneCreate(*scene, *model, *instance), label)
 }
 
+PrependUnusedVertex :: (values: []$T) {
+    at := values.count - 2
+    while at > 0 {
+        values[at] = values[at - 1]
+        at -= 1
+    }
+    values[values.count - 1] = values[0]
+}
+
+SameVector :: (a: Vector3, b: Vector3) -> bool {
+    return a.x == b.x && a.y == b.y && a.z == b.z
+}
+
+// Material primitives may reference a small subset of a shared accessor.
+// Unreferenced prefixes and suffixes must not be copied or skinned, and the
+// remap must retain attributes, expressions and exact rasterized pixels.
+CheckUnusedVertices :: (fixture: string) -> s32 {
+    original := LoadFixture(fixture)
+    padded := LoadFixture(fixture)
+    defer {
+        GltfModelRelease(*original)
+        GltfModelRelease(*padded)
+    }
+    if !original.valid || !padded.valid {
+        return Check(false, "compaction fixture loads")
+    }
+    prim := *padded.meshes[0].primitives[0]
+    count := prim.positions.count + 2
+    if !VecResize(prim.positions, count) || !VecResize(prim.normals, count) ||
+        !VecResize(prim.uv0, count) || !VecResize(prim.uv1, count) ||
+        !VecResize(prim.colors, count) {
+        return 1
+    }
+    PrependUnusedVertex(prim.positions[:])
+    PrependUnusedVertex(prim.normals[:])
+    PrependUnusedVertex(prim.uv0[:])
+    PrependUnusedVertex(prim.uv1[:])
+    PrependUnusedVertex(prim.colors[:])
+    if prim.influences.count > 0 {
+        if !VecResize(prim.influences, count) {
+            return 1
+        }
+        PrependUnusedVertex(prim.influences[:])
+    }
+    for at: 0..prim.indices.count - 1 {
+        prim.indices[at] += 1
+    }
+    for at: 0..prim.targets.count - 1 {
+        target := *prim.targets[at]
+        if target.positions.count > 0 {
+            if !VecResize(target.positions, count) {
+                return 1
+            }
+            PrependUnusedVertex(target.positions[:])
+        }
+        if target.normals.count > 0 {
+            if !VecResize(target.normals, count) {
+                return 1
+            }
+            PrependUnusedVertex(target.normals[:])
+        }
+    }
+    a: Scene
+    b: Scene
+    SceneInit(*a)
+    SceneInit(*b)
+    ia: GltfSceneInstance
+    ib: GltfSceneInstance
+    pa := NewImage(64, 64)
+    pb := NewImage(64, 64)
+    defer {
+        GltfInstanceRelease(*ia)
+        GltfInstanceRelease(*ib)
+        SceneFree(*a)
+        SceneFree(*b)
+        VecFree(pa.pixels)
+        VecFree(pb.pixels)
+        RenderSceneRelease()
+    }
+    if !GltfSceneCreate(*a, *original, *ia) || !GltfSceneCreate(*b, *padded, *ib) {
+        return Check(false, "compaction creates scenes")
+    }
+    fail := Check(a.positions.count == b.positions.count, "unreferenced vertices omitted")
+    camera := OrthographicCamera(-1.5, 1.5, 2.5, -0.5, 0.1, 10.0)
+    camera.position = .{0.0, 0.0, 3.0}
+    for mode: 0..1 {
+        GltfSetDualQuaternion(*ia, mode == 1)
+        GltfSetDualQuaternion(*ib, mode == 1)
+        for frame: 0..4 {
+            time := cast(float64)frame * 0.25
+            if !GltfAnimateScene(*original, *ia, *a, 0, time, false) ||
+                !GltfAnimateScene(*padded, *ib, *b, 0, time, false) {
+                return Check(false, "compacted animation samples")
+            }
+            for at: 0..a.indices.count - 1 {
+                va := a.indices[at]
+                vb := b.indices[at]
+                fail += Check(SameVector(a.positions[va], b.positions[vb]) &&
+                    SameVector(a.normals[va], b.normals[vb]) &&
+                    a.uvs[va].x == b.uvs[vb].x && a.uvs[va].y == b.uvs[vb].y &&
+                    SameVector(a.colors[va], b.colors[vb]), "compacted triangle attributes identical")
+            }
+            if !RenderScene(*a, camera, *pa) || !RenderScene(*b, camera, *pb) {
+                return Check(false, "compacted scene renders")
+            }
+            same := true
+            for at: 0..pa.pixels.count - 1 {
+                same = same && pa.pixels[at] == pb.pixels[at]
+            }
+            fail += Check(same, "compacted pixels identical")
+        }
+    }
+    return fail
+}
+
 main :: () -> s32 {
     fail: s32 = 0
     fail += CheckTriangle()
@@ -581,6 +696,8 @@ main :: () -> s32 {
     fail += CheckGlb()
     fail += CheckAnimatedCube()
     fail += CheckMorphTargets()
+    fail += CheckUnusedVertices("skinned_two_bone.gltf")
+    fail += CheckUnusedVertices("morph_target.gltf")
     fail += CheckSparseAccessors()
     fail += CheckMalformed()
     fail += CheckDamagedInputs()

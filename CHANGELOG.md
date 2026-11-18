@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Animated glTF material primitives skin and upload only their referenced
+  vertices, preserving the original triangles, expressions and pixels.
+
 - Android shipped pictures probe dimensions before decoding and retain a
   Lanczos reduction at the drawn device resolution, reusing it until a
   larger draw needs more detail. Intrinsic dimensions stay stable.

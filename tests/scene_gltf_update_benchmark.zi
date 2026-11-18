@@ -1,0 +1,128 @@
+// Fixed poses, expressions and byte hashes for comparing glTF update changes.
+// Pass a model path to measure a full avatar; the default is a small fixture.
+#import "kryon/scene"
+#import "kryon/scene_gltf"
+#import "kryon/scene_gpu"
+#import "kryon/scene_render"
+#import "std/byte_text"
+#import "std/image"
+#import "std/text"
+#import "std/timer_linux"
+#import "std/vec"
+
+HashBytes :: (data: *void, count: s64) -> u64 {
+    bytes := cast(*u8)data
+    hash: u64 = 1469598103934665603
+    for at: 0..count - 1 {
+        hash = (hash ^ cast(u64)bytes[at]) * cast(u64)1099511628211
+    }
+    return hash
+}
+
+// Hash in triangle order so dropping unreferenced vertices preserves the hash.
+SurfaceHash :: (scene: *Scene) -> u64 {
+    hash: u64 = 1469598103934665603
+    for mesh: scene.meshes {
+        for at: 0..mesh.index_count - 1 {
+            vertex := mesh.first_vertex + scene.indices[mesh.first_index + at]
+            hash = (hash ^ HashBytes(cast(*void)*scene.positions[vertex], cast(s64)size_of(Vector3))) * cast(u64)1099511628211
+            hash = (hash ^ HashBytes(cast(*void)*scene.normals[vertex], cast(s64)size_of(Vector3))) * cast(u64)1099511628211
+            hash = (hash ^ HashBytes(cast(*void)*scene.uvs[vertex], cast(s64)size_of(ShapePoint))) * cast(u64)1099511628211
+            hash = (hash ^ HashBytes(cast(*void)*scene.colors[vertex], cast(s64)size_of(Vector3))) * cast(u64)1099511628211
+        }
+    }
+    return hash
+}
+
+main :: (argc: s32, argv: **u8) -> s32 {
+    path: string = "tests/fixtures/gltf/skinned_two_bone.gltf"
+    if argc > 1 {
+        path = TextFromCString(argv[1])
+    }
+    model := GltfReadFile(path)
+    defer GltfModelRelease(*model)
+    if !model.valid {
+        print("gltf benchmark: %\n", GltfError(*model))
+        return 1
+    }
+    scene: Scene
+    SceneInit(*scene)
+    scene.background = .{0, 0, 0, 0}
+    AddHemisphereLight(*scene, .{255, 245, 225, 255}, .{90, 95, 110, 255}, 1.0)
+    instance: GltfSceneInstance
+    gpu: SceneGpuContext
+    image := NewImage(600, 800)
+    defer {
+        SceneGpuRelease(*gpu)
+        VecFree(image.pixels)
+        GltfInstanceRelease(*instance)
+        SceneFree(*scene)
+    }
+    if !GltfSceneCreate(*scene, *model, *instance) {
+        return 2
+    }
+    camera := OrthographicCamera(-0.9, 0.9, 2.1, -0.3, 0.05, 30.0)
+    camera.position = .{0.0, 0.9, 8.0}
+    camera.target = .{0.0, 0.9, 0.0}
+    caps := SceneGpuProbe(*gpu)
+    print("model=% nodes=% primitives=% vertices=% renderer=%\n", path,
+        model.nodes.count, instance.meshes.count, scene.positions.count,
+        TextFromCString(*caps.renderer[0]))
+    for mode: 0..1 {
+        GltfSetDualQuaternion(*instance, mode == 1)
+        samples: [120]s64
+        for frame: 0..131 {
+            // Include neutral, active, negative and returning-to-zero weights.
+            for weight: 0..instance.morph_weights.count - 1 {
+                instance.morph_weights[weight] = 0.0
+                if frame % 4 != 0 && weight % 7 == frame % 7 {
+                    instance.morph_weights[weight] = cast(float64)(frame % 5 - 1) * 0.2
+                }
+            }
+            start := MonotonicNanoseconds()
+            if !GltfUpdateScene(*model, *instance, *scene) {
+                return 3
+            }
+            elapsed := MonotonicNanoseconds() - start
+            if frame >= 12 {
+                samples[frame - 12] = elapsed
+            }
+            if frame % 33 == 0 {
+                frame_result := SceneGpuRender(*gpu, *scene, camera, *image)
+                if !frame_result.ok {
+                    print("gltf benchmark render failed: %\n", frame_result.diagnostic)
+                    return 4
+                }
+                covered: s64
+                for pixel: 0..image.pixels.count / 4 - 1 {
+                    if image.pixels[pixel * 4 + 3] > 0 {
+                        covered += 1
+                    }
+                }
+                if covered == 0 {
+                    print("gltf benchmark: empty render\n")
+                    return 5
+                }
+                print("mode=% frame=% surface=% pixels=% covered=% prepare_ms=% draw_ms=% readback_ms=% conversion_ms=%\n",
+                    mode, frame, SurfaceHash(*scene),
+                    HashBytes(cast(*void)*image.pixels[0], image.pixels.count),
+                    covered,
+                    frame_result.prepare_ms, frame_result.draw_ms,
+                    frame_result.readback_ms, frame_result.conversion_ms)
+            }
+        }
+        for at: 1..119 {
+            value := samples[at]
+            prior := at - 1
+            while prior >= 0 && samples[prior] > value {
+                samples[prior + 1] = samples[prior]
+                prior -= 1
+            }
+            samples[prior + 1] = value
+        }
+        print("mode=% update median_ms=% p95_ms=%\n", mode,
+            cast(float64)samples[60] / 1000000.0,
+            cast(float64)samples[114] / 1000000.0)
+    }
+    return 0
+}
