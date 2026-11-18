@@ -173,6 +173,16 @@ KeyboardTake :: (session: Session) -> s32 {
     return key
 }
 
+KeyboardControlTake :: (session: Session, key: s32) -> bool {
+    if !SessionValid(session) { return false }
+    slot := SessionIndex(session)
+    if active_key[slot] != key || (active_modifiers[slot] & KeyModifierControl) == 0 {
+        return false
+    }
+    active_key[slot] = 0
+    return true
+}
+
 // Hosts submit the modifier keys held for the next frame as KeyModifier
 // bits. The state stays until the host sends a new one.
 #program_export

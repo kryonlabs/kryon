@@ -1078,9 +1078,9 @@ WidgetEncodeTextAreaResult :: (data: TextArea.Result, codec: *WidgetTextAreaResu
 WidgetTypeScrollInput :: "scroll_props.ScrollInput"
 WidgetSliceTypeScrollInput :: "[]scroll_props.ScrollInput"
 
-// Widget codec schema: ["ScrollInput",[["enabled","bool"],["pointer_allowed","bool"],["disabled","bool"],["mouse","Vector2"],["pressed","bool"],["down","bool"],["released","bool"],["wheel","float32"],["owns_drag","bool"],["owner_captured","bool"],["grab","float32"],["content_drag","bool"],["drag_origin_y","float32"],["drag_origin_offset","s32"],["drag_moving","bool"],["device","bool"],["now_seconds","float64"],["sample_seconds","float64"],["velocity","float32"],["flinging","bool"],["gliding","bool"],["glide_target","s32"]]]
+// Widget codec schema: ["ScrollInput",[["enabled","bool"],["pointer_allowed","bool"],["disabled","bool"],["mouse","Vector2"],["pressed","bool"],["down","bool"],["released","bool"],["wheel","float32"],["pixel_wheel","bool"],["thumb_only","bool"],["owns_drag","bool"],["owner_captured","bool"],["grab","float32"],["content_drag","bool"],["drag_origin_y","float32"],["drag_origin_offset","s32"],["drag_moving","bool"],["device","bool"],["now_seconds","float64"],["sample_seconds","float64"],["velocity","float32"],["flinging","bool"],["gliding","bool"],["glide_target","s32"]]]
 WidgetScrollInputCodec :: struct {
-    fields: [22]HostField
+    fields: [24]HostField
     mouse: WidgetVector2Codec
 }
 
@@ -1095,20 +1095,22 @@ WidgetDecodeScrollInput :: (value: HostValue, codec: *WidgetScrollInputCodec) ->
     data.down = HostFieldValue(*value, 5, "down", *zero).integer != 0
     data.released = HostFieldValue(*value, 6, "released", *zero).integer != 0
     data.wheel = cast(float32)HostFieldValue(*value, 7, "wheel", *zero).real
-    data.owns_drag = HostFieldValue(*value, 8, "owns_drag", *zero).integer != 0
-    data.owner_captured = HostFieldValue(*value, 9, "owner_captured", *zero).integer != 0
-    data.grab = cast(float32)HostFieldValue(*value, 10, "grab", *zero).real
-    data.content_drag = HostFieldValue(*value, 11, "content_drag", *zero).integer != 0
-    data.drag_origin_y = cast(float32)HostFieldValue(*value, 12, "drag_origin_y", *zero).real
-    data.drag_origin_offset = cast(s32)HostFieldValue(*value, 13, "drag_origin_offset", *zero).integer
-    data.drag_moving = HostFieldValue(*value, 14, "drag_moving", *zero).integer != 0
-    data.device = HostFieldValue(*value, 15, "device", *zero).integer != 0
-    data.now_seconds = cast(float64)HostFieldValue(*value, 16, "now_seconds", *zero).real
-    data.sample_seconds = cast(float64)HostFieldValue(*value, 17, "sample_seconds", *zero).real
-    data.velocity = cast(float32)HostFieldValue(*value, 18, "velocity", *zero).real
-    data.flinging = HostFieldValue(*value, 19, "flinging", *zero).integer != 0
-    data.gliding = HostFieldValue(*value, 20, "gliding", *zero).integer != 0
-    data.glide_target = cast(s32)HostFieldValue(*value, 21, "glide_target", *zero).integer
+    data.pixel_wheel = HostFieldValue(*value, 8, "pixel_wheel", *zero).integer != 0
+    data.thumb_only = HostFieldValue(*value, 9, "thumb_only", *zero).integer != 0
+    data.owns_drag = HostFieldValue(*value, 10, "owns_drag", *zero).integer != 0
+    data.owner_captured = HostFieldValue(*value, 11, "owner_captured", *zero).integer != 0
+    data.grab = cast(float32)HostFieldValue(*value, 12, "grab", *zero).real
+    data.content_drag = HostFieldValue(*value, 13, "content_drag", *zero).integer != 0
+    data.drag_origin_y = cast(float32)HostFieldValue(*value, 14, "drag_origin_y", *zero).real
+    data.drag_origin_offset = cast(s32)HostFieldValue(*value, 15, "drag_origin_offset", *zero).integer
+    data.drag_moving = HostFieldValue(*value, 16, "drag_moving", *zero).integer != 0
+    data.device = HostFieldValue(*value, 17, "device", *zero).integer != 0
+    data.now_seconds = cast(float64)HostFieldValue(*value, 18, "now_seconds", *zero).real
+    data.sample_seconds = cast(float64)HostFieldValue(*value, 19, "sample_seconds", *zero).real
+    data.velocity = cast(float32)HostFieldValue(*value, 20, "velocity", *zero).real
+    data.flinging = HostFieldValue(*value, 21, "flinging", *zero).integer != 0
+    data.gliding = HostFieldValue(*value, 22, "gliding", *zero).integer != 0
+    data.glide_target = cast(s32)HostFieldValue(*value, 23, "glide_target", *zero).integer
     return data
 }
 
@@ -1122,20 +1124,22 @@ WidgetValidScrollInput :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 5, "down", "bool", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 6, "released", "bool", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 7, "wheel", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 8, "owns_drag", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 9, "owner_captured", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 10, "grab", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 11, "content_drag", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 12, "drag_origin_y", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 13, "drag_origin_offset", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 14, "drag_moving", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 15, "device", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 16, "now_seconds", "float64", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 17, "sample_seconds", "float64", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 18, "velocity", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 19, "flinging", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 20, "gliding", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 21, "glide_target", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 8, "pixel_wheel", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 9, "thumb_only", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 10, "owns_drag", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 11, "owner_captured", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 12, "grab", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 13, "content_drag", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 14, "drag_origin_y", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 15, "drag_origin_offset", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 16, "drag_moving", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 17, "device", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 18, "now_seconds", "float64", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 19, "sample_seconds", "float64", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 20, "velocity", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 21, "flinging", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 22, "gliding", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 23, "glide_target", "s32", cast(s32)HostInteger) { return false }
     return true
 }
 

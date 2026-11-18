@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Web pages scroll by the browser's pixel wheel distance, mouse drags select
+  text while scrollbar thumbs stay draggable, and selected text copies with
+  Ctrl+C under a text cursor.
 - Scenes add large pictures faster: a texture's texels are copied in one
   block instead of one at a time.
 - Checking or building a package for a native target no longer fails in

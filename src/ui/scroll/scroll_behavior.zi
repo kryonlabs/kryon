@@ -267,6 +267,8 @@ ScrollFrameInput :: struct {
     down: bool
     released: bool
     wheel: float32
+    pixel_wheel: bool
+    thumb_only: bool
     owns_drag: bool
     owner_captured: bool
     grab: float32
@@ -415,7 +417,9 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
     if input.has_offset {
         frame.offset = ScrollClamp(input.offset, maximum)
         if input.pointer_allowed && !input.disabled && input.wheel != 0.0 {
-            if input.now_seconds > 0.0 && !input.immediate_wheel {
+            if input.pixel_wheel {
+                frame.offset = ScrollWheelOffsetFor(frame.offset, input.wheel, maximum, 1)
+            } else if input.now_seconds > 0.0 && !input.immediate_wheel {
                 // Wheel steps add to a target the content glides to; the
                 // first frame of a glide takes a frame's worth of it at once.
                 base: s32 = frame.offset
@@ -470,7 +474,7 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
         // content arms the drag; it moves the content once the pointer has
         // travelled past the threshold, and a shorter press stays a tap.
         if scrolls && !active && !content_active && !input.disabled &&
-        !input.owner_captured && input.pointer_allowed && input.pressed &&
+        !input.owner_captured && !input.thumb_only && input.pointer_allowed && input.pressed &&
         ScrollPointInside(input.mouse, input.bounds) {
             frame.start_drag = true
             frame.clear_drag = false

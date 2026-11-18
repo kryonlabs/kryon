@@ -36,6 +36,7 @@ DrawCanvasFrame :: (session: Session, viewport: Rectangle) -> bool {
     TreePointerUpdate(session, pointer)
     TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
     PointerWheelSend(session, pointer.x, pointer.y, CanvasWheelMove())
+    CanvasSampleScroll(session, pointer, CanvasWheelMove())
     if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
         return false

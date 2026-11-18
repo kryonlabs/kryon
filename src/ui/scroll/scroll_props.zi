@@ -14,6 +14,8 @@ ScrollInput :: struct {
     down: bool
     released: bool
     wheel: float32
+    pixel_wheel: bool
+    thumb_only: bool
     owns_drag: bool
     owner_captured: bool
     grab: float32
@@ -74,7 +76,8 @@ ScrollResult :: struct {
 ScrollFrameInputFor :: (input: ScrollInput) -> ScrollFrameInput {
     return ScrollFrameInput.{.pointer_allowed = input.pointer_allowed, .disabled = input.disabled,
         .mouse = input.mouse, .pressed = input.pressed, .down = input.down,
-        .released = input.released, .wheel = input.wheel, .owns_drag = input.owns_drag,
+        .released = input.released, .wheel = input.wheel, .pixel_wheel = input.pixel_wheel,
+        .thumb_only = input.thumb_only, .owns_drag = input.owns_drag,
         .owner_captured = input.owner_captured, .grab = input.grab,
         .content_drag = input.content_drag, .drag_origin_y = input.drag_origin_y,
         .drag_origin_offset = input.drag_origin_offset, .drag_moving = input.drag_moving,

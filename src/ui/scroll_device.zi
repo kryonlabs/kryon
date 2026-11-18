@@ -25,6 +25,9 @@ ScrollDevice :: struct {
     // The sideways wheel, positive to the right, as touchpads and tilting
     // wheels send it; see ScrollDeviceSideways.
     wheel_x: float32
+    pixel_wheel: bool
+    wheel_pixels: Vector2
+    thumb_only: bool
     wheel_consumed: bool
     owner: u64
     grab: float32
@@ -58,7 +61,7 @@ scroll_device_current: s32;
 
 // The frame samples the device through scroll_sampling once a program
 // imports a scroll.
-scroll_sampling_registered: bool = ScrollSamplingUse(BeginScrollFrame, ScrollDeviceMoving);
+scroll_sampling_registered: bool = ScrollSamplingUse(BeginScrollFrame, ScrollDeviceMoving, ScrollDeviceBrowserInput);
 
 ScrollDeviceSlot :: (session: Session) -> s32 {
     slot := SessionIndex(session)
@@ -137,10 +140,20 @@ BeginScrollFrame :: (session: Session, mouse: Vector2, pressed: bool, down: bool
     device.released = released
     device.wheel = wheel
     device.wheel_x = 0.0
+    device.pixel_wheel = false
+    device.thumb_only = false
     device.wheel_consumed = false
     if !down && !released {
         ScrollDeviceRelease()
     }
+}
+
+ScrollDeviceBrowserInput :: (session: Session, wheel: Vector2, thumb_only: bool) {
+    device := *scroll_devices[ScrollDeviceSlot(session)]
+    device.pixel_wheel = true
+    device.wheel_pixels = wheel
+    device.thumb_only = thumb_only
+    if wheel.x != 0.0 || wheel.y != 0.0 { device.fling_owner = cast(u64)0 }
 }
 
 // The host's sideways wheel for this frame, positive to the right, after
@@ -215,6 +228,7 @@ ScrollObservationFor :: (session: Session, key: u64, bounds: Rectangle,
     input.pressed = device.pressed
     input.down = device.down
     input.released = device.released
+    input.thumb_only = device.thumb_only
     input.owns_drag = key != cast(u64)0 && device.owner == key
     input.owner_captured = device.owner != cast(u64)0 && !input.owns_drag
     input.grab = device.grab
@@ -252,7 +266,16 @@ ScrollObservationFor :: (session: Session, key: u64, bounds: Rectangle,
         input.mouse.x, input.mouse.y, true)
     wheel_targeted: bool = wheel_target == cast(u64)0 || wheel_target == key
     if inside && wheel_targeted && !device.wheel_consumed && !input.owner_captured {
-        input.wheel = ScrollDeviceWheelFor(horizontal)
+        input.pixel_wheel = device.pixel_wheel
+        if device.pixel_wheel {
+            wheel := device.wheel_pixels
+            input.wheel = -wheel.y
+            if horizontal && ScrollWheelSize(wheel.x) > ScrollWheelSize(wheel.y) {
+                input.wheel = -wheel.x
+            }
+        } else {
+            input.wheel = ScrollDeviceWheelFor(horizontal)
+        }
     }
     return input
 }

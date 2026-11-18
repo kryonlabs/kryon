@@ -18,6 +18,7 @@
 #import "page_files"
 #import "session"
 #import "frame_input_provider"
+#import "scroll_sampling"
 #import "paint_queue"
 #import "cursor"
 #import "page_texture"
@@ -450,6 +451,17 @@ CanvasInputTake :: (session: Session) -> (key: s32, modifiers: s32) {
 #program_export
 CanvasWheelMove :: () -> float32 {
     return canvas_wheel_move
+}
+
+#program_export
+CanvasSampleScroll :: (session: Session, pointer: PointerFrame, wheel: float32,
+    mouse_selects: bool = true) {
+    ScrollSampleBegin(session, .{pointer.x, pointer.y}, pointer.pressed, pointer.down,
+        pointer.released, wheel, PageNow() / 1000.0)
+    // A test driver may supply a simulated wheel step without a DOM event.
+    if wheel != CanvasWheelMove() { return }
+    ScrollSampleBrowserInput(session, .{cast(float32)canvas_frame_input.scroll_x,
+        cast(float32)canvas_frame_input.scroll_y}, mouse_selects && canvas_touch_count == 0)
 }
 
 #program_export

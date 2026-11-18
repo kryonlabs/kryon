@@ -8,14 +8,24 @@
 ScrollSampleFrame :: #type (session: Session, mouse: Vector2, pressed: bool, down: bool,
     released: bool, wheel: float32, now_seconds: float64) -> void;
 ScrollSampleQuery :: #type (session: Session) -> bool;
+ScrollSampleBrowser :: #type (session: Session, wheel: Vector2, thumb_only: bool) -> void;
 
 scroll_sample_frame: ScrollSampleFrame;
 scroll_sample_moving: ScrollSampleQuery;
+scroll_sample_browser: ScrollSampleBrowser;
 
-ScrollSamplingUse :: (frame: ScrollSampleFrame, moving: ScrollSampleQuery) -> bool {
+ScrollSamplingUse :: (frame: ScrollSampleFrame, moving: ScrollSampleQuery,
+    browser: ScrollSampleBrowser) -> bool {
     scroll_sample_frame = frame
     scroll_sample_moving = moving
+    scroll_sample_browser = browser
     return true
+}
+
+// Signed CSS-pixel deltas, positive to the right and down. Mouse drags can
+// be reserved for selection and controls while the scrollbar stays draggable.
+ScrollSampleBrowserInput :: (session: Session, wheel: Vector2, thumb_only: bool) {
+    if scroll_sample_browser != null { scroll_sample_browser(session, wheel, thumb_only) }
 }
 
 // The host's pointer, wheel and clock for this frame (see BeginScrollFrame).

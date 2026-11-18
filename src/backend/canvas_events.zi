@@ -114,6 +114,10 @@ using CompositionPhase;
     canvas_mouse_scale_y: float64 = 1.0;
     canvas_wheel_x: float64;
     canvas_wheel_y: float64;
+    canvas_scroll_x: s32;
+    canvas_scroll_y: s32;
+    canvas_scroll_fraction_x: float64;
+    canvas_scroll_fraction_y: float64;
 
     canvas_touch_id: [CANVAS_TOUCH_LIMIT]s32;
     canvas_touch_x: [CANVAS_TOUCH_LIMIT]float64;
@@ -148,6 +152,8 @@ using CompositionPhase;
         mouse_delta_y: float64
         wheel_x: float64
         wheel_y: float64
+        scroll_x: s32
+        scroll_y: s32
     }
 
     canvas_frame_input: CanvasFrameInput;
@@ -293,6 +299,16 @@ using CompositionPhase;
         return (y - canvas_mouse_offset_y) * canvas_mouse_scale_y
     }
 
+    // Accumulate subpixels independently so reversing direction still
+    // applies the entire integer part of the next event.
+    CanvasScrollPixels :: (delta: float64, fraction: *float64) -> s32 {
+        pixels := cast(s32)delta
+        fraction.* += delta - cast(float64)pixels
+        extra := cast(s32)fraction.*
+        fraction.* -= cast(float64)extra
+        return pixels + extra
+    }
+
     CanvasClipboardFill :: (text: string) {
         length: s64 = cast(s64)text.count
         if length >= cast(s64)CANVAS_CLIPBOARD_SIZE {
@@ -426,6 +442,19 @@ using CompositionPhase;
             if a == 2 { unit = cast(float64)PageDimension(1) }
             canvas_wheel_x += -x / unit
             canvas_wheel_y += -y / unit
+            // Keep the wheel's CSS-pixel distance for Scroll widgets.
+            pixels_x: float64 = 1.0
+            pixels_y: float64 = 1.0
+            if a == 1 {
+                pixels_x = 40.0
+                pixels_y = 40.0
+            }
+            if a == 2 {
+                pixels_x = cast(float64)PageDimension(0)
+                pixels_y = cast(float64)PageDimension(1)
+            }
+            canvas_scroll_x += CanvasScrollPixels(x * pixels_x, *canvas_scroll_fraction_x)
+            canvas_scroll_y += CanvasScrollPixels(y * pixels_y, *canvas_scroll_fraction_y)
             return CanvasEventPreventDefault
         }
         if kind == CanvasEventKeyDown {
@@ -546,6 +575,10 @@ using CompositionPhase;
         canvas_mouse_scale_y = 1.0
         canvas_wheel_x = 0.0
         canvas_wheel_y = 0.0
+        canvas_scroll_x = 0
+        canvas_scroll_y = 0
+        canvas_scroll_fraction_x = 0.0
+        canvas_scroll_fraction_y = 0.0
         canvas_touch_count = 0
         canvas_touch_pending = 0
         canvas_focused = true
@@ -580,7 +613,9 @@ using CompositionPhase;
             mouse_delta_x = canvas_mouse_delta_x,
             mouse_delta_y = canvas_mouse_delta_y,
             wheel_x = canvas_wheel_x,
-            wheel_y = canvas_wheel_y
+            wheel_y = canvas_wheel_y,
+            scroll_x = canvas_scroll_x,
+            scroll_y = canvas_scroll_y
         }
         canvas_composition_frame_phase = canvas_composition_phase
         canvas_composition_frame_length = canvas_composition_length
@@ -606,6 +641,8 @@ using CompositionPhase;
         canvas_mouse_delta_y -= canvas_frame_input.mouse_delta_y
         canvas_wheel_x -= canvas_frame_input.wheel_x
         canvas_wheel_y -= canvas_frame_input.wheel_y
+        canvas_scroll_x -= canvas_frame_input.scroll_x
+        canvas_scroll_y -= canvas_frame_input.scroll_y
         canvas_frame_input = CanvasFrameInput.{}
         if canvas_composition_sequence == canvas_composition_frame_sequence {
             canvas_composition_phase = 0

@@ -220,10 +220,7 @@ CanvasAppFrame :: (session: Session, viewport: Rectangle) -> bool {
     TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
     wheel := TestDriverWheel(CanvasWheelMove())
     PointerWheelSend(session, pointer.x, pointer.y, wheel)
-    // Scrolls take their wheel, drags and flings from the sampled device;
-    // without it no list in a compiled page could scroll.
-    BeginScrollFrame(session, Vector2.{pointer.x, pointer.y}, pointer.pressed,
-        pointer.down, pointer.released, wheel, AppNowHost())
+    CanvasSampleScroll(session, pointer, wheel, false)
     if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
         return false

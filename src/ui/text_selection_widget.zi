@@ -4,6 +4,7 @@ Theme :: #import "theme";
 // Optional selection for Text. Hosts with a clipboard install this ordinary
 // Ziran widget painter; a host that draws labels needs no clipboard effects.
 #import "session"
+#import "cursor"
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
@@ -79,7 +80,8 @@ TextSelectionDraw :: (session: Session, node: s32, props: Text.Props, prepared: 
             anchor = 0
             cursor = cast(s32)props.text.count
         }
-        if focused && command == TEXT_MENU_COPY && anchor != cursor {
+        if focused && anchor != cursor && (command == TEXT_MENU_COPY ||
+            KeyboardControlTake(session, cast(s32)#char "C")) {
             start := ifx anchor < cursor then anchor else cursor
             end := ifx anchor < cursor then cursor else anchor
             unused SystemClipboardSet(props.text[start:end])
@@ -90,7 +92,8 @@ TextSelectionDraw :: (session: Session, node: s32, props: Text.Props, prepared: 
     }
 
     TreeSetInteractive(session, node, props.disabled, false, 1)
-    TreeSetWidgetState(session, node, WidgetState.{focused, anchor, cursor})
+    if !props.disabled { TreeSetCursor(session, node, cast(s32)CursorShape.CursorText) }
+    TreeSetWidgetState(session, node, WidgetState.{.open = focused, .index = cursor, .offset = anchor})
     TreeSetTextValue(session, node, props.text, cursor, anchor, true, false)
     if focused && anchor != cursor {
         Text.PaintTextSelection(session, node, props, prepared, anchor, cursor,
