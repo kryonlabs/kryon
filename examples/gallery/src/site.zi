@@ -28,6 +28,7 @@ using Preview :: #import "site_preview";
 #import "std/web"
 using Scenes :: #import "scenes";
 #import "catalog"
+#import "site_apps"
 #import "kryon/PageRoute"
 #import "kryon/open_uri"
 #import "kryon/widget_kind"
@@ -597,29 +598,35 @@ SiteComponents :: (session: Session, view: Rectangle) {
     }
 }
 
-SiteAppCard :: (session: Session, key: u64, bounds: Rectangle, image_path: string,
-    title: string, summary: string, url: string, image_height: float32) {
+// One app: its picture, name and summary, then Play and Source for a web
+// app, or the reason it is desktop only and its source.
+SiteAppCard :: (session: Session, key: u64, bounds: Rectangle, app: SiteApp, image_height: float32) {
     Box.Draw(session, Box.Props.{.key = key, .bounds = bounds, .fill = SiteSurface(),
         .border = SiteBorder(), .radius = 14.0})
     inset: float32 = 12.0
-    image_bounds := Rectangle.{bounds.x + inset, bounds.y + inset,
-        bounds.width - inset * 2.0, image_height}
+    inner := bounds.width - inset * 2.0
+    image_bounds := Rectangle.{bounds.x + inset, bounds.y + inset, inner, image_height}
     Box.Draw(session, Box.Props.{.key = key + 5, .bounds = image_bounds,
         .fill = SiteBackground(), .border = SiteBorder(), .radius = 10.0})
-    Image.Draw(session, Image.Props.{.key = key + 1, .asset_path = image_path,
-        .alt_text = title, .bounds = image_bounds, .fit = .ImageFitContain,
+    Image.Draw(session, Image.Props.{.key = key + 1, .asset_path = app.image,
+        .alt_text = app.name, .bounds = image_bounds, .fit = .ImageFitContain,
         .radius = 10.0, .smooth = true})
     text_y := bounds.y + inset + image_height + 14.0
-    SiteText(session, key + 2, .{bounds.x + inset, text_y,
-        bounds.width - inset * 2.0, 32.0}, title, 22)
-    SiteMuted(session, key + 3, .{bounds.x + inset, text_y + 36.0,
-        bounds.width - inset * 2.0, 40.0}, summary, 14)
-    if Button.Draw(session, Button.Props.{.key = key + 4,
-        .bounds = .{bounds.x + inset, bounds.y + bounds.height - 46.0,
-        bounds.width - inset * 2.0, 34.0}, .label = "View on GitHub  ↗",
-        .class_name = 11010, .emphasis = .ButtonEmphasisGhost}) != 0 {
-        unused OpenUri(url)
+    SiteText(session, key + 2, .{bounds.x + inset, text_y, inner, 32.0}, app.name, 22)
+    SiteMuted(session, key + 3, .{bounds.x + inset, text_y + 36.0, inner, 40.0}, app.summary, 14)
+    footer := Rectangle.{bounds.x + inset, bounds.y + bounds.height - 46.0, inner, 34.0}
+    if app.play.count > 0 {
+        play_width := ifx app.source.count > 0 then (inner - 10.0) * 0.5 else inner
+        if Button.Draw(session, Button.Props.{.key = key + 4, .bounds = .{footer.x, footer.y, play_width, footer.height},
+            .label = "Play in browser  ↗", .class_name = 11012}) != 0 { unused OpenUri(app.play) }
+        if app.source.count > 0 && Button.Draw(session, Button.Props.{.key = key + 6,
+            .bounds = .{footer.x + play_width + 10.0, footer.y, play_width, footer.height},
+            .label = "Source  ↗", .class_name = 11010, .emphasis = .ButtonEmphasisGhost}) != 0 { unused OpenUri(app.source) }
+        return
     }
+    SiteMuted(session, key + 7, .{bounds.x + inset, text_y + 80.0, inner, 40.0}, app.desktop_reason, 13)
+    if Button.Draw(session, Button.Props.{.key = key + 4, .bounds = footer, .label = "View on GitHub  ↗",
+        .class_name = 11010, .emphasis = .ButtonEmphasisGhost}) != 0 { unused OpenUri(app.source) }
 }
 
 SiteApps :: (session: Session, view: Rectangle) {
@@ -627,13 +634,16 @@ SiteApps :: (session: Session, view: Rectangle) {
     width := view.width - (ifx view.width >= 760.0 then 96.0 else 40.0)
     if width > 1120.0 { width = 1120.0 }
     x := (view.width - width) * 0.5
-    columns: s32 = ifx wide then 2 else 1
+    columns: s32 = ifx view.width >= 1200.0 then 3 else ifx wide then 2 else 1
     gap: float32 = 20.0
-    card_width: float32 = ifx columns == 2 then (width - gap) * 0.5 else width
-    image_height: float32 = card_width * (ifx columns == 2 then 0.58 else 0.6)
-    card_height: float32 = image_height + 168.0
-    rows: s32 = (4 + columns - 1) / columns
-    content_height := 308.0 + cast(float32)rows * (card_height + gap) + 40.0
+    card_width: float32 = (width - gap * cast(float32)(columns - 1)) / cast(float32)columns
+    image_height: float32 = card_width * (ifx columns > 1 then 0.58 else 0.6)
+    web_height: float32 = image_height + 168.0
+    desktop_height: float32 = image_height + 214.0
+    web_rows: s32 = (SiteWebAppCount + columns - 1) / columns
+    desktop_rows: s32 = (SiteDesktopAppCount + columns - 1) / columns
+    content_height := 240.0 + 56.0 + cast(float32)web_rows * (web_height + gap) +
+        218.0 + 56.0 + cast(float32)desktop_rows * (desktop_height + gap) + 96.0
     scroll := Scroll.Draw(session, Scroll.Props.{.key = 10700, .bounds = view,
         .content_height = cast(s32)content_height, .scroll_offset = site_scroll})
     site_scroll = scroll.scroll_offset
@@ -643,29 +653,33 @@ SiteApps :: (session: Session, view: Rectangle) {
     SiteText(session, 10702, .{x, y, width, 52.0}, "Apps built with Kryon", ifx wide then 42 else 32)
     y += 62.0
     SiteMuted(session, 10703, .{x, y, width, 52.0},
-        "Public applications built with Ziran and Kryon.\nEvery project is open source on GitHub.", 16)
-    y += 64.0
-    images: [4]string = .{"assets/apps/terminal.webp", "assets/apps/browser.webp",
-        "assets/apps/github.webp", "assets/apps/explorer.webp"}
-    names: [4]string = .{"Terminal", "Browser", "GitHub", "Explorer"}
-    summaries: [4]string = .{"Tabs, sessions and desktop integration.",
-        "A reading surface with its own document engine.",
-        "Repository, issue and pull request workflows.",
-        "A native file manager with grid, list and split views."}
-    urls: [4]string = .{"https://github.com/kryonlabs/terminal",
-        "https://github.com/kryonlabs/browser",
-        "https://github.com/kryonlabs/github",
-        "https://github.com/kryonlabs/explorer"}
-    for index: 0..3 {
-        row := index / columns
-        column := index % columns
-        cx := x + cast(float32)column * (card_width + gap)
-        cy := y + cast(float32)row * (card_height + gap)
-        SiteAppCard(session, cast(u64)(10710 + index * 10), .{cx, cy, card_width, card_height},
-            images[index], names[index], summaries[index], urls[index], image_height)
+        "Every app here is written in Ziran with Kryon.\nPlay the web builds right here in your browser.", 16)
+    y += 92.0
+    SiteText(session, 10704, .{x, y, width, 36.0}, "Play in your browser", 26)
+    y += 56.0
+    for index: cast(s32)0..SiteWebAppCount - 1 {
+        cx := x + cast(float32)(index % columns) * (card_width + gap)
+        cy := y + cast(float32)(index / columns) * (web_height + gap)
+        SiteAppCard(session, cast(u64)(10710 + index * 10), .{cx, cy, card_width, web_height},
+            SiteWebApp(index), image_height)
     }
-    y += cast(float32)rows * (card_height + gap) + 16.0
-    if Button.Draw(session, Button.Props.{.key = 10760, .bounds = .{x, y, 232.0, 40.0},
+    y += cast(float32)web_rows * (web_height + gap) + 28.0
+    SiteText(session, 10705, .{x, y, width, 36.0}, "Examples", 26)
+    SiteMuted(session, 10706, .{x, y + 48.0, width, 52.0},
+        "Each of the 101 component examples runs live on the Components page,\nwith its Ziran source ready to edit and run again.", 15)
+    if Button.Draw(session, Button.Props.{.key = 10707, .bounds = .{x, y + 118.0, 260.0, 40.0},
+        .label = "Open the 101 examples  →", .class_name = 11012}) != 0 { SiteNavigate(2) }
+    y += 218.0
+    SiteText(session, 10708, .{x, y, width, 36.0}, "Desktop apps from Kryon Labs", 26)
+    y += 56.0
+    for index: cast(s32)0..SiteDesktopAppCount - 1 {
+        cx := x + cast(float32)(index % columns) * (card_width + gap)
+        cy := y + cast(float32)(index / columns) * (desktop_height + gap)
+        SiteAppCard(session, cast(u64)(10800 + index * 10), .{cx, cy, card_width, desktop_height},
+            SiteDesktopApp(index), image_height)
+    }
+    y += cast(float32)desktop_rows * (desktop_height + gap) + 16.0
+    if Button.Draw(session, Button.Props.{.key = 10790, .bounds = .{x, y, 232.0, 40.0},
         .label = "Kryon Labs on GitHub  ↗", .class_name = 11012}) != 0 {
         unused OpenUri("https://github.com/kryonlabs")
     }

@@ -26,6 +26,12 @@ from PIL import Image, ImageChops
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / 'docs/site'
 PAGES = ['index', 'getting-started', 'widgets', 'modules', 'apps', 'docs', 'renderers']
+# The Apps page lists every app with its card image: web builds play in the
+# browser, desktop apps say why they have none yet.
+WEB_APPS = [('Werkzeug', 'werkzeug'), ('Inner Breeze', 'inner-breeze'), ('Jungle Academy', 'jungle'),
+            ('Arcade', 'arcade'), ('Shovey', 'shovey'), ('Apfelwurm', 'apfelwurm'), ('Choano', 'choano')]
+DESKTOP_APPS = [('Terminal', 'terminal'), ('Browser', 'browser'), ('GitHub', 'github'),
+                ('Explorer', 'explorer'), ('Task Manager', 'taskmgr')]
 VIEWPORTS = (320, 390, 768, 1024, 1366)
 EXPECTED_SCENE_COUNT = 101
 
@@ -337,8 +343,8 @@ def check_files(site):
     assert hashlib.sha256(mascot.read_bytes()).digest() == hashlib.sha256((ROOT / 'assets/brand/mascot-dragon.png').read_bytes()).digest(), 'Kryon mascot asset missing or changed'
     landscape = site / assets['/assets/alpine-lake.webp']
     assert hashlib.sha256(landscape.read_bytes()).digest() == hashlib.sha256((ROOT / 'examples/image/assets/alpine-lake.webp').read_bytes()).digest()
-    for app in ('terminal', 'browser', 'github', 'explorer'):
-        image = site / assets['/assets/apps/' + app + '.webp']
+    for app in WEB_APPS + DESKTOP_APPS:
+        image = site / assets['/assets/apps/' + app[1] + '.webp']
         assert image.stat().st_size > 2000, ('app card image missing', app)
     coast = site / assets['/assets/coastal-cliffs.webp']
     assert coast.read_bytes() == (ROOT / 'examples/carousel/assets/coastal-cliffs.webp').read_bytes()
@@ -667,11 +673,12 @@ def check_apps(browser, base, shots):
     images = [n for n in nodes if n['kind'] == 24 and visible(n, 1366)]
     assert len(images) >= 4, ('apps cards', [(n['key'], n['label']) for n in images])
     labels = {n['label'] for n in nodes}
-    for name in ('Terminal', 'Browser', 'GitHub', 'Explorer'):
+    for name, _ in WEB_APPS + DESKTOP_APPS:
         assert name in labels, (name, sorted(labels))
     assert 'Shelf' not in labels, 'Explorer must not be called Shelf'
     assert not any('in development' in (n['label'] or '') for n in nodes), 'Apps must not be labelled in development'
-    assert sum('View on GitHub' in (n['label'] or '') for n in nodes) == 4, 'Each app card links to GitHub'
+    assert sum('Play in browser' in (n['label'] or '') for n in nodes) == len(WEB_APPS), 'Each web app opens its browser build'
+    assert sum('View on GitHub' in (n['label'] or '') for n in nodes) == len(DESKTOP_APPS), 'Each desktop app links to its source'
     capture(browser, shots / 'apps.webp')
 
 

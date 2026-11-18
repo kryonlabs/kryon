@@ -1,0 +1,61 @@
+// Apps listed on the website's Apps page. A web app opens its published
+// browser build; a desktop app says why it has no browser build yet.
+
+SiteApp :: struct {
+    name: string;
+    summary: string;
+    image: string;
+    play: string;
+    source: string;
+    desktop_reason: string;
+}
+
+SiteWebAppCount :: 7;
+SiteDesktopAppCount :: 5;
+
+SiteWebApp :: (index: s32) -> SiteApp {
+    if index == 0 { return SiteApp.{.name = "Werkzeug", .image = "assets/apps/werkzeug.webp",
+        .summary = "Pass, sign-in codes, a calculator, a clock and Workbook spreadsheets.",
+        .play = "https://werk.waozi.xyz/", .source = "https://github.com/waozixyz/werk"} }
+    if index == 1 { return SiteApp.{.name = "Inner Breeze", .image = "assets/apps/inner-breeze.webp",
+        .summary = "Guided breathing, meditation and habit tracking.",
+        .play = "https://inbe.waozi.xyz/build/web/index.html", .source = "https://github.com/waozixyz/breeze"} }
+    if index == 2 { return SiteApp.{.name = "Jungle Academy", .image = "assets/apps/jungle.webp",
+        .summary = "Words, numbers and pictures for little ones in a watercolor world.",
+        .play = "https://jungle.waozi.xyz/"} }
+    if index == 3 { return SiteApp.{.name = "Arcade", .image = "assets/apps/arcade.webp",
+        .summary = "A console home for the Kryon games, with previews and updates.",
+        .play = "https://arcade.waozi.xyz/", .source = "https://github.com/waozixyz/arcade"} }
+    if index == 4 { return SiteApp.{.name = "Shovey", .image = "assets/apps/shovey.webp",
+        .summary = "Push balls into matching holes and find the path home.",
+        .play = "https://shovey.waozi.xyz/", .source = "https://github.com/waozixyz/shovey"} }
+    if index == 5 { return SiteApp.{.name = "Apfelwurm", .image = "assets/apps/apfelwurm.webp",
+        .summary = "A little worm, 200 levels and a mountain to climb.",
+        .play = "https://wurm.waozi.xyz/", .source = "https://github.com/waozixyz/wurm"} }
+    return SiteApp.{.name = "Choano", .image = "assets/apps/choano.webp",
+        .summary = "Swim, eat and grow in a microscopic world.",
+        .play = "https://choano.waozi.xyz/", .source = "https://github.com/waozixyz/choano"}
+}
+
+SiteDesktopApp :: (index: s32) -> SiteApp {
+    if index == 0 { return SiteApp.{.name = "Terminal", .image = "assets/apps/terminal.webp",
+        .summary = "Tabs, sessions and desktop integration.",
+        .source = "https://github.com/kryonlabs/terminal",
+        .desktop_reason = "Runs your shell through a local pseudo-terminal, which browsers do not offer."} }
+    if index == 1 { return SiteApp.{.name = "Browser", .image = "assets/apps/browser.webp",
+        .summary = "A reading surface with its own document engine.",
+        .source = "https://github.com/kryonlabs/browser",
+        .desktop_reason = "Fetches any site directly; a web page may only read sites that allow it."} }
+    if index == 2 { return SiteApp.{.name = "GitHub", .image = "assets/apps/github.webp",
+        .summary = "Repository, issue and pull request workflows.",
+        .source = "https://github.com/kryonlabs/github",
+        .desktop_reason = "Signs in and talks to GitHub through the local gh command."} }
+    if index == 3 { return SiteApp.{.name = "Explorer", .image = "assets/apps/explorer.webp",
+        .summary = "A native file manager with grid, list and split views.",
+        .source = "https://github.com/kryonlabs/explorer",
+        .desktop_reason = "Manages the folders on your computer, which a web page cannot open."} }
+    return SiteApp.{.name = "Task Manager", .image = "assets/apps/taskmgr.webp",
+        .summary = "Processes, memory, GPU use and open windows at a glance.",
+        .source = "https://github.com/kryonlabs/taskmgr",
+        .desktop_reason = "Reads your computer's running processes, which a web page cannot see."}
+}

@@ -18,7 +18,7 @@ MAINTAINED = [
     ('getting-started.html', 'Getting started — Kryon', 'Add Kryon to a Ziran project, import widgets, and run the maintained local tests.'),
     ('widgets.html', 'Components — Kryon', 'Browse real light and dark Ziran component examples with source, APIs, options and status.'),
     ('modules.html', 'Modules — Kryon', 'The maintained gallery currently builds Kryon widgets, Plot charts, DataViews controls, focused inputs and overlays.'),
-    ('apps.html', 'Apps and showcase — Kryon', 'Kryon Labs applications are public, open-source Ziran and Kryon projects with links to their GitHub repositories.'),
+    ('apps.html', 'Apps and showcase — Kryon', 'Play apps built with Ziran and Kryon in your browser, and find the Kryon Labs desktop apps with their source.'),
     ('docs.html', 'Docs — Kryon', 'Kryon ownership, public surface, local commands and integration boundaries.'),
     ('renderers.html', 'Platforms — Kryon', 'Kryon runs through Ziran desktop and Canvas hosts; support varies by backend and target.'),
 ]

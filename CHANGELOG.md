@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The website's Apps page plays every published Kryon web app in the
+  browser: Werkzeug, Inner Breeze, Jungle Academy, Arcade, Shovey, Apfelwurm
+  and Choano. Each Kryon Labs desktop app says why it has no browser build yet.
 - The Cairo desktop host leaves out the sliver triangles of a warped image, too thin for Cairo to sample, instead of losing the whole frame.
 - Android app libraries retain the JNI entries for local reminders and
   notification permission requests.
