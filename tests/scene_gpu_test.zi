@@ -221,7 +221,7 @@ GradeParity :: ()->bool {
  print("Scene grade tint, saturation, lamps and beam match the CPU renderer\n")
  return true
 }
-ShadowCache :: ()->bool {
+ShadowCache :: (manual_pcf: bool)->bool {
  scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
  scene.background=.{20,30,40,255}
  AddHemisphereLight(*scene,.{180,220,255,255},.{100,70,40,255},1.0)
@@ -234,7 +234,10 @@ ShadowCache :: ()->bool {
  unused SetShadows(*scene,floor,false,true)
  camera:=PerspectiveCamera(45,1.6,0.1,20);camera.position=.{0,1,3}
  image:=NewImage(160,100);reference:=NewImage(160,100)
+ defer { VecFree(image.pixels);VecFree(reference.pixels) }
  gpu: SceneGpuContext;defer SceneGpuRelease(*gpu)
+ if !SceneGpuProbe(*gpu).available {return false}
+ if manual_pcf {gpu.capabilities.pcf_available=false}
  if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=1 {return false}
  before:=PixelHash(*image)
  for frame:0..19 {
@@ -255,8 +258,10 @@ ShadowCache :: ()->bool {
  if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=5 {return false}
  scene.meshes[scene.nodes[node].mesh].material.opacity=0.8
  if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=6 {return false}
+ shadowed:=PixelHash(*image)
  unused SetShadows(*scene,node,false,true)
  if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=7 {return false}
+ if PixelHash(*image)==shadowed {return false}
  unused SetShadows(*scene,node,true,true)
  if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=8 {return false}
  if !RenderScene(*scene,camera,*reference) {return false}
@@ -265,8 +270,8 @@ ShadowCache :: ()->bool {
   d:=cast(s32)image.pixels[at]-cast(s32)reference.pixels[at];delta:=ifx d<0 then -d else d
   error+=delta;if delta>16 {large+=1}
  }
- if error>image.pixels.count||large>image.pixels.count/200 {return false}
- print("Shadow cache reuses radiometric/filter changes and invalidates light-space/geometry/material/caster changes\n")
+ if error>image.pixels.count||large>image.pixels.count/200 {print("Shadow CPU parity failure % % %\n",manual_pcf,error,large);return false}
+ print("Shadow cache and CPU parity passed (hardware comparison %)\n",gpu.capabilities.pcf_available)
  return true
 }
 Host :: struct {display: *void;context: *void;texture: u32;framebuffer: u32}
@@ -512,7 +517,8 @@ main :: ()->s32 {
  if !ReleaseCycles()||!HostCheck(host) {return 41}
  if !PrecisionFallback()||!HostCheck(host) {return 44}
  if !GradeParity()||!HostCheck(host) {return 49}
- if !ShadowCache()||!HostCheck(host) {return 46}
+ if !ShadowCache(false)||!HostCheck(host) {return 46}
+ if !ShadowCache(true)||!HostCheck(host) {return 67}
  if !PaddingBatching()||!HostCheck(host) {return 47}
  print("Foreign EGL context, framebuffer, pixels and API preserved through render/resize/release\n")
  unused G.EMakeCurrent(host.display,null,null,null);unused G.EBindAPI(0x30a2)

@@ -2071,8 +2071,10 @@ through `eglGetDisplay`, including at API 21. `kryon_android_app` supplies the
 Keep one `SceneGpuContext` at a stable address on its owning thread.
 `SceneGpuProbe(context)` reports availability, diagnostic, renderer labels,
 texture limits and MSAA support. The host requires highp fragment precision,
-15 texture units, four MSAA samples and bilinear depth comparisons; it reports
-unavailability when those requirements cannot be met.
+15 texture units and four MSAA samples; it reports unavailability when those
+requirements cannot be met. `pcf_available` reports hardware bilinear depth
+comparison. When the probe fails, the GPU fragment shader performs the four
+depth comparisons and bilinear interpolation at each of the five shadow taps.
 `SceneGpuRender(context, scene, camera, image)` preserves the requested image
 dimensions and returns `SceneGpuFrame` with `ok`, `accelerated`, `diagnostic`
 and submission/readback/conversion timings. Failure leaves the output untouched.

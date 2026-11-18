@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- GLES scenes keep GPU shadow filtering on devices without hardware depth comparison filtering.
 - Desktop animations continue presenting text and images without input.
   Retained paint compares each bitmap's content revision, so changed pixels
   repaint through the same handle and identical frames still skip presentation.

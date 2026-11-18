@@ -20,6 +20,8 @@ M :: #import "scene_gpu_math";
 SceneGpuCapabilities :: struct {
  available: bool
  async_available: bool; async_diagnostic: string
+ // Whether shadow filtering can use a hardware bilinear depth comparison.
+ pcf_available: bool
  diagnostic: string
  samples: s32
  max_texture_size: s32
@@ -133,8 +135,7 @@ SceneGpuProbe :: (gpu: *SceneGpuContext)->SceneGpuCapabilities {
  gpu.capabilities.diagnostic="fragment highp, 15 texture units and full 4x MSAA required"
  if maximum<4||precision<23||range[1]<127||gpu.capabilities.texture_units<15 { return gpu.capabilities }
  if !Resize(gpu,4,4) { return gpu.capabilities }
- gpu.capabilities.diagnostic="bilinear depth comparison required for full PCF"
- if !ProbePCF(gpu) {return gpu.capabilities}
+ gpu.capabilities.pcf_available=ProbePCF(gpu)
  gpu.shadow_program=G.Program(GpuVertexSource,GpuShadowFragment,gpu.log[: ])
  if gpu.shadow_program==0 { gpu.capabilities.diagnostic="shadow GLSL program rejected";return gpu.capabilities }
  G.GenBuffers(1,*gpu.buffer)
@@ -489,8 +490,8 @@ DropTransfers :: (gpu: *SceneGpuContext) {
  }
 }
 CopyLabel :: (dest: []u8,source: *u8) { if source==null {return};for i: 0..dest.count-2 {if source[i]==0 {return};dest[i]=source[i]} }
-// ES permits implementation-dependent shadow filtering. Verify the exact
-// bilinear comparison required by our four-depth CPU PCF before enabling GPU.
+// ES permits implementation-dependent shadow filtering. Use the hardware
+// comparison only when its bilinear result agrees with the reference.
 ProbePCF :: (gpu: *SceneGpuContext)->bool {
  program:=G.Program(GpuProbeVertex,GpuProbeFragment,gpu.log[:])
  if program==0 {return false}
@@ -945,7 +946,9 @@ ProgramFor :: (gpu: *SceneGpuContext,key: *ShaderProgram,features: s32)->u32 {
   }
   if p.id==0 {slot=at}
  }
- code: Vec(u8);unused BuilderAppend(code,GpuFragmentPrefix)
+ code: Vec(u8);unused BuilderAppend(code,"#version 300 es\n")
+ unused BuilderAppend(code,ifx gpu.capabilities.pcf_available then "#define KRYON_MANUAL_PCF 0\n" else "#define KRYON_MANUAL_PCF 1\n")
+ unused BuilderAppend(code,GpuFragmentPrefix)
  BuilderPrint(*code,"#define KRYON_KIND %.0\n",(features>>1)&3)
  BuilderPrint(*code,"#define KRYON_METALNESS %\n",ifx (features&1)!=0 then "0.0" else "material.y")
  BuilderPrint(*code,"#define KRYON_VERTEX %.0\n",(features>>3)&1)
@@ -1171,9 +1174,11 @@ RenderShadows :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
   if s.size!=l.shadow_size {
    DropShadow(s);s.size=l.shadow_size
    s.texture=G.Texture(s.size,s.size,0x8cac,0x1902,0x1406,null)
-   G.TexParameter(0x0de1,0x884c,0x884e)
-   G.TexParameter(0x0de1,0x884d,0x0203)
-   G.TexParameter(0x0de1,0x2801,0x2601);G.TexParameter(0x0de1,0x2800,0x2601)
+   if gpu.capabilities.pcf_available {
+    G.TexParameter(0x0de1,0x884c,0x884e)
+    G.TexParameter(0x0de1,0x884d,0x0203)
+    G.TexParameter(0x0de1,0x2801,0x2601);G.TexParameter(0x0de1,0x2800,0x2601)
+   }
    G.GenFramebuffers(1,*s.framebuffer);G.BindFramebuffer(0x8d40,s.framebuffer)
    G.FramebufferTexture(0x8d40,0x8d00,0x0de1,s.texture,0)
    if G.CheckFramebuffer(0x8d40)!=0x8cd5 {return false}
