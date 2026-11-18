@@ -32,6 +32,20 @@ Draw :: (path: string, smooth: bool, tint: Color) -> bool {
     return Raster.FinishRasterFrame()
 }
 
+// A warped 2 by 2 image whose second triangle is a sliver: its bottom
+// right corner lies a hundred-thousandth of a pixel from the bottom left.
+// Cairo cannot sample a picture squeezed that far; the frame must still
+// finish, with the first triangle drawn.
+Sliver :: (path: string) -> bool {
+    if Raster.ImageWidth(path) <= 0 { return false }
+    Raster.BeginRasterFrame()
+    points: [4]Vector2 = .[Vector2.{0.0, 0.0}, Vector2.{64.0, 0.0},
+        Vector2.{0.0, 64.0}, Vector2.{0.00001, 64.0}]
+    full: Rectangle = .{0.0, 0.0, 64.0, 64.0}
+    Raster.RasterImageMesh(path, 0, .{0.0, 0.0, 2.0, 2.0}, points[:], 2, 2, full, .{255, 255, 255, 255})
+    return Raster.FinishRasterFrame()
+}
+
 // Independent source-over reference against the raster host's clear colour.
 Faded :: (color: Color, alpha: u8) -> u32 {
     a := cast(u32)alpha
@@ -69,6 +83,9 @@ main :: (argc: s32, argv: **u8) -> s32 {
         if !Is(16, 16, Faded(.{255, 0, 0, 255}, alpha)) ||
             !Is(48, 16, Faded(.{0, 255, 0, 255}, alpha)) { return 10 }
     }
-    print("Cairo preserves image colours while fading and scales sharply unless smooth\n")
+    // A triangle too thin to sample is left out; it never fails the frame.
+    if !Sliver(path) { print("a sliver triangle failed the frame\n"); return 11 }
+    if !Is(4, 4, red) || !Is(40, 4, green) { return 12 }
+    print("Cairo preserves image colours while fading, scales sharply unless smooth and skips warped triangles too thin to sample\n")
     return 0
 }

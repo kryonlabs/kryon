@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The Cairo desktop host leaves out the sliver triangles of a warped image, too thin for Cairo to sample, instead of losing the whole frame.
 - Android app libraries retain the JNI entries for local reminders and
   notification permission requests.
 - Desktop JPEG export accepts images with alpha on Glycin-based systems.
