@@ -104,6 +104,7 @@ RawClearColor :: (r: float32, g: float32, b: float32, a: float32) #foreign gl "g
 RawClearDepth :: (depth: float32) #foreign gl "glClearDepthf";
 RawClear :: (mask: u32) #foreign gl "glClear";
 RawDrawArrays :: (kind: u32, first: s32, count: s32) #foreign gl "glDrawArrays";
+RawDrawElements :: (kind: u32, count: s32, index_type: u32, offset: *void) #foreign gl "glDrawElements";
 RawReadPixels :: (x: s32, y: s32, width: s32, height: s32, format: u32, kind: u32, data: *void) #foreign gl "glReadPixels";
 RawPixelStore :: (name: u32, value: s32) #foreign gl "glPixelStorei";
 RawFinish :: () #foreign gl "glFinish";
@@ -201,6 +202,9 @@ ClearColor :: (r: float32, g: float32, b: float32, a: float32)  {RawClearColor(r
 ClearDepth :: (depth: float32)  {RawClearDepth(depth)}
 Clear :: (mask: u32)  {RawClear(mask)}
 DrawArrays :: (kind: u32, first: s32, count: s32)  {RawDrawArrays(kind,first,count)}
+DrawElements :: (kind: u32, count: s32, index_type: u32, offset: s64) {
+ RawDrawElements(kind,count,index_type,cast(*void)offset)
+}
 ReadPixels :: (x: s32, y: s32, width: s32, height: s32, format: u32, kind: u32, data: *void)  {RawReadPixels(x,y,width,height,format,kind,data)}
 MapBufferRange :: (target: u32,offset: s64,bytes: s64,access: u32)->*void {return RawMapBufferRange(target,offset,bytes,access)}
 UnmapBuffer :: (target: u32)->u8 {return RawUnmapBuffer(target)}

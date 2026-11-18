@@ -8,6 +8,86 @@
 #import "std/image"
 #import "std/vec"
 
+SKIN_GRID :: 128
+
+PixelHash :: (pixels: []u8) -> u64 {
+    hash: u64 = 1469598103934665603
+    for byte: pixels { hash = (hash ^ cast(u64)byte) * cast(u64)1099511628211 }
+    return hash
+}
+
+CheckAnimatedGrid :: () -> bool {
+    scene: Scene
+    SceneInit(*scene)
+    skin: SceneSkin
+    gpu: SceneGpuContext
+    image := NewImage(128, 128)
+    positions: Vec(Vector3)
+    normals: Vec(Vector3)
+    uvs: Vec(ShapePoint)
+    weights: Vec(SkinInfluence)
+    indices: Vec(s32)
+    defer {
+        SceneGpuRelease(*gpu)
+        SceneSkinRelease(*skin)
+        SceneFree(*scene)
+        VecFree(image.pixels)
+        VecFree(positions); VecFree(normals); VecFree(uvs); VecFree(weights); VecFree(indices)
+    }
+    stride := SKIN_GRID + 1
+    vertices := stride * stride
+    if !VecResize(positions, vertices) || !VecResize(normals, vertices) ||
+        !VecResize(uvs, vertices) || !VecResize(weights, vertices) ||
+        !VecResize(indices, SKIN_GRID * SKIN_GRID * 6) { return false }
+    for y: 0..SKIN_GRID {
+        for x: 0..SKIN_GRID {
+            at := y * stride + x
+            u := cast(float64)x / cast(float64)SKIN_GRID
+            v := cast(float64)y / cast(float64)SKIN_GRID
+            positions[at] = .{u - 0.5, v - 0.5, 0.0}
+            normals[at] = .{0.0, 0.0, 1.0}
+            uvs[at] = .{u, v}
+            weights[at] = SkinInfluence.{}
+            weights[at].joints[1] = 1
+            weights[at].weights[0] = 1.0 - v
+            weights[at].weights[1] = v
+        }
+    }
+    for y: 0..SKIN_GRID - 1 {
+        for x: 0..SKIN_GRID - 1 {
+            vertex := cast(s32)(y * stride + x)
+            at := (y * SKIN_GRID + x) * 6
+            indices[at] = vertex; indices[at + 1] = vertex + 1; indices[at + 2] = vertex + 1 + cast(s32)stride
+            indices[at + 3] = vertex; indices[at + 4] = vertex + 1 + cast(s32)stride; indices[at + 5] = vertex + cast(s32)stride
+        }
+    }
+    if !SceneSkinCreate(*scene, *skin, 2, positions[:], normals[:], uvs[:], indices[:], weights[:],
+        UnlitMaterial(.{180, 120, 80, 255})) { return false }
+    camera := OrthographicCamera(-1.0, 1.0, 1.0, -1.0, 0.1, 10.0)
+    camera.position = .{0.0, 0.0, 3.0}
+    submit: float64
+    first_hash: u64
+    last_hash: u64
+    uploaded: s64
+    for frame: 0..47 {
+        bones: [2]SkinAffine = .[SkinIdentity(), SkinIdentity()]
+        bones[1].translation.x = cast(float64)frame / 200.0
+        if !SceneSkinDeform(*scene, *skin, bones[:]) { return false }
+        result := SceneGpuRender(*gpu, *scene, camera, *image)
+        if !result.ok || !result.accelerated { print("Animated grid failed: %\n", result.diagnostic); return false }
+        if frame == 7 { uploaded = SceneGpuMemoryUsage(*gpu).geometry_vertices }
+        if frame >= 8 { submit += result.submit_ms }
+        if frame == 8 || frame == 47 {
+            hash := PixelHash(image.pixels[:])
+            if frame == 8 { first_hash = hash } else { last_hash = hash }
+        }
+    }
+    uploaded = (SceneGpuMemoryUsage(*gpu).geometry_vertices - uploaded) / 40
+    print("Animated indexed grid: submit % ms, vertices per frame %, hashes % %\n",
+        submit / 40.0, uploaded, first_hash, last_hash)
+    return first_hash != last_hash && uploaded == vertices
+}
+
 CheckIndexedMeshes :: () -> bool {
     scene: Scene
     SceneInit(*scene)
@@ -46,13 +126,21 @@ CheckIndexedMeshes :: () -> bool {
     if !RenderScene(*scene, camera, *cpu) { return false }
     left_pixel := (32 * 64 + 16) * 4
     right_pixel := (32 * 64 + 48) * 4
-    return cpu.pixels[left_pixel] > 200 && cpu.pixels[left_pixel + 1] < 10 &&
+    if !(cpu.pixels[left_pixel] > 200 && cpu.pixels[left_pixel + 1] < 10 &&
         cpu.pixels[right_pixel] < 10 && cpu.pixels[right_pixel + 1] > 200 &&
         image.pixels[left_pixel] > 200 && image.pixels[left_pixel + 1] < 10 &&
-        image.pixels[right_pixel] < 10 && image.pixels[right_pixel + 1] > 200
+        image.pixels[right_pixel] < 10 && image.pixels[right_pixel + 1] > 200) { return false }
+
+    uploaded := SceneGpuMemoryUsage(*gpu).geometry_vertices
+    unused SetPosition(*scene, right, 0.0, 0.0, 0.0)
+    if !SceneGpuRender(*gpu, *scene, camera, *image).ok { return false }
+    return SceneGpuMemoryUsage(*gpu).geometry_vertices - uploaded == positions.count &&
+        image.pixels[left_pixel] > 200 && image.pixels[right_pixel + 3] == 0 &&
+        image.pixels[(32 * 64 + 32) * 4 + 1] > 200
 }
 
 main :: () -> s32 {
+    if !CheckAnimatedGrid() { return 8 }
     if !CheckIndexedMeshes() {
         print("Two indexed meshes must both render on CPU and GLES\n")
         return 7
@@ -149,6 +237,15 @@ main :: () -> s32 {
             return 5
         }
         previous = hash
+        if state == 0 {
+            // A first upload must leave both paper and pigment bound to their
+            // own units, just as the next draw using cached textures does.
+            warm := SceneGpuRender(*gpu, *scene, camera, *image)
+            if !warm.ok || !warm.accelerated || PixelHash(image.pixels[:]) != hash {
+                print("First GLES frame with two samplers differs from the cached frame\n")
+                return 9
+            }
+        }
         print("Practice skin/watercolor CPU-GLES state %: mean error %, painted %\n",
             state, cast(float64)error / cast(float64)image.pixels.count, painted)
     }

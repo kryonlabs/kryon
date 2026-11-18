@@ -2114,10 +2114,11 @@ claim that unchanged image pixels changed.
 Geometry, material programs, textures and render targets retain storage across
 frames. Scene and binding data are borrowed during the call; mutate them only
 on the owner between calls. When only nodes move, turn or scale between
-frames, the renderer re-makes and sends just those nodes' triangles; adding,
-removing, showing, hiding or re-parenting nodes, or changing meshes or
-vertices, uploads the scene again. `SceneGpuResources.geometry_uploads` counts
-both kinds of upload and `geometry_vertices` the vertices they sent.
+frames, the renderer sends the affected vertices. Smooth-shaded indexed meshes
+keep their element buffers and refresh only changed position, normal and color
+streams. Box-projected UVs update with their source positions and normals.
+Topology, material and visibility changes rebuild the geometry. `SceneGpuResources.geometry_uploads`
+counts uploads and `geometry_vertices` counts the vertices those uploads covered.
 `FreezeGeometry(scene)` (in `kryon/scene`) promises that meshes, materials and
 vertices stay as they are, so the renderer stops comparing them with its last
 upload on every frame and compares only the nodes. Scene calls that add or

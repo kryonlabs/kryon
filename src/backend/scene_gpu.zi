@@ -59,6 +59,13 @@ GpuTransfer :: struct {
 }
 GpuVertex :: struct { p: [3]float32; n: [3]float32; c: [3]float32; uv: [2]float32; face: [3]float32 }
 GpuDraw :: struct { first: s32; count: s32; mesh: s32; node: s32; receive: bool; cast_shadow: bool; shown: bool; origin: Vector3 }
+// An indexed draw's first/count address the element stream. The other draws
+// still address the interleaved vertices with per-face normals.
+GpuIndexedGeometry :: struct {
+ attributes: u32; elements: u32; bound: bool
+ vertex_count: s64
+ indices: Vec(u32); scratch: Vec(float32)
+}
 GpuLocations :: struct {
  vp: s32; view: s32; base: s32; glow: s32; material: s32; flags: s32; settings: s32; transparent: s32
  albedo_size: s32; albedo_sampling: s32; albedo: s32; dfg: s32; sky: s32; ground: s32; up: s32; light_count: s32; uniforms: s32
@@ -79,8 +86,8 @@ SceneGpuContext :: struct {
  framebuffer: u32; color: u32; depth: u32; resolve: u32; resolved: u32
  buffer: u32; shadow_program: u32; dfg: u32
  vertices: Vec(GpuVertex); draws: Vec(GpuDraw)
- // Where each node's triangles lie in VERTICES and where the node stood when
- // they were made, so a node that only moves replaces just its own.
+ indexed: GpuIndexedGeometry
+ // Each node's starting vertex in its stream and the transform used to bake it.
  node_first: Vec(s32); node_count: Vec(s32); node_world: Vec(M.GpuMatrix); node_shown: Vec(bool)
  snapshot: Vec(u8); readback: Vec(u8); order: Vec(s32); keys: Vec(float64)
  programs: Vec(GpuProgram); textures: Vec(GpuTexture); shadows: [4]GpuShadow
@@ -91,7 +98,7 @@ SceneGpuContext :: struct {
  geometry_valid: bool
  // The snapshot was taken of a scene whose geometry was frozen.
  snapshot_frozen: bool
- snapshot_counts: [8]s64
+ snapshot_counts: [7]s64
  log: [2048]u8
 }
 
@@ -356,6 +363,8 @@ SceneGpuRelease :: (gpu: *SceneGpuContext) {
  if gpu.context!=null&&G.MakeSceneCurrent(gpu.display,gpu.context) {
   DropTargets(gpu)
   if gpu.buffer!=0 {G.DeleteBuffers(1,*gpu.buffer)}
+  if gpu.indexed.attributes!=0 {G.DeleteBuffers(1,*gpu.indexed.attributes)}
+  if gpu.indexed.elements!=0 {G.DeleteBuffers(1,*gpu.indexed.elements)}
   if gpu.shadow_program!=0 {G.DeleteProgram(gpu.shadow_program)}
   if gpu.dfg!=0 {G.DeleteTextures(1,*gpu.dfg)}
   for at: 0..gpu.programs.count-1 {if gpu.programs[at].id!=0 {G.DeleteProgram(gpu.programs[at].id)}}
@@ -368,6 +377,8 @@ SceneGpuRelease :: (gpu: *SceneGpuContext) {
  // EGLDisplay is process-shared, including with foreign hosts. eglTerminate
  // invalidates their contexts too; release only the context/objects we own.
  VecFree(gpu.vertices);VecFree(gpu.draws);VecFree(gpu.snapshot);VecFree(gpu.readback)
+ VecFree(gpu.indexed.indices);VecFree(gpu.indexed.scratch)
+ gpu.indexed.attributes=0;gpu.indexed.elements=0;gpu.indexed.bound=false;gpu.indexed.vertex_count=0
  VecFree(gpu.node_first);VecFree(gpu.node_count);VecFree(gpu.node_world);VecFree(gpu.node_shown)
  VecFree(gpu.order);VecFree(gpu.keys);VecFree(gpu.programs);VecFree(gpu.textures)
  VecFree(gpu.bindings)
@@ -379,7 +390,7 @@ SceneGpuRelease :: (gpu: *SceneGpuContext) {
  gpu.width=0;gpu.height=0
  gpu.framebuffer=0;gpu.resolve=0;gpu.color=0;gpu.depth=0;gpu.resolved=0
  for at:0..3 {gpu.shadows[at]=GpuShadow.{}}
- for at:0..7 {gpu.snapshot_counts[at]=0}
+ for at:0..gpu.snapshot_counts.count-1 {gpu.snapshot_counts[at]=0}
  gpu.geometry_valid=false
  for at:0..gpu.log.count-1 {gpu.log[at]=0}
 }
@@ -394,6 +405,9 @@ SceneGpuMemoryUsage :: (gpu: *SceneGpuContext)->SceneGpuResources {
  if gpu.resolve!=0 {r.framebuffers+=1;r.textures+=1;r.gpu_bytes+=cast(s64)gpu.width*gpu.height*4}
  if gpu.dfg!=0 {r.textures+=1;r.gpu_bytes+=2048}
  if gpu.buffer!=0 {r.buffers+=1;r.gpu_bytes+=gpu.vertices.count*cast(s64)size_of(GpuVertex)}
+ r.cpu_bytes+=4*(gpu.indexed.indices.capacity+gpu.indexed.scratch.capacity)
+ if gpu.indexed.attributes!=0 {r.buffers+=1;r.gpu_bytes+=gpu.indexed.vertex_count*44}
+ if gpu.indexed.elements!=0 {r.buffers+=1;r.gpu_bytes+=gpu.indexed.indices.count*4}
  for at:0..1 {
   slot:=gpu.transfers[at]
   if slot.buffer!=0 {r.buffers+=1;r.gpu_bytes+=slot.bytes}
@@ -573,34 +587,45 @@ Resize :: (gpu: *SceneGpuContext,width: s32,height: s32)->bool {
  return true
 }
 
-SnapshotPart :: (gpu: *SceneGpuContext,offset: *s64,data: *void,bytes: s64,write: bool)->bool {
- if bytes<0||offset[0]+bytes>gpu.snapshot.count {return false}
- same:=true
- if bytes>0 {
-  p:=cast(*void)*gpu.snapshot[offset[0]]
-  if write {unused G.CopyMemory(p,data,cast(usize)bytes)}
-  else {same=G.CompareMemory(p,data,cast(usize)bytes)==0}
- }
- offset[0]+=bytes;return same
+GpuScenePart :: struct { data: *void; bytes: s64; offset: s64 }
+GPU_NODES_CHANGED :: 1
+GPU_VERTEX_ATTRIBUTES :: 28 // positions, normals, colors
+GPU_ALL_GEOMETRY :: 127
+
+GeometryParts :: (scene: *Scene)->[7]GpuScenePart {
+ parts: [7]GpuScenePart
+ parts[0]=.{ifx scene.nodes.count>0 then cast(*void)*scene.nodes[0] else null,scene.nodes.count*cast(s64)size_of(SceneNode),0}
+ parts[1]=.{ifx scene.meshes.count>0 then cast(*void)*scene.meshes[0] else null,scene.meshes.count*cast(s64)size_of(SceneMesh),0}
+ parts[2]=.{ifx scene.positions.count>0 then cast(*void)*scene.positions[0] else null,scene.positions.count*cast(s64)size_of(Vector3),0}
+ parts[3]=.{ifx scene.normals.count>0 then cast(*void)*scene.normals[0] else null,scene.normals.count*cast(s64)size_of(Vector3),0}
+ parts[4]=.{ifx scene.colors.count>0 then cast(*void)*scene.colors[0] else null,scene.colors.count*cast(s64)size_of(Vector3),0}
+ parts[5]=.{ifx scene.uvs.count>0 then cast(*void)*scene.uvs[0] else null,scene.uvs.count*cast(s64)size_of(ShapePoint),0}
+ parts[6]=.{ifx scene.indices.count>0 then cast(*void)*scene.indices[0] else null,scene.indices.count*4,0}
+ for at: 1..6 { parts[at].offset=parts[at-1].offset+parts[at-1].bytes }
+ return parts
 }
-GeometrySnapshot :: (gpu: *SceneGpuContext,scene: *Scene,write: bool)->bool {
- counts: [8]s64=.[scene.nodes.count,scene.meshes.count,scene.positions.count,scene.normals.count,scene.colors.count,scene.uvs.count,scene.indices.count,0]
- if !write {for at:0..7 {if counts[at]!=gpu.snapshot_counts[at] {return false}}}
- else {gpu.snapshot_counts=counts;gpu.snapshot_frozen=scene.geometry_frozen}
- total:=(scene.nodes.count*cast(s64)size_of(SceneNode)+scene.meshes.count*cast(s64)size_of(SceneMesh)+
-  (scene.positions.count+scene.normals.count+scene.colors.count)*cast(s64)size_of(Vector3)+
-  scene.uvs.count*cast(s64)size_of(ShapePoint)+scene.indices.count*4)
- if write {if !VecResize(gpu.snapshot,total) {return false}}
- if total!=gpu.snapshot.count {return false}
- offset: s64;same:=true
- if !SnapshotPart(gpu,*offset,(ifx scene.nodes.count>0 then cast(*void)*scene.nodes[0] else null),scene.nodes.count*cast(s64)size_of(SceneNode),write) {same=false}
- if !SnapshotPart(gpu,*offset,(ifx scene.meshes.count>0 then cast(*void)*scene.meshes[0] else null),scene.meshes.count*cast(s64)size_of(SceneMesh),write) {same=false}
- if !SnapshotPart(gpu,*offset,(ifx scene.positions.count>0 then cast(*void)*scene.positions[0] else null),scene.positions.count*cast(s64)size_of(Vector3),write) {same=false}
- if !SnapshotPart(gpu,*offset,(ifx scene.normals.count>0 then cast(*void)*scene.normals[0] else null),scene.normals.count*cast(s64)size_of(Vector3),write) {same=false}
- if !SnapshotPart(gpu,*offset,(ifx scene.colors.count>0 then cast(*void)*scene.colors[0] else null),scene.colors.count*cast(s64)size_of(Vector3),write) {same=false}
- if !SnapshotPart(gpu,*offset,(ifx scene.uvs.count>0 then cast(*void)*scene.uvs[0] else null),scene.uvs.count*cast(s64)size_of(ShapePoint),write) {same=false}
- if !SnapshotPart(gpu,*offset,(ifx scene.indices.count>0 then cast(*void)*scene.indices[0] else null),scene.indices.count*4,write) {same=false}
- return same
+GeometrySnapshot :: (gpu: *SceneGpuContext,parts: [7]GpuScenePart,frozen: bool,mask: s32)->bool {
+ if mask==GPU_ALL_GEOMETRY && !VecResize(gpu.snapshot,parts[6].offset+parts[6].bytes) {return false}
+ for at: 0..6 {
+  if (mask & (1<<cast(s32)at))==0 {continue}
+  part:=parts[at]
+  if part.bytes>0 {unused G.CopyMemory(cast(*void)*gpu.snapshot[part.offset],part.data,cast(usize)part.bytes)}
+  gpu.snapshot_counts[at]=part.bytes
+ }
+ gpu.snapshot_frozen=frozen
+ return true
+}
+GeometryChange :: (gpu: *SceneGpuContext,parts: [7]GpuScenePart,frozen: bool)->s32 {
+ for at:0..6 {if parts[at].bytes!=gpu.snapshot_counts[at] {return GPU_ALL_GEOMETRY}}
+ last:=ifx gpu.snapshot_frozen&&frozen then 0 else 6
+ mask: s32
+ for at:0..last {
+  part:=parts[at]
+  if part.bytes>0 && G.CompareMemory(cast(*void)*gpu.snapshot[part.offset],part.data,cast(usize)part.bytes)!=0 {
+   mask|=1<<cast(s32)at
+  }
+ }
+ return mask
 }
 V3 :: (v: Vector3)->[3]float32 {return float32.[cast(float32)v.x,cast(float32)v.y,cast(float32)v.z]}
 ColorEqual :: (a: Color,b: Color)->bool {return a.r==b.r&&a.g==b.g&&a.b==b.b&&a.a==b.a}
@@ -658,23 +683,100 @@ MatrixSame :: (a: M.GpuMatrix,b: M.GpuMatrix)->bool {
  for at: 0..15 {if a.m[at]!=b.m[at] {return false}}
  return true
 }
-// How the scene differs from the uploaded geometry: 0 not at all, 1 only in
-// its node records, 2 in its meshes or vertices too. A scene whose geometry
-// is frozen, and was when uploaded, has only its nodes compared.
-GeometryChange :: (gpu: *SceneGpuContext,scene: *Scene)->s32 {
- counts: [8]s64=.[scene.nodes.count,scene.meshes.count,scene.positions.count,scene.normals.count,scene.colors.count,scene.uvs.count,scene.indices.count,0]
- for at:0..7 {if counts[at]!=gpu.snapshot_counts[at] {return 2}}
- offset: s64
- nodes:=ifx SnapshotPart(gpu,*offset,(ifx scene.nodes.count>0 then cast(*void)*scene.nodes[0] else null),scene.nodes.count*cast(s64)size_of(SceneNode),false) then 0 else 1
- if gpu.snapshot_frozen&&scene.geometry_frozen {return cast(s32)nodes}
- same:=true
- if !SnapshotPart(gpu,*offset,(ifx scene.meshes.count>0 then cast(*void)*scene.meshes[0] else null),scene.meshes.count*cast(s64)size_of(SceneMesh),false) {same=false}
- if !SnapshotPart(gpu,*offset,(ifx scene.positions.count>0 then cast(*void)*scene.positions[0] else null),scene.positions.count*cast(s64)size_of(Vector3),false) {same=false}
- if !SnapshotPart(gpu,*offset,(ifx scene.normals.count>0 then cast(*void)*scene.normals[0] else null),scene.normals.count*cast(s64)size_of(Vector3),false) {same=false}
- if !SnapshotPart(gpu,*offset,(ifx scene.colors.count>0 then cast(*void)*scene.colors[0] else null),scene.colors.count*cast(s64)size_of(Vector3),false) {same=false}
- if !SnapshotPart(gpu,*offset,(ifx scene.uvs.count>0 then cast(*void)*scene.uvs[0] else null),scene.uvs.count*cast(s64)size_of(ShapePoint),false) {same=false}
- if !SnapshotPart(gpu,*offset,(ifx scene.indices.count>0 then cast(*void)*scene.indices[0] else null),scene.indices.count*4,false) {same=false}
- return ifx same then cast(s32)nodes else 2
+MeshIndexed :: (mesh: SceneMesh)->bool {return mesh.index_count>0&&!mesh.material.flat}
+
+IndexNode :: (gpu: *SceneGpuContext,scene: *Scene,mesh: SceneMesh,matrix: M.GpuMatrix)->s32 {
+ count:=mesh.index_count/3*3
+ base:=gpu.indexed.vertex_count
+ if mesh.first_vertex<0||mesh.vertex_count<0||cast(s64)mesh.first_vertex+mesh.vertex_count>scene.positions.count||
+  mesh.first_index<0||cast(s64)mesh.first_index+mesh.index_count>scene.indices.count||
+  base+mesh.vertex_count>2147483647||gpu.indexed.indices.count+count>2147483647 {return -1}
+ mirrored:=M.Determinant3(matrix)<0.0
+ for corner: 0..count-1 {
+  lane:=corner%3
+  source:=mesh.first_index+corner
+  if mirrored&&lane!=0 {source+=3-2*lane}
+  index:=scene.indices[source]
+  if index<0||index>=mesh.vertex_count||!VecPush(gpu.indexed.indices,cast(u32)(base+index)) {return -1}
+ }
+ gpu.indexed.vertex_count+=mesh.vertex_count
+ return count
+}
+
+WriteIndexedAttribute :: (gpu: *SceneGpuContext,scene: *Scene,mesh: SceneMesh,matrix: M.GpuMatrix,channel: s64,first: s64) {
+ width:=ifx channel==3 then 2 else 3
+ normal:=ifx channel==1 then M.NormalMatrix(matrix) else M.GpuMatrix.{}
+ for vertex: 0..mesh.vertex_count-1 {
+  source:=mesh.first_vertex+vertex
+  target:=(first+vertex)*width
+  if channel==3 {
+   uv:=SceneTextureCoordinate(mesh.material,scene.positions[source],scene.normals[source],scene.uvs[source])
+   gpu.indexed.scratch[target]=cast(float32)uv.x
+   gpu.indexed.scratch[target+1]=cast(float32)uv.y
+  } else {
+   value:=ifx channel==0 then M.Point(matrix,scene.positions[source]) else ifx channel==1 then M.Normalize(M.Direction(normal,scene.normals[source])) else scene.colors[source]
+   gpu.indexed.scratch[target]=cast(float32)value.x
+   gpu.indexed.scratch[target+1]=cast(float32)value.y
+   gpu.indexed.scratch[target+2]=cast(float32)value.z
+  }
+ }
+}
+
+// Four contiguous streams let an animated pose replace positions or normals
+// without sending the untouched colors, UVs or element buffer again.
+UploadIndexed :: (gpu: *SceneGpuContext,scene: *Scene,mask: s32,full: bool)->bool {
+ count:=gpu.indexed.vertex_count
+ if count==0 {return true}
+ if !VecResize(gpu.indexed.scratch,count*3) {return false}
+ if gpu.indexed.attributes==0 {G.GenBuffers(1,*gpu.indexed.attributes)}
+ if gpu.indexed.elements==0 {G.GenBuffers(1,*gpu.indexed.elements)}
+ G.BindBuffer(0x8892,gpu.indexed.attributes)
+ if full {
+  G.BufferData(0x8892,count*44,null,0x88e8)
+  G.BindBuffer(0x8893,gpu.indexed.elements)
+  indices:=ifx gpu.indexed.indices.count>0 then cast(*void)*gpu.indexed.indices[0] else null
+  G.BufferData(0x8893,gpu.indexed.indices.count*4,indices,0x88e4)
+ }
+ for channel: 0..3 {
+  if (mask & (1<<cast(s32)channel))==0 {continue}
+  width:=ifx channel==3 then 2 else 3
+  for at: 0..scene.nodes.count-1 {
+   node:=scene.nodes[at]
+   if node.mesh<0 {continue}
+   mesh:=scene.meshes[node.mesh]
+   if !MeshIndexed(mesh) {continue}
+   WriteIndexedAttribute(gpu,scene,mesh,gpu.node_world[at],channel,cast(s64)gpu.node_first[at])
+  }
+  G.BufferSubData(0x8892,channel*count*12,count*width*4,cast(*void)*gpu.indexed.scratch[0])
+ }
+ return G.GetError()==0
+}
+
+// A flat or non-indexed mesh still needs its original expansion when its
+// own source range changes, even when other nodes can keep their elements.
+UpdateIndexed :: (gpu: *SceneGpuContext,scene: *Scene,parts: [7]GpuScenePart,change: s32)->bool {
+ mask:=change>>2
+ for node: scene.nodes {
+  if node.mesh<0 {continue}
+  mesh:=scene.meshes[node.mesh]
+  if MeshIndexed(mesh) {
+   if (mask&3)!=0&&mesh.material.texture_projection==.SceneTextureBox {mask|=8}
+   continue
+  }
+  if mesh.vertex_count==0 {continue}
+  for at: 2..4 {
+   if (change&(1<<cast(s32)at))==0 {continue}
+   part:=parts[at]
+   offset:=cast(s64)mesh.first_vertex*cast(s64)size_of(Vector3)
+   bytes:=cast(usize)(cast(s64)mesh.vertex_count*cast(s64)size_of(Vector3))
+   current:=cast(*u8)part.data
+   if G.CompareMemory(cast(*void)*gpu.snapshot[part.offset+offset],cast(*void)*current[offset],bytes)!=0 {return false}
+  }
+ }
+ if !UploadIndexed(gpu,scene,mask,false)||!GeometrySnapshot(gpu,parts,scene.geometry_frozen,change) {return false}
+ gpu.resources.geometry_uploads+=1
+ gpu.resources.geometry_vertices+=gpu.indexed.vertex_count
+ return true
 }
 // The changed node records only moved nodes: every node keeps its parent, its
 // mesh, whether it is shown and how it takes part in shadows, so the batches
@@ -689,21 +791,38 @@ OnlyMoved :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
  }
  return true
 }
-// Re-makes and sends only the triangles of nodes that moved.
+// Re-makes and sends only the vertices of nodes that moved.
 UpdateMoved :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
- G.BindBuffer(0x8892,gpu.buffer)
  size:=cast(s64)size_of(GpuVertex)
+ sent: s64
  for at: 0..scene.nodes.count-1 {
   node:=scene.nodes[at];matrix:=M.Compose(node.position,node.rotation,node.scale)
   if node.parent>=0 {matrix=M.Multiply(gpu.node_world[node.parent],matrix)}
-  if MatrixSame(matrix,gpu.node_world[at]) {continue}
+  previous:=gpu.node_world[at]
+  if MatrixSame(matrix,previous) {continue}
   gpu.node_world[at]=matrix
   if node.mesh<0 {continue}
   first:=gpu.node_first[at]
-  if BakeNode(gpu,scene,node,matrix,first)!=gpu.node_count[at] {return false}
-  if gpu.node_count[at]>0 {
-   G.BufferSubData(0x8892,cast(s64)first*size,cast(s64)gpu.node_count[at]*size,cast(*void)*gpu.vertices[first])
-   gpu.resources.geometry_vertices+=gpu.node_count[at]
+  mesh:=scene.meshes[node.mesh]
+  if MeshIndexed(mesh) {
+   // Crossing zero scale can flip winding and requires new elements.
+   if (M.Determinant3(matrix)<0.0)!=(M.Determinant3(previous)<0.0) {return false}
+   if mesh.vertex_count>0 {
+    G.BindBuffer(0x8892,gpu.indexed.attributes)
+    for channel: 0..1 {
+     WriteIndexedAttribute(gpu,scene,mesh,matrix,channel,0)
+     offset:=(channel*gpu.indexed.vertex_count+cast(s64)first)*12
+     G.BufferSubData(0x8892,offset,cast(s64)mesh.vertex_count*12,cast(*void)*gpu.indexed.scratch[0])
+    }
+    sent+=mesh.vertex_count
+   }
+  } else {
+   if BakeNode(gpu,scene,node,matrix,first)!=gpu.node_count[at] {return false}
+   if gpu.node_count[at]>0 {
+    G.BindBuffer(0x8892,gpu.buffer)
+    G.BufferSubData(0x8892,cast(s64)first*size,cast(s64)gpu.node_count[at]*size,cast(*void)*gpu.vertices[first])
+    sent+=gpu.node_count[at]
+   }
   }
   // A blended mesh is sorted by where its node stands.
   for d: 0..gpu.draws.count-1 {if gpu.draws[d].node==cast(s32)at {gpu.draws[d].origin=M.Point(matrix,.{})}}
@@ -711,18 +830,23 @@ UpdateMoved :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
  if G.GetError()!=0 {return false}
  if scene.nodes.count>0 {unused G.CopyMemory(cast(*void)*gpu.snapshot[0],cast(*void)*scene.nodes[0],cast(usize)(scene.nodes.count*cast(s64)size_of(SceneNode)))}
  gpu.resources.geometry_uploads+=1
+ gpu.resources.geometry_vertices+=sent
  return true
 }
 PrepareGeometry :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
+ parts:=GeometryParts(scene)
  if gpu.geometry_valid {
-  change:=GeometryChange(gpu,scene)
+  change:=GeometryChange(gpu,parts,scene.geometry_frozen)
   if change==0 {return true}
   // Most frames that change anything only move a node: a door swings, a leaf
   // sways. Those replace the moved nodes' triangles and nothing else.
-  if change==1&&OnlyMoved(gpu,scene)&&UpdateMoved(gpu,scene) {return true}
+  if change==GPU_NODES_CHANGED&&OnlyMoved(gpu,scene)&&UpdateMoved(gpu,scene) {return true}
+  if gpu.indexed.vertex_count>0&&(change&GPU_VERTEX_ATTRIBUTES)==change&&UpdateIndexed(gpu,scene,parts,change) {return true}
  }
  gpu.geometry_valid=false
+ if scene.normals.count!=scene.positions.count||scene.colors.count!=scene.positions.count||scene.uvs.count!=scene.positions.count {return false}
  VecClear(gpu.vertices);VecClear(gpu.draws)
+ VecClear(gpu.indexed.indices);gpu.indexed.vertex_count=0
  VecClear(gpu.node_first);VecClear(gpu.node_count);VecClear(gpu.node_world);VecClear(gpu.node_shown)
  for at: 0..scene.nodes.count-1 {
   node:=scene.nodes[at];matrix:=M.Compose(node.position,node.rotation,node.scale);visible:=node.visible
@@ -733,15 +857,22 @@ PrepareGeometry :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
   first:=cast(s32)gpu.vertices.count
   if !VecPush(gpu.node_world,matrix)||!VecPush(gpu.node_shown,visible)||!VecPush(gpu.node_first,first)||!VecPush(gpu.node_count,0) {return false}
   if node.mesh<0 {continue}
-  count:=BakeNode(gpu,scene,node,matrix,first)
+  if node.mesh>=scene.meshes.count {return false}
+  mesh:=scene.meshes[node.mesh]
+  indexed:=MeshIndexed(mesh)
+  count: s32
+  if indexed {
+   gpu.node_first[at]=cast(s32)gpu.indexed.vertex_count
+   first=cast(s32)gpu.indexed.indices.count
+   count=IndexNode(gpu,scene,mesh,matrix)
+  } else {count=BakeNode(gpu,scene,node,matrix,first)}
   if count<0 {return false}
   gpu.node_count[at]=count
-  mesh:=scene.meshes[node.mesh]
   draw: GpuDraw=.{first,count,node.mesh,cast(s32)at,node.receive_shadow,node.cast_shadow,visible,M.Point(matrix,.{})}
   merged:=false
   if gpu.draws.count>0&&!mesh.material.transparent {
-   last:=*gpu.draws[gpu.draws.count-1];other:=scene.meshes[last.mesh].material
-   if !other.transparent&&last.receive==draw.receive&&last.cast_shadow==draw.cast_shadow&&last.shown==draw.shown&&
+   last:=*gpu.draws[gpu.draws.count-1];other_mesh:=scene.meshes[last.mesh];other:=other_mesh.material
+   if MeshIndexed(other_mesh)==indexed&&!other.transparent&&last.receive==draw.receive&&last.cast_shadow==draw.cast_shadow&&last.shown==draw.shown&&
     MaterialEqual(other,mesh.material) {
     last.count+=draw.count;merged=true
    }
@@ -750,19 +881,45 @@ PrepareGeometry :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
  }
  G.BindBuffer(0x8892,gpu.buffer)
  G.BufferData(0x8892,gpu.vertices.count*cast(s64)size_of(GpuVertex),(ifx gpu.vertices.count>0 then cast(*void)*gpu.vertices[0] else null),0x88e8)
- if G.GetError()!=0||!GeometrySnapshot(gpu,scene,true) {return false}
+ if gpu.indexed.vertex_count==0&&gpu.indexed.attributes!=0 {
+  G.DeleteBuffers(1,*gpu.indexed.attributes);gpu.indexed.attributes=0
+  G.DeleteBuffers(1,*gpu.indexed.elements);gpu.indexed.elements=0
+ }
+ if G.GetError()!=0||!UploadIndexed(gpu,scene,15,true)||!GeometrySnapshot(gpu,parts,scene.geometry_frozen,GPU_ALL_GEOMETRY) {return false}
  gpu.resources.geometry_uploads+=1
- gpu.resources.geometry_vertices+=gpu.vertices.count
+ gpu.resources.geometry_vertices+=gpu.vertices.count+gpu.indexed.vertex_count
  gpu.geometry_valid=true
  return true
 }
 BindVertices :: (gpu: *SceneGpuContext) {
+ gpu.indexed.bound=false
  G.BindBuffer(0x8892,gpu.buffer)
  offsets: [5]s64=.[0,12,24,36,44]
  for at: 0..4 {
   G.EnableAttribute(cast(u32)at)
   G.AttributePointer(cast(u32)at,ifx at==3 then 2 else 3,0x1406,0,cast(s32)size_of(GpuVertex),cast(*void)offsets[at])
  }
+}
+DrawGeometry :: (gpu: *SceneGpuContext,mesh: SceneMesh,draw: GpuDraw) {
+ if draw.count==0 {return}
+ if !MeshIndexed(mesh) {
+  if gpu.indexed.bound {BindVertices(gpu)}
+  G.DrawArrays(4,draw.first,draw.count)
+  return
+ }
+ if !gpu.indexed.bound {
+  gpu.indexed.bound=true
+  G.BindBuffer(0x8892,gpu.indexed.attributes)
+  G.BindBuffer(0x8893,gpu.indexed.elements)
+  for at: 0..4 {
+   width: s32=ifx at==3 then 2 else 3
+   // Smooth shaders ignore the face normal. Give the attribute a valid
+   // range for platforms that validate all enabled vertex arrays.
+   channel:=ifx at==4 then 1 else at
+   G.AttributePointer(cast(u32)at,width,0x1406,0,0,cast(*void)(channel*gpu.indexed.vertex_count*12))
+  }
+ }
+ G.DrawElements(4,draw.count,0x1405,cast(s64)draw.first*4)
 }
 // A finite set of exact branches, never quantized material values. Binding
 // contents remain uniforms and the source-program snapshot still invalidates
@@ -810,8 +967,10 @@ ProgramFor :: (gpu: *SceneGpuContext,key: *ShaderProgram,features: s32)->u32 {
  else if !VecPush(gpu.programs,value) {G.DeleteProgram(id);return 0}
  return id
 }
-TextureFor :: (gpu: *SceneGpuContext,pixels: *u8,width: s32,height: s32,cache_key: u64=0)->u32 {
+TextureFor :: (gpu: *SceneGpuContext,unit: s32,pixels: *u8,width: s32,height: s32,cache_key: u64=0)->u32 {
  if width<=0||height<=0||width>gpu.capabilities.max_texture_size||height>gpu.capabilities.max_texture_size {return 0}
+ // Upload and refresh bind on the active unit, just like the cached draw.
+ G.ActiveTexture(cast(u32)(0x84c0+unit))
  bytes:=cast(s64)width*height*4;slot: s64=-1
  for at: 0..gpu.textures.count-1 {
   t:=*gpu.textures[at]
@@ -922,8 +1081,8 @@ Draw :: (gpu: *SceneGpuContext,scene: *Scene,d: GpuDraw,view: M.GpuMatrix,vp: M.
  if m.texture>=0&&m.texture<scene.textures.count {
   t:=scene.textures[m.texture];bytes:=cast(s64)t.width*t.height*4
   if t.first_texel<0||t.first_texel+bytes>scene.texels.count {return false}
-  texture:=TextureFor(gpu,*scene.texels[t.first_texel],t.width,t.height,t.cache_key);if texture==0 {return false}
-  BindTexture(0,texture);G.Uniform2f(locations.albedo_size,cast(float32)t.width,cast(float32)t.height)
+  texture:=TextureFor(gpu,0,*scene.texels[t.first_texel],t.width,t.height,t.cache_key);if texture==0 {return false}
+  G.BindTexture(0x0de1,texture);G.Uniform2f(locations.albedo_size,cast(float32)t.width,cast(float32)t.height)
   G.Uniform2f(locations.albedo_sampling,cast(float32)cast(s32)m.texture_filter,cast(float32)cast(s32)m.texture_wrap)
  }
  BindTexture(1,gpu.dfg);G.Uniform1i(locations.dfg,1)
@@ -954,14 +1113,15 @@ Draw :: (gpu: *SceneGpuContext,scene: *Scene,d: GpuDraw,view: M.GpuMatrix,vp: M.
   }
   if m.shader.uniform_count>0 {G.Uniform4fv(locations.uniforms,m.shader.uniform_count,*uniforms[0])}
   for slot: 0..m.shader.sampler_count-1 {
-   s:=m.shader_samplers[slot];texture:=TextureFor(gpu,*s.pixels[0],s.width,s.height);if texture==0 {return false}
-   BindTexture(cast(s32)slot+6,texture)
-   G.Uniform1i(locations.sampler[slot],cast(s32)slot+6)
+   unit:=cast(s32)slot+6
+   s:=m.shader_samplers[slot];texture:=TextureFor(gpu,unit,*s.pixels[0],s.width,s.height);if texture==0 {return false}
+   G.BindTexture(0x0de1,texture)
+   G.Uniform1i(locations.sampler[slot],unit)
    G.Uniform2f(locations.sampler_size[slot],cast(float32)s.width,cast(float32)s.height)
    G.Uniform1f(locations.sampler_repeat[slot],ifx s.repeat then 1.0 else 0.0)
   }
  }
- G.DrawArrays(4,d.first,d.count)
+ DrawGeometry(gpu,scene.meshes[d.mesh],d)
  return true
 }
 // The first light whose cookie can project binds it to unit 14, after the
@@ -974,8 +1134,8 @@ BindCookie :: (gpu: *SceneGpuContext,scene: *Scene,locations: *GpuLocations,coun
   if l.cookie_texture<0||l.cookie_texture>=scene.textures.count||l.shadow_half_width<=0.0||l.shadow_half_height<=0.0||l.shadow_far==l.shadow_near {continue}
   t:=scene.textures[l.cookie_texture];bytes:=cast(s64)t.width*t.height*4
   if t.width<=0||t.height<=0||t.first_texel<0||t.first_texel+bytes>scene.texels.count {continue}
-  texture:=TextureFor(gpu,*scene.texels[t.first_texel],t.width,t.height,t.cache_key);if texture==0 {return false}
-  BindTexture(14,texture)
+  texture:=TextureFor(gpu,14,*scene.texels[t.first_texel],t.width,t.height,t.cache_key);if texture==0 {return false}
+  G.BindTexture(0x0de1,texture)
   bias:=M.Identity()
   bias.m[0]=0.5;bias.m[3]=0.5;bias.m[5]=0.5;bias.m[7]=0.5;bias.m[10]=0.5;bias.m[11]=0.5
   MatrixAt(locations.cookie_matrix,M.Multiply(bias,ShadowVP(l)))
@@ -1036,11 +1196,11 @@ RenderShadows :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
     if m.texture>=0&&m.texture<scene.textures.count {
      t:=scene.textures[m.texture];bytes:=cast(s64)t.width*t.height*4
      if t.first_texel<0||t.first_texel+bytes>scene.texels.count {return false}
-     texture:=TextureFor(gpu,*scene.texels[t.first_texel],t.width,t.height,t.cache_key);if texture==0 {return false}
-     BindTexture(0,texture);G.Uniform2f(albedo_size,cast(float32)t.width,cast(float32)t.height)
+     texture:=TextureFor(gpu,0,*scene.texels[t.first_texel],t.width,t.height,t.cache_key);if texture==0 {return false}
+     G.BindTexture(0x0de1,texture);G.Uniform2f(albedo_size,cast(float32)t.width,cast(float32)t.height)
      G.Uniform2f(albedo_sampling,cast(float32)cast(s32)m.texture_filter,cast(float32)cast(s32)m.texture_wrap)
     }
-    G.DrawArrays(4,d.first,d.count)
+    DrawGeometry(gpu,scene.meshes[d.mesh],d)
    }
    G.Disable(0x0b44)
    s.source=l

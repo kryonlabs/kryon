@@ -6,6 +6,8 @@
   Retained paint compares each bitmap's content revision, so changed pixels
   repaint through the same handle and identical frames still skip presentation.
 - Multiple indexed meshes in one scene render correctly on CPU and GLES.
+- GLES retains indices, UVs and other unchanged attributes for animated
+  smooth-shaded meshes. Each material sampler keeps its texture on the first draw.
 
 ## [0.5.0] - 2026-11-17
 
