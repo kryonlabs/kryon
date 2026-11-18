@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Checking or building a package for a native target no longer fails in
+  `page_events.zi`; its browser event bridge exists only on web targets.
 - Packages can import `kryon/canvas_os` and `kryon/pixmap_image_owner` to
   supply bundle pictures on the web and Android.
 - `make gallery-zx` exports all 101 gallery examples again. It binds the
