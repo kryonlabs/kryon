@@ -46,6 +46,23 @@ Sliver :: (path: string) -> bool {
     return Raster.FinishRasterFrame()
 }
 
+// The black half of a sheet whose other half is white, drawn smooth at half
+// size: the tile's last column must stay dark, not take in the white beyond
+// the source rectangle the way a wide filter reaches.
+SheetTile :: (path: string) -> bool {
+    if Raster.ImageWidth(path) <= 0 { return false }
+    Raster.BeginRasterFrame()
+    Texture.emitting_smooth = true
+    full: Rectangle = .{0.0, 0.0, 64.0, 64.0}
+    Raster.RasterImage(path, 0, .{0.0, 0.0, 32.0, 16.0}, .{0.0, 0.0, 16.0, 8.0}, full, .{0.0, 0.0}, 0.0, 0.0,
+        .{255, 255, 255, 255})
+    Texture.emitting_smooth = false
+    if !Raster.FinishRasterFrame() { return false }
+    edge := (Pixel(15, 4) >> 16) & 255
+    if edge > 4 { print("a smooth tile took in % of the sheet beyond its edge\n", edge); return false }
+    return true
+}
+
 // Independent source-over reference against the raster host's clear colour.
 Faded :: (color: Color, alpha: u8) -> u32 {
     a := cast(u32)alpha
@@ -86,6 +103,9 @@ main :: (argc: s32, argv: **u8) -> s32 {
     // A triangle too thin to sample is left out; it never fails the frame.
     if !Sliver(path) { print("a sliver triangle failed the frame\n"); return 11 }
     if !Is(4, 4, red) || !Is(40, 4, green) { return 12 }
-    print("Cairo preserves image colours while fading, scales sharply unless smooth and skips warped triangles too thin to sample\n")
+    sheet_text: Vec(u8)
+    BuilderPrint(*sheet_text, "%/sheet.png", root)
+    if !SheetTile(BuilderFinish(sheet_text)) { return 13 }
+    print("Cairo preserves image colours while fading, scales sharply unless smooth, keeps smooth tiles inside their sheet cell and skips warped triangles too thin to sample\n")
     return 0
 }

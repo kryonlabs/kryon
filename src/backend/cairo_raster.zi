@@ -1292,7 +1292,6 @@ RasterImage :: (asset_path: string, texture_id: u32,
         cast(float64)source.width,
         cast(float64)destination.height / cast(float64)source.height)
     Translate(paint, -cast(float64)source.x, -cast(float64)source.y)
-    // Use Cairo's reconstruction filter while a smooth copy is unavailable.
     pattern: *void = PatternForSurface(image)
     if pattern == null {
         Restore(paint)
@@ -1300,7 +1299,10 @@ RasterImage :: (asset_path: string, texture_id: u32,
         print("Kryon: skipped image: invalid or unavailable picture\n")
         return
     }
-    PatternFilter(pattern, ifx CurrentPaintSmooth() then CAIRO_FILTER_BEST else CAIRO_FILTER_NEAREST)
+    // Without a smooth copy, a smooth image uses Cairo's good filter: the
+    // best one reaches far past a source rectangle into the picture around
+    // it, so tiles cut from one sheet bleed their neighbours into the seams.
+    PatternFilter(pattern, ifx CurrentPaintSmooth() then CAIRO_FILTER_GOOD else CAIRO_FILTER_NEAREST)
     // Filtering a full image at its edge must sample its edge pixel rather
     // than transparent pixels beyond the surface while its copy is loading.
     if rectangular { PatternExtend(pattern, 3) }

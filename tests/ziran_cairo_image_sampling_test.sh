@@ -15,6 +15,9 @@ import sys
 image = Image.new('RGBA', (2, 2))
 image.putdata([(255, 0, 0, 255), (0, 255, 0, 255), (255, 0, 0, 255), (0, 255, 0, 255)])
 image.save(Path(sys.argv[1]) / 'pixels.png')
+sheet = Image.new('RGBA', (64, 16), (255, 255, 255, 255))
+sheet.paste((0, 0, 0, 255), (0, 0, 32, 16))
+sheet.save(Path(sys.argv[1]) / 'sheet.png')
 PY
 libs="$(pkg-config --libs cairo freetype2 pangocairo fontconfig glib-2.0) -ldl -lm -lpthread"
 source="$repo/tests/cairo_image_sampling_test.zi"

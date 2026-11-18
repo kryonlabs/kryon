@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Smooth pictures drawn without a prepared smooth copy, such as tiles cut
+  from one sheet, use Cairo's good filter again: 0.6.0's best filter reached
+  past the source rectangle and bled neighbouring tiles into the seams.
 - Web builds with `KRYON_WEBGL2` render scenes on WebGL 2, and
   `SceneGpuRenderCanvas` presents them as a canvas image without readback.
 - A desktop application that stops taking keys no longer stalls its window:
