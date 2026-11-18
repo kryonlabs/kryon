@@ -38,10 +38,10 @@ example locks are regenerated without raylib.
    kryonlabs/terminal and Harmony's terminal (`terminal_app_linux.zi`,
    `terminal_window_linux.zi`) still import `kryon/Raylib`; their desktop-host
    replacements, including `kryon/desktop_activity` and `OpenDesktopWindow`,
-   are listed in `backup/raylib-gaps/terminal-api-map.md`. Game2D's own
-   `Raylib` module (used by neon and kasaival) took its raylib version from
-   Kryon's lock; it needs its own decision: port those games and remove it, or
-   pin raylib in Game2D.
+   are listed in `backup/raylib-gaps/terminal-api-map.md`. Game2D replaced
+   its `Raylib` and `RaylibNull` modules with `Game2D/Sdl` (SDL2 on Kryon,
+   143803f4); neon and kasaival still import `Game2D/Raylib` and move to it,
+   neon also off its own raylib calls and C engine build.
 4. macOS: CI builds the desktop ZX player and runs its headless bundle check;
    native macOS execution is unverified.
 5. `tests/opus_audio_test.py` (not part of `make test` or CI) fails its
