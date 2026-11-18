@@ -1,8 +1,10 @@
 # Build the reusable native player, never the downloaded application's code.
 CC ?= cc
 PLAYER_HOST_OS ?= $(shell uname -s)
+PLAYER_TARGET := --define PLATFORM_DESKTOP
 ifeq ($(PLAYER_HOST_OS),Darwin)
 PLAYER_LDFLAGS ?= -Wl,-dead_strip
+PLAYER_TARGET += --target-os macos --define __APPLE__
 PLAYER_PACKAGES := sdl2 cairo freetype2 pangocairo fontconfig glib-2.0
 else
 PLAYER_LDFLAGS ?= -Wl,--gc-sections
@@ -19,7 +21,7 @@ zx-player: $(PLAYER)
 
 $(PLAYER): $(PLAYER_SOURCES) $(KRYON_DIR)/mk/zx-player.mk $(KRYON_DIR)/ziran.toml $(KRYON_DIR)/ziran.lock $(ZIRAN_DIR)/build/libziran.a $(ZIRAN) $(OPUS_A)
 	mkdir -p $(PLAYER_DIR) $(KRYON_DIR)/build/bin
-	cd "$(KRYON_DIR)" && $(ZIRAN) build --project --target=c --prune-stale --define PLATFORM_DESKTOP --root $(KRYON_DIR)/tools \
+	cd "$(KRYON_DIR)" && $(ZIRAN) build --project --target=c --prune-stale $(PLAYER_TARGET) --root $(KRYON_DIR)/tools \
 		-o $(PLAYER_DIR) $(KRYON_DIR)/tools/zx.zi
 	@temporary=$$(mktemp $(KRYON_DIR)/build/bin/zx.XXXXXX); \
 		trap 'rm -f "$$temporary"' EXIT; \

@@ -1,6 +1,7 @@
 // Decode upright straight RGBA and export through the native image codecs.
 #import "ziran_image_decode"
 #import "c_string"
+#import "std/byte_text_linux"
 Desktop :: #import "image_decode_desktop";
 
 #scope_file
@@ -32,14 +33,29 @@ EncodedImageExport :: (data: string, file_type: string, path: string) -> bool {
         byte := extension[at]
         kind[at] = ifx byte >= 65 && byte <= 90 then byte + cast(u8)32 else byte
     }
-    if extension.count == 3 && kind[0] == 106 && kind[1] == 112 && kind[2] == 103 {
+    format := TextFromCString(*kind[0])
+    jpeg := format == "jpg" || format == "jpeg"
+    if format == "jpg" {
         unused CopyCString("jpeg", kind[:])
     }
     image := ImageDecodeEncoded(data, file_type)
     if image.pixels == null { return false }
     defer DecodedImageFree(image)
     if !ExportReady() { return false }
-    pixbuf := new_pixels(image.pixels, 0, 1, 8, image.width, image.height, image.width * 4, null, null)
+    if jpeg {
+        // The decoded pixels are owned here. Compact RGBA to RGB in place
+        // for JPEG encoders that require exactly three channels.
+        for pixel: 0..image.width * image.height - 1 {
+            input := pixel * 4
+            output := pixel * 3
+            image.pixels[output] = image.pixels[input]
+            image.pixels[output + 1] = image.pixels[input + 1]
+            image.pixels[output + 2] = image.pixels[input + 2]
+        }
+    }
+    alpha: s32 = ifx jpeg then 0 else 1
+    stride: s32 = image.width * (3 + alpha)
+    pixbuf := new_pixels(image.pixels, 0, alpha, 8, image.width, image.height, stride, null, null)
     if pixbuf == null { return false }
     defer { Desktop.CloseImage(pixbuf) }
     return save_pixels(pixbuf, *path_bytes[0], *kind[0], null, null, null) != 0

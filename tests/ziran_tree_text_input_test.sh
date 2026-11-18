@@ -16,9 +16,15 @@ for form in source saved; do
     "$ziran" bundle --root "$root" $modules \
         --module-path "$ziran_root/std" --entry tree_text_input_test:main \
         -o "$work/$form.zx" "$module"
-    test "$("$ziran" run "$work/$form.zx")" = 0
+    result=$("$ziran" run "$work/$form.zx")
+    if test "$result" != 0; then
+        echo "Text input failure in $form ZX: $result" >&2
+        exit 1
+    fi
     "$ziran" build --root "$root" $modules \
         --module-path "$ziran_root/std" --entry tree_text_input_test:main \
         --target=c --exe -o "$work/$form-c" "$module"
     "$work/$form-c/tree_text_input_test"
 done
+cmp "$work/source.zx" "$work/saved.zx"
+echo 'Text input: UTF-8 queue, editing keys and committed focus passed'

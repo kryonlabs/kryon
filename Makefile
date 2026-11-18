@@ -226,7 +226,7 @@ zx-test: build/bin/kryon zx-player
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zx_project_test.py
 
-test: zx-test zx-reload-test
+test: zx-reload-test
 
 # window.zi's bundle runs as native code on a private Xvfb through a private
 # host registry: in the desktop player's window through `ziran run`, and as
@@ -364,7 +364,7 @@ check: all ziran-test header-check docs-check project-test public-surface-check 
 
 # CI runs make test as parallel jobs on separate machines. The hosts shard takes
 # every test target not named here, so a new one cannot miss CI.
-CI_SHARD_ZX := renderer-consumer-test zx-test zx-reload-test zx-window-test zx-services-test zx-hosted-test \
+CI_SHARD_ZX := renderer-consumer-test zx-native-test zx-reload-test zx-window-test zx-services-test zx-hosted-test \
 	zx-headless-test native-text-test native-accessibility-test
 CI_SHARD_CHECK := check
 CI_SHARD_WEB := canvas-test canvas-project-test program-entry-project-test zx-canvas-test \
@@ -382,6 +382,8 @@ test-shard-hosts:
 # links a shared backend change can break. Run before pushing; CI runs it first.
 .PHONY: push-check
 push-check:
+	python3 scripts/check-google-free.py --source .
+	sh scripts/check-submodule-urls.sh
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
 		$(MAKE) --no-print-directory source-check public-surface-check docs-check zx-player desktop-project-test gamepad-test text-hook-hosts-ir-test
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
@@ -501,7 +503,6 @@ web-js-boundary-test:
 .PHONY: page-geometry-test
 page-geometry-test: project-toolchain
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/page_geometry_test.sh
-test: page-geometry-test
 
 .PHONY: canvas-test
 canvas-test: canvas-frame-input-test web-js-boundary-test canvas-events-test mini-mode-test canvas-audio-engine-test page-geometry-test

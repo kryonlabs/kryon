@@ -123,6 +123,16 @@ jobs:
           project: kryonlabs/kryon
           path: ziranlang/ziran
 
+      # Source-preservation tests regenerate the gallery manifest in this job.
+      # Select the same Kryon and Ziran sources as the website build job.
+      - name: Select source revisions for gallery verification
+        working-directory: kryonlabs/kryon/examples/gallery
+        run: |
+          ziran_root="$GITHUB_WORKSPACE/ziranlang/ziran"
+          printf '[overrides]\nkryon = "%s"\nziran = "%s"\n' \
+            "$GITHUB_WORKSPACE/kryonlabs/kryon" "$ziran_root" > ziran.local.toml
+          "$ziran_root/build/bin/ziran" lock
+
       - name: Set up Node
         uses: actions/setup-node@v6
         with:

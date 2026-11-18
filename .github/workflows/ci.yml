@@ -190,12 +190,6 @@ jobs:
               subprocess.run([str(ziran / 'build/bin/ziran'), 'lock'], cwd=project, check=True)
           PY
 
-      - name: Keep Google libraries in the gplay edition
-        run: python3 scripts/check-google-free.py --source .
-
-      - name: Check submodule URLs
-        run: sh scripts/check-submodule-urls.sh
-
       # The Canvas2D and DOM tests compile to Wasm with emscripten and run
       # in private headless Chrome; the tests look for ~/emsdk.
       - name: Restore emsdk

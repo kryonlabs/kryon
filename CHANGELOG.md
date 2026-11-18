@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Android app libraries retain the JNI entries for local reminders and
+  notification permission requests.
+- Desktop JPEG export accepts images with alpha on Glycin-based systems.
+- Native ZX player builds on macOS select Darwin host code.
 - GLES scenes keep GPU shadow filtering on devices without hardware depth comparison filtering.
 - Android keeps the active frame budget while retained paint changes and backs off when paint becomes stable.
 - Desktop animations continue presenting text and images without input.

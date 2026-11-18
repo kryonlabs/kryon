@@ -16,9 +16,9 @@
 #import "bundle_media"
 #import "bundle_app"
 Video :: #import "video_linux";
-Service :: #import "service_linux";
 Bitmaps :: #import "bitmap_image";
 #if OS == .LINUX {
+    Service :: #import "service_linux";
     Theme :: #import "system_theme_host_linux";
     Background :: #import "background_window_linux";
 }
@@ -106,13 +106,13 @@ Supported :: (module: string, function: string) -> bool {
             function == "MediaMessageHost" || function == "FetchTextHost" ||
             function == "FetchTextStateHost" || function == "FetchTextResultHost"
     }
-    if ModuleName(module, "service") {
-        return function == "ServiceRequestHost" || function == "ServiceStateHost" || function == "ServiceResultHost"
-    }
     if ModuleName(module, "bitmap_image") {
         return function == "BitmapImageCreateHost" || function == "BitmapImageUpdateHost" || function == "BitmapImageReleaseHost"
     }
     #if OS == .LINUX {
+        if ModuleName(module, "service") {
+            return function == "ServiceRequestHost" || function == "ServiceStateHost" || function == "ServiceResultHost"
+        }
         if ModuleName(module, "system_theme_host") { return function == "SystemThemeColorHost" }
     }
     return false
@@ -186,11 +186,6 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         DesktopFrameUnchanged(args[0].integer != 0)
         return 1
     }
-    if function == "ServiceRequestHost" && count == 2 && args[0].kind == HostString && args[1].kind == HostString {
-        result.kind = HostInteger
-        result.integer = cast(s64)Service.ServiceRequestHost(TextValue(args[0]), TextValue(args[1]))
-        return 1
-    }
     // A bundle's runtime pictures, owned by the session the player runs.
     if function == "BitmapImageCreateHost" && count == 3 && args[0].kind == HostInteger && args[1].kind == HostInteger && args[2].kind == HostString {
         result.kind = HostUnsigned; result.bits = 0
@@ -209,6 +204,12 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         Bitmaps.BitmapImageRelease(player.input, Texture2D.{.id = cast(u32)args[0].bits, .width = cast(s32)args[1].integer, .height = cast(s32)args[2].integer, .mipmaps = 1, .format = 7})
         return 1
     }
+    #if OS == .LINUX {
+    if function == "ServiceRequestHost" && count == 2 && args[0].kind == HostString && args[1].kind == HostString {
+        result.kind = HostInteger
+        result.integer = cast(s64)Service.ServiceRequestHost(TextValue(args[0]), TextValue(args[1]))
+        return 1
+    }
     if function == "ServiceStateHost" && count == 0 {
         result.kind = HostInteger
         result.integer = cast(s64)Service.ServiceStateHost()
@@ -222,7 +223,6 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         result.length = cast(usize)value.count
         return 1
     }
-    #if OS == .LINUX {
     if count == 0 && function == "WindowCompactHost" {
         result.kind = HostInteger
         result.integer = cast(s64)Background.WindowCompactHost()
@@ -694,7 +694,9 @@ main :: (argc: s32, argv: **u8) -> s32 {
     }
     BundleMediaClose(*player.media)
     Video.VideoStopHost()
-    Service.CloseService()
+    #if OS == .LINUX {
+        Service.CloseService()
+    }
     CloseDesktop()
     CloseBundleInstance(instance)
     CloseBundle(bundle)

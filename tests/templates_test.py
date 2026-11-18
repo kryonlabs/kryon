@@ -1,13 +1,12 @@
 """Kryon's project templates and the kryon front door, display-free.
 
-Each template is created with `kryon new` exactly as a user would, from
-this checkout, and built and rendered once on the terminal host. The web
-template is checked; its browser profiles need Emscripten.
+Every template is created with `kryon new` from this checkout. The app's
+desktop profile is checked and its shot profile renders without a display.
+The web template is checked without building its browser profiles.
 """
 
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import tempfile
 
@@ -27,12 +26,9 @@ def environment(work):
     env["PATH"] = f"{ZIRAN_ROOT / 'build/bin'}:{env['PATH']}"
     env["KRYON_TEMPLATES"] = str(ROOT)
     env["ASAN_OPTIONS"] = "detect_leaks=0"
-    # Exercise the template commands against the canonical source checkouts,
-    # including their uncommitted changes, without copying/cloning them or
-    # fetching a new toolchain. Explicit overrides are installed before locking.
-    ziran = ZIRAN_ROOT / "build/bin/ziran"
-    # Resolve existing sources before isolating the new template projects.
-    env["XDG_CACHE_HOME"] = str(work / "cache")
+    # The projects and their build outputs are temporary. Reuse the prepared
+    # package cache so their first lock can reuse the same dependency sources.
+    # Install local checkout overrides before any template is locked.
     overrides = (f'[overrides]\nziran = "{ZIRAN_ROOT}"\n'
                  f'Kryon = "{ROOT}"\n')
     (work / "overrides.toml").write_text(overrides)
@@ -41,12 +37,18 @@ def environment(work):
 
 def run(command, directory, env, succeed=True, stdin=subprocess.DEVNULL, separate=False):
     # SEPARATE keeps build diagnostics (stderr) out of a program's own output.
-    result = subprocess.run([str(part) for part in command], cwd=directory, env=env,
-                            stdin=stdin, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE if separate else subprocess.STDOUT,
-                            text=True, timeout=900)
+    command = [str(part) for part in command]
+    try:
+        result = subprocess.run(command, cwd=directory, env=env, stdin=stdin,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE if separate else subprocess.STDOUT,
+                                text=True, timeout=900)
+    except subprocess.TimeoutExpired as error:
+        output = (error.stderr or error.stdout or b"").decode(errors="replace")
+        raise AssertionError(f"{' '.join(command)} timed out in {directory}:\n"
+                             f"{output[-4000:]}") from error
     if succeed != (result.returncode == 0):
-        raise AssertionError(f"{' '.join(map(str, command))} returned "
+        raise AssertionError(f"{' '.join(command)} returned "
                              f"{result.returncode}:\n{result.stdout}{result.stderr or ''}")
     return result.stdout
 
@@ -69,8 +71,6 @@ def main():
             manifest = (work / name / "ziran.toml").read_text()
             assert 'tool = "kryon"' in manifest and "{{" not in manifest, manifest
 
-        # The first command in the fresh cache may fetch and build the locked
-        # toolchain and report it; the profile list is compared after that.
         run([KRYON, "check", "desktop"], work / "demo-app", env)
         profiles = run([KRYON, "profiles"], work / "demo-app", env)
         assert profiles.splitlines() == ["* desktop  SDL2/Cairo window", "  portable  SDL2/Cairo window", "  tui  terminal",

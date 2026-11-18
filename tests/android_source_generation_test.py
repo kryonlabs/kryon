@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Generate real Android host graphs, compile their C with the NDK, and link
-the JNI loader entry through the canonical Android export map."""
+"""Generate Android host graphs and verify their NDK-linked JNI exports."""
 import os
 from pathlib import Path
 import subprocess
@@ -23,6 +22,10 @@ def run(command, cwd=ROOT):
 # Defined by generated C although no Zi code calls them: Android's loader
 # calls JNI_OnLoad, and kryon_android_app's --wrap=fopen/fopen64 link the rest.
 LOADER_ROOTS = {"JNI_OnLoad", "__wrap_fopen", "__wrap_fopen64"}
+RECEIVER_EXPORTS = {
+    "Java_org_kryonlabs_notifications_NotificationReceiver_receive",
+    "Java_org_kryonlabs_notifications_NotificationReceiver_requestPermission",
+}
 
 def link_contract(kind, project, manifest, ndk):
     """Link the graph as an app's libmain.so through kryon_android_app and
@@ -61,15 +64,15 @@ kryon_android_host(main ${{APP_ZIRAN_GENERATED_SOURCES}})
         [ndk / "bin/llvm-nm", "-D", "--defined-only", build / "libmain.so"],
         env=ENV, check=True, capture_output=True, text=True).stdout
     exported = {line.split()[-1] for line in symbols.splitlines() if line.split()}
-    # Android resolves these two by name; native_app_glue calls android_main
-    # inside the library, where -fvisibility=hidden leaves it.
-    required = {"JNI_OnLoad", "ANativeActivity_onCreate"}
+    # Android resolves these by name; native_app_glue calls android_main
+    # directly inside the library.
+    required = {"JNI_OnLoad", "ANativeActivity_onCreate"} | RECEIVER_EXPORTS
     if not required <= exported:
         raise AssertionError(kind + " libmain.so does not export " + ", ".join(sorted(required - exported)))
     for private in ("GenerationGluePrivate", "KryonAndroidRoots"):
         if private in exported:
             raise AssertionError(kind + " libmain.so leaked " + private)
-    print(kind + " libmain.so links and exports JNI_OnLoad through the canonical map", flush=True)
+    print(kind + " libmain.so exports Android loader and notification JNI entries", flush=True)
 
 def main():
     sdk = Path(os.environ.get("ANDROID_HOME", Path.home() / "Android/Sdk"))
