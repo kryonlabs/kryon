@@ -1,4 +1,4 @@
-// Retained, windowless native Scene renderer. All entry points belong to one
+// Retained, windowless GPU Scene renderer. All entry points belong to one
 // owning thread. Scene/program/sampler storage is borrowed only during Render.
 #import "scene"
 #import "scene_render"
@@ -9,11 +9,15 @@
 #import "std/format"
 #import "std/math"
 #import "drawing_props"
-// The native GPU path uses EGL/GLES3; the web draws scenes with RenderScene.
-#if OS != .WEB {
+#if OS != .WEB || #defined(KRYON_WEBGL2) {
     G :: #import "scene_gpu_gl";
     #if OS == .ANDROID {
         Android :: #import "android_jni";
+    }
+    #if OS == .WEB {
+        Surface :: #import "scene_gpu_web_context";
+        Page :: #import "page_texture";
+        Core :: #import "page_core";
     }
 }
 M :: #import "scene_gpu_math";
@@ -92,6 +96,9 @@ GpuBindingCheck :: struct {program: *ShaderProgram; uniforms: *ShaderValue; unif
 SceneGpuContext :: struct {
  capabilities: SceneGpuCapabilities
  display: *void; context: *void; attempted: bool
+ #if OS == .WEB {
+  canvas: s32; canvas_texture: s32
+ }
  width: s32; height: s32
  framebuffer: u32; color: u32; depth: u32; resolve: u32; resolved: u32
  straight_framebuffer: u32; straight_texture: u32; straight_program: u32
@@ -117,25 +124,30 @@ SceneGpuContext :: struct {
  log: [2048]u8
 }
 
-#if OS != .WEB {
-// Probe creates only a surfaceless context. No host window/display is queried.
-// Calling again after Release retries detection, including after device loss.
+#if OS != .WEB || #defined(KRYON_WEBGL2) {
+// Calling again after Release retries detection, including after context loss.
 SceneGpuProbe :: (gpu: *SceneGpuContext)->SceneGpuCapabilities {
  if gpu.attempted { return gpu.capabilities }
  gpu.attempted=true
- gpu.capabilities.diagnostic="EGL surfaceless ES3 context unavailable"
  saved:=G.SaveContext()
- gpu.display=G.ESceneDisplay()
- if gpu.display==null { return gpu.capabilities }
- major: s32;minor: s32
- if G.EInitialize(gpu.display,*major,*minor)==0 { gpu.display=null;return gpu.capabilities }
  defer G.RestoreContext(saved,gpu.display)
- unused G.EBindAPI(0x30a0)
- attrs: [9]s32=.[0x3033,1,0x3040,0x40,0x3024,8,0x3025,8,0x3038]
- config: *void;count: s32
- if G.EChooseConfig(gpu.display,*attrs[0],*config,1,*count)==0||count==0 { return gpu.capabilities }
- context_attrs: [3]s32=.[0x3098,3,0x3038]
- gpu.context=G.ECreateContext(gpu.display,config,null,*context_attrs[0])
+ #if OS == .WEB {
+  gpu.capabilities.diagnostic="WebGL 2 context unavailable"
+  context,canvas:=Surface.CreateContext()
+  gpu.context=context;gpu.canvas=canvas
+ } else {
+  gpu.capabilities.diagnostic="EGL surfaceless ES3 context unavailable"
+  gpu.display=G.ESceneDisplay()
+  if gpu.display==null { return gpu.capabilities }
+  major: s32;minor: s32
+  if G.EInitialize(gpu.display,*major,*minor)==0 { gpu.display=null;return gpu.capabilities }
+  unused G.EBindAPI(0x30a0)
+  attrs: [9]s32=.[0x3033,1,0x3040,0x40,0x3024,8,0x3025,8,0x3038]
+  config: *void;count: s32
+  if G.EChooseConfig(gpu.display,*attrs[0],*config,1,*count)==0||count==0 { return gpu.capabilities }
+  context_attrs: [3]s32=.[0x3098,3,0x3038]
+  gpu.context=G.ECreateContext(gpu.display,config,null,*context_attrs[0])
+ }
  if gpu.context==null||!G.MakeSceneCurrent(gpu.display,gpu.context) { return gpu.capabilities }
  CopyLabel(gpu.capabilities.renderer[: ],G.GetString(0x1f01))
  CopyLabel(gpu.capabilities.version[: ],G.GetString(0x1f02))
@@ -167,15 +179,18 @@ SceneGpuProbe :: (gpu: *SceneGpuContext)->SceneGpuCapabilities {
  if G.GetError()!=0 {return gpu.capabilities}
  if !CreateDFG(gpu) { gpu.capabilities.diagnostic="DFG texture unavailable";return gpu.capabilities }
  gpu.capabilities.available=true;gpu.capabilities.diagnostic=""
- gpu.capabilities.async_available=ProbeAsync(gpu)
- if !gpu.capabilities.async_available {gpu.capabilities.async_diagnostic="pixel pack buffers, fences and read mapping unavailable"}
+ #if OS == .WEB {
+  gpu.capabilities.async_diagnostic="WebGL does not support mapping pixel pack buffers"
+ } else {
+  gpu.capabilities.async_available=ProbeAsync(gpu)
+  if !gpu.capabilities.async_available {gpu.capabilities.async_diagnostic="pixel pack buffers, fences and read mapping unavailable"}
+ }
  return gpu.capabilities
 }
 
 SceneGpuResize :: (gpu: *SceneGpuContext,width: s32,height: s32)->bool {
  if !SceneGpuProbe(gpu).available { return false }
  saved:=G.SaveContext();defer G.RestoreContext(saved,gpu.display)
- unused G.EBindAPI(0x30a0)
  if !G.MakeSceneCurrent(gpu.display,gpu.context) { return false }
  return Resize(gpu,width,height)
 }
@@ -186,8 +201,7 @@ SceneGpuRender :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,image
  if !SceneGpuProbe(gpu).available { return .{diagnostic=gpu.capabilities.diagnostic} }
  if scene.failed||scene.open.count!=0||image.width<=0||image.height<=0 { return .{diagnostic="invalid Scene or Image"} }
  saved:=G.SaveContext();defer G.RestoreContext(saved,gpu.display)
- unused G.EBindAPI(0x30a0)
- if !G.MakeSceneCurrent(gpu.display,gpu.context) { return .{diagnostic="EGL context lost"} }
+ if !G.MakeSceneCurrent(gpu.display,gpu.context) { return .{diagnostic="GPU context lost"} }
  if !Resize(gpu,image.width,image.height) { return .{diagnostic=gpu.capabilities.diagnostic} }
  bytes:=cast(s64)gpu.width*gpu.height*4
  if !VecResizeBounded(gpu.readback,bytes,bytes) {return .{diagnostic="readback allocation failed"}}
@@ -212,7 +226,7 @@ SceneGpuRender :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,image
 // Draw and resolve only; both public paths use precisely the same quality math.
 }
 #scope_file
-#if OS != .WEB {
+#if OS != .WEB || #defined(KRYON_WEBGL2) {
 RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->SceneGpuFrame {
  start:=Now()
  if !PrepareGeometry(gpu,scene) { return .{diagnostic="invalid geometry or allocation failure"} }
@@ -363,6 +377,7 @@ ConvertReadback :: (gpu: *SceneGpuContext,image: *Image,opaque: bool)->bool {
 
 }
 #scope_export
+#if OS != .WEB || #defined(KRYON_WEBGL2) {
 #if OS != .WEB {
 // Submit snapshots camera metadata and enqueues all Scene reads before return.
 // Public Scene, shader and texture storage can then be mutated on this thread.
@@ -372,8 +387,7 @@ SceneGpuSubmit :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,width
  if !caps.async_available {return .{diagnostic=caps.async_diagnostic}}
  if scene.failed||scene.open.count!=0||width<=0||height<=0||request_id==0||request_id<=gpu.last_request {return .{diagnostic="invalid Scene, size or non-increasing request ID"}}
  saved:=G.SaveContext();defer G.RestoreContext(saved,gpu.display)
- unused G.EBindAPI(0x30a0)
- if !G.MakeSceneCurrent(gpu.display,gpu.context) {SceneGpuRelease(gpu);return .{diagnostic="EGL context lost; pending requests cancelled"}}
+ if !G.MakeSceneCurrent(gpu.display,gpu.context) {SceneGpuRelease(gpu);return .{diagnostic="GPU context lost; pending requests cancelled"}}
  defer G.BindBuffer(0x88eb,0)
  if !Resize(gpu,width,height) {return .{diagnostic=gpu.capabilities.diagnostic}}
  index: s32=-1
@@ -424,8 +438,7 @@ SceneGpuPoll :: (gpu: *SceneGpuContext,image: *Image)->SceneGpuAsyncResult {
  }
  if index<0 {return .{ok=true}}
  saved:=G.SaveContext();defer G.RestoreContext(saved,gpu.display)
- unused G.EBindAPI(0x30a0)
- if !G.MakeSceneCurrent(gpu.display,gpu.context) {SceneGpuRelease(gpu);return .{diagnostic="EGL context lost; pending requests cancelled"}}
+ if !G.MakeSceneCurrent(gpu.display,gpu.context) {SceneGpuRelease(gpu);return .{diagnostic="GPU context lost; pending requests cancelled"}}
  defer G.BindBuffer(0x88eb,0)
  slot:=*gpu.transfers[index]
  status:=G.ClientWaitSync(slot.fence,0,0)
@@ -462,12 +475,49 @@ SceneGpuPoll :: (gpu: *SceneGpuContext,image: *Image)->SceneGpuAsyncResult {
 SceneGpuCancel :: (gpu: *SceneGpuContext) {
  if gpu.context==null {return}
  saved:=G.SaveContext();defer G.RestoreContext(saved,gpu.display)
- unused G.EBindAPI(0x30a0)
  if G.MakeSceneCurrent(gpu.display,gpu.context) {DropTransfers(gpu)}
  else {SceneGpuRelease(gpu)}
 }
 
 // Explicit full-quality fallback; no reduced resolution, texture, light or AA.
+ } else {
+SceneGpuSubmit :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,width: s32,height: s32,request_id: u64)->SceneGpuAsyncResult {
+ unused scene;unused camera;unused width;unused height;unused request_id
+ return .{diagnostic=SceneGpuProbe(gpu).async_diagnostic}
+}
+SceneGpuPoll :: (gpu: *SceneGpuContext,image: *Image)->SceneGpuAsyncResult {
+ unused image
+ return .{diagnostic=SceneGpuProbe(gpu).async_diagnostic}
+}
+SceneGpuCancel :: (gpu: *SceneGpuContext) {unused gpu}
+}
+
+#if OS == .WEB {
+// Present the resolved premultiplied framebuffer through Canvas as an Image
+// texture. No Image allocation, pixel readback, or RGBA upload is involved.
+SceneGpuRenderCanvas :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,width: s32,height: s32)->(result: SceneGpuFrame,image: Texture2D) {
+ caps:=SceneGpuProbe(gpu)
+ if !caps.available {return .{diagnostic=caps.diagnostic},.{}}
+ if scene.failed||scene.open.count!=0||width<=0||height<=0 {return .{diagnostic="invalid Scene or canvas extent"},.{}}
+ saved:=G.SaveContext();defer G.RestoreContext(saved,null)
+ if !G.MakeSceneCurrent(null,gpu.context) {return .{diagnostic="WebGL context lost"},.{}}
+ Core.PageFlushPaint()
+ if !Resize(gpu,width,height)||!Surface.ResizeCanvas(gpu.canvas,width,height) {return .{diagnostic="WebGL canvas extent unavailable"},.{}}
+ frame:=RenderTarget(gpu,scene,camera)
+ if !frame.ok {return frame,.{}}
+ G.BindFramebuffer(0x8ca8,gpu.resolve);G.BindFramebuffer(0x8ca9,0)
+ G.BlitFramebuffer(0,0,width,height,0,0,width,height,0x4000,0x2600)
+ if G.GetError()!=0 {return .{diagnostic="WebGL canvas presentation failed"},.{}}
+ // Give the new pixels a new texture identity for retained paint damage.
+ texture:=Page.PageTextureRegister(gpu.canvas,false,width,height)
+ if texture==0 {return .{diagnostic="WebGL canvas texture table is full"},.{}}
+ Page.PageTextureFree(gpu.canvas_texture)
+ gpu.canvas_texture=texture
+ gpu.resources.frames+=1
+ return frame,.{cast(u32)texture,width,height,1,7}
+}
+}
+
 SceneGpuRenderOrCPU :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,image: *Image)->SceneGpuFrame {
  result:=SceneGpuRender(gpu,scene,camera,image)
  if result.ok { return result }
@@ -477,7 +527,6 @@ SceneGpuRenderOrCPU :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,
 
 SceneGpuRelease :: (gpu: *SceneGpuContext) {
  saved:=G.SaveContext()
- unused G.EBindAPI(0x30a0)
  if gpu.context!=null&&G.MakeSceneCurrent(gpu.display,gpu.context) {
   DropTargets(gpu)
   if gpu.buffer!=0 {G.DeleteBuffers(1,*gpu.buffer)}
@@ -495,7 +544,12 @@ SceneGpuRelease :: (gpu: *SceneGpuContext) {
   G.RestoreContext(saved,gpu.display)
  }
  else {G.RestoreContext(saved,gpu.display)}
- if gpu.context!=null {unused G.EDestroyContext(gpu.display,gpu.context)}
+ #if OS == .WEB {
+  Page.PageTextureFree(gpu.canvas_texture);gpu.canvas_texture=0
+  Surface.DestroyContext(gpu.context,gpu.canvas);gpu.canvas=0
+ } else {
+  if gpu.context!=null {unused G.EDestroyContext(gpu.display,gpu.context)}
+ }
  // EGLDisplay is process-shared, including with foreign hosts. eglTerminate
  // invalidates their contexts too; release only the context/objects we own.
  VecFree(gpu.vertices);VecFree(gpu.draws);VecFree(gpu.snapshot);VecFree(gpu.readback)
@@ -586,9 +640,10 @@ SceneGpuRelease :: (gpu: *SceneGpuContext) { gpu.attempted=false }
 SceneGpuMemoryUsage :: (gpu: *SceneGpuContext)->SceneGpuResources { return gpu.resources }
 }
 #scope_file
-#if OS != .WEB {
+#if OS != .WEB || #defined(KRYON_WEBGL2) {
 Timer :: #import "std/timer_linux";
 Now :: () -> float64 { return cast(float64)Timer.MonotonicNanoseconds() / 1000000.0 }
+#if OS != .WEB {
 ProbeAsync :: (gpu: *SceneGpuContext)->bool {
  buffer: u32;G.GenBuffers(1,*buffer);defer G.DeleteBuffers(1,*buffer)
  G.BindBuffer(0x88eb,buffer);defer G.BindBuffer(0x88eb,0)
@@ -616,6 +671,9 @@ DropTransfers :: (gpu: *SceneGpuContext) {
   if slot.framebuffer!=0 {DropReadbackTarget(*slot.framebuffer,*slot.texture)}
   slot[0]=GpuTransfer.{}
  }
+}
+} else {
+DropTransfers :: (gpu: *SceneGpuContext) {unused gpu}
 }
 CopyLabel :: (dest: []u8,source: *u8) { if source==null {return};for i: 0..dest.count-2 {if source[i]==0 {return};dest[i]=source[i]} }
 // ES permits implementation-dependent shadow filtering. Use the hardware
@@ -886,6 +944,22 @@ UploadIndexed :: (gpu: *SceneGpuContext,scene: *Scene,mask: s32,full: bool)->boo
 // own source range changes, even when other nodes can keep their elements.
 UpdateIndexed :: (gpu: *SceneGpuContext,scene: *Scene,parts: [7]GpuScenePart,change: s32)->bool {
  mask:=change>>2
+ if (change&GPU_NODES_CHANGED)!=0 {
+  if !OnlyMoved(gpu,scene) {return false}
+  for at: 0..scene.nodes.count-1 {
+   node:=scene.nodes[at];matrix:=M.Compose(node.position,node.rotation,node.scale)
+   if node.parent>=0 {matrix=M.Multiply(gpu.node_world[node.parent],matrix)}
+   previous:=gpu.node_world[at]
+   if MatrixSame(matrix,previous) {continue}
+   if node.mesh>=0 {
+    mesh:=scene.meshes[node.mesh]
+    if !MeshIndexed(mesh)||(M.Determinant3(matrix)<0.0)!=(M.Determinant3(previous)<0.0) {return false}
+   }
+   gpu.node_world[at]=matrix
+   mask|=3
+   for d: 0..gpu.draws.count-1 {if gpu.draws[d].node==cast(s32)at {gpu.draws[d].origin=M.Point(matrix,.{})}}
+  }
+ }
  for node: scene.nodes {
   if node.mesh<0 {continue}
   mesh:=scene.meshes[node.mesh]
@@ -971,7 +1045,7 @@ PrepareGeometry :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
   // Most frames that change anything only move a node: a door swings, a leaf
   // sways. Those replace the moved nodes' triangles and nothing else.
   if change==GPU_NODES_CHANGED&&OnlyMoved(gpu,scene)&&UpdateMoved(gpu,scene) {return true}
-  if gpu.indexed.vertex_count>0&&(change&GPU_VERTEX_ATTRIBUTES)==change&&UpdateIndexed(gpu,scene,parts,change) {return true}
+  if gpu.indexed.vertex_count>0&&(change&(GPU_VERTEX_ATTRIBUTES|GPU_NODES_CHANGED))==change&&UpdateIndexed(gpu,scene,parts,change) {return true}
  }
  gpu.geometry_valid=false
  if scene.normals.count!=scene.positions.count||scene.colors.count!=scene.positions.count||scene.uvs.count!=scene.positions.count {return false}

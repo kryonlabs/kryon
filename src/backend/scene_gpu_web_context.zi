@@ -1,0 +1,84 @@
+// A private HTML canvas owns the scene's WebGL 2 context. Emscripten exposes
+// the same GLES 3 calls the native scene renderer uses.
+#import "web"
+#import "std/format"
+#import "std/vec"
+#import "std/byte_text_linux"
+
+emscripten :: #system_library "c";
+WebGlAttributes :: struct {
+    alpha: bool
+    depth: bool
+    stencil: bool
+    antialias: bool
+    premultiplied: bool
+    preserve: bool
+    power_preference: s32
+    fail_if_slow: bool
+    major: s32
+    minor: s32
+    extensions: bool
+    explicit_swap: bool
+    proxy: s32
+    offscreen_back_buffer: bool
+    desynchronized: bool
+}
+InitAttributes :: (attributes: *WebGlAttributes) #foreign emscripten "emscripten_webgl_init_context_attributes";
+Create :: (selector: *u8, attributes: *WebGlAttributes) -> *void #foreign emscripten "emscripten_webgl_create_context";
+Destroy :: (context: *void) -> s32 #foreign emscripten "emscripten_webgl_destroy_context";
+Current :: () -> *void #foreign emscripten "emscripten_webgl_get_current_context";
+Select :: (context: *void) -> s32 #foreign emscripten "emscripten_webgl_make_context_current";
+Lost :: (context: *void) -> bool #foreign emscripten "emscripten_is_webgl_context_lost";
+ContextSerial: s32;
+
+CreateContext :: () -> (handle: *void, surface: s32) {
+    scope := WebScope(); defer WebEnd(scope)
+    document := WebGetObject(WebGlobal, WebName("document"))
+    if document == 0 { return null, 0 }
+    canvas := WebAsObject(WebCall1(document, WebName("createElement"), WebText("canvas")))
+    if canvas == 0 { return null, 0 }
+    ContextSerial += 1
+    name: Vec(u8)
+    defer VecFree(name)
+    BuilderPrint(*name, "kryon-scene-surface-%", ContextSerial)
+    id := TextView(name[:])
+    WebSet(canvas, WebName("id"), WebText(id))
+    WebSet(canvas, WebName("hidden"), WebBool(true))
+    unused WebCall1(WebGetObject(document, WebName("body")), WebName("appendChild"), WebObject(canvas))
+    selector: [64]u8
+    selector[0] = 35
+    for at: 0..id.count-1 { selector[at+1] = id[at] }
+    attributes: WebGlAttributes
+    InitAttributes(*attributes)
+    attributes.major = 2
+    attributes.depth = false
+    attributes.antialias = false
+    attributes.preserve = true
+    context := Create(*selector[0], *attributes)
+    unused WebCall0(canvas, WebName("remove"))
+    if context == null { return null, 0 }
+    return context, WebKeep(canvas)
+}
+
+ResizeCanvas :: (canvas: s32, width: s32, height: s32) -> bool {
+    scope := WebScope(); defer WebEnd(scope)
+    w := WebName("width"); h := WebName("height")
+    if WebAsNumber(WebGet(canvas,w)) != cast(float64)width {
+        WebSet(canvas,w,WebNumber(cast(float64)width))
+    }
+    if WebAsNumber(WebGet(canvas,h)) != cast(float64)height {
+        WebSet(canvas,h,WebNumber(cast(float64)height))
+    }
+    return !WebFailed()
+}
+
+DestroyContext :: (context: *void, canvas: s32) {
+    if context != null { unused Destroy(context) }
+    if canvas != 0 {
+        WebRelease(canvas)
+    }
+}
+
+SaveContext :: () -> *void { return Current() }
+MakeCurrent :: (context: *void) -> bool { return !Lost(context) && Select(context) == 0 }
+RestoreContext :: (context: *void) { unused Select(context) }

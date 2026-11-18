@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Web builds with `KRYON_WEBGL2` render scenes on WebGL 2, and
+  `SceneGpuRenderCanvas` presents them as a canvas image without readback.
 - A desktop application that stops taking keys no longer stalls its window:
   once a pending input queue's head stays put across two polls, keys stop
   waiting in SDL's queue for room, so wheel, pointer and window events
