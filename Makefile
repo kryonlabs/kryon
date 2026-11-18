@@ -429,9 +429,14 @@ test: desktop-audio-test
 AUDIO_PACKAGE = $$("$(ZIRAN_BIN)" pkg path audio --offline)
 MP3_DIR := $(BUILD_DIR)/mp3
 MP3_A := $(MP3_DIR)/libziran_mp3.a
+# CMake keeps one source per build folder; a local override or a lock change
+# moves the audio package, so a folder configured elsewhere starts over.
+CMAKE_SOURCE_FOR = source="$(AUDIO_PACKAGE)/native"; \
+	if [ -f $(1)/CMakeCache.txt ] && ! grep -qxF "CMAKE_HOME_DIRECTORY:INTERNAL=$$source" $(1)/CMakeCache.txt; then \
+		rm -rf $(1); fi; mkdir -p $(1)
 $(MP3_A): ziran.lock
-	@mkdir -p $(MP3_DIR)
-	@cmake -S "$(AUDIO_PACKAGE)/native" -B $(MP3_DIR) -DCMAKE_BUILD_TYPE=Release \
+	@$(call CMAKE_SOURCE_FOR,$(MP3_DIR)); \
+	cmake -S "$$source" -B $(MP3_DIR) -DCMAKE_BUILD_TYPE=Release \
 		-DZIRAN_STDLIB="$(ZIRAN_ROOT)/std" -DAUDIO_CORE_VORBIS=OFF > $(MP3_DIR)/configure.log
 	@cmake --build $(MP3_DIR) --target ziran_mp3 > $(MP3_DIR)/build.log
 
@@ -451,8 +456,8 @@ test: desktop-audio-mp3-test
 VORBIS_DIR := $(BUILD_DIR)/vorbis
 VORBIS_A := $(VORBIS_DIR)/libvorbisfile.a
 $(VORBIS_A): ziran.lock
-	@mkdir -p $(VORBIS_DIR)
-	@cmake -S "$(AUDIO_PACKAGE)/native" -B $(VORBIS_DIR) -DCMAKE_BUILD_TYPE=Release \
+	@$(call CMAKE_SOURCE_FOR,$(VORBIS_DIR)); \
+	cmake -S "$$source" -B $(VORBIS_DIR) -DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
 		-DZIRAN_STDLIB="$(ZIRAN_ROOT)/std" -DAUDIO_CORE_VORBIS=ON > $(VORBIS_DIR)/configure.log
 	@cmake --build $(VORBIS_DIR) --target vorbisfile > $(VORBIS_DIR)/build.log
