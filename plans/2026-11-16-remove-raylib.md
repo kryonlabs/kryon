@@ -46,3 +46,27 @@ example locks are regenerated without raylib.
    native macOS execution is unverified.
 5. `tests/opus_audio_test.py` (not part of `make test` or CI) fails its
    pause-position check (exit 8) against the local audio package checkout.
+
+## 2026-11-18 follow-up: sized Pixmap pictures (K2)
+
+Implemented header-only dimensions for shipped PNG/WebP/JPEG/GIF/BMP pictures.
+First drawing requests the resolution needed for its source crop and device
+scale. The Android picture owner retains one premultiplied Lanczos reduction
+per asset; larger draws upgrade it and smaller draws reuse it. Intrinsic
+dimensions remain stable, including mirrored crops and meshes. Unsupported
+metadata formats keep their bounded full-decode path. Codecs still use a
+temporary full RGBA allocation before reduction; reducing codec peak memory
+would need a scaled decoder API upstream.
+
+Local tests passed: source/saved Android image services with an actual draw
+of a 2048×1024 WebP and exact Pillow Lanczos golden; Pixmap image, mirrored
+image, mesh and both Lanczos configurations; source/saved ARMv7/AArch64 links.
+The published Ziran pin passes `push-check` with local overrides removed.
+The first full gate reached a ZX media deadline; focused native and fresh-cache
+native/browser reruns passed, as did that test in the full-gate retry. Failure
+diagnostics now identify its stage and media/fetch states.
+
+The full `make test` retry passed with the published toolchain and local
+overrides removed. USB Moto source/saved execution passed real AssetManager
+metadata, first-use decode, reduced retained pixels with stable dimensions,
+AVIF/WebP RGBA goldens, missing-bridge reporting and cleanup without a window.

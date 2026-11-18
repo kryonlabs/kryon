@@ -5,8 +5,8 @@ module_roots = ["src/ui", "src/backend", "src/ui/alert", "src/ui/avatar", "src/u
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
-# Ziran 0.7.0.
-ref = "55b0176800d42c829db098a2ef8b0705ea339509"
+# Ziran 0.7.0 with streamed asset digests and ARM fixes.
+ref = "036cb7b5d2630302e0b73a2336ccbfb6d0250be5"
 
 [dependencies.libwebp]
 git = "https://github.com/webmproject/libwebp.git"

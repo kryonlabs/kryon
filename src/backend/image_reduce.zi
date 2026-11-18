@@ -1,0 +1,35 @@
+// Retain only the resolution a picture needs. The codec's full allocation
+// lives until this one high-quality, premultiplied Lanczos reduction finishes.
+// Caller owns the returned allocation, including when reducing fails.
+#import "ziran_image_decode"
+Resample :: #import "std/resample";
+#import "std/vec"
+
+ReduceDecodedImage :: (image: DecodedImage, width: s32, height: s32) -> DecodedImage {
+    if image.pixels == null || width <= 0 || height <= 0 || width >= image.width || height >= image.height { return image }
+    // Preserve aspect and enough detail for either axis of a cropped draw.
+    if cast(s64)width * image.height > cast(s64)height * image.width {
+        height = cast(s32)((cast(s64)width * image.height + image.width - 1) / image.width)
+    } else {
+        width = cast(s32)((cast(s64)height * image.width + image.height - 1) / image.height)
+    }
+    plan: Resample.ResamplePlan
+    defer ReducePlanFree(*plan)
+    if !Resample.ResamplePlanInto(*plan, image.width, image.height, 0.0, 0.0,
+        cast(float64)image.width, cast(float64)image.height, width, height, Resample.RESAMPLE_LANCZOS) { return image }
+    pixels := ImagePixelsAllocate(cast(usize)(cast(s64)width * height * 4))
+    if pixels == null { return image }
+    Resample.ResamplePremultiply(image.pixels, cast(s64)image.width * image.height)
+    Resample.ResamplePlanRun(*plan, image.pixels, cast(s64)image.width * 4, pixels, cast(s64)width * 4)
+    Resample.ResampleUnpremultiply(pixels, cast(s64)width * height)
+    DecodedImageFree(image)
+    return .{pixels, width, height}
+}
+
+ReducePlanFree :: (plan: *Resample.ResamplePlan) {
+    VecFree(plan.intermediate)
+    VecFree(plan.horizontal.bounds); VecFree(plan.horizontal.weights)
+    VecFree(plan.horizontal.packed); VecFree(plan.horizontal.scratch)
+    VecFree(plan.vertical.bounds); VecFree(plan.vertical.weights)
+    VecFree(plan.vertical.packed); VecFree(plan.vertical.scratch)
+}

@@ -4,6 +4,7 @@ Decode :: #import "android_image_decode";
 Raster :: #import "pixmap";
 Jni :: #import "android_jni";
 Cleanup :: #import "android_host_cleanup";
+#import "geometry"
 #import "android_native_test_host"
 #import "image_integration_fixture"
 #import "webp_fixture_checks"
@@ -15,6 +16,7 @@ env: Jni.JniEnv;
 vm: Jni.JniVm;
 activity: Jni.NativeActivity;
 app: Jni.NativeAndroidApp;
+large_surface: [32768]u32;
 frames: s32;
 references: s32;
 bitmap_calls: s32;
@@ -138,7 +140,9 @@ main :: () -> s32 {
 
     if !Services.PixmapLoadImageBytes("pictures/a.png", png_data, "") || Services.android_picture_bytes != 8 { return 8 }
     slot := Raster.PixmapImageIndex("pictures/a.png")
-    if slot < 0 || Raster.pixmap_image_pixels[slot].value[0] != cast(u32)0x61ad3ddb { return 9 }
+    source: Rectangle = .{0.0, 0.0, 2.0, 1.0}
+    if slot < 0 || !Raster.PixmapPrepareImage(slot, *source, 2.0, 1.0) { return 36 }
+    if Raster.pixmap_image_pixels[slot].value[0] != cast(u32)0x61ad3ddb { return 9 }
     previous := *Raster.pixmap_image_pixels[slot].value[0]
     if Services.PixmapLoadImageBytes("pictures/a.png", "invalid", "") || *Raster.pixmap_image_pixels[slot].value[0] != previous { return 10 }
     if !Services.PixmapLoadImageBytes("pictures/a.png", TextFromBytes(webp[:]), "") || Services.android_picture_bytes != 24 { return 11 }
@@ -156,25 +160,26 @@ main :: () -> s32 {
     if Services.android_picture_bytes != 0 || Raster.PixmapImageIndex("relative") >= 0 { return 18 }
     if Services.RasterInvalidateImages() != 0 || Services.PixmapLoadImageBytes("", png_data, "") { return 19 }
 
-    // A shipped picture decodes from the APK the first time it is measured
-    // or drawn; a missing one is asked for once until a picture is cleared.
+    // A shipped picture probes dimensions without decoded storage; a missing one is asked for once until a picture is cleared.
     activity.asset_manager = cast(*void)*asset_manager
     asset_pointer = *png[0]; asset_count = cast(s32)png.count
     if Raster.ImageWidth("pictures/shipped.png") != 2 || Raster.ImageHeight("pictures/shipped.png") != 1 ||
-        asset_opens != 1 || asset_closes != 1 || Services.android_picture_bytes != 8 { return 20 }
+        asset_opens != 1 || asset_closes != 1 || Services.android_picture_bytes != 0 { return 20 }
     slot = Raster.PixmapImageIndex("pictures/shipped.png")
-    if slot < 0 || Raster.pixmap_image_pixels[slot].value[0] != cast(u32)0x61ad3ddb ||
-        Raster.PixmapPaintImageSlot("pictures/shipped.png", 0) != slot || asset_opens != 1 { return 21 }
+    source = .{0.0, 0.0, 2.0, 1.0}
+    if slot < 0 || !Raster.PixmapPrepareImage(slot, *source, 2.0, 1.0) { return 36 }
+    if Raster.pixmap_image_pixels[slot].value[0] != cast(u32)0x61ad3ddb ||
+        Raster.PixmapPaintImageSlot("pictures/shipped.png", 0) != slot || asset_opens != 2 { return 21 }
     if Raster.ImageWidth("pictures/missing.png") != 0 || Raster.ImageHeight("pictures/missing.png") != 0 ||
-        Raster.PixmapPaintImageSlot("pictures/missing.png", 0) >= 0 || asset_opens != 2 { return 22 }
+        Raster.PixmapPaintImageSlot("pictures/missing.png", 0) >= 0 || asset_opens != 3 { return 22 }
     if !Services.RasterInvalidateImage("pictures/shipped.png") || Services.android_picture_bytes != 0 ||
-        Raster.PixmapPaintImageSlot("pictures/shipped.png", 0) < 0 || asset_opens != 3 ||
-        Raster.ImageWidth("pictures/missing.png") != 0 || asset_opens != 4 { return 23 }
+        Raster.PixmapPaintImageSlot("pictures/shipped.png", 0) < 0 || asset_opens != 4 ||
+        Raster.ImageWidth("pictures/missing.png") != 0 || asset_opens != 5 { return 23 }
     asset_pointer = *not_a_picture[0]; asset_count = 8; unused Services.RasterInvalidateImages()
-    if Raster.ImageWidth("pictures/shipped.png") != 0 || asset_opens != 5 || asset_closes != 3 { return 24 }
+    if Raster.ImageWidth("pictures/shipped.png") != 0 || asset_opens != 6 || asset_closes != 4 { return 24 }
     asset_pointer = *png[0]; asset_count = cast(s32)png.count
     Cleanup.AndroidHostResourcesClose()
-    if Raster.ImageWidth("pictures/shipped.png") != 2 || asset_opens != 6 { return 25 }
+    if Raster.ImageWidth("pictures/shipped.png") != 2 || asset_opens != 7 { return 25 }
     Cleanup.AndroidHostResourcesClose()
     if Services.android_picture_bytes != 0 || Raster.PixmapImageIndex("pictures/shipped.png") >= 0 { return 26 }
 
@@ -206,6 +211,43 @@ main :: () -> s32 {
     again := Pixels.LoadImagePixels("pictures/shipped.jpg"); defer VecFree(again.pixels)
     if again.pixels.count != 0 || native_test_log_lines != logs + 1 || bitmap_calls != 3 { return 35 }
     bridge_missing = false
+    // Large shipped WebP: metadata allocates no RGBA, first draw retains a
+    // 64x smaller high-quality copy, and repeated/smaller draws reuse it.
+    Cleanup.AndroidHostResourcesClose()
+    large := Fixture("build/scratch/android-image-services", "large", ".webp"); defer VecFree(large)
+    small := Fixture("build/scratch/android-image-services", "large", ".rgba"); defer VecFree(small)
+    asset_pointer = *large[0]; asset_count = cast(s32)large.count
+    if Raster.ImageWidth("pictures/shipped.webp") != 2048 || Raster.ImageHeight("pictures/shipped.webp") != 1024 ||
+        Services.android_picture_bytes != 0 { return 37 }
+    slot = Raster.PixmapImageIndex("pictures/shipped.webp")
+    opens := asset_opens
+    source = .{0.0, 0.0, 2048.0, 1024.0}
+    if !Raster.PixmapBeginInto(0, 256, 128, large_surface[:]) { return 45 }
+    Raster.RasterImage("pictures/shipped.webp", 0, source, .{0.0, 0.0, 256.0, 128.0},
+        .{0.0, 0.0, 256.0, 128.0}, .{}, 0.0, 0.0, .{255, 255, 255, 255})
+    Raster.PixmapEndInto()
+    if Raster.pixmap_image_widths[slot] != 256 || Raster.pixmap_image_heights[slot] != 128 ||
+        Services.android_picture_bytes != 131072 || asset_opens != opens + 1 || small.count != 131072 { return 38 }
+    for at: cast(s64)0..small.count / 4 - 1 {
+        pixel := Raster.pixmap_image_pixels[slot].value[at]
+        expected_pixel := (cast(u32)small[at * 4 + 3] << 24) | (cast(u32)small[at * 4] << 16) |
+            (cast(u32)small[at * 4 + 1] << 8) | cast(u32)small[at * 4 + 2]
+        if pixel != expected_pixel { print("Reduction differs from Pillow at %: % != %\n", at, pixel, expected_pixel); return 39 }
+    }
+    revision := Raster.PixmapImageRevision()
+    for attempt: 0..9 {
+        source = .{512.0, 256.0, -1024.0, 512.0}
+        if !Raster.PixmapPrepareImage(slot, *source, 128.0, 64.0) || source.x != 64.0 || source.y != 32.0 ||
+            source.width != -128.0 || source.height != 64.0 { return 40 }
+    }
+    if asset_opens != opens + 1 || Raster.PixmapImageRevision() != revision { return 41 }
+    source = .{0.0, 0.0, 2048.0, 1024.0}
+    if !Raster.PixmapPrepareImage(slot, *source, 512.0, 256.0) || Services.android_picture_bytes != 524288 ||
+        asset_opens != opens + 2 || Raster.ImageWidth("pictures/shipped.webp") != 2048 { return 42 }
+    source = .{0.0, 0.0, 2048.0, 1024.0}
+    if !Raster.PixmapPrepareImage(slot, *source, 256.0, 128.0) || asset_opens != opens + 2 { return 43 }
+    Cleanup.AndroidHostResourcesClose()
+    if Services.android_picture_bytes != 0 || Raster.PixmapImageIndex("pictures/shipped.webp") >= 0 { return 44 }
     Services.ImagePreviewRelease(null)
     print("Android image services: native RGBA/orientation, bounded bitmap JNI, owned cache replacement, folder invalidation, lazy APK pictures, in-process textures, missing bridge and cleanup passed\n")
     return 0

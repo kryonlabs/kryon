@@ -7,6 +7,9 @@ Images :: #import "android_bundle_images";
 #import "image_orientation"
 #import "std/byte_text_linux"
 
+Riff :: #import "webp/riff";
+Codecs :: #import "image_codec/api";
+
 AndroidImageSize :: struct { width: s64; height: s64 }
 AndroidImageSizeAllowed :: (size: AndroidImageSize) -> bool {
     return size.width > 0 && size.height > 0 && size.width <= 32768 && size.height <= 32768 &&
@@ -55,6 +58,20 @@ AndroidImageBitmapSize :: (data: string) -> AndroidImageSize {
         at += length
     }
     return .{}
+}
+
+// Dimensions without allocating decoded pixels. Unsupported metadata uses
+// the existing bounded decoder; JPEG orientation is part of intrinsic size.
+AndroidImageEncodedSize :: (data: string) -> AndroidImageSize {
+    if ImageWebpSignature(data) {
+        probe := Riff.WebpProbe(ImageEncodedBytes(data), Codecs.DefaultOptions().limits)
+        if !probe.is_ok { return .{} }
+        return .{cast(s64)probe.metadata.width, cast(s64)probe.metadata.height}
+    }
+    size := AndroidImageBitmapSize(data)
+    orientation := ImageExifOrientation(data)
+    if orientation >= 5 && orientation <= 8 { swap := size.width; size.width = size.height; size.height = swap }
+    return size
 }
 
 // File textures can also use formats recognized only by Android BitmapFactory.

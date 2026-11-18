@@ -4,6 +4,7 @@
 #import "android_image_decode"
 Images :: #import "android_bundle_images";
 #import "ziran_image_decode"
+#import "image_reduce"
 #import "android_host_cleanup"
 #import "pixmap_image_owner"
 #import "pixmap"
@@ -16,8 +17,11 @@ android_picture_pixels: [1024]*u8;
 android_picture_sizes: [1024]s64;
 android_picture_bytes: s64;
 android_picture_ready: bool;
+android_picture_shipped: [1024]bool;
+android_picture_failed: [1024]bool;
 
 AndroidPictureReplacing :: (slot: s32, next: *u32) {
+    android_picture_shipped[slot] = false; android_picture_failed[slot] = false
     previous := android_picture_pixels[slot]
     if previous == null || previous == cast(*u8)next { return }
     ImagePixelsFree(previous)
@@ -28,27 +32,62 @@ AndroidPictureReplacing :: (slot: s32, next: *u32) {
 AndroidPicturesClose :: () {
     PixmapImageSourceRetry()
     for slot: cast(s32)0..1023 {
-        if android_picture_pixels[slot] != null { PixmapClearImage(slot) }
+        if android_picture_pixels[slot] != null || android_picture_shipped[slot] { PixmapClearImage(slot) }
     }
 }
 AndroidPicturesUse :: () {
     if android_picture_ready { return }
     PixmapImageOwnerUse(AndroidPictureReplacing)
+    PixmapImagePrepareUse(AndroidPicturePrepare)
     AndroidImagesCleanupUse(AndroidPicturesClose)
     android_picture_ready = true
 }
-// Decodes a shipped picture the first time Pixmap is asked for its path.
+// Layout probes headers only. First draw decodes and caches the requested
+// resolution; later larger draws upgrade once, smaller draws reuse it.
 AndroidPictureLoad :: (path: string) -> bool {
     data := ReadAppAsset(path)
     if data.count == 0 { return false }
-    loaded := PixmapLoadImageBytes(path, data, "")
-    FreeAppAsset(data)
+    defer FreeAppAsset(data)
+    AndroidPicturesUse()
+    size := AndroidImageEncodedSize(data)
+    slot: s32 = -1
+    for candidate: cast(s32)0..1023 {
+        if pixmap_image_lengths[candidate] == 0 { slot = candidate; break }
+    }
+    loaded: bool
+    if slot >= 0 && AndroidImageSizeAllowed(size) {
+        loaded = PixmapSetImageInfo(slot, path, cast(s32)size.width, cast(s32)size.height)
+    } else { loaded = PixmapLoadImageBytes(path, data, "") }
+    slot = PixmapImageIndex(path)
+    if loaded && slot >= 0 { android_picture_shipped[slot] = true }
     return loaded
 }
 android_picture_source: bool = PixmapImageSourceUse(AndroidPictureLoad);
 
+AndroidPicturePrepare :: (slot: s32, width: s32, height: s32) -> bool {
+    if !android_picture_shipped[slot] { return true }
+    if pixmap_image_widths[slot] >= width && pixmap_image_heights[slot] >= height { return true }
+    if android_picture_failed[slot] { return android_picture_pixels[slot] != null }
+    // Growing one axis must retain the detail already loaded for the other.
+    if width < pixmap_image_widths[slot] { width = pixmap_image_widths[slot] }
+    if height < pixmap_image_heights[slot] { height = pixmap_image_heights[slot] }
+    name: [256]u8
+    length := pixmap_image_lengths[slot]
+    for at: cast(s32)0..length - 1 { name[at] = pixmap_image_paths[slot][at] }
+    path := TextView(name[0:length])
+    data := ReadAppAsset(path)
+    loaded := AndroidPictureInstall(path, data, "", width, height)
+    FreeAppAsset(data)
+    android_picture_shipped[slot] = true
+    android_picture_failed[slot] = !loaded
+    return loaded || android_picture_pixels[slot] != null
+}
+
 #program_export
 PixmapLoadImageBytes :: (path: string, data: string, file_type: string) -> bool {
+    return AndroidPictureInstall(path, data, file_type, 0, 0)
+}
+AndroidPictureInstall :: (path: string, data: string, file_type: string, width: s32, height: s32) -> bool {
     if path.count <= 0 || path.count >= 256 { return false }
     for byte: path { if byte == cast(u8)0 { return false } }
     AndroidPicturesUse()
@@ -61,6 +100,8 @@ PixmapLoadImageBytes :: (path: string, data: string, file_type: string) -> bool 
     if slot < 0 { return false }
     image := AndroidImageDecodeEncoded(data, file_type)
     if image.pixels == null { return false }
+    natural_width := image.width; natural_height := image.height
+    image = ReduceDecodedImage(image, width, height)
     size := cast(s64)image.width * image.height * 4
     if image.width > 16384 || image.height > 16384 ||
         android_picture_bytes - android_picture_sizes[slot] + size > AndroidPictureBudget {
@@ -73,7 +114,7 @@ PixmapLoadImageBytes :: (path: string, data: string, file_type: string) -> bool 
             (cast(u32)image.pixels[pixel + 1] << 8) | cast(u32)image.pixels[pixel + 2]
         words[at] = color
     }
-    if !PixmapSetImage(slot, path, image.width, image.height, Images.AndroidImageWords(words, size / 4)) {
+    if !PixmapSetImageStorage(slot, path, image.width, image.height, natural_width, natural_height, Images.AndroidImageWords(words, size / 4)) {
         DecodedImageFree(image); return false
     }
     android_picture_pixels[slot] = image.pixels

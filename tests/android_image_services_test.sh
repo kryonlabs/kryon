@@ -10,8 +10,16 @@ mkdir -p "$out"
 python3 tests/image_pixels_fixtures.py
 python3 - "$out" <<'PY'
 import struct, sys
+from PIL import Image
 from pathlib import Path
 out = Path(sys.argv[1])
+# Large art with fine details and alpha: the retained reduction must match
+# Pillow's premultiplied Lanczos result, including hidden edge colors.
+large = Image.new('RGBA', (2048, 1024))
+large.putdata([((x * 17) % 256, (y * 31) % 256, 255 if x % 3 else 0,
+                (x + y) % 256) for y in range(1024) for x in range(2048)])
+large.save(out / 'large.webp', lossless=True)
+(out / 'large.rgba').write_bytes(large.resize((256, 128), Image.Resampling.LANCZOS).tobytes())
 out.joinpath('huge.png').write_bytes(b'\x89PNG\r\n\x1a\n' + struct.pack('>I', 13) + b'IHDR' + struct.pack('>II', 40000, 2))
 # A header-only JPEG drives the fake activity, rather than pretending to
 # exercise Android's BitmapFactory on this desktop test host.

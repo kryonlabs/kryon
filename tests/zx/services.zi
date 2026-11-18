@@ -11,7 +11,7 @@ stage: s32;
 started: s64;
 
 Failure :: (code: s32) -> s32 {
-    print("ZX service failure %\n", code)
+    print("ZX service failure % at stage % (media %, fetch %)\n", code, stage, MediaState(), FetchTextState())
     if ServiceKeepOpen() {
         stage = -code
         return 0

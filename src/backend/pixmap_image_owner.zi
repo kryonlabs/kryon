@@ -17,3 +17,8 @@ PixmapImageSourceUse :: (load: PixmapImageLoad) -> bool {
     pixmap_image_load = load
     return true
 }
+
+// Optional source: draws request enough pixels for a crop at device scale.
+PixmapImagePrepare :: #type (slot: s32, width: s32, height: s32) -> bool;
+pixmap_image_prepare: PixmapImagePrepare;
+PixmapImagePrepareUse :: (prepare: PixmapImagePrepare) { pixmap_image_prepare = prepare }

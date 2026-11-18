@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Android shipped pictures probe dimensions before decoding and retain a
+  Lanczos reduction at the drawn device resolution, reusing it until a
+  larger draw needs more detail. Intrinsic dimensions stay stable.
 - Scene textures fingerprint with a quarter of the multiplies: the
   fingerprint still covers every byte but multiplies once per four-byte
   pixel, across four independent lanes, and folds in the byte count.

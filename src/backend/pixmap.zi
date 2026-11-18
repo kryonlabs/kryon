@@ -155,6 +155,9 @@ pixmap_image_paths: [PixmapImageLimit][256]u8;
 pixmap_image_lengths: [PixmapImageLimit]s32;
 pixmap_image_widths: [PixmapImageLimit]s32;
 pixmap_image_heights: [PixmapImageLimit]s32;
+// Intrinsic dimensions stay stable when a source retains reduced pixels.
+pixmap_image_natural_widths: [PixmapImageLimit]s32;
+pixmap_image_natural_heights: [PixmapImageLimit]s32;
 // Hosts that retain rendered pixels can observe decoded asset replacements.
 // Registration publishes borrowed storage even when its path and size match;
 // a caller may have edited those pixels since its last registration.
@@ -223,6 +226,7 @@ PixmapClearImage :: (slot: s32) {
     }
     PixmapImageReplacing(slot, null)
     if pixmap_image_lengths[slot] > 0 { pixmap_image_revision += 1; pixmap_image_revisions[slot] = pixmap_image_revision }
+    pixmap_image_natural_widths[slot] = 0; pixmap_image_natural_heights[slot] = 0
     pixmap_image_lengths[slot] = 0; pixmap_image_widths[slot] = 0
     pixmap_image_heights[slot] = 0; pixmap_image_pixels[slot].value = pixmap_pixels[0:0]
     pixmap_image_index_built = false
@@ -295,24 +299,60 @@ PixmapImageIndex :: (path: string) -> s32 {
     return -1
 }
 
+// Metadata-only slots own no pixels. A file source fills them at first draw.
+PixmapSetImageInfo :: (slot: s32, path: string, width: s32, height: s32) -> bool {
+    return PixmapSetImageStorage(slot, path, 0, 0, width, height, pixmap_pixels[0:0])
+}
+
 #program_export
 PixmapSetImage :: (slot: s32, path: string, width: s32, height: s32, pixels: []u32) -> bool {
+    if width <= 0 || height <= 0 { return false }
+    return PixmapSetImageStorage(slot, path, width, height, width, height, pixels)
+}
+
+PixmapSetImageStorage :: (slot: s32, path: string, width: s32, height: s32,
+    natural_width: s32, natural_height: s32, pixels: []u32) -> bool {
     if slot < 0 || slot >= PixmapAssetImageLimit || path.count == 0 || path.count >= 256 ||
-        width <= 0 || height <= 0 || width > 16384 || height > 16384 ||
-        cast(s64)width * cast(s64)height > pixels.count { return false }
+        natural_width <= 0 || natural_height <= 0 || natural_width > 16384 || natural_height > 16384 ||
+        width < 0 || height < 0 || width > 16384 || height > 16384 ||
+        (width == 0) != (height == 0) || cast(s64)width * height > pixels.count { return false }
     for i: 0..cast(s32)path.count - 1 { if path[i] == cast(u8)0 { return false } }
     existing := PixmapImageIndex(path)
     if existing >= 0 && existing != slot { return false }
     #if PIXMAP_LANCZOS {
         Lanczos.LanczosForget(PixmapLanczosContent(slot))
     }
-    PixmapImageReplacing(slot, *pixels[0])
+    next: *u32
+    if pixels.count > 0 { next = *pixels[0] }
+    PixmapImageReplacing(slot, next)
     for i: 0..cast(s32)path.count - 1 { pixmap_image_paths[slot][i] = path[i] }
     pixmap_image_lengths[slot] = cast(s32)path.count
     pixmap_image_widths[slot] = width; pixmap_image_heights[slot] = height
+    pixmap_image_natural_widths[slot] = natural_width; pixmap_image_natural_heights[slot] = natural_height
     pixmap_image_pixels[slot].value = pixels; pixmap_image_revision += 1
     pixmap_image_revisions[slot] = pixmap_image_revision
     pixmap_image_index_built = false; return true
+}
+
+PixmapPrepareImage :: (slot: s32, source: *Rectangle, width: float32, height: float32) -> bool {
+    if slot < 0 { return false }
+    if slot >= PixmapAssetImageLimit { return true }
+    natural_width := pixmap_image_natural_widths[slot]
+    natural_height := pixmap_image_natural_heights[slot]
+    if natural_width <= 0 || natural_height <= 0 || source.width == 0.0 || source.height == 0.0 { return false }
+    if pixmap_image_prepare != null {
+        requested_width := width * cast(float32)natural_width / (ifx source.width < 0.0 then -source.width else source.width)
+        requested_height := height * cast(float32)natural_height / (ifx source.height < 0.0 then -source.height else source.height)
+        if !Finite32(requested_width) || !Finite32(requested_height) || requested_width <= 0.0 || requested_height <= 0.0 { return false }
+        if requested_width > cast(float32)natural_width { requested_width = cast(float32)natural_width }
+        if requested_height > cast(float32)natural_height { requested_height = cast(float32)natural_height }
+        if !pixmap_image_prepare(slot, CeilInteger(requested_width), CeilInteger(requested_height)) { return false }
+    }
+    if pixmap_image_pixels[slot].value.count == 0 { return false }
+    x := cast(float32)pixmap_image_widths[slot] / cast(float32)natural_width
+    y := cast(float32)pixmap_image_heights[slot] / cast(float32)natural_height
+    source.x *= x; source.width *= x; source.y *= y; source.height *= y
+    return true
 }
 
 // Native threaded builds draw smooth images from the shared Lanczos cache
@@ -1427,6 +1467,7 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32, source: Rectangle,
             destination.width <= 0.0 || destination.height <= 0.0 || clip.width <= 0.0 || clip.height <= 0.0 {
             print("Kryon: skipped image: invalid geometry\n"); return
         }
+        if !PixmapPrepareImage(slot, *source, destination.width, destination.height) { return }
         smooth := CurrentPaintSmooth()
         if smooth && rotation == 0.0 && source.width == destination.width && source.height == destination.height {
             // An integral translation maps every device pixel center to a
@@ -1534,6 +1575,24 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     if right > pixmap_clip_right { right = pixmap_clip_right }
     if bottom > pixmap_clip_bottom { bottom = pixmap_clip_bottom }
     if right <= left || bottom <= top { return }
+    horizontal: float32; vertical: float32
+    for row: cast(s32)0..rows - 1 { for column: cast(s32)0..columns - 1 {
+        at := row * columns + column
+        if column + 1 < columns {
+            dx := (points[at + 1].x - points[at].x) * pixmap_scale_x
+            dy := (points[at + 1].y - points[at].y) * pixmap_scale_y
+            length := dx * dx + dy * dy
+            if length > horizontal { horizontal = length }
+        }
+        if row + 1 < rows {
+            dx := (points[at + columns].x - points[at].x) * pixmap_scale_x
+            dy := (points[at + columns].y - points[at].y) * pixmap_scale_y
+            length := dx * dx + dy * dy
+            if length > vertical { vertical = length }
+        }
+    } }
+    if !PixmapPrepareImage(slot, *source, cast(float32)Sqrt(cast(float64)horizontal) * cast(float32)(columns - 1),
+        cast(float32)Sqrt(cast(float64)vertical) * cast(float32)(rows - 1)) { return }
     smooth := CurrentPaintSmooth()
     #if #defined(ANDROID_BUILD) {
         if smooth && slot < PixmapManagedImageStart {
@@ -1720,13 +1779,13 @@ PixmapImageTransformedRange :: (start: s32, end: s32, data: PixmapImageRowsData)
 
 #program_export
 ImageWidth :: (asset_path: string) -> s32 {
-    slot := PixmapImageFind(asset_path); if slot >= 0 { return pixmap_image_widths[slot] }
+    slot := PixmapImageFind(asset_path); if slot >= 0 { return pixmap_image_natural_widths[slot] }
     return 0
 }
 
 #program_export
 ImageHeight :: (asset_path: string) -> s32 {
-    slot := PixmapImageFind(asset_path); if slot >= 0 { return pixmap_image_heights[slot] }
+    slot := PixmapImageFind(asset_path); if slot >= 0 { return pixmap_image_natural_heights[slot] }
     return 0
 }
 

@@ -6,6 +6,7 @@ Services :: #import "pixmap_assets_android";
 Raster :: #import "pixmap";
 Pixels :: #import "image_pixels";
 #import "std/vec"
+#import "geometry"
 Cleanup :: #import "android_host_cleanup";
 #import "android_jni"
 
@@ -29,9 +30,17 @@ TestPictures :: (width: s32, height: s32, checksum: u32) -> s32 {
     if Raster.ImageWidth(picture) != width || Raster.ImageHeight(picture) != height { return 1 }
     slot := Raster.PixmapImageIndex(picture)
     if slot < 0 || Raster.PixmapPaintImageSlot(picture, 0) != slot { return 2 }
+    if Services.android_picture_bytes != 0 { return 11 }
+    source: Rectangle = .{0.0, 0.0, cast(float32)width, cast(float32)height}
+    if !Raster.PixmapPrepareImage(slot, *source, cast(float32)width, cast(float32)height) { return 12 }
     sum: u32
     for pixel: Raster.pixmap_image_pixels[slot].value { sum = sum * cast(u32)31 + pixel }
     if sum != checksum { return 3 }
+    if !Services.RasterInvalidateImage(picture) || Raster.ImageWidth(picture) != width { return 13 }
+    slot = Raster.PixmapImageIndex(picture)
+    source = .{0.0, 0.0, cast(float32)width, cast(float32)height}
+    if !Raster.PixmapPrepareImage(slot, *source, cast(float32)width / 2.0, cast(float32)height / 2.0) ||
+        Services.android_picture_bytes >= cast(s64)width * height * 4 || Raster.ImageHeight(picture) != height { return 14 }
     missing := "images/kryon-missing.png"
     if Raster.ImageWidth(missing) != 0 || Raster.PixmapPaintImageSlot(missing, 0) >= 0 { return 4 }
     Cleanup.AndroidHostResourcesClose()
