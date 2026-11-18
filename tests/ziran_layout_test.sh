@@ -247,8 +247,6 @@ EOF
 package main
 func main() { if UseLayout_Answer() != 42 { panic("wrong layout result") } }
 EOF
-    GO111MODULE=off go run "$work/go-$input/geometry.go" "$work/go-$input/math.go" \
-        "$work/go-$input/layout_behavior.go" "$work/go-$input/layout_props.go" \
-        "$work/go-$input/group.go" \
-        "$work/go-$input/use_layout.go" "$work/go-$input/main.go"
+    # Run every generated file: std modules such as finite arrive with math.
+    GO111MODULE=off go run "$work/go-$input"/*.go
 done
