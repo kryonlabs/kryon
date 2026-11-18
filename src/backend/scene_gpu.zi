@@ -19,6 +19,9 @@
 M :: #import "scene_gpu_math";
 #import "scene_gpu_sources"
 #import "scene_gpu_dfg"
+#if OS == .ANDROID && #defined(__arm__) {
+ AndroidText :: #import "std/byte_text_linux";
+}
 
 SceneGpuCapabilities :: struct {
  available: bool
@@ -60,6 +63,7 @@ SceneGpuAsyncResult :: struct {
 }
 GpuTransfer :: struct {
  buffer: u32; bytes: s64; fence: *void
+ framebuffer: u32; texture: u32
  request_id: u64; camera: SceneCamera; width: s32; height: s32
  opaque: bool; frame: SceneGpuFrame; submitted_at: float64
 }
@@ -81,7 +85,7 @@ GpuLocations :: struct {
  graded: s32; grade_tint: s32; grade_lamp: [4]s32; grade_lamp_color: [4]s32; grade_beam_centre: s32; grade_beam_u: s32
  grade_beam_v: s32; grade_beam_normal: s32; grade_beam_direction: s32; grade_beam_color: s32; grade_beam_shadow: s32
 }
-GpuProgram :: struct { features: s32; key: *ShaderProgram; saved: ShaderProgram; id: u32; used: bool; locations: GpuLocations }
+GpuProgram :: struct { features: s32; key: *ShaderProgram; saved: ShaderProgram; id: u32; used: bool; frame_uniforms_set: bool; locations: GpuLocations }
 GpuTexture :: struct { key: *u8; cache_key: u64; width: s32; height: s32; id: u32; used: bool; bytes: Vec(u8) }
 GpuShadow :: struct { texture: u32; framebuffer: u32; size: s32; source: SceneLight }
 GpuBindingCheck :: struct {program: *ShaderProgram; uniforms: *ShaderValue; uniform_count: s64; samplers: *ShaderSampler; sampler_count: s64}
@@ -190,7 +194,7 @@ SceneGpuRender :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,image
  frame:=RenderTarget(gpu,scene,camera)
  if !frame.ok {return frame}
  converting:=Now()
- if !StraightReadbackTarget(gpu) {return .{diagnostic="straight RGBA readback target unavailable"}}
+ if !StraightReadbackTarget(gpu,*gpu.straight_framebuffer,*gpu.straight_texture) {return .{diagnostic="straight RGBA readback target unavailable"}}
  submitted:=Now()
  G.PixelStore(0x0d05,1);G.BindBuffer(0x88eb,0)
  G.ReadPixels(0,0,gpu.width,gpu.height,0x1908,0x1401,cast(*void)*gpu.readback[0])
@@ -198,8 +202,7 @@ SceneGpuRender :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,image
  if G.GetError()!=0 {return .{diagnostic="GLES render/readback failed"}}
  // Commit only after successful GL completion, preserving the previous Image
  // on GPU failure. A single contiguous copy replaces row flips/alpha scans.
- if !VecResize(image.pixels,bytes) {return .{diagnostic="Image allocation failure"}}
- unused G.CopyMemory(cast(*void)*image.pixels[0],cast(*void)*gpu.readback[0],cast(usize)bytes)
+ if !CopyReadback(gpu,image,bytes) {return .{diagnostic="Image allocation failure"}}
  gpu.resources.frames+=1
  frame.submit_ms+=submitted-converting
  frame.readback_ms=read-submitted;frame.conversion_ms=submitted-converting+Now()-read
@@ -213,7 +216,10 @@ SceneGpuRender :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,image
 RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->SceneGpuFrame {
  start:=Now()
  if !PrepareGeometry(gpu,scene) { return .{diagnostic="invalid geometry or allocation failure"} }
- for at: 0..gpu.programs.count-1 { gpu.programs[at].used=false }
+ for at: 0..gpu.programs.count-1 {
+  gpu.programs[at].used=false
+  gpu.programs[at].frame_uniforms_set=false
+ }
  for at: 0..gpu.textures.count-1 { gpu.textures[at].used=false }
  defer Sweep(gpu)
  VecClear(gpu.bindings)
@@ -224,7 +230,7 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
    diagnostic:=ValidateBindings(gpu,m)
    if !diagnostic.ok { return .{diagnostic=diagnostic.message} }
   }
-  if ProgramFor(gpu,m.shader,MaterialFeatures(m,camera.perspective)|shadow_features)==0 { return .{diagnostic="material GLSL program rejected"} }
+  if ProgramFor(gpu,m.shader,MaterialFeatures(m,camera.perspective)|shadow_features)==null { return .{diagnostic="material GLSL program rejected"} }
  }
  BindVertices(gpu)
  prepared:=Now();shadows_before:=gpu.resources.shadow_renders
@@ -237,7 +243,9 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
  G.DepthMask(1);G.ClearDepth(1.0);G.Clear(0x4100)
  G.Enable(0x0b71);G.DepthFunc(0x0203);G.Disable(0x0be2);G.Disable(0x0bd0)
  G.FrontFace(0x0901);G.CullFace(0x0405)
- view:=M.LookAt(camera.position,camera.target,camera.up);vp:=M.Multiply(M.Projection(camera),view)
+ view:=M.LookAt(camera.position,camera.target,camera.up)
+ projection:=M.Projection(camera);vp:=M.Multiply(projection,view)
+ grade:=PrepareGrade(scene.grade)
  VecClear(gpu.order);VecClear(gpu.keys)
  draw_calls: s32
  for at: 0..gpu.draws.count-1 {
@@ -245,9 +253,9 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
   draw_calls+=1
   m:=scene.meshes[d.mesh].material
   if m.transparent {
-   origin:=M.Point(view,d.origin);clip:=M.Point(M.Projection(camera),origin);w:=M.ProjectW(M.Projection(camera),origin)
+   origin:=M.Point(view,d.origin);clip:=M.Point(projection,origin);w:=M.ProjectW(projection,origin)
    if !VecPush(gpu.order,cast(s32)at)||!VecPush(gpu.keys,ifx w!=0.0 then clip.z/w else clip.z) { return .{diagnostic="sort allocation failure"} }
-  } else if !Draw(gpu,scene,d,view,vp,camera.perspective,shadow_features) { return .{diagnostic="material texture unavailable"} }
+  } else if !Draw(gpu,scene,d,view,vp,*grade,camera.perspective,shadow_features) { return .{diagnostic="material texture unavailable"} }
  }
  for i: 1..gpu.order.count-1 {
   key:=gpu.keys[i];draw:=gpu.order[i];j:=i-1
@@ -256,7 +264,7 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
  }
  G.Enable(0x0be2);G.BlendFuncSeparate(0x0302,0x0303,1,0x0303)
  // CPU transparent meshes also write depth.
- for at: 0..gpu.order.count-1 { if !Draw(gpu,scene,gpu.draws[gpu.order[at]],view,vp,camera.perspective,shadow_features) {return .{diagnostic="material texture unavailable"}} }
+ for at: 0..gpu.order.count-1 { if !Draw(gpu,scene,gpu.draws[gpu.order[at]],view,vp,*grade,camera.perspective,shadow_features) {return .{diagnostic="material texture unavailable"}} }
  G.BindFramebuffer(0x8ca8,gpu.framebuffer);G.BindFramebuffer(0x8ca9,gpu.resolve)
  G.BlitFramebuffer(0,0,gpu.width,gpu.height,0,0,gpu.width,gpu.height,0x4000,0x2600)
  submitted:=Now()
@@ -282,22 +290,26 @@ void main(){
  outputColor=vec4(bytes)/255.0;
 }
 GLSL
-StraightReadbackTarget :: (gpu: *SceneGpuContext)->bool {
+DropReadbackTarget :: (framebuffer: *u32,texture: *u32) {
+ G.DeleteFramebuffers(1,framebuffer);G.DeleteTextures(1,texture)
+ framebuffer[0]=0;texture[0]=0
+}
+StraightReadbackTarget :: (gpu: *SceneGpuContext,framebuffer: *u32,texture: *u32)->bool {
  if gpu.straight_program==0 {
   gpu.straight_program=LoadSceneProgram(gpu,GpuProbeVertex,GpuStraightFragment)
   if gpu.straight_program==0 {return false}
  }
- if gpu.straight_framebuffer==0 {
-  G.GenFramebuffers(1,*gpu.straight_framebuffer)
-  G.BindFramebuffer(0x8d40,gpu.straight_framebuffer)
-  gpu.straight_texture=G.Texture(gpu.width,gpu.height,0x8058,0x1908,0x1401,null)
-  G.FramebufferTexture(0x8d40,0x8ce0,0x0de1,gpu.straight_texture,0)
+ if framebuffer[0]==0 {
+  G.GenFramebuffers(1,framebuffer)
+  G.BindFramebuffer(0x8d40,framebuffer[0])
+  texture[0]=G.Texture(gpu.width,gpu.height,0x8058,0x1908,0x1401,null)
+  G.FramebufferTexture(0x8d40,0x8ce0,0x0de1,texture[0],0)
   if G.CheckFramebuffer(0x8d40)!=0x8cd5 {
-   G.DeleteFramebuffers(1,*gpu.straight_framebuffer);G.DeleteTextures(1,*gpu.straight_texture)
-   gpu.straight_framebuffer=0;gpu.straight_texture=0
+   DropReadbackTarget(framebuffer,texture)
+   unused G.GetError()
    return false
   }
- } else {G.BindFramebuffer(0x8d40,gpu.straight_framebuffer)}
+ } else {G.BindFramebuffer(0x8d40,framebuffer[0])}
  G.Viewport(0,0,gpu.width,gpu.height)
  G.Disable(0x0b71);G.Disable(0x0be2);G.Disable(0x0b44);G.Disable(0x0bd0)
  G.UseProgram(gpu.straight_program)
@@ -305,6 +317,11 @@ StraightReadbackTarget :: (gpu: *SceneGpuContext)->bool {
  G.Uniform1i(G.Location(gpu.straight_program,"source"),0)
  G.DrawArrays(4,0,3)
  return G.GetError()==0
+}
+CopyReadback :: (gpu: *SceneGpuContext,image: *Image,bytes: s64)->bool {
+ if !VecResize(image.pixels,bytes) {return false}
+ unused G.CopyMemory(cast(*void)*image.pixels[0],cast(*void)*gpu.readback[0],cast(usize)bytes)
+ return true
 }
 ConvertReadback :: (gpu: *SceneGpuContext,image: *Image,opaque: bool)->bool {
  if !VecResize(image.pixels,cast(s64)gpu.width*gpu.height*4) {return false}
@@ -363,17 +380,27 @@ SceneGpuSubmit :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,width
  for at:0..1 {if gpu.transfers[at].fence==null {index=cast(s32)at;break}}
  if index<0 {return .{ok=true,busy=true}}
  slot:=*gpu.transfers[index];bytes:=cast(s64)width*height*4
- if slot.buffer==0 {G.GenBuffers(1,*slot.buffer)}
- G.BindBuffer(0x88eb,slot.buffer)
- if slot.bytes!=bytes {G.BufferData(0x88eb,bytes,null,0x88e1);slot.bytes=bytes}
- G.BindBuffer(0x88eb,0)
- if slot.buffer==0||G.GetError()!=0 {return .{diagnostic="pixel pack allocation failed"}}
  start:=Now()
  frame:=RenderTarget(gpu,scene,camera)
  if !frame.ok {return .{diagnostic=frame.diagnostic}}
- G.BindFramebuffer(0x8d40,gpu.resolve);G.PixelStore(0x0d05,1)
- G.BindBuffer(0x88eb,slot.buffer)
- G.ReadPixels(0,0,width,height,0x1908,0x1401,null)
+ #if OS == .ANDROID && #defined(__arm__) {
+  // Mapped pixel pack memory is slow to copy on this driver. Each pending
+  // frame gets a private straight-RGBA texture and is read after its fence.
+  if AndroidText.TextFromCString(*gpu.capabilities.renderer[0])=="PowerVR Rogue GE8320" {
+   if StraightReadbackTarget(gpu,*slot.framebuffer,*slot.texture) {
+    if slot.buffer!=0 {G.DeleteBuffers(1,*slot.buffer);slot.buffer=0}
+   } else {DropReadbackTarget(*slot.framebuffer,*slot.texture)}
+  }
+ }
+ if slot.framebuffer==0 {
+  if slot.buffer==0 {G.GenBuffers(1,*slot.buffer);slot.bytes=0}
+  G.BindBuffer(0x88eb,slot.buffer)
+  if slot.bytes!=bytes {G.BufferData(0x88eb,bytes,null,0x88e1)}
+  if slot.buffer==0||G.GetError()!=0 {return .{diagnostic="pixel pack allocation failed"}}
+  G.BindFramebuffer(0x8d40,gpu.resolve);G.PixelStore(0x0d05,1)
+  G.ReadPixels(0,0,width,height,0x1908,0x1401,null)
+ }
+ slot.bytes=bytes
  slot.fence=G.FenceSync(0x9117,0)
  G.Flush()
  if slot.fence==null||G.GetError()!=0 {
@@ -388,7 +415,7 @@ SceneGpuSubmit :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,width
  return .{ok=true,queued=true,request_id=request_id,camera=camera,width=width,height=height,frame=slot.frame}
 }
 
-// Oldest queued completion only. timeout=0 never waits for unfinished GPU work.
+// Check the oldest queued fence without waiting, then transfer a ready frame.
 // Empty/unready/error leaves Image dimensions and pixels untouched.
 SceneGpuPoll :: (gpu: *SceneGpuContext,image: *Image)->SceneGpuAsyncResult {
  index: s32=-1
@@ -407,16 +434,21 @@ SceneGpuPoll :: (gpu: *SceneGpuContext,image: *Image)->SceneGpuAsyncResult {
  if image.width!=slot.width||image.height!=slot.height {return .{diagnostic="completed frame size differs from output Image"}}
  if !VecResizeBounded(gpu.readback,slot.bytes,slot.bytes) {return .{diagnostic="readback allocation failed"}}
  start:=Now()
- G.BindBuffer(0x88eb,slot.buffer)
- mapped:=G.MapBufferRange(0x88eb,0,slot.bytes,1)
- if mapped==null {return .{diagnostic="completed pixel pack mapping failed"}}
- // One retained CPU buffer also serves synchronous rendering. Validate unmap
- // before publishing any output; no second CPU staging allocation is needed.
- unused G.CopyMemory(cast(*void)*gpu.readback[0],mapped,cast(usize)slot.bytes)
- valid:=G.UnmapBuffer(0x88eb)!=0&&G.GetError()==0
- if !valid {return .{diagnostic="completed pixel pack mapping invalid"}}
+ if slot.framebuffer!=0 {
+  G.BindFramebuffer(0x8d40,slot.framebuffer);G.PixelStore(0x0d05,1);G.BindBuffer(0x88eb,0)
+  G.ReadPixels(0,0,slot.width,slot.height,0x1908,0x1401,cast(*void)*gpu.readback[0])
+  if G.GetError()!=0 {return .{diagnostic="completed framebuffer readback failed"}}
+ } else {
+  G.BindBuffer(0x88eb,slot.buffer)
+  mapped:=G.MapBufferRange(0x88eb,0,slot.bytes,1)
+  if mapped==null {return .{diagnostic="completed pixel pack mapping failed"}}
+  // Validate unmap before publishing from the retained CPU staging buffer.
+  unused G.CopyMemory(cast(*void)*gpu.readback[0],mapped,cast(usize)slot.bytes)
+  if G.UnmapBuffer(0x88eb)==0||G.GetError()!=0 {return .{diagnostic="completed pixel pack mapping invalid"}}
+ }
  read:=Now()
- if !ConvertReadback(gpu,image,slot.opaque) {return .{diagnostic="Image allocation failure"}}
+ copied:=ifx slot.framebuffer!=0 then CopyReadback(gpu,image,slot.bytes) else ConvertReadback(gpu,image,slot.opaque)
+ if !copied {return .{diagnostic="Image allocation failure"}}
  result: SceneGpuAsyncResult=.{ok=true,completed=true,request_id=slot.request_id,camera=slot.camera,
   width=slot.width,height=slot.height,frame=slot.frame,latency_ms=Now()-slot.submitted_at}
  result.frame.readback_ms=read-start;result.frame.conversion_ms=Now()-read
@@ -507,6 +539,7 @@ SceneGpuMemoryUsage :: (gpu: *SceneGpuContext)->SceneGpuResources {
  for at:0..1 {
   slot:=gpu.transfers[at]
   if slot.buffer!=0 {r.buffers+=1;r.gpu_bytes+=slot.bytes}
+  if slot.framebuffer!=0 {r.framebuffers+=1;r.textures+=1;r.gpu_bytes+=slot.bytes}
   if slot.fence!=null {r.fences+=1;r.pending_frames+=1}
  }
  if gpu.shadow_program!=0 {r.programs+=1}
@@ -580,6 +613,7 @@ DropTransfers :: (gpu: *SceneGpuContext) {
   slot:=*gpu.transfers[at]
   if slot.fence!=null {G.DeleteSync(slot.fence);gpu.resources.cancelled_frames+=1}
   if slot.buffer!=0 {G.DeleteBuffers(1,*slot.buffer)}
+  if slot.framebuffer!=0 {DropReadbackTarget(*slot.framebuffer,*slot.texture)}
   slot[0]=GpuTransfer.{}
  }
 }
@@ -657,8 +691,7 @@ DropTargets :: (gpu: *SceneGpuContext) {
  DropTransfers(gpu)
  G.DeleteFramebuffers(1,*gpu.framebuffer);G.DeleteFramebuffers(1,*gpu.resolve)
  G.DeleteRenderbuffers(1,*gpu.color);G.DeleteRenderbuffers(1,*gpu.depth);G.DeleteTextures(1,*gpu.resolved)
- G.DeleteFramebuffers(1,*gpu.straight_framebuffer);G.DeleteTextures(1,*gpu.straight_texture)
- gpu.straight_framebuffer=0;gpu.straight_texture=0
+ DropReadbackTarget(*gpu.straight_framebuffer,*gpu.straight_texture)
  gpu.framebuffer=0;gpu.resolve=0;gpu.color=0;gpu.depth=0;gpu.resolved=0;gpu.width=0;gpu.height=0
 }
 Resize :: (gpu: *SceneGpuContext,width: s32,height: s32)->bool {
@@ -1053,13 +1086,13 @@ LoadSceneProgram :: (gpu: *SceneGpuContext,vertex: string,fragment: string,scene
   return G.Program(vertex,fragment,gpu.log[:])
  }
 }
-ProgramFor :: (gpu: *SceneGpuContext,key: *ShaderProgram,features: s32)->u32 {
+ProgramFor :: (gpu: *SceneGpuContext,key: *ShaderProgram,features: s32)->*GpuProgram {
  slot: s64=-1
  for at: 0..gpu.programs.count-1 {
   p:=*gpu.programs[at]
   if p.id!=0&&p.key==key&&p.features==features {
-   if p.used {return p.id}
-   if key==null||G.CompareMemory(cast(*void)*p.saved,cast(*void)key,size_of(ShaderProgram))==0 {p.used=true;return p.id}
+   if p.used {return p}
+   if key==null||G.CompareMemory(cast(*void)*p.saved,cast(*void)key,size_of(ShaderProgram))==0 {p.used=true;return p}
    G.DeleteProgram(p.id);p.id=0;slot=at;break
   }
   if p.id==0 {slot=at}
@@ -1079,18 +1112,18 @@ ProgramFor :: (gpu: *SceneGpuContext,key: *ShaderProgram,features: s32)->u32 {
  BuilderPrint(*code,"#define KRYON_PERSPECTIVE %.0\n",(features>>6)&1)
  if key!=null {
   translated:=ShaderGLSLTranslate(key)
-  if !translated.diagnostic.ok {return 0}
+  if !translated.diagnostic.ok {return null}
   unused BuilderAppend(code,TextView(translated.source))
  } else {unused BuilderAppend(code,"vec4 kryonMaterial(vec4 c,vec4 p,vec4 n,vec4 uv){return c;}\n")}
  unused BuilderAppend(code,GpuFragmentMain)
  source: Text=BuilderFinish(code)
  id:=LoadSceneProgram(gpu,GpuVertexSource,TextView(source),true)
- if id==0 {return 0}
+ if id==0 {return null}
  value: GpuProgram;value.key=key;value.features=features;value.id=id;value.used=true;value.locations=CacheLocations(id)
  if key!=null {value.saved=key[0]}
- if slot>=0 {gpu.programs[slot]=value}
- else if !VecPush(gpu.programs,value) {G.DeleteProgram(id);return 0}
- return id
+ if slot>=0 {gpu.programs[slot]=value;return *gpu.programs[slot]}
+ if !VecPush(gpu.programs,value) {G.DeleteProgram(id);return null}
+ return *gpu.programs[gpu.programs.count-1]
 }
 TextureFor :: (gpu: *SceneGpuContext,unit: s32,pixels: *u8,width: s32,height: s32,cache_key: u64=0)->u32 {
  if width<=0||height<=0||width>gpu.capabilities.max_texture_size||height>gpu.capabilities.max_texture_size {return 0}
@@ -1173,10 +1206,9 @@ CacheLocations :: (id: u32)->GpuLocations {
  }
  return l
 }
-// The scene's SceneGrade for one draw, as PrepareGrade gives it to the CPU renderer.
-GradeUniforms :: (l: *GpuLocations,g: RenderGrade,material_graded: bool) {
- G.Uniform1f(l.graded,ifx g.on&&material_graded then 1.0 else 0.0)
- if !g.on||!material_graded {return}
+// The scene grade is shared by every material using this program.
+GradeUniforms :: (l: *GpuLocations,g: *RenderGrade) {
+ if !g.on {return}
  G.Uniform4f(l.grade_tint,cast(float32)g.tint.x,cast(float32)g.tint.y,cast(float32)g.tint.z,cast(float32)g.saturation)
  for at:0..3 {
   p:=g.lamp_position[at];G.Uniform4f(l.grade_lamp[at],cast(float32)p.x,cast(float32)p.y,cast(float32)p.z,cast(float32)g.lamp_reach[at])
@@ -1188,28 +1220,10 @@ GradeUniforms :: (l: *GpuLocations,g: RenderGrade,material_graded: bool) {
  c:=g.beam_color;G.Uniform4f(l.grade_beam_color,cast(float32)c.x,cast(float32)c.y,cast(float32)c.z,ifx g.beam then cast(float32)g.beam_sharp else 0.0)
  G.Uniform1i(l.grade_beam_shadow,g.beam_shadow)
 }
-Draw :: (gpu: *SceneGpuContext,scene: *Scene,d: GpuDraw,view: M.GpuMatrix,vp: M.GpuMatrix,perspective: bool,shadow_features: s32)->bool {
- m:=scene.meshes[d.mesh].material;id:=ProgramFor(gpu,m.shader,MaterialFeatures(m,perspective)|shadow_features);if id==0 {return false}
- locations: *GpuLocations
- for at:0..gpu.programs.count-1 {if gpu.programs[at].id==id {locations=*gpu.programs[at].locations;break}}
- if locations==null {return false}
- G.UseProgram(id);MatrixAt(locations.vp,vp);MatrixAt(locations.view,view)
- base:=LinearColor(m.color);G.Uniform4f(locations.base,cast(float32)base.x,cast(float32)base.y,cast(float32)base.z,cast(float32)m.opacity)
- VectorAt(locations.glow,M.Times(LinearColor(m.glow),m.glow_strength))
- G.Uniform4f(locations.material,cast(float32)m.roughness,cast(float32)m.metalness,cast(float32)m.alpha_test,cast(float32)cast(s32)m.kind)
- G.Uniform4f(locations.flags,ifx m.vertex_colors then 1.0 else 0.0,ifx m.flat then 1.0 else 0.0,ifx m.double_sided then 1.0 else 0.0,ifx d.receive then 1.0 else 0.0)
- G.Uniform4f(locations.settings,ifx scene.tone_mapping then 1.0 else 0.0,ifx m.exact_color then 1.0 else 0.0,cast(float32)scene.exposure,ifx perspective then 1.0 else 0.0)
- G.Uniform1i(locations.transparent,ifx m.transparent then 1 else 0)
- GradeUniforms(locations,PrepareGrade(scene.grade),!m.ungraded)
- if m.double_sided {G.Disable(0x0b44)} else {G.Enable(0x0b44)}
- G.Uniform2f(locations.albedo_size,0.0,0.0);G.Uniform2f(locations.albedo_sampling,0.0,0.0);G.Uniform1i(locations.albedo,0)
- if m.texture>=0&&m.texture<scene.textures.count {
-  t:=scene.textures[m.texture];bytes:=cast(s64)t.width*t.height*4
-  if t.first_texel<0||t.first_texel+bytes>scene.texels.count {return false}
-  texture:=TextureFor(gpu,0,*scene.texels[t.first_texel],t.width,t.height,t.cache_key);if texture==0 {return false}
-  G.BindTexture(0x0de1,texture);G.Uniform2f(locations.albedo_size,cast(float32)t.width,cast(float32)t.height)
-  G.Uniform2f(locations.albedo_sampling,cast(float32)cast(s32)m.texture_filter,cast(float32)cast(s32)m.texture_wrap)
- }
+FrameUniforms :: (gpu: *SceneGpuContext,scene: *Scene,locations: *GpuLocations,view: M.GpuMatrix,vp: M.GpuMatrix,grade: *RenderGrade)->bool {
+ MatrixAt(locations.vp,vp);MatrixAt(locations.view,view)
+ GradeUniforms(locations,grade)
+ G.Uniform1i(locations.albedo,0)
  BindTexture(1,gpu.dfg);G.Uniform1i(locations.dfg,1)
  VectorAt(locations.sky,M.Times(LinearColor(scene.sky),scene.hemisphere));VectorAt(locations.ground,M.Times(LinearColor(scene.ground),scene.hemisphere))
  VectorAt(locations.up,M.Normalize(M.Direction(view,.{0,1,0})))
@@ -1230,7 +1244,35 @@ Draw :: (gpu: *SceneGpuContext,scene: *Scene,d: GpuDraw,view: M.GpuMatrix,vp: M.
    G.Uniform4f(locations.shadow_settings[at],1.0,cast(float32)l.shadow_bias,cast(float32)l.shadow_normal_bias,cast(float32)(l.shadow_radius/cast(float64)l.shadow_size))
   }
  }
- if !BindCookie(gpu,scene,locations,count) {return false}
+ return BindCookie(gpu,scene,locations,count)
+}
+Draw :: (gpu: *SceneGpuContext,scene: *Scene,d: GpuDraw,view: M.GpuMatrix,vp: M.GpuMatrix,grade: *RenderGrade,perspective: bool,shadow_features: s32)->bool {
+ m:=scene.meshes[d.mesh].material
+ program:=ProgramFor(gpu,m.shader,MaterialFeatures(m,perspective)|shadow_features)
+ if program==null {return false}
+ locations:=*program.locations
+ G.UseProgram(program.id)
+ if !program.frame_uniforms_set {
+  if !FrameUniforms(gpu,scene,locations,view,vp,grade) {return false}
+  program.frame_uniforms_set=true
+ }
+ base:=LinearColor(m.color);G.Uniform4f(locations.base,cast(float32)base.x,cast(float32)base.y,cast(float32)base.z,cast(float32)m.opacity)
+ VectorAt(locations.glow,M.Times(LinearColor(m.glow),m.glow_strength))
+ G.Uniform4f(locations.material,cast(float32)m.roughness,cast(float32)m.metalness,cast(float32)m.alpha_test,cast(float32)cast(s32)m.kind)
+ G.Uniform4f(locations.flags,ifx m.vertex_colors then 1.0 else 0.0,ifx m.flat then 1.0 else 0.0,ifx m.double_sided then 1.0 else 0.0,ifx d.receive then 1.0 else 0.0)
+ G.Uniform4f(locations.settings,ifx scene.tone_mapping then 1.0 else 0.0,ifx m.exact_color then 1.0 else 0.0,cast(float32)scene.exposure,ifx perspective then 1.0 else 0.0)
+ G.Uniform1i(locations.transparent,ifx m.transparent then 1 else 0)
+ G.Uniform1f(locations.graded,ifx grade.on&&!m.ungraded then 1.0 else 0.0)
+ if m.double_sided {G.Disable(0x0b44)} else {G.Enable(0x0b44)}
+ if m.texture>=0&&m.texture<scene.textures.count {
+  t:=scene.textures[m.texture];bytes:=cast(s64)t.width*t.height*4
+  if t.first_texel<0||t.first_texel+bytes>scene.texels.count {return false}
+  texture:=TextureFor(gpu,0,*scene.texels[t.first_texel],t.width,t.height,t.cache_key);if texture==0 {return false}
+  G.BindTexture(0x0de1,texture);G.Uniform2f(locations.albedo_size,cast(float32)t.width,cast(float32)t.height)
+  G.Uniform2f(locations.albedo_sampling,cast(float32)cast(s32)m.texture_filter,cast(float32)cast(s32)m.texture_wrap)
+ } else {
+  G.Uniform2f(locations.albedo_size,0.0,0.0);G.Uniform2f(locations.albedo_sampling,0.0,0.0)
+ }
  if m.shader!=null {
   uniforms: [64]float32
   for slot: 0..m.shader.uniform_count-1 {

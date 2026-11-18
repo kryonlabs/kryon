@@ -1108,3 +1108,92 @@ loading. Missing files and rejected binaries compile from GLSL. The saved
 binaries occupied about 270 KiB in this fixture. All three RGBA hashes matched
 the baseline. These timings cover the room renderer and exclude the Jungle
 APK's startup, asset decoding, and UI event handling.
+
+## Android touch pacing and pixel conversion
+
+The standard Android host now keeps the active frame deadline while a pointer
+is held, even when consecutive paints are unchanged. It resumes idle pacing
+after release. In an armv7 test APK with the same workload in both modes,
+three unchanged paints separated each changed paint. SurfaceFlinger reported
+20 intervals per mode.
+
+| Changed-frame intervals (ms) | Median | p90 |
+|---|---:|---:|
+| Before | 294.4 | 294.6 |
+| While held | 103.9 | 104.0 |
+
+An armv7 conversion probe compared byte-exact RGBA channel shuffles, including
+stride padding and tail pixels. The existing kernel took 4.482 ms at 719×1560
+and 0.615 ms at 249×412. An unrolled shuffle took 4.213 and 0.645 ms, and
+structured NEON loads and stores took 4.359 and 0.657 ms. The present path
+keeps the existing SIMD kernel for dirty-rectangle workloads.
+
+## Scene submission and readback
+
+Camera transforms, scene lighting, and grade values are uploaded once per
+program per frame. Materials still supply their own colors, texture and
+shader bindings, and grade enable state. The desktop benchmark verifies
+identical output hashes for all eight shaders and four animated scenes.
+
+| Desktop animated scene | 640×360 mean was → now (ms) | 1920×1080 mean was → now (ms) | 1920×1080 p95 was → now (ms) |
+|---|---:|---:|---:|
+| Lit meshes | 0.555 → 0.440 | 2.373 → 2.311 | 2.681 → 2.541 |
+| Skinned character | 0.440 → 0.403 | 2.232 → 2.197 | 2.435 → 2.435 |
+| Textured room | 0.434 → 0.381 | 2.298 → 2.253 | 2.445 → 2.549 |
+| Particle field | 0.658 → 0.539 | 2.437 → 2.303 | 2.590 → 2.484 |
+
+At 1080p, the eight desktop shader workloads took 2.101–2.258 ms mean and
+2.220–2.508 ms p95, compared with 2.120–2.261 ms mean and 2.215–2.497 ms p95
+at the previous checkpoint. Each workload has 60 measured frames after eight
+warm-ups at both sizes.
+
+An armv7 experiment read the opaque MSAA resolve straight into CPU memory
+instead of staging via the straight-RGBA pass. It produced identical pixels,
+but warm GPU wait rose from 50.495 ms to 265.441 ms median and from 51.401 ms
+to 489.952 ms p95 across 24 matched frames per path. Synchronous readback
+retains the staging pass. The measured host draw stage fell from 4.132 ms to
+3.112 ms median after the uniform change.
+
+The async PBO path was also measured with and without a staging pass before
+the pixel transfer. Both matched the synchronous image exactly. Each result
+uses 28 warm frames in the same armv7 room fixture.
+
+| Async output | Direct median / p95 (ms) | GPU staging before PBO median / p95 (ms) |
+|---|---:|---:|
+| 411×813 | 122.059 / 125.869 | 120.082 / 126.297 |
+| 1291×1423 | 432.264 / 454.859 | 440.831 / 462.718 |
+
+At 1291×1423, mapping, copying, and unmapping the completed PBO took
+172.834 ms median. The extra staging pass left that cost essentially unchanged.
+
+A split measurement on the same GPU found 169.316 ms in the mapped-memory
+copy, 0.046 ms in mapping, and 0.011 ms in unmapping at 1291×1423. The
+unrolled NEON copy took 176.323 ms. Reading a staged RGBA texture into CPU
+memory after the fence reduced total latency with identical output hashes.
+This comparison used 14 warm frames per path and size.
+
+| Async output | PBO median / p95 (ms) | CPU read after fence median / p95 (ms) |
+|---|---:|---:|
+| 411×813 | 118.814 / 126.533 | 96.176 / 97.615 |
+| 1291×1423 | 409.617 / 480.385 | 281.796 / 327.207 |
+
+Kryon uses a separate staging texture for each pending frame on the measured
+32-bit Android renderer. It checks the fence before reading and preserves
+four-sample antialiasing, exact RGBA output, and the two-frame queue.
+
+The final implementation was measured again with 14 warm frames per size.
+All 32 corresponding frames, including warm-up frames, matched the PBO
+baseline and synchronous RGBA hashes. The 170-node fixture has 129 meshes,
+99,444 vertices, and a 2×2 placeholder texture.
+
+| Async output | Final mean (ms) | PBO median → final median (ms) | PBO p95 → final p95 (ms) |
+|---|---:|---:|---:|
+| 411×813 | 81.482 | 118.814 → 87.826 | 126.533 → 96.737 |
+| 1291×1423 | 258.559 | 409.617 → 256.693 | 480.385 → 289.708 |
+
+At the larger size, the ready-frame transfer took 34.833 ms median and the
+final CPU copy took 6.250 ms median. Most end-to-end latency still elapsed
+before the fence signalled. The ARMv7 device test checked distinct readback
+textures for both slots, an interleaved synchronous render, all 256 alpha
+values, cancellation, context loss, and 24 release cycles. These measurements
+cover Kryon's renderer. The Jungle APK has additional work per frame.

@@ -166,8 +166,8 @@ DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
 }
 
 AndroidNextFrame :: (quiet_frames: *s32, started_ms: s64, finished_ms: s64,
-    paint_unchanged: bool, events: bool) -> s64 {
-    if events || !paint_unchanged { quiet_frames[0] = 0 }
+    paint_unchanged: bool, events: bool, pointer_held: bool = false) -> s64 {
+    if events || pointer_held || !paint_unchanged { quiet_frames[0] = 0 }
     else if quiet_frames[0] < 2 { quiet_frames[0] += 1 }
     if quiet_frames[0] >= 2 { return finished_ms + 100 }
     return started_ms + 16
@@ -262,7 +262,8 @@ android_main :: (app: *NativeAndroidApp) {
 
         reuse = true
         next_frame_ms = AndroidNextFrame(*quiet_frames, frame_started_ms,
-            Clock.MonotonicMilliseconds(), paint_unchanged, events)
+            Clock.MonotonicMilliseconds(), paint_unchanged, events,
+            android_frame_input.pointer.down || android_touch_secondary_down)
     }
     if !ok { unused AndroidError("kryon: android frame rendering failed") }
 }

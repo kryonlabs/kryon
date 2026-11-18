@@ -7,6 +7,9 @@ G :: #import, file "../src/backend/scene_gpu_gl.zi";
 #import "std/image"
 #import "std/vec"
 #import "std/text_tools"
+#if OS == .ANDROID && #defined(__arm__) {
+ AndroidText :: #import "std/byte_text_linux";
+}
 libc :: #system_library "c";
 AsyncPause :: (microseconds: u32)->s32 #foreign libc "usleep";
 AsyncFlush :: (stream: *void)->s32 #foreign libc "fflush";
@@ -70,7 +73,7 @@ AsyncTests :: ()->bool {
   before:=AsyncHash(*image)
   busy:=SceneGpuSubmit(*gpu,*scene,camera,160,100,1000)
   if !busy.ok||!busy.busy||busy.queued||AsyncHash(*image)!=before||SceneGpuMemoryUsage(*gpu).pending_frames!=2 {return false}
-  // Mutation and a synchronous CPU-pointer readback while BOTH PBOs are live.
+  // Mutate the scene and render synchronously while both transfers are queued.
   uniforms[0].x=0.95;SetPosition(*scene,a,0.4,0,0)
   scene.positions[0].x+=0.0001
   if !SceneGpuRender(*gpu,*scene,camera,*sync).ok {return false}
@@ -89,7 +92,16 @@ AsyncTests :: ()->bool {
   empty:=SceneGpuPoll(*gpu,*image)
   if !empty.ok||empty.completed||AsyncHash(*image)!=stable {return false}
   r:=SceneGpuMemoryUsage(*gpu)
-  if r.pending_frames!=0||r.fences!=0||r.buffers!=3 {return false}
+  if r.pending_frames!=0||r.fences!=0 {return false}
+  #if OS == .ANDROID && #defined(__arm__) {
+   if AndroidText.TextFromCString(*caps.renderer[0])=="PowerVR Rogue GE8320" {
+    first_target:=gpu.transfers[0].framebuffer;second_target:=gpu.transfers[1].framebuffer
+    if first_target==0||second_target==0||first_target==second_target||r.buffers!=1||r.framebuffers!=5 {return false}
+    if batch==0 {print("PowerVR async slots use distinct readback framebuffers\n")}
+   } else if r.buffers!=3 {return false}
+  } else {
+   if r.buffers!=3 {return false}
+  }
  }
  // The real large target exercises an unfinished fence without sync interleave.
  large:=NewImage(1280,800);defer VecFree(large.pixels)
@@ -142,5 +154,37 @@ AsyncTests :: ()->bool {
  print("Async exact camera/material/geometry/owned-texture/program frames, sync interleave, two-slot backpressure, cancellation, loss, fallback and 24 releases passed; unready polls %\n",unready)
  return true
 }
+// Sync GPU conversion must match the original mapped-PBO CPU conversion for
+// every alpha byte, including its integer rounding and zero-alpha RGB rule.
+ReadbackAlphaParity :: ()->bool {
+ gpu: SceneGpuContext;defer SceneGpuRelease(*gpu)
+ scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
+ program: ShaderProgram;defer ShaderFree(*program)
+ code: [2]ShaderInstruction=.[.{op=.ShaderSample,dest=4,a=3,slot=0},.{op=.ShaderOutput,a=4}]
+ if !ShaderCompile(*program,code[:]).ok {return false}
+ pixels: [256*4]u8
+ for at:0..255 {
+  pixels[at*4]=cast(u8)((at*7)%256);pixels[at*4+1]=cast(u8)((at*13)%256)
+  pixels[at*4+2]=cast(u8)((at*17)%256);pixels[at*4+3]=cast(u8)at
+ }
+ samplers: [1]ShaderSampler=.[.{256,1,pixels[:],false}]
+ material:=UnlitMaterial(.{255,255,255,255});material.transparent=true
+ material.shader=*program;material.shader_samplers=samplers[:]
+ unused Plane(*scene,2.0,2.0,material)
+ camera:=OrthographicCamera(-1.0,1.0,1.0,-1.0,0.1,10.0);camera.position=.{0.0,0.0,3.0}
+ sync:=NewImage(256,3);mapped:=NewImage(256,3)
+ defer VecFree(sync.pixels);defer VecFree(mapped.pixels)
+ for request:1..2 {
+  scene.background=.{48,96,144,ifx request==1 then cast(u8)255 else cast(u8)0}
+  if !SceneGpuRender(*gpu,*scene,camera,*sync).ok {return false}
+  if !SceneGpuSubmit(*gpu,*scene,camera,256,3,cast(u64)request).queued||!AsyncWait(*gpu,*mapped).completed {return false}
+  for at:0..sync.pixels.count-1 {
+   if sync.pixels[at]!=mapped.pixels[at] {print("readback alpha mismatch byte % sync % mapped %\n",at,sync.pixels[at],mapped.pixels[at]);return false}
+   if request==1&&at%4==3&&sync.pixels[at]!=cast(u8)255 {return false}
+  }
+ }
+ print("GPU readbacks match for opaque clears and all 256 alpha values\n")
+ return true
+}
 #program_export
-main :: ()->s32 {if !AsyncTests() {return 1};return 0}
+main :: ()->s32 {if !AsyncTests()||!ReadbackAlphaParity() {return 1};return 0}

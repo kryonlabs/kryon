@@ -27,6 +27,12 @@
   shadow sampling only for lights with shadow maps.
 - The shader benchmark measures eight shader workloads and four animated scenes with mean and p95 frame times.
 - Android keeps the active frame budget while retained paint changes and backs off when paint becomes stable.
+- Android keeps the active frame deadline while a pointer is held, including
+  when an intermediate paint is unchanged.
+- GPU scenes upload camera, lighting, and grade uniforms once per program
+  per frame.
+- 32-bit Android on PowerVR GE8320 reads completed scene frames without a
+  slow copy from mapped GPU memory.
 - Android presents at the native surface size, uses Lanczos for smooth image
   scaling, and uploads scene geometry correctly on 32-bit GLES devices.
 - Desktop animations continue presenting text and images without input.

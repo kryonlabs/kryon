@@ -116,6 +116,15 @@ FramePacing :: () -> bool {
         deadline := AndroidNextFrame(*quiet_frames, 100, item.finished_ms, item.paint_unchanged, item.events)
         if quiet_frames != item.expected_quiet || deadline != item.expected_deadline { return false }
     }
+    quiet_frames = 2
+    for frame: 0..3 {
+        started := 200 + frame * 16
+        if AndroidNextFrame(*quiet_frames, started, started + 5, true, false, true) != started + 16 ||
+        quiet_frames != 0 { return false }
+    }
+    if AndroidNextFrame(*quiet_frames, 264, 269, true, true) != 280 { return false }
+    if AndroidNextFrame(*quiet_frames, 280, 285, true, false) != 296 { return false }
+    if AndroidNextFrame(*quiet_frames, 296, 301, true, false) != 401 { return false }
     return true
 }
 
