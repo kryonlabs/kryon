@@ -434,7 +434,7 @@ ref = "360553150917f352e49e1beb78917370792ccaef"
 
 [dependencies.avif]
 git = "https://github.com/ziranlang/avif.git"
-ref = "2611e727e226a2af22dfb7f10bf224bd2f1a3d30"
+ref = "f5f186bb13569ef13338f81366ff63fb9b9282f6"
 
 [dependencies.webp]
 git = "https://github.com/ziranlang/webp.git"
