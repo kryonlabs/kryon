@@ -33,4 +33,4 @@ C
         -Wl,--gc-sections -lm -lpthread -ldl -o "$output/test"
     timeout 30s "$output/test"
 done
-echo 'Local JNI thread tests: independent render/app attachments, local frame balance, explicit cleanup, thread-exit cleanup and absent optional methods passed (C source and saved IR)'
+echo 'Local JNI thread tests: independent render/app attachments, local frame balance, explicit cleanup, thread-exit cleanup, absent optional methods and the native cache folder passed (C source and saved IR)'

@@ -1,4 +1,5 @@
 #import "android_jni"
+#import "android_process"
 #import "android_native"
 #import "android_native_test_host"
 #import "render_dispatch"
@@ -167,5 +168,16 @@ Check :: () -> s32 {
     AndroidNativeStart(null)
     if JniGetAndroidApp() != null { return 32 }
     unused TestKeyDelete(attached_key)
-    return test_failure
+    if test_failure != 0 { return test_failure }
+    return NativeCacheFolders()
+}
+
+// Ziran's native cache sits beside the app's private files folder.
+NativeCacheFolders :: () -> s32 {
+    output: [96]u8
+    if AndroidNativeCacheFolder("/data/user/0/xyz.app/files", output[:]) != "/data/user/0/xyz.app/cache/ziran-native" ||
+        AndroidNativeCacheFolder("/data/user/10/xyz.app/files/", output[:]) != "/data/user/10/xyz.app/cache/ziran-native" { return 40 }
+    if AndroidNativeCacheFolder("/files", output[:]) != "" || AndroidNativeCacheFolder("files", output[:]) != "" ||
+        AndroidNativeCacheFolder("/data/user/0/xyz.app/files", output[0:20]) != "" { return 41 }
+    return 0
 }

@@ -11,7 +11,44 @@ AndroidMakeDirectory :: (path: *u8, mode: u32) -> s32 #foreign android_libc "mkd
 
 AndroidProcessPrepare :: () {
     AndroidTemporaryPrepare()
+    AndroidNativeCachePrepare()
     AndroidTestDriverPrepare()
+}
+
+// Ziran keeps the native code it compiles for portable apps in a disk cache
+// so later starts load it instead of compiling again. Its own guess at an
+// app's cache folder misses secondary users and renamed processes, so point
+// it at the app's cache folder unless ZIRAN_NATIVE_CACHE names one already.
+// Ziran creates the folder.
+AndroidNativeCachePrepare :: () {
+    variable: [24]u8
+    key: string = "ZIRAN_NATIVE_CACHE"
+    for index: cast(s64)0..key.count - 1 { variable[index] = key[index] }
+    variable[key.count] = 0
+    existing := AndroidGetEnvironment(*variable[0])
+    if existing != null && existing[0] != 0 { return }
+    base := AndroidInternalDataPath()
+    if base == null { return }
+    path: [4096]u8
+    if AndroidNativeCacheFolder(TextFromCString(base), path[:]).count == 0 { return }
+    unused AndroidSetEnvironment(*variable[0], *path[0], 1)
+}
+
+// The native cache beside an app's private files folder FILES
+// (DATA/files becomes DATA/cache/ziran-native), written into output and
+// ended with a zero byte; "" when FILES has no parent folder or output is
+// too small.
+AndroidNativeCacheFolder :: (files: string, output: []u8) -> string {
+    cut := files.count
+    while cut > 1 && files[cut - 1] == #char "/" { cut -= 1 }
+    while cut > 0 && files[cut - 1] != #char "/" { cut -= 1 }
+    if cut <= 1 { return "" }
+    name: string = "cache/ziran-native"
+    if cut + name.count + 1 > output.count { return "" }
+    for index: cast(s64)0..cut - 1 { output[index] = files[index] }
+    for index: cast(s64)0..name.count - 1 { output[cut + index] = name[index] }
+    output[cut + name.count] = 0
+    return TextFromCString(*output[0])
 }
 
 // Android leaves TMPDIR unset, and native code that needs scratch files
