@@ -1,0 +1,225 @@
+{
+  "schema": 1,
+  "purpose": "diagnostic probe",
+  "provenance": {
+    "ziran_sha256": "d75a3fcacebc73643acf7da26277d5927fa33aafe4316c3138e4b2acc0e382d2",
+    "lock_sha256": "2407dff4eb3b94d473c949d35f568e40d25c2cb61d092ff733d9ba36e9963f49",
+    "compiler_version": "cc (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+    "wasm_sha256": null,
+    "generated_c_sha256": "2fb6985685c5b75c8f6359906bc2728be0aa97b62b4897eb6bce4d10f923be13",
+    "binary_sha256": "3666d7a0c990503bf23b87e30d11a262a9eb17e6f013070d055d4d0454b21a0b",
+    "optimization": "-O2",
+    "source_revision": "03016057afa1c695f6e24f32e5be5df761475220",
+    "device": "desktop",
+    "prepared": true,
+    "compiler": [
+      "cc"
+    ],
+    "libraries": [
+      "-lEGL",
+      "-lGLESv2",
+      "-lGLX",
+      "-lX11",
+      "-lm",
+      "-pthread"
+    ]
+  },
+  "warmup_frames": 8,
+  "identities": [],
+  "timing": "completed frame wall time; construction, compile, warmup and hash excluded",
+  "p95": "nearest rank",
+  "results": [
+    {
+      "mode": "scene-cpu",
+      "resolution": "640x360",
+      "shader": "uv",
+      "samples": 8,
+      "mean_ms": 6.55651675,
+      "p95_ms": 6.753047,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        14337640891097695569,
+        14337640891097695569,
+        14337640891097695569,
+        14337640891097695569,
+        14337640891097695569,
+        14337640891097695569,
+        14337640891097695569,
+        14337640891097695569
+      ]
+    },
+    {
+      "mode": "scene-cpu",
+      "resolution": "640x360",
+      "shader": "plasma",
+      "samples": 8,
+      "mean_ms": 9.217849750000001,
+      "p95_ms": 9.647443,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        12490921624236978984,
+        294869455989656359,
+        2982721576619587726,
+        10298204084618937620,
+        3982317468322162816,
+        355459965890489883,
+        965695429140721437,
+        8188663181714788861
+      ]
+    },
+    {
+      "mode": "scene-cpu",
+      "resolution": "640x360",
+      "shader": "value-noise-fbm",
+      "samples": 8,
+      "mean_ms": 23.244306125,
+      "p95_ms": 23.658728,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        7670129529894499999,
+        7670129529894499999,
+        7670129529894499999,
+        7670129529894499999,
+        7670129529894499999,
+        7670129529894499999,
+        7670129529894499999,
+        7670129529894499999
+      ]
+    },
+    {
+      "mode": "scene-cpu",
+      "resolution": "640x360",
+      "shader": "sdf-raymarch",
+      "samples": 8,
+      "mean_ms": 11.367162125,
+      "p95_ms": 12.228834,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        16961923019053317637,
+        16961923019053317637,
+        16961923019053317637,
+        16961923019053317637,
+        16961923019053317637,
+        16961923019053317637,
+        16961923019053317637,
+        16961923019053317637
+      ]
+    },
+    {
+      "mode": "scene-cpu",
+      "resolution": "640x360",
+      "shader": "gaussian-blur",
+      "samples": 8,
+      "mean_ms": 16.15981125,
+      "p95_ms": 16.853249,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        16926540624562285094,
+        16926540624562285094,
+        16926540624562285094,
+        16926540624562285094,
+        16926540624562285094,
+        16926540624562285094,
+        16926540624562285094,
+        16926540624562285094
+      ]
+    },
+    {
+      "mode": "scene-cpu",
+      "resolution": "640x360",
+      "shader": "crt",
+      "samples": 8,
+      "mean_ms": 8.7321055,
+      "p95_ms": 9.509618,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        978941878469358929,
+        978941878469358929,
+        978941878469358929,
+        978941878469358929,
+        978941878469358929,
+        978941878469358929,
+        978941878469358929,
+        978941878469358929
+      ]
+    },
+    {
+      "mode": "scene-cpu",
+      "resolution": "640x360",
+      "shader": "ripple",
+      "samples": 8,
+      "mean_ms": 8.870561875,
+      "p95_ms": 9.171967,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        8720062663586116645,
+        6143619963411298696,
+        10706918158469541217,
+        14989603575759642502,
+        225671354238772391,
+        12203309288281976089,
+        16807097365871684817,
+        5831460621834254298
+      ]
+    },
+    {
+      "mode": "scene-cpu",
+      "resolution": "640x360",
+      "shader": "particles",
+      "samples": 8,
+      "mean_ms": 10.476652625,
+      "p95_ms": 10.706173,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        7060123799669739340,
+        6851649413327041134,
+        13410611284512532315,
+        3852555392940472396,
+        2666035839623779614,
+        15412387917889129680,
+        17929778735014486476,
+        9677062299168828381
+      ]
+    }
+  ]
+}

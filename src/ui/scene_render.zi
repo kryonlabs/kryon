@@ -13,6 +13,7 @@
 #import "scene"
 #import "shader"
 #if #defined(POSIX_THREADS) {
+    SceneEnvironment :: #import "std/environment_linux";
     SceneWorkers :: #import "std/parallel_linux";
     scene_workers: SceneWorkers.ParallelPool;
 }
@@ -51,16 +52,31 @@ RenderScene :: (scene: *Scene, camera: SceneCamera, image: *Image) -> bool {
     width := image.width
     height := image.height
     if scene.failed || width <= 0 || height <= 0 || scene.open.count != 0 { return false }
+    work := *scene_renderer
+    shader_count: s64
+    for at: 0..scene.meshes.count - 1 {
+        if scene.meshes[at].material.shader != null { shader_count += 1 }
+    }
+    // Plans contain fixed instruction/constant arrays; avoid geometric
+    // headroom for the common single-shader draw. Retain capacity on shrink.
+    shader_capacity := ifx work.shaders.capacity > shader_count then work.shaders.capacity else shader_count
+    if !VecResizeBounded(work.shaders, shader_count, shader_capacity) ||
+        !VecResize(work.shader_indices, scene.meshes.count) { return false }
+    shader_index: s32
     for at: 0..scene.meshes.count - 1 {
         m := scene.meshes[at].material
-        if m.shader != null && !ShaderBindings(m.shader, m.shader_uniforms, m.shader_samplers).ok { return false }
+        work.shader_indices[at] = -1
+        if m.shader != null {
+            if !ShaderPrepare(*work.shaders[shader_index], m.shader, m.shader_uniforms, m.shader_samplers).ok { return false }
+            work.shader_indices[at] = shader_index
+            shader_index += 1
+        }
     }
     PrepareColorTable()
     // Initialize the shared lighting lookup on the owner before any row lane
     // can shade the first lit frame. Workers only read these tables.
     unused DFG(0.0, 0.0)
     PrepareShadowRadii()
-    work := *scene_renderer
     work.width = width
     work.height = height
     work.camera = camera
@@ -120,15 +136,21 @@ RenderScene :: (scene: *Scene, camera: SceneCamera, image: *Image) -> bool {
     rows: FrameRows = .{work, image, clear}
     #if #defined(POSIX_THREADS) {
         if cast(s64)width * height >= 65536 {
+            if !scene_workers.initialized {
+                option: [1]u8
+                if SceneEnvironment.EnvironmentRead("ZIRAN_PAR_THREADS", option[:]).error == .Unset {
+                    unused SceneWorkers.ParallelInitLanes(*scene_workers, SceneWorkers.ParallelProcessors())
+                }
+            }
             procedure: SceneWorkers.RangeProcedure = DrawFrameRows
             SceneWorkers.ParallelRun(*scene_workers, 0, cast(s64)height, procedure, cast(*void)*rows)
             FinishStatistics(*rows)
-            return true
+            return !work.failed
         }
     }
     FrameRowsRange(0, cast(s64)height, *rows)
     FinishStatistics(*rows)
-    return true
+    return !work.failed
 }
 
 // Releases scratch storage, independently of the scene, programs and pictures.
@@ -146,6 +168,8 @@ RenderSceneRelease :: () {
     VecFree(scene_renderer.order_depth)
     VecFree(scene_renderer.vertices)
     VecFree(scene_renderer.states)
+    VecFree(scene_renderer.shaders)
+    VecFree(scene_renderer.shader_indices)
     VecFree(scene_renderer.triangles)
     scene_renderer = Renderer.{}
     scene_statistics = SceneRenderStatistics.{}
@@ -186,7 +210,8 @@ RenderSceneMemoryUsage :: () -> SceneRenderMemory {
         shadow_bytes = w.shadow_depth.capacity * 4,
         vertex_bytes = w.vertices.capacity * cast(s64)size_of(RenderVertex),
         triangle_bytes = w.triangles.capacity * cast(s64)size_of(TriangleRows),
-        draw_bytes = w.states.capacity * cast(s64)size_of(DrawState),
+        draw_bytes = w.states.capacity * cast(s64)size_of(DrawState) +
+            w.shaders.capacity * cast(s64)size_of(ShaderPrepared) + w.shader_indices.capacity * 4,
         node_bytes = w.world.capacity * cast(s64)size_of(Matrix) + w.shown.capacity * cast(s64)size_of(bool),
         ordering_bytes = w.order.capacity * 4 + w.order_depth.capacity * 8,
     }
@@ -315,6 +340,7 @@ DrawState :: struct {
     receive: bool
     texture: SceneTexture
     scene: *Scene
+    shader_index: s32
 }
 
 Renderer :: struct {
@@ -340,6 +366,8 @@ Renderer :: struct {
     order_depth: Vec(float64)
     vertices: Vec(RenderVertex)
     states: Vec(DrawState)
+    shaders: Vec(ShaderPrepared)
+    shader_indices: Vec(s32)
     triangles: Vec(TriangleRows)
     opaque_triangles: s64
     statistics: SceneRenderStatistics
@@ -357,7 +385,14 @@ shadow_radii_ready: bool;
 // by overlapping surfaces or multiple lights. Each row lane owns its bounded
 // cache; light radius and depth comparisons remain per fragment.
 ShadowPattern :: struct { pixel: s64; offsets: [5]ShapePoint; }
-ShadowPatterns :: struct { entries: [512]ShadowPattern; }
+// Prepared programs are shared read-only; every row lane owns its execution scratch.
+ShadowPatterns :: struct {
+    entries: [512]ShadowPattern
+    shader_scratch: ShaderScratch
+    shader_batch: ShaderBatchScratch
+    shader_inputs: [SHADER_BATCH]ShaderInputs
+    shader_results: [SHADER_BATCH]ShaderResult
+}
 
 PrepareShadowRadii :: () {
     if shadow_radii_ready { return }
@@ -913,6 +948,7 @@ DrawMesh :: (work: *Renderer, scene: *Scene, node: s32) {
     state: DrawState
     state.material = mesh.material
     state.scene = scene
+    state.shader_index = work.shader_indices[scene.nodes[node].mesh]
     state.base = LinearColor(mesh.material.color)
     state.glow = Times(LinearColor(mesh.material.glow), mesh.material.glow_strength)
     state.flipped = Determinant3(world) < 0.0
@@ -1093,7 +1129,7 @@ TriangleRows :: struct {
     y1: s32
 }
 
-RowStatistics :: struct { depth_fragments: s64; shaded_fragments: s64; }
+RowStatistics :: struct { depth_fragments: s64; shaded_fragments: s64; failed: bool; }
 FrameRows :: struct {
     work: *Renderer
     image: *Image
@@ -1102,6 +1138,7 @@ FrameRows :: struct {
 }
 FinishStatistics :: (rows: *FrameRows) {
     for lane: 0..63 {
+        if rows.statistics[lane].failed { rows.work.failed=true }
         rows.work.statistics.depth_fragments += rows.statistics[lane].depth_fragments
         rows.work.statistics.shaded_fragments += rows.statistics[lane].shaded_fragments
     }
@@ -1219,6 +1256,7 @@ RasterRowsRange :: (work: *Renderer, start: s64, end: s64, rows: *TriangleRows,
         first := cast(s32)Max(cast(float64)x0, Floor(span.x) - 1.0)
         last := cast(s32)Min(cast(float64)x1, Floor(span.y) + 2.0)
         x := first
+        batch_first: s32; batch_end: s32=-1
         while x < last {
             passed: [SAMPLES]bool
             depths: [SAMPLES]float64
@@ -1257,25 +1295,45 @@ RasterRowsRange :: (work: *Renderer, start: s64, end: s64, rows: *TriangleRows,
                     lb = lb / b.w / sum
                     lc = lc / c.w / sum
                 }
+                cached: *ShaderResult
+                if state.material.shader!=null && state.material.kind!=.MaterialShadow {
+                    if x>=batch_end {
+                        batch_first=x; count:=ifx last-x<SHADER_BATCH then last-x else SHADER_BATCH
+                        for lane: 0..count-1 {
+                            cx:=cast(float64)(x+lane)+0.5
+                            ua:=Edge(b.x,b.y,c.x,c.y,cx,cy0)/area
+                            ub:=Edge(c.x,c.y,a.x,a.y,cx,cy0)/area
+                            uc:=Edge(a.x,a.y,b.x,b.y,cx,cy0)/area
+                            if work.camera.perspective {
+                                sum:=ua/a.w+ub/b.w+uc/c.w
+                                ua=ua/a.w/sum; ub=ub/b.w/sum; uc=uc/c.w/sum
+                            }
+                            patterns.shader_inputs[lane]=SurfaceInputs(work,state,*a,*b,*c,ua,ub,uc)
+                        }
+                        if !ShaderRunBatch(*work.shaders[state.shader_index],*patterns.shader_batch,patterns.shader_inputs[:count],patterns.shader_results[:count]) { statistics.failed=true; return }
+                        batch_end=x+count
+                    }
+                    cached=*patterns.shader_results[x-batch_first]
+                }
                 rgba: Fragment
                 if pass == 1 {
                     depth_fragments += 1
                     if state.material.kind == .MaterialShadow {
-                        rgba = Shade(work, state, *a, *b, *c, la, lb, lc, face, side, turn, x, y, patterns)
+                        rgba = Shade(work, state, *a, *b, *c, la, lb, lc, face, side, turn, x, y, patterns, cached)
                     } else if state.material.shader != null || state.material.texture >= 0 {
-                        rgba = Surface(work, state, *a, *b, *c, la, lb, lc)
+                        rgba = Surface(work, state, *a, *b, *c, la, lb, lc, *patterns.shader_scratch, cached)
                     } else {
                         rgba.discard = state.material.opacity <= 0.0 || state.material.opacity < state.material.alpha_test
                     }
                 } else {
                     shaded_fragments += 1
                     if state.material.kind == .MaterialUnlit {
-                        rgba = Surface(work, state, *a, *b, *c, la, lb, lc)
+                        rgba = Surface(work, state, *a, *b, *c, la, lb, lc, *patterns.shader_scratch, cached)
                         if !rgba.discard {
                             rgba = Output(work, state, Graded(work, state, *a, *b, *c, la, lb, lc, .{rgba.r, rgba.g, rgba.b}, x, y, patterns), rgba.a)
                         }
                     } else {
-                        rgba = Shade(work, state, *a, *b, *c, la, lb, lc, face, side, turn, x, y, patterns)
+                        rgba = Shade(work, state, *a, *b, *c, la, lb, lc, face, side, turn, x, y, patterns, cached)
                     }
                 }
                 if rgba.discard == false {
@@ -1353,51 +1411,63 @@ Byte :: (value: float64) -> u8 { return cast(u8)(Saturate(value) * 255.0 + 0.5) 
 
 // Material color and discard are also needed by the visibility pass. Lighting
 // and shadow sampling cannot change ordinary material alpha.
-Surface :: (work: *Renderer, state: *DrawState, a: *RenderVertex, b: *RenderVertex, c: *RenderVertex,
-    la: float64, lb: float64, lc: float64) -> Fragment #inline {
+SurfaceInputs :: (work: *Renderer, state: *DrawState, a: *RenderVertex, b: *RenderVertex, c: *RenderVertex,
+    la: float64, lb: float64, lc: float64) -> ShaderInputs #inline {
+    inputs: ShaderInputs
     material := state.material
-    result: Fragment
+    input_mask: s32
+    if material.shader!=null { input_mask=work.shaders[state.shader_index].input_mask }
     diffuse := state.base
     alpha := material.opacity
-    if material.vertex_colors {
+    needs_color:=material.shader==null || (input_mask & SHADER_INPUT_COLOR)!=0
+    if needs_color && material.vertex_colors {
         diffuse = Mul(diffuse, Add(Add(Times(a.color, la), Times(b.color, lb)), Times(c.color, lc)))
     }
-    if material.texture >= 0 {
+    if needs_color && material.texture >= 0 {
         u := a.uv.x * la + b.uv.x * lb + c.uv.x * lc
         v := a.uv.y * la + b.uv.y * lb + c.uv.y * lc
         texel := Texel(work, state, u, v)
         diffuse = Mul(diffuse, .{texel.r, texel.g, texel.b})
         alpha *= texel.a
     }
+    inputs.color=.{diffuse.x,diffuse.y,diffuse.z,alpha}
     if material.shader != null {
-        inputs: ShaderInputs
-        inputs.color = .{diffuse.x, diffuse.y, diffuse.z, alpha}
-        if (material.shader.input_mask & SHADER_INPUT_POSITION) != 0 {
+        if (input_mask & SHADER_INPUT_POSITION) != 0 {
             world := Add(Add(Times(a.world, la), Times(b.world, lb)), Times(c.world, lc))
             inputs.position = .{world.x, world.y, world.z, 1.0}
         }
-        if (material.shader.input_mask & SHADER_INPUT_NORMAL) != 0 {
+        if (input_mask & SHADER_INPUT_NORMAL) != 0 {
             world_normal := Add(Add(Times(a.world_normal, la), Times(b.world_normal, lb)), Times(c.world_normal, lc))
             n := Normalize(world_normal)
             inputs.normal = .{n.x, n.y, n.z, 0.0}
         }
-        inputs.uv = .{a.uv.x * la + b.uv.x * lb + c.uv.x * lc, a.uv.y * la + b.uv.y * lb + c.uv.y * lc, 0.0, 0.0}
-        shaded := ShaderRun(material.shader, inputs, material.shader_uniforms, material.shader_samplers)
-        if shaded.discard { result.discard = true; return result }
-        diffuse = .{shaded.color.x, shaded.color.y, shaded.color.z}
-        alpha = shaded.color.w
+        if (input_mask & SHADER_INPUT_UV)!=0 {
+            inputs.uv = .{a.uv.x * la + b.uv.x * lb + c.uv.x * lc, a.uv.y * la + b.uv.y * lb + c.uv.y * lc, 0.0, 0.0}
+        }
     }
-    if alpha <= 0.0 || alpha < material.alpha_test { result.discard = true; return result }
-    return .{diffuse.x, diffuse.y, diffuse.z, alpha, false}
+    return inputs
+}
+Surface :: (work: *Renderer, state: *DrawState, a: *RenderVertex, b: *RenderVertex, c: *RenderVertex,
+    la: float64, lb: float64, lc: float64, scratch: *ShaderScratch, cached: *ShaderResult) -> Fragment #inline {
+    color: ShaderValue
+    if state.material.shader!=null {
+        shaded: ShaderResult
+        if cached!=null { shaded=.{cached.color,cached.discard} }
+        else { shaded=ShaderRunPrepared(*work.shaders[state.shader_index],scratch,SurfaceInputs(work,state,a,b,c,la,lb,lc)) }
+        if shaded.discard { return .{discard=true} }
+        color=shaded.color
+    } else { color=SurfaceInputs(work,state,a,b,c,la,lb,lc).color }
+    if color.w<=0.0 || color.w<state.material.alpha_test { return .{discard=true} }
+    return .{color.x,color.y,color.z,color.w,false}
 }
 
 Shade :: (work: *Renderer, state: *DrawState, a: *RenderVertex, b: *RenderVertex, c: *RenderVertex,
     la: float64, lb: float64, lc: float64, face: Vector3, side: float64, turn: float64, x: s32, y: s32,
-    patterns: *ShadowPatterns) -> Fragment {
+    patterns: *ShadowPatterns, cached: *ShaderResult) -> Fragment {
     material := state.material
     surface: Fragment
     if material.kind != .MaterialShadow {
-        surface = Surface(work, state, a, b, c, la, lb, lc)
+        surface = Surface(work, state, a, b, c, la, lb, lc, *patterns.shader_scratch, cached)
         if surface.discard { return surface }
     }
     diffuse: Vector3 = .{surface.r, surface.g, surface.b}

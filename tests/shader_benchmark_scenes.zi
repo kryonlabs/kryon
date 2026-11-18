@@ -1,0 +1,167 @@
+// Procedural scenes shared by the CPU and GLES benchmark modes.
+#import "kryon/drawing_props"
+#import "kryon/scene"
+#import "kryon/scene_render"
+#import "kryon/scene_skin"
+#import "std/image"
+#import "std/math"
+#import "std/vec"
+
+LIMB_RINGS :: 9;
+LIMB_SIDES :: 16;
+PARTICLE_COUNT :: 96;
+
+VisualScene :: struct {
+    limbs: [4]SceneSkin
+    particles: [PARTICLE_COUNT]s32
+}
+
+VisualRelease :: (visual: *VisualScene) {
+    for limb: 0..3 { SceneSkinRelease(*visual.limbs[limb]) }
+}
+
+VisualFloor :: (scene: *Scene, material: SceneMaterial) {
+    floor := Plane(scene, 16.0, 16.0, material)
+    unused SetRotation(scene, floor, -1.5707963267948966, 0.0, 0.0)
+    unused SetPosition(scene, floor, 0.0, -1.75, -3.0)
+}
+
+VisualLimb :: (scene: *Scene, skin: *SceneSkin, length: float64, radius: float64, material: SceneMaterial) -> bool {
+    positions: [LIMB_RINGS * LIMB_SIDES]Vector3
+    normals: [LIMB_RINGS * LIMB_SIDES]Vector3
+    uvs: [LIMB_RINGS * LIMB_SIDES]ShapePoint
+    weights: [LIMB_RINGS * LIMB_SIDES]SkinInfluence
+    indices: [(LIMB_RINGS - 1) * LIMB_SIDES * 6]s32
+    for row: 0..LIMB_RINGS - 1 {
+        t := cast(float64)row / (LIMB_RINGS - 1)
+        weight := (t - 0.25) * 2.0
+        joint := ifx weight < 0.0 then 0.0 else ifx weight > 1.0 then 1.0 else weight
+        for side: 0..LIMB_SIDES - 1 {
+            u := cast(float64)side / LIMB_SIDES
+            angle := u * 6.283185307179586
+            x := Cos(angle)
+            z := Sin(angle)
+            at := row * LIMB_SIDES + side
+            positions[at] = .{x * radius * (1.0 - t * 0.25), -t * length, z * radius * (1.0 - t * 0.25)}
+            normals[at] = .{x, 0.0, z}
+            uvs[at] = .{u, t}
+            weights[at].joints[1] = 1
+            weights[at].weights[0] = 1.0 - joint
+            weights[at].weights[1] = joint
+            if row < LIMB_RINGS - 1 {
+                next := row * LIMB_SIDES + (side + 1) % LIMB_SIDES
+                indices[at * 6] = cast(s32)at
+                indices[at * 6 + 1] = cast(s32)next
+                indices[at * 6 + 2] = cast(s32)(at + LIMB_SIDES)
+                indices[at * 6 + 3] = cast(s32)next
+                indices[at * 6 + 4] = cast(s32)(next + LIMB_SIDES)
+                indices[at * 6 + 5] = cast(s32)(at + LIMB_SIDES)
+            }
+        }
+    }
+    return SceneSkinCreate(scene, skin, 2, positions[:], normals[:], uvs[:], indices[:], weights[:], material)
+}
+
+VisualCharacter :: (scene: *Scene, visual: *VisualScene) -> bool {
+    body := LitMaterial(.{54, 122, 169, 255}, 0.36, 0.06)
+    joints := LitMaterial(.{205, 177, 120, 255}, 0.45, 0.21)
+    unused SetPosition(scene, RoundedBox(scene, 0.94, 1.22, 0.57, 0.18, body), 0.0, 0.37, 0.0)
+    unused SetPosition(scene, Sphere(scene, 0.39, joints, 24, 16), 0.0, 1.30, 0.0)
+    for index: 0..3 {
+        arm := index < 2
+        length := ifx arm then 0.96 else 1.17
+        lane := *visual.limbs[index]
+        if !VisualLimb(scene, lane, length, ifx arm then 0.15 else 0.19, body) { return false }
+        side := ifx index % 2 == 0 then -1.0 else 1.0
+        x := ifx arm then 0.51 else 0.26
+        y := ifx arm then 0.75 else -0.36
+        unused SetPosition(scene, lane.node, side * x, y, 0.0)
+        unused SetRotation(scene, lane.node, 0.0, 0.0, side * (ifx arm then 0.54 else 0.08))
+    }
+    return !scene.failed
+}
+
+VisualRoom :: (scene: *Scene) {
+    texture := NewImage(128, 128)
+    defer VecFree(texture.pixels)
+    if texture.pixels.count != 128 * 128 * 4 { scene.failed = true; return }
+    for y: 0..127 { for x: 0..127 {
+        at := (y * 128 + x) * 4
+        value := ifx (x / 16 + y / 16) % 2 == 0 then 92 else 182
+        texture.pixels[at] = cast(u8)(value + (x + y * 3) % 24)
+        texture.pixels[at + 1] = cast(u8)(value * 3 / 4)
+        texture.pixels[at + 2] = cast(u8)(value / 2)
+        texture.pixels[at + 3] = 255
+    } }
+    wood := ImageMaterial(scene, *texture, LitMaterial(.{245, 220, 200, 255}, 0.61),
+        .{wrap = .SceneTextureRepeat, scale = .{3.0, 3.0}})
+    VisualFloor(scene, wood)
+    unused SetPosition(scene, Plane(scene, 11.0, 7.0, wood), 0.0, 1.0, -3.5)
+    wall := Plane(scene, 8.0, 7.0, LitMaterial(.{101, 147, 151, 255}))
+    unused SetRotation(scene, wall, 0.0, 1.5707963267948966, 0.0)
+    unused SetPosition(scene, wall, -4.0, 1.0, 0.0)
+    for at: 0..5 {
+        shelf := RoundedBox(scene, 2.1, 0.16, 0.62, 0.04, wood)
+        unused SetPosition(scene, shelf, 1.05, cast(float64)at * 0.55 - 1.2, -2.95)
+        vase := Sphere(scene, 0.20 + cast(float64)at * 0.019, LitMaterial(.{107, 150, 194, 255}, 0.24, 0.17), 20, 10)
+        unused SetPosition(scene, vase, 0.31 + cast(float64)at * 0.24, cast(float64)at * 0.58 - 0.91, -2.62)
+    }
+}
+
+VisualBuild :: (scene: *Scene, visual: *VisualScene, kind: s32) -> bool {
+    scene.background = .{25, 34, 52, 255}
+    AddHemisphereLight(scene, .{242, 241, 255, 255}, .{104, 77, 51, 255}, 1.1)
+    unused AddDirectionalLight(scene, .{255, 236, 211, 255}, 2.1, .{1.8, 4.0, 5.0})
+    if kind == 8 {
+        VisualFloor(scene, LitMaterial(.{59, 86, 109, 255}))
+        for item: 0..23 {
+            tint := Color.{cast(u8)(80 + item * 7), cast(u8)(146 - item * 3), cast(u8)(98 + item * 5), 255}
+            material := LitMaterial(tint, 0.21 + cast(float64)(item % 6) * 0.13, 0.27)
+            object := ifx item % 2 == 0 then Sphere(scene, 0.36, material, 24, 16) else RoundedBox(scene, 0.62, 0.77, 0.62, 0.10, material)
+            unused SetPosition(scene, object, cast(float64)(item % 6) * 0.97 - 2.4, -1.30, 1.2 - cast(float64)(item / 6) * 0.88)
+            unused SetRotation(scene, object, 0.0, cast(float64)item * 0.28, 0.0)
+        }
+    } else if kind == 9 {
+        VisualFloor(scene, LitMaterial(.{89, 99, 110, 255}))
+        return VisualCharacter(scene, visual)
+    } else if kind == 10 {
+        VisualRoom(scene)
+    } else {
+        for item: 0..PARTICLE_COUNT - 1 {
+            tint := Color.{cast(u8)(66 + item % 5 * 35), cast(u8)(108 + item % 11 * 12), 210, 255}
+            material := UnlitMaterial(tint)
+            material.transparent = true
+            material.opacity = 0.53
+            size := 0.07 + cast(float64)(item % 7) * 0.028
+            visual.particles[item] = Plane(scene, size, size, material)
+        }
+    }
+    return !scene.failed
+}
+
+VisualPose :: (scene: *Scene, visual: *VisualScene, camera: *SceneCamera, kind: s32, time: float64) -> bool {
+    camera.position = .{Sin(time * 1.7) * 1.3, 1.5, 6.1}
+    camera.target = .{0.0, -0.28, -0.3}
+    if kind == 9 {
+        camera.position.y = 0.7
+        for limb: 0..3 {
+            length := ifx limb < 2 then 0.96 else 1.17
+            angle := Sin(time * 4.0 + cast(float64)limb * 2.0) * 0.68
+            cosine := Cos(angle)
+            sine := Sin(angle)
+            bones: [2]SkinAffine = .[SkinIdentity(), SkinIdentity()]
+            bones[1].y = .{0.0, cosine, sine}
+            bones[1].z = .{0.0, -sine, cosine}
+            bones[1].translation = .{0.0, (cosine - 1.0) * length * 0.5, sine * length * 0.5}
+            if !SceneSkinDeform(scene, *visual.limbs[limb], bones[:]) { return false }
+        }
+    } else if kind == 11 {
+        for item: 0..PARTICLE_COUNT - 1 {
+            angle := cast(float64)item * 2.399963229728653 + time * 1.7
+            radius := 0.65 + cast(float64)(item % 13) * 0.19
+            unused SetPosition(scene, visual.particles[item], Cos(angle) * radius,
+                Sin(angle * 1.7 + time) * 1.3, Sin(angle) * radius)
+        }
+    }
+    return !scene.failed
+}

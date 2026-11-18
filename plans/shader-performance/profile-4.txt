@@ -1,0 +1,35 @@
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total
+ time   seconds   seconds    calls  ms/call  ms/call  name
+ 51.61      0.48     0.48  2995248     0.00     0.00  shader_ShaderRun
+ 18.28      0.65     0.17 53913600     0.00     0.00  shader_Fraction
+ 15.05      0.79     0.14 26956800     0.00     0.00  shader_ShaderSample
+  5.38      0.84     0.05 131788884     0.00     0.00  Finite64
+  3.23      0.87     0.03  2995200     0.00     0.00  shader_ShaderBindings
+  2.15      0.89     0.02        1    20.00    20.00  std_image_NewImage
+  2.15      0.91     0.02                             _init
+  1.08      0.92     0.01       13     0.77    67.69  shader_benchmark_Kernel
+  1.08      0.93     0.01        1    10.00   910.02  shader_benchmark_Run
+  0.00      0.93     0.00  5990421     0.00     0.00  shader_FiniteValue
+  0.00      0.93     0.00       28     0.00     0.00  MonotonicNanoseconds
+  0.00      0.93     0.00       17     0.00     0.00  ScaleByPowerOfTwo
+  0.00      0.93     0.00        9     0.00     0.00  Exp
+  0.00      0.93     0.00        4     0.00     0.00  scene_PushVertex
+  0.00      0.93     0.00        2     0.00     0.00  scene_PushTriangle
+  0.00      0.93     0.00        1     0.00     0.00  ParallelClose
+  0.00      0.93     0.00        1     0.00     0.00  scene_AddNode
+  0.00      0.93     0.00        1     0.00     0.00  scene_FinishMesh
+  0.00      0.93     0.00        1     0.00     0.00  scene_Plane
+  0.00      0.93     0.00        1     0.00     0.00  scene_SceneClear
+  0.00      0.93     0.00        1     0.00     0.00  scene_SceneFree
+  0.00      0.93     0.00        1     0.00     0.00  scene_UnlitMaterial
+  0.00      0.93     0.00        1     0.00     0.00  scene_gpu_SceneGpuRelease
+  0.00      0.93     0.00        1     0.00     0.00  scene_gpu_gl_EBindAPI
+  0.00      0.93     0.00        1     0.00     0.00  scene_gpu_gl_RestoreContext
+  0.00      0.93     0.00        1     0.00     0.00  scene_gpu_gl_SaveContext
+  0.00      0.93     0.00        1     0.00     0.00  scene_render_OrthographicCamera
+  0.00      0.93     0.00        1     0.00     0.00  scene_render_RenderSceneRelease
+  0.00      0.93     0.00        1     0.00     0.00  shader_ShaderCompile
+  0.00      0.93     0.00        1     0.00     0.00  shader_benchmark_workloads_ShaderBenchProgram

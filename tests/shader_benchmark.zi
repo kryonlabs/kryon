@@ -1,0 +1,143 @@
+// Fixed-work shader measurements. Compile/construction/warmup/hash excluded.
+#import, file "shader_benchmark_workloads.zi";
+Visual :: #import, file "shader_benchmark_scenes.zi";
+#import "kryon/shader"
+#import "kryon/scene"
+#import "kryon/scene_render"
+#import "std/image"
+#import "std/vec"
+#import "std/timer_linux"
+#import "std/math"
+#import "std/byte_text_linux"
+#if #defined(SHADER_BENCH_GPU) {
+    GPU :: #import, file "../src/backend/scene_gpu.zi";
+}
+libc :: #system_library "c";
+Integer :: (text: *u8) -> s32 #foreign libc "atoi";
+Flush :: (file: *void) -> s32 #foreign libc "fflush";
+Byte :: (v: float64) -> u8 { return cast(u8)((ifx v<0.0 then 0.0 else ifx v>1.0 then 1.0 else v)*255.0+0.5) }
+Hash :: (pixels: []u8) -> u64 {
+    hash: u64=14695981039346656037
+    for byte: pixels { hash=(hash^cast(u64)byte)*cast(u64)1099511628211 }
+    return hash
+}
+Kernel :: (program: *ShaderProgram, width: s32, height: s32, uniforms: []ShaderValue, samplers: []ShaderSampler, pixels: []u8) -> bool {
+    #if #defined(SHADER_BENCH_PREPARED) {
+        prepared: ShaderPrepared; scratch: ShaderBatchScratch
+        inputs_batch: [SHADER_BATCH]ShaderInputs; results_batch: [SHADER_BATCH]ShaderResult
+        if !ShaderPrepare(*prepared,program,uniforms,samplers).ok { return false }
+        for lane: 0..SHADER_BATCH-1 {
+            inputs_batch[lane].color=.{1.0,1.0,1.0,1.0}
+            inputs_batch[lane].normal=.{0.0,0.0,1.0,0.0}
+        }
+        for y: 0..height-1 {
+            x: s32
+            while x<width {
+                count:=ifx width-x<SHADER_BATCH then width-x else SHADER_BATCH
+                for lane: 0..count-1 {
+                    inputs_batch[lane].uv=.{(cast(float64)(x+lane)+0.5)/cast(float64)width,1.0-(cast(float64)y+0.5)/cast(float64)height,0.0,0.0}
+                    if (prepared.input_mask & SHADER_INPUT_POSITION)!=0 {
+                        uv:=inputs_batch[lane].uv
+                        inputs_batch[lane].position=.{uv.x*2.0-1.0,uv.y*2.0-1.0,0.0,1.0}
+                    }
+                }
+                if !ShaderRunBatch(*prepared,*scratch,inputs_batch[:count],results_batch[:count]) { return false }
+                for lane: 0..count-1 {
+                    result:=results_batch[lane]; if result.discard { return false }
+                    at:=(cast(s64)y*width+x+lane)*4
+                    pixels[at]=Byte(result.color.x); pixels[at+1]=Byte(result.color.y)
+                    pixels[at+2]=Byte(result.color.z); pixels[at+3]=Byte(result.color.w)
+                }
+                x+=count
+            }
+        }
+        return true
+    }
+    inputs: ShaderInputs
+    inputs.color=.{1.0,1.0,1.0,1.0}; inputs.normal=.{0.0,0.0,1.0,0.0}
+    for y: 0..height-1 { for x: 0..width-1 {
+        inputs.uv=.{(cast(float64)x+0.5)/cast(float64)width,1.0-(cast(float64)y+0.5)/cast(float64)height,0.0,0.0}
+        inputs.position=.{inputs.uv.x*2.0-1.0,inputs.uv.y*2.0-1.0,0.0,1.0}
+        result:=ShaderRun(program,inputs,uniforms,samplers)
+        if result.discard { return false }
+        at:=(cast(s64)y*width+x)*4
+        pixels[at]=Byte(result.color.x); pixels[at+1]=Byte(result.color.y)
+        pixels[at+2]=Byte(result.color.z); pixels[at+3]=Byte(result.color.w)
+    } }
+    return true
+}
+Run :: (mode: s32, width: s32, height: s32, warmup: s32, frames: s32, kind: s32) -> bool {
+    program: ShaderProgram
+    defer ShaderFree(*program)
+    visual: Visual.VisualScene; defer Visual.VisualRelease(*visual)
+    texture: Vec(u8); defer VecFree(texture)
+    samplers: [1]ShaderSampler
+    uniforms: [2]ShaderValue=.[.{0.25,0.25,0.25,0.25},.{0.0,cast(float64)height*3.141592653589793,0.0,0.0}]
+    scene: Scene; SceneInit(*scene); defer SceneFree(*scene)
+    camera:=OrthographicCamera(-1.0,1.0,1.0,-1.0,0.1,10.0); camera.position=.{0.0,0.0,3.0}
+    compile_ns: s64
+    if kind < 8 {
+        compiled:=MonotonicNanoseconds()
+        if !ShaderBenchProgram(*program,kind) { print("invalid workload %\n",kind); return false }
+        compile_ns=MonotonicNanoseconds()-compiled
+        if !VecResize(texture,256*256*4) { return false }
+        ShaderBenchTexture(texture[:])
+        samplers[0]=.{256,256,texture[:],true}
+        material:=UnlitMaterial(.{255,255,255,255})
+        material.shader=*program; material.shader_uniforms=uniforms[:]; material.shader_samplers=samplers[:]
+        unused Plane(*scene,2.0,2.0,material)
+    } else {
+        if !Visual.VisualBuild(*scene, *visual, kind) { return false }
+        camera=PerspectiveCamera(56.0,cast(float64)width/cast(float64)height,0.1,40.0)
+    }
+    image:=NewImage(width,height); defer VecFree(image.pixels)
+    #if #defined(SHADER_BENCH_GPU) {
+        gpu: GPU.SceneGpuContext; defer GPU.SceneGpuRelease(*gpu)
+        if mode==2 {
+            caps:=GPU.SceneGpuProbe(*gpu)
+            print("identity % % %\n",caps.available,TextFromCString(*caps.renderer[0]),TextFromCString(*caps.version[0])); unused Flush(null)
+            if !caps.available { print("unsupported %\n",caps.diagnostic); return false }
+        }
+    }
+    print("workload % % % % % % % %\n",mode,width,height,kind,program.count,compile_ns,warmup,frames)
+    unused Flush(null)
+    for frame: 0..warmup+frames-1 {
+        // Warmup traverses the same time sequence as the measured frames.
+        time:=0.25+cast(float64)(ifx frame<warmup then frame else frame-warmup)/60.0
+        uniforms[0]=.{time,time,time,time}
+        prepare: float64; draw: float64; readback: float64; conversion: float64
+        start:=MonotonicNanoseconds()
+        if kind >= 8 && !Visual.VisualPose(*scene, *visual, *camera, kind, time) { return false }
+        ok:=false
+        if mode==0 { ok=Kernel(*program,width,height,uniforms[:],samplers[:],image.pixels[:]) }
+        if mode==1 { ok=RenderScene(*scene,camera,*image) }
+        #if #defined(SHADER_BENCH_GPU) {
+            if mode==2 {
+                result:=GPU.SceneGpuRender(*gpu,*scene,camera,*image); ok=result.ok && result.accelerated
+                prepare=result.prepare_ms; draw=result.draw_ms; readback=result.readback_ms; conversion=result.conversion_ms
+                if !ok { print("gpu failure %\n",result.diagnostic) }
+            }
+        }
+        elapsed:=MonotonicNanoseconds()-start
+        if !ok || elapsed<0 { return false }
+        if frame>=warmup {
+            // Hash outside timing prevents dead-result removal, checks animation.
+            print("sample % % % % % % % % % % %\n",mode,width,height,kind,frame-warmup,elapsed,prepare,draw,readback,conversion,Hash(image.pixels[:]))
+            unused Flush(null)
+        }
+    }
+    return true
+}
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc!=8 { print("usage: shader_benchmark MODE WIDTH HEIGHT WARMUP FRAMES FIRST LAST\n"); return 1 }
+    mode:=Integer(argv[1]); width:=Integer(argv[2]); height:=Integer(argv[3])
+    warmup:=Integer(argv[4]); frames:=Integer(argv[5]); first:=Integer(argv[6]); last:=Integer(argv[7])
+    if mode<0 || mode>2 || width<1 || height<1 || width>1920 || height>1080 || warmup<1 || warmup>120 || frames<1 || frames>1000 || first<0 || last>11 || first>last || (mode==0 && last>=8) { return 2 }
+    #if !#defined(SHADER_BENCH_GPU) {
+        if mode==2 { print("unsupported GPU build\n"); return 3 }
+    }
+    defer RenderSceneRelease()
+    for kind: first..last { if !Run(mode,width,height,warmup,frames,cast(s32)kind) { return 4 } }
+    return 0
+}

@@ -105,7 +105,7 @@ Clipping :: () -> s32 {
     for at: 0..image.pixels.count-1 { if image.pixels[at]!=cast(u8)0 { fail+=1; break } }
     return fail
 }
-main :: () -> s32 { return Diagnostics()+InputUse()+Math()+Render()+Clipping()+CameraShift()+DiscardDepth()+ColorTransfer()+ParallelRows()+VisibilityDepth() }
+main :: () -> s32 { return Diagnostics()+InputUse()+Math()+Render()+PreparedDraws()+Clipping()+CameraShift()+DiscardDepth()+ColorTransfer()+ParallelRows()+VisibilityDepth() }
 
 // Portable off-axis projection: the camera stays fixed while the viewport
 // exposes geometry that the symmetric frustum clipped away.
@@ -431,4 +431,36 @@ VisibilityRows :: () -> s32 {
         for at: 0..a.pixels.count-1 { if a.pixels[at]!=b.pixels[at] { return 6 } }
     }
     return 0
+}
+
+// Distinct draws may share code while borrowing different uniforms. Include a
+// nonshader mesh before the shader meshes, and rows longer than one batch.
+PreparedDraws :: () -> s32 {
+    scene: Scene; SceneInit(*scene)
+    p: ShaderProgram; other: ShaderProgram
+    defer { SceneFree(*scene); ShaderFree(*p); ShaderFree(*other); RenderSceneRelease() }
+    code: [2]ShaderInstruction=.[.{op=.ShaderUniform,dest=4,slot=0},.{op=.ShaderOutput,a=4}]
+    if !ShaderCompile(*p,code[:]).ok { return 1 }
+    code[0]=.{op=.ShaderLiteral,dest=4,value=.{0.0,1.0,0.0,1.0}}
+    if !ShaderCompile(*other,code[:]).ok { return 1 }
+    red: [1]ShaderValue=.[.{1.0,0.0,0.0,1.0}]
+    blue: [1]ShaderValue=.[.{0.0,0.0,1.0,1.0}]
+    unused SetPosition(*scene,Plane(*scene,2.0,2.0,UnlitMaterial(.{20,20,20,255})),0.0,0.0,-1.0)
+    m:=UnlitMaterial(.{255,255,255,255}); m.shader=*p; m.shader_uniforms=red[:]
+    unused SetPosition(*scene,Plane(*scene,0.6,1.7,m),-0.666,0.0,0.0)
+    m.shader_uniforms=blue[:]
+    unused Plane(*scene,0.6,1.7,m)
+    m.shader=*other
+    unused SetPosition(*scene,Plane(*scene,0.6,1.7,m),0.666,0.0,0.0)
+    image:=NewImage(128,64); defer VecFree(image.pixels)
+    fail:=Check(RenderScene(*scene,ShaderSceneCamera(),*image),"multiple prepared draws")
+    fail+=Check(Pixel(*image,21,32,0)==255 && Pixel(*image,21,32,2)==0,"first draw uniform")
+    fail+=Check(Pixel(*image,64,32,0)==0 && Pixel(*image,64,32,2)==255,"shared program distinct uniform")
+    fail+=Check(Pixel(*image,106,32,1)==255 && Pixel(*image,106,32,0)==0,"distinct program")
+    red[0]=.{1.0,1.0,0.0,1.0}; blue[0]=.{0.0,1.0,1.0,1.0}
+    code[0].value=.{1.0,0.0,1.0,1.0}
+    if !ShaderCompile(*other,code[:]).ok { return fail+1 }
+    fail+=Check(RenderScene(*scene,ShaderSceneCamera(),*image),"reprepare mutable draws")
+    fail+=Check(Pixel(*image,21,32,1)==255 && Pixel(*image,64,32,1)==255 && Pixel(*image,106,32,1)==0 && Pixel(*image,106,32,2)==255,"changed uniforms and program")
+    return fail
 }

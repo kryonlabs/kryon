@@ -33,6 +33,27 @@ ShaderDiagnostic :: struct { ok: bool; instruction: s32; message: string; }
 ShaderSampler :: struct { width: s32; height: s32; pixels: []u8; repeat: bool; }
 ShaderInputs :: struct { color: ShaderValue; position: ShaderValue; normal: ShaderValue; uv: ShaderValue; }
 ShaderResult :: struct { color: ShaderValue; discard: bool; }
+// A draw owns its prepared code; sampler storage is borrowed for that draw.
+// Reprepare after changing the source program, uniforms or sampler bindings.
+SHADER_VALUES :: SHADER_INSTRUCTIONS+4
+ShaderStep :: struct { op: ShaderOp; dest: s32; a: s32; b: s32; c: s32; slot: s32; }
+ShaderPrepared :: struct {
+    steps: [SHADER_INSTRUCTIONS]ShaderStep
+    scalar_inputs: [SHADER_INSTRUCTIONS]bool
+    constants: [SHADER_VALUES]ShaderValue
+    count: s32
+    input_mask: s32
+    samplers: []ShaderSampler
+    ready: bool
+    discard: bool
+}
+// Each concurrent execution lane owns a scratch value. Values are overwritten
+// before use, so callers can reuse it across pixels and different programs.
+ShaderScratch :: struct { values: [SHADER_REGISTERS]ShaderValue; }
+SHADER_BATCH :: 32
+ShaderBatchRegister :: struct { values: [SHADER_BATCH]ShaderValue; }
+ShaderBatchScratch :: struct { registers: [SHADER_REGISTERS]ShaderBatchRegister; discarded: [SHADER_BATCH]bool; }
+
 // Invalid replacements preserve the old program. Diagnostic text is static.
 ShaderCompile :: (program: *ShaderProgram, code: []ShaderInstruction) -> ShaderDiagnostic {
     if code.count < 1 || code.count > SHADER_INSTRUCTIONS { return .{false,-1,"shader requires 1..128 instructions"} }
@@ -121,8 +142,232 @@ ShaderRun :: (program: *ShaderProgram, inputs: ShaderInputs, uniforms: []ShaderV
     }
     return .{discard=true}
 }
+// Validate once per draw and fold operations whose inputs are draw constants.
+// Negative operands name owned constants; nonnegative ones name lane scratch.
+ShaderPrepare :: (prepared: *ShaderPrepared, program: *ShaderProgram, uniforms: []ShaderValue, samplers: []ShaderSampler) -> ShaderDiagnostic {
+    prepared.ready=false; prepared.discard=false; prepared.count=0
+    diagnostic:=ShaderBindings(program,uniforms,samplers)
+    if !diagnostic.ok { return diagnostic }
+    prepared.samplers=samplers
+    versions: [SHADER_REGISTERS]s32
+    registers: [SHADER_VALUES]s32
+    scalars: [SHADER_VALUES]bool
+    for at: 0..3 { versions[at]=cast(s32)at; registers[at]=cast(s32)at }
+    for at: 0..program.count-1 {
+        i:=program.code[at]
+        dest:=cast(s32)at+4
+        registers[dest]=i.dest
+        if i.op==.ShaderLiteral || i.op==.ShaderUniform {
+            prepared.constants[dest]=ifx i.op==.ShaderLiteral then i.value else uniforms[i.slot]
+            versions[i.dest]=-dest-1
+            continue
+        }
+        a:=versions[i.a]
+        b: s32=-1; c: s32=-1
+        if ReadsB(i.op) { b=versions[i.b] }
+        if i.op==.ShaderMix { c=versions[i.c] }
+        if i.op==.ShaderOutput {
+            prepared.steps[prepared.count]=.{i.op,0,a,b,c,i.slot}; prepared.count+=1
+            continue
+        }
+        if i.op==.ShaderDiscardLess {
+            if a<0 && b<0 {
+                if prepared.constants[-a-1].x<prepared.constants[-b-1].x { prepared.discard=true; break }
+            } else {
+                prepared.steps[prepared.count]=.{i.op,0,a,b,c,i.slot}; prepared.count+=1
+            }
+            continue
+        }
+        if a<0 && b<0 && c<0 {
+            av:=prepared.constants[-a-1]
+            bv: ShaderValue; cv: ShaderValue
+            if ReadsB(i.op) { bv=prepared.constants[-b-1] }
+            if i.op==.ShaderMix { cv=prepared.constants[-c-1] }
+            prepared.constants[dest]=ifx i.op==.ShaderSample then ShaderSample(samplers[i.slot],av.x,av.y) else Arithmetic(i.op,av,bv,cv)
+            versions[i.dest]=-dest-1
+        } else {
+            scalar_a:=ifx a<0 then ScalarValue(prepared.constants[-a-1]) else scalars[a]
+            scalar_b:=!ReadsB(i.op) || (ifx b<0 then ScalarValue(prepared.constants[-b-1]) else scalars[b])
+            scalar_c:=i.op!=.ShaderMix || (ifx c<0 then ScalarValue(prepared.constants[-c-1]) else scalars[c])
+            prepared.scalar_inputs[prepared.count]=scalar_a
+            scalars[dest]=i.op==.ShaderDot || (i.op!=.ShaderSample && i.op!=.ShaderNormalize && scalar_a && scalar_b && scalar_c)
+            prepared.steps[prepared.count]=.{i.op,dest,a,b,c,i.slot}; prepared.count+=1
+            versions[i.dest]=dest
+        }
+    }
+    // Keep every conditional discard and the final output, then retain only
+    // the dynamic values on which they depend. SSA versions preserve overwrites.
+    live: [SHADER_VALUES]bool
+    keep: [SHADER_INSTRUCTIONS]bool
+    at:=prepared.count-1
+    while at>=0 {
+        i:=prepared.steps[at]
+        used:=i.op==.ShaderOutput || i.op==.ShaderDiscardLess || live[i.dest]
+        if used {
+            keep[at]=true
+            if i.a>=0 { live[i.a]=true }
+            if ReadsB(i.op) && i.b>=0 { live[i.b]=true }
+            if i.op==.ShaderMix && i.c>=0 { live[i.c]=true }
+        }
+        at-=1
+    }
+    prepared.input_mask=0
+    if live[0] { prepared.input_mask |= SHADER_INPUT_COLOR }
+    if live[1] { prepared.input_mask |= SHADER_INPUT_POSITION }
+    if live[2] { prepared.input_mask |= SHADER_INPUT_NORMAL }
+    if live[3] { prepared.input_mask |= SHADER_INPUT_UV }
+    count: s32
+    // SSA is needed for dead-code analysis, but execution can use the original
+    // 32 physical registers. Keeping every SSA version in per-pixel scratch
+    // increases the working set without preserving any additional live value.
+    for index: 0..prepared.count-1 { if keep[index] {
+        i:=prepared.steps[index]
+        if i.a>=0 { i.a=registers[i.a] }
+        if ReadsB(i.op) && i.b>=0 { i.b=registers[i.b] }
+        if i.op==.ShaderMix && i.c>=0 { i.c=registers[i.c] }
+        if i.op!=.ShaderOutput && i.op!=.ShaderDiscardLess { i.dest=registers[i.dest] }
+        prepared.steps[count]=i; prepared.scalar_inputs[count]=prepared.scalar_inputs[index]; count+=1
+    } }
+    prepared.count=count; prepared.ready=true
+    return diagnostic
+}
+ShaderRunPrepared :: (prepared: *ShaderPrepared, scratch: *ShaderScratch, inputs: ShaderInputs) -> ShaderResult {
+    if !prepared.ready || prepared.discard { return .{discard=true} }
+    if (prepared.input_mask & SHADER_INPUT_COLOR)!=0 { scratch.values[0]=inputs.color }
+    if (prepared.input_mask & SHADER_INPUT_POSITION)!=0 { scratch.values[1]=inputs.position }
+    if (prepared.input_mask & SHADER_INPUT_NORMAL)!=0 { scratch.values[2]=inputs.normal }
+    if (prepared.input_mask & SHADER_INPUT_UV)!=0 { scratch.values[3]=inputs.uv }
+    for at: 0..prepared.count-1 {
+        i:=prepared.steps[at]
+        a:=PreparedValue(prepared,scratch,i.a)
+        if i.op==.ShaderOutput { return .{a,!FiniteValue(a)} }
+        if i.op==.ShaderSample { scratch.values[i.dest]=PreparedSample(prepared.samplers[i.slot],a.x,a.y); continue }
+        if prepared.scalar_inputs[at] && (i.op==.ShaderSin || i.op==.ShaderCos) {
+            value:=ifx i.op==.ShaderSin then Sin(a.x) else Cos(a.x)
+            scratch.values[i.dest]=.{value,value,value,value}; continue
+        }
+        b: ShaderValue; c: ShaderValue
+        if ReadsB(i.op) { b=PreparedValue(prepared,scratch,i.b) }
+        if i.op==.ShaderDiscardLess { if a.x<b.x { return .{discard=true} }; continue }
+        if i.op==.ShaderMix { c=PreparedValue(prepared,scratch,i.c) }
+        scratch.values[i.dest]=Arithmetic(i.op,a,b,c)
+    }
+    return .{discard=true}
+}
+// Execute at most SHADER_BATCH pixels with one dispatch per instruction.
+// Each concurrent lane owns scratch; input/output slices may have different
+// storage. Returns false for invalid prepared code or insufficient output.
+ShaderRunBatch :: (prepared: *ShaderPrepared, scratch: *ShaderBatchScratch, inputs: []ShaderInputs, output: []ShaderResult) -> bool {
+    if !prepared.ready || inputs.count>SHADER_BATCH || output.count<inputs.count { return false }
+    count:=inputs.count
+    for lane: 0..count-1 {
+        scratch.discarded[lane]=prepared.discard
+        if (prepared.input_mask & SHADER_INPUT_COLOR)!=0 { scratch.registers[0].values[lane]=inputs[lane].color }
+        if (prepared.input_mask & SHADER_INPUT_POSITION)!=0 { scratch.registers[1].values[lane]=inputs[lane].position }
+        if (prepared.input_mask & SHADER_INPUT_NORMAL)!=0 { scratch.registers[2].values[lane]=inputs[lane].normal }
+        if (prepared.input_mask & SHADER_INPUT_UV)!=0 { scratch.registers[3].values[lane]=inputs[lane].uv }
+    }
+    if prepared.discard { for lane: 0..count-1 { output[lane]=.{discard=true} }; return true }
+    for at: 0..prepared.count-1 {
+        i:=prepared.steps[at]
+        ap: []ShaderValue; bp: []ShaderValue; cp: []ShaderValue
+        astep: s64; bstep: s64; cstep: s64
+        if i.a<0 { ap=prepared.constants[-i.a-1:-i.a] } else { ap=scratch.registers[i.a].values[:]; astep=1 }
+        if ReadsB(i.op) {
+            if i.b<0 { bp=prepared.constants[-i.b-1:-i.b] } else { bp=scratch.registers[i.b].values[:]; bstep=1 }
+        }
+        if i.op==.ShaderMix {
+            if i.c<0 { cp=prepared.constants[-i.c-1:-i.c] } else { cp=scratch.registers[i.c].values[:]; cstep=1 }
+        }
+        if i.op==.ShaderOutput {
+            for lane: 0..count-1 { a:=ap[lane*astep]; output[lane]=.{a,scratch.discarded[lane] || !FiniteValue(a)} }
+            return true
+        }
+        if i.op==.ShaderDiscardLess {
+            for lane: 0..count-1 { if ap[lane*astep].x<bp[lane*bstep].x { scratch.discarded[lane]=true } }
+            continue
+        }
+        dp:=scratch.registers[i.dest].values[:]
+        if i.op==.ShaderSample {
+            sampler:=prepared.samplers[i.slot]
+            previous: s64=-2; sampled: ShaderValue
+            for lane: 0..count-1 {
+                a:=ap[lane*astep]; pixel:=PreparedSampleIndex(sampler,a.x,a.y)
+                // Adjacent lanes often address the same nearest-filtered texel.
+                // Cache only within this instruction; borrowed pixels may change
+                // between calls. Capture the address before an in-place write.
+                if pixel!=previous { sampled=PreparedSampleAt(sampler,pixel); previous=pixel }
+                dp[lane]=sampled
+            }
+            continue
+        }
+        if i.op==.ShaderMove {
+            for lane: 0..count-1 { a:=ap[lane*astep]; dp[lane]=a }
+            continue
+        }
+        if i.op==.ShaderAdd {
+            for lane: 0..count-1 { a:=ap[lane*astep]; b:=bp[lane*bstep]; dp[lane]=.{a.x+b.x,a.y+b.y,a.z+b.z,a.w+b.w} }
+            continue
+        }
+        if i.op==.ShaderSubtract {
+            for lane: 0..count-1 { a:=ap[lane*astep]; b:=bp[lane*bstep]; dp[lane]=.{a.x-b.x,a.y-b.y,a.z-b.z,a.w-b.w} }
+            continue
+        }
+        if i.op==.ShaderMultiply {
+            for lane: 0..count-1 { a:=ap[lane*astep]; b:=bp[lane*bstep]; dp[lane]=.{a.x*b.x,a.y*b.y,a.z*b.z,a.w*b.w} }
+            continue
+        }
+        if i.op==.ShaderDivide {
+            for lane: 0..count-1 { a:=ap[lane*astep]; b:=bp[lane*bstep]; dp[lane]=.{Divide(a.x,b.x),Divide(a.y,b.y),Divide(a.z,b.z),Divide(a.w,b.w)} }
+            continue
+        }
+        if i.op==.ShaderMin {
+            for lane: 0..count-1 { a:=ap[lane*astep]; b:=bp[lane*bstep]; dp[lane]=.{Min(a.x,b.x),Min(a.y,b.y),Min(a.z,b.z),Min(a.w,b.w)} }
+            continue
+        }
+        if i.op==.ShaderMax {
+            for lane: 0..count-1 { a:=ap[lane*astep]; b:=bp[lane*bstep]; dp[lane]=.{Max(a.x,b.x),Max(a.y,b.y),Max(a.z,b.z),Max(a.w,b.w)} }
+            continue
+        }
+        if i.op==.ShaderSin {
+            if prepared.scalar_inputs[at] {
+                for lane: 0..count-1 { value:=Sin(ap[lane*astep].x); dp[lane]=.{value,value,value,value} }
+            } else {
+                for lane: 0..count-1 { a:=ap[lane*astep]; dp[lane]=.{Sin(a.x),Sin(a.y),Sin(a.z),Sin(a.w)} }
+            }
+            continue
+        }
+        if i.op==.ShaderCos {
+            if prepared.scalar_inputs[at] {
+                for lane: 0..count-1 { value:=Cos(ap[lane*astep].x); dp[lane]=.{value,value,value,value} }
+            } else {
+                for lane: 0..count-1 { a:=ap[lane*astep]; dp[lane]=.{Cos(a.x),Cos(a.y),Cos(a.z),Cos(a.w)} }
+            }
+            continue
+        }
+        if i.op==.ShaderFract {
+            for lane: 0..count-1 { a:=ap[lane*astep]; dp[lane]=.{Fraction(a.x),Fraction(a.y),Fraction(a.z),Fraction(a.w)} }
+            continue
+        }
+        if i.op==.ShaderMix {
+            for lane: 0..count-1 { a:=ap[lane*astep]; b:=bp[lane*bstep]; c:=cp[lane*cstep]; dp[lane]=.{a.x*(1.0-c.x)+b.x*c.x,a.y*(1.0-c.y)+b.y*c.y,a.z*(1.0-c.z)+b.z*c.z,a.w*(1.0-c.w)+b.w*c.w} }
+            continue
+        }
+        if i.op==.ShaderDot {
+            for lane: 0..count-1 { a:=ap[lane*astep]; b:=bp[lane*bstep]; d:=a.x*b.x+a.y*b.y+a.z*b.z; dp[lane]=.{d,d,d,d} }
+            continue
+        }
+        if i.op==.ShaderNormalize {
+            for lane: 0..count-1 {
+                a:=ap[lane*astep]; length:=Sqrt(a.x*a.x+a.y*a.y+a.z*a.z)
+                dp[lane]=ifx length>0.0 then ShaderValue.{a.x/length,a.y/length,a.z/length,a.w} else ShaderValue.{}
+            }
+        }
+    }
+    return false
+}
 // Straight linear RGBA, top row first; UV v=0 is the bottom row.
-ShaderSample :: (s: ShaderSampler, u: float64, v: float64) -> ShaderValue {
+ShaderSample :: (s: ShaderSampler, u: float64, v: float64) -> ShaderValue #inline {
     if !Finite64(u) || !Finite64(v) || s.width<=0 || s.height<=0 || cast(s64)s.width*s.height > s.pixels.count/4 { return .{} }
     x:=ifx s.repeat then Fraction(u) else Clamp(u)
     y:=ifx s.repeat then Fraction(v) else Clamp(v)
@@ -132,15 +377,54 @@ ShaderSample :: (s: ShaderSampler, u: float64, v: float64) -> ShaderValue {
     return .{cast(float64)s.pixels[at]/255.0,cast(float64)s.pixels[at+1]/255.0,cast(float64)s.pixels[at+2]/255.0,cast(float64)s.pixels[at+3]/255.0}
 }
 #scope_file
+// Compute exact binary64 quotients once before callers can prepare shaders
+// concurrently. Multiplying by a rounded reciprocal changes some values.
+ShaderByteValues :: struct { channels: [256]float64 }
+MakeShaderByteValues :: () -> ShaderByteValues {
+    table: ShaderByteValues
+    for value: 0..255 { table.channels[value]=cast(float64)value/255.0 }
+    return table
+}
+shader_byte_values: ShaderByteValues = MakeShaderByteValues();
+PreparedSampleIndex :: (s: ShaderSampler, u: float64, v: float64) -> s64 #inline {
+    if !Finite64(u) || !Finite64(v) || s.width<=0 || s.height<=0 || cast(s64)s.width*s.height > s.pixels.count/4 { return -1 }
+    x:=ifx s.repeat then Fraction(u) else Clamp(u)
+    y:=ifx s.repeat then Fraction(v) else Clamp(v)
+    tx:=cast(s32)(x*cast(float64)s.width); ty:=cast(s32)(y*cast(float64)s.height)
+    if tx>=s.width { tx=s.width-1 }; if ty>=s.height { ty=s.height-1 }
+    return (cast(s64)(s.height-1-ty)*s.width+tx)*4
+}
+PreparedSampleAt :: (s: ShaderSampler, pixel: s64) -> ShaderValue #inline {
+    if pixel<0 { return .{} }
+    return .{shader_byte_values.channels[s.pixels[pixel]],shader_byte_values.channels[s.pixels[pixel+1]],
+        shader_byte_values.channels[s.pixels[pixel+2]],shader_byte_values.channels[s.pixels[pixel+3]]}
+}
+PreparedSample :: (s: ShaderSampler, u: float64, v: float64) -> ShaderValue #inline {
+    return PreparedSampleAt(s,PreparedSampleIndex(s,u,v))
+}
+ScalarValue :: (value: ShaderValue) -> bool {
+    return value.x==value.y && value.x==value.z && value.x==value.w
+}
+PreparedValue :: (prepared: *ShaderPrepared, scratch: *ShaderScratch, index: s32) -> ShaderValue #inline {
+    return ifx index<0 then prepared.constants[-index-1] else scratch.values[index]
+}
+Arithmetic :: (op: ShaderOp, a: ShaderValue, b: ShaderValue, c: ShaderValue) -> ShaderValue #inline {
+    if op==.ShaderDot { d:=a.x*b.x+a.y*b.y+a.z*b.z; return .{d,d,d,d} }
+    if op==.ShaderNormalize {
+        length:=Sqrt(a.x*a.x+a.y*a.y+a.z*a.z)
+        return ifx length>0.0 then ShaderValue.{a.x/length,a.y/length,a.z/length,a.w} else ShaderValue.{}
+    }
+    return VectorOp(op,a,b,c)
+}
 FiniteValue :: (v: ShaderValue) -> bool { return Finite64(v.x) && Finite64(v.y) && Finite64(v.z) && Finite64(v.w) }
 Register :: (defined: []bool, index: s32) -> bool { return index>=0 && index<defined.count && defined[index] }
 Clamp :: (v: float64) -> float64 { return ifx v<0.0 then 0.0 else ifx v>1.0 then 1.0 else v }
 Fraction :: (v: float64) -> float64 { if !Finite64(v) || v<=-4503599627370496.0 || v>=4503599627370496.0 { return 0.0 }; f:=cast(float64)cast(s64)v; if f>v { f-=1.0 }; return v-f }
-ReadsB :: (op: ShaderOp) -> bool {
+ReadsB :: (op: ShaderOp) -> bool #inline {
     return op==.ShaderAdd || op==.ShaderSubtract || op==.ShaderMultiply || op==.ShaderDivide || op==.ShaderMin || op==.ShaderMax || op==.ShaderDot || op==.ShaderMix || op==.ShaderDiscardLess
 }
 // Dispatch once per vector instruction rather than once for every lane.
-VectorOp :: (op: ShaderOp, a: ShaderValue, b: ShaderValue, c: ShaderValue) -> ShaderValue {
+VectorOp :: (op: ShaderOp, a: ShaderValue, b: ShaderValue, c: ShaderValue) -> ShaderValue #inline {
     if op==.ShaderMove { return a }
     if op==.ShaderAdd { return .{a.x+b.x,a.y+b.y,a.z+b.z,a.w+b.w} }
     if op==.ShaderSubtract { return .{a.x-b.x,a.y-b.y,a.z-b.z,a.w-b.w} }

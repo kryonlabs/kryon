@@ -1,0 +1,126 @@
+// Original instruction programs for standard mathematical shader workloads.
+// Formulas and methodology: plans/2026-11-17-shader-performance.md.
+#import "kryon/shader"
+#import "std/math"
+ShaderBenchNames: [8]string = .["uv", "plasma", "value-noise-fbm", "sdf-raymarch", "gaussian-blur", "crt", "ripple", "particles"];
+ShaderBenchBuilder :: struct { code: [SHADER_INSTRUCTIONS]ShaderInstruction; count: s32; overflow: bool }
+Emit :: (b: *ShaderBenchBuilder, i: ShaderInstruction) {
+    if b.count >= SHADER_INSTRUCTIONS { b.overflow=true; return }
+    b.code[b.count]=i; b.count+=1
+}
+Lit :: (b: *ShaderBenchBuilder, dest: s32, v: ShaderValue) { Emit(b,.{op=.ShaderLiteral,dest=dest,value=v}) }
+Scalar :: (b: *ShaderBenchBuilder, dest: s32, v: float64) { Lit(b,dest,.{v,v,v,v}) }
+Op :: (b: *ShaderBenchBuilder, op: ShaderOp, dest: s32, a: s32, other: s32=0) { Emit(b,.{op=op,dest=dest,a=a,b=other}) }
+// Length using normalize/dot; w is ignored by dot.
+Length :: (b: *ShaderBenchBuilder, dest: s32, a: s32, scratch: s32) {
+    Op(b,.ShaderNormalize,scratch,a); Op(b,.ShaderDot,dest,a,scratch)
+}
+ShaderBenchProgram :: (program: *ShaderProgram, kind: s32) -> bool {
+    if kind<0 || kind>=8 { return false }
+    b: ShaderBenchBuilder
+    Emit(*b,.{op=.ShaderUniform,dest=4,slot=0})
+    output: s32=3
+    if kind==1 { // Sin waves with different directions and frequencies.
+        Lit(*b,5,.{12.0,17.0,9.0,0.0}); Op(*b,.ShaderMultiply,6,3,5)
+        Op(*b,.ShaderAdd,6,6,4); Op(*b,.ShaderSin,6,6)
+        Lit(*b,5,.{19.0,7.0,13.0,0.0}); Op(*b,.ShaderDot,7,3,5)
+        Op(*b,.ShaderAdd,7,7,4); Op(*b,.ShaderSin,7,7)
+        Op(*b,.ShaderAdd,6,6,7); Scalar(*b,5,0.25); Op(*b,.ShaderMultiply,6,6,5)
+        Scalar(*b,5,0.5); Op(*b,.ShaderAdd,6,6,5); output=6
+    }
+    if kind==2 { // Three octaves of interpolated lattice value noise.
+        Scalar(*b,5,8.0); Op(*b,.ShaderMultiply,6,3,5); Scalar(*b,7,0.0)
+        for octave: 0..2 {
+            Op(*b,.ShaderFract,8,6); Op(*b,.ShaderSubtract,9,6,8)
+            // Hermite interpolation t*t*(3-2*t).
+            Scalar(*b,10,2.0); Op(*b,.ShaderMultiply,10,8,10)
+            Scalar(*b,11,3.0); Op(*b,.ShaderSubtract,10,11,10)
+            Op(*b,.ShaderMultiply,8,8,8); Op(*b,.ShaderMultiply,8,8,10)
+            Scalar(*b,10,1.0/256.0); Op(*b,.ShaderMultiply,9,9,10)
+            Emit(*b,.{op=.ShaderSample,dest=11,a=9,slot=0})
+            Lit(*b,10,.{1.0/256.0,0.0,0.0,0.0}); Op(*b,.ShaderAdd,12,9,10)
+            Emit(*b,.{op=.ShaderSample,dest=12,a=12,slot=0})
+            Lit(*b,10,.{0.0,1.0/256.0,0.0,0.0}); Op(*b,.ShaderAdd,13,9,10)
+            Emit(*b,.{op=.ShaderSample,dest=13,a=13,slot=0})
+            Lit(*b,10,.{1.0/256.0,1.0/256.0,0.0,0.0}); Op(*b,.ShaderAdd,14,9,10)
+            Emit(*b,.{op=.ShaderSample,dest=14,a=14,slot=0})
+            Lit(*b,10,.{1.0,0.0,0.0,0.0}); Op(*b,.ShaderDot,15,8,10)
+            Emit(*b,.{op=.ShaderMix,dest=11,a=11,b=12,c=15})
+            Emit(*b,.{op=.ShaderMix,dest=13,a=13,b=14,c=15})
+            Lit(*b,10,.{0.0,1.0,0.0,0.0}); Op(*b,.ShaderDot,15,8,10)
+            Emit(*b,.{op=.ShaderMix,dest=11,a=11,b=13,c=15})
+            Scalar(*b,10,ifx octave==0 then 4.0/7.0 else ifx octave==1 then 2.0/7.0 else 1.0/7.0)
+            Op(*b,.ShaderMultiply,11,11,10); Op(*b,.ShaderAdd,7,7,11)
+            Scalar(*b,10,2.0); Op(*b,.ShaderMultiply,6,6,10)
+        }
+        output=7
+    }
+    if kind==3 { // Eight sphere-tracing steps, radius 0.65.
+        Lit(*b,5,.{2.0,2.0,0.0,0.0}); Op(*b,.ShaderMultiply,6,3,5)
+        Lit(*b,5,.{1.0,1.0,-1.5,0.0}); Op(*b,.ShaderSubtract,6,6,5)
+        Op(*b,.ShaderNormalize,6,6); Scalar(*b,7,0.0)
+        Lit(*b,8,.{0.0,0.0,-2.0,0.0}); Scalar(*b,9,0.65)
+        for step: 0..7 {
+            Op(*b,.ShaderMultiply,10,6,7); Op(*b,.ShaderAdd,10,10,8)
+            Length(*b,11,10,12); Op(*b,.ShaderSubtract,11,11,9)
+            Op(*b,.ShaderAdd,7,7,11)
+        }
+        Op(*b,.ShaderMultiply,11,11,11); Scalar(*b,12,128.0)
+        Op(*b,.ShaderMultiply,11,11,12); Scalar(*b,12,1.0)
+        Op(*b,.ShaderAdd,11,11,12); Op(*b,.ShaderDivide,11,12,11); output=11
+    }
+    if kind==4 { // Normalized nine-tap horizontal Gaussian, sigma=2 texels.
+        Scalar(*b,6,0.0)
+        for tap: 0..8 {
+            offset:=cast(float64)(tap-4)
+            Lit(*b,5,.{offset/256.0,0.0,0.0,0.0}); Op(*b,.ShaderAdd,7,3,5)
+            Emit(*b,.{op=.ShaderSample,dest=7,a=7,slot=0})
+            Scalar(*b,5,Exp(-offset*offset/8.0)/4.898030625784382)
+            Op(*b,.ShaderMultiply,7,7,5); Op(*b,.ShaderAdd,6,6,7)
+        }
+        output=6
+    }
+    if kind==5 { // Texture, sinusoidal scanlines, radial vignette.
+        Emit(*b,.{op=.ShaderSample,dest=6,a=3,slot=0})
+        Emit(*b,.{op=.ShaderUniform,dest=5,slot=1})
+        Op(*b,.ShaderDot,7,3,5); Op(*b,.ShaderSin,7,7)
+        Scalar(*b,5,0.1); Op(*b,.ShaderMultiply,7,7,5)
+        Scalar(*b,5,0.9); Op(*b,.ShaderAdd,7,7,5); Op(*b,.ShaderMultiply,6,6,7)
+        Lit(*b,5,.{0.5,0.5,0.0,0.0}); Op(*b,.ShaderSubtract,7,3,5)
+        Op(*b,.ShaderDot,7,7,7); Scalar(*b,5,1.0); Op(*b,.ShaderSubtract,7,5,7)
+        Op(*b,.ShaderMultiply,6,6,7); output=6
+    }
+    if kind==6 { // Radial travelling wave displaces a texture lookup.
+        Lit(*b,5,.{0.5,0.5,0.0,0.0}); Op(*b,.ShaderSubtract,6,3,5)
+        Length(*b,7,6,8); Scalar(*b,5,40.0); Op(*b,.ShaderMultiply,7,7,5)
+        Op(*b,.ShaderSubtract,7,7,4); Op(*b,.ShaderSin,7,7)
+        Scalar(*b,5,0.03); Op(*b,.ShaderMultiply,7,7,5)
+        Op(*b,.ShaderMultiply,8,8,7); Op(*b,.ShaderAdd,8,3,8)
+        Emit(*b,.{op=.ShaderSample,dest=6,a=8,slot=0}); output=6
+    }
+    if kind==7 { // Eight moving inverse-quadratic particle splats.
+        Scalar(*b,6,0.0); Scalar(*b,20,512.0); Scalar(*b,21,1.0); Scalar(*b,22,0.25)
+        for particle: 0..7 {
+            Lit(*b,5,.{cast(float64)particle*1.7,cast(float64)particle*2.3,0.0,0.0})
+            Op(*b,.ShaderAdd,7,5,4); Op(*b,.ShaderSin,7,7)
+            Lit(*b,5,.{0.35,0.35,0.0,0.0}); Op(*b,.ShaderMultiply,7,7,5)
+            Lit(*b,5,.{0.5,0.5,0.0,0.0}); Op(*b,.ShaderAdd,7,7,5)
+            Op(*b,.ShaderSubtract,7,3,7); Op(*b,.ShaderDot,7,7,7)
+            Op(*b,.ShaderMultiply,7,7,20); Op(*b,.ShaderAdd,7,7,21)
+            Op(*b,.ShaderDivide,7,22,7); Op(*b,.ShaderAdd,6,6,7)
+        }
+        output=6
+    }
+    Lit(*b,30,.{1.0,1.0,1.0,0.0}); Op(*b,.ShaderMultiply,31,output,30)
+    Lit(*b,30,.{0.0,0.0,0.0,1.0}); Op(*b,.ShaderAdd,31,31,30)
+    Emit(*b,.{op=.ShaderOutput,a=31})
+    return !b.overflow && ShaderCompile(program,b.code[0:b.count]).ok
+}
+ShaderBenchTexture :: (pixels: []u8) {
+    state: u32=173
+    for at: 0..pixels.count/4-1 {
+        state=state*cast(u32)1664525+cast(u32)1013904223
+        v:=cast(u8)(state>>cast(u32)24)
+        pixels[at*4]=v; pixels[at*4+1]=v; pixels[at*4+2]=v; pixels[at*4+3]=255
+    }
+}

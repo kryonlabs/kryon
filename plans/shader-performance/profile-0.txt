@@ -1,0 +1,30 @@
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total
+ time   seconds   seconds    calls  ms/call  ms/call  name
+ 73.69      0.14     0.14  2995248     0.00     0.00  shader_ShaderRun
+ 10.53      0.16     0.02  5990402     0.00     0.00  shader_FiniteValue
+ 10.53      0.18     0.02        1    20.00   190.00  shader_benchmark_Run
+  5.26      0.19     0.01       13     0.77    13.08  shader_benchmark_Kernel
+  0.00      0.19     0.00 23961608     0.00     0.00  Finite64
+  0.00      0.19     0.00  2995200     0.00     0.00  shader_ShaderBindings
+  0.00      0.19     0.00       28     0.00     0.00  MonotonicNanoseconds
+  0.00      0.19     0.00        4     0.00     0.00  scene_PushVertex
+  0.00      0.19     0.00        2     0.00     0.00  scene_PushTriangle
+  0.00      0.19     0.00        1     0.00     0.00  ParallelClose
+  0.00      0.19     0.00        1     0.00     0.00  scene_AddNode
+  0.00      0.19     0.00        1     0.00     0.00  scene_FinishMesh
+  0.00      0.19     0.00        1     0.00     0.00  scene_Plane
+  0.00      0.19     0.00        1     0.00     0.00  scene_SceneClear
+  0.00      0.19     0.00        1     0.00     0.00  scene_SceneFree
+  0.00      0.19     0.00        1     0.00     0.00  scene_UnlitMaterial
+  0.00      0.19     0.00        1     0.00     0.00  scene_gpu_SceneGpuRelease
+  0.00      0.19     0.00        1     0.00     0.00  scene_gpu_gl_EBindAPI
+  0.00      0.19     0.00        1     0.00     0.00  scene_gpu_gl_RestoreContext
+  0.00      0.19     0.00        1     0.00     0.00  scene_gpu_gl_SaveContext
+  0.00      0.19     0.00        1     0.00     0.00  scene_render_OrthographicCamera
+  0.00      0.19     0.00        1     0.00     0.00  scene_render_RenderSceneRelease
+  0.00      0.19     0.00        1     0.00     0.00  shader_ShaderCompile
+  0.00      0.19     0.00        1     0.00     0.00  shader_benchmark_workloads_ShaderBenchProgram
+  0.00      0.19     0.00        1     0.00     0.00  std_image_NewImage

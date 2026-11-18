@@ -1,0 +1,121 @@
+#import "kryon/shader"
+#import, file "shader_benchmark_workloads.zi";
+Same :: (a: ShaderResult, b: ShaderResult) -> bool {
+    return a.discard==b.discard && (a.discard || (a.color.x==b.color.x && a.color.y==b.color.y && a.color.z==b.color.z && a.color.w==b.color.w))
+}
+// Compare the optimized byte expansion and repeated-texel cache with the
+// original sampler's division, covering every byte in each RGBA channel.
+BatchSampling :: () -> bool {
+    pixels: [256*4]u8
+    for at: 0..255 {
+        pixels[at*4]=cast(u8)at; pixels[at*4+1]=cast(u8)(255-at)
+        pixels[at*4+2]=cast(u8)((at*73)%256); pixels[at*4+3]=cast(u8)((at*127)%256)
+    }
+    samplers: [1]ShaderSampler=.[.{256,1,pixels[:],false}]
+    code: [2]ShaderInstruction=.[.{op=.ShaderSample,dest=3,a=3,slot=0},.{op=.ShaderOutput,a=3}]
+    uniforms: [1]ShaderValue
+    program: ShaderProgram; prepared: ShaderPrepared; scratch: ShaderScratch; batch: ShaderBatchScratch
+    inputs: [SHADER_BATCH]ShaderInputs; results: [SHADER_BATCH]ShaderResult
+    if !ShaderCompile(*program,code[:]).ok { return false }
+    for mode: 0..2 {
+        samplers[0].repeat=mode==1
+        if !ShaderPrepare(*prepared,*program,uniforms[:0],samplers[:]).ok { return false }
+        for block: 0..7 {
+            for lane: 0..SHADER_BATCH-1 {
+                index:=block*SHADER_BATCH+lane
+                inputs[lane].uv=.{(cast(float64)index+0.5)/256.0,0.5,0.0,0.0}
+                if mode==1 { inputs[lane].uv.x-=1.0 }
+                if mode==2 { inputs[lane].uv.x=0.01+cast(float64)lane/65536.0 }
+            }
+            if !ShaderRunBatch(*prepared,*batch,inputs[:],results[:]) { return false }
+            for lane: 0..SHADER_BATCH-1 {
+                expected:=ShaderSample(samplers[0],inputs[lane].uv.x,inputs[lane].uv.y)
+                if !Same(.{color=expected},results[lane]) || !Same(.{color=expected},ShaderRunPrepared(*prepared,*scratch,inputs[lane])) { return false }
+            }
+        }
+        // The next call must see mutations even when its UVs are unchanged.
+        for at: 0..pixels.count-1 { pixels[at]=cast(u8)(255-cast(s32)pixels[at]) }
+        if !ShaderRunBatch(*prepared,*batch,inputs[:],results[:]) { return false }
+        for lane: 0..SHADER_BATCH-1 {
+            expected:=ShaderSample(samplers[0],inputs[lane].uv.x,inputs[lane].uv.y)
+            if !Same(.{color=expected},results[lane]) { return false }
+        }
+    }
+    return true
+}
+main :: () -> s32 {
+    program: ShaderProgram; prepared: ShaderPrepared; scratch: ShaderScratch
+    batch: ShaderBatchScratch; inputs_batch: [SHADER_BATCH]ShaderInputs; results_batch: [SHADER_BATCH]ShaderResult
+    texture: [256*256*4]u8; ShaderBenchTexture(texture[:])
+    samplers: [1]ShaderSampler=.[.{256,256,texture[:],true}]
+    uniforms: [2]ShaderValue=.[.{0.25,0.25,0.25,0.25},.{0.0,360.0*3.141592653589793,0.0,0.0}]
+    for kind: 0..7 {
+        if !ShaderBenchProgram(*program,cast(s32)kind) { return 1 }
+        for frame: 0..3 {
+            time:=cast(float64)frame/3.0
+            uniforms[0]=.{time,time,time,time}; texture[0]=cast(u8)frame
+            if !ShaderPrepare(*prepared,*program,uniforms[:],samplers[:]).ok { return 2 }
+            for y: 0..8 { for x: 0..12 {
+                inputs: ShaderInputs=.{color=.{0.3,0.4,0.5,0.6},normal=.{0.0,0.0,1.0,0.0}}
+                inputs.uv=.{cast(float64)x/9.0-0.2,cast(float64)y/7.0-0.1,0.0,0.0}
+                inputs.position=.{inputs.uv.x*2.0-1.0,inputs.uv.y*2.0-1.0,0.0,1.0}
+                inputs_batch[(y*13+x)%SHADER_BATCH]=inputs
+                if !Same(ShaderRun(*program,inputs,uniforms[:],samplers[:]),ShaderRunPrepared(*prepared,*scratch,inputs)) { print("parity % % % %\n",kind,frame,x,y); return 3 }
+            } }
+            for count: 0..SHADER_BATCH {
+                if !ShaderRunBatch(*prepared,*batch,inputs_batch[:count],results_batch[:count]) { return 9 }
+                for lane: 0..count-1 { if !Same(ShaderRun(*program,inputs_batch[lane],uniforms[:],samplers[:]),results_batch[lane]) { print("batch parity % % % %\n",kind,frame,count,lane); return 10 } }
+            }
+            if ShaderRunBatch(*prepared,*batch,inputs_batch[:],results_batch[:SHADER_BATCH-1]) { return 11 }
+        }
+    }
+    // Both replicated dot values and unrelated components use the same exact
+    // math as the scalar interpreter, including in-place sine/cosine writes.
+    trig: [4]ShaderInstruction=.[
+        .{op=.ShaderDot,dest=4,a=3,b=3},
+        .{op=.ShaderSin,dest=4,a=4},
+        .{op=.ShaderCos,dest=4,a=4},
+        .{op=.ShaderOutput,a=4}]
+    for variant: 0..1 {
+        if variant==1 { trig[0].op=.ShaderMove }
+        if !ShaderCompile(*program,trig[:]).ok || !ShaderPrepare(*prepared,*program,uniforms[:0],samplers[:0]).ok { return 16 }
+        for lane: 0..SHADER_BATCH-1 {
+            value:=cast(float64)lane/7.0-2.0
+            inputs_batch[lane]=.{uv=.{value,0.1,value*3.0,0.0}}
+            if !Same(ShaderRun(*program,inputs_batch[lane],uniforms[:0],samplers[:0]),ShaderRunPrepared(*prepared,*scratch,inputs_batch[lane])) { return 17 }
+        }
+        if !ShaderRunBatch(*prepared,*batch,inputs_batch[:],results_batch[:]) { return 18 }
+        for lane: 0..SHADER_BATCH-1 {
+            if !Same(ShaderRun(*program,inputs_batch[lane],uniforms[:0],samplers[:0]),results_batch[lane]) { return 19 }
+        }
+    }
+    // Read a constant both before and after overwriting it; retain discard.
+    code: [8]ShaderInstruction=.[
+        .{op=.ShaderUniform,dest=4,slot=0},
+        .{op=.ShaderAdd,dest=5,a=3,b=4},
+        .{op=.ShaderLiteral,dest=4,value=.{0.5,0.5,0.5,0.5}},
+        .{op=.ShaderDiscardLess,a=3,b=4},
+        .{op=.ShaderMultiply,dest=5,a=5,b=4},
+        .{op=.ShaderSin,dest=7,a=3},
+        .{op=.ShaderAdd,dest=5,a=5,b=4},
+        .{op=.ShaderOutput,a=5}]
+    if !ShaderCompile(*program,code[:]).ok || !ShaderPrepare(*prepared,*program,uniforms[:],samplers[:]).ok || prepared.count!=5 { return 4 }
+    for at: 0..10 {
+        input: ShaderInputs=.{uv=.{cast(float64)at/10.0,0.7,0.0,0.0}}
+        if !Same(ShaderRun(*program,input,uniforms[:],samplers[:]),ShaderRunPrepared(*prepared,*scratch,input)) { return 5 }
+        inputs_batch[at]=input
+    }
+    if !ShaderRunBatch(*prepared,*batch,inputs_batch[:11],results_batch[:11]) { return 12 }
+    for lane: 0..10 { if !Same(ShaderRun(*program,inputs_batch[lane],uniforms[:],samplers[:]),results_batch[lane]) { return 13 } }
+    if ShaderPrepare(*prepared,*program,uniforms[:0],samplers[:]).ok || !ShaderRunPrepared(*prepared,*scratch,.{}).discard { return 6 }
+    code[0]=.{op=.ShaderLiteral,dest=4,value=.{0.0,0.0,0.0,0.0}}
+    code[1]=.{op=.ShaderLiteral,dest=5,value=.{1.0,1.0,1.0,1.0}}
+    code[2]=.{op=.ShaderDiscardLess,a=4,b=5}; code[3]=.{op=.ShaderOutput,a=5}
+    if !ShaderCompile(*program,code[:4]).ok || !ShaderPrepare(*prepared,*program,uniforms[:0],samplers[:0]).ok || !ShaderRunPrepared(*prepared,*scratch,.{}).discard { return 7 }
+    if !ShaderRunBatch(*prepared,*batch,inputs_batch[:],results_batch[:]) { return 14 }
+    for result: results_batch { if !result.discard { return 15 } }
+    if !BatchSampling() { return 20 }
+    ShaderFree(*program)
+    if ShaderPrepare(*prepared,*program,uniforms[:],samplers[:]).ok { return 8 }
+    return 0
+}

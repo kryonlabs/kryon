@@ -1923,6 +1923,21 @@ values and pixel contents can change between renders without recompilation.
 and invalid RGBA dimensions. `RenderScene` rejects invalid bindings before
 drawing. `SceneFree` never frees borrowed programs, uniforms or sampler pixels.
 
+`ShaderPrepare(*prepared, program, uniforms, samplers)` validates bindings once
+and produces a bounded `ShaderPrepared` draw plan with folded constants and
+unused instructions removed. Reprepare after changing the program, uniforms,
+sampler bindings or sampled pixels. The plan owns its instructions/constants
+and borrows sampler storage for the draw. Its `input_mask` describes the initial
+inputs still needed after preparation.
+`ShaderRunPrepared(*prepared, *scratch, inputs)` executes one pixel with exact
+interpreter arithmetic. `ShaderRunBatch(*prepared, *scratch, inputs, outputs)`
+executes up to `SHADER_BATCH` (32) pixels per instruction dispatch and returns
+false for an unprepared plan, oversized input or insufficient output storage.
+Use `ShaderScratch` for scalar execution and `ShaderBatchScratch` for batches;
+each concurrent caller owns separate scratch. Programs, bindings and samplers
+remain unchanged during execution. `RenderScene` prepares per mesh each frame
+and batches its pixel shader calls, preserving changes between frames.
+
 `ShaderSampler.{width,height,pixels,repeat}` samples straight linear RGBA bytes,
 top row first. UV V=0 selects the bottom row. Sampling uses nearest-neighbor
 clamp-to-edge by default, or repeat including negative coordinates. Supply
@@ -1945,7 +1960,8 @@ render. Render and release on one owning thread; this renderer is not reentrant.
 
 Native builds with `POSIX_THREADS` prepare immutable mesh states and clipped
 triangle commands once per frame, then render through `std/parallel_linux`.
-Four lanes are the default; `ZIRAN_PAR_THREADS=1` selects serial execution.
+The pool defaults to one lane per online logical processor, up to 64 lanes.
+Set `ZIRAN_PAR_THREADS` to select a lane count. A value of `1` runs serially.
 Each lane clears, draws and resolves its own full pixel rows in the original
 opaque and sorted transparent order. One completion barrier joins the frame.
 Conservative row bounds skip empty triangle regions while retaining the

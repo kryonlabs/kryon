@@ -1023,3 +1023,5 @@ practice-material-gpu-test: project-toolchain
 image-pixels-resolver-test: project-toolchain
 	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/image_pixels_resolver_test.sh
 test: scene-skin-test watercolor-test practice-material-gpu-test image-pixels-resolver-test
+
+include mk/shader-benchmark.mk

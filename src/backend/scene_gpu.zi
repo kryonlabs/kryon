@@ -34,7 +34,8 @@ SceneGpuCapabilities :: struct {
 SceneGpuFrame :: struct {
  ok: bool; accelerated: bool; diagnostic: string
  // Owner wall time: submission includes synchronization before readback;
- // readback includes the final GPU wait; conversion only flips/unpremultiplies.
+ // readback includes the final GPU wait; conversion includes GPU conversion
+ // submission and the final CPU copy (or async CPU flip/unpremultiplication).
  submit_ms: float64; readback_ms: float64; conversion_ms: float64
  prepare_ms: float64; shadow_ms: float64; draw_ms: float64
  draw_calls: s32; shadow_passes: s64
@@ -86,6 +87,7 @@ SceneGpuContext :: struct {
  display: *void; context: *void; attempted: bool
  width: s32; height: s32
  framebuffer: u32; color: u32; depth: u32; resolve: u32; resolved: u32
+ straight_framebuffer: u32; straight_texture: u32; straight_program: u32
  buffer: u32; shadow_program: u32; dfg: u32
  vertices: Vec(GpuVertex); draws: Vec(GpuDraw)
  indexed: GpuIndexedGeometry
@@ -167,15 +169,20 @@ SceneGpuRender :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,image
  if !VecResizeBounded(gpu.readback,bytes,bytes) {return .{diagnostic="readback allocation failed"}}
  frame:=RenderTarget(gpu,scene,camera)
  if !frame.ok {return frame}
+ converting:=Now()
+ if !StraightReadbackTarget(gpu) {return .{diagnostic="straight RGBA readback target unavailable"}}
  submitted:=Now()
- G.BindFramebuffer(0x8d40,gpu.resolve);G.PixelStore(0x0d05,1)
- G.BindBuffer(0x88eb,0)
+ G.PixelStore(0x0d05,1);G.BindBuffer(0x88eb,0)
  G.ReadPixels(0,0,gpu.width,gpu.height,0x1908,0x1401,cast(*void)*gpu.readback[0])
  read:=Now()
  if G.GetError()!=0 {return .{diagnostic="GLES render/readback failed"}}
- if !ConvertReadback(gpu,image,scene.background.a>0) {return .{diagnostic="Image allocation failure"}}
+ // Commit only after successful GL completion, preserving the previous Image
+ // on GPU failure. A single contiguous copy replaces row flips/alpha scans.
+ if !VecResize(image.pixels,bytes) {return .{diagnostic="Image allocation failure"}}
+ unused G.CopyMemory(cast(*void)*image.pixels[0],cast(*void)*gpu.readback[0],cast(usize)bytes)
  gpu.resources.frames+=1
- frame.readback_ms=read-submitted;frame.conversion_ms=Now()-read
+ frame.submit_ms+=submitted-converting
+ frame.readback_ms=read-submitted;frame.conversion_ms=submitted-converting+Now()-read
  return frame
 }
 
@@ -237,6 +244,47 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
   prepare_ms=prepared-start,shadow_ms=shadowed-prepared,draw_ms=submitted-shadowed,
   draw_calls=draw_calls,shadow_passes=gpu.resources.shadow_renders-shadows_before}
 }
+// Use integer arithmetic on the quantized resolved texel, matching the CPU
+// formula exactly even at alpha 1, 127, 128 and 254. This pass also flips rows.
+GpuStraightFragment :: #string GLSL
+#version 300 es
+precision highp float;
+precision highp int;
+uniform highp sampler2D source;
+out vec4 outputColor;
+void main(){
+ ivec2 size=textureSize(source,0);
+ ivec2 pixel=ivec2(int(gl_FragCoord.x),size.y-1-int(gl_FragCoord.y));
+ uvec4 bytes=uvec4(floor(texelFetch(source,pixel,0)*255.0+0.5));
+ if(bytes.a==0u)bytes.rgb=uvec3(0u);
+ else if(bytes.a!=255u)bytes.rgb=min(uvec3(255u),(bytes.rgb*255u+bytes.a/2u)/bytes.a);
+ outputColor=vec4(bytes)/255.0;
+}
+GLSL
+StraightReadbackTarget :: (gpu: *SceneGpuContext)->bool {
+ if gpu.straight_program==0 {
+  gpu.straight_program=G.Program(GpuProbeVertex,GpuStraightFragment,gpu.log[:])
+  if gpu.straight_program==0 {return false}
+ }
+ if gpu.straight_framebuffer==0 {
+  G.GenFramebuffers(1,*gpu.straight_framebuffer)
+  G.BindFramebuffer(0x8d40,gpu.straight_framebuffer)
+  gpu.straight_texture=G.Texture(gpu.width,gpu.height,0x8058,0x1908,0x1401,null)
+  G.FramebufferTexture(0x8d40,0x8ce0,0x0de1,gpu.straight_texture,0)
+  if G.CheckFramebuffer(0x8d40)!=0x8cd5 {
+   G.DeleteFramebuffers(1,*gpu.straight_framebuffer);G.DeleteTextures(1,*gpu.straight_texture)
+   gpu.straight_framebuffer=0;gpu.straight_texture=0
+   return false
+  }
+ } else {G.BindFramebuffer(0x8d40,gpu.straight_framebuffer)}
+ G.Viewport(0,0,gpu.width,gpu.height)
+ G.Disable(0x0b71);G.Disable(0x0be2);G.Disable(0x0b44);G.Disable(0x0bd0)
+ G.UseProgram(gpu.straight_program)
+ G.ActiveTexture(0x84c0);G.BindTexture(0x0de1,gpu.resolved)
+ G.Uniform1i(G.Location(gpu.straight_program,"source"),0)
+ G.DrawArrays(4,0,3)
+ return G.GetError()==0
+}
 ConvertReadback :: (gpu: *SceneGpuContext,image: *Image,opaque: bool)->bool {
  if !VecResize(image.pixels,cast(s64)gpu.width*gpu.height*4) {return false}
  for y: 0..gpu.height-1 {
@@ -246,15 +294,31 @@ ConvertReadback :: (gpu: *SceneGpuContext,image: *Image,opaque: bool)->bool {
   // is already the required straight RGBA output.
   if opaque {continue}
   source_pixels:=*gpu.readback[source_row];dest_pixels:=*image.pixels[dest_row]
-  for x: 0..gpu.width-1 {
+  x: s32
+  while x<gpu.width {
   source:=cast(s64)x*4
-  a:=cast(s32)source_pixels[source+3]
-  if a==255 {continue}
-  for c: 0..2 {
-   v:=ifx a>0 then (cast(s32)source_pixels[source+c]*255+a/2)/a else 0
-   dest_pixels[source+c]=cast(u8)(ifx v>255 then 255 else v)
+  // Most resolved pixels are opaque even with a transparent scene clear.
+  // Check eight alpha bytes together before entering per-pixel conversion.
+  // Byte accesses preserve channel order and alignment on every CPU.
+  if x+8<=gpu.width && (source_pixels[source+3]&source_pixels[source+7]&
+      source_pixels[source+11]&source_pixels[source+15]&source_pixels[source+19]&
+      source_pixels[source+23]&source_pixels[source+27]&source_pixels[source+31])==cast(u8)255 {
+      x+=8; continue
   }
-  dest_pixels[source+3]=cast(u8)a
+  // Convert a mixed block once, without repeatedly inspecting overlapping
+  // alpha groups on transparent surfaces. The final block may be shorter.
+  end:=ifx x+8<gpu.width then x+8 else gpu.width
+  for pixel: x..end-1 {
+   at:=cast(s64)pixel*4
+   a:=cast(s32)source_pixels[at+3]
+   if a==255 {continue}
+   for c: 0..2 {
+    v:=ifx a>0 then (cast(s32)source_pixels[at+c]*255+a/2)/a else 0
+    dest_pixels[at+c]=cast(u8)(ifx v>255 then 255 else v)
+   }
+   dest_pixels[at+3]=cast(u8)a
+  }
+  x=end
  }}
  return true
 }
@@ -367,6 +431,7 @@ SceneGpuRelease :: (gpu: *SceneGpuContext) {
   if gpu.indexed.attributes!=0 {G.DeleteBuffers(1,*gpu.indexed.attributes)}
   if gpu.indexed.elements!=0 {G.DeleteBuffers(1,*gpu.indexed.elements)}
   if gpu.shadow_program!=0 {G.DeleteProgram(gpu.shadow_program)}
+  if gpu.straight_program!=0 {G.DeleteProgram(gpu.straight_program)}
   if gpu.dfg!=0 {G.DeleteTextures(1,*gpu.dfg)}
   for at: 0..gpu.programs.count-1 {if gpu.programs[at].id!=0 {G.DeleteProgram(gpu.programs[at].id)}}
   for at: 0..gpu.textures.count-1 {if gpu.textures[at].id!=0 {G.DeleteTextures(1,*gpu.textures[at].id)}}
@@ -387,9 +452,10 @@ SceneGpuRelease :: (gpu: *SceneGpuContext) {
  for at:0..1 {gpu.transfers[at]=GpuTransfer.{}}
  gpu.last_request=0
  gpu.context=null;gpu.display=null;gpu.attempted=false
- gpu.buffer=0;gpu.shadow_program=0;gpu.dfg=0;gpu.shadow_geometry=0
+ gpu.buffer=0;gpu.shadow_program=0;gpu.straight_program=0;gpu.dfg=0;gpu.shadow_geometry=0
  gpu.width=0;gpu.height=0
  gpu.framebuffer=0;gpu.resolve=0;gpu.color=0;gpu.depth=0;gpu.resolved=0
+ gpu.straight_framebuffer=0;gpu.straight_texture=0
  for at:0..3 {gpu.shadows[at]=GpuShadow.{}}
  for at:0..gpu.snapshot_counts.count-1 {gpu.snapshot_counts[at]=0}
  gpu.geometry_valid=false
@@ -404,6 +470,7 @@ SceneGpuMemoryUsage :: (gpu: *SceneGpuContext)->SceneGpuResources {
   gpu.bindings.capacity*cast(s64)size_of(GpuBindingCheck))
  if gpu.framebuffer!=0 {r.framebuffers+=1;r.renderbuffers+=2;r.gpu_bytes+=cast(s64)gpu.width*gpu.height*32}
  if gpu.resolve!=0 {r.framebuffers+=1;r.textures+=1;r.gpu_bytes+=cast(s64)gpu.width*gpu.height*4}
+ if gpu.straight_framebuffer!=0 {r.framebuffers+=1;r.textures+=1;r.gpu_bytes+=cast(s64)gpu.width*gpu.height*4}
  if gpu.dfg!=0 {r.textures+=1;r.gpu_bytes+=2048}
  if gpu.buffer!=0 {r.buffers+=1;r.gpu_bytes+=gpu.vertices.count*cast(s64)size_of(GpuVertex)}
  r.cpu_bytes+=4*(gpu.indexed.indices.capacity+gpu.indexed.scratch.capacity)
@@ -415,6 +482,7 @@ SceneGpuMemoryUsage :: (gpu: *SceneGpuContext)->SceneGpuResources {
   if slot.fence!=null {r.fences+=1;r.pending_frames+=1}
  }
  if gpu.shadow_program!=0 {r.programs+=1}
+ if gpu.straight_program!=0 {r.programs+=1}
  for at: 0..gpu.programs.count-1 {if gpu.programs[at].id!=0 {r.programs+=1}}
  for at: 0..gpu.textures.count-1 {
   t:=*gpu.textures[at];r.cpu_bytes+=t.bytes.capacity
@@ -458,10 +526,8 @@ SceneGpuMemoryUsage :: (gpu: *SceneGpuContext)->SceneGpuResources { return gpu.r
 }
 #scope_file
 #if OS != .WEB {
-clocklib :: #system_library "c";
-ClockTime :: struct {seconds: s64;nanoseconds: s64}
-ClockGet :: (id: s32,time: *ClockTime)->s32 #foreign clocklib "clock_gettime";
-Now :: ()->float64 { t: ClockTime;unused ClockGet(1,*t);return cast(float64)t.seconds*1000.0+cast(float64)t.nanoseconds/1000000.0 }
+Timer :: #import "std/timer_linux";
+Now :: () -> float64 { return cast(float64)Timer.MonotonicNanoseconds() / 1000000.0 }
 ProbeAsync :: (gpu: *SceneGpuContext)->bool {
  buffer: u32;G.GenBuffers(1,*buffer);defer G.DeleteBuffers(1,*buffer)
  G.BindBuffer(0x88eb,buffer);defer G.BindBuffer(0x88eb,0)
@@ -563,6 +629,8 @@ DropTargets :: (gpu: *SceneGpuContext) {
  DropTransfers(gpu)
  G.DeleteFramebuffers(1,*gpu.framebuffer);G.DeleteFramebuffers(1,*gpu.resolve)
  G.DeleteRenderbuffers(1,*gpu.color);G.DeleteRenderbuffers(1,*gpu.depth);G.DeleteTextures(1,*gpu.resolved)
+ G.DeleteFramebuffers(1,*gpu.straight_framebuffer);G.DeleteTextures(1,*gpu.straight_texture)
+ gpu.straight_framebuffer=0;gpu.straight_texture=0
  gpu.framebuffer=0;gpu.resolve=0;gpu.color=0;gpu.depth=0;gpu.resolved=0;gpu.width=0;gpu.height=0
 }
 Resize :: (gpu: *SceneGpuContext,width: s32,height: s32)->bool {

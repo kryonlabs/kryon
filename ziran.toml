@@ -5,8 +5,8 @@ module_roots = ["src/ui", "src/backend", "src/ui/alert", "src/ui/avatar", "src/u
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
-# Optimizer fixes for spilled values and loop headers.
-ref = "7fbc8152b0ab18b641a73d16d93ccda1e1c7f863"
+# Explicit worker sizing, native heap assertions and the expression parser bootstrap fix.
+ref = "0c4465a461df0bba473cf249ed30e60d94a6d364"
 
 [dependencies.libwebp]
 git = "https://github.com/webmproject/libwebp.git"
