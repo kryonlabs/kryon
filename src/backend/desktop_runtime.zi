@@ -193,6 +193,12 @@ desktop_input_focused: bool;
 desktop_input_started: s64;
 // Durable UI delivery is independent of the current poll observations.
 desktop_input: InputDelivery;
+// Input waits in SDL's queue for room in desktop_input only while the
+// application takes from it. Once a pending queue's head stays put across
+// two polls, events go in (or are dropped when it is full) instead, so an
+// unread queue never holds back the wheel, pointer or window events.
+desktop_input_seen_head: s32;
+desktop_input_stalled_polls: s32;
 // File drops are copied before SDL releases its event-owned path. Applications
 // consume them on the UI thread; unrelated windows and drop text stay separate.
 desktop_dropped_files: [16][4096]u8;
@@ -772,6 +778,7 @@ DesktopLifecycleEvent :: (argument: *void, event: *Event) -> s32 {
 }
 
 DesktopEventBackpressured :: (event: *Event) -> bool {
+    if desktop_input_stalled_polls >= 2 { return false }
     if window != null && event.window_id == GetWindowID(window) {
         if event.kind == cast(u32)0x303 {
             return !InputDeliveryAccepts(*desktop_input, 0, cast(s32)Count(DesktopEventText(event)))
@@ -826,6 +833,12 @@ PollDesktop :: () -> bool {
         DesktopCursorRelease()
         return false
     }
+    if desktop_input.count == 0 || desktop_input.head != desktop_input_seen_head {
+        desktop_input_stalled_polls = 0
+    } else if desktop_input_stalled_polls < 2 {
+        desktop_input_stalled_polls += 1
+    }
+    desktop_input_seen_head = desktop_input.head
     taken: s32 = 0
     while taken < 4096 &&
     PeepEvents(*event, 1, 1, cast(u32)0, cast(u32)0xFFFF) > 0 {

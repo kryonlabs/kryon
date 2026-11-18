@@ -119,6 +119,30 @@ NativeQueueLifecycle :: () -> s32 {
     return 0
 }
 
+// An application that stops taking input keeps the window's other events:
+// keys stop waiting for room after two polls without a take, so a wheel
+// step behind more keys than the queue holds back still arrives.
+UnreadQueueWheel :: () -> s32 {
+    if !Desktop.OpenDesktopSized(160, 120) { return 100 }
+    defer Desktop.CloseDesktop()
+    input_window = WindowID(Desktop.DesktopWindow())
+    Desktop.BeginDesktopFrame()
+    if !Desktop.EndDesktopFrame() { return 101 }
+    Delay(cast(u32)50)
+    if !Desktop.PollDesktop() || !Desktop.WindowFocusedHost() { return 102 }
+    event: Event
+    while Poll(cast(*void)*event) != 0 {}
+    for index: 0..39 { if !PushKey(true, 120, 0) || !PushKey(false, 120, 0) { return 103 } }
+    if !PushWheel() { return 104 }
+    saw_wheel: bool = false
+    for poll: 0..4 {
+        if !Desktop.PollDesktop() { return 105 }
+        if Desktop.DesktopWheelMove() == 3.0 { saw_wheel = true }
+    }
+    if !saw_wheel { return 106 }
+    return 0
+}
+
 // Frame observations and ordered UI delivery remain independent.
 OrderedBurst :: () -> s32 {
     if !Desktop.OpenDesktopSized(160, 120) { return 40 }
@@ -340,6 +364,8 @@ main :: () -> s32 {
     if result != 0 { return result }
     result = OrderedBurst()
     if result != 0 { return result }
+    result = UnreadQueueWheel()
+    if result != 0 { return result }
     result = UrgentClose(true, false)
     if result != 0 { return result }
     result = UrgentClose(false, false)
@@ -354,6 +380,6 @@ main :: () -> s32 {
         Desktop.WindowTakeCloseRequestHost() { return 76 }
     Session.SessionClose(session)
     Desktop.CloseDesktop()
-    print("Desktop ordered input: Unicode burst, edit ordering, full snapshot carry, lifecycle and urgent close passed\n")
+    print("Desktop ordered input: Unicode burst, edit ordering, full snapshot carry, unread-queue wheel, lifecycle and urgent close passed\n")
     return 0
 }

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A desktop application that stops taking keys no longer stalls its window:
+  once a pending input queue's head stays put across two polls, keys stop
+  waiting in SDL's queue for room, so wheel, pointer and window events
+  behind them still arrive.
 - AVIF pictures decode faster on phones: 8-bit 4:2:0 and 4:2:2 colour
   converts across the cores with exactly the same bytes as before.
 
