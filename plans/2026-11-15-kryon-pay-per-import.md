@@ -243,7 +243,7 @@ them (`examples/window.zi` and `examples/hello.zi`, the two `App.Show` and
 | `accessibility_tree_linux` | `src/backend/app_host_desktop.zi`, `src/backend/desktop_run.zi` |
 | `atspi_protocol` | `src/backend/accessibility_tree_linux.zi` |
 
-Fifty-eight of those 88 also carry the whole picture chain although they draw
+Fifty-seven of those 88 also carry the whole picture chain although they draw
 no picture. `box` draws shapes and text and does not: the chain arrives when
 `cairo_raster` or a widget import reaches `src/ui/image/` (button imports
 `kryon/image` for its icon slot).

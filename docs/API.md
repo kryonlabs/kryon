@@ -2349,16 +2349,21 @@ daylight-test`).
 Linux uses the existing system image loader and packaged WebP/AVIF adapters,
 copying the original straight pixels before Cairo premultiplies them. Android reads relative APK asset paths
 through the current NativeActivity's asset manager, or absolute filesystem
-paths. It uses the existing PNG decoder and the activity's `decodeBundleImage`
-method for other supported formats, including JPEG orientation. Unsupported
-formats fail empty; this API does not promise WebAssembly/Android AVIF support.
+paths. It decodes PNG, WebP and AVIF in process with the linked codecs, on every
+supported API level. Other formats, such as JPEG with its orientation, need the
+activity's `decodeBundleImage(byte[])` method: it returns width, height and
+then ARGB_8888 pixels, or null, and the droid template provides it. Without
+it those formats fail empty and Kryon logs once that the method is missing.
+Unsupported formats fail empty; this API does not promise WebAssembly AVIF
+support.
 These are CPU images and survive presentation context teardown.
 
 `make image-pixels-test` verifies exact RGBA/alpha ownership and invalid inputs.
 `make shader-host-test`, `make shader-web-test` and the explicit hardware target
 `make shader-android-test` additionally execute the loader in their real hosts.
 The Android console test covers absolute PNG files and the real offscreen native
-window; APK asset lookup and the JNI codec require an activity integration test.
+window. `make android-pictures-device-test` decodes AVIF textures and checks the
+missing bridge inside Android's VM on the USB Moto.
 
 Custom native and Canvas hosts can import `kryon/window_runtime` for
 `BeginWindowFrame`, `ClearWindowFrame(color)` and `EndWindowFrame`.
