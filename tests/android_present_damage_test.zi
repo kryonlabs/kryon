@@ -35,7 +35,7 @@ ANativeWindow_getWidth :: (input: *void) -> s32 { unused input; return 48 }
 ANativeWindow_getHeight :: (input: *void) -> s32 { unused input; return 36 }
 #program_export
 ANativeWindow_setBuffersGeometry :: (input: *void, width: s32, height: s32, format: s32) -> s32 {
-    unused input; return ifx width == 48 && height == 36 && format == 1 then 0 else -1
+    unused input; return ifx width == 0 && height == 0 && format == 1 then 0 else -1
 }
 #program_export
 ANativeWindow_lock :: (input: *void, output: *Native.NativeWindowBuffer, bounds: *void) -> s32 {

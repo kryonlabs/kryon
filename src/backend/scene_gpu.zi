@@ -141,6 +141,15 @@ SceneGpuProbe :: (gpu: *SceneGpuContext)->SceneGpuCapabilities {
  gpu.shadow_program=G.Program(GpuVertexSource,GpuShadowFragment,gpu.log[: ])
  if gpu.shadow_program==0 { gpu.capabilities.diagnostic="shadow GLSL program rejected";return gpu.capabilities }
  G.GenBuffers(1,*gpu.buffer)
+ // The shader and framebuffer probes do not exercise the vertex buffer ABI.
+ // Allocate and update a small buffer with the same calls as indexed meshes.
+ gpu.capabilities.diagnostic="GLES geometry buffer upload unavailable"
+ if gpu.buffer==0 {return gpu.capabilities}
+ vertex: u32=1
+ G.BindBuffer(0x8892,gpu.buffer)
+ G.BufferData(0x8892,4,null,0x88e8)
+ G.BufferSubData(0x8892,0,4,cast(*void)*vertex)
+ if G.GetError()!=0 {return gpu.capabilities}
  if !CreateDFG(gpu) { gpu.capabilities.diagnostic="DFG texture unavailable";return gpu.capabilities }
  gpu.capabilities.available=true;gpu.capabilities.diagnostic=""
  gpu.capabilities.async_available=ProbeAsync(gpu)

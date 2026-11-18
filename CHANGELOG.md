@@ -16,6 +16,8 @@
 - GLES scenes keep GPU shadow filtering on devices without hardware depth comparison filtering.
 - The shader benchmark measures eight shader workloads and four animated scenes with mean and p95 frame times.
 - Android keeps the active frame budget while retained paint changes and backs off when paint becomes stable.
+- Android presents at the native surface size, uses Lanczos for smooth image
+  scaling, and uploads scene geometry correctly on 32-bit GLES devices.
 - Desktop animations continue presenting text and images without input.
   Retained paint compares each bitmap's content revision, so changed pixels
   repaint through the same handle and identical frames still skip presentation.

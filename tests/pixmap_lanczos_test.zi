@@ -21,6 +21,18 @@ Draw :: (path: string, source: Rectangle, bounds: Rectangle, tint: Color, smooth
     return true
 }
 
+#if #defined(ANDROID_BUILD) {
+    DrawMesh :: (path: string) -> bool {
+        if !Pixels.PixmapBeginInto(cast(u32)Pixels.PixmapBackground, 128, 128, surface[:], true) { return false }
+        points: [4]Vector2 = .[.{16.0, 16.0}, .{112.0, 12.0}, .{8.0, 110.0}, .{108.0, 103.0}]
+        Texture.emitting_smooth = true
+        Pixels.RasterImageMesh(path, 0, .{0.0, 0.0, 512.0, 512.0}, points[:], 2, 2, CLIP, .{255, 255, 255, 255})
+        Texture.emitting_smooth = false
+        Pixels.PixmapEndInto()
+        return true
+    }
+}
+
 frame: [16384]u32;
 Keep :: () { for i: 0..16383 { frame[i] = surface[i] } }
 Same :: () -> bool {
@@ -104,6 +116,14 @@ main :: (argc: s32, argv: **u8) -> s32 {
     Pixels.PixmapClearImage(0)
     if !Pixels.PixmapSetImage(1, sources[1], 512, 512, pictures[1][:]) { return 11 }
     if CopySlots() != 0 { print("% copy slots outlived their pictures\n", CopySlots()); return 12 }
+    #if #defined(ANDROID_BUILD) {
+        if !DrawMesh(sources[1]) || !Pixels.PixmapLanczosWait() { return 13 }
+        Keep()
+        if !DrawMesh(sources[1]) || CopySlots() != 1 || Same() { return 14 }
+        Keep()
+        if !DrawMesh(sources[1]) || !Same() || Pixels.PixmapLanczosPending() { return 15 }
+        print("Android pixmap reuses a Lanczos-prefiltered source across warped draws\n")
+    }
     Pixels.PixmapCloseWorkers()
     print("Pixmap draws settled Lanczos copies 1:1 and keeps them stable across frames\n")
     return 0

@@ -11,7 +11,7 @@ Metrics :: #import "font_metrics";
 #import "paint_texture"
 Bitmaps :: #import "bitmap_store";
 // Smooth images use the shared Lanczos cache only where it has a worker.
-PIXMAP_LANCZOS :: #defined(POSIX_THREADS)
+PIXMAP_LANCZOS :: #defined(POSIX_THREADS) || #defined(ANDROID_BUILD)
 
 #if #defined(POSIX_THREADS) {
     Workers :: #import "std/parallel_linux";
@@ -392,6 +392,49 @@ PixmapSetImage :: (slot: s32, path: string, width: s32, height: s32, pixels: []u
         copy_source.* = .{0.0, 0.0, cast(float32)entry.key.width, cast(float32)entry.key.height}
         smooth.* = entry.key.width != key.width || entry.key.height != key.height
         return PixmapCopyImageStart + cast(s32)entry.texture - 1
+    }
+}
+
+#if #defined(ANDROID_BUILD) {
+    // Prefilter the shared source before warping it. Size the copy for the
+    // largest local scale so a stretched cell retains the source detail.
+    PixmapMeshLanczosSlot :: (slot: s32, source: *Rectangle, points: []Vector2,
+        columns: s32, rows: s32) -> s32 {
+        horizontal: float32 = 0.0
+        vertical: float32 = 0.0
+        for row: cast(s32)0..rows - 1 {
+            for column: cast(s32)0..columns - 1 {
+                at := row * columns + column
+                if column + 1 < columns {
+                    next := points[at + 1]
+                    x := (next.x - points[at].x) * pixmap_scale_x
+                    y := (next.y - points[at].y) * pixmap_scale_y
+                    length_squared := x * x + y * y
+                    if length_squared > horizontal { horizontal = length_squared }
+                }
+                if row + 1 < rows {
+                    next := points[at + columns]
+                    x := (next.x - points[at].x) * pixmap_scale_x
+                    y := (next.y - points[at].y) * pixmap_scale_y
+                    length_squared := x * x + y * y
+                    if length_squared > vertical { vertical = length_squared }
+                }
+            }
+        }
+        width := cast(float32)Sqrt(cast(float64)horizontal) * cast(float32)(columns - 1)
+        height := cast(float32)Sqrt(cast(float64)vertical) * cast(float32)(rows - 1)
+        limit := cast(float32)Lanczos.LANCZOS_SIDE_LIMIT
+        if !(width >= 1.0 && height >= 1.0 && width <= limit && height <= limit) { return slot }
+        box := source.*
+        if box.width < 0.0 { box.width = -box.width }
+        if box.height < 0.0 { box.height = -box.height }
+        copy_source: Rectangle; snapped: Rectangle; stretched: bool
+        copy := PixmapLanczosSlot(slot, box, .{0.0, 0.0, width, height}, *copy_source, *snapped, *stretched)
+        if copy < 0 { return slot }
+        if source.width < 0.0 { copy_source.width = -copy_source.width }
+        if source.height < 0.0 { copy_source.height = -copy_source.height }
+        source.* = copy_source
+        return copy
     }
 }
 
@@ -1385,6 +1428,14 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32, source: Rectangle,
             print("Kryon: skipped image: invalid geometry\n"); return
         }
         smooth := CurrentPaintSmooth()
+        if smooth && rotation == 0.0 && source.width == destination.width && source.height == destination.height {
+            // An integral translation maps every device pixel center to a
+            // texel center and can use the direct row copy.
+            x := source.x - (destination.x - origin.x)
+            y := source.y - (destination.y - origin.y)
+            if x >= -32768.0 && x <= 32768.0 && y >= -32768.0 && y <= 32768.0 &&
+                x == cast(float32)cast(s32)x && y == cast(float32)cast(s32)y { smooth = false }
+        }
         #if PIXMAP_LANCZOS {
             // A smooth unrotated image draws its Lanczos copy pixel for pixel.
             if smooth && rotation == 0.0 && source.width > 0.0 && source.height > 0.0 {
@@ -1484,6 +1535,11 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     if bottom > pixmap_clip_bottom { bottom = pixmap_clip_bottom }
     if right <= left || bottom <= top { return }
     smooth := CurrentPaintSmooth()
+    #if #defined(ANDROID_BUILD) {
+        if smooth && slot < PixmapManagedImageStart {
+            slot = PixmapMeshLanczosSlot(slot, *source, points, columns, rows)
+        }
+    }
     for row: cast(s32)0..rows - 2 {
         for column: cast(s32)0..columns - 2 {
             for half: cast(s32)0..1 {

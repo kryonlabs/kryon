@@ -84,6 +84,9 @@ SetSourceRGBA :: (paint: *void, red: float64, green: float64,
     blue: float64, alpha: float64) #foreign cairo_library "cairo_set_source_rgba";
 GetSource :: (paint: *void) -> *void #foreign cairo_library "cairo_get_source";
 PatternFilter :: (pattern: *void, filter: s32) #foreign cairo_library "cairo_pattern_set_filter";
+CAIRO_FILTER_GOOD :: 1
+CAIRO_FILTER_BEST :: 2
+CAIRO_FILTER_NEAREST :: 3
 PatternExtend :: (pattern: *void, extend: s32) #foreign cairo_library "cairo_pattern_set_extend";
 Paint :: (paint: *void) #foreign cairo_library "cairo_paint";
 PaintAlpha :: (paint: *void, alpha: float64) #foreign cairo_library "cairo_paint_with_alpha";
@@ -803,7 +806,7 @@ CairoImagePixels :: (asset_path: string, width: s32, height: s32, pixels: []u32,
         cast(float64)height / cast(float64)source_height)
     pattern := PatternForSurface(image)
     // GOOD box-filters large reductions without Lanczos ringing at outlines.
-    PatternFilter(pattern, 1)
+    PatternFilter(pattern, CAIRO_FILTER_GOOD)
     SetSource(context, pattern)
     Paint(context)
     ok := Status(context) == 0
@@ -1259,7 +1262,8 @@ RasterImage :: (asset_path: string, texture_id: u32,
         }
         pattern := PatternForSurface(sampled.surface)
         PatternExtend(pattern, 3)
-        PatternFilter(pattern, ifx exact then 3 else 1); PaintImagePattern(pattern, tint)
+        PatternFilter(pattern, ifx exact then CAIRO_FILTER_NEAREST else CAIRO_FILTER_GOOD)
+        PaintImagePattern(pattern, tint)
         PatternDestroy(pattern); Restore(paint)
         CairoReleaseManaged(texture_id, image); return
     }
@@ -1288,8 +1292,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
         cast(float64)source.width,
         cast(float64)destination.height / cast(float64)source.height)
     Translate(paint, -cast(float64)source.x, -cast(float64)source.y)
-    // Sharp pixels unless the image asks to be scaled smoothly, as the
-    // other hosts draw them; smooth images keep Cairo's good filter.
+    // Use Cairo's reconstruction filter while a smooth copy is unavailable.
     pattern: *void = PatternForSurface(image)
     if pattern == null {
         Restore(paint)
@@ -1297,7 +1300,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
         print("Kryon: skipped image: invalid or unavailable picture\n")
         return
     }
-    PatternFilter(pattern, ifx CurrentPaintSmooth() then 1 else 3)
+    PatternFilter(pattern, ifx CurrentPaintSmooth() then CAIRO_FILTER_BEST else CAIRO_FILTER_NEAREST)
     // Filtering a full image at its edge must sample its edge pixel rather
     // than transparent pixels beyond the surface while its copy is loading.
     if rectangular { PatternExtend(pattern, 3) }
@@ -1425,14 +1428,13 @@ CairoMeshTriangle :: (image: *void, a: Vector2, a_source: Vector2,
     matrix.x0 = x0 - matrix.xx * u0 - matrix.xy * v0
     matrix.y0 = y0 - matrix.yx * u0 - matrix.yy * v0
     TransformBy(paint, *matrix)
-    // Sharp pixels unless the image asks to be scaled smoothly.
     pattern: *void = PatternForSurface(image)
     if pattern == null {
         Restore(paint)
         print("Kryon: skipped image: invalid or unavailable picture\n")
         return
     }
-    PatternFilter(pattern, ifx CurrentPaintSmooth() then 4 else 3)
+    PatternFilter(pattern, ifx CurrentPaintSmooth() then CAIRO_FILTER_BEST else CAIRO_FILTER_NEAREST)
     PaintImagePattern(pattern, tint)
     PatternDestroy(pattern)
     Restore(paint)

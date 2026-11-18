@@ -5,6 +5,10 @@
 #import "android_host_cleanup"
 #import "android_touch"
 #import "std/c_string"
+Simd :: #import "std/simd";
+#if #defined(ANDROID_BUILD) {
+    Lanczos :: #import "lanczos_cache";
+}
 
 AndroidPollSource :: struct {
     id: s32
@@ -215,6 +219,9 @@ AndroidNativeStart :: (app: *NativeAndroidApp) {
 
 AndroidNativePoll :: (timeout: s32) -> bool {
     if android_native_app == null { return false }
+    #if #defined(ANDROID_BUILD) {
+        if (timeout < 0 || timeout > 16) && Lanczos.LanczosPending() { timeout = 16 }
+    }
     file: s32
     events: s32
     data: *void
@@ -262,7 +269,10 @@ AndroidNativeLock :: (left: s32 = 0, top: s32 = 0, right: s32 = -1, bottom: s32 
     if width <= 0 || height <= 0 || !AndroidNativeEnsurePixels(width, height) { return false }
     if window != android_native_window || width != android_native_geometry_width ||
     height != android_native_geometry_height {
-        if NativeWindowGeometry(window, width, height, 1) != 0 { return false }
+        // Request the pixel format while leaving buffer dimensions under the
+        // window's control. A fixed size makes Android scale the last buffer
+        // when the surface changes size.
+        if NativeWindowGeometry(window, 0, 0, 1) != 0 { return false }
         android_native_window = window
         android_native_geometry_width = width
         android_native_geometry_height = height
@@ -297,15 +307,25 @@ AndroidNativePresentDamage :: (left: s32, top: s32, right: s32, bottom: s32) -> 
     if left >= right || top >= bottom { return true }
     source := cast(*WordDescriptor)(*android_pixels)
     if source.data == null { return false }
+    order := Simd.Make(u8x16, 2, 1, 0, 3, 6, 5, 4, 7, 10, 9, 8, 11, 14, 13, 12, 15)
+    columns := right - left
     for row: top..bottom - 1 {
-        destination := cast(*u32)*android_native_buffer.bits[
-        (cast(s64)row * android_native_buffer.stride + left) * 4]
-        for column: left..right - 1 {
-            input := source.data[cast(s64)row * android_pixel_width + column]
-            output := (input & cast(u32)0xff00ff00) |
-            ((input & cast(u32)0x000000ff) << 16) |
-            ((input & cast(u32)0x00ff0000) >> 16)
-            destination[column - left] = output
+        src := *source.data[cast(s64)row * android_pixel_width + left]
+        dst := *android_native_buffer.bits[(cast(s64)row * android_native_buffer.stride + left) * 4]
+        column: s32
+        while column + 4 <= columns {
+            offset := column * 4
+            channels := Simd.Load(u8x16, cast(*u8)src, offset)
+            Simd.Store(dst, offset, Simd.ByteShuffle(channels, order))
+            column += 4
+        }
+        while column < columns {
+            input := src[column]
+            pixels := cast(*u32)dst
+            pixels[column] = (input & cast(u32)0xff00ff00) |
+                ((input & cast(u32)0x000000ff) << 16) |
+                ((input & cast(u32)0x00ff0000) >> 16)
+            column += 1
         }
     }
     return true
@@ -319,6 +339,9 @@ AndroidNativeUnlock :: () -> bool {
 }
 
 AndroidNativeClose :: () {
+    #if #defined(ANDROID_BUILD) {
+        Lanczos.LanczosClose()
+    }
     AndroidHostResourcesClose()
     AndroidNativeUnlock()
     if android_pixels.count > 0 {

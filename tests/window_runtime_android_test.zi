@@ -23,7 +23,7 @@ ANativeWindow_getWidth :: (window: *void) -> s32 { unused window; return width }
 ANativeWindow_getHeight :: (window: *void) -> s32 { unused window; return height }
 #program_export
 ANativeWindow_setBuffersGeometry :: (window: *void, w: s32, h: s32, format: s32) -> s32 {
-    if window != app.window || w != width || h != height || format != 1 { return -1 }
+    if window != app.window || w != 0 || h != 0 || format != 1 { return -1 }
     return 0
 }
 #program_export
