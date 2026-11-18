@@ -8,7 +8,55 @@
 #import "std/image"
 #import "std/vec"
 
+CheckIndexedMeshes :: () -> bool {
+    scene: Scene
+    SceneInit(*scene)
+    gpu: SceneGpuContext
+    cpu := NewImage(64, 64)
+    image := NewImage(64, 64)
+    defer {
+        SceneGpuRelease(*gpu)
+        SceneFree(*scene)
+        VecFree(cpu.pixels)
+        VecFree(image.pixels)
+        RenderSceneRelease()
+    }
+
+    positions: [4]Vector3 = .[.{-0.3, -0.3, 0.0}, .{0.3, -0.3, 0.0},
+    .{0.3, 0.3, 0.0}, .{-0.3, 0.3, 0.0}]
+    normals: [4]Vector3 = .[.{0.0, 0.0, 1.0}, .{0.0, 0.0, 1.0},
+    .{0.0, 0.0, 1.0}, .{0.0, 0.0, 1.0}]
+    uvs: [4]ShapePoint
+    indices: [6]s32 = .[0, 1, 2, 0, 2, 3]
+    left := SceneIndexedMesh(*scene, positions[:], normals[:], uvs[:], indices[:],
+        UnlitMaterial(.{255, 0, 0, 255}))
+    right := SceneIndexedMesh(*scene, positions[:], normals[:], uvs[:], indices[:],
+        UnlitMaterial(.{0, 255, 0, 255}))
+    if left < 0 || right < 0 { return false }
+    unused SetPosition(*scene, left, -0.5, 0.0, 0.0)
+    unused SetPosition(*scene, right, 0.5, 0.0, 0.0)
+    camera := OrthographicCamera(-1.0, 1.0, 1.0, -1.0, 0.1, 10.0)
+    camera.position = .{0.0, 0.0, 3.0}
+
+    result := SceneGpuRender(*gpu, *scene, camera, *image)
+    if !result.ok || !result.accelerated {
+        print("Two indexed meshes failed on GLES: %\n", result.diagnostic)
+        return false
+    }
+    if !RenderScene(*scene, camera, *cpu) { return false }
+    left_pixel := (32 * 64 + 16) * 4
+    right_pixel := (32 * 64 + 48) * 4
+    return cpu.pixels[left_pixel] > 200 && cpu.pixels[left_pixel + 1] < 10 &&
+        cpu.pixels[right_pixel] < 10 && cpu.pixels[right_pixel + 1] > 200 &&
+        image.pixels[left_pixel] > 200 && image.pixels[left_pixel + 1] < 10 &&
+        image.pixels[right_pixel] < 10 && image.pixels[right_pixel + 1] > 200
+}
+
 main :: () -> s32 {
+    if !CheckIndexedMeshes() {
+        print("Two indexed meshes must both render on CPU and GLES\n")
+        return 7
+    }
     scene: Scene
     SceneInit(*scene)
     skin: SceneSkin

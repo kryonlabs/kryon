@@ -75,7 +75,7 @@ SceneIndexedMesh :: (scene: *Scene, positions: []Vector3, normals: []Vector3,
         }
     }
     for index: indices {
-        if !VecPush(scene.indices, first + index) {
+        if !VecPush(scene.indices, index) {
             scene.failed = true
             return -1
         }

@@ -18,6 +18,15 @@ resolver.
 - `tests/scene_gpu_test.py` (scene/shader lane) calls `zi2c --entry` without
   `--exe`, so with the current toolchain its programs have no `main` and fail
   to link. `practice_material_gpu_test.py` builds with `--exe` itself.
+- The first GLES frame with two shader samplers can use the wrong texture.
+  In `src/backend/scene_gpu.zi`, `DrawNode` must select `GL_TEXTURE0 + slot + 6`
+  before `TextureFor` (currently lines 1082–1083). A first upload or refresh
+  binds on the active unit. `BindCookie` runs before the shader sampler loop,
+  so select the destination before each `TextureFor` call, including units
+  0 and 14, or make `TextureFor` take and select its destination unit.
+  Verify that a cold frame with two distinct samplers matches the next frame.
+- The `SceneIndexedMesh` section in `docs/API.md` should state that triangle
+  indices are relative to the vertices of their own mesh.
 - Performance: the material and the finishing pass (brush, grain, pooling,
   pencil contour) were measured only on llvmpipe and the CPU renderer. Real
   phone GPU time, memory and thermals are unmeasured.

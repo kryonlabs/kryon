@@ -5,6 +5,7 @@
 - Desktop animations continue presenting text and images without input.
   Retained paint compares each bitmap's content revision, so changed pixels
   repaint through the same handle and identical frames still skip presentation.
+- Multiple indexed meshes in one scene render correctly on CPU and GLES.
 
 ## [0.5.0] - 2026-11-17
 
