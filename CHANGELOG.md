@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Packages can import `kryon/canvas_os` and `kryon/pixmap_image_owner` to
+  supply bundle pictures on the web and Android.
 - `make gallery-zx` exports all 101 gallery examples again. It binds the
   frame entry by Ziran's package-scoped module names, and an example that
   imports an export such as `kryon/modal` gets that export's own module.
