@@ -943,16 +943,17 @@ AddImageTexture :: (scene: *Scene, image: *Image) -> s32 {
     }
     texture: SceneTexture = .{image.width, image.height, scene.texels.count, key}
     first := scene.texels.count
-    for at: 0..bytes - 1 {
-        if !VecPush(scene.texels, image.pixels[at]) {
-            scene.failed = true
-            while scene.texels.count > first { unused VecPop(scene.texels) }
-            return -1
-        }
+    // Grow once and copy the block: a phone adds a room's pictures (tens of
+    // millions of bytes) while the room opens.
+    if !VecResize(scene.texels, first + bytes) {
+        scene.failed = true
+        unused VecResize(scene.texels, first)
+        return -1
     }
+    for at: 0..bytes - 1 { scene.texels[first + at] = image.pixels[at] }
     if !VecPush(scene.textures, texture) {
         scene.failed = true
-        while scene.texels.count > first { unused VecPop(scene.texels) }
+        unused VecResize(scene.texels, first)
         return -1
     }
     return cast(s32)(scene.textures.count - 1)

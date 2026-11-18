@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Scenes add large pictures faster: a texture's texels are copied in one
+  block instead of one at a time.
 - Checking or building a package for a native target no longer fails in
   `page_events.zi`; its browser event bridge exists only on web targets.
 - Packages can import `kryon/canvas_os` and `kryon/pixmap_image_owner` to
