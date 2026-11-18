@@ -43,7 +43,11 @@ def drag(probe, end, target_output=None):
         time.sleep(.3)
     finally:
         xdotool('mouseup', '1')
-    output, _ = process.communicate(timeout=30)
+    # Read the rest through the same buffered stream as `ready`: a drag that
+    # ends at once writes its report in the same pipe read, and
+    # communicate(timeout=...) would read past that buffer and lose it.
+    process.wait(timeout=30)
+    output = process.stdout.read()
     assert process.returncode == 0, process.returncode
     fields = list(map(int, output.split()))
     return {'status': STATUS[fields[0]], 'performed': fields[1], 'success': bool(fields[2]),
