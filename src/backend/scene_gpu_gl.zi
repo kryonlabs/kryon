@@ -1,5 +1,11 @@
 // System EGL/GLES bindings. No window creation or host renderer state.
 #import "std/vec"
+#if OS == .ANDROID {
+    #import "std/byte_text_linux"
+    #import "std/c_string"
+    #import "std/file_linux"
+    #import "std/format"
+}
 egl :: #system_library "EGL";
 SCENE_GPU_ANDROID :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__)
 #if SCENE_GPU_ANDROID {
@@ -81,6 +87,12 @@ RawCreateProgram :: ()->u32 #foreign gl "glCreateProgram";
 RawAttachShader :: (id: u32, shader: u32) #foreign gl "glAttachShader";
 RawLinkProgram :: (id: u32) #foreign gl "glLinkProgram";
 RawGetProgram :: (id: u32, name: u32, value: *s32) #foreign gl "glGetProgramiv";
+#if OS == .ANDROID {
+    RawProgramParameter :: (id: u32, name: u32, value: s32) #foreign gl "glProgramParameteri";
+    RawGetProgramBinary :: (id: u32, capacity: s32, length: *s32, format: *u32, bytes: *void) #foreign gl "glGetProgramBinary";
+    RawProgramBinary :: (id: u32, format: u32, bytes: *void, length: s32) #foreign gl "glProgramBinary";
+    RawCacheTemporary :: (path: *u8)->s32 #foreign c "mkstemp";
+}
 RawProgramLog :: (id: u32, size: s32, length: *s32, data: *u8) #foreign gl "glGetProgramInfoLog";
 RawDeleteProgram :: (id: u32) #foreign gl "glDeleteProgram";
 RawUseProgram :: (id: u32) #foreign gl "glUseProgram";
@@ -262,13 +274,104 @@ Compile :: (stage: u32, source: string, log: []u8)->u32 {
  if ok==0 { ShaderLog(id,cast(s32)log.count,null,*log[0]); DeleteShader(id); return 0 }
  return id
 }
-Program :: (vertex: string, fragment: string, log: []u8)->u32 {
- vs:=Compile(0x8b31,vertex,log); if vs==0 { return 0 }; defer DeleteShader(vs)
+Program :: (vertex: string, fragment: string, log: []u8, shared_vertex: *u32=null, retrievable: bool=false)->u32 {
+ vs: u32
+ if shared_vertex!=null {vs=shared_vertex[0]}
+ if vs==0 {
+  vs=Compile(0x8b31,vertex,log);if vs==0 {return 0}
+  if shared_vertex!=null {shared_vertex[0]=vs}
+ }
+ defer {if shared_vertex==null {DeleteShader(vs)}}
  fs:=Compile(0x8b30,fragment,log); if fs==0 { return 0 }; defer DeleteShader(fs)
- id:=CreateProgram(); AttachShader(id,vs); AttachShader(id,fs); LinkProgram(id)
+ id:=CreateProgram()
+ #if OS == .ANDROID {
+  if retrievable {RawProgramParameter(id,0x8257,1)} // GL_PROGRAM_BINARY_RETRIEVABLE_HINT
+ } else {
+  unused retrievable
+ }
+ AttachShader(id,vs); AttachShader(id,fs); LinkProgram(id)
  ok: s32; GetProgram(id,0x8b82,*ok)
  if ok==0 { ProgramLog(id,cast(s32)log.count,null,*log[0]); DeleteProgram(id); return 0 }
  return id
+}
+
+#if OS == .ANDROID {
+ProgramCache :: struct {directory: [4096]u8; driver_key: u64}
+PROGRAM_CACHE_LIMIT :: 256*1024
+PROGRAM_CACHE_SLOTS :: 128
+PROGRAM_CACHE_MAGIC :: 0x4b52594f4e474c01
+ProgramCacheEntry :: struct {magic: u64; key: u64; checksum: u64; format: u32; length: s32}
+
+ProgramHash :: (bytes: []u8,key: u64)->u64 {
+ hash:=key^cast(u64)bytes.count
+ for at:0..bytes.count-1 {hash=(hash^cast(u64)bytes[at])*cast(u64)1099511628211}
+ return hash
+}
+ProgramTextHash :: (text: string,key: u64)->u64 {
+ view:=cast(*TextDescriptor)*text
+ return ProgramHash(BytesFromPointer(view.data,cast(u64)text.count),key)
+}
+InitProgramCache :: (root: string)->ProgramCache {
+ if root=="" {return .{}}
+ formats: s32;GetInteger(0x87fe,*formats) // GL_NUM_PROGRAM_BINARY_FORMATS
+ if formats<=0 {return .{}}
+ directory: Vec(u8);BuilderPrint(*directory,"%/kryon-gles",root)
+ path: Text=BuilderFinish(directory)
+ cache: ProgramCache
+ if !CopyCString(TextView(path),cache.directory[:])||!CreatePrivateDirectory(TextView(path)) {return .{}}
+ cache.driver_key=cast(u64)PROGRAM_CACHE_MAGIC
+ for label: 0x1f00..0x1f02 {
+  cache.driver_key=ProgramTextHash(TextFromCString(GetString(cast(u32)label)),cache.driver_key)
+ }
+ return cache
+}
+LoadProgramBinary :: (path: string,key: u64)->u32 {
+ file:=OpenRead(path);if !file.valid {return 0};defer {unused CloseFile(file)}
+ entry: ProgramCacheEntry
+ header:=BytesFromPointer(cast(*u8)*entry,cast(u64)size_of(ProgramCacheEntry))
+ if ReadAt(file,header,0)!=header.count||entry.magic!=cast(u64)PROGRAM_CACHE_MAGIC||entry.key!=key||
+  entry.length<=0||entry.length>PROGRAM_CACHE_LIMIT||FileSize(file)!=header.count+entry.length {return 0}
+ bytes: Vec(u8)
+ if !VecResizeBounded(bytes,cast(s64)entry.length,PROGRAM_CACHE_LIMIT) {return 0}
+ if ReadAt(file,bytes[:],header.count)!=bytes.count||ProgramHash(bytes[:],key)!=entry.checksum {return 0}
+ id:=CreateProgram();if id==0 {return 0}
+ RawProgramBinary(id,entry.format,cast(*void)*bytes[0],entry.length)
+ ok: s32;GetProgram(id,0x8b82,*ok)
+ if GetError()==0&&ok!=0 {return id}
+ DeleteProgram(id)
+ return 0
+}
+SaveProgramBinary :: (path: string,key: u64,id: u32) {
+ length: s32;GetProgram(id,0x8741,*length) // GL_PROGRAM_BINARY_LENGTH
+ if length<=0||length>PROGRAM_CACHE_LIMIT {return}
+ bytes: Vec(u8)
+ if !VecResizeBounded(bytes,cast(s64)length,PROGRAM_CACHE_LIMIT) {return}
+ entry: ProgramCacheEntry=.{magic=cast(u64)PROGRAM_CACHE_MAGIC,key=key}
+ RawGetProgramBinary(id,length,*entry.length,*entry.format,cast(*void)*bytes[0])
+ if GetError()!=0||entry.length<=0||entry.length>length {return}
+ contents:=bytes[:entry.length];entry.checksum=ProgramHash(contents,key)
+ header:=BytesFromPointer(cast(*u8)*entry,cast(u64)size_of(ProgramCacheEntry))
+ name: Vec(u8);BuilderPrint(*name,"%.XXXXXX",path)
+ template: Text=BuilderFinish(name);temporary: [4096]u8
+ if !CopyCString(TextView(template),temporary[:]) {return}
+ fd:=RawCacheTemporary(*temporary[0]);if fd<0 {return}
+ file: FileHandle=.{fd=fd,valid=true}
+ staging:=TextFromCString(*temporary[0]);defer {unused RemoveFile(staging)}
+ complete:=WriteAt(file,header,0)==header.count&&WriteAt(file,contents,header.count)==contents.count
+ if CloseFile(file)&&complete {unused RenamePath(staging,path)}
+}
+CachedProgram :: (cache: *ProgramCache,vertex: string,fragment: string,log: []u8,shared_vertex: *u32)->u32 {
+ if cache.directory[0]==0 {return Program(vertex,fragment,log,shared_vertex)}
+ key:=ProgramTextHash(fragment,ProgramTextHash(vertex,cache.driver_key))
+ slot:=(key^(key>>32)^(key>>17))%cast(u64)PROGRAM_CACHE_SLOTS
+ name: Vec(u8);BuilderPrint(*name,"%/%",TextFromCString(*cache.directory[0]),slot)
+ path: Text=BuilderFinish(name)
+ cached:=LoadProgramBinary(TextView(path),key)
+ if cached!=0 {return cached}
+ id:=Program(vertex,fragment,log,shared_vertex,true)
+ if id!=0 {SaveProgramBinary(TextView(path),key,id)}
+ return id
+}
 }
 Texture :: (width: s32,height: s32,internal: s32,format: u32,kind: u32,data: *void,linear: bool=false)->u32 {
  id: u32; GenTextures(1,*id); BindTexture(0x0de1,id)

@@ -12,6 +12,9 @@
 // The native GPU path uses EGL/GLES3; the web draws scenes with RenderScene.
 #if OS != .WEB {
     G :: #import "scene_gpu_gl";
+    #if OS == .ANDROID {
+        Android :: #import "android_jni";
+    }
 }
 M :: #import "scene_gpu_math";
 #import "scene_gpu_sources"
@@ -89,6 +92,10 @@ SceneGpuContext :: struct {
  framebuffer: u32; color: u32; depth: u32; resolve: u32; resolved: u32
  straight_framebuffer: u32; straight_texture: u32; straight_program: u32
  buffer: u32; shadow_program: u32; dfg: u32
+ #if OS == .ANDROID {
+  program_cache: G.ProgramCache
+  scene_vertex_shader: u32
+ }
  vertices: Vec(GpuVertex); draws: Vec(GpuDraw)
  indexed: GpuIndexedGeometry
  // Each node's starting vertex in its stream and the transform used to bake it.
@@ -136,9 +143,13 @@ SceneGpuProbe :: (gpu: *SceneGpuContext)->SceneGpuCapabilities {
  gpu.capabilities.max_samples=maximum;gpu.capabilities.highp_bits=precision;gpu.capabilities.highp_range=range[1]
  gpu.capabilities.diagnostic="fragment highp, 15 texture units and full 4x MSAA required"
  if maximum<4||precision<23||range[1]<127||gpu.capabilities.texture_units<15 { return gpu.capabilities }
+ #if OS == .ANDROID {
+  directory: [4096]u8
+  gpu.program_cache=G.InitProgramCache(Android.AndroidPrivateDataPath(directory[:]))
+ }
  if !Resize(gpu,4,4) { return gpu.capabilities }
  gpu.capabilities.pcf_available=ProbePCF(gpu)
- gpu.shadow_program=G.Program(GpuVertexSource,GpuShadowFragment,gpu.log[: ])
+ gpu.shadow_program=LoadSceneProgram(gpu,GpuVertexSource,GpuShadowFragment,true)
  if gpu.shadow_program==0 { gpu.capabilities.diagnostic="shadow GLSL program rejected";return gpu.capabilities }
  G.GenBuffers(1,*gpu.buffer)
  // The shader and framebuffer probes do not exercise the vertex buffer ABI.
@@ -206,13 +217,14 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
  for at: 0..gpu.textures.count-1 { gpu.textures[at].used=false }
  defer Sweep(gpu)
  VecClear(gpu.bindings)
+ shadow_features:=ShadowFeatures(scene)
  for at: 0..scene.meshes.count-1 {
   m:=scene.meshes[at].material
   if m.shader!=null {
    diagnostic:=ValidateBindings(gpu,m)
    if !diagnostic.ok { return .{diagnostic=diagnostic.message} }
   }
-  if ProgramFor(gpu,m.shader,MaterialFeatures(m,camera.perspective))==0 { return .{diagnostic="material GLSL program rejected"} }
+  if ProgramFor(gpu,m.shader,MaterialFeatures(m,camera.perspective)|shadow_features)==0 { return .{diagnostic="material GLSL program rejected"} }
  }
  BindVertices(gpu)
  prepared:=Now();shadows_before:=gpu.resources.shadow_renders
@@ -235,7 +247,7 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
   if m.transparent {
    origin:=M.Point(view,d.origin);clip:=M.Point(M.Projection(camera),origin);w:=M.ProjectW(M.Projection(camera),origin)
    if !VecPush(gpu.order,cast(s32)at)||!VecPush(gpu.keys,ifx w!=0.0 then clip.z/w else clip.z) { return .{diagnostic="sort allocation failure"} }
-  } else if !Draw(gpu,scene,d,view,vp,camera.perspective) { return .{diagnostic="material texture unavailable"} }
+  } else if !Draw(gpu,scene,d,view,vp,camera.perspective,shadow_features) { return .{diagnostic="material texture unavailable"} }
  }
  for i: 1..gpu.order.count-1 {
   key:=gpu.keys[i];draw:=gpu.order[i];j:=i-1
@@ -244,7 +256,7 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
  }
  G.Enable(0x0be2);G.BlendFuncSeparate(0x0302,0x0303,1,0x0303)
  // CPU transparent meshes also write depth.
- for at: 0..gpu.order.count-1 { if !Draw(gpu,scene,gpu.draws[gpu.order[at]],view,vp,camera.perspective) {return .{diagnostic="material texture unavailable"}} }
+ for at: 0..gpu.order.count-1 { if !Draw(gpu,scene,gpu.draws[gpu.order[at]],view,vp,camera.perspective,shadow_features) {return .{diagnostic="material texture unavailable"}} }
  G.BindFramebuffer(0x8ca8,gpu.framebuffer);G.BindFramebuffer(0x8ca9,gpu.resolve)
  G.BlitFramebuffer(0,0,gpu.width,gpu.height,0,0,gpu.width,gpu.height,0x4000,0x2600)
  submitted:=Now()
@@ -272,7 +284,7 @@ void main(){
 GLSL
 StraightReadbackTarget :: (gpu: *SceneGpuContext)->bool {
  if gpu.straight_program==0 {
-  gpu.straight_program=G.Program(GpuProbeVertex,GpuStraightFragment,gpu.log[:])
+  gpu.straight_program=LoadSceneProgram(gpu,GpuProbeVertex,GpuStraightFragment)
   if gpu.straight_program==0 {return false}
  }
  if gpu.straight_framebuffer==0 {
@@ -441,6 +453,9 @@ SceneGpuRelease :: (gpu: *SceneGpuContext) {
   if gpu.indexed.elements!=0 {G.DeleteBuffers(1,*gpu.indexed.elements)}
   if gpu.shadow_program!=0 {G.DeleteProgram(gpu.shadow_program)}
   if gpu.straight_program!=0 {G.DeleteProgram(gpu.straight_program)}
+  #if OS == .ANDROID {
+   if gpu.scene_vertex_shader!=0 {G.DeleteShader(gpu.scene_vertex_shader)}
+  }
   if gpu.dfg!=0 {G.DeleteTextures(1,*gpu.dfg)}
   for at: 0..gpu.programs.count-1 {if gpu.programs[at].id!=0 {G.DeleteProgram(gpu.programs[at].id)}}
   for at: 0..gpu.textures.count-1 {if gpu.textures[at].id!=0 {G.DeleteTextures(1,*gpu.textures[at].id)}}
@@ -458,6 +473,10 @@ SceneGpuRelease :: (gpu: *SceneGpuContext) {
  VecFree(gpu.order);VecFree(gpu.keys);VecFree(gpu.programs);VecFree(gpu.textures)
  VecFree(gpu.bindings)
  gpu.capabilities=SceneGpuCapabilities.{};gpu.resources=SceneGpuResources.{}
+ #if OS == .ANDROID {
+  gpu.program_cache=G.ProgramCache.{}
+  gpu.scene_vertex_shader=0
+ }
  for at:0..1 {gpu.transfers[at]=GpuTransfer.{}}
  gpu.last_request=0
  gpu.context=null;gpu.display=null;gpu.attempted=false
@@ -568,7 +587,7 @@ CopyLabel :: (dest: []u8,source: *u8) { if source==null {return};for i: 0..dest.
 // ES permits implementation-dependent shadow filtering. Use the hardware
 // comparison only when its bilinear result agrees with the reference.
 ProbePCF :: (gpu: *SceneGpuContext)->bool {
- program:=G.Program(GpuProbeVertex,GpuProbeFragment,gpu.log[:])
+ program:=LoadSceneProgram(gpu,GpuProbeVertex,GpuProbeFragment)
  if program==0 {return false}
  defer G.DeleteProgram(program)
  depths: [4]float32=.[0.25,0.75,0.75,0.25]
@@ -1004,13 +1023,35 @@ DrawGeometry :: (gpu: *SceneGpuContext,mesh: SceneMesh,draw: GpuDraw) {
 // every variant independently. Sweep releases variants unused by this frame.
 MaterialFeatures :: (m: SceneMaterial,perspective: bool)->s32 {
  kind:=cast(s32)m.kind
- features: s32=(ifx m.metalness==0.0 then 1 else 0) |
-  ((ifx kind<1 then 0 else ifx kind==1 then 1 else 2)<<1)
+ if kind>1 {return 4}
+ features: s32=ifx kind==1 then 2 else 0
  if m.vertex_colors {features=features | 8}
+ // Unlit shaders receive the original world normal. The view-space lighting
+ // flags only specialize lit programs, and flat shading takes precedence.
+ if kind==1 {return features}
+ if m.metalness==0.0 {features=features | 1}
  if m.flat {features=features | 16}
- if m.double_sided {features=features | 32}
+ else if m.double_sided {features=features | 32}
  if perspective {features=features | 64}
  return features
+}
+ShadowFeatures :: (scene: *Scene)->s32 {
+ features: s32
+ for at: 0..3 {
+  if at<scene.lights.count&&scene.lights[at].shadow&&scene.lights[at].shadow_size>0 {
+   features=features|cast(s32)(1<<(7+at))
+  }
+ }
+ return features
+}
+LoadSceneProgram :: (gpu: *SceneGpuContext,vertex: string,fragment: string,scene_vertex: bool=false)->u32 {
+ #if OS == .ANDROID {
+  shared_vertex:=ifx scene_vertex then *gpu.scene_vertex_shader else null
+  return G.CachedProgram(*gpu.program_cache,vertex,fragment,gpu.log[:],shared_vertex)
+ } else {
+  unused scene_vertex
+  return G.Program(vertex,fragment,gpu.log[:])
+ }
 }
 ProgramFor :: (gpu: *SceneGpuContext,key: *ShaderProgram,features: s32)->u32 {
  slot: s64=-1
@@ -1025,6 +1066,10 @@ ProgramFor :: (gpu: *SceneGpuContext,key: *ShaderProgram,features: s32)->u32 {
  }
  code: Vec(u8);unused BuilderAppend(code,"#version 300 es\n")
  unused BuilderAppend(code,ifx gpu.capabilities.pcf_available then "#define KRYON_MANUAL_PCF 0\n" else "#define KRYON_MANUAL_PCF 1\n")
+ if (features&128)!=0 {unused BuilderAppend(code,"#define KRYON_SHADOW_0\n")}
+ if (features&256)!=0 {unused BuilderAppend(code,"#define KRYON_SHADOW_1\n")}
+ if (features&512)!=0 {unused BuilderAppend(code,"#define KRYON_SHADOW_2\n")}
+ if (features&1024)!=0 {unused BuilderAppend(code,"#define KRYON_SHADOW_3\n")}
  unused BuilderAppend(code,GpuFragmentPrefix)
  BuilderPrint(*code,"#define KRYON_KIND %.0\n",(features>>1)&3)
  BuilderPrint(*code,"#define KRYON_METALNESS %\n",ifx (features&1)!=0 then "0.0" else "material.y")
@@ -1039,7 +1084,7 @@ ProgramFor :: (gpu: *SceneGpuContext,key: *ShaderProgram,features: s32)->u32 {
  } else {unused BuilderAppend(code,"vec4 kryonMaterial(vec4 c,vec4 p,vec4 n,vec4 uv){return c;}\n")}
  unused BuilderAppend(code,GpuFragmentMain)
  source: Text=BuilderFinish(code)
- id:=G.Program(GpuVertexSource,TextView(source),gpu.log[: ])
+ id:=LoadSceneProgram(gpu,GpuVertexSource,TextView(source),true)
  if id==0 {return 0}
  value: GpuProgram;value.key=key;value.features=features;value.id=id;value.used=true;value.locations=CacheLocations(id)
  if key!=null {value.saved=key[0]}
@@ -1143,8 +1188,8 @@ GradeUniforms :: (l: *GpuLocations,g: RenderGrade,material_graded: bool) {
  c:=g.beam_color;G.Uniform4f(l.grade_beam_color,cast(float32)c.x,cast(float32)c.y,cast(float32)c.z,ifx g.beam then cast(float32)g.beam_sharp else 0.0)
  G.Uniform1i(l.grade_beam_shadow,g.beam_shadow)
 }
-Draw :: (gpu: *SceneGpuContext,scene: *Scene,d: GpuDraw,view: M.GpuMatrix,vp: M.GpuMatrix,perspective: bool)->bool {
- m:=scene.meshes[d.mesh].material;id:=ProgramFor(gpu,m.shader,MaterialFeatures(m,perspective));if id==0 {return false}
+Draw :: (gpu: *SceneGpuContext,scene: *Scene,d: GpuDraw,view: M.GpuMatrix,vp: M.GpuMatrix,perspective: bool,shadow_features: s32)->bool {
+ m:=scene.meshes[d.mesh].material;id:=ProgramFor(gpu,m.shader,MaterialFeatures(m,perspective)|shadow_features);if id==0 {return false}
  locations: *GpuLocations
  for at:0..gpu.programs.count-1 {if gpu.programs[at].id==id {locations=*gpu.programs[at].locations;break}}
  if locations==null {return false}

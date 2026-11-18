@@ -1085,3 +1085,26 @@ fingerprints.
 | Particle field | 0.658 / 0.672 | 2.437 / 2.590 |
 
 [Pinned animated scene report](shader-performance/pinned-visual-scene-gpu.json) · [Raw records](shader-performance/pinned-visual-scene-gpu.log)
+
+## Android room startup and shader binaries
+
+The armv7 GLES room fixture uses Jungle's treehouse geometry and materials,
+2×2 placeholder textures, and a 411×813 output. It renders three identical
+camera positions in each case. The scene contains 170 nodes, 129 meshes and
+99,444 vertices. Times below are single first-frame samples, in milliseconds.
+GPU context creation and scene construction are measured separately.
+
+| Process and program cache | GPU probe | Prepare | Shadows | Draw and resolve | Readback wait | Total first frame |
+|---|---:|---:|---:|---:|---:|---:|
+| Baseline, new process | 656.48 | 7055.94 | 12.38 | 17.32 | 34.03 | 7181.03 |
+| Specialized shaders, empty cache | 699.33 | 3530.85 | 6.00 | 15.02 | 26.62 | 3622.86 |
+| Specialized shaders, saved binaries, new process | 297.88 | 137.43 | 4.55 | 15.15 | 48.57 | 214.53 |
+
+GLES links the shared scene vertex shader once per context. Fragment code
+omits shadow samplers for lights with no shadow map and merges material
+variants whose lighting flags have no effect. Android keeps linked binaries
+in its private files directory and validates the driver and source key before
+loading. Missing files and rejected binaries compile from GLSL. The saved
+binaries occupied about 270 KiB in this fixture. All three RGBA hashes matched
+the baseline. These timings cover the room renderer and exclude the Jungle
+APK's startup, asset decoding, and UI event handling.

@@ -18,6 +18,8 @@
 - Desktop JPEG export accepts images with alpha on Glycin-based systems.
 - Native ZX player builds on macOS select Darwin host code.
 - GLES scenes keep GPU shadow filtering on devices without hardware depth comparison filtering.
+- Android GLES scenes reuse linked shader binaries across launches and compile
+  shadow sampling only for lights with shadow maps.
 - The shader benchmark measures eight shader workloads and four animated scenes with mean and p95 frame times.
 - Android keeps the active frame budget while retained paint changes and backs off when paint becomes stable.
 - Android presents at the native surface size, uses Lanczos for smooth image

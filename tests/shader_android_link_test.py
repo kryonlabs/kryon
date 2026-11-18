@@ -24,6 +24,7 @@ def main():
             for old in generated.rglob(pattern):
                 old.unlink()
         run([ZIRAN, 'build', '--project', '--root', ROOT / 'tests', '--target=c',
+             '--target-os', 'android', '--target-cpu', 'none',
              '--no-main', '--entry', 'shader_android_link_test:android_main',
              '--define', 'ANDROID_BUILD', '--define', cpu, '-o', generated,
              ROOT / 'tests/shader_android_link_test.zi'])
