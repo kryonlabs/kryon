@@ -36,12 +36,10 @@
     }
 } else {
     #import "bitmap_store"
-    #import "paint_queue"
 
     #program_export
     BitmapImageCreate :: (session: Session, width: s32, height: s32, rgba: []u8) -> Texture2D {
         if !SessionValid(session) { return .{} }
-        bitmap_changed = PaintResourcesChanged
         return BitmapCreateOwned(session.slot, session.epoch, width, height, rgba)
     }
     #program_export

@@ -58,9 +58,10 @@ DrawFrame :: (session: Session, draw: FrameDraw, title: string = "",
     last_width = viewport.width; last_height = viewport.height
     compare := Clock.Observe(*frame_activity, active)
     if frame_run == null {
-        // No widgets: the window shows its cleared surface.
+        // Without the tree driver, widgets and other painters draw directly.
+        // Cairo can reuse its previous pixels only if no paint reached it.
         unused draw(session, viewport)
-        DesktopFrameUnchanged(DesktopFrameReusable() && compare)
+        DesktopFrameUnchanged(DesktopFrameReusable() && compare && frame_pending)
     } else {
         input := FrameDriverInput.{.draw = draw, .viewport = viewport, .pointer = pointer,
             .secondary = secondary, .wheel = wheel,

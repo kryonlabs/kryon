@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Desktop animations continue presenting text and images without input.
+  Retained paint compares each bitmap's content revision, so changed pixels
+  repaint through the same handle and identical frames still skip presentation.
+
 ## [0.5.0] - 2026-11-17
 
 - Kryon no longer includes raylib: its raylib hosts, raylib ZX player,

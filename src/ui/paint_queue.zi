@@ -1,4 +1,5 @@
 ImageSchema :: #import "image_props";
+Bitmaps :: #import "bitmap_store";
 #import "drawing_props"
 #import "control_props"
 #import "geometry"
@@ -134,6 +135,7 @@ pending_mesh: [9]Vec(PaintMeshBlock);
 // individually bounded labels can still reuse their complete frame.
 PaintSnapshot :: struct {
     data: PaintCommand
+    bitmap_revision: u64
     emit: PaintEmitter
     has_emitter: bool
     builtin_emitter: bool
@@ -155,6 +157,7 @@ paint_snapshot_values: [9]Vec(PaintSnapshotBlock);
 paint_snapshot_assets: [9]Vec(PaintSnapshotBlock);
 paint_snapshot_value_counts: [9]s64;
 paint_snapshot_asset_counts: [9]s64;
+paint_snapshot_bitmap_revisions: [9]u64;
 paint_snapshots_valid: u32;
 frame_paint_unchanged: u32;
 
@@ -1233,6 +1236,24 @@ TextureEqual :: (left: Texture2D, right: Texture2D) -> bool {
     left.format == right.format
 }
 
+PaintBitmapRevision :: (texture_id: u32) -> u64 {
+    at := Bitmaps.BitmapSlot(texture_id)
+    if at < 0 { return 0 }
+    return Bitmaps.bitmap_images[at].revision
+}
+
+// RetainFrame can reuse a snapshot without composing again. Only updates to
+// the bitmaps it draws require the application to submit fresh paint.
+PaintSnapshotBitmapsCurrent :: (slot: s32) -> bool {
+    if paint_snapshot_bitmap_revisions[slot] == Bitmaps.bitmap_revision { return true }
+    for index: cast(s64)0..paint_snapshots[slot].count - 1 {
+        previous := *paint_snapshots[slot][index]
+        if previous.bitmap_revision != PaintBitmapRevision(previous.data.texture_id) { return false }
+    }
+    paint_snapshot_bitmap_revisions[slot] = Bitmaps.bitmap_revision
+    return true
+}
+
 PaintCommandEqual :: (slot: s32, current: PaintCommand,
     previous: PaintSnapshot) -> bool {
     if slot <= 0 || slot >= 9 { return false }
@@ -1262,6 +1283,8 @@ PaintCommandEqual :: (slot: s32, current: PaintCommand,
         previous.asset_count) { return false }
     if current.texture_id != previous.data.texture_id ||
     !TextureEqual(current.texture, previous.data.texture) { return false }
+    if paint_snapshot_bitmap_revisions[slot] != Bitmaps.bitmap_revision &&
+        PaintBitmapRevision(current.texture_id) != previous.bitmap_revision { return false }
     if current.source.x != previous.data.source.x ||
     current.source.y != previous.data.source.y ||
     current.source.width != previous.data.source.width ||
@@ -1336,6 +1359,7 @@ PaintSnapshotStore :: (session: Session) -> bool {
         current: PaintCommand = PendingPaintAt(session, index)
         previous: PaintSnapshot
         previous.data = current
+        previous.bitmap_revision = PaintBitmapRevision(current.texture_id)
         previous.emit = pending_paint[slot].items[index].emit
         previous.has_emitter = pending_paint[slot].items[index].has_emitter
         previous.builtin_emitter = pending_paint[slot].items[index].builtin_emitter
@@ -1368,6 +1392,7 @@ PaintSnapshotStore :: (session: Session) -> bool {
         }
         index += 1
     }
+    paint_snapshot_bitmap_revisions[slot] = Bitmaps.bitmap_revision
     paint_snapshots_valid = SessionFlagSet(paint_snapshots_valid, slot, true)
     return true
 }
@@ -1457,6 +1482,7 @@ PaintPlanUnchanged :: (session: Session) -> bool {
             paint_snapshots[slot][index]) { return false }
         index += 1
     }
+    paint_snapshot_bitmap_revisions[slot] = Bitmaps.bitmap_revision
     return true
 }
 
@@ -1638,6 +1664,7 @@ PaintDamage :: (session: Session) -> PaintFrameDamage {
         if !joined { return result }
     }
     result.unchanged = !joined
+    if result.unchanged { paint_snapshot_bitmap_revisions[slot] = Bitmaps.bitmap_revision }
     result.partial = joined
     result.area = area
     return result

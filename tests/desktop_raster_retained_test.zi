@@ -1,6 +1,95 @@
 Desktop :: #import "desktop_runtime";
+Loop :: #import "desktop_loop";
 Raster :: #import "cairo_raster";
 Clock :: #import "frame_clock";
+Text :: #import "kryon/text";
+Image :: #import "kryon/image";
+#import "bitmap_image"
+#import "drawing_props"
+#import "geometry"
+#import "session"
+#import "tree_draw"
+#import "tree_frame"
+
+label: string;
+image: Texture2D;
+present_count: s32;
+present_text: u32;
+present_image: u32;
+
+RecordPresentation :: (surface: *void) {
+    present_count += 1
+    pixels := cast(*u32)Raster.RasterSurfaceData()
+    pitch := Raster.RasterSurfaceStride() / 4
+    hash: u32 = 2166136261
+    for y: 10..49 {
+        for x: 8..149 { hash = (hash ^ pixels[y * pitch + x]) * cast(u32)16777619 }
+    }
+    present_text = hash
+    present_image = pixels[80 * pitch + 24]
+}
+
+DrawAnimation :: (session: Session, viewport: Rectangle) -> s32 {
+    Text.Draw(session, Text.Props.{.key = 1, .text = label,
+        .bounds = .{8.0, 10.0, 142.0, 40.0}, .size = 30})
+    if image.id != cast(u32)0 {
+        Image.Draw(session, Image.Props.{.key = 2, .texture = image,
+            .bounds = .{8.0, 64.0, 32.0, 32.0}, .tint = cast(u32)0xffffffff})
+    }
+    Desktop.DesktopRequestFrame()
+    return 0
+}
+
+DrawNext :: (session: Session) -> bool {
+    return Desktop.PollDesktop() && Loop.DrawFrame(session, DrawAnimation)
+}
+
+AnimateText :: (session: Session) -> bool {
+    for frame: 0..15 {
+        previous := present_text
+        before := present_count
+        label = ifx frame % 2 == 0 then "111111" else "888888"
+        if !DrawNext(session) { return false }
+        if frame >= 8 && (Loop.frame_activity.quiet_frames < 2 ||
+            present_count != before + 1 || present_text == previous) { return false }
+    }
+    return true
+}
+
+IdleAnimation :: () -> s32 {
+    if !Desktop.OpenDesktopSized(160, 120) { return 20 }
+    defer Desktop.CloseDesktop()
+    session := SessionOpen()
+    defer { unused CloseSession(session) }
+    Raster.raster_frame_present = RecordPresentation
+    // With no tree driver, widget paint reaches Cairo immediately.
+    direct_ok := AnimateText(session)
+    if !direct_ok { print("Immediate text stopped reaching the window without input\n") }
+
+    unused TreeFrameUse()
+    if !AnimateText(session) { return 22 }
+    red: [4]u8 = .[255, 0, 0, 255]
+    blue: [4]u8 = .[0, 0, 255, 255]
+    image = BitmapImageCreate(session, 1, 1, red[:])
+    other := BitmapImageCreate(session, 1, 1, blue[:])
+    if image.id == cast(u32)0 || other.id == cast(u32)0 ||
+        !DrawNext(session) || present_image != cast(u32)0xffff0000 { return 23 }
+    original := image
+    image = other
+    if !DrawNext(session) || present_image != cast(u32)0xff0000ff { return 24 }
+
+    before := present_count
+    if !BitmapImageUpdate(session, other, red[:]) || !DrawNext(session) ||
+        present_count != before + 1 || present_image != cast(u32)0xffff0000 { return 25 }
+    before = present_count
+    if !BitmapImageUpdate(session, other, red[:]) || !DrawNext(session) ||
+        present_count != before { return 26 }
+    if !BitmapImageUpdate(session, original, blue[:]) || !DrawNext(session) ||
+        present_count != before { return 27 }
+    if !direct_ok { return 21 }
+    print("Hands-off text and image changes present, including same-handle bitmap updates. Identical paint skips presentation.\n")
+    return 0
+}
 
 Pixel :: (x: s32, y: s32, expected: u32) -> bool {
     pixels := cast(*u32)Raster.RasterSurfaceData()
@@ -13,6 +102,12 @@ Red :: (size: float32) {
 
 #program_export
 main :: () -> s32 {
+    result := RetainedPixels()
+    if result != 0 { return result }
+    return IdleAnimation()
+}
+
+RetainedPixels :: () -> s32 {
     if !Desktop.OpenDesktopSized(160, 120) { return 1 }
     defer Desktop.CloseDesktop()
     Desktop.BeginDesktopFrame()

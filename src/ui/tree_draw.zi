@@ -67,6 +67,7 @@ RetainFrame :: (session: Session) -> bool {
         current.bounds.y != previous.bounds.y || current.bounds.width != previous.bounds.width ||
         current.bounds.height != previous.bounds.height { return false }
     for index: 0..3 { if tree_late[slot][index].used { return false } }
+    if !PaintSnapshotBitmapsCurrent(slot) { return false }
     TreeCancel(session)
     frame_retained = SessionFlagSet(frame_retained, slot, true)
     return true
