@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## [0.5.0] - 2026-11-17
+
+- Kryon no longer includes raylib: its raylib hosts, raylib ZX player,
+  `renderer-raylib` artifact and `backend = "raylib"` are removed, so no app
+  built with Kryon downloads or links raylib. Desktop apps use the SDL2/Cairo
+  host, browser pages the Canvas host and Android apps the NativeActivity
+  host; native audio plays through Ziran's core audio modules and browser
+  asset and PCM audio through WebAudio. Builds with Ziran 7fbc8152.
 - The desktop host gives terminal-style apps what they used raylib for:
   `OpenDesktopWindow` opens undecorated, always-on-top or always-running
   windows, `kryon/desktop_activity`'s `DesktopWaitForActivity` sleeps until
@@ -23,9 +31,6 @@
   contours; both run on the CPU renderer and the translated GLES path.
   Desktop `LoadImagePixels` accepts an optional host path resolver for
   bundled assets.
-- Remove the raylib hosts, player, renderer artifact and dependency. Desktop,
-  Android and Canvas hosts retain shared image, shader and audio coverage;
-  browser asset and PCM audio use the Canvas WebAudio provider.
 - `SystemPaletteFollow()` (in `SystemThemeHostLinux` and the portable
   `SystemThemeHost`) applies the current palette, the host's while an app is
   embedded, once and again whenever the host changes it; one call per frame
