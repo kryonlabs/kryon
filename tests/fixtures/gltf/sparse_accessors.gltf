@@ -1,0 +1,161 @@
+{
+  "asset": {
+    "version": "2.0"
+  },
+  "buffers": [
+    {
+      "uri": "sparse_accessors.bin",
+      "byteLength": 84
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 36
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 36,
+      "byteLength": 8
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 44,
+      "byteLength": 2
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 48,
+      "byteLength": 12
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 60,
+      "byteLength": 4
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 64,
+      "byteLength": 4
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 68,
+      "byteLength": 4
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 72,
+      "byteLength": 4
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 76,
+      "byteLength": 8
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 3,
+      "type": "VEC3",
+      "sparse": {
+        "count": 1,
+        "indices": {
+          "bufferView": 2,
+          "byteOffset": 0,
+          "componentType": 5123
+        },
+        "values": {
+          "bufferView": 3,
+          "byteOffset": 0
+        }
+      }
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5123,
+      "count": 3,
+      "type": "SCALAR"
+    },
+    {
+      "componentType": 5126,
+      "count": 3,
+      "type": "VEC3",
+      "sparse": {
+        "count": 1,
+        "indices": {
+          "bufferView": 2,
+          "byteOffset": 0,
+          "componentType": 5123
+        },
+        "values": {
+          "bufferView": 3,
+          "byteOffset": 0
+        }
+      }
+    },
+    {
+      "bufferView": 4,
+      "componentType": 5120,
+      "normalized": true,
+      "count": 4,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 5,
+      "componentType": 5121,
+      "normalized": true,
+      "count": 4,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 6,
+      "componentType": 5122,
+      "normalized": true,
+      "count": 2,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 7,
+      "componentType": 5123,
+      "normalized": true,
+      "count": 2,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 8,
+      "componentType": 5125,
+      "normalized": true,
+      "count": 2,
+      "type": "SCALAR"
+    }
+  ],
+  "meshes": [
+    {
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0
+          },
+          "indices": 1
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "mesh": 0
+    }
+  ],
+  "scenes": [
+    {
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "scene": 0
+}

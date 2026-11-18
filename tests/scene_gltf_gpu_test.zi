@@ -1,0 +1,128 @@
+// Headless GLES render of an animated glTF skin, pixel-compared with the
+// committed software reference, and checked against the software scene path.
+#import "kryon/scene"
+#import "kryon/scene_gltf"
+#import "kryon/scene_gpu"
+#import "kryon/scene_skin"
+#import "kryon/scene_render"
+#import "std/image"
+#import "std/png_linux"
+#import "std/vec"
+
+REFERENCE :: "tests/fixtures/gltf/skinned_reference.png"
+MODEL :: "tests/fixtures/gltf/skinned_two_bone.gltf"
+SIZE :: 96
+
+PixelHash :: (pixels: []u8) -> u64 {
+    hash: u64 = 1469598103934665603
+    for byte: pixels { hash = (hash ^ cast(u64)byte) * cast(u64)1099511628211 }
+    return hash
+}
+
+Painted :: (pixels: []u8) -> s64 {
+    count: s64 = 0
+    for pixel: 0..SIZE * SIZE - 1 {
+        if pixels[pixel * 4 + 3] > 100 { count += 1 }
+    }
+    return count
+}
+
+// Every byte may differ by a small rounding amount; large differences are
+// counted so one shifted feature cannot pass as noise.
+Compare :: (actual: []u8, expected: []u8, label: string, max_large: s64) -> bool {
+    if actual.count != expected.count { return false }
+    error: s64
+    large: s64
+    for at: 0..actual.count - 1 {
+        difference := cast(s32)actual[at] - cast(s32)expected[at]
+        if difference < 0 { difference = -difference }
+        error += difference
+        if difference > 16 { large += 1 }
+    }
+    if error > actual.count * 2 || large > max_large {
+        print("scene gltf render: % error=% large=%\n", label, error, large)
+        return false
+    }
+    return true
+}
+
+main :: () -> s32 {
+    model := GltfReadFile(MODEL)
+    defer GltfModelRelease(*model)
+    if !model.valid {
+        print("scene gltf render: %\n", GltfError(*model))
+        return 1
+    }
+    scene: Scene
+    SceneInit(*scene)
+    instance: GltfSceneInstance
+    gpu: SceneGpuContext
+    cpu := NewImage(SIZE, SIZE)
+    image := NewImage(SIZE, SIZE)
+    reference := ReadPNGFile(REFERENCE)
+    defer {
+        SceneGpuRelease(*gpu)
+        GltfInstanceRelease(*instance)
+        SceneFree(*scene)
+        RenderSceneRelease()
+        VecFree(cpu.pixels)
+        VecFree(image.pixels)
+        VecFree(reference.pixels)
+    }
+    if !ImageValid(*reference) {
+        print("scene gltf render: cannot read the committed reference\n")
+        return 2
+    }
+    if !GltfSceneCreate(*scene, *model, *instance) || instance.meshes.count == 0 ||
+        !instance.meshes[0].has_skin {
+        print("scene gltf render: model did not create a skinned scene\n")
+        return 3
+    }
+    skin := *instance.meshes[0].skin
+    unused SetMaterial(*scene, skin.node, UnlitMaterial(.{224, 133, 71, 255}))
+    camera := OrthographicCamera(-1.0, 1.0, 1.0, -1.0, 0.1, 10.0)
+    camera.position = .{0.0, 1.0, 3.0}
+    camera.target = .{0.0, 1.0, 0.0}
+    if !GltfAnimateScene(*model, *instance, *scene, 0, 0.5) ||
+        !RenderScene(*scene, camera, *cpu) {
+        print("scene gltf render: software scene path failed\n")
+        return 4
+    }
+    if Painted(cpu.pixels[:]) < 1500 {
+        print("scene gltf render: reference frame is empty\n")
+        return 5
+    }
+    if !Compare(cpu.pixels[:], reference.pixels[:], "software vs reference", 0) {
+        return 6
+    }
+    first := PixelHash(cpu.pixels[:])
+
+    result := SceneGpuRender(*gpu, *scene, camera, *image)
+    if !result.ok || !result.accelerated {
+        print("scene gltf render: GLES failure: %\n", result.diagnostic)
+        return 7
+    }
+    if !Compare(image.pixels[:], reference.pixels[:], "GLES vs reference", (SIZE * SIZE * 4) / 200) {
+        return 8
+    }
+    gpu_hash := PixelHash(image.pixels[:])
+
+    if !GltfAnimateScene(*model, *instance, *scene, 0, 0.0) ||
+        !RenderScene(*scene, camera, *cpu) || PixelHash(cpu.pixels[:]) == first {
+        print("scene gltf render: animation did not change the picture\n")
+        return 9
+    }
+    if !GltfAnimateScene(*model, *instance, *scene, 0, 0.5) ||
+        !SceneGpuRender(*gpu, *scene, camera, *image).ok || PixelHash(image.pixels[:]) != gpu_hash {
+        print("scene gltf render: GLES frame is not repeatable\n")
+        return 10
+    }
+    SceneGpuRelease(*gpu)
+    usage := SceneGpuMemoryUsage(*gpu)
+    if usage.cpu_bytes != 0 || usage.gpu_bytes != 0 || usage.textures != 0 || usage.programs != 0 {
+        print("scene gltf render: GLES resources leaked\n")
+        return 11
+    }
+    print("Scene glTF skinned animation rendered headless and matched its reference\n")
+    return 0
+}

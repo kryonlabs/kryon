@@ -1,0 +1,589 @@
+// glTF 2.0 reader and scene adapter checks over small committed fixtures.
+#import, file "../src/ui/scene_gltf.zi";
+#import "scene"
+#import "scene_skin"
+#import "scene_render"
+#import "std/environment"
+#import "std/file"
+#import "std/finite"
+#import "std/image"
+#import "std/math"
+#import "std/text_tools"
+#import "std/vec"
+
+FIXTURES :: "tests/fixtures/gltf"
+
+Check :: (value: bool, label: string) -> s32 {
+    if value {
+        return 0
+    }
+    print("scene gltf: %\n", label)
+    return 1
+}
+
+Near :: (value: float64, expected: float64) -> bool {
+    difference := value - expected
+    return difference > -0.0001 && difference < 0.0001
+}
+
+LoadFixture :: (name: string) -> GltfModel {
+    return GltfReadFile(GltfJoin(FIXTURES, name))
+}
+
+GltfJoin :: (directory: string, name: string) -> Text {
+    parts: [2]string = .[directory, name]
+    return TextJoin(parts[:], "/")
+}
+
+// The scene path must see a node for the mesh with flipped V coordinates.
+CheckTriangle :: () -> s32 {
+    model := LoadFixture("triangle.gltf")
+    defer GltfModelRelease(*model)
+    fail := Check(model.valid, "triangle.gltf loads")
+    if fail != 0 {
+        print("scene gltf: triangle error: %\n", GltfError(*model))
+        return fail
+    }
+    fail += Check(model.meshes.count == 1 && model.nodes.count == 1 &&
+        model.scenes.count == 1 && model.default_scene == 0, "triangle document counts")
+    prim := *model.meshes[0].primitives[0]
+    fail += Check(prim.positions.count == 3 && prim.normals.count == 3 &&
+        prim.uv0.count == 3 && prim.indices.count == 3 && prim.has_colors,
+        "triangle primitive attributes")
+    fail += Check(Near(prim.positions[1].x, 0.5) && Near(prim.positions[2].y, 0.5) &&
+        prim.indices[0] == 0 && prim.indices[1] == 1 && prim.indices[2] == 2,
+        "triangle positions and indices")
+    fail += Check(Near(prim.colors[0].r, 1.0) && Near(prim.colors[0].g, 0.2) &&
+        Near(prim.colors[1].g, 1.0) && Near(prim.colors[1].r, 0.2),
+        "triangle vertex colours")
+    material := *model.materials[0]
+    fail += Check(Near(material.base_color_factor.r, 0.9) &&
+        Near(material.base_color_factor.g, 0.8) &&
+        Near(material.base_color_factor.b, 0.7) &&
+        Near(material.metallic_factor, 0.1) && Near(material.roughness_factor, 0.6) &&
+        material.double_sided, "triangle PBR material factors")
+    fail += Check(model.accessors[0].has_min && Near(model.accessors[0].min_values[0], -0.5) &&
+        model.accessors[0].has_max && Near(model.accessors[0].max_values[0], 0.5),
+        "triangle accessor min and max")
+
+    scene: Scene
+    SceneInit(*scene)
+    instance: GltfSceneInstance
+    defer {
+        GltfInstanceRelease(*instance)
+        SceneFree(*scene)
+        RenderSceneRelease()
+    }
+    fail += Check(GltfSceneCreate(*scene, *model, *instance), "triangle scene created")
+    if fail != 0 {
+        return fail
+    }
+    fail += Check(scene.nodes.count == 3 && scene.meshes.count == 1 && scene.positions.count == 3,
+        "triangle scene nodes and mesh")
+    fail += Check(Near(scene.uvs[0].x, 0.0) && Near(scene.uvs[0].y, 0.0) &&
+        Near(scene.uvs[2].y, 1.0), "triangle UVs are glTF top-down flipped")
+    fail += Check(scene.meshes[0].material.double_sided &&
+        Near(scene.meshes[0].material.roughness, 0.6) &&
+        Near(scene.meshes[0].material.metalness, 0.1), "triangle scene material")
+    camera := OrthographicCamera(-1.0, 1.0, 1.0, -1.0, 0.1, 10.0)
+    camera.position = .{0.0, 0.0, 3.0}
+    picture := NewImage(32, 32)
+    defer VecFree(picture.pixels)
+    fail += Check(RenderScene(*scene, camera, *picture) &&
+        picture.pixels[(16 * 32 + 16) * 4 + 3] == 255, "triangle renders")
+    return fail
+}
+
+CheckTexturedQuad :: () -> s32 {
+    model := LoadFixture("textured_quad.gltf")
+    defer GltfModelRelease(*model)
+    fail := Check(model.valid, "textured_quad.gltf loads")
+    if fail != 0 {
+        print("scene gltf: textured quad error: %\n", GltfError(*model))
+        return fail
+    }
+    fail += Check(model.images.count == 2 && ImageValid(*model.images[0].image) &&
+        ImageValid(*model.images[1].image), "quad URI and bufferView images decode")
+    fail += Check(model.images[0].image.width == 4 && model.images[0].image.height == 4 &&
+        model.images[1].image.width == 4, "quad decoded image sizes")
+    fail += Check(model.textures.count == 2 && model.samplers.count == 1 &&
+        model.samplers[0].mag_filter == GLTF_NEAREST &&
+        model.samplers[0].wrap_s == GLTF_CLAMP_TO_EDGE, "quad samplers and textures")
+    prim := *model.meshes[0].primitives[0]
+    fail += Check(prim.has_tangents && prim.has_uv0 && prim.has_uv1 &&
+        prim.tangents.count == 4 && Near(prim.tangents[0].x, 1.0) &&
+        Near(prim.tangents[0].y, 0.0) && Near(prim.tangents[2].y, 0.0),
+        "quad tangents")
+    fail += Check(Near(prim.uv0[0].x, 0.0) && Near(prim.uv0[0].y, 1.0) &&
+        Near(prim.uv1[1].x, 1.0) && Near(prim.uv1[1].y, 1.0),
+        "quad float and normalized uint16 UV sets")
+    material := *model.materials[0]
+    fail += Check(material.alpha_mode == .GltfAlphaMask && Near(material.alpha_cutoff, 0.25) &&
+        material.alpha_mode == .GltfAlphaMask && Near(material.base_color_texture.scale, 1.0) &&
+        material.base_color_texture.tex_coord == 0 &&
+        material.metallic_roughness_texture.tex_coord == 1 &&
+        Near(material.normal_texture.scale, 0.5) &&
+        Near(material.occlusion_texture.scale, 0.4) &&
+        Near(material.emissive_factor.x, 0.05), "quad PBR texture info")
+
+    scene: Scene
+    SceneInit(*scene)
+    instance: GltfSceneInstance
+    defer {
+        GltfInstanceRelease(*instance)
+        SceneFree(*scene)
+        RenderSceneRelease()
+    }
+    fail += Check(GltfSceneCreate(*scene, *model, *instance), "quad scene created")
+    if fail != 0 {
+        return fail
+    }
+    scene_material := scene.meshes[0].material
+    fail += Check(scene.textures.count == 1 && scene_material.texture >= 0 &&
+        scene_material.texture_filter == .SceneTextureNearest &&
+        scene_material.texture_wrap == .SceneTextureClamp &&
+        Near(scene_material.alpha_test, 0.25) && scene_material.double_sided &&
+        Near(scene_material.opacity, 1.0), "quad base colour texture uploaded")
+    fail += Check(Near(scene.uvs[3].y, 1.0) && Near(scene.uvs[0].y, 0.0),
+        "quad scene UVs flipped once")
+    return fail
+}
+
+CheckJpegTexture :: () -> s32 {
+    model := LoadFixture("jpeg_texture.gltf")
+    defer GltfModelRelease(*model)
+    fail := Check(model.valid, "jpeg_texture.gltf loads")
+    if fail != 0 {
+        print("scene gltf: JPEG error: %\n", GltfError(*model))
+        return fail
+    }
+    fail += Check(model.images.count == 1 && ImageValid(*model.images[0].image) &&
+        model.images[0].image.width == 4 && model.images[0].image.height == 4,
+        "URI JPEG image decodes")
+    material := *model.materials[0]
+    fail += Check(material.alpha_mode == .GltfAlphaBlend &&
+        Near(material.base_color_factor.a, 0.5), "JPEG material blend mode")
+
+    scene: Scene
+    SceneInit(*scene)
+    instance: GltfSceneInstance
+    defer {
+        GltfInstanceRelease(*instance)
+        SceneFree(*scene)
+        RenderSceneRelease()
+    }
+    fail += Check(GltfSceneCreate(*scene, *model, *instance), "JPEG scene created")
+    if fail != 0 {
+        return fail
+    }
+    scene_material := scene.meshes[0].material
+    fail += Check(scene_material.transparent && Near(scene_material.opacity, 0.5) &&
+        scene_material.texture_filter == .SceneTextureLinear &&
+        scene_material.texture_wrap == .SceneTextureRepeat &&
+        scene_material.texture >= 0, "JPEG blend and sampler reach the scene")
+    return fail
+}
+
+// Two joints with one 45 degree rotation keyframe on the upper joint.
+CheckSkinned :: () -> s32 {
+    model := LoadFixture("skinned_two_bone.gltf")
+    defer GltfModelRelease(*model)
+    fail := Check(model.valid, "skinned_two_bone.gltf loads")
+    if fail != 0 {
+        print("scene gltf: skin error: %\n", GltfError(*model))
+        return fail
+    }
+    fail += Check(model.skins.count == 1 && model.skins[0].joints.count == 2 &&
+        model.skins[0].inverse_bind_matrices.count == 2 &&
+        model.skins[0].joints[0] == 1 && model.skins[0].joints[1] == 2,
+        "skin joints and inverse bind matrices")
+    prim := *model.meshes[0].primitives[0]
+    fail += Check(prim.has_joints && prim.has_weights && prim.influences.count == 6,
+        "skin vertex attributes")
+    fail += Check(Near(prim.influences[2].weights[0], 0.5) &&
+        Near(prim.influences[2].weights[1], 0.5) &&
+        prim.influences[2].joints[1] == 1 &&
+        Near(prim.influences[4].weights[1], 1.0), "skin weights normalized")
+    fail += Check(model.animations.count == 1 && Near(model.animations[0].duration, 1.0) &&
+        model.animations[0].channels.count == 1, "skin animation duration")
+
+    scene: Scene
+    SceneInit(*scene)
+    instance: GltfSceneInstance
+    defer {
+        GltfInstanceRelease(*instance)
+        SceneFree(*scene)
+        RenderSceneRelease()
+    }
+    fail += Check(GltfSceneCreate(*scene, *model, *instance), "skinned scene created")
+    if fail != 0 {
+        return fail
+    }
+    fail += Check(instance.meshes.count == 1 && instance.meshes[0].has_skin &&
+        instance.meshes[0].skin.bone_count == 2, "skinned primitive uses scene skin")
+    fail += Check(Near(scene.positions[4].x, -0.35) && Near(scene.positions[4].y, 2.0),
+        "skin bind pose")
+
+    fail += Check(GltfAnimateScene(*model, *instance, *scene, 0, 0.5), "skin animation sampled")
+    fail += Check(Near(scene.positions[4].x, -0.70604115) &&
+        Near(scene.positions[4].y, 1.78994026), "upper joint rotates its vertices")
+    fail += Check(Near(scene.positions[2].x, -0.33667892) &&
+        Near(scene.positions[2].y, 0.93303042), "blended vertices follow both joints")
+    fail += Check(Near(scene.positions[0].x, -0.35) && Near(scene.positions[0].y, 0.0),
+        "lower joint vertices stay bind")
+
+    transforms: Vec(SkinAffine)
+    defer VecFree(transforms)
+    fail += Check(GltfSampleSkinPose(*model, *instance, 0, *transforms) &&
+        transforms.count == 2 && Near(transforms[1].translation.x, 0.38268343) &&
+        Near(transforms[1].translation.y, 0.07612047),
+        "skin pose includes the joint rotation and inverse bind")
+
+    linear_x := scene.positions[2].x
+    GltfSetDualQuaternion(*instance, true)
+    fail += Check(GltfUpdateScene(*model, *instance, *scene), "dual quaternion pose applied")
+    fail += Check(Finite64(scene.positions[2].x) && Finite64(scene.positions[2].y) &&
+        !Near(scene.positions[2].x, linear_x), "dual quaternion differs from linear blend")
+    GltfSetDualQuaternion(*instance, false)
+    fail += Check(GltfUpdateScene(*model, *instance, *scene) &&
+        Near(scene.positions[2].x, linear_x), "linear blend restored")
+
+    fail += Check(GltfAnimateScene(*model, *instance, *scene, 0, 0.0) &&
+        Near(scene.positions[4].x, -0.35) && Near(scene.positions[4].y, 2.0),
+        "rest keyframe restores bind pose")
+    return fail
+}
+
+CheckGlb :: () -> s32 {
+    model := LoadFixture("skinned_two_bone.glb")
+    defer GltfModelRelease(*model)
+    fail := Check(model.valid, "skinned_two_bone.glb loads")
+    if fail != 0 {
+        print("scene gltf: GLB error: %\n", GltfError(*model))
+        return fail
+    }
+    fail += Check(model.meshes.count == 1 && model.skins.count == 1 &&
+        model.animations.count == 1 && model.images.count == 0,
+        "GLB binary chunk supplies buffers")
+    fail += Check(model.meshes[0].primitives[0].positions.count == 6 &&
+        Near(model.meshes[0].primitives[0].positions[1].x, 0.35) &&
+        Near(model.animations[0].duration, 1.0), "GLB accessor data matches JSON form")
+    scene: Scene
+    SceneInit(*scene)
+    instance: GltfSceneInstance
+    defer {
+        GltfInstanceRelease(*instance)
+        SceneFree(*scene)
+        RenderSceneRelease()
+    }
+    fail += Check(GltfSceneCreate(*scene, *model, *instance) &&
+        GltfAnimateScene(*model, *instance, *scene, 0, 0.5) &&
+        Near(scene.positions[4].x, -0.70604115), "GLB model animates in a scene")
+    return fail
+}
+
+// LINEAR translation, STEP rotation and CUBICSPLINE scale over three keys.
+CheckAnimatedCube :: () -> s32 {
+    model := LoadFixture("animated_cube.gltf")
+    defer GltfModelRelease(*model)
+    fail := Check(model.valid, "animated_cube.gltf loads")
+    if fail != 0 {
+        print("scene gltf: animation error: %\n", GltfError(*model))
+        return fail
+    }
+    anim := *model.animations[0]
+    fail += Check(anim.channels.count == 3 && Near(anim.duration, 2.0) &&
+        anim.samplers[0].interpolation == .GltfLinear &&
+        anim.samplers[1].interpolation == .GltfStep &&
+        anim.samplers[2].interpolation == .GltfCubicSpline &&
+        anim.samplers[0].output_stride == 3 && anim.samplers[2].output_stride == 3,
+        "animation samplers and strides")
+
+    scene: Scene
+    SceneInit(*scene)
+    instance: GltfSceneInstance
+    defer {
+        GltfInstanceRelease(*instance)
+        SceneFree(*scene)
+        RenderSceneRelease()
+    }
+    fail += Check(GltfSceneCreate(*scene, *model, *instance), "animated cube scene created")
+    if fail != 0 {
+        return fail
+    }
+    fail += Check(GltfAnimateScene(*model, *instance, *scene, 0, 0.5), "cube animates at 0.5s")
+    fail += Check(Near(instance.translations[0].x, 1.0) &&
+        Near(instance.translations[0].y, 0.5) &&
+        Near(instance.translations[0].z, -0.5), "LINEAR translation interpolates")
+    fail += Check(Near(instance.rotations[0].w, 1.0) &&
+        Near(instance.rotations[0].z, 0.0), "STEP rotation holds the first key")
+    fail += Check(Near(instance.scales[0].x, 1.5) && Near(instance.scales[0].y, 2.0) &&
+        Near(instance.scales[0].z, 0.75), "CUBICSPLINE scale uses tangents")
+    fail += Check(Near(scene.nodes[instance.node_to_scene[0]].position.x, 1.0) &&
+        Near(scene.nodes[instance.node_to_scene[0]].scale.y, 2.0),
+        "animated node TRS reach the scene")
+    fail += Check(GltfAnimateScene(*model, *instance, *scene, 0, 2.5, false) &&
+        Near(instance.translations[0].x, 4.0) && Near(instance.scales[0].x, 1.0),
+        "non-looping sample clamps to the last key")
+    fail += Check(GltfAnimateScene(*model, *instance, *scene, 0, 2.5, true) &&
+        Near(instance.translations[0].x, 1.0), "looping sample wraps the duration")
+    fail += Check(!GltfAnimateScene(*model, *instance, *scene, 3, 0.0),
+        "missing animation index is rejected")
+    return fail
+}
+
+CheckMorphTargets :: () -> s32 {
+    model := LoadFixture("morph_target.gltf")
+    defer GltfModelRelease(*model)
+    fail := Check(model.valid, "morph_target.gltf loads")
+    if fail != 0 {
+        print("scene gltf: morph error: %\n", GltfError(*model))
+        return fail
+    }
+    prim := *model.meshes[0].primitives[0]
+    fail += Check(prim.targets.count == 2 && prim.targets[0].positions.count == 3 &&
+        Near(prim.targets[0].positions[2].y, 1.0) &&
+        Near(prim.targets[1].positions[2].x, 2.0), "morph target offsets")
+    fail += Check(model.meshes[0].weights.count == 2 &&
+        Near(model.meshes[0].weights[0], 0.5) &&
+        model.animations[0].channels[0].path == .GltfPathWeights &&
+        model.animations[0].samplers[0].output_stride == 2,
+        "mesh default weights and weight channel stride")
+
+    scene: Scene
+    SceneInit(*scene)
+    instance: GltfSceneInstance
+    defer {
+        GltfInstanceRelease(*instance)
+        SceneFree(*scene)
+        RenderSceneRelease()
+    }
+    fail += Check(GltfSceneCreate(*scene, *model, *instance), "morph scene created")
+    if fail != 0 {
+        return fail
+    }
+    fail += Check(instance.morph_counts[0] == 2 && Near(instance.morph_weights[0], 0.5) &&
+        Near(instance.morph_weights[1], 0.0), "rest morph weights from the mesh")
+    fail += Check(Near(scene.positions[2].x, 0.0) && Near(scene.positions[2].y, 1.0),
+        "rest pose blends the default weight")
+    fail += Check(GltfAnimateScene(*model, *instance, *scene, 0, 0.0), "morph weights animate")
+    fail += Check(Near(instance.morph_weights[0], 1.0) &&
+        Near(scene.positions[2].y, 1.5), "first key blends only the first target")
+    fail += Check(GltfAnimateScene(*model, *instance, *scene, 0, 0.5) &&
+        Near(instance.morph_weights[0], 0.625) &&
+        Near(instance.morph_weights[1], 0.375), "weights interpolate")
+    fail += Check(Near(scene.positions[2].x, 0.75) &&
+        Near(scene.positions[2].y, 1.125), "two targets blend into the scene")
+    fail += Check(GltfAnimateScene(*model, *instance, *scene, 0, 1.0, false) &&
+        Near(instance.morph_weights[0], 0.25) && Near(instance.morph_weights[1], 0.75) &&
+        Near(scene.positions[2].x, 1.5) && Near(scene.positions[2].y, 0.75),
+        "last key blends by the second weight")
+    return fail
+}
+
+// Sparse overrides, a sparse zero base and every normalized component type.
+CheckSparseAccessors :: () -> s32 {
+    model := LoadFixture("sparse_accessors.gltf")
+    defer GltfModelRelease(*model)
+    fail := Check(model.valid, "sparse_accessors.gltf loads")
+    if fail != 0 {
+        print("scene gltf: sparse error: %\n", GltfError(*model))
+        return fail
+    }
+    values: Vec(float64)
+    defer VecFree(values)
+    fail += Check(GltfReadAccessorFloats(*model, 0, *values) && values.count == 9 &&
+        Near(values[3], 3.0) && Near(values[4], 4.0) && Near(values[5], 5.0) &&
+        Near(values[0], -0.5), "sparse values override the base buffer")
+    fail += Check(GltfReadAccessorFloats(*model, 2, *values) && values.count == 9 &&
+        Near(values[0], 0.0) && Near(values[3], 3.0) && Near(values[8], 0.0),
+        "sparse accessor without a bufferView starts at zero")
+    fail += Check(GltfReadAccessorFloats(*model, 3, *values) && values.count == 4 &&
+        Near(values[0], -1.0) && Near(values[2], 0.0) && Near(values[3], 1.0),
+        "normalized signed bytes")
+    fail += Check(GltfReadAccessorFloats(*model, 4, *values) && Near(values[1], 0.2) &&
+        Near(values[2], 0.8) && Near(values[3], 1.0), "normalized unsigned bytes")
+    fail += Check(GltfReadAccessorFloats(*model, 5, *values) && Near(values[0], -1.0) &&
+        Near(values[1], 1.0), "normalized signed shorts")
+    fail += Check(GltfReadAccessorFloats(*model, 6, *values) && Near(values[0], 0.0) &&
+        Near(values[1], 1.0), "normalized unsigned shorts")
+    fail += Check(GltfReadAccessorFloats(*model, 7, *values) && Near(values[0], 0.0) &&
+        Near(values[1], 1.0), "normalized unsigned ints")
+    fail += Check(!GltfReadAccessorFloats(*model, 99, *values), "accessor index is bounded")
+    scene: Scene
+    SceneInit(*scene)
+    instance: GltfSceneInstance
+    defer {
+        GltfInstanceRelease(*instance)
+        SceneFree(*scene)
+        RenderSceneRelease()
+    }
+    fail += Check(GltfSceneCreate(*scene, *model, *instance) &&
+        Near(scene.positions[1].x, 3.0) && Near(scene.positions[1].y, 4.0),
+        "sparse positions reach the scene")
+    return fail
+}
+
+CheckMalformed :: () -> s32 {
+    fail: s32 = 0
+    fail += CheckRejected("malformed/bad_base64.gltf", "malformed base64")
+    fail += CheckRejected("malformed/bad_glb_header.glb", "truncated GLB header")
+    fail += CheckRejected("malformed/node_cycle.gltf", "node cycle")
+    fail += CheckRejected("malformed/oob_accessor.gltf", "accessor overrun")
+    fail += CheckRejected("malformed/oob_buffer_view.gltf", "bufferView overrun")
+    fail += CheckRejected("malformed/oob_sparse_index.gltf", "sparse index overrun")
+    fail += CheckRejected("malformed/unsafe_uri.gltf", "unsafe URI")
+    return fail
+}
+
+CheckRejected :: (name: string, label: string) -> s32 {
+    model := LoadFixture(name)
+    defer GltfModelRelease(*model)
+    if model.valid {
+        print("scene gltf: % was accepted\n", label)
+        return 1
+    }
+    if GltfError(*model).count == 0 {
+        print("scene gltf: % failed without a diagnostic\n", label)
+        return 1
+    }
+    scene: Scene
+    SceneInit(*scene)
+    instance: GltfSceneInstance
+    defer {
+        GltfInstanceRelease(*instance)
+        SceneFree(*scene)
+    }
+    if GltfSceneCreate(*scene, *model, *instance) {
+        print("scene gltf: % created a scene\n", label)
+        return 1
+    }
+    return 0
+}
+
+// Truncation and single-byte corruption must always fail cleanly, never crash
+// or leave a half-created scene behind.
+CheckDamagedInputs :: () -> s32 {
+    bytes: Vec(u8)
+    defer VecFree(bytes)
+    if !ReadFileInto(GltfJoin(FIXTURES, "triangle.gltf"), *bytes) {
+        print("scene gltf: cannot read the triangle fixture\n")
+        return 1
+    }
+    size: s64 = 0
+    while size < bytes.count {
+        model := GltfReadBytes(VecSlice(bytes, 0, size), FIXTURES)
+        GltfModelRelease(*model)
+        size += 11
+    }
+    scratch: Vec(u8)
+    defer VecFree(scratch)
+    if !VecResize(scratch, bytes.count) { return 1 }
+    state: u64 = 88172645463325252
+    round: s32 = 0
+    while round < 64 {
+        for i: 0..bytes.count - 1 { scratch[i] = bytes[i] }
+        state = state ^ (state << 13)
+        state = state ^ (state >> 7)
+        state = state ^ (state << 17)
+        at := cast(s64)(state % cast(u64)bytes.count)
+        scratch[at] = cast(u8)(state >> 24)
+        model := GltfReadBytes(VecSlice(scratch, 0, scratch.count), FIXTURES)
+        GltfModelRelease(*model)
+        round += 1
+    }
+    empty := GltfReadBytes(bytes[0:0], FIXTURES)
+    defer GltfModelRelease(*empty)
+    return Check(!empty.valid && GltfError(*empty).count > 0, "empty input is rejected")
+}
+
+CheckKhronosModel :: (path: string, label: string) -> s32 {
+    model := LoadFixture(path)
+    defer GltfModelRelease(*model)
+    if !model.valid {
+        if TextHasPrefix(GltfError(*model), "cannot read glTF file") {
+            print("scene gltf: optional % is not present\n", label)
+            return 0
+        }
+        print("scene gltf: %: %\n", label, GltfError(*model))
+        return 1
+    }
+    scene: Scene
+    SceneInit(*scene)
+    instance: GltfSceneInstance
+    defer {
+        GltfInstanceRelease(*instance)
+        SceneFree(*scene)
+        RenderSceneRelease()
+    }
+    if !GltfSceneCreate(*scene, *model, *instance) {
+        print("scene gltf: % failed to create a scene\n", label)
+        return 1
+    }
+    if model.animations.count > 0 && !GltfAnimateScene(*model, *instance, *scene, 0, 0.35) {
+        print("scene gltf: % failed to animate\n", label)
+        return 1
+    }
+    camera := OrthographicCamera(-1.0, 1.0, 1.0, -1.0, 0.1, 20.0)
+    camera.position = .{0.0, 0.0, 6.0}
+    picture := NewImage(48, 48)
+    defer VecFree(picture.pixels)
+    if !RenderScene(*scene, camera, *picture) {
+        print("scene gltf: % failed to render\n", label)
+        return 1
+    }
+    return 0
+}
+
+CheckSamples :: () -> s32 {
+    fail: s32 = 0
+    fail += CheckKhronosModel("khronos/Box/glTF/Box.gltf", "Box glTF")
+    fail += CheckKhronosModel("khronos/Box/glTF-Binary/Box.glb", "Box GLB")
+    fail += CheckKhronosModel("khronos/RiggedSimple/glTF/RiggedSimple.gltf", "RiggedSimple glTF")
+    fail += CheckKhronosModel("khronos/RiggedSimple/glTF-Binary/RiggedSimple.glb", "RiggedSimple GLB")
+    fail += CheckKhronosModel("khronos/RiggedFigure/glTF/RiggedFigure.gltf", "RiggedFigure glTF")
+    fail += CheckKhronosModel("khronos/AnimatedMorphCube/glTF/AnimatedMorphCube.gltf", "AnimatedMorphCube glTF")
+    fail += CheckKhronosModel("khronos/AnimatedMorphCube/glTF-Binary/AnimatedMorphCube.glb", "AnimatedMorphCube GLB")
+    // These two carry a non-Khronos trademark, so they are never committed:
+    // run them only from an explicit local sample-assets checkout.
+    local := EnvironmentText("KRYON_GLTF_SAMPLE_ASSETS")
+    if local.count > 0 {
+        fail += CheckKhronosModelAbsolute(GltfJoin(local, "BoxTextured/glTF/BoxTextured.gltf"), "BoxTextured glTF")
+        fail += CheckKhronosModelAbsolute(GltfJoin(local, "CesiumMan/glTF/CesiumMan.gltf"), "CesiumMan glTF")
+    }
+    return fail
+}
+
+CheckKhronosModelAbsolute :: (path: string, label: string) -> s32 {
+    model := GltfReadFile(path)
+    defer GltfModelRelease(*model)
+    if !model.valid {
+        print("scene gltf: %: %\n", label, GltfError(*model))
+        return 1
+    }
+    scene: Scene
+    SceneInit(*scene)
+    instance: GltfSceneInstance
+    defer {
+        GltfInstanceRelease(*instance)
+        SceneFree(*scene)
+        RenderSceneRelease()
+    }
+    return Check(GltfSceneCreate(*scene, *model, *instance), label)
+}
+
+main :: () -> s32 {
+    fail: s32 = 0
+    fail += CheckTriangle()
+    fail += CheckTexturedQuad()
+    fail += CheckJpegTexture()
+    fail += CheckSkinned()
+    fail += CheckGlb()
+    fail += CheckAnimatedCube()
+    fail += CheckMorphTargets()
+    fail += CheckSparseAccessors()
+    fail += CheckMalformed()
+    fail += CheckDamagedInputs()
+    fail += CheckSamples()
+    return fail
+}

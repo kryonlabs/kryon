@@ -1013,15 +1013,19 @@ mirrored-image-test: project-toolchain
 	@sh tests/pixmap_mirrored_image_test.sh
 test: mirrored-image-test
 
-.PHONY: scene-skin-test watercolor-test practice-material-gpu-test image-pixels-resolver-test
+.PHONY: scene-skin-test scene-gltf-test scene-gltf-gpu-test watercolor-test practice-material-gpu-test image-pixels-resolver-test
 scene-skin-test: project-toolchain
 	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/scene_skin_test.sh
+scene-gltf-test: project-toolchain
+	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/scene_gltf_test.sh
+scene-gltf-gpu-test: project-toolchain
+	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/scene_gltf_gpu_test.py
 watercolor-test: project-toolchain
 	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/watercolor_test.sh
 practice-material-gpu-test: project-toolchain
 	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/practice_material_gpu_test.py
 image-pixels-resolver-test: project-toolchain
 	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/image_pixels_resolver_test.sh
-test: scene-skin-test watercolor-test practice-material-gpu-test image-pixels-resolver-test
+test: scene-skin-test scene-gltf-test scene-gltf-gpu-test watercolor-test practice-material-gpu-test image-pixels-resolver-test
 
 include mk/shader-benchmark.mk

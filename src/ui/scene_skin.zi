@@ -16,14 +16,24 @@ SkinInfluence :: struct {
     weights: [4]float64
 }
 
+SkinQuat :: struct {
+    x: float64
+    y: float64
+    z: float64
+    w: float64
+}
+
 SceneSkin :: struct {
     node: s32
     ready: bool
+    dual_quaternion: bool
     bone_count: s32
     positions: Vec(Vector3)
     normals: Vec(Vector3)
     influences: Vec(SkinInfluence)
     normal_transforms: Vec(SkinAffine)
+    real: Vec(SkinQuat)
+    dual: Vec(SkinQuat)
 }
 
 SkinIdentity :: () -> SkinAffine {
@@ -129,7 +139,8 @@ SceneSkinCreate :: (scene: *Scene, skin: *SceneSkin, bone_count: s32,
         }
     }
     if !VecResize(skin.positions, positions.count) || !VecResize(skin.normals, normals.count) ||
-    !VecResize(skin.influences, influences.count) || !VecResize(skin.normal_transforms, cast(s64)bone_count) {
+    !VecResize(skin.influences, influences.count) || !VecResize(skin.normal_transforms, cast(s64)bone_count) ||
+    !VecResize(skin.real, cast(s64)bone_count) || !VecResize(skin.dual, cast(s64)bone_count) {
         SceneSkinRelease(skin)
         return false
     }
@@ -151,11 +162,15 @@ SceneSkinCreate :: (scene: *Scene, skin: *SceneSkin, bone_count: s32,
 
 // Re-evaluates from immutable bind positions every time, without accumulating
 // error. Normals use the inverse transpose, including nonuniform bone scale.
+// When skin.dual_quaternion is true, delegates to SceneSkinDeformDualQuaternion.
 // Invalid transforms leave all scene vertices and the previous pose intact.
 SceneSkinDeform :: (scene: *Scene, skin: *SceneSkin, transforms: []SkinAffine) -> bool {
     if scene == null || skin == null || !skin.ready || skin.node < 0 || skin.node >= scene.nodes.count ||
     transforms.count != skin.bone_count || scene.failed {
         return false
+    }
+    if skin.dual_quaternion {
+        return SceneSkinDeformDualQuaternion(scene, skin, transforms)
     }
     mesh_index := scene.nodes[skin.node].mesh
     if mesh_index < 0 || mesh_index >= scene.meshes.count {
@@ -200,6 +215,91 @@ SceneSkinDeform :: (scene: *Scene, skin: *SceneSkin, transforms: []SkinAffine) -
     return true
 }
 
+// Volume-preserving dual-quaternion skinning (DLB) with antipodal sign
+// alignment per vertex.
+SceneSkinDeformDualQuaternion :: (scene: *Scene, skin: *SceneSkin, transforms: []SkinAffine) -> bool {
+    if scene == null || skin == null || !skin.ready || skin.node < 0 || skin.node >= scene.nodes.count ||
+    transforms.count != skin.bone_count || scene.failed ||
+    skin.real.count != skin.bone_count || skin.dual.count != skin.bone_count {
+        return false
+    }
+    mesh_index := scene.nodes[skin.node].mesh
+    if mesh_index < 0 || mesh_index >= scene.meshes.count {
+        return false
+    }
+    mesh := scene.meshes[mesh_index]
+    if mesh.vertex_count != skin.positions.count || mesh.first_vertex < 0 ||
+    mesh.first_vertex + cast(s64)mesh.vertex_count > scene.positions.count {
+        return false
+    }
+    for index: 0..transforms.count - 1 {
+        transform := transforms[index]
+        cross := SkinCross3(transform.y, transform.z)
+        determinant := SkinDot3(transform.x, cross)
+        if !SkinFinite(transform.x) || !SkinFinite(transform.y) || !SkinFinite(transform.z) ||
+        !SkinFinite(transform.translation) || !Finite64(determinant) || determinant <= 0.000000001 {
+            return false
+        }
+        r := SkinQuatFromAffine(transform)
+        tx := transform.translation.x
+        ty := transform.translation.y
+        tz := transform.translation.z
+        skin.real[index] = r
+        skin.dual[index] = .{
+            0.5 * (tx * r.w + ty * r.z - tz * r.y),
+            0.5 * (-tx * r.z + ty * r.w + tz * r.x),
+            0.5 * (tx * r.y - ty * r.x + tz * r.w),
+            -0.5 * (tx * r.x + ty * r.y + tz * r.z),
+        }
+    }
+    for index: 0..skin.positions.count - 1 {
+        influence := skin.influences[index]
+        anchor: SkinQuat = .{0.0, 0.0, 0.0, 1.0}
+        have_anchor := false
+        blend_real: SkinQuat
+        blend_dual: SkinQuat
+        for lane: 0..3 {
+            weight := influence.weights[lane]
+            if weight == 0.0 {
+                continue
+            }
+            joint := influence.joints[lane]
+            qr := skin.real[joint]
+            qd := skin.dual[joint]
+            if !have_anchor {
+                anchor = qr
+                have_anchor = true
+            }
+            signed_weight := ifx SkinQuatDot(anchor, qr) < 0.0 then -weight else weight
+            blend_real.x += qr.x * signed_weight
+            blend_real.y += qr.y * signed_weight
+            blend_real.z += qr.z * signed_weight
+            blend_real.w += qr.w * signed_weight
+            blend_dual.x += qd.x * signed_weight
+            blend_dual.y += qd.y * signed_weight
+            blend_dual.z += qd.z * signed_weight
+            blend_dual.w += qd.w * signed_weight
+        }
+        norm := Sqrt(SkinQuatDot(blend_real, blend_real))
+        inv := ifx norm > 0.000000001 then 1.0 / norm else 1.0
+        ur: SkinQuat = .{blend_real.x * inv, blend_real.y * inv, blend_real.z * inv, blend_real.w * inv}
+        ud: SkinQuat = .{blend_dual.x * inv, blend_dual.y * inv, blend_dual.z * inv, blend_dual.w * inv}
+        real_vec: Vector3 = .{ur.x, ur.y, ur.z}
+        dual_vec: Vector3 = .{ud.x, ud.y, ud.z}
+        translation := SkinScale3(
+            SkinAdd3(
+                SkinAdd3(SkinScale3(dual_vec, ur.w), SkinScale3(real_vec, -ud.w)),
+                SkinCross3(real_vec, dual_vec)
+            ),
+            2.0
+        )
+        scene.positions[mesh.first_vertex + index] = SkinAdd3(SkinQuatRotate(ur, skin.positions[index]), translation)
+        scene.normals[mesh.first_vertex + index] = SkinNormalize3(SkinQuatRotate(ur, skin.normals[index]))
+    }
+    scene.geometry_frozen = false
+    return true
+}
+
 // Release the bind data before releasing or replacing its owning scene.
 // The scene owns the resulting mesh, so its usual SceneFree frees that surface.
 SceneSkinRelease :: (skin: *SceneSkin) {
@@ -210,12 +310,59 @@ SceneSkinRelease :: (skin: *SceneSkin) {
     VecFree(skin.normals)
     VecFree(skin.influences)
     VecFree(skin.normal_transforms)
+    VecFree(skin.real)
+    VecFree(skin.dual)
     skin.node = -1
     skin.ready = false
+    skin.dual_quaternion = false
     skin.bone_count = 0
 }
 
 #scope_file
+SkinQuatDot :: (a: SkinQuat, b: SkinQuat) -> float64 {
+    return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w
+}
+
+SkinQuatNormalize :: (q: SkinQuat) -> SkinQuat {
+    len := Sqrt(SkinQuatDot(q, q))
+    if len <= 0.000000001 {
+        return .{0.0, 0.0, 0.0, 1.0}
+    }
+    inv := 1.0 / len
+    return .{q.x * inv, q.y * inv, q.z * inv, q.w * inv}
+}
+
+SkinQuatFromAffine :: (transform: SkinAffine) -> SkinQuat {
+    cx := SkinNormalize3(transform.x)
+    cy := SkinNormalize3(transform.y)
+    cz := SkinNormalize3(transform.z)
+    m00 := cx.x; m01 := cy.x; m02 := cz.x
+    m10 := cx.y; m11 := cy.y; m12 := cz.y
+    m20 := cx.z; m21 := cy.z; m22 := cz.z
+    trace := m00 + m11 + m22
+    q: SkinQuat
+    if trace > 0.0 {
+        s := Sqrt(trace + 1.0) * 2.0
+        q = .{(m21 - m12) / s, (m02 - m20) / s, (m10 - m01) / s, 0.25 * s}
+    } else if m00 > m11 && m00 > m22 {
+        s := Sqrt(1.0 + m00 - m11 - m22) * 2.0
+        q = .{0.25 * s, (m01 + m10) / s, (m02 + m20) / s, (m21 - m12) / s}
+    } else if m11 > m22 {
+        s := Sqrt(1.0 + m11 - m00 - m22) * 2.0
+        q = .{(m01 + m10) / s, 0.25 * s, (m12 + m21) / s, (m02 - m20) / s}
+    } else {
+        s := Sqrt(1.0 + m22 - m00 - m11) * 2.0
+        q = .{(m02 + m20) / s, (m12 + m21) / s, 0.25 * s, (m10 - m01) / s}
+    }
+    return SkinQuatNormalize(q)
+}
+
+SkinQuatRotate :: (q: SkinQuat, v: Vector3) -> Vector3 {
+    qv: Vector3 = .{q.x, q.y, q.z}
+    uv := SkinCross3(qv, v)
+    uuv := SkinCross3(qv, uv)
+    return SkinAdd3(v, SkinScale3(SkinAdd3(SkinScale3(uv, q.w), uuv), 2.0))
+}
 SkinAdd3 :: (a: Vector3, b: Vector3) -> Vector3 {
     return .{a.x + b.x, a.y + b.y, a.z + b.z}
 }

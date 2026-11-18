@@ -1,0 +1,2910 @@
+// glTF 2.0 (.gltf and .glb) model reader and Kryon scene adapter.
+//
+// Reads buffers, bufferViews, bounds-checked accessors (every component type,
+// normalized integers and sparse overrides), meshes and primitives (POSITION,
+// NORMAL, TANGENT, TEXCOORD_0, TEXCOORD_1, COLOR_0, JOINTS_0, WEIGHTS_0,
+// indices), morph targets and weights, node hierarchies (TRS and column-major
+// matrix), skins (joints and inverseBindMatrices), animations (translation,
+// rotation, scale and weights with LINEAR, STEP and CUBICSPLINE
+// interpolation), PBR metallic-roughness materials, samplers, textures and
+// embedded or relative PNG/JPEG images.
+//
+// Turns a loaded model into SceneIndexedMesh nodes and SceneSkin instances
+// (with linear blend skinning or volume-preserving dual-quaternion skinning)
+// that draw through Kryon's indexed GPU and software scene paths.
+#import "drawing_props"
+#import "scene"
+#import "scene_skin"
+#import "std/base64"
+#import "std/binary"
+#import "std/file"
+#import "std/float_text"
+#import "std/image"
+#import "std/jpeg"
+#import "std/json_document"
+#import "std/math"
+#import "std/path"
+#import "std/png_linux"
+#import "std/text_tools"
+using Vectors :: #import "std/vec"
+
+GLTF_BYTE :: 5120;
+GLTF_UNSIGNED_BYTE :: 5121;
+GLTF_SHORT :: 5122;
+GLTF_UNSIGNED_SHORT :: 5123;
+GLTF_UNSIGNED_INT :: 5125;
+GLTF_FLOAT :: 5126;
+
+GLTF_POINTS :: 0;
+GLTF_LINES :: 1;
+GLTF_LINE_LOOP :: 2;
+GLTF_LINE_STRIP :: 3;
+GLTF_TRIANGLES :: 4;
+GLTF_TRIANGLE_STRIP :: 5;
+GLTF_TRIANGLE_FAN :: 6;
+
+GLTF_NEAREST :: 9728;
+GLTF_LINEAR :: 9729;
+GLTF_NEAREST_MIPMAP_NEAREST :: 9984;
+GLTF_LINEAR_MIPMAP_NEAREST :: 9985;
+GLTF_NEAREST_MIPMAP_LINEAR :: 9986;
+GLTF_LINEAR_MIPMAP_LINEAR :: 9987;
+
+GLTF_CLAMP_TO_EDGE :: 33071;
+GLTF_MIRRORED_REPEAT :: 33648;
+GLTF_REPEAT :: 10497;
+
+GltfAccessorType :: enum {
+    GltfScalar
+    GltfVec2
+    GltfVec3
+    GltfVec4
+    GltfMat2
+    GltfMat3
+    GltfMat4
+}
+
+GltfAlphaMode :: enum {
+    GltfAlphaOpaque
+    GltfAlphaMask
+    GltfAlphaBlend
+}
+
+GltfInterpolation :: enum {
+    GltfLinear
+    GltfStep
+    GltfCubicSpline
+}
+
+GltfTargetPath :: enum {
+    GltfPathTranslation
+    GltfPathRotation
+    GltfPathScale
+    GltfPathWeights
+}
+
+GltfQuat :: struct {
+    x: float64
+    y: float64
+    z: float64
+    w: float64
+}
+
+GltfColor :: struct {
+    r: float64
+    g: float64
+    b: float64
+    a: float64
+}
+
+GltfMatrix :: struct {
+    m: [16]float64
+}
+
+GltfBuffer :: struct {
+    data: Vec(u8)
+    byte_length: s64
+}
+
+GltfBufferView :: struct {
+    buffer: s32
+    byte_offset: s64
+    byte_length: s64
+    byte_stride: s64
+    target: s32
+}
+
+GltfAccessor :: struct {
+    buffer_view: s32
+    byte_offset: s64
+    component_type: s32
+    normalized: bool
+    count: s64
+    kind: GltfAccessorType
+    has_min: bool
+    has_max: bool
+    min_values: [16]float64
+    max_values: [16]float64
+    has_sparse: bool
+    sparse_count: s64
+    sparse_indices_view: s32
+    sparse_indices_offset: s64
+    sparse_indices_component_type: s32
+    sparse_values_view: s32
+    sparse_values_offset: s64
+}
+
+GltfSampler :: struct {
+    mag_filter: s32
+    min_filter: s32
+    wrap_s: s32
+    wrap_t: s32
+}
+
+GltfImage :: struct {
+    name: Vec(u8)
+    uri: Vec(u8)
+    mime_type: Vec(u8)
+    buffer_view: s32
+    image: Image
+}
+
+GltfTexture :: struct {
+    name: Vec(u8)
+    sampler: s32
+    source: s32
+}
+
+GltfTextureInfo :: struct {
+    index: s32
+    tex_coord: s32
+    scale: float64
+}
+
+GltfMaterial :: struct {
+    name: Vec(u8)
+    base_color_factor: GltfColor
+    metallic_factor: float64
+    roughness_factor: float64
+    emissive_factor: Vector3
+    base_color_texture: GltfTextureInfo
+    metallic_roughness_texture: GltfTextureInfo
+    normal_texture: GltfTextureInfo
+    occlusion_texture: GltfTextureInfo
+    emissive_texture: GltfTextureInfo
+    alpha_mode: GltfAlphaMode
+    alpha_cutoff: float64
+    double_sided: bool
+    unlit: bool
+}
+
+GltfMorphTarget :: struct {
+    positions: Vec(Vector3)
+    normals: Vec(Vector3)
+    tangents: Vec(Vector3)
+}
+
+GltfPrimitive :: struct {
+    mode: s32
+    material: s32
+    has_normals: bool
+    has_tangents: bool
+    has_uv0: bool
+    has_uv1: bool
+    has_colors: bool
+    has_joints: bool
+    has_weights: bool
+    positions: Vec(Vector3)
+    normals: Vec(Vector3)
+    tangents: Vec(GltfQuat)
+    uv0: Vec(ShapePoint)
+    uv1: Vec(ShapePoint)
+    colors: Vec(GltfColor)
+    influences: Vec(SkinInfluence)
+    indices: Vec(s32)
+    targets: Vec(GltfMorphTarget)
+}
+
+GltfMesh :: struct {
+    name: Vec(u8)
+    primitives: Vec(GltfPrimitive)
+    weights: Vec(float64)
+}
+
+GltfNode :: struct {
+    name: Vec(u8)
+    parent: s32
+    mesh: s32
+    skin: s32
+    children: Vec(s32)
+    translation: Vector3
+    rotation: GltfQuat
+    scale: Vector3
+    matrix: GltfMatrix
+    has_matrix: bool
+    weights: Vec(float64)
+}
+
+GltfSkin :: struct {
+    name: Vec(u8)
+    skeleton: s32
+    joints: Vec(s32)
+    inverse_bind_matrices: Vec(GltfMatrix)
+    inverse_bind_affines: Vec(SkinAffine)
+}
+
+GltfAnimSampler :: struct {
+    input: s32
+    output: s32
+    interpolation: GltfInterpolation
+    output_stride: s32
+    times: Vec(float64)
+    values: Vec(float64)
+}
+
+GltfAnimChannel :: struct {
+    sampler: s32
+    target_node: s32
+    path: GltfTargetPath
+}
+
+GltfAnimation :: struct {
+    name: Vec(u8)
+    samplers: Vec(GltfAnimSampler)
+    channels: Vec(GltfAnimChannel)
+    duration: float64
+}
+
+GltfSceneDef :: struct {
+    name: Vec(u8)
+    nodes: Vec(s32)
+}
+
+GltfModel :: struct {
+    valid: bool
+    error: Vec(u8)
+    version: Vec(u8)
+    generator: Vec(u8)
+    copyright: Vec(u8)
+    default_scene: s32
+    buffers: Vec(GltfBuffer)
+    buffer_views: Vec(GltfBufferView)
+    accessors: Vec(GltfAccessor)
+    samplers: Vec(GltfSampler)
+    images: Vec(GltfImage)
+    textures: Vec(GltfTexture)
+    materials: Vec(GltfMaterial)
+    meshes: Vec(GltfMesh)
+    nodes: Vec(GltfNode)
+    skins: Vec(GltfSkin)
+    animations: Vec(GltfAnimation)
+    scenes: Vec(GltfSceneDef)
+}
+
+GltfMeshInstance :: struct {
+    gltf_node: s32
+    mesh_index: s32
+    primitive_index: s32
+    scene_node: s32
+    skin_index: s32
+    has_skin: bool
+    skin: SceneSkin
+    morphed_positions: Vec(Vector3)
+    morphed_normals: Vec(Vector3)
+}
+
+GltfSceneInstance :: struct {
+    ready: bool
+    root_node: s32
+    node_to_scene: Vec(s32)
+    translations: Vec(Vector3)
+    rotations: Vec(GltfQuat)
+    scales: Vec(Vector3)
+    trs_dirty: Vec(bool)
+    node_local: Vec(GltfMatrix)
+    node_world: Vec(GltfMatrix)
+    morph_offsets: Vec(s32)
+    morph_counts: Vec(s32)
+    morph_weights: Vec(float64)
+    meshes: Vec(GltfMeshInstance)
+    joint_scratch: Vec(SkinAffine)
+}
+
+#scope_file
+GLTF_MAX_BYTES :: 268435456;
+GLTF_MAX_COUNT :: 16777216;
+
+GltfAbs :: (v: float64) -> float64 {
+    return ifx v < 0.0 then -v else v
+}
+
+GltfFmod :: (x: float64, y: float64) -> float64 {
+    if y <= 0.0 { return 0.0 }
+    q := cast(s64)(x / y)
+    r := x - cast(float64)q * y
+    return ifx r < 0.0 then r + y else r
+}
+
+GltfPathParent :: (path: string) -> string {
+    slash := TextFindLast(path, "/")
+    if slash < 0 { return "" }
+    if slash == 0 { return "/" }
+    return path[0:slash]
+}
+
+GltfPathJoin :: (dir: string, rel: string) -> Text {
+    out: Vec(u8)
+    if dir.count > 0 {
+        BuilderAppend(out, dir)
+        if dir[dir.count - 1] != #char "/" {
+            VecPush(out, #char "/")
+        }
+    }
+    BuilderAppend(out, rel)
+    return BuilderFinish(out)
+}
+
+GltfAdd3 :: (a: Vector3, b: Vector3) -> Vector3 {
+    return .{a.x + b.x, a.y + b.y, a.z + b.z}
+}
+
+GltfScale3 :: (a: Vector3, s: float64) -> Vector3 {
+    return .{a.x * s, a.y * s, a.z * s}
+}
+
+GltfCross3 :: (a: Vector3, b: Vector3) -> Vector3 {
+    return .{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x}
+}
+
+GltfLength3 :: (a: Vector3) -> float64 {
+    return Sqrt(a.x * a.x + a.y * a.y + a.z * a.z)
+}
+
+GltfIdentity :: () -> GltfMatrix {
+    m: GltfMatrix
+    m.m[0] = 1.0; m.m[5] = 1.0; m.m[10] = 1.0; m.m[15] = 1.0
+    return m
+}
+
+GltfMultiply :: (a: GltfMatrix, b: GltfMatrix) -> GltfMatrix {
+    out: GltfMatrix
+    for r: 0..3 {
+        for c: 0..3 {
+            out.m[r * 4 + c] =
+                a.m[r * 4 + 0] * b.m[0 * 4 + c] +
+                a.m[r * 4 + 1] * b.m[1 * 4 + c] +
+                a.m[r * 4 + 2] * b.m[2 * 4 + c] +
+                a.m[r * 4 + 3] * b.m[3 * 4 + c]
+        }
+    }
+    return out
+}
+
+GltfDeterminant3 :: (m: GltfMatrix) -> float64 {
+    return m.m[0] * (m.m[5] * m.m[10] - m.m[6] * m.m[9]) -
+           m.m[1] * (m.m[4] * m.m[10] - m.m[6] * m.m[8]) +
+           m.m[2] * (m.m[4] * m.m[9] - m.m[5] * m.m[8])
+}
+
+GltfFail :: (model: *GltfModel, message: string) -> bool {
+    if model.error.count == 0 {
+        BuilderAppend(model.error, message)
+    }
+    model.valid = false
+    return false
+}
+
+GltfFailField :: (model: *GltfModel, prefix: string, detail: string) -> bool {
+    if model.error.count == 0 {
+        BuilderAppend(model.error, prefix)
+        BuilderAppend(model.error, detail)
+    }
+    model.valid = false
+    return false
+}
+
+GltfComponentCount :: (kind: GltfAccessorType) -> s32 {
+    if kind == .GltfScalar { return 1 }
+    if kind == .GltfVec2 { return 2 }
+    if kind == .GltfVec3 { return 3 }
+    if kind == .GltfVec4 { return 4 }
+    if kind == .GltfMat2 { return 4 }
+    if kind == .GltfMat3 { return 9 }
+    return 16
+}
+
+GltfComponentByteSize :: (component_type: s32) -> s32 {
+    if component_type == GLTF_BYTE || component_type == GLTF_UNSIGNED_BYTE { return 1 }
+    if component_type == GLTF_SHORT || component_type == GLTF_UNSIGNED_SHORT { return 2 }
+    if component_type == GLTF_UNSIGNED_INT || component_type == GLTF_FLOAT { return 4 }
+    return 0
+}
+
+// Per glTF 2.0 Section 3.6.2.4, matrix columns are aligned to 4-byte boundaries.
+GltfElementByteSize :: (kind: GltfAccessorType, comp_size: s32) -> s64 {
+    if kind == .GltfMat2 && comp_size == 1 { return 8 }
+    if kind == .GltfMat3 && comp_size == 1 { return 12 }
+    if kind == .GltfMat3 && comp_size == 2 { return 24 }
+    return cast(s64)GltfComponentCount(kind) * comp_size
+}
+
+GltfParseAccessorType :: (name: string, out: *GltfAccessorType) -> bool {
+    if name == "SCALAR" { <<out = .GltfScalar; return true }
+    if name == "VEC2" { <<out = .GltfVec2; return true }
+    if name == "VEC3" { <<out = .GltfVec3; return true }
+    if name == "VEC4" { <<out = .GltfVec4; return true }
+    if name == "MAT2" { <<out = .GltfMat2; return true }
+    if name == "MAT3" { <<out = .GltfMat3; return true }
+    if name == "MAT4" { <<out = .GltfMat4; return true }
+    return false
+}
+
+GltfSafeRelativeUri :: (uri: string) -> bool {
+    if uri.count == 0 || uri[0] == #char "/" || uri[0] == #char "\\" { return false }
+    for i: 0..uri.count - 1 {
+        if uri[i] == #char ":" || uri[i] == 0 { return false }
+    }
+    parts := TextSplit(uri, "/")
+    defer VecFree(parts)
+    for part: parts {
+        if part == ".." || TextContains(part, "\\") { return false }
+    }
+    return true
+}
+
+GltfDecodeDataUri :: (uri: string, out: *Vec(u8)) -> bool {
+    if !TextHasPrefix(uri, "data:") { return false }
+    comma := TextFind(uri, ",", 5)
+    if comma < 5 { return false }
+    meta := uri[5:comma]
+    payload := uri[comma + 1:uri.count]
+    if !TextHasSuffix(meta, ";base64") { return false }
+    return Base64DecodeInto(payload, out)
+}
+
+GltfPercentDecode :: (uri: string) -> Text {
+    if !TextContains(uri, "%") { return TextCopy(uri) }
+    out: Vec(u8)
+    i: s64 = 0
+    while i < uri.count {
+        if uri[i] == #char "%" && i + 2 < uri.count {
+            hi := TextHexDigit(uri[i + 1])
+            lo := TextHexDigit(uri[i + 2])
+            if hi >= 0 && lo >= 0 {
+                VecPush(out, cast(u8)(hi * 16 + lo))
+                i += 3
+                continue
+            }
+        }
+        VecPush(out, uri[i])
+        i += 1
+    }
+    return BuilderFinish(out)
+}
+
+GltfReadRawScalarFloat :: (bytes: []u8, at: s64, component_type: s32, normalized: bool) -> float64 {
+    if component_type == GLTF_BYTE {
+        raw := cast(s32)bytes[at]
+        signed := ifx raw >= 128 then raw - 256 else raw
+        if normalized {
+            v := cast(float64)signed / 127.0
+            return ifx v < -1.0 then -1.0 else v
+        }
+        return cast(float64)signed
+    }
+    if component_type == GLTF_UNSIGNED_BYTE {
+        raw := cast(u32)bytes[at]
+        if normalized { return cast(float64)raw / 255.0 }
+        return cast(float64)raw
+    }
+    if component_type == GLTF_SHORT {
+        raw := cast(s32)bytes[at] | (cast(s32)bytes[at + 1] << 8)
+        signed := ifx raw >= 32768 then raw - 65536 else raw
+        if normalized {
+            v := cast(float64)signed / 32767.0
+            return ifx v < -1.0 then -1.0 else v
+        }
+        return cast(float64)signed
+    }
+    if component_type == GLTF_UNSIGNED_SHORT {
+        raw := cast(u32)bytes[at] | (cast(u32)bytes[at + 1] << 8)
+        if normalized { return cast(float64)raw / 65535.0 }
+        return cast(float64)raw
+    }
+    if component_type == GLTF_UNSIGNED_INT {
+        raw := cast(u32)bytes[at] | (cast(u32)bytes[at + 1] << 8) |
+               (cast(u32)bytes[at + 2] << 16) | (cast(u32)bytes[at + 3] << 24)
+        if normalized { return cast(float64)raw / 4294967295.0 }
+        return cast(float64)raw
+    }
+    bits := cast(u32)bytes[at] | (cast(u32)bytes[at + 1] << 8) |
+            (cast(u32)bytes[at + 2] << 16) | (cast(u32)bytes[at + 3] << 24)
+    return Float32FromBits(bits)
+}
+
+GltfReadRawScalarInt :: (bytes: []u8, at: s64, component_type: s32) -> s64 {
+    if component_type == GLTF_BYTE {
+        raw := cast(s64)bytes[at]
+        return ifx raw >= 128 then raw - 256 else raw
+    }
+    if component_type == GLTF_UNSIGNED_BYTE {
+        return cast(s64)bytes[at]
+    }
+    if component_type == GLTF_SHORT {
+        raw := cast(s64)bytes[at] | (cast(s64)bytes[at + 1] << 8)
+        return ifx raw >= 32768 then raw - 65536 else raw
+    }
+    if component_type == GLTF_UNSIGNED_SHORT {
+        return cast(s64)bytes[at] | (cast(s64)bytes[at + 1] << 8)
+    }
+    if component_type == GLTF_UNSIGNED_INT {
+        raw := cast(u32)bytes[at] | (cast(u32)bytes[at + 1] << 8) |
+               (cast(u32)bytes[at + 2] << 16) | (cast(u32)bytes[at + 3] << 24)
+        return cast(s64)raw
+    }
+    bits := cast(u32)bytes[at] | (cast(u32)bytes[at + 1] << 8) |
+            (cast(u32)bytes[at + 2] << 16) | (cast(u32)bytes[at + 3] << 24)
+    return cast(s64)Float32FromBits(bits)
+}
+
+GltfComponentByteOffset :: (kind: GltfAccessorType, comp_size: s32, lane: s32) -> s64 {
+    if kind == .GltfMat2 && comp_size == 1 {
+        return cast(s64)(lane / 2) * 4 + (lane % 2)
+    }
+    if kind == .GltfMat3 && comp_size == 1 {
+        return cast(s64)(lane / 3) * 4 + (lane % 3)
+    }
+    if kind == .GltfMat3 && comp_size == 2 {
+        return cast(s64)(lane / 3) * 8 + (lane % 3) * 2
+    }
+    return cast(s64)lane * comp_size
+}
+
+GltfJsonInt :: (doc: *JsonDocument, obj: s32, field: string, fallback: s64, ok: *bool) -> s64 {
+    member := JsonMember(doc, obj, field)
+    if member < 0 { <<ok = true; return fallback }
+    val, valid := JsonInteger(doc, member)
+    <<ok = valid
+    return ifx valid then val else fallback
+}
+
+GltfJsonNumber :: (doc: *JsonDocument, obj: s32, field: string, fallback: float64, ok: *bool) -> float64 {
+    member := JsonMember(doc, obj, field)
+    if member < 0 { <<ok = true; return fallback }
+    if JsonKindOf(doc, member) != .Number { <<ok = false; return fallback }
+    num_text := JsonNumberText(doc, member)
+    val, valid := ParseFloat64(num_text)
+    if !valid || !Finite64(val) { <<ok = false; return fallback }
+    <<ok = true
+    return val
+}
+
+GltfJsonBool :: (doc: *JsonDocument, obj: s32, field: string, fallback: bool, ok: *bool) -> bool {
+    member := JsonMember(doc, obj, field)
+    if member < 0 { <<ok = true; return fallback }
+    val, valid := JsonBool(doc, member)
+    <<ok = valid
+    return ifx valid then val else fallback
+}
+
+GltfJsonStringInto :: (doc: *JsonDocument, obj: s32, field: string, out: *Vec(u8)) -> bool {
+    VecClear(<<out)
+    member := JsonMember(doc, obj, field)
+    if member < 0 { return true }
+    if JsonKindOf(doc, member) != .String { return false }
+    return JsonStringInto(doc, member, out)
+}
+
+GltfJsonFloatArray :: (doc: *JsonDocument, node: s32, out: []float64) -> bool {
+    if JsonKindOf(doc, node) != .Array || JsonCount(doc, node) != out.count { return false }
+    for i: 0..out.count - 1 {
+        elem := JsonElement(doc, node, cast(s32)i)
+        if JsonKindOf(doc, elem) != .Number { return false }
+        num_text := JsonNumberText(doc, elem)
+        val, valid := ParseFloat64(num_text)
+        if !valid || !Finite64(val) { return false }
+        out[i] = val
+    }
+    return true
+}
+
+GltfColumnMajorToRowMajor :: (col: []float64) -> GltfMatrix {
+    m: GltfMatrix
+    for row: 0..3 {
+        for c: 0..3 {
+            m.m[row * 4 + c] = col[c * 4 + row]
+        }
+    }
+    return m
+}
+
+GltfMatrixToAffine :: (m: GltfMatrix) -> SkinAffine {
+    return .{
+        x = .{m.m[0], m.m[4], m.m[8]},
+        y = .{m.m[1], m.m[5], m.m[9]},
+        z = .{m.m[2], m.m[6], m.m[10]},
+        translation = .{m.m[3], m.m[7], m.m[11]},
+    }
+}
+
+GltfQuatNormalize :: (q: GltfQuat) -> GltfQuat {
+    len := Sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w)
+    if len <= 0.000000001 { return .{0.0, 0.0, 0.0, 1.0} }
+    inv := 1.0 / len
+    return .{q.x * inv, q.y * inv, q.z * inv, q.w * inv}
+}
+
+GltfQuatSlerp :: (a: GltfQuat, b: GltfQuat, t: float64) -> GltfQuat {
+    qa := GltfQuatNormalize(a)
+    qb := GltfQuatNormalize(b)
+    dot := qa.x * qb.x + qa.y * qb.y + qa.z * qb.z + qa.w * qb.w
+    if dot < 0.0 {
+        dot = -dot
+        qb = .{-qb.x, -qb.y, -qb.z, -qb.w}
+    }
+    if dot > 0.9995 {
+        lerp: GltfQuat = .{
+            qa.x + (qb.x - qa.x) * t,
+            qa.y + (qb.y - qa.y) * t,
+            qa.z + (qb.z - qa.z) * t,
+            qa.w + (qb.w - qa.w) * t,
+        }
+        return GltfQuatNormalize(lerp)
+    }
+    theta_0 := Acos(ifx dot > 1.0 then 1.0 else dot)
+    theta := theta_0 * t
+    sin_theta := Sin(theta)
+    sin_theta_0 := Sin(theta_0)
+    s0 := Cos(theta) - dot * sin_theta / sin_theta_0
+    s1 := sin_theta / sin_theta_0
+    return GltfQuatNormalize(.{
+        qa.x * s0 + qb.x * s1,
+        qa.y * s0 + qb.y * s1,
+        qa.z * s0 + qb.z * s1,
+        qa.w * s0 + qb.w * s1,
+    })
+}
+
+GltfComposeTRS :: (translation: Vector3, rotation: GltfQuat, scale: Vector3) -> GltfMatrix {
+    q := GltfQuatNormalize(rotation)
+    x2 := q.x + q.x; y2 := q.y + q.y; z2 := q.z + q.z
+    xx := q.x * x2; xy := q.x * y2; xz := q.x * z2
+    yy := q.y * y2; yz := q.y * z2; zz := q.z * z2
+    wx := q.w * x2; wy := q.w * y2; wz := q.w * z2
+    m: GltfMatrix
+    m.m[0] = (1.0 - (yy + zz)) * scale.x
+    m.m[1] = (xy - wz) * scale.y
+    m.m[2] = (xz + wy) * scale.z
+    m.m[3] = translation.x
+    m.m[4] = (xy + wz) * scale.x
+    m.m[5] = (1.0 - (xx + zz)) * scale.y
+    m.m[6] = (yz - wx) * scale.z
+    m.m[7] = translation.y
+    m.m[8] = (xz - wy) * scale.x
+    m.m[9] = (yz + wx) * scale.y
+    m.m[10] = (1.0 - (xx + yy)) * scale.z
+    m.m[11] = translation.z
+    m.m[12] = 0.0
+    m.m[13] = 0.0
+    m.m[14] = 0.0
+    m.m[15] = 1.0
+    return m
+}
+
+GltfDecomposeMatrix :: (m: GltfMatrix, translation: *Vector3, rotation: *GltfQuat, scale: *Vector3) {
+    <<translation = .{m.m[3], m.m[7], m.m[11]}
+    cx: Vector3 = .{m.m[0], m.m[4], m.m[8]}
+    cy: Vector3 = .{m.m[1], m.m[5], m.m[9]}
+    cz: Vector3 = .{m.m[2], m.m[6], m.m[10]}
+    sx := GltfLength3(cx)
+    sy := GltfLength3(cy)
+    sz := GltfLength3(cz)
+    if GltfDeterminant3(m) < 0.0 { sx = -sx }
+    <<scale = .{
+        ifx GltfAbs(sx) > 0.000000001 then sx else 1.0,
+        ifx GltfAbs(sy) > 0.000000001 then sy else 1.0,
+        ifx GltfAbs(sz) > 0.000000001 then sz else 1.0,
+    }
+    inv_x := ifx GltfAbs(sx) > 0.000000001 then 1.0 / sx else 1.0
+    inv_y := ifx GltfAbs(sy) > 0.000000001 then 1.0 / sy else 1.0
+    inv_z := ifx GltfAbs(sz) > 0.000000001 then 1.0 / sz else 1.0
+    r00 := cx.x * inv_x; r01 := cy.x * inv_y; r02 := cz.x * inv_z
+    r10 := cx.y * inv_x; r11 := cy.y * inv_y; r12 := cz.y * inv_z
+    r20 := cx.z * inv_x; r21 := cy.z * inv_y; r22 := cz.z * inv_z
+    trace := r00 + r11 + r22
+    q: GltfQuat
+    if trace > 0.0 {
+        s := Sqrt(trace + 1.0) * 2.0
+        q = .{(r21 - r12) / s, (r02 - r20) / s, (r10 - r01) / s, 0.25 * s}
+    } else if r00 > r11 && r00 > r22 {
+        s := Sqrt(1.0 + r00 - r11 - r22) * 2.0
+        q = .{0.25 * s, (r01 + r10) / s, (r02 + r20) / s, (r21 - r12) / s}
+    } else if r11 > r22 {
+        s := Sqrt(1.0 + r11 - r00 - r22) * 2.0
+        q = .{(r01 + r10) / s, 0.25 * s, (r12 + r21) / s, (r02 - r20) / s}
+    } else {
+        s := Sqrt(1.0 + r22 - r00 - r11) * 2.0
+        q = .{(r02 + r20) / s, (r12 + r21) / s, 0.25 * s, (r10 - r01) / s}
+    }
+    <<rotation = GltfQuatNormalize(q)
+}
+
+// Matches Compose(position, rotation, scale) in scene_render.zi (intrinsic XYZ Euler).
+GltfQuatToSceneEuler :: (q_in: GltfQuat) -> Vector3 {
+    q := GltfQuatNormalize(q_in)
+    x2 := q.x + q.x; y2 := q.y + q.y; z2 := q.z + q.z
+    xx := q.x * x2; xy := q.x * y2; xz := q.x * z2
+    yy := q.y * y2; yz := q.y * z2; zz := q.z * z2
+    wx := q.w * x2; wy := q.w * y2; wz := q.w * z2
+    r00 := 1.0 - (yy + zz)
+    r01 := xy - wz
+    r02 := xz + wy
+    r11 := 1.0 - (xx + zz)
+    r12 := yz - wx
+    r21 := yz + wx
+    r22 := 1.0 - (xx + yy)
+    clamped_r02 := ifx r02 < -1.0 then -1.0 else (ifx r02 > 1.0 then 1.0 else r02)
+    ey := Asin(clamped_r02)
+    ex: float64 = 0.0
+    ez: float64 = 0.0
+    if GltfAbs(r02) < 0.9999999 {
+        ex = Atan2(-r12, r22)
+        ez = Atan2(-r01, r00)
+    } else {
+        ex = Atan2(r21, r11)
+        ez = 0.0
+    }
+    return .{ex, ey, ez}
+}
+
+GltfDecodeImageBytes :: (bytes: []u8) -> Image {
+    if bytes.count >= 8 && bytes[0] == 137 && bytes[1] == 80 && bytes[2] == 78 && bytes[3] == 71 {
+        return ReadPNG(bytes)
+    }
+    if bytes.count >= 4 && bytes[0] == 255 && bytes[1] == 216 {
+        return ReadJPEG(bytes)
+    }
+    img := ReadPNG(bytes)
+    if ImageValid(*img) { return img }
+    return ReadJPEG(bytes)
+}
+
+GltfParseBuffers :: (model: *GltfModel, doc: *JsonDocument, base_dir: string, bin_chunk: []u8, has_bin_chunk: bool) -> bool {
+    node := JsonMember(doc, doc.root, "buffers")
+    if node < 0 { return true }
+    if JsonKindOf(doc, node) != .Array { return GltfFail(model, "glTF buffers must be an array") }
+    count := JsonCount(doc, node)
+    if count > 4096 { return GltfFail(model, "glTF buffers count exceeds limit") }
+    for i: 0..count - 1 {
+        item := JsonElement(doc, node, i)
+        if JsonKindOf(doc, item) != .Object { return GltfFail(model, "glTF buffer entry must be an object") }
+        len_ok := false
+        byte_len := GltfJsonInt(doc, item, "byteLength", -1, *len_ok)
+        if !len_ok || byte_len <= 0 || byte_len > GLTF_MAX_BYTES {
+            return GltfFail(model, "glTF buffer has invalid or out-of-range byteLength")
+        }
+        uri_member := JsonMember(doc, item, "uri")
+        buf: GltfBuffer
+        buf.byte_length = byte_len
+        if uri_member < 0 {
+            if i != 0 || !has_bin_chunk {
+                return GltfFail(model, "glTF buffer without URI requires GLB binary chunk at buffer 0")
+            }
+            if bin_chunk.count < byte_len {
+                return GltfFail(model, "GLB binary chunk is shorter than buffer 0 byteLength")
+            }
+            if !VecResize(buf.data, byte_len) { return GltfFail(model, "out of memory allocating GLB buffer") }
+            for b: 0..byte_len - 1 { buf.data[b] = bin_chunk[b] }
+        } else {
+            if JsonKindOf(doc, uri_member) != .String {
+                return GltfFail(model, "glTF buffer uri must be a string")
+            }
+            uri := JsonString(doc, uri_member)
+            if TextHasPrefix(uri, "data:") {
+                if !GltfDecodeDataUri(uri, *buf.data) {
+                    VecFree(buf.data)
+                    return GltfFail(model, "glTF buffer has malformed base64 data: URI")
+                }
+            } else {
+                decoded_uri := GltfPercentDecode(uri)
+                if !GltfSafeRelativeUri(decoded_uri) || base_dir.count == 0 {
+                    VecFree(buf.data)
+                    return GltfFailField(model, "glTF buffer has unsafe or unresolvable URI: ", uri)
+                }
+                full_path := GltfPathJoin(base_dir, decoded_uri)
+                if !ReadFileInto(full_path, *buf.data) {
+                    VecFree(buf.data)
+                    return GltfFailField(model, "cannot read glTF external buffer file: ", full_path)
+                }
+            }
+            if buf.data.count < byte_len {
+                VecFree(buf.data)
+                return GltfFail(model, "glTF buffer data is shorter than declared byteLength")
+            }
+        }
+        VecPush(model.buffers, buf)
+    }
+    return true
+}
+
+GltfParseBufferViews :: (model: *GltfModel, doc: *JsonDocument) -> bool {
+    node := JsonMember(doc, doc.root, "bufferViews")
+    if node < 0 { return true }
+    if JsonKindOf(doc, node) != .Array { return GltfFail(model, "glTF bufferViews must be an array") }
+    count := JsonCount(doc, node)
+    if count > 65536 { return GltfFail(model, "glTF bufferViews count exceeds limit") }
+    for i: 0..count - 1 {
+        item := JsonElement(doc, node, i)
+        if JsonKindOf(doc, item) != .Object { return GltfFail(model, "glTF bufferView must be an object") }
+        ok_buf := false; ok_off := false; ok_len := false; ok_str := false; ok_tgt := false
+        buf_idx := GltfJsonInt(doc, item, "buffer", -1, *ok_buf)
+        offset := GltfJsonInt(doc, item, "byteOffset", 0, *ok_off)
+        length := GltfJsonInt(doc, item, "byteLength", -1, *ok_len)
+        stride := GltfJsonInt(doc, item, "byteStride", 0, *ok_str)
+        target := GltfJsonInt(doc, item, "target", 0, *ok_tgt)
+        if !ok_buf || !ok_off || !ok_len || !ok_str || !ok_tgt ||
+           buf_idx < 0 || buf_idx >= model.buffers.count ||
+           offset < 0 || length <= 0 || stride < 0 || (stride != 0 && (stride < 4 || stride > 252)) {
+            return GltfFail(model, "glTF bufferView has invalid buffer, offset, length or byteStride")
+        }
+        buffer_len := model.buffers[buf_idx].byte_length
+        if offset > buffer_len || length > buffer_len - offset {
+            return GltfFail(model, "glTF bufferView range exceeds buffer byteLength")
+        }
+        view: GltfBufferView
+        view.buffer = cast(s32)buf_idx
+        view.byte_offset = offset
+        view.byte_length = length
+        view.byte_stride = stride
+        view.target = cast(s32)target
+        VecPush(model.buffer_views, view)
+    }
+    return true
+}
+
+GltfValidateAccessorBounds :: (model: *GltfModel, acc: *GltfAccessor) -> bool {
+    comp_size := GltfComponentByteSize(acc.component_type)
+    if comp_size == 0 || acc.count <= 0 || acc.count > GLTF_MAX_COUNT || acc.byte_offset < 0 {
+        return GltfFail(model, "glTF accessor has invalid componentType, count or byteOffset")
+    }
+    elem_size := GltfElementByteSize(acc.kind, comp_size)
+    if acc.buffer_view >= 0 {
+        if acc.buffer_view >= model.buffer_views.count {
+            return GltfFail(model, "glTF accessor bufferView index out of range")
+        }
+        view := model.buffer_views[acc.buffer_view]
+        if (view.byte_offset + acc.byte_offset) % comp_size != 0 {
+            return GltfFail(model, "glTF accessor byteOffset is not aligned to componentType")
+        }
+        stride := ifx view.byte_stride > 0 then view.byte_stride else elem_size
+        if stride < elem_size || stride % comp_size != 0 {
+            return GltfFail(model, "glTF accessor bufferView byteStride is smaller than element or misaligned")
+        }
+        if acc.byte_offset > view.byte_length ||
+           (acc.count - 1) * stride + elem_size > view.byte_length - acc.byte_offset {
+            return GltfFail(model, "glTF accessor exceeds its bufferView byteLength")
+        }
+    } else if acc.byte_offset != 0 {
+        return GltfFail(model, "glTF accessor without bufferView must have byteOffset 0")
+    }
+    if acc.has_sparse {
+        if acc.sparse_count <= 0 || acc.sparse_count > acc.count {
+            return GltfFail(model, "glTF sparse accessor count is out of range")
+        }
+        idx_size := GltfComponentByteSize(acc.sparse_indices_component_type)
+        if (acc.sparse_indices_component_type != GLTF_UNSIGNED_BYTE &&
+            acc.sparse_indices_component_type != GLTF_UNSIGNED_SHORT &&
+            acc.sparse_indices_component_type != GLTF_UNSIGNED_INT) ||
+           acc.sparse_indices_view < 0 || acc.sparse_indices_view >= model.buffer_views.count ||
+           acc.sparse_values_view < 0 || acc.sparse_values_view >= model.buffer_views.count ||
+           acc.sparse_indices_offset < 0 || acc.sparse_values_offset < 0 {
+            return GltfFail(model, "glTF sparse accessor has invalid indices or values view")
+        }
+        idx_view := model.buffer_views[acc.sparse_indices_view]
+        val_view := model.buffer_views[acc.sparse_values_view]
+        if (idx_view.byte_offset + acc.sparse_indices_offset) % idx_size != 0 ||
+           (idx_view.byte_stride != 0 && idx_view.byte_stride != idx_size) ||
+           acc.sparse_indices_offset > idx_view.byte_length ||
+           acc.sparse_count * idx_size > idx_view.byte_length - acc.sparse_indices_offset {
+            return GltfFail(model, "glTF sparse accessor indices exceed bufferView bounds")
+        }
+        val_stride := ifx val_view.byte_stride > 0 then val_view.byte_stride else elem_size
+        if (val_view.byte_offset + acc.sparse_values_offset) % comp_size != 0 ||
+           val_stride < elem_size ||
+           acc.sparse_values_offset > val_view.byte_length ||
+           (acc.sparse_count - 1) * val_stride + elem_size > val_view.byte_length - acc.sparse_values_offset {
+            return GltfFail(model, "glTF sparse accessor values exceed bufferView bounds")
+        }
+    }
+    return true
+}
+
+GltfParseAccessors :: (model: *GltfModel, doc: *JsonDocument) -> bool {
+    node := JsonMember(doc, doc.root, "accessors")
+    if node < 0 { return true }
+    if JsonKindOf(doc, node) != .Array { return GltfFail(model, "glTF accessors must be an array") }
+    count := JsonCount(doc, node)
+    if count > 65536 { return GltfFail(model, "glTF accessors count exceeds limit") }
+    for i: 0..count - 1 {
+        item := JsonElement(doc, node, i)
+        if JsonKindOf(doc, item) != .Object { return GltfFail(model, "glTF accessor must be an object") }
+        acc: GltfAccessor
+        ok_view := false; ok_off := false; ok_comp := false; ok_norm := false; ok_cnt := false
+        view_idx := GltfJsonInt(doc, item, "bufferView", -1, *ok_view)
+        offset := GltfJsonInt(doc, item, "byteOffset", 0, *ok_off)
+        comp_type := GltfJsonInt(doc, item, "componentType", 0, *ok_comp)
+        norm := GltfJsonBool(doc, item, "normalized", false, *ok_norm)
+        acc_count := GltfJsonInt(doc, item, "count", 0, *ok_cnt)
+        type_member := JsonMember(doc, item, "type")
+        if !ok_view || !ok_off || !ok_comp || !ok_norm || !ok_cnt ||
+           type_member < 0 || JsonKindOf(doc, type_member) != .String ||
+           !GltfParseAccessorType(JsonString(doc, type_member), *acc.kind) {
+            return GltfFail(model, "glTF accessor has invalid fields or unknown type")
+        }
+        acc.buffer_view = cast(s32)view_idx
+        acc.byte_offset = offset
+        acc.component_type = cast(s32)comp_type
+        acc.normalized = norm
+        acc.count = acc_count
+        num_comps := GltfComponentCount(acc.kind)
+        min_member := JsonMember(doc, item, "min")
+        if min_member >= 0 {
+            if !GltfJsonFloatArray(doc, min_member, acc.min_values[0:num_comps]) {
+                return GltfFail(model, "glTF accessor min array is invalid")
+            }
+            acc.has_min = true
+        }
+        max_member := JsonMember(doc, item, "max")
+        if max_member >= 0 {
+            if !GltfJsonFloatArray(doc, max_member, acc.max_values[0:num_comps]) {
+                return GltfFail(model, "glTF accessor max array is invalid")
+            }
+            acc.has_max = true
+        }
+        sparse_member := JsonMember(doc, item, "sparse")
+        if sparse_member >= 0 {
+            if JsonKindOf(doc, sparse_member) != .Object {
+                return GltfFail(model, "glTF accessor sparse must be an object")
+            }
+            ok_spc := false
+            sp_count := GltfJsonInt(doc, sparse_member, "count", 0, *ok_spc)
+            indices_obj := JsonMember(doc, sparse_member, "indices")
+            values_obj := JsonMember(doc, sparse_member, "values")
+            if !ok_spc || JsonKindOf(doc, indices_obj) != .Object || JsonKindOf(doc, values_obj) != .Object {
+                return GltfFail(model, "glTF accessor sparse is missing count, indices or values")
+            }
+            ok_iv := false; ok_io := false; ok_ic := false; ok_vv := false; ok_vo := false
+            idx_view := GltfJsonInt(doc, indices_obj, "bufferView", -1, *ok_iv)
+            idx_off := GltfJsonInt(doc, indices_obj, "byteOffset", 0, *ok_io)
+            idx_ct := GltfJsonInt(doc, indices_obj, "componentType", 0, *ok_ic)
+            val_view := GltfJsonInt(doc, values_obj, "bufferView", -1, *ok_vv)
+            val_off := GltfJsonInt(doc, values_obj, "byteOffset", 0, *ok_vo)
+            if !ok_iv || !ok_io || !ok_ic || !ok_vv || !ok_vo {
+                return GltfFail(model, "glTF sparse accessor indices/values fields are invalid")
+            }
+            acc.has_sparse = true
+            acc.sparse_count = sp_count
+            acc.sparse_indices_view = cast(s32)idx_view
+            acc.sparse_indices_offset = idx_off
+            acc.sparse_indices_component_type = cast(s32)idx_ct
+            acc.sparse_values_view = cast(s32)val_view
+            acc.sparse_values_offset = val_off
+        }
+        if !GltfValidateAccessorBounds(model, *acc) { return false }
+        VecPush(model.accessors, acc)
+    }
+    return true
+}
+
+#scope_export
+// Reads every element of ACCESSOR_INDEX into OUT as float64 values
+// (count * component_count floats), applying normalization and sparse
+// overrides. Returns false on out-of-range accessor or sparse index.
+GltfReadAccessorFloats :: (model: *GltfModel, accessor_index: s32, out: *Vec(float64)) -> bool {
+    if model == null || accessor_index < 0 || accessor_index >= model.accessors.count { return false }
+    acc := model.accessors[accessor_index]
+    num_comps := GltfComponentCount(acc.kind)
+    comp_size := GltfComponentByteSize(acc.component_type)
+    elem_size := GltfElementByteSize(acc.kind, comp_size)
+    total := acc.count * num_comps
+    if !VecResize(<<out, total) { return false }
+    if acc.buffer_view < 0 {
+        for i: 0..total - 1 { (<<out)[i] = 0.0 }
+    } else {
+        view := model.buffer_views[acc.buffer_view]
+        buf_ptr := *model.buffers[view.buffer]
+        bytes := VecSlice(buf_ptr.data, 0, buf_ptr.byte_length)
+        stride := ifx view.byte_stride > 0 then view.byte_stride else elem_size
+        base := view.byte_offset + acc.byte_offset
+        for elem: 0..acc.count - 1 {
+            elem_at := base + elem * stride
+            out_at := elem * num_comps
+            for c: 0..num_comps - 1 {
+                comp_at := elem_at + GltfComponentByteOffset(acc.kind, comp_size, c)
+                val := GltfReadRawScalarFloat(bytes, comp_at, acc.component_type, acc.normalized)
+                if !Finite64(val) { return GltfFail(model, "glTF accessor contains non-finite float") }
+                (<<out)[out_at + c] = val
+            }
+        }
+    }
+    if acc.has_sparse {
+        idx_view := model.buffer_views[acc.sparse_indices_view]
+        val_view := model.buffer_views[acc.sparse_values_view]
+        idx_buf := *model.buffers[idx_view.buffer]
+        val_buf := *model.buffers[val_view.buffer]
+        idx_bytes := VecSlice(idx_buf.data, 0, idx_buf.byte_length)
+        val_bytes := VecSlice(val_buf.data, 0, val_buf.byte_length)
+        idx_size := cast(s64)GltfComponentByteSize(acc.sparse_indices_component_type)
+        val_stride := ifx val_view.byte_stride > 0 then val_view.byte_stride else elem_size
+        idx_base := idx_view.byte_offset + acc.sparse_indices_offset
+        val_base := val_view.byte_offset + acc.sparse_values_offset
+        for s: 0..acc.sparse_count - 1 {
+            target_idx := GltfReadRawScalarInt(idx_bytes, idx_base + s * idx_size, acc.sparse_indices_component_type)
+            if target_idx < 0 || target_idx >= acc.count {
+                return GltfFail(model, "glTF sparse accessor target index is out of bounds")
+            }
+            elem_at := val_base + s * val_stride
+            out_at := target_idx * num_comps
+            for c: 0..num_comps - 1 {
+                comp_at := elem_at + GltfComponentByteOffset(acc.kind, comp_size, c)
+                val := GltfReadRawScalarFloat(val_bytes, comp_at, acc.component_type, acc.normalized)
+                if !Finite64(val) { return GltfFail(model, "glTF sparse accessor contains non-finite float") }
+                (<<out)[out_at + c] = val
+            }
+        }
+    }
+    return true
+}
+
+// Reads every element of ACCESSOR_INDEX into OUT as s32 integers
+// (count * component_count ints), applying sparse overrides.
+GltfReadAccessorInts :: (model: *GltfModel, accessor_index: s32, out: *Vec(s32)) -> bool {
+    if model == null || accessor_index < 0 || accessor_index >= model.accessors.count { return false }
+    acc := model.accessors[accessor_index]
+    num_comps := GltfComponentCount(acc.kind)
+    comp_size := GltfComponentByteSize(acc.component_type)
+    elem_size := GltfElementByteSize(acc.kind, comp_size)
+    total := acc.count * num_comps
+    if !VecResize(<<out, total) { return false }
+    if acc.buffer_view < 0 {
+        for i: 0..total - 1 { (<<out)[i] = 0 }
+    } else {
+        view := model.buffer_views[acc.buffer_view]
+        buf_ptr := *model.buffers[view.buffer]
+        bytes := VecSlice(buf_ptr.data, 0, buf_ptr.byte_length)
+        stride := ifx view.byte_stride > 0 then view.byte_stride else elem_size
+        base := view.byte_offset + acc.byte_offset
+        for elem: 0..acc.count - 1 {
+            elem_at := base + elem * stride
+            out_at := elem * num_comps
+            for c: 0..num_comps - 1 {
+                comp_at := elem_at + GltfComponentByteOffset(acc.kind, comp_size, c)
+                val := GltfReadRawScalarInt(bytes, comp_at, acc.component_type)
+                if val < -2147483648 || val > 2147483647 {
+                    return GltfFail(model, "glTF integer accessor value overflows s32")
+                }
+                (<<out)[out_at + c] = cast(s32)val
+            }
+        }
+    }
+    if acc.has_sparse {
+        idx_view := model.buffer_views[acc.sparse_indices_view]
+        val_view := model.buffer_views[acc.sparse_values_view]
+        idx_buf := *model.buffers[idx_view.buffer]
+        val_buf := *model.buffers[val_view.buffer]
+        idx_bytes := VecSlice(idx_buf.data, 0, idx_buf.byte_length)
+        val_bytes := VecSlice(val_buf.data, 0, val_buf.byte_length)
+        idx_size := cast(s64)GltfComponentByteSize(acc.sparse_indices_component_type)
+        val_stride := ifx val_view.byte_stride > 0 then val_view.byte_stride else elem_size
+        idx_base := idx_view.byte_offset + acc.sparse_indices_offset
+        val_base := val_view.byte_offset + acc.sparse_values_offset
+        for s: 0..acc.sparse_count - 1 {
+            target_idx := GltfReadRawScalarInt(idx_bytes, idx_base + s * idx_size, acc.sparse_indices_component_type)
+            if target_idx < 0 || target_idx >= acc.count {
+                return GltfFail(model, "glTF sparse accessor target index is out of bounds")
+            }
+            elem_at := val_base + s * val_stride
+            out_at := target_idx * num_comps
+            for c: 0..num_comps - 1 {
+                comp_at := elem_at + GltfComponentByteOffset(acc.kind, comp_size, c)
+                val := GltfReadRawScalarInt(val_bytes, comp_at, acc.component_type)
+                if val < -2147483648 || val > 2147483647 {
+                    return GltfFail(model, "glTF sparse integer accessor value overflows s32")
+                }
+                (<<out)[out_at + c] = cast(s32)val
+            }
+        }
+    }
+    return true
+}
+
+#scope_file
+GltfParseSamplers :: (model: *GltfModel, doc: *JsonDocument) -> bool {
+    node := JsonMember(doc, doc.root, "samplers")
+    if node < 0 { return true }
+    if JsonKindOf(doc, node) != .Array { return GltfFail(model, "glTF samplers must be an array") }
+    count := JsonCount(doc, node)
+    for i: 0..count - 1 {
+        item := JsonElement(doc, node, i)
+        if JsonKindOf(doc, item) != .Object { return GltfFail(model, "glTF sampler must be an object") }
+        ok1 := false; ok2 := false; ok3 := false; ok4 := false
+        mag := GltfJsonInt(doc, item, "magFilter", 0, *ok1)
+        min_f := GltfJsonInt(doc, item, "minFilter", 0, *ok2)
+        ws := GltfJsonInt(doc, item, "wrapS", GLTF_REPEAT, *ok3)
+        wt := GltfJsonInt(doc, item, "wrapT", GLTF_REPEAT, *ok4)
+        if !ok1 || !ok2 || !ok3 || !ok4 {
+            return GltfFail(model, "glTF sampler filter or wrap mode is invalid")
+        }
+        if (mag != 0 && mag != GLTF_NEAREST && mag != GLTF_LINEAR) ||
+           (min_f != 0 && min_f != GLTF_NEAREST && min_f != GLTF_LINEAR &&
+            min_f != GLTF_NEAREST_MIPMAP_NEAREST && min_f != GLTF_LINEAR_MIPMAP_NEAREST &&
+            min_f != GLTF_NEAREST_MIPMAP_LINEAR && min_f != GLTF_LINEAR_MIPMAP_LINEAR) ||
+           (ws != GLTF_CLAMP_TO_EDGE && ws != GLTF_MIRRORED_REPEAT && ws != GLTF_REPEAT) ||
+           (wt != GLTF_CLAMP_TO_EDGE && wt != GLTF_MIRRORED_REPEAT && wt != GLTF_REPEAT) {
+            return GltfFail(model, "glTF sampler has unsupported filter or wrap constant")
+        }
+        VecPush(model.samplers, GltfSampler.{cast(s32)mag, cast(s32)min_f, cast(s32)ws, cast(s32)wt})
+    }
+    return true
+}
+
+GltfParseImages :: (model: *GltfModel, doc: *JsonDocument, base_dir: string) -> bool {
+    node := JsonMember(doc, doc.root, "images")
+    if node < 0 { return true }
+    if JsonKindOf(doc, node) != .Array { return GltfFail(model, "glTF images must be an array") }
+    count := JsonCount(doc, node)
+    for i: 0..count - 1 {
+        item := JsonElement(doc, node, i)
+        if JsonKindOf(doc, item) != .Object { return GltfFail(model, "glTF image must be an object") }
+        img: GltfImage
+        ok_bv := false
+        bv := GltfJsonInt(doc, item, "bufferView", -1, *ok_bv)
+        if !GltfJsonStringInto(doc, item, "name", *img.name) ||
+           !GltfJsonStringInto(doc, item, "uri", *img.uri) ||
+           !GltfJsonStringInto(doc, item, "mimeType", *img.mime_type) ||
+           !ok_bv {
+            VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
+            return GltfFail(model, "glTF image has invalid string or bufferView field")
+        }
+        img.buffer_view = cast(s32)bv
+        uri_str := TextView(VecSlice(img.uri, 0, img.uri.count))
+        if img.buffer_view >= 0 {
+            if img.buffer_view >= model.buffer_views.count {
+                VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
+                return GltfFail(model, "glTF image bufferView index out of range")
+            }
+            view := model.buffer_views[img.buffer_view]
+            buf_ptr := *model.buffers[view.buffer]
+            buf_slice := VecSlice(buf_ptr.data, view.byte_offset, view.byte_offset + view.byte_length)
+            img.image = GltfDecodeImageBytes(buf_slice)
+            if !ImageValid(*img.image) {
+                VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
+                return GltfFail(model, "glTF image in bufferView could not be decoded as PNG or JPEG")
+            }
+        } else if uri_str.count > 0 {
+            if TextHasPrefix(uri_str, "data:") {
+                raw: Vec(u8)
+                defer VecFree(raw)
+                if !GltfDecodeDataUri(uri_str, *raw) {
+                    VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
+                    return GltfFail(model, "glTF image has malformed base64 data: URI")
+                }
+                img.image = GltfDecodeImageBytes(VecSlice(raw, 0, raw.count))
+                if !ImageValid(*img.image) {
+                    VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
+                    return GltfFail(model, "glTF data: URI image could not be decoded as PNG or JPEG")
+                }
+            } else {
+                decoded_uri := GltfPercentDecode(uri_str)
+                if !GltfSafeRelativeUri(decoded_uri) || base_dir.count == 0 {
+                    VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
+                    return GltfFailField(model, "glTF image has unsafe or unresolvable URI: ", uri_str)
+                }
+                full_path := GltfPathJoin(base_dir, decoded_uri)
+                raw: Vec(u8)
+                defer VecFree(raw)
+                if !ReadFileInto(full_path, *raw) {
+                    VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
+                    return GltfFailField(model, "cannot read glTF image file: ", full_path)
+                }
+                img.image = GltfDecodeImageBytes(VecSlice(raw, 0, raw.count))
+                if !ImageValid(*img.image) {
+                    VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
+                    return GltfFailField(model, "cannot decode glTF image file as PNG or JPEG: ", full_path)
+                }
+            }
+        } else {
+            VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
+            return GltfFail(model, "glTF image must specify either bufferView or uri")
+        }
+        VecPush(model.images, img)
+    }
+    return true
+}
+
+GltfParseTextures :: (model: *GltfModel, doc: *JsonDocument) -> bool {
+    node := JsonMember(doc, doc.root, "textures")
+    if node < 0 { return true }
+    if JsonKindOf(doc, node) != .Array { return GltfFail(model, "glTF textures must be an array") }
+    count := JsonCount(doc, node)
+    for i: 0..count - 1 {
+        item := JsonElement(doc, node, i)
+        if JsonKindOf(doc, item) != .Object { return GltfFail(model, "glTF texture must be an object") }
+        tex: GltfTexture
+        ok_samp := false; ok_src := false
+        samp := GltfJsonInt(doc, item, "sampler", -1, *ok_samp)
+        src := GltfJsonInt(doc, item, "source", -1, *ok_src)
+        if !GltfJsonStringInto(doc, item, "name", *tex.name) || !ok_samp || !ok_src ||
+           samp < -1 || samp >= model.samplers.count ||
+           src < -1 || src >= model.images.count {
+            VecFree(tex.name)
+            return GltfFail(model, "glTF texture has invalid sampler or source index")
+        }
+        tex.sampler = cast(s32)samp
+        tex.source = cast(s32)src
+        VecPush(model.textures, tex)
+    }
+    return true
+}
+
+GltfParseTextureInfo :: (model: *GltfModel, doc: *JsonDocument, parent: s32, field: string, scale_field: string, out: *GltfTextureInfo) -> bool {
+    <<out = .{index = -1, tex_coord = 0, scale = 1.0}
+    node := JsonMember(doc, parent, field)
+    if node < 0 { return true }
+    if JsonKindOf(doc, node) != .Object { return GltfFail(model, "glTF textureInfo must be an object") }
+    ok_idx := false; ok_tc := false; ok_sc := true
+    idx := GltfJsonInt(doc, node, "index", -1, *ok_idx)
+    tc := GltfJsonInt(doc, node, "texCoord", 0, *ok_tc)
+    sc: float64 = 1.0
+    if scale_field.count > 0 { sc = GltfJsonNumber(doc, node, scale_field, 1.0, *ok_sc) }
+    if !ok_idx || !ok_tc || !ok_sc || idx < 0 || idx >= model.textures.count || tc < 0 || tc > 1 {
+        return GltfFail(model, "glTF textureInfo has invalid texture index or texCoord")
+    }
+    <<out = .{index = cast(s32)idx, tex_coord = cast(s32)tc, scale = sc}
+    return true
+}
+
+GltfParseMaterials :: (model: *GltfModel, doc: *JsonDocument) -> bool {
+    node := JsonMember(doc, doc.root, "materials")
+    if node < 0 { return true }
+    if JsonKindOf(doc, node) != .Array { return GltfFail(model, "glTF materials must be an array") }
+    count := JsonCount(doc, node)
+    for i: 0..count - 1 {
+        item := JsonElement(doc, node, i)
+        if JsonKindOf(doc, item) != .Object { return GltfFail(model, "glTF material must be an object") }
+        mat: GltfMaterial
+        mat.base_color_factor = .{1.0, 1.0, 1.0, 1.0}
+        mat.metallic_factor = 1.0
+        mat.roughness_factor = 1.0
+        mat.emissive_factor = .{0.0, 0.0, 0.0}
+        mat.base_color_texture = .{-1, 0, 1.0}
+        mat.metallic_roughness_texture = .{-1, 0, 1.0}
+        mat.normal_texture = .{-1, 0, 1.0}
+        mat.occlusion_texture = .{-1, 0, 1.0}
+        mat.emissive_texture = .{-1, 0, 1.0}
+        mat.alpha_mode = .GltfAlphaOpaque
+        mat.alpha_cutoff = 0.5
+        if !GltfJsonStringInto(doc, item, "name", *mat.name) {
+            VecFree(mat.name)
+            return GltfFail(model, "glTF material name must be a string")
+        }
+
+        pbr := JsonMember(doc, item, "pbrMetallicRoughness")
+        if pbr >= 0 {
+            if JsonKindOf(doc, pbr) != .Object {
+                return GltfFail(model, "glTF pbrMetallicRoughness must be an object")
+            }
+            bcf := JsonMember(doc, pbr, "baseColorFactor")
+            if bcf >= 0 {
+                vals: [4]float64
+                if !GltfJsonFloatArray(doc, bcf, vals[:]) {
+                    return GltfFail(model, "glTF baseColorFactor must be 4 numbers")
+                }
+                mat.base_color_factor = .{vals[0], vals[1], vals[2], vals[3]}
+            }
+            ok_mf := false; ok_rf := false
+            mf := GltfJsonNumber(doc, pbr, "metallicFactor", 1.0, *ok_mf)
+            rf := GltfJsonNumber(doc, pbr, "roughnessFactor", 1.0, *ok_rf)
+            if !ok_mf || !ok_rf || mf < 0.0 || mf > 1.0 || rf < 0.0 || rf > 1.0 {
+                return GltfFail(model, "glTF metallicFactor/roughnessFactor must be in 0..1")
+            }
+            mat.metallic_factor = mf
+            mat.roughness_factor = rf
+            if !GltfParseTextureInfo(model, doc, pbr, "baseColorTexture", "", *mat.base_color_texture) ||
+               !GltfParseTextureInfo(model, doc, pbr, "metallicRoughnessTexture", "", *mat.metallic_roughness_texture) {
+                return false
+            }
+        }
+        if !GltfParseTextureInfo(model, doc, item, "normalTexture", "scale", *mat.normal_texture) ||
+           !GltfParseTextureInfo(model, doc, item, "occlusionTexture", "strength", *mat.occlusion_texture) ||
+           !GltfParseTextureInfo(model, doc, item, "emissiveTexture", "", *mat.emissive_texture) {
+            return false
+        }
+        emissive := JsonMember(doc, item, "emissiveFactor")
+        if emissive >= 0 {
+            ef: [3]float64
+            if !GltfJsonFloatArray(doc, emissive, ef[:]) {
+                return GltfFail(model, "glTF emissiveFactor must be 3 numbers")
+            }
+            mat.emissive_factor = .{ef[0], ef[1], ef[2]}
+        }
+        alpha_member := JsonMember(doc, item, "alphaMode")
+        if alpha_member >= 0 {
+            if JsonKindOf(doc, alpha_member) != .String {
+                return GltfFail(model, "glTF alphaMode must be a string")
+            }
+            mode_str := JsonString(doc, alpha_member)
+            if mode_str == "OPAQUE" { mat.alpha_mode = .GltfAlphaOpaque }
+            else if mode_str == "MASK" { mat.alpha_mode = .GltfAlphaMask }
+            else if mode_str == "BLEND" { mat.alpha_mode = .GltfAlphaBlend }
+            else { return GltfFail(model, "glTF alphaMode must be OPAQUE, MASK or BLEND") }
+        }
+        ok_cut := false; ok_dbl := false
+        cutoff := GltfJsonNumber(doc, item, "alphaCutoff", 0.5, *ok_cut)
+        dbl := GltfJsonBool(doc, item, "doubleSided", false, *ok_dbl)
+        if !ok_cut || !ok_dbl || cutoff < 0.0 {
+            return GltfFail(model, "glTF alphaCutoff or doubleSided is invalid")
+        }
+        mat.alpha_cutoff = cutoff
+        mat.double_sided = dbl
+        ext := JsonMember(doc, item, "extensions")
+        if ext >= 0 && JsonKindOf(doc, ext) == .Object {
+            if JsonMember(doc, ext, "KHR_materials_unlit") >= 0 {
+                mat.unlit = true
+            }
+        }
+        VecPush(model.materials, mat)
+    }
+    return true
+}
+
+GltfComputeFlatNormals :: (positions: []Vector3, indices: []s32, normals: *Vec(Vector3)) -> bool {
+    if !VecResize(<<normals, positions.count) { return false }
+    for i: 0..positions.count - 1 { (<<normals)[i] = .{0.0, 0.0, 0.0} }
+    tri_count := indices.count / 3
+    for t: 0..tri_count - 1 {
+        i0 := indices[t * 3]
+        i1 := indices[t * 3 + 1]
+        i2 := indices[t * 3 + 2]
+        p0 := positions[i0]
+        p1 := positions[i1]
+        p2 := positions[i2]
+        e1: Vector3 = .{p1.x - p0.x, p1.y - p0.y, p1.z - p0.z}
+        e2: Vector3 = .{p2.x - p0.x, p2.y - p0.y, p2.z - p0.z}
+        n := GltfCross3(e1, e2)
+        (<<normals)[i0] = GltfAdd3((<<normals)[i0], n)
+        (<<normals)[i1] = GltfAdd3((<<normals)[i1], n)
+        (<<normals)[i2] = GltfAdd3((<<normals)[i2], n)
+    }
+    for i: 0..positions.count - 1 {
+        len := GltfLength3((<<normals)[i])
+        if len > 0.000000001 {
+            (<<normals)[i] = GltfScale3((<<normals)[i], 1.0 / len)
+        } else {
+            (<<normals)[i] = .{0.0, 1.0, 0.0}
+        }
+    }
+    return true
+}
+
+GltfParsePrimitive :: (model: *GltfModel, doc: *JsonDocument, prim_node: s32, out_prim: *GltfPrimitive, out_target_count: *s64) -> bool {
+    if JsonKindOf(doc, prim_node) != .Object { return GltfFail(model, "glTF primitive must be an object") }
+    ok_mode := false; ok_mat := false
+    mode := GltfJsonInt(doc, prim_node, "mode", GLTF_TRIANGLES, *ok_mode)
+    mat_idx := GltfJsonInt(doc, prim_node, "material", -1, *ok_mat)
+    if !ok_mode || !ok_mat || mat_idx < -1 || mat_idx >= model.materials.count {
+        return GltfFail(model, "glTF primitive has invalid mode or material index")
+    }
+    if mode != GLTF_TRIANGLES && mode != GLTF_TRIANGLE_STRIP && mode != GLTF_TRIANGLE_FAN {
+        return GltfFail(model, "glTF primitive mode is not a triangle topology")
+    }
+    out_prim.mode = cast(s32)mode
+    out_prim.material = cast(s32)mat_idx
+
+    attrs := JsonMember(doc, prim_node, "attributes")
+    if attrs < 0 || JsonKindOf(doc, attrs) != .Object {
+        return GltfFail(model, "glTF primitive is missing attributes object")
+    }
+    ok_pos := false
+    pos_idx := GltfJsonInt(doc, attrs, "POSITION", -1, *ok_pos)
+    if !ok_pos || pos_idx < 0 || pos_idx >= model.accessors.count {
+        return GltfFail(model, "glTF primitive requires a valid POSITION accessor")
+    }
+    pos_acc := model.accessors[pos_idx]
+    if pos_acc.kind != .GltfVec3 || pos_acc.component_type != GLTF_FLOAT {
+        return GltfFail(model, "glTF POSITION accessor must be VEC3 FLOAT")
+    }
+    vertex_count := pos_acc.count
+    raw_floats: Vec(float64)
+    defer VecFree(raw_floats)
+    if !GltfReadAccessorFloats(model, cast(s32)pos_idx, *raw_floats) ||
+       !VecResize(out_prim.positions, vertex_count) {
+        return GltfFail(model, "failed to read glTF POSITION accessor")
+    }
+    for v: 0..vertex_count - 1 {
+        out_prim.positions[v] = .{raw_floats[v * 3], raw_floats[v * 3 + 1], raw_floats[v * 3 + 2]}
+    }
+
+    // Indices (or generate 0..vertex_count-1)
+    raw_indices: Vec(s32)
+    defer VecFree(raw_indices)
+    ok_ind := false
+    ind_idx := GltfJsonInt(doc, prim_node, "indices", -1, *ok_ind)
+    if !ok_ind { return GltfFail(model, "glTF primitive indices must be an integer") }
+    if ind_idx >= 0 {
+        if ind_idx >= model.accessors.count {
+            return GltfFail(model, "glTF primitive indices accessor out of range")
+        }
+        ind_acc := model.accessors[ind_idx]
+        if ind_acc.kind != .GltfScalar ||
+           (ind_acc.component_type != GLTF_UNSIGNED_BYTE &&
+            ind_acc.component_type != GLTF_UNSIGNED_SHORT &&
+            ind_acc.component_type != GLTF_UNSIGNED_INT) {
+            return GltfFail(model, "glTF indices accessor must be SCALAR UNSIGNED_BYTE/SHORT/INT")
+        }
+        if !GltfReadAccessorInts(model, cast(s32)ind_idx, *raw_indices) { return false }
+        for idx_val: raw_indices {
+            if idx_val < 0 || idx_val >= vertex_count {
+                return GltfFail(model, "glTF triangle index is out of vertex bounds")
+            }
+        }
+    } else {
+        if !VecResize(raw_indices, vertex_count) { return GltfFail(model, "out of memory for indices") }
+        for v: 0..vertex_count - 1 { raw_indices[v] = cast(s32)v }
+    }
+
+    if mode == GLTF_TRIANGLES {
+        if raw_indices.count < 3 || raw_indices.count % 3 != 0 {
+            return GltfFail(model, "glTF TRIANGLES primitive index count must be a multiple of 3")
+        }
+        for idx_val: raw_indices { VecPush(out_prim.indices, idx_val) }
+    } else if mode == GLTF_TRIANGLE_STRIP {
+        if raw_indices.count < 3 { return GltfFail(model, "glTF TRIANGLE_STRIP requires at least 3 indices") }
+        for t: 0..raw_indices.count - 3 {
+            if (t & 1) == 0 {
+                VecPush(out_prim.indices, raw_indices[t])
+                VecPush(out_prim.indices, raw_indices[t + 1])
+                VecPush(out_prim.indices, raw_indices[t + 2])
+            } else {
+                VecPush(out_prim.indices, raw_indices[t + 1])
+                VecPush(out_prim.indices, raw_indices[t])
+                VecPush(out_prim.indices, raw_indices[t + 2])
+            }
+        }
+    } else {
+        if raw_indices.count < 3 { return GltfFail(model, "glTF TRIANGLE_FAN requires at least 3 indices") }
+        for t: 1..raw_indices.count - 2 {
+            VecPush(out_prim.indices, raw_indices[0])
+            VecPush(out_prim.indices, raw_indices[t])
+            VecPush(out_prim.indices, raw_indices[t + 1])
+        }
+    }
+
+    // NORMAL
+    ok_norm := false
+    norm_idx := GltfJsonInt(doc, attrs, "NORMAL", -1, *ok_norm)
+    if !ok_norm { return GltfFail(model, "glTF NORMAL attribute must be an accessor index") }
+    if norm_idx >= 0 {
+        if norm_idx >= model.accessors.count { return GltfFail(model, "glTF NORMAL accessor out of range") }
+        norm_acc := model.accessors[norm_idx]
+        if norm_acc.kind != .GltfVec3 || norm_acc.component_type != GLTF_FLOAT || norm_acc.count != vertex_count {
+            return GltfFail(model, "glTF NORMAL accessor must be VEC3 FLOAT matching vertex count")
+        }
+        if !GltfReadAccessorFloats(model, cast(s32)norm_idx, *raw_floats) ||
+           !VecResize(out_prim.normals, vertex_count) { return false }
+        for v: 0..vertex_count - 1 {
+            out_prim.normals[v] = .{raw_floats[v * 3], raw_floats[v * 3 + 1], raw_floats[v * 3 + 2]}
+        }
+        out_prim.has_normals = true
+    } else {
+        if !GltfComputeFlatNormals(VecSlice(out_prim.positions, 0, vertex_count), VecSlice(out_prim.indices, 0, out_prim.indices.count), *out_prim.normals) {
+            return GltfFail(model, "failed to compute fallback normals")
+        }
+    }
+
+    // TANGENT
+    ok_tan := false
+    tan_idx := GltfJsonInt(doc, attrs, "TANGENT", -1, *ok_tan)
+    if !ok_tan { return GltfFail(model, "glTF TANGENT attribute must be an accessor index") }
+    if tan_idx >= 0 {
+        if tan_idx >= model.accessors.count { return GltfFail(model, "glTF TANGENT accessor out of range") }
+        tan_acc := model.accessors[tan_idx]
+        if tan_acc.kind != .GltfVec4 || tan_acc.component_type != GLTF_FLOAT || tan_acc.count != vertex_count {
+            return GltfFail(model, "glTF TANGENT accessor must be VEC4 FLOAT matching vertex count")
+        }
+        if !GltfReadAccessorFloats(model, cast(s32)tan_idx, *raw_floats) ||
+           !VecResize(out_prim.tangents, vertex_count) { return false }
+        for v: 0..vertex_count - 1 {
+            out_prim.tangents[v] = .{raw_floats[v * 4], raw_floats[v * 4 + 1], raw_floats[v * 4 + 2], raw_floats[v * 4 + 3]}
+        }
+        out_prim.has_tangents = true
+    }
+
+    // TEXCOORD_0 and TEXCOORD_1
+    ok_uv0 := false
+    uv0_idx := GltfJsonInt(doc, attrs, "TEXCOORD_0", -1, *ok_uv0)
+    if !ok_uv0 { return GltfFail(model, "glTF TEXCOORD_0 must be an accessor index") }
+    if !VecResize(out_prim.uv0, vertex_count) { return false }
+    if uv0_idx >= 0 {
+        if uv0_idx >= model.accessors.count { return GltfFail(model, "glTF TEXCOORD_0 accessor out of range") }
+        uv0_acc := model.accessors[uv0_idx]
+        if uv0_acc.kind != .GltfVec2 || uv0_acc.count != vertex_count ||
+           (uv0_acc.component_type != GLTF_FLOAT &&
+            !(uv0_acc.normalized && (uv0_acc.component_type == GLTF_UNSIGNED_BYTE || uv0_acc.component_type == GLTF_UNSIGNED_SHORT))) {
+            return GltfFail(model, "glTF TEXCOORD_0 accessor has invalid type or count")
+        }
+        if !GltfReadAccessorFloats(model, cast(s32)uv0_idx, *raw_floats) { return false }
+        for v: 0..vertex_count - 1 {
+            out_prim.uv0[v] = .{raw_floats[v * 2], raw_floats[v * 2 + 1]}
+        }
+        out_prim.has_uv0 = true
+    } else {
+        for v: 0..vertex_count - 1 { out_prim.uv0[v] = .{0.0, 0.0} }
+    }
+
+    ok_uv1 := false
+    uv1_idx := GltfJsonInt(doc, attrs, "TEXCOORD_1", -1, *ok_uv1)
+    if !ok_uv1 { return GltfFail(model, "glTF TEXCOORD_1 must be an accessor index") }
+    if uv1_idx >= 0 {
+        if uv1_idx >= model.accessors.count { return GltfFail(model, "glTF TEXCOORD_1 accessor out of range") }
+        uv1_acc := model.accessors[uv1_idx]
+        if uv1_acc.kind != .GltfVec2 || uv1_acc.count != vertex_count ||
+           (uv1_acc.component_type != GLTF_FLOAT &&
+            !(uv1_acc.normalized && (uv1_acc.component_type == GLTF_UNSIGNED_BYTE || uv1_acc.component_type == GLTF_UNSIGNED_SHORT))) {
+            return GltfFail(model, "glTF TEXCOORD_1 accessor has invalid type or count")
+        }
+        if !GltfReadAccessorFloats(model, cast(s32)uv1_idx, *raw_floats) ||
+           !VecResize(out_prim.uv1, vertex_count) { return false }
+        for v: 0..vertex_count - 1 {
+            out_prim.uv1[v] = .{raw_floats[v * 2], raw_floats[v * 2 + 1]}
+        }
+        out_prim.has_uv1 = true
+    }
+
+    // COLOR_0
+    ok_col := false
+    col_idx := GltfJsonInt(doc, attrs, "COLOR_0", -1, *ok_col)
+    if !ok_col { return GltfFail(model, "glTF COLOR_0 must be an accessor index") }
+    if !VecResize(out_prim.colors, vertex_count) { return false }
+    if col_idx >= 0 {
+        if col_idx >= model.accessors.count { return GltfFail(model, "glTF COLOR_0 accessor out of range") }
+        col_acc := model.accessors[col_idx]
+        if (col_acc.kind != .GltfVec3 && col_acc.kind != .GltfVec4) || col_acc.count != vertex_count ||
+           (col_acc.component_type != GLTF_FLOAT &&
+            !(col_acc.normalized && (col_acc.component_type == GLTF_UNSIGNED_BYTE || col_acc.component_type == GLTF_UNSIGNED_SHORT))) {
+            return GltfFail(model, "glTF COLOR_0 accessor has invalid type or count")
+        }
+        if !GltfReadAccessorFloats(model, cast(s32)col_idx, *raw_floats) { return false }
+        stride_c := ifx col_acc.kind == .GltfVec4 then 4 else 3
+        for v: 0..vertex_count - 1 {
+            a := ifx stride_c == 4 then raw_floats[v * 4 + 3] else 1.0
+            out_prim.colors[v] = .{raw_floats[v * stride_c], raw_floats[v * stride_c + 1], raw_floats[v * stride_c + 2], a}
+        }
+        out_prim.has_colors = true
+    } else {
+        for v: 0..vertex_count - 1 { out_prim.colors[v] = .{1.0, 1.0, 1.0, 1.0} }
+    }
+
+    // JOINTS_0 and WEIGHTS_0
+    ok_jnt := false; ok_wgt := false
+    jnt_idx := GltfJsonInt(doc, attrs, "JOINTS_0", -1, *ok_jnt)
+    wgt_idx := GltfJsonInt(doc, attrs, "WEIGHTS_0", -1, *ok_wgt)
+    if !ok_jnt || !ok_wgt || (jnt_idx >= 0) != (wgt_idx >= 0) {
+        return GltfFail(model, "glTF primitive JOINTS_0 and WEIGHTS_0 must be provided together")
+    }
+    if jnt_idx >= 0 {
+        if jnt_idx >= model.accessors.count || wgt_idx >= model.accessors.count {
+            return GltfFail(model, "glTF JOINTS_0 or WEIGHTS_0 accessor out of range")
+        }
+        jnt_acc := model.accessors[jnt_idx]
+        wgt_acc := model.accessors[wgt_idx]
+        if jnt_acc.kind != .GltfVec4 || jnt_acc.count != vertex_count ||
+           (jnt_acc.component_type != GLTF_UNSIGNED_BYTE && jnt_acc.component_type != GLTF_UNSIGNED_SHORT) ||
+           wgt_acc.kind != .GltfVec4 || wgt_acc.count != vertex_count ||
+           (wgt_acc.component_type != GLTF_FLOAT &&
+            !(wgt_acc.normalized && (wgt_acc.component_type == GLTF_UNSIGNED_BYTE || wgt_acc.component_type == GLTF_UNSIGNED_SHORT))) {
+            return GltfFail(model, "glTF JOINTS_0/WEIGHTS_0 accessors have invalid type or count")
+        }
+        raw_joints: Vec(s32)
+        defer VecFree(raw_joints)
+        if !GltfReadAccessorInts(model, cast(s32)jnt_idx, *raw_joints) ||
+           !GltfReadAccessorFloats(model, cast(s32)wgt_idx, *raw_floats) ||
+           !VecResize(out_prim.influences, vertex_count) {
+            return false
+        }
+        for v: 0..vertex_count - 1 {
+            inf: SkinInfluence
+            sum: float64 = 0.0
+            for lane: 0..3 {
+                j := raw_joints[v * 4 + lane]
+                w := raw_floats[v * 4 + lane]
+                if j < 0 || w < 0.0 {
+                    return GltfFail(model, "glTF skin joint index or weight is negative")
+                }
+                inf.joints[lane] = ifx w > 0.0 then j else 0
+                inf.weights[lane] = w
+                sum += w
+            }
+            if sum > 0.000000001 {
+                inv := 1.0 / sum
+                for lane: 0..3 { inf.weights[lane] *= inv }
+            } else {
+                inf.joints[0] = 0
+                inf.weights[0] = 1.0
+            }
+            out_prim.influences[v] = inf
+        }
+        out_prim.has_joints = true
+        out_prim.has_weights = true
+    }
+
+    // Morph targets
+    targets_node := JsonMember(doc, prim_node, "targets")
+    if targets_node >= 0 {
+        if JsonKindOf(doc, targets_node) != .Array {
+            return GltfFail(model, "glTF primitive targets must be an array")
+        }
+        t_count := JsonCount(doc, targets_node)
+        <<out_target_count = cast(s64)t_count
+        for t: 0..t_count - 1 {
+            t_obj := JsonElement(doc, targets_node, t)
+            if JsonKindOf(doc, t_obj) != .Object {
+                return GltfFail(model, "glTF morph target must be an object")
+            }
+            target: GltfMorphTarget
+            ok_tp := false; ok_tn := false; ok_tt := false
+            tp_idx := GltfJsonInt(doc, t_obj, "POSITION", -1, *ok_tp)
+            tn_idx := GltfJsonInt(doc, t_obj, "NORMAL", -1, *ok_tn)
+            tt_idx := GltfJsonInt(doc, t_obj, "TANGENT", -1, *ok_tt)
+            if !ok_tp || !ok_tn || !ok_tt {
+                return GltfFail(model, "glTF morph target attribute must be an accessor index")
+            }
+            if tp_idx >= 0 {
+                if tp_idx >= model.accessors.count || model.accessors[tp_idx].kind != .GltfVec3 ||
+                   model.accessors[tp_idx].component_type != GLTF_FLOAT ||
+                   model.accessors[tp_idx].count != vertex_count ||
+                   !GltfReadAccessorFloats(model, cast(s32)tp_idx, *raw_floats) ||
+                   !VecResize(target.positions, vertex_count) {
+                    return GltfFail(model, "glTF morph target POSITION accessor is invalid")
+                }
+                for v: 0..vertex_count - 1 {
+                    target.positions[v] = .{raw_floats[v * 3], raw_floats[v * 3 + 1], raw_floats[v * 3 + 2]}
+                }
+            }
+            if tn_idx >= 0 {
+                if tn_idx >= model.accessors.count || model.accessors[tn_idx].kind != .GltfVec3 ||
+                   model.accessors[tn_idx].component_type != GLTF_FLOAT ||
+                   model.accessors[tn_idx].count != vertex_count ||
+                   !GltfReadAccessorFloats(model, cast(s32)tn_idx, *raw_floats) ||
+                   !VecResize(target.normals, vertex_count) {
+                    return GltfFail(model, "glTF morph target NORMAL accessor is invalid")
+                }
+                for v: 0..vertex_count - 1 {
+                    target.normals[v] = .{raw_floats[v * 3], raw_floats[v * 3 + 1], raw_floats[v * 3 + 2]}
+                }
+            }
+            if tt_idx >= 0 {
+                if tt_idx >= model.accessors.count || model.accessors[tt_idx].kind != .GltfVec3 ||
+                   model.accessors[tt_idx].component_type != GLTF_FLOAT ||
+                   model.accessors[tt_idx].count != vertex_count ||
+                   !GltfReadAccessorFloats(model, cast(s32)tt_idx, *raw_floats) ||
+                   !VecResize(target.tangents, vertex_count) {
+                    return GltfFail(model, "glTF morph target TANGENT accessor is invalid")
+                }
+                for v: 0..vertex_count - 1 {
+                    target.tangents[v] = .{raw_floats[v * 3], raw_floats[v * 3 + 1], raw_floats[v * 3 + 2]}
+                }
+            }
+            VecPush(out_prim.targets, target)
+        }
+    }
+    return true
+}
+
+GltfParseMeshes :: (model: *GltfModel, doc: *JsonDocument) -> bool {
+    node := JsonMember(doc, doc.root, "meshes")
+    if node < 0 { return true }
+    if JsonKindOf(doc, node) != .Array { return GltfFail(model, "glTF meshes must be an array") }
+    count := JsonCount(doc, node)
+    for i: 0..count - 1 {
+        item := JsonElement(doc, node, i)
+        if JsonKindOf(doc, item) != .Object { return GltfFail(model, "glTF mesh must be an object") }
+        mesh: GltfMesh
+        if !GltfJsonStringInto(doc, item, "name", *mesh.name) {
+            VecFree(mesh.name)
+            return GltfFail(model, "glTF mesh name must be a string")
+        }
+        prims_node := JsonMember(doc, item, "primitives")
+        if prims_node < 0 || JsonKindOf(doc, prims_node) != .Array || JsonCount(doc, prims_node) == 0 {
+            return GltfFail(model, "glTF mesh must have a non-empty primitives array")
+        }
+        p_count := JsonCount(doc, prims_node)
+        expected_targets: s64 = -1
+        for p: 0..p_count - 1 {
+            prim: GltfPrimitive
+            t_count: s64 = 0
+            if !GltfParsePrimitive(model, doc, JsonElement(doc, prims_node, p), *prim, *t_count) {
+                return false
+            }
+            if expected_targets < 0 { expected_targets = t_count }
+            else if t_count != expected_targets {
+                return GltfFail(model, "glTF mesh primitives have mismatched morph target counts")
+            }
+            VecPush(mesh.primitives, prim)
+        }
+        weights_node := JsonMember(doc, item, "weights")
+        if weights_node >= 0 {
+            if JsonKindOf(doc, weights_node) != .Array || JsonCount(doc, weights_node) != expected_targets {
+                return GltfFail(model, "glTF mesh weights count does not match morph targets")
+            }
+            if !VecResize(mesh.weights, expected_targets) ||
+               !GltfJsonFloatArray(doc, weights_node, VecSlice(mesh.weights, 0, expected_targets)) {
+                return GltfFail(model, "glTF mesh weights must be numbers")
+            }
+        } else if expected_targets > 0 {
+            if !VecResize(mesh.weights, expected_targets) { return false }
+            for w: 0..expected_targets - 1 { mesh.weights[w] = 0.0 }
+        }
+        VecPush(model.meshes, mesh)
+    }
+    return true
+}
+
+GltfParseNodes :: (model: *GltfModel, doc: *JsonDocument) -> bool {
+    node := JsonMember(doc, doc.root, "nodes")
+    if node < 0 { return true }
+    if JsonKindOf(doc, node) != .Array { return GltfFail(model, "glTF nodes must be an array") }
+    count := JsonCount(doc, node)
+    if count > 65536 { return GltfFail(model, "glTF nodes count exceeds limit") }
+    for i: 0..count - 1 {
+        item := JsonElement(doc, node, i)
+        if JsonKindOf(doc, item) != .Object { return GltfFail(model, "glTF node must be an object") }
+        n: GltfNode
+        n.parent = -1
+        n.mesh = -1
+        n.skin = -1
+        n.translation = .{0.0, 0.0, 0.0}
+        n.rotation = .{0.0, 0.0, 0.0, 1.0}
+        n.scale = .{1.0, 1.0, 1.0}
+        n.matrix = GltfIdentity()
+        ok_mesh := false; ok_skin := false
+        mesh_idx := GltfJsonInt(doc, item, "mesh", -1, *ok_mesh)
+        skin_idx := GltfJsonInt(doc, item, "skin", -1, *ok_skin)
+        if !GltfJsonStringInto(doc, item, "name", *n.name) || !ok_mesh || !ok_skin || mesh_idx < -1 || mesh_idx >= model.meshes.count || skin_idx < -1 {
+            VecFree(n.name)
+            return GltfFail(model, "glTF node has invalid name, mesh or skin field")
+        }
+        n.mesh = cast(s32)mesh_idx
+        n.skin = cast(s32)skin_idx
+
+        mat_node := JsonMember(doc, item, "matrix")
+        t_node := JsonMember(doc, item, "translation")
+        r_node := JsonMember(doc, item, "rotation")
+        s_node := JsonMember(doc, item, "scale")
+        if mat_node >= 0 {
+            if t_node >= 0 || r_node >= 0 || s_node >= 0 {
+                return GltfFail(model, "glTF node cannot specify both matrix and TRS properties")
+            }
+            col: [16]float64
+            if !GltfJsonFloatArray(doc, mat_node, col[:]) {
+                return GltfFail(model, "glTF node matrix must be 16 numbers")
+            }
+            n.matrix = GltfColumnMajorToRowMajor(col[:])
+            n.has_matrix = true
+            GltfDecomposeMatrix(n.matrix, *n.translation, *n.rotation, *n.scale)
+        } else {
+            if t_node >= 0 {
+                tv: [3]float64
+                if !GltfJsonFloatArray(doc, t_node, tv[:]) { return GltfFail(model, "glTF node translation must be 3 numbers") }
+                n.translation = .{tv[0], tv[1], tv[2]}
+            }
+            if r_node >= 0 {
+                rv: [4]float64
+                if !GltfJsonFloatArray(doc, r_node, rv[:]) { return GltfFail(model, "glTF node rotation must be 4 numbers") }
+                n.rotation = GltfQuatNormalize(.{rv[0], rv[1], rv[2], rv[3]})
+            }
+            if s_node >= 0 {
+                sv: [3]float64
+                if !GltfJsonFloatArray(doc, s_node, sv[:]) { return GltfFail(model, "glTF node scale must be 3 numbers") }
+                n.scale = .{sv[0], sv[1], sv[2]}
+            }
+            n.matrix = GltfComposeTRS(n.translation, n.rotation, n.scale)
+        }
+
+        children_node := JsonMember(doc, item, "children")
+        if children_node >= 0 {
+            if JsonKindOf(doc, children_node) != .Array { return GltfFail(model, "glTF node children must be an array") }
+            c_count := JsonCount(doc, children_node)
+            for c: 0..c_count - 1 {
+                c_elem := JsonElement(doc, children_node, c)
+                child_idx, ok_c := JsonInteger(doc, c_elem)
+                if !ok_c || child_idx < 0 || child_idx >= count || child_idx == i {
+                    return GltfFail(model, "glTF node child index is out of range or self-referential")
+                }
+                VecPush(n.children, cast(s32)child_idx)
+            }
+        }
+
+        weights_node := JsonMember(doc, item, "weights")
+        if weights_node >= 0 {
+            if JsonKindOf(doc, weights_node) != .Array { return GltfFail(model, "glTF node weights must be an array") }
+            w_count := cast(s64)JsonCount(doc, weights_node)
+            if n.mesh >= 0 && w_count != model.meshes[n.mesh].weights.count {
+                return GltfFail(model, "glTF node weights count does not match its mesh morph targets")
+            }
+            if !VecResize(n.weights, w_count) ||
+               !GltfJsonFloatArray(doc, weights_node, VecSlice(n.weights, 0, w_count)) {
+                return GltfFail(model, "glTF node weights must be numbers")
+            }
+        }
+        VecPush(model.nodes, n)
+    }
+
+    // Assign parents and check for multi-parent or cycles in the node graph.
+    for i: 0..model.nodes.count - 1 {
+        c_len := model.nodes[i].children.count
+        for c: 0..c_len - 1 {
+            child := model.nodes[i].children[c]
+            if model.nodes[child].parent >= 0 {
+                return GltfFail(model, "glTF node has multiple parents")
+            }
+            model.nodes[child].parent = cast(s32)i
+        }
+    }
+    for i: 0..model.nodes.count - 1 {
+        cur := cast(s32)i
+        steps: s64 = 0
+        while cur >= 0 {
+            if steps > model.nodes.count {
+                return GltfFail(model, "glTF node hierarchy contains a cycle")
+            }
+            cur = model.nodes[cur].parent
+            steps += 1
+        }
+    }
+    return true
+}
+
+GltfParseSkins :: (model: *GltfModel, doc: *JsonDocument) -> bool {
+    node := JsonMember(doc, doc.root, "skins")
+    if node < 0 {
+        for i: 0..model.nodes.count - 1 {
+            if model.nodes[i].skin >= 0 { return GltfFail(model, "glTF node references a skin when model has no skins") }
+        }
+        return true
+    }
+    if JsonKindOf(doc, node) != .Array { return GltfFail(model, "glTF skins must be an array") }
+    count := JsonCount(doc, node)
+    raw_floats: Vec(float64)
+    defer VecFree(raw_floats)
+    for i: 0..count - 1 {
+        item := JsonElement(doc, node, i)
+        if JsonKindOf(doc, item) != .Object { return GltfFail(model, "glTF skin must be an object") }
+        skin: GltfSkin
+        ok_skel := false; ok_ibm := false
+        skel := GltfJsonInt(doc, item, "skeleton", -1, *ok_skel)
+        ibm_idx := GltfJsonInt(doc, item, "inverseBindMatrices", -1, *ok_ibm)
+        joints_node := JsonMember(doc, item, "joints")
+        if !GltfJsonStringInto(doc, item, "name", *skin.name) || !ok_skel || !ok_ibm ||
+           skel < -1 || skel >= model.nodes.count ||
+           joints_node < 0 || JsonKindOf(doc, joints_node) != .Array || JsonCount(doc, joints_node) == 0 {
+            VecFree(skin.name)
+            return GltfFail(model, "glTF skin has invalid skeleton or joints array")
+        }
+        skin.skeleton = cast(s32)skel
+        j_count := cast(s64)JsonCount(doc, joints_node)
+        for j: 0..j_count - 1 {
+            j_elem := JsonElement(doc, joints_node, cast(s32)j)
+            j_idx, ok_j := JsonInteger(doc, j_elem)
+            if !ok_j || j_idx < 0 || j_idx >= model.nodes.count {
+                return GltfFail(model, "glTF skin joint node index out of range")
+            }
+            VecPush(skin.joints, cast(s32)j_idx)
+        }
+        if !VecResize(skin.inverse_bind_matrices, j_count) || !VecResize(skin.inverse_bind_affines, j_count) {
+            return false
+        }
+        if ibm_idx >= 0 {
+            if ibm_idx >= model.accessors.count {
+                return GltfFail(model, "glTF skin inverseBindMatrices accessor out of range")
+            }
+            ibm_acc := model.accessors[ibm_idx]
+            if ibm_acc.kind != .GltfMat4 || ibm_acc.component_type != GLTF_FLOAT || ibm_acc.count != j_count ||
+               !GltfReadAccessorFloats(model, cast(s32)ibm_idx, *raw_floats) {
+                return GltfFail(model, "glTF skin inverseBindMatrices must be MAT4 FLOAT matching joint count")
+            }
+            for j: 0..j_count - 1 {
+                mat := GltfColumnMajorToRowMajor(VecSlice(raw_floats, j * 16, j * 16 + 16))
+                skin.inverse_bind_matrices[j] = mat
+                skin.inverse_bind_affines[j] = GltfMatrixToAffine(mat)
+            }
+        } else {
+            for j: 0..j_count - 1 {
+                skin.inverse_bind_matrices[j] = GltfIdentity()
+                skin.inverse_bind_affines[j] = SkinIdentity()
+            }
+        }
+        VecPush(model.skins, skin)
+    }
+
+    // Validate node.skin references and joint index bounds on skinned meshes.
+    for i: 0..model.nodes.count - 1 {
+        n_skin := model.nodes[i].skin
+        n_mesh := model.nodes[i].mesh
+        if n_skin >= 0 {
+            if n_skin >= model.skins.count || n_mesh < 0 {
+                return GltfFail(model, "glTF node skin index is out of range or missing mesh")
+            }
+            bone_count := cast(s32)model.skins[n_skin].joints.count
+            p_count := model.meshes[n_mesh].primitives.count
+            for p: 0..p_count - 1 {
+                prim := *model.meshes[n_mesh].primitives[p]
+                if !prim.has_joints || !prim.has_weights {
+                    return GltfFail(model, "glTF skinned mesh primitive is missing JOINTS_0 or WEIGHTS_0")
+                }
+                for v: 0..prim.influences.count - 1 {
+                    inf := prim.influences[v]
+                    for lane: 0..3 {
+                        if inf.joints[lane] < 0 || inf.joints[lane] >= bone_count {
+                            return GltfFail(model, "glTF vertex joint index exceeds skin joint count")
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return true
+}
+
+GltfParseAnimations :: (model: *GltfModel, doc: *JsonDocument) -> bool {
+    node := JsonMember(doc, doc.root, "animations")
+    if node < 0 { return true }
+    if JsonKindOf(doc, node) != .Array { return GltfFail(model, "glTF animations must be an array") }
+    count := JsonCount(doc, node)
+    for i: 0..count - 1 {
+        item := JsonElement(doc, node, i)
+        if JsonKindOf(doc, item) != .Object { return GltfFail(model, "glTF animation must be an object") }
+        anim: GltfAnimation
+        if !GltfJsonStringInto(doc, item, "name", *anim.name) {
+            VecFree(anim.name)
+            return GltfFail(model, "glTF animation name must be a string")
+        }
+        samplers_node := JsonMember(doc, item, "samplers")
+        channels_node := JsonMember(doc, item, "channels")
+        if samplers_node < 0 || JsonKindOf(doc, samplers_node) != .Array || JsonCount(doc, samplers_node) == 0 ||
+           channels_node < 0 || JsonKindOf(doc, channels_node) != .Array || JsonCount(doc, channels_node) == 0 {
+            return GltfFail(model, "glTF animation requires non-empty samplers and channels arrays")
+        }
+        s_count := JsonCount(doc, samplers_node)
+        for s: 0..s_count - 1 {
+            s_obj := JsonElement(doc, samplers_node, s)
+            if JsonKindOf(doc, s_obj) != .Object { return GltfFail(model, "glTF animation sampler must be an object") }
+            ok_in := false; ok_out := false
+            inp := GltfJsonInt(doc, s_obj, "input", -1, *ok_in)
+            outp := GltfJsonInt(doc, s_obj, "output", -1, *ok_out)
+            if !ok_in || !ok_out || inp < 0 || inp >= model.accessors.count || outp < 0 || outp >= model.accessors.count {
+                return GltfFail(model, "glTF animation sampler has invalid input or output accessor")
+            }
+            in_acc := model.accessors[inp]
+            if in_acc.kind != .GltfScalar || in_acc.component_type != GLTF_FLOAT || in_acc.count == 0 {
+                return GltfFail(model, "glTF animation sampler input must be SCALAR FLOAT")
+            }
+            interp: GltfInterpolation = .GltfLinear
+            interp_node := JsonMember(doc, s_obj, "interpolation")
+            if interp_node >= 0 {
+                if JsonKindOf(doc, interp_node) != .String { return GltfFail(model, "glTF interpolation must be a string") }
+                istr := JsonString(doc, interp_node)
+                if istr == "LINEAR" { interp = .GltfLinear }
+                else if istr == "STEP" { interp = .GltfStep }
+                else if istr == "CUBICSPLINE" { interp = .GltfCubicSpline }
+                else { return GltfFail(model, "glTF animation interpolation must be LINEAR, STEP or CUBICSPLINE") }
+            }
+            samp: GltfAnimSampler
+            samp.input = cast(s32)inp
+            samp.output = cast(s32)outp
+            samp.interpolation = interp
+            if !GltfReadAccessorFloats(model, samp.input, *samp.times) ||
+               !GltfReadAccessorFloats(model, samp.output, *samp.values) {
+                return false
+            }
+            if samp.times.count > 0 && samp.times[samp.times.count - 1] > anim.duration {
+                anim.duration = samp.times[samp.times.count - 1]
+            }
+            VecPush(anim.samplers, samp)
+        }
+
+        c_count := JsonCount(doc, channels_node)
+        for c: 0..c_count - 1 {
+            c_obj := JsonElement(doc, channels_node, c)
+            if JsonKindOf(doc, c_obj) != .Object { return GltfFail(model, "glTF animation channel must be an object") }
+            ok_s := false
+            samp_idx := GltfJsonInt(doc, c_obj, "sampler", -1, *ok_s)
+            target_obj := JsonMember(doc, c_obj, "target")
+            if !ok_s || samp_idx < 0 || samp_idx >= anim.samplers.count ||
+               target_obj < 0 || JsonKindOf(doc, target_obj) != .Object {
+                return GltfFail(model, "glTF animation channel has invalid sampler or target")
+            }
+            ok_tn := false
+            t_node := GltfJsonInt(doc, target_obj, "node", -1, *ok_tn)
+            path_node := JsonMember(doc, target_obj, "path")
+            if !ok_tn || t_node < -1 || t_node >= model.nodes.count ||
+               path_node < 0 || JsonKindOf(doc, path_node) != .String {
+                return GltfFail(model, "glTF animation channel target has invalid node or path")
+            }
+            if t_node < 0 { continue }
+            pstr := JsonString(doc, path_node)
+            path: GltfTargetPath
+            expected_stride: s32 = 0
+            if pstr == "translation" { path = .GltfPathTranslation; expected_stride = 3 }
+            else if pstr == "rotation" { path = .GltfPathRotation; expected_stride = 4 }
+            else if pstr == "scale" { path = .GltfPathScale; expected_stride = 3 }
+            else if pstr == "weights" {
+                path = .GltfPathWeights
+                node_ptr := *model.nodes[t_node]
+                if node_ptr.weights.count > 0 {
+                    expected_stride = cast(s32)node_ptr.weights.count
+                } else if node_ptr.mesh >= 0 {
+                    expected_stride = cast(s32)model.meshes[node_ptr.mesh].weights.count
+                }
+                if expected_stride <= 0 {
+                    return GltfFail(model, "glTF weights animation channel targets a node without morph targets")
+                }
+            } else {
+                return GltfFail(model, "glTF animation channel path is unknown")
+            }
+            sampler_ptr := *anim.samplers[samp_idx]
+            mult: s64 = ifx sampler_ptr.interpolation == .GltfCubicSpline then 3 else 1
+            if sampler_ptr.interpolation == .GltfCubicSpline && sampler_ptr.times.count < 2 {
+                return GltfFail(model, "glTF CUBICSPLINE animation sampler requires at least 2 keyframes")
+            }
+            if sampler_ptr.values.count != sampler_ptr.times.count * mult * expected_stride {
+                return GltfFail(model, "glTF animation sampler output count does not match keyframe count and path")
+            }
+            // The sampler is stored in the animation's vector, so the stride
+            // must be written through the vector element, not this copy.
+            anim.samplers[samp_idx].output_stride = expected_stride
+            VecPush(anim.channels, GltfAnimChannel.{cast(s32)samp_idx, cast(s32)t_node, path})
+        }
+        VecPush(model.animations, anim)
+    }
+    return true
+}
+
+GltfParseScenes :: (model: *GltfModel, doc: *JsonDocument) -> bool {
+    ok_def := false
+    def_scene := GltfJsonInt(doc, doc.root, "scene", 0, *ok_def)
+    if !ok_def { return GltfFail(model, "glTF default scene must be an integer") }
+    node := JsonMember(doc, doc.root, "scenes")
+    if node < 0 {
+        model.default_scene = -1
+        return true
+    }
+    if JsonKindOf(doc, node) != .Array { return GltfFail(model, "glTF scenes must be an array") }
+    count := JsonCount(doc, node)
+    for i: 0..count - 1 {
+        item := JsonElement(doc, node, i)
+        if JsonKindOf(doc, item) != .Object { return GltfFail(model, "glTF scene must be an object") }
+        sc: GltfSceneDef
+        if !GltfJsonStringInto(doc, item, "name", *sc.name) {
+            VecFree(sc.name)
+            return GltfFail(model, "glTF scene name must be a string")
+        }
+        nodes_arr := JsonMember(doc, item, "nodes")
+        if nodes_arr >= 0 {
+            if JsonKindOf(doc, nodes_arr) != .Array { return GltfFail(model, "glTF scene nodes must be an array") }
+            n_count := JsonCount(doc, nodes_arr)
+            for n: 0..n_count - 1 {
+                elem := JsonElement(doc, nodes_arr, n)
+                idx, ok_idx := JsonInteger(doc, elem)
+                if !ok_idx || idx < 0 || idx >= model.nodes.count {
+                    return GltfFail(model, "glTF scene root node index out of range")
+                }
+                VecPush(sc.nodes, cast(s32)idx)
+            }
+        }
+        VecPush(model.scenes, sc)
+    }
+    if count == 0 {
+        model.default_scene = -1
+    } else {
+        if def_scene < 0 || def_scene >= count {
+            return GltfFail(model, "glTF default scene index out of range")
+        }
+        model.default_scene = cast(s32)def_scene
+    }
+    return true
+}
+
+GltfParseDocument :: (json_text: string, base_dir: string, bin_chunk: []u8, has_bin_chunk: bool) -> GltfModel {
+    model: GltfModel
+    model.default_scene = -1
+    doc: JsonDocument
+    defer JsonReset(*doc)
+    if !JsonRead(*doc, json_text) || JsonKindOf(*doc, doc.root) != .Object {
+        unused GltfFail(*model, "invalid glTF JSON document")
+        return model
+    }
+    asset := JsonMember(*doc, doc.root, "asset")
+    if asset < 0 || JsonKindOf(*doc, asset) != .Object {
+        unused GltfFail(*model, "glTF document is missing required asset object")
+        return model
+    }
+    min_ver: Vec(u8)
+    defer VecFree(min_ver)
+    if !GltfJsonStringInto(*doc, asset, "version", *model.version) ||
+       !GltfJsonStringInto(*doc, asset, "generator", *model.generator) ||
+       !GltfJsonStringInto(*doc, asset, "copyright", *model.copyright) ||
+       !GltfJsonStringInto(*doc, asset, "minVersion", *min_ver) {
+        unused GltfFail(*model, "glTF asset fields must be strings")
+        return model
+    }
+    ver_str := TextView(VecSlice(model.version, 0, model.version.count))
+    min_str := TextView(VecSlice(min_ver, 0, min_ver.count))
+    if !TextHasPrefix(ver_str, "2.") || (min_str.count > 0 && min_str != "2.0") {
+        unused GltfFail(*model, "unsupported or missing glTF asset version (expected 2.0)")
+        return model
+    }
+
+    // Check extensionsRequired: only KHR_materials_unlit is built in.
+    req_ext := JsonMember(*doc, doc.root, "extensionsRequired")
+    if req_ext >= 0 {
+        if JsonKindOf(*doc, req_ext) != .Array {
+            unused GltfFail(*model, "glTF extensionsRequired must be an array")
+            return model
+        }
+        for i: 0..JsonCount(*doc, req_ext) - 1 {
+            elem := JsonElement(*doc, req_ext, i)
+            if JsonKindOf(*doc, elem) != .String {
+                unused GltfFail(*model, "glTF extensionsRequired entry must be a string")
+                return model
+            }
+            ename := JsonString(*doc, elem)
+            if ename != "KHR_materials_unlit" {
+                unused GltfFailField(*model, "unsupported required glTF extension: ", ename)
+                return model
+            }
+        }
+    }
+
+    if !GltfParseBuffers(*model, *doc, base_dir, bin_chunk, has_bin_chunk) ||
+       !GltfParseBufferViews(*model, *doc) ||
+       !GltfParseAccessors(*model, *doc) ||
+       !GltfParseSamplers(*model, *doc) ||
+       !GltfParseImages(*model, *doc, base_dir) ||
+       !GltfParseTextures(*model, *doc) ||
+       !GltfParseMaterials(*model, *doc) ||
+       !GltfParseMeshes(*model, *doc) ||
+       !GltfParseNodes(*model, *doc) ||
+       !GltfParseSkins(*model, *doc) ||
+       !GltfParseAnimations(*model, *doc) ||
+       !GltfParseScenes(*model, *doc) {
+        return model
+    }
+    model.valid = true
+    return model
+}
+
+GltfFloatToByte :: (v: float64) -> u8 {
+    clamped := ifx v < 0.0 then 0.0 else (ifx v > 1.0 then 1.0 else v)
+    return cast(u8)(clamped * 255.0 + 0.5)
+}
+
+#scope_export
+// Reads a glTF 2.0 JSON document (.gltf) or binary container (.glb) from
+// memory. BASE_DIR resolves relative buffer and image URIs when non-empty.
+GltfReadBytes :: (bytes: []u8, base_dir: string = "") -> GltfModel {
+    model: GltfModel
+    model.default_scene = -1
+    if bytes.count == 0 || bytes.count > GLTF_MAX_BYTES {
+        unused GltfFail(*model, "glTF input is empty or exceeds size limit")
+        return model
+    }
+    // Check for GLB magic 0x46546C67 ("glTF").
+    if bytes.count >= 4 && bytes[0] == 0x67 && bytes[1] == 0x6c && bytes[2] == 0x54 && bytes[3] == 0x46 {
+        if bytes.count < 20 {
+            unused GltfFail(*model, "GLB file is truncated (< 20 bytes)")
+            return model
+        }
+        text_view := TextView(bytes)
+        version := ReadU32LE(text_view, 4)
+        total_len := cast(s64)ReadU32LE(text_view, 8)
+        if version != 2 || total_len < 20 || total_len > bytes.count {
+            unused GltfFail(*model, "GLB header has unsupported version or truncated length")
+            return model
+        }
+        json_len := cast(s64)ReadU32LE(text_view, 12)
+        json_type := ReadU32LE(text_view, 16)
+        if json_type != 0x4E4F534A || json_len <= 0 || 20 + json_len > total_len {
+            unused GltfFail(*model, "GLB first chunk must be a valid JSON chunk")
+            return model
+        }
+        json_str := TextView(bytes[20:20 + json_len])
+        has_bin := false
+        bin_slice := bytes[0:0]
+        offset := 20 + json_len
+        if offset < total_len {
+            if offset + 8 > total_len {
+                unused GltfFail(*model, "GLB trailing chunk header is truncated")
+                return model
+            }
+            bin_len := cast(s64)ReadU32LE(text_view, cast(s32)offset)
+            bin_type := ReadU32LE(text_view, cast(s32)(offset + 4))
+            if bin_type != 0x004E4942 || bin_len < 0 || offset + 8 + bin_len > total_len {
+                unused GltfFail(*model, "GLB second chunk must be a valid BIN chunk")
+                return model
+            }
+            bin_slice = bytes[offset + 8:offset + 8 + bin_len]
+            has_bin = true
+        }
+        return GltfParseDocument(json_str, base_dir, bin_slice, has_bin)
+    }
+    return GltfParseDocument(TextView(bytes), base_dir, bytes[0:0], false)
+}
+
+// Reads a .gltf or .glb file from disk, resolving relative buffer and image
+// URIs against the file's parent directory.
+GltfReadFile :: (path: string) -> GltfModel {
+    bytes: Vec(u8)
+    defer VecFree(bytes)
+    if !ReadFileInto(path, *bytes) {
+        model: GltfModel
+        model.default_scene = -1
+        unused GltfFailField(*model, "cannot read glTF file: ", path)
+        return model
+    }
+    return GltfReadBytes(VecSlice(bytes, 0, bytes.count), GltfPathParent(path))
+}
+
+// Returns the human-readable diagnostic message when !model.valid.
+GltfError :: (model: *GltfModel) -> string {
+    if model == null { return "null model" }
+    return TextView(VecSlice(model.error, 0, model.error.count))
+}
+
+// Releases all memory owned by MODEL, including decoded images and buffers.
+GltfModelRelease :: (model: *GltfModel) {
+    if model == null { return }
+    VecFree(model.error)
+    VecFree(model.version)
+    VecFree(model.generator)
+    VecFree(model.copyright)
+    for i: 0..model.buffers.count - 1 { VecFree(model.buffers[i].data) }
+    VecFree(model.buffers)
+    VecFree(model.buffer_views)
+    VecFree(model.accessors)
+    VecFree(model.samplers)
+    for i: 0..model.images.count - 1 {
+        VecFree(model.images[i].name)
+        VecFree(model.images[i].uri)
+        VecFree(model.images[i].mime_type)
+        VecFree(model.images[i].image.pixels)
+    }
+    VecFree(model.images)
+    for i: 0..model.textures.count - 1 { VecFree(model.textures[i].name) }
+    VecFree(model.textures)
+    for i: 0..model.materials.count - 1 { VecFree(model.materials[i].name) }
+    VecFree(model.materials)
+    for m: 0..model.meshes.count - 1 {
+        VecFree(model.meshes[m].name)
+        for p: 0..model.meshes[m].primitives.count - 1 {
+            prim := *model.meshes[m].primitives[p]
+            VecFree(prim.positions)
+            VecFree(prim.normals)
+            VecFree(prim.tangents)
+            VecFree(prim.uv0)
+            VecFree(prim.uv1)
+            VecFree(prim.colors)
+            VecFree(prim.influences)
+            VecFree(prim.indices)
+            for t: 0..prim.targets.count - 1 {
+                VecFree(prim.targets[t].positions)
+                VecFree(prim.targets[t].normals)
+                VecFree(prim.targets[t].tangents)
+            }
+            VecFree(prim.targets)
+        }
+        VecFree(model.meshes[m].primitives)
+        VecFree(model.meshes[m].weights)
+    }
+    VecFree(model.meshes)
+    for n: 0..model.nodes.count - 1 {
+        VecFree(model.nodes[n].name)
+        VecFree(model.nodes[n].children)
+        VecFree(model.nodes[n].weights)
+    }
+    VecFree(model.nodes)
+    for s: 0..model.skins.count - 1 {
+        VecFree(model.skins[s].name)
+        VecFree(model.skins[s].joints)
+        VecFree(model.skins[s].inverse_bind_matrices)
+        VecFree(model.skins[s].inverse_bind_affines)
+    }
+    VecFree(model.skins)
+    for a: 0..model.animations.count - 1 {
+        VecFree(model.animations[a].name)
+        for s: 0..model.animations[a].samplers.count - 1 {
+            VecFree(model.animations[a].samplers[s].times)
+            VecFree(model.animations[a].samplers[s].values)
+        }
+        VecFree(model.animations[a].samplers)
+        VecFree(model.animations[a].channels)
+    }
+    VecFree(model.animations)
+    for sc: 0..model.scenes.count - 1 {
+        VecFree(model.scenes[sc].name)
+        VecFree(model.scenes[sc].nodes)
+    }
+    VecFree(model.scenes)
+    model.valid = false
+}
+
+// Converts a glTF PBR metallic-roughness material (or the default material when
+// MATERIAL_INDEX < 0) into a Kryon SceneMaterial, uploading any decoded
+// baseColor texture into SCENE.
+GltfMaterialToScene :: (scene: *Scene, model: *GltfModel, material_index: s32) -> SceneMaterial {
+    default_color: Color = .{217, 217, 217, 255}
+    if model == null || material_index < 0 || material_index >= model.materials.count {
+        return LitMaterial(default_color, 1.0, 0.0)
+    }
+    gmat := *model.materials[material_index]
+    base_col: Color = .{
+        GltfFloatToByte(gmat.base_color_factor.r),
+        GltfFloatToByte(gmat.base_color_factor.g),
+        GltfFloatToByte(gmat.base_color_factor.b),
+        255,
+    }
+    mat := ifx gmat.unlit then UnlitMaterial(base_col) else LitMaterial(base_col, gmat.roughness_factor, gmat.metallic_factor)
+    mat.double_sided = gmat.double_sided
+
+    if gmat.emissive_factor.x > 0.0 || gmat.emissive_factor.y > 0.0 || gmat.emissive_factor.z > 0.0 {
+        mat.glow = .{
+            GltfFloatToByte(gmat.emissive_factor.x),
+            GltfFloatToByte(gmat.emissive_factor.y),
+            GltfFloatToByte(gmat.emissive_factor.z),
+            255,
+        }
+        mat.glow_strength = 1.0
+    }
+    if gmat.alpha_mode == .GltfAlphaBlend {
+        mat.opacity = gmat.base_color_factor.a
+        mat.transparent = true
+    } else if gmat.alpha_mode == .GltfAlphaMask {
+        mat.alpha_test = gmat.alpha_cutoff
+    }
+    if scene != null && gmat.base_color_texture.index >= 0 && gmat.base_color_texture.index < model.textures.count {
+        tex := *model.textures[gmat.base_color_texture.index]
+        options: SceneTextureOptions
+        options.projection = .SceneTextureUV
+        options.filter = .SceneTextureLinear
+        options.wrap = .SceneTextureRepeat
+        if tex.sampler >= 0 && tex.sampler < model.samplers.count {
+            samp := model.samplers[tex.sampler]
+            if samp.mag_filter == GLTF_NEAREST || samp.min_filter == GLTF_NEAREST ||
+               samp.min_filter == GLTF_NEAREST_MIPMAP_NEAREST || samp.min_filter == GLTF_NEAREST_MIPMAP_LINEAR {
+                options.filter = .SceneTextureNearest
+            }
+            if samp.wrap_s == GLTF_CLAMP_TO_EDGE && samp.wrap_t == GLTF_CLAMP_TO_EDGE {
+                options.wrap = .SceneTextureClamp
+            }
+        }
+        if tex.source >= 0 && tex.source < model.images.count {
+            img_ptr := *model.images[tex.source].image
+            if ImageValid(img_ptr) {
+                mat = ImageMaterial(scene, img_ptr, mat, options)
+            }
+        }
+    }
+    return mat
+}
+
+#scope_file
+GltfInstantiateNodeRecursive :: (model: *GltfModel, instance: *GltfSceneInstance, scene: *Scene, node_idx: s32) -> bool {
+    if node_idx < 0 || node_idx >= model.nodes.count || instance.node_to_scene[node_idx] >= 0 {
+        return true
+    }
+    n := *model.nodes[node_idx]
+    grp := BeginGroup(scene)
+    if grp < 0 { return false }
+    scene.nodes[grp].position = n.translation
+    scene.nodes[grp].rotation = GltfQuatToSceneEuler(n.rotation)
+    scene.nodes[grp].scale = n.scale
+    instance.node_to_scene[node_idx] = grp
+
+    for c: 0..n.children.count - 1 {
+        child := n.children[c]
+        if !GltfInstantiateNodeRecursive(model, instance, scene, child) {
+            EndGroup(scene)
+            return false
+        }
+    }
+    EndGroup(scene)
+    return true
+}
+
+GltfInstantiateMeshForNode :: (model: *GltfModel, instance: *GltfSceneInstance, scene: *Scene, node_idx: s32) -> bool {
+    n := *model.nodes[node_idx]
+    if n.mesh < 0 || n.mesh >= model.meshes.count { return true }
+    mesh := *model.meshes[n.mesh]
+    uv_flipped: Vec(ShapePoint)
+    defer VecFree(uv_flipped)
+
+    for p: 0..mesh.primitives.count - 1 {
+        prim := *mesh.primitives[p]
+        v_count := prim.positions.count
+        if !VecResize(uv_flipped, v_count) { return false }
+        use_uv1 := false
+        if prim.material >= 0 && prim.material < model.materials.count {
+            use_uv1 = model.materials[prim.material].base_color_texture.tex_coord == 1 && prim.has_uv1
+        }
+        for v: 0..v_count - 1 {
+            uv := ifx use_uv1 then prim.uv1[v] else prim.uv0[v]
+            uv_flipped[v] = .{uv.x, 1.0 - uv.y}
+        }
+        mat := GltfMaterialToScene(scene, model, prim.material)
+        if prim.has_colors {
+            mat.vertex_colors = true
+        }
+        inst: GltfMeshInstance
+        inst.gltf_node = node_idx
+        inst.mesh_index = n.mesh
+        inst.primitive_index = cast(s32)p
+        inst.skin_index = n.skin
+        inst.has_skin = n.skin >= 0 && n.skin < model.skins.count
+
+        if prim.targets.count > 0 {
+            if !VecResize(inst.morphed_positions, v_count) || !VecResize(inst.morphed_normals, v_count) {
+                return false
+            }
+        }
+
+        if inst.has_skin {
+            bone_count := cast(s32)model.skins[n.skin].joints.count
+            if !SceneSkinCreate(
+                scene,
+                *inst.skin,
+                bone_count,
+                VecSlice(prim.positions, 0, v_count),
+                VecSlice(prim.normals, 0, v_count),
+                VecSlice(uv_flipped, 0, v_count),
+                VecSlice(prim.indices, 0, prim.indices.count),
+                VecSlice(prim.influences, 0, prim.influences.count),
+                mat
+            ) {
+                return false
+            }
+            inst.scene_node = inst.skin.node
+            scene.nodes[inst.scene_node].parent = instance.root_node
+        } else {
+            created := SceneIndexedMesh(
+                scene,
+                VecSlice(prim.positions, 0, v_count),
+                VecSlice(prim.normals, 0, v_count),
+                VecSlice(uv_flipped, 0, v_count),
+                VecSlice(prim.indices, 0, prim.indices.count),
+                mat
+            )
+            if created < 0 { return false }
+            inst.scene_node = created
+            scene.nodes[inst.scene_node].parent = instance.node_to_scene[node_idx]
+        }
+
+        scene_mesh := scene.meshes[scene.nodes[inst.scene_node].mesh]
+        for v: 0..v_count - 1 {
+            c := prim.colors[v]
+            scene.colors[scene_mesh.first_vertex + v] = .{c.r, c.g, c.b}
+        }
+        VecPush(instance.meshes, inst)
+    }
+    return true
+}
+
+#scope_export
+// Resets INSTANCE node transforms and morph weights to MODEL's rest pose.
+GltfPoseReset :: (model: *GltfModel, instance: *GltfSceneInstance) {
+    if model == null || instance == null || !model.valid { return }
+    for i: 0..model.nodes.count - 1 {
+        n := *model.nodes[i]
+        instance.translations[i] = n.translation
+        instance.rotations[i] = n.rotation
+        instance.scales[i] = n.scale
+        instance.trs_dirty[i] = false
+        instance.node_local[i] = n.matrix
+        off := instance.morph_offsets[i]
+        cnt := instance.morph_counts[i]
+        for w: 0..cnt - 1 {
+            val: float64 = 0.0
+            if w < n.weights.count { val = n.weights[w] }
+            else if n.mesh >= 0 && w < model.meshes[n.mesh].weights.count { val = model.meshes[n.mesh].weights[w] }
+            instance.morph_weights[off + w] = val
+        }
+    }
+}
+
+// Enables or disables volume-preserving dual-quaternion skinning on all
+// skinned primitives in INSTANCE.
+GltfSetDualQuaternion :: (instance: *GltfSceneInstance, enabled: bool) {
+    if instance == null { return }
+    for i: 0..instance.meshes.count - 1 {
+        if instance.meshes[i].has_skin {
+            instance.meshes[i].skin.dual_quaternion = enabled
+        }
+    }
+}
+
+// Evaluates world matrices, morph target blending and skinning for INSTANCE
+// into SCENE.
+GltfUpdateScene :: (model: *GltfModel, instance: *GltfSceneInstance, scene: *Scene) -> bool {
+    if model == null || instance == null || scene == null || !model.valid || !instance.ready {
+        return false
+    }
+    for i: 0..model.nodes.count - 1 {
+        n := *model.nodes[i]
+        if instance.trs_dirty[i] || !n.has_matrix {
+            instance.node_local[i] = GltfComposeTRS(instance.translations[i], instance.rotations[i], instance.scales[i])
+        } else {
+            instance.node_local[i] = n.matrix
+        }
+        sn := instance.node_to_scene[i]
+        if sn >= 0 && sn < scene.nodes.count {
+            scene.nodes[sn].position = instance.translations[i]
+            scene.nodes[sn].rotation = GltfQuatToSceneEuler(instance.rotations[i])
+            scene.nodes[sn].scale = instance.scales[i]
+        }
+    }
+    for i: 0..model.nodes.count - 1 {
+        chain: [128]s32
+        depth: s32 = 0
+        cur := cast(s32)i
+        while cur >= 0 && depth < 128 {
+            chain[depth] = cur
+            depth += 1
+            cur = model.nodes[cur].parent
+        }
+        world := GltfIdentity()
+        idx := depth - 1
+        while idx >= 0 {
+            world = GltfMultiply(world, instance.node_local[chain[idx]])
+            idx -= 1
+        }
+        instance.node_world[i] = world
+    }
+
+    for m: 0..instance.meshes.count - 1 {
+        inst := *instance.meshes[m]
+        prim := *model.meshes[inst.mesh_index].primitives[inst.primitive_index]
+        v_count := prim.positions.count
+        t_count := prim.targets.count
+        if t_count > 0 {
+            w_off := instance.morph_offsets[inst.gltf_node]
+            w_cnt := instance.morph_counts[inst.gltf_node]
+            for v: 0..v_count - 1 {
+                pos := prim.positions[v]
+                norm := prim.normals[v]
+                for t: 0..t_count - 1 {
+                    if t >= w_cnt { break }
+                    w := instance.morph_weights[w_off + t]
+                    if GltfAbs(w) <= 0.000000001 { continue }
+                    target := *prim.targets[t]
+                    if v < target.positions.count {
+                        pos = GltfAdd3(pos, GltfScale3(target.positions[v], w))
+                    }
+                    if v < target.normals.count {
+                        norm = GltfAdd3(norm, GltfScale3(target.normals[v], w))
+                    }
+                }
+                inst.morphed_positions[v] = pos
+                len := GltfLength3(norm)
+                inst.morphed_normals[v] = ifx len > 0.000000001 then GltfScale3(norm, 1.0 / len) else Vector3.{0.0, 1.0, 0.0}
+            }
+            if inst.has_skin {
+                for v: 0..v_count - 1 {
+                    inst.skin.positions[v] = inst.morphed_positions[v]
+                    inst.skin.normals[v] = inst.morphed_normals[v]
+                }
+            } else {
+                scene_mesh := scene.meshes[scene.nodes[inst.scene_node].mesh]
+                for v: 0..v_count - 1 {
+                    scene.positions[scene_mesh.first_vertex + v] = inst.morphed_positions[v]
+                    scene.normals[scene_mesh.first_vertex + v] = inst.morphed_normals[v]
+                }
+                scene.geometry_frozen = false
+            }
+        }
+        if inst.has_skin {
+            skin_def := *model.skins[inst.skin_index]
+            j_count := skin_def.joints.count
+            if !VecResize(instance.joint_scratch, j_count) { return false }
+            for j: 0..j_count - 1 {
+                j_node := skin_def.joints[j]
+                joint_mat := GltfMultiply(instance.node_world[j_node], skin_def.inverse_bind_matrices[j])
+                instance.joint_scratch[j] = GltfMatrixToAffine(joint_mat)
+            }
+            if !SceneSkinDeform(scene, *inst.skin, VecSlice(instance.joint_scratch, 0, j_count)) {
+                return false
+            }
+        }
+    }
+    return true
+}
+
+// Instantiates SCENE_INDEX (or model.default_scene when SCENE_INDEX < 0) from
+// MODEL into SCENE, creating one SceneIndexedMesh per primitive and a
+// SceneSkin for every skinned primitive.
+GltfSceneCreate :: (scene: *Scene, model: *GltfModel, instance: *GltfSceneInstance, scene_index: s32 = -1) -> bool {
+    if scene == null || model == null || instance == null || !model.valid || instance.ready {
+        return false
+    }
+    n_count := model.nodes.count
+    if !VecResize(instance.node_to_scene, n_count) ||
+       !VecResize(instance.translations, n_count) ||
+       !VecResize(instance.rotations, n_count) ||
+       !VecResize(instance.scales, n_count) ||
+       !VecResize(instance.trs_dirty, n_count) ||
+       !VecResize(instance.node_local, n_count) ||
+       !VecResize(instance.node_world, n_count) ||
+       !VecResize(instance.morph_offsets, n_count) ||
+       !VecResize(instance.morph_counts, n_count) {
+        GltfInstanceRelease(instance)
+        return false
+    }
+    total_morphs: s32 = 0
+    for i: 0..n_count - 1 {
+        instance.node_to_scene[i] = -1
+        n := *model.nodes[i]
+        m_cnt: s32 = cast(s32)n.weights.count
+        if m_cnt == 0 && n.mesh >= 0 {
+            m_cnt = cast(s32)model.meshes[n.mesh].weights.count
+        }
+        instance.morph_offsets[i] = total_morphs
+        instance.morph_counts[i] = m_cnt
+        total_morphs += m_cnt
+    }
+    if total_morphs > 0 && !VecResize(instance.morph_weights, cast(s64)total_morphs) {
+        GltfInstanceRelease(instance)
+        return false
+    }
+    GltfPoseReset(model, instance)
+
+    root_grp := BeginGroup(scene)
+    if root_grp < 0 {
+        GltfInstanceRelease(instance)
+        return false
+    }
+    instance.root_node = root_grp
+
+    chosen := ifx scene_index >= 0 then scene_index else model.default_scene
+    if chosen >= 0 && chosen < model.scenes.count {
+        r_count := model.scenes[chosen].nodes.count
+        for r: 0..r_count - 1 {
+            root_node := model.scenes[chosen].nodes[r]
+            if !GltfInstantiateNodeRecursive(model, instance, scene, root_node) {
+                EndGroup(scene)
+                GltfInstanceRelease(instance)
+                return false
+            }
+        }
+    }
+    // Also instantiate any unvisited root nodes (e.g. skeleton roots outside scene.nodes).
+    for i: 0..n_count - 1 {
+        if model.nodes[i].parent < 0 && instance.node_to_scene[i] < 0 {
+            if !GltfInstantiateNodeRecursive(model, instance, scene, cast(s32)i) {
+                EndGroup(scene)
+                GltfInstanceRelease(instance)
+                return false
+            }
+        }
+    }
+    EndGroup(scene)
+
+    for i: 0..n_count - 1 {
+        if instance.node_to_scene[i] >= 0 {
+            if !GltfInstantiateMeshForNode(model, instance, scene, cast(s32)i) {
+                GltfInstanceRelease(instance)
+                return false
+            }
+        }
+    }
+    instance.ready = true
+    return GltfUpdateScene(model, instance, scene)
+}
+
+#scope_file
+GltfSampleChannelValues :: (samp: *GltfAnimSampler, t: float64, out: []float64, is_rotation: bool) {
+    count := samp.times.count
+    stride := out.count
+    if count == 1 || t <= samp.times[0] {
+        base: s64 = ifx samp.interpolation == .GltfCubicSpline then stride else 0
+        for c: 0..stride - 1 { out[c] = samp.values[base + c] }
+        if is_rotation {
+            q := GltfQuatNormalize(.{out[0], out[1], out[2], out[3]})
+            out[0] = q.x; out[1] = q.y; out[2] = q.z; out[3] = q.w
+        }
+        return
+    }
+    if t >= samp.times[count - 1] {
+        last := count - 1
+        base: s64 = ifx samp.interpolation == .GltfCubicSpline then (last * 3 + 1) * stride else last * stride
+        for c: 0..stride - 1 { out[c] = samp.values[base + c] }
+        if is_rotation {
+            q := GltfQuatNormalize(.{out[0], out[1], out[2], out[3]})
+            out[0] = q.x; out[1] = q.y; out[2] = q.z; out[3] = q.w
+        }
+        return
+    }
+    k: s64 = 0
+    while k + 1 < count && samp.times[k + 1] < t { k += 1 }
+    t0 := samp.times[k]
+    t1 := samp.times[k + 1]
+    dt := t1 - t0
+    u := ifx dt > 0.000000001 then (t - t0) / dt else 0.0
+
+    if samp.interpolation == .GltfStep {
+        base := k * stride
+        for c: 0..stride - 1 { out[c] = samp.values[base + c] }
+        return
+    }
+    if samp.interpolation == .GltfLinear {
+        b0 := k * stride
+        b1 := (k + 1) * stride
+        if is_rotation {
+            q0: GltfQuat = .{samp.values[b0], samp.values[b0 + 1], samp.values[b0 + 2], samp.values[b0 + 3]}
+            q1: GltfQuat = .{samp.values[b1], samp.values[b1 + 1], samp.values[b1 + 2], samp.values[b1 + 3]}
+            q := GltfQuatSlerp(q0, q1, u)
+            out[0] = q.x; out[1] = q.y; out[2] = q.z; out[3] = q.w
+        } else {
+            for c: 0..stride - 1 {
+                v0 := samp.values[b0 + c]
+                v1 := samp.values[b1 + c]
+                out[c] = v0 + (v1 - v0) * u
+            }
+        }
+        return
+    }
+    // CUBICSPLINE (glTF 2.0 Appendix C)
+    u2 := u * u
+    u3 := u2 * u
+    h00 := 2.0 * u3 - 3.0 * u2 + 1.0
+    h10 := dt * (u3 - 2.0 * u2 + u)
+    h01 := -2.0 * u3 + 3.0 * u2
+    h11 := dt * (u3 - u2)
+    v0_off := (k * 3 + 1) * stride
+    b0_off := (k * 3 + 2) * stride
+    a1_off := ((k + 1) * 3) * stride
+    v1_off := ((k + 1) * 3 + 1) * stride
+    for c: 0..stride - 1 {
+        out[c] = h00 * samp.values[v0_off + c] +
+                 h10 * samp.values[b0_off + c] +
+                 h01 * samp.values[v1_off + c] +
+                 h11 * samp.values[a1_off + c]
+    }
+    if is_rotation {
+        q := GltfQuatNormalize(.{out[0], out[1], out[2], out[3]})
+        out[0] = q.x; out[1] = q.y; out[2] = q.z; out[3] = q.w
+    }
+}
+
+#scope_export
+// Samples ANIMATION_INDEX at TIME (in seconds) into INSTANCE's node TRS and
+// morph weights. When LOOP is true, TIME wraps modulo the animation duration.
+GltfSampleAnimation :: (model: *GltfModel, instance: *GltfSceneInstance, animation_index: s32, time: float64, loop: bool = true) -> bool {
+    if model == null || instance == null || !model.valid ||
+       animation_index < 0 || animation_index >= model.animations.count {
+        return false
+    }
+    anim := *model.animations[animation_index]
+    t := time
+    if anim.duration > 0.0 {
+        if loop {
+            t = GltfFmod(time, anim.duration)
+            if t < 0.0 { t += anim.duration }
+        } else {
+            if t < 0.0 { t = 0.0 }
+            if t > anim.duration { t = anim.duration }
+        }
+    } else {
+        t = 0.0
+    }
+    for c: 0..anim.channels.count - 1 {
+        ch := anim.channels[c]
+        samp := *anim.samplers[ch.sampler]
+        node_idx := ch.target_node
+        if ch.path == .GltfPathTranslation {
+            vals: [3]float64
+            GltfSampleChannelValues(samp, t, vals[:], false)
+            instance.translations[node_idx] = .{vals[0], vals[1], vals[2]}
+            instance.trs_dirty[node_idx] = true
+        } else if ch.path == .GltfPathRotation {
+            vals: [4]float64
+            GltfSampleChannelValues(samp, t, vals[:], true)
+            instance.rotations[node_idx] = .{vals[0], vals[1], vals[2], vals[3]}
+            instance.trs_dirty[node_idx] = true
+        } else if ch.path == .GltfPathScale {
+            vals: [3]float64
+            GltfSampleChannelValues(samp, t, vals[:], false)
+            instance.scales[node_idx] = .{vals[0], vals[1], vals[2]}
+            instance.trs_dirty[node_idx] = true
+        } else if ch.path == .GltfPathWeights {
+            off := instance.morph_offsets[node_idx]
+            cnt := instance.morph_counts[node_idx]
+            if cnt > 0 && cnt == samp.output_stride {
+                GltfSampleChannelValues(samp, t, VecSlice(instance.morph_weights, off, off + cnt), false)
+            }
+        }
+    }
+    return true
+}
+
+// Samples ANIMATION_INDEX at TIME and updates SCENE (nodes, morph targets and
+// skins) in one call.
+GltfAnimateScene :: (model: *GltfModel, instance: *GltfSceneInstance, scene: *Scene, animation_index: s32, time: float64, loop: bool = true) -> bool {
+    if !GltfSampleAnimation(model, instance, animation_index, time, loop) { return false }
+    return GltfUpdateScene(model, instance, scene)
+}
+
+// Computes the skin pose (one SkinAffine per joint, multiplying the joint's
+// model-space transform by its inverseBindMatrix) for SKIN_INDEX from
+// INSTANCE's current node transforms.
+GltfSampleSkinPose :: (model: *GltfModel, instance: *GltfSceneInstance, skin_index: s32, out_transforms: *Vec(SkinAffine)) -> bool {
+    if model == null || instance == null || !model.valid ||
+       skin_index < 0 || skin_index >= model.skins.count {
+        return false
+    }
+    for i: 0..model.nodes.count - 1 {
+        n := *model.nodes[i]
+        if instance.trs_dirty[i] || !n.has_matrix {
+            instance.node_local[i] = GltfComposeTRS(instance.translations[i], instance.rotations[i], instance.scales[i])
+        } else {
+            instance.node_local[i] = n.matrix
+        }
+    }
+    for i: 0..model.nodes.count - 1 {
+        chain: [128]s32
+        depth: s32 = 0
+        cur := cast(s32)i
+        while cur >= 0 && depth < 128 {
+            chain[depth] = cur
+            depth += 1
+            cur = model.nodes[cur].parent
+        }
+        world := GltfIdentity()
+        idx := depth - 1
+        while idx >= 0 {
+            world = GltfMultiply(world, instance.node_local[chain[idx]])
+            idx -= 1
+        }
+        instance.node_world[i] = world
+    }
+    skin_def := *model.skins[skin_index]
+    j_count := skin_def.joints.count
+    if !VecResize(<<out_transforms, j_count) { return false }
+    for j: 0..j_count - 1 {
+        j_node := skin_def.joints[j]
+        joint_mat := GltfMultiply(instance.node_world[j_node], skin_def.inverse_bind_matrices[j])
+        (<<out_transforms)[j] = GltfMatrixToAffine(joint_mat)
+    }
+    return true
+}
+
+// Releases the bind and scratch buffers owned by INSTANCE.
+GltfInstanceRelease :: (instance: *GltfSceneInstance) {
+    if instance == null { return }
+    VecFree(instance.node_to_scene)
+    VecFree(instance.translations)
+    VecFree(instance.rotations)
+    VecFree(instance.scales)
+    VecFree(instance.trs_dirty)
+    VecFree(instance.node_local)
+    VecFree(instance.node_world)
+    VecFree(instance.morph_offsets)
+    VecFree(instance.morph_counts)
+    VecFree(instance.morph_weights)
+    for i: 0..instance.meshes.count - 1 {
+        SceneSkinRelease(*instance.meshes[i].skin)
+        VecFree(instance.meshes[i].morphed_positions)
+        VecFree(instance.meshes[i].morphed_normals)
+    }
+    VecFree(instance.meshes)
+    VecFree(instance.joint_scratch)
+    instance.root_node = -1
+    instance.ready = false
+}
