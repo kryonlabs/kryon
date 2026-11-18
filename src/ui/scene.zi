@@ -919,13 +919,45 @@ Extrude :: (scene: *Scene, shape: *Shape, depth: float64, material: SceneMateria
 
 #scope_file
 
+// A room adds tens of millions of texture bytes while it opens. The
+// fingerprint covers every byte but multiplies once per four-byte pixel, not
+// per byte, across four independent lanes so no multiply waits on the one
+// before.
+// The 32-bit pixel at index AT of BYTES, built from its four bytes:
+// portable code cannot read a byte buffer as words.
+Pixel :: (bytes: []u8, at: s64) -> u32 {
+    base := at * 4
+    return cast(u32)bytes[base] | (cast(u32)bytes[base + 1] << 8) |
+        (cast(u32)bytes[base + 2] << 16) | (cast(u32)bytes[base + 3] << 24)
+}
+
 ImageFingerprint :: (image: *Image) -> u64 {
-    hash: u64 = 1469598103934665603
-    hash = (hash ^ cast(u64)cast(u32)image.width) * 1099511628211
-    hash = (hash ^ cast(u64)cast(u32)image.height) * 1099511628211
-    for at: 0..image.pixels.count - 1 {
-        hash = (hash ^ cast(u64)image.pixels[at]) * 1099511628211
+    prime: u64 = 1099511628211
+    lane0: u64 = 1469598103934665603
+    lane1: u64 = 0x9e3779b97f4a7c15
+    lane2: u64 = 0xc2b2ae3d27d4eb4f
+    lane3: u64 = 0x165667b19e3779f9
+    lane0 = (lane0 ^ cast(u64)cast(u32)image.width) * prime
+    lane1 = (lane1 ^ cast(u64)cast(u32)image.height) * prime
+    words := image.pixels.count / 4
+    pixels := image.pixels[:]
+    at: s64 = 0
+    while at + 4 <= words {
+        lane0 = (lane0 ^ cast(u64)Pixel(pixels, at)) * prime
+        lane1 = (lane1 ^ cast(u64)Pixel(pixels, at + 1)) * prime
+        lane2 = (lane2 ^ cast(u64)Pixel(pixels, at + 2)) * prime
+        lane3 = (lane3 ^ cast(u64)Pixel(pixels, at + 3)) * prime
+        at += 4
     }
+    while at < words { lane0 = (lane0 ^ cast(u64)Pixel(pixels, at)) * prime; at += 1 }
+    for at: words * 4..image.pixels.count - 1 { lane1 = (lane1 ^ cast(u64)image.pixels[at]) * prime }
+    hash := (lane0 ^ cast(u64)image.pixels.count) * prime
+    hash = (hash ^ lane1) * prime
+    hash = (hash ^ lane2) * prime
+    hash = (hash ^ lane3) * prime
+    hash ^= hash >> 33
+    hash *= 0xff51afd7ed558ccd
+    hash ^= hash >> 33
     return ifx hash == 0 then 1 else hash
 }
 

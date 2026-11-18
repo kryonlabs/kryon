@@ -86,4 +86,39 @@ LinearRepeat :: () -> s32 {
 }
 
 #program_export
-main :: () -> s32 { return ResourceAndProjection()+LinearRepeat() }
+// Ingestion copies whole pixels and fingerprints every byte: one changed
+// byte, or the same bytes in another shape, makes another texture, and an
+// equal picture shares the first.
+Ingestion :: () -> s32 {
+    scene: Scene
+    SceneInit(*scene)
+    defer SceneFree(*scene)
+    a := NewImage(8, 4); b := NewImage(8, 4); c := NewImage(4, 8)
+    defer { VecFree(a.pixels); VecFree(b.pixels); VecFree(c.pixels) }
+    for at: 0..a.pixels.count - 1 {
+        value := cast(u8)((at * 37 + 11) & 255)
+        a.pixels[at] = value; b.pixels[at] = value; c.pixels[at] = value
+    }
+    last := b.pixels.count - 1
+    b.pixels[last] = cast(u8)(b.pixels[last] ^ cast(u8)1)
+    base := UnlitMaterial(.{255,255,255,255})
+    options: SceneTextureOptions
+    first := ImageMaterial(*scene,*a,base,options)
+    changed := ImageMaterial(*scene,*b,base,options)
+    shaped := ImageMaterial(*scene,*c,base,options)
+    again := ImageMaterial(*scene,*a,base,options)
+    fail := Check(!scene.failed && scene.textures.count == 3 && scene.texels.count == 384 &&
+        again.texture == first.texture && changed.texture != first.texture &&
+        shaped.texture != first.texture && shaped.texture != changed.texture,
+        "ingestion must tell pictures apart by every byte and their shape")
+    copied := true
+    for at: 0..127 {
+        copied = copied && scene.texels[scene.textures[first.texture].first_texel + at] == a.pixels[at] &&
+            scene.texels[scene.textures[changed.texture].first_texel + at] == b.pixels[at] &&
+            scene.texels[scene.textures[shaped.texture].first_texel + at] == c.pixels[at]
+    }
+    fail += Check(copied, "ingestion must copy every texel")
+    return fail
+}
+
+main :: () -> s32 { return ResourceAndProjection()+LinearRepeat()+Ingestion() }

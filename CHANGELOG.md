@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Scene textures fingerprint four times faster: the fingerprint still covers
+  every byte but multiplies once per pixel across four independent lanes,
+  and folds in the byte count.
 - Android apps keep Ziran's native code cache: Kryon points
   `ZIRAN_NATIVE_CACHE` at the app's `cache/ziran-native` folder unless it is
   set, so a portable app's native code loads on later starts instead of
