@@ -127,4 +127,33 @@ Each change needs a pixel-identical test and a benchmark.
 - The main `.git/index` dates from 03:37 and doesn't match HEAD, so plain
   `git status` and `git diff HEAD` show hundreds of false changes. Inspect and
   commit through a private index: `GIT_INDEX_FILE=<file> git read-tree HEAD`.
-- `origin` is Gitea. Run `build-queue -- make push-check` before pushing.
+- `origin` is Gitea. Run `make push-check` through managed `desktop_run`
+  before pushing. Scope `GIT_INDEX_FILE` to individual Git commands; exporting
+  it through a build corrupts package-cache validation by supplying another
+  repository's index to its Git subprocesses.
+
+## Cairo image-mesh freeze, 2026-11-19
+
+The native Lumi integration exposed a separate Sun Salutation freeze. With
+narration disabled, the main thread consumed a core inside Cairo's mask paint.
+A breakpoint on `CairoMeshTriangle` captured the live figure's tiny 6×1 mask,
+with a source strip only 0.045455 pixels tall stretched into opposing screen
+directions. The ordinary image sampler already uses `CAIRO_FILTER_GOOD`, but
+the mesh sampler still used `CAIRO_FILTER_BEST`.
+
+For 32 copies of the captured triangle, the direct Cairo reproduction took
+0.564553 seconds with BEST and 0.001037 seconds with GOOD. This microbenchmark
+does not establish the requested fivefold full-app improvement on Moto.
+
+The mesh sampler now uses GOOD when smooth, retaining nearest sampling,
+geometry, clipping and tinting. The regression renders 128 frames of the real
+cell and checks a tinted translucent pixel. It timed out against the old
+sampler (`d3073f10075a94918bc2d4c9d65863c33b92`) and passed from source and saved
+IR after the change (`04e3d49f80a62ac52ba72e8c8e44b5451d05`). Existing image
+sampling and mirrored-image pixel tests passed
+(`5f23d159649c5111e921eff237dde4de1d16`). `make push-check` passed
+(`dbaa0855c67b29c36b8672afd256e205cd7f`). The actual rebuilt Breeze Lumi UI
+test also passed its Sun Salutation start, ten frames and explicit exit, then
+the complete chat/tool/preview flow (`a524fcc262205a5723288d62ff81b077cbe6`,
+Lumi stage 0). Moto's new full-app measurements remain pending its separate
+ARM32 Main native-image loading failure.

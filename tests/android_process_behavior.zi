@@ -1,0 +1,46 @@
+#import "android_jni"
+#import "android_native"
+#import "android_native_test_host"
+#import "android_process"
+#import "std/byte_text_linux"
+#import "std/c_string"
+
+test_libc :: #system_library "c";
+GetEnvironment :: (name: *u8) -> *u8 #foreign test_libc "getenv";
+
+Environment :: (name: string) -> *u8 {
+    key: [64]u8
+    if !CopyCString(name, key[:]) {
+        return null
+    }
+    return GetEnvironment(*key[0])
+}
+
+#program_export
+main :: () -> s32 {
+    private_files := Environment("KRYON_PROCESS_PRIVATE_FILES")
+    folder := TextFromCString(private_files)
+    if folder == "" {
+        return 1
+    }
+    activity: NativeActivity
+    activity.internal_data_path = private_files
+    app: NativeAndroidApp
+    app.activity = *activity
+    AndroidNativeStart(*app)
+    defer AndroidNativeClose()
+    AndroidProcessPrepare()
+    if TextFromCString(Environment("TMPDIR")) != TextFromCString(Environment("KRYON_PROCESS_EXPECT_TMPDIR")) {
+        return 2
+    }
+    expected := TextFromCString(Environment("KRYON_PROCESS_EXPECT_DRIVER"))
+    if TextFromCString(Environment("KRYON_TEST_DRIVER")) != expected {
+        return 3
+    }
+    // Repeated host preparation preserves the same process setup.
+    AndroidProcessPrepare()
+    if TextFromCString(Environment("KRYON_TEST_DRIVER")) != expected {
+        return 4
+    }
+    return 0
+}

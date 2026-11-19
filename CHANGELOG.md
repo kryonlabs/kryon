@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Normal Android builds start when a previous UI test left its private
+  test-driver folder behind; only builds with the driver use that folder.
 - Animated glTF material primitives skin and upload only their referenced
   vertices, preserving the original triangles, expressions and pixels.
 
@@ -15,6 +17,8 @@
   `ZIRAN_NATIVE_CACHE` at the app's `cache/ziran-native` folder unless it is
   set, so a portable app's native code loads on later starts instead of
   compiling again.
+- Smooth image meshes use the ordinary image filter, avoiding stalls when
+  animated cells stretch a narrow source strip in opposing directions.
 - Smooth pictures drawn without a prepared smooth copy, such as tiles cut
   from one sheet, use Cairo's good filter again: 0.6.0's best filter reached
   past the source rectangle and bled neighbouring tiles into the seams.

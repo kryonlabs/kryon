@@ -1350,6 +1350,8 @@ variable in the environment of `kryon build`. The program then obeys the
 directory the same variable names when it runs. A program built without the
 driver and started with the variable set stops at once and says how to build
 it, so a test fails with the reason instead of waiting for a reply.
+On Android, the private `kryon-test-driver` folder activates a compiled test
+driver. Normal builds ignore a folder left by an earlier UI test.
 
 A test captures what the app draws with `DriverCapture(driver, path)` (the
 `capture path=` command): the desktop host writes its next finished frame to

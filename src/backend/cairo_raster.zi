@@ -1436,7 +1436,9 @@ CairoMeshTriangle :: (image: *void, a: Vector2, a_source: Vector2,
         print("Kryon: skipped image: invalid or unavailable picture\n")
         return
     }
-    PatternFilter(pattern, ifx CurrentPaintSmooth() then CAIRO_FILTER_BEST else CAIRO_FILTER_NEAREST)
+    // Use the same smooth filter as an ordinary image. BEST makes a tiny
+    // source strip stretched in opposing directions costly per triangle.
+    PatternFilter(pattern, ifx CurrentPaintSmooth() then CAIRO_FILTER_GOOD else CAIRO_FILTER_NEAREST)
     PaintImagePattern(pattern, tint)
     PatternDestroy(pattern)
     Restore(paint)

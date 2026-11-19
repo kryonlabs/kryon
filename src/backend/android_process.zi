@@ -12,7 +12,9 @@ AndroidMakeDirectory :: (path: *u8, mode: u32) -> s32 #foreign android_libc "mkd
 AndroidProcessPrepare :: () {
     AndroidTemporaryPrepare()
     AndroidNativeCachePrepare()
-    AndroidTestDriverPrepare()
+    #if #defined(KRYON_TEST_DRIVER) {
+        AndroidTestDriverPrepare()
+    }
 }
 
 // Ziran keeps the native code it compiles for portable apps in a disk cache

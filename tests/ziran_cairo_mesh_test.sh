@@ -14,6 +14,7 @@ import sys
 image = Image.new('RGBA', (2, 2))
 image.putdata([(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255), (255, 255, 255, 255)])
 image.save(Path(sys.argv[1]) / 'mesh.png')
+Image.new('RGBA', (6, 1), (255, 255, 255, 128)).save(Path(sys.argv[1]) / 'sampling.png')
 PY
 libs="$(pkg-config --libs cairo freetype2 pangocairo fontconfig glib-2.0) -ldl -lm -lpthread"
 source="$repo/tests/cairo_mesh_test.zi"
@@ -29,6 +30,6 @@ for form in source saved; do
         printf '#include "cairo_mesh_test.%s"\nint main(int argc, char **argv) { return cairo_mesh_test_main(argc, (uint8_t **)argv); }\n' "$header" > "$output/entry.$suffix"
         "$compiler" -std="$standard" -O2 -I"$ziran_root/include" -I"$output" \
             "$output"/*."$suffix" $libs -o "$output/test"
-        "$output/test" "$work/fixtures"
+        timeout 3s "$output/test" "$work/fixtures"
     done
 done

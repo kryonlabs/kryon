@@ -101,6 +101,29 @@ main :: (argc: s32, argv: **u8) -> s32 {
     Raster.BeginRasterFrame()
     Raster.RasterImage(path,0,.{0.0,0.0,2.0,2.0},full,full,.{0.0,0.0},0.0,0.0,.{255,255,255,255})
     if !Raster.FinishRasterFrame() || !Is(48,48,white) { return 16 }
+    // A narrow source strip can be magnified in two almost opposing
+    // directions. This is a real animated-figure cell: Cairo's best filter
+    // spends milliseconds per triangle, freezing a frame containing many.
+    sampling_text: Vec(u8)
+    BuilderPrint(*sampling_text, "%/sampling.png", root)
+    sampling_path := BuilderFinish(sampling_text)
+    if Raster.ImageWidth(sampling_path) != 6 { return 17 }
+    points[0] = .{42.037, 58.228}
+    points[1] = .{46.695, 52.240}
+    points[2] = .{41.758, 46.400}
+    points[3] = .{46.416, 40.412}
+    emitting_smooth = true
+    for frame: cast(s32)0..127 {
+        Raster.BeginRasterFrame()
+        Raster.RasterImageMesh(sampling_path, 0, .{2.0, 0.454545, 2.0, 0.045455},
+            points[:], 2, 2, full, .{247, 196, 163, 255})
+        if !Raster.FinishRasterFrame() { return 18 }
+    }
+    emitting_smooth = false
+    // The optimization must still draw the tinted, translucent cell.
+    color := Pixel(44, 49)
+    if color == background || ((color >> 16) & cast(u32)255) <= ((color >> 8) & cast(u32)255) ||
+        ((color >> 8) & cast(u32)255) <= (color & cast(u32)255) { return 19 }
     print("Cairo draws meshes and polygon-clipped images without leaking clips\n")
     return 0
 }

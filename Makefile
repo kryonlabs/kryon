@@ -992,6 +992,11 @@ image-dimensions-host-test: project-toolchain
 test: image-dimensions-host-test
 
 .PHONY: android-runtime-test pixmap-camera-test android-image-services-test pixmap-typeface-test android-codec-artifact-test android-typefaces-link-test android-typefaces-device-test android-pictures-link-test android-pictures-device-test
+.PHONY: android-process-test
+android-process-test: project-toolchain
+	@sh tests/android_process_test.sh
+test: android-process-test
+
 android-runtime-test: project-toolchain
 	@sh tests/ziran_android_runtime_test.sh
 pixmap-camera-test: project-toolchain
@@ -1017,6 +1022,11 @@ mirrored-image-test: project-toolchain
 	@sh tests/ziran_cairo_mirrored_image_test.sh
 	@sh tests/pixmap_mirrored_image_test.sh
 test: mirrored-image-test
+
+.PHONY: cairo-mesh-test
+cairo-mesh-test: project-toolchain
+	@sh tests/ziran_cairo_mesh_test.sh
+test: cairo-mesh-test
 
 .PHONY: scene-skin-test scene-gltf-test scene-gltf-gpu-test watercolor-test practice-material-gpu-test image-pixels-resolver-test
 scene-skin-test: project-toolchain
