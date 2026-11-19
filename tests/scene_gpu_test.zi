@@ -159,7 +159,7 @@ FeatureVariants :: ()->bool {
   fresh_result:=SceneGpuRender(*fresh,*scene,camera,*fresh_image)
   SceneGpuRelease(*fresh)
   if !fresh_result.ok||PixelHash(*image)!=PixelHash(*fresh_image) {print("Retained feature cache differs from fresh context state %\n",state);return false}
-  if SceneGpuMemoryUsage(*gpu).programs>3||gpu.programs.count>8 {print("Feature variants grew without bound\n");return false}
+  if SceneGpuMemoryUsage(*gpu).programs>GPU_RECENT_PROGRAMS+4||gpu.programs.count>GPU_RECENT_PROGRAMS+8 {print("Feature variants grew without bound\n");return false}
   if !RenderScene(*scene,camera,*reference) {return false}
   error: s64;large: s64
   for at:0..image.pixels.count-1 {

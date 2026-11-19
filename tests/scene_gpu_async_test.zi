@@ -242,10 +242,62 @@ ReadbackProfile :: ()->bool {
  print("Readback frame hashes match %\n",expected)
  return true
 }
+
+ProgramSwitches :: (check_cache: bool)->bool {
+ gpu: SceneGpuContext;defer SceneGpuRelease(*gpu)
+ if !SceneGpuProbe(*gpu).available {return false}
+ gpu.direct_readback=false
+ SceneGpuSetProfiling(*gpu,true)
+ scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
+ scene.background=.{32,48,64,255}
+ programs: [3]ShaderProgram
+ code: [2]ShaderInstruction=.[.{op=.ShaderLiteral,dest=4,value=.{0.25,0.2,0.4,1.0}},.{op=.ShaderOutput,a=4}]
+ if !ShaderCompile(*programs[0],code[:]).ok {return false}
+ code[0].value.x=0.75
+ if !ShaderCompile(*programs[1],code[:]).ok {return false}
+ programs[2]=programs[0]
+ material:=UnlitMaterial(.{255,255,255,255});material.shader=*programs[0]
+ unused Plane(*scene,2.0,1.25,material)
+ camera:=PerspectiveCamera(45,1.6,0.1,20);camera.position=.{0,0,3}
+ image:=NewImage(96,60);defer VecFree(image.pixels)
+ hashes: [2]u64
+ for sample:0..23 {
+  variant:=sample%2
+  scene.meshes[0].material.shader=*programs[ifx sample%4==2 then 2 else variant]
+  frame:=SceneGpuRender(*gpu,*scene,camera,*image)
+  if !frame.ok {return false}
+  hash:=AsyncHash(*image)
+  if sample<2 {hashes[variant]=hash}
+  else if hash!=hashes[variant] {return false}
+  count:=SceneGpuMemoryUsage(*gpu).programs
+  if !check_cache {print("program switch % % % %\n",sample,frame.profile.shader_setup_ms,count,hash)}
+  if check_cache {
+   if sample>0&&count!=4 {return false}
+   for at:0..gpu.programs.count-1 {if gpu.programs[at].key!=null {return false}}
+  }
+ }
+ if hashes[0]==hashes[1] {return false}
+ if !check_cache {return true}
+ // Overwrite the same shader address with new code and render it. The cache
+ // must preserve the newest variants, and retain only a bounded number.
+ for revision:0..11 {
+  code[0].value.x=0.1+cast(float64)revision*0.06
+  if !ShaderCompile(*programs[0],code[:]).ok {return false}
+  scene.meshes[0].material.shader=*programs[0]
+  if !SceneGpuRender(*gpu,*scene,camera,*image).ok {return false}
+  hash:=AsyncHash(*image)
+  if hash==hashes[0]||SceneGpuMemoryUsage(*gpu).programs>GPU_RECENT_PROGRAMS+3 {return false}
+  hashes[0]=hash
+ }
+ print("Room program switches preserve pixels and bound the linked cache\n")
+ return true
+}
+
 #program_export
 main :: (argc: s32, argv: **u8)->s32 {
  unused argv
  if argc==2 {return ifx ReadbackProfile() then 0 else 1}
- if !AsyncTests()||!ReadbackAlphaParity() {return 1}
+ if argc==3 {return ifx ProgramSwitches(false) then 0 else 1}
+ if !AsyncTests()||!ReadbackAlphaParity()||!ProgramSwitches(true) {return 1}
  return 0
 }

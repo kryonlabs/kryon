@@ -95,7 +95,8 @@ GpuLocations :: struct {
  graded: s32; grade_tint: s32; grade_lamp: [4]s32; grade_lamp_color: [4]s32; grade_beam_centre: s32; grade_beam_u: s32
  grade_beam_v: s32; grade_beam_normal: s32; grade_beam_direction: s32; grade_beam_color: s32; grade_beam_shadow: s32
 }
-GpuProgram :: struct { features: s32; key: *ShaderProgram; saved: ShaderProgram; id: u32; used: bool; frame_uniforms_set: bool; locations: GpuLocations }
+GPU_RECENT_PROGRAMS :: 8
+GpuProgram :: struct { features: s32; key: *ShaderProgram; saved: ShaderProgram; id: u32; last_frame: u64; frame_uniforms_set: bool; locations: GpuLocations }
 GpuTexture :: struct { key: *u8; cache_key: u64; width: s32; height: s32; id: u32; used: bool; bytes: Vec(u8) }
 GpuShadow :: struct { texture: u32; framebuffer: u32; size: s32; source: SceneLight }
 GpuBindingCheck :: struct {program: *ShaderProgram; uniforms: *ShaderValue; uniform_count: s64; samplers: *ShaderSampler; sampler_count: s64}
@@ -118,7 +119,7 @@ SceneGpuContext :: struct {
  // Each node's starting vertex in its stream and the transform used to bake it.
  node_first: Vec(s32); node_count: Vec(s32); node_world: Vec(M.GpuMatrix); node_shown: Vec(bool)
  snapshot: Vec(u8); readback: Vec(u8); order: Vec(s32); keys: Vec(float64)
- programs: Vec(GpuProgram); textures: Vec(GpuTexture); shadows: [4]GpuShadow
+ programs: Vec(GpuProgram); program_frame: u64; textures: Vec(GpuTexture); shadows: [4]GpuShadow
  bindings: Vec(GpuBindingCheck)
  resources: SceneGpuResources
  transfers: [2]GpuTransfer; last_request: u64
@@ -265,10 +266,7 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
  start:=Now()
  gpu.texture_upload_ms=0.0
  if !PrepareGeometry(gpu,scene) { return .{diagnostic="invalid geometry or allocation failure"} }
- for at: 0..gpu.programs.count-1 {
-  gpu.programs[at].used=false
-  gpu.programs[at].frame_uniforms_set=false
- }
+ gpu.program_frame+=1
  for at: 0..gpu.textures.count-1 { gpu.textures[at].used=false }
  defer Sweep(gpu)
  VecClear(gpu.bindings)
@@ -629,7 +627,7 @@ SceneGpuRelease :: (gpu: *SceneGpuContext) {
   gpu.scene_vertex_shader=0
  }
  for at:0..1 {gpu.transfers[at]=GpuTransfer.{}}
- gpu.last_request=0
+ gpu.last_request=0;gpu.program_frame=0
  gpu.direct_readback=false;gpu.texture_upload_ms=0.0
  gpu.context=null;gpu.display=null;gpu.attempted=false
  gpu.buffer=0;gpu.shadow_program=0;gpu.straight_program=0;gpu.dfg=0;gpu.shadow_geometry=0
@@ -1226,16 +1224,25 @@ LoadSceneProgram :: (gpu: *SceneGpuContext,vertex: string,fragment: string,scene
   return G.Program(vertex,fragment,gpu.log[:])
  }
 }
+SameShaderCode :: (saved: *ShaderProgram,key: *ShaderProgram)->bool {
+ if saved.count!=key.count||saved.uniform_count!=key.uniform_count||saved.sampler_count!=key.sampler_count||
+  saved.input_mask!=key.input_mask||saved.ready!=key.ready {return false}
+ bytes:=cast(usize)saved.count*size_of(ShaderInstruction)
+ return G.CompareMemory(cast(*void)*saved.code[0],cast(*void)*key.code[0],bytes)==0
+}
 ProgramFor :: (gpu: *SceneGpuContext,key: *ShaderProgram,features: s32)->*GpuProgram {
  slot: s64=-1
  for at: 0..gpu.programs.count-1 {
   p:=*gpu.programs[at]
-  if p.id!=0&&p.key==key&&p.features==features {
-   if p.used {return p}
-   if key==null||G.CompareMemory(cast(*void)*p.saved,cast(*void)key,size_of(ShaderProgram))==0 {p.used=true;return p}
-   G.DeleteProgram(p.id);p.id=0;slot=at;break
+  if p.id==0 {slot=at;continue}
+  if p.features!=features||p.saved.ready!=(key!=null) {continue}
+  if p.last_frame==gpu.program_frame&&p.key==key {return p}
+  // Separately prepared rooms can own equivalent shader instructions.
+  if key==null||SameShaderCode(*p.saved,key) {
+   if p.last_frame!=gpu.program_frame {p.frame_uniforms_set=false}
+   p.key=key;p.last_frame=gpu.program_frame
+   return p
   }
-  if p.id==0 {slot=at}
  }
  code: Vec(u8);unused BuilderAppend(code,"#version 300 es\n")
  unused BuilderAppend(code,ifx gpu.capabilities.pcf_available then "#define KRYON_MANUAL_PCF 0\n" else "#define KRYON_MANUAL_PCF 1\n")
@@ -1259,7 +1266,7 @@ ProgramFor :: (gpu: *SceneGpuContext,key: *ShaderProgram,features: s32)->*GpuPro
  source: Text=BuilderFinish(code)
  id:=LoadSceneProgram(gpu,GpuVertexSource,TextView(source),true)
  if id==0 {return null}
- value: GpuProgram;value.key=key;value.features=features;value.id=id;value.used=true;value.locations=CacheLocations(id)
+ value: GpuProgram;value.key=key;value.features=features;value.id=id;value.last_frame=gpu.program_frame;value.locations=CacheLocations(id)
  if key!=null {value.saved=key[0]}
  if slot>=0 {gpu.programs[slot]=value;return *gpu.programs[slot]}
  if !VecPush(gpu.programs,value) {G.DeleteProgram(id);return null}
@@ -1302,7 +1309,23 @@ TextureFor :: (gpu: *SceneGpuContext,unit: s32,pixels: *u8,width: s32,height: s3
  return id
 }
 Sweep :: (gpu: *SceneGpuContext) {
- for at: 0..gpu.programs.count-1 {p:=*gpu.programs[at];if p.id!=0&&!p.used {G.DeleteProgram(p.id);p.id=0}}
+ // Keep a small number of recently used programs across room changes.
+ // Programs needed by the current frame do not count against this budget.
+ recent: [GPU_RECENT_PROGRAMS]*GpuProgram
+ count: s32
+ for at: 0..gpu.programs.count-1 {
+  p:=*gpu.programs[at]
+  if p.id==0 {continue}
+  // The pointer accelerates lookup only while the caller's frame borrows it.
+  p.key=null
+  if p.last_frame==gpu.program_frame {continue}
+  if count<GPU_RECENT_PROGRAMS {recent[count]=p;count+=1;continue}
+  oldest: s64
+  for i:1..GPU_RECENT_PROGRAMS-1 {if recent[i].last_frame<recent[oldest].last_frame {oldest=i}}
+  discard:=p
+  if p.last_frame>recent[oldest].last_frame {discard=recent[oldest];recent[oldest]=p}
+  G.DeleteProgram(discard.id);discard.id=0
+ }
  for at: 0..gpu.textures.count-1 {t:=*gpu.textures[at];if t.id!=0&&!t.used {G.DeleteTextures(1,*t.id);t.id=0;VecFree(t.bytes)}}
 }
 MatrixUniform :: (id: u32,name: string,matrix: M.GpuMatrix) {

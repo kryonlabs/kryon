@@ -2144,10 +2144,12 @@ retained-paint result to `DesktopFrameUnchanged`; scheduling work must never
 claim that unchanged image pixels changed.
 
 Geometry, material programs, textures and render targets retain storage across
-frames. Scene and binding data are borrowed during the call; mutate them only
-on the owner between calls. When only nodes move, turn or scale between
-frames, the renderer sends the affected vertices. Smooth-shaded indexed meshes
-keep their element buffers and refresh only changed position, normal and color
+frames. Each context also keeps up to eight linked material programs from
+earlier frames. Scenes with identical shader instructions and material features
+reuse the linked program. Scene and binding data are borrowed during the call.
+Mutate them only on the owner between calls. When only nodes move, turn or
+scale between frames, the renderer sends the affected vertices. Smooth-shaded
+indexed meshes keep their element buffers and refresh only changed position, normal and color
 streams. Box-projected UVs update with their source positions and normals.
 Topology, material and visibility changes rebuild the geometry. `SceneGpuResources.geometry_uploads`
 counts uploads and `geometry_vertices` counts the vertices those uploads covered.
