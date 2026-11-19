@@ -15,27 +15,44 @@ AndroidFrameTextureSlot :: (texture: Texture2D) -> s32 {
     item := *Bitmaps.bitmap_images[index]
     return Bitmaps.BitmapOwnedSlot(ANDROID_FRAME_OWNER, item.owner_epoch, texture)
 }
-AndroidFrameTextureCopy :: (width: s32, height: s32, pixels: []u32) -> Texture2D {
+AndroidFrameTextureCopy :: (width: s32, height: s32, pixels: []u32, stride: s32 = 0) -> Texture2D {
+    if stride == 0 { stride = width }
     count := Bitmaps.BitmapPixelCount(width, height)
-    if count <= 0 || pixels.count < count || android_frame_epoch == cast(u64)18446744073709551615 { return .{} }
+    if count <= 0 || stride < width || pixels.count < cast(s64)(height - 1) * stride + width ||
+        android_frame_epoch == cast(u64)18446744073709551615 { return .{} }
     rgba: Vec(u8)
     if !VecResizeBounded(rgba, count * 4, count * 4) { return .{} }
     defer VecFree(rgba)
-    for at: cast(s64)0..count - 1 {
-        pixel := pixels[at]
-        rgba[at * 4] = cast(u8)(pixel >> 16)
-        rgba[at * 4 + 1] = cast(u8)(pixel >> 8)
-        rgba[at * 4 + 2] = cast(u8)pixel
-        rgba[at * 4 + 3] = cast(u8)(pixel >> 24)
+    for row: cast(s64)0..height - 1 {
+        source := row * stride
+        offset := row * width * 4
+        for column: cast(s64)0..width - 1 {
+            pixel := pixels[source + column]
+            rgba[offset] = cast(u8)(pixel >> 16)
+            rgba[offset + 1] = cast(u8)(pixel >> 8)
+            rgba[offset + 2] = cast(u8)pixel
+            rgba[offset + 3] = cast(u8)(pixel >> 24)
+            offset += 4
+        }
     }
     android_frame_epoch += cast(u64)1
     return Bitmaps.BitmapCreateOwned(ANDROID_FRAME_OWNER, android_frame_epoch, width, height, rgba[:])
 }
 
+AndroidFrameSnapshotPixels :: (left: s32, top: s32, width: s32, height: s32) -> Surface.FrameSurface {
+    if left < 0 || top < 0 || width <= 0 || height <= 0 || left >= android_pixel_width ||
+        top >= android_pixel_height || width > android_pixel_width - left ||
+        height > android_pixel_height - top { return .{} }
+    pixels := AndroidNativePixels()
+    start := cast(s64)top * android_pixel_width + left
+    if start >= pixels.count { return .{} }
+    texture := AndroidFrameTextureCopy(width, height, pixels[start:pixels.count], android_pixel_width)
+    return Surface.FrameSurface.{texture, true}
+}
+
 #program_export
 FramePreviousSnapshotHost :: () -> Surface.FrameSurface {
-    texture := AndroidFrameTextureCopy(android_pixel_width, android_pixel_height, AndroidNativePixels())
-    return Surface.FrameSurface.{texture, true}
+    return AndroidFrameSnapshotPixels(0, 0, android_pixel_width, android_pixel_height)
 }
 
 #program_export

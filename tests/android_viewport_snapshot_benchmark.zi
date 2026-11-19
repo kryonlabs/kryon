@@ -1,0 +1,141 @@
+// Display-free fixture. Only the pixels normally borrowed from Android are supplied here.
+Native :: #import "android_native";
+Frames :: #import "frame_texture_android";
+Bitmaps :: #import "bitmap_store";
+Pixels :: #import "pixmap";
+Clock :: #import "std/timer_linux";
+Surface :: #import "frame_surface";
+#import "frame_transition"
+#import "geometry"
+#import "session"
+#import "std/vec"
+#import "tree_draw"
+
+BAR :: 0xffff00ff
+BACKGROUND :: 0xff091927
+SURFACE_WIDTH :: 720
+SURFACE_HEIGHT :: 1560
+VIEWPORT_TOP :: 42
+VIEWPORT_HEIGHT :: 1423
+WARMUP_PAIRS :: 5
+MEASURED_PAIRS :: 40
+
+Replay :: (session: Session, surface: Surface.FrameSurface, target: []u32, width: s32, height: s32,
+    viewport: Rectangle) -> bool {
+    if !Pixels.PixmapScale(1.0, 1.0) || !Pixels.PixmapResumeInto(width, height, target, true) { return false }
+    defer { Pixels.PixmapEndInto() }
+    if BeginFrame(session, cast(u64)1, .{0.0, 0.0, cast(float32)width, cast(float32)height}) != .FrameOk {
+        return false
+    }
+    FrameTransition(session, surface, viewport, 0.0, 0.12)
+    return EndFrame(session) == .FrameOk
+}
+
+VerifyViewport :: (session: Session) -> bool {
+    // Reference pixels are an explicit asymmetric 3×2 image surrounded by
+    // synthetic stale system bars on all four edges of a 7×6 native surface.
+    native: [42]u32 = .[
+        BAR, BAR, BAR, BAR, BAR, BAR, BAR,
+        BAR, BAR, BAR, BAR, BAR, BAR, BAR,
+        BAR, 0xff123456, 0xff432109, 0xff48bc25, BAR, BAR, BAR,
+        BAR, 0xff7b0621, 0xff315fd0, 0xffa065f2, BAR, BAR, BAR,
+        BAR, BAR, BAR, BAR, BAR, BAR, BAR,
+        BAR, BAR, BAR, BAR, BAR, BAR, BAR,
+    ]
+    expected: [6]u32 = .[0xff123456, 0xff432109, 0xff48bc25, 0xff7b0621, 0xff315fd0, 0xffa065f2]
+    if !Native.AndroidNativeEnsurePixels(7, 6) { return false }
+    source := Native.AndroidNativePixels()
+    for at: 0..41 { source[at] = native[at] }
+    full := FramePreviousSnapshot()
+    viewport := Frames.AndroidFrameSnapshotPixels(1, 2, 3, 2)
+    defer { unused FrameSurfaceRelease(full); unused FrameSurfaceRelease(viewport) }
+    if !FrameSurfaceValid(full) || !FrameSurfaceValid(viewport) || !viewport.upright ||
+        viewport.texture.width != 3 || viewport.texture.height != 2 { return false }
+    slot := Bitmaps.BitmapHostSlot(viewport.texture)
+    if slot < 0 { return false }
+    item := *Bitmaps.bitmap_images[slot]
+    captured := item.pixels[:]
+    if captured.count != 6 { return false }
+    for at: 0..5 {
+        if captured[at] != expected[at] { return false }
+    }
+
+    // The old full-frame fade maps stale bars into content. Use it as the
+    // control and check the actual cropped replay against every target pixel.
+    target: [42]u32
+    bounds := Rectangle.{1.0, 2.0, 3.0, 2.0}
+    if !Replay(session, full, target[:], 7, 6, bounds) || target[2 * 7 + 1] != cast(u32)BAR { return false }
+    for at: 0..41 { target[at] = cast(u32)BACKGROUND }
+    if !Replay(session, viewport, target[:], 7, 6, bounds) { return false }
+    for y: 0..5 {
+        for x: 0..6 {
+            want := ifx x >= 1 && x < 4 && y >= 2 && y < 4 then expected[(y - 2) * 3 + x - 1] else cast(u32)BACKGROUND
+            if target[y * 7 + x] != want { return false }
+        }
+    }
+    return true
+}
+
+Capture :: (viewport: bool) -> Surface.FrameSurface {
+    if viewport { return Frames.AndroidFrameSnapshotPixels(0, VIEWPORT_TOP, SURFACE_WIDTH, VIEWPORT_HEIGHT) }
+    return FramePreviousSnapshot()
+}
+
+MeasureCapture :: (viewport: bool, session: Session, target: []u32) -> s64 {
+    before := Clock.MonotonicNanoseconds()
+    captured := Capture(viewport)
+    after := Clock.MonotonicNanoseconds()
+    defer { unused FrameSurfaceRelease(captured) }
+    height := ifx viewport then VIEWPORT_HEIGHT else SURFACE_HEIGHT
+    if before < 0 || after <= before || !FrameSurfaceValid(captured) || !captured.upright ||
+        captured.texture.width != SURFACE_WIDTH || captured.texture.height != height { return -1 }
+
+    // Preserve the route-fade workload between captures. Only capture is timed.
+    bounds := Rectangle.{0.0, cast(float32)VIEWPORT_TOP, cast(float32)SURFACE_WIDTH, cast(float32)VIEWPORT_HEIGHT}
+    if !Replay(session, captured, target, SURFACE_WIDTH, SURFACE_HEIGHT, bounds) { return -1 }
+    return after - before
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    if !SessionValid(session) { return 1 }
+    defer { unused CloseSession(session) }
+    if !VerifyViewport(session) {
+        print("viewport snapshot pixel oracle failed\n")
+        return 1
+    }
+    print("oracle,passed\n")
+
+    if !Native.AndroidNativeEnsurePixels(SURFACE_WIDTH, SURFACE_HEIGHT) { return 2 }
+    source := Native.AndroidNativePixels()
+    target: Vec(u32)
+    if !VecResize(target, SURFACE_WIDTH * SURFACE_HEIGHT) { return 2 }
+    defer VecFree(target)
+    for y: 0..SURFACE_HEIGHT - 1 {
+        color := ifx y >= VIEWPORT_TOP && y < VIEWPORT_TOP + VIEWPORT_HEIGHT then cast(u32)0xff245839 else cast(u32)BAR
+        for x: 0..SURFACE_WIDTH - 1 { source[y * SURFACE_WIDTH + x] = color }
+    }
+    full_ns: [MEASURED_PAIRS]s64
+    viewport_ns: [MEASURED_PAIRS]s64
+    for pair: 0..WARMUP_PAIRS + MEASURED_PAIRS - 1 {
+        viewport_first := pair % 2 != 0
+        first := MeasureCapture(viewport_first, session, target[:])
+        second := MeasureCapture(!viewport_first, session, target[:])
+        if first < 0 || second < 0 {
+            print("snapshot capture or monotonic timing failed at pair %\n", pair)
+            return 3
+        }
+        if pair >= WARMUP_PAIRS {
+            sample := pair - WARMUP_PAIRS
+            full_ns[sample] = ifx viewport_first then second else first
+            viewport_ns[sample] = ifx viewport_first then first else second
+        }
+    }
+    print("surface,%,%\n", SURFACE_WIDTH, SURFACE_HEIGHT)
+    print("viewport,0,%,%,%\n", VIEWPORT_TOP, SURFACE_WIDTH, VIEWPORT_HEIGHT)
+    print("warmup_pairs,%\n", WARMUP_PAIRS)
+    print("pair,full_capture_ns,viewport_capture_ns\n")
+    for pair: 0..MEASURED_PAIRS - 1 { print("%,%,%\n", pair, full_ns[pair], viewport_ns[pair]) }
+    return 0
+}

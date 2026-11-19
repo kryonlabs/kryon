@@ -8,6 +8,7 @@
 #import "android_surface"
 #import "android_touch"
 #import "frame_texture_android"
+Surface :: #import "frame_surface";
 #import "geometry"
 #import "pixmap"
 
@@ -139,6 +140,14 @@ AndroidFrameReusable :: () -> bool {
     return android_host_pixels_valid && android_host_scale_x == scale_x &&
         android_host_scale_y == scale_y && android_host_offset_x == offset_x &&
         android_host_offset_y == offset_y
+}
+
+// Capture the last presented content viewport, in physical surface pixels.
+// An inset, surface or camera change invalidates the previous geometry.
+#program_export
+AndroidFramePreviousViewportSnapshot :: (left: s32, top: s32, width: s32, height: s32) -> Surface.FrameSurface {
+    if !AndroidFrameReusable() { return .{} }
+    return AndroidFrameSnapshotPixels(left, top, width, height)
 }
 
 #program_export

@@ -1,3 +1,4 @@
+#import "frame_transition"
 // Only the NDK/NativeActivity boundary is supplied by this display-free test.
 // Custom host polling, Pixmap frames, insets, input and lifecycle run normally.
 Runtime :: #import "android_runtime";
@@ -123,6 +124,9 @@ main :: (argc: s32, argv: **u8) -> s32 {
         if buffer[y * 40 + 3] != cast(u32)0xdeadbeef { return 7 }
     }
     Runtime.BeginAndroidFrame()
+    snapshot := Runtime.AndroidFramePreviousViewportSnapshot(1, 0, 2, 2)
+    if !FrameSurfaceValid(snapshot) || snapshot.texture.width != 2 || snapshot.texture.height != 2 { return 51 }
+    unused FrameSurfaceRelease(snapshot)
     Runtime.AndroidFrameUnchanged(true)
     if !Runtime.EndAndroidFrame() || posts != 1 { return 8 }
     // Damage is already in native pixels. A density factor must not be
@@ -136,6 +140,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if bounds.x != 1.0 || bounds.y != 1.0 || bounds.width != 4.0 || bounds.height != 2.0 { return 9 }
     Runtime.BeginAndroidFrame()
     if Runtime.AndroidFrameReusable() { return 10 }
+    if FrameSurfaceValid(Runtime.AndroidFramePreviousViewportSnapshot(2, 2, 8, 4)) { return 52 }
     Raster.RasterRoundedRectangle(.{0.0, 0.0, 6.0, 5.0}, 0.0, 0, .{100, 110, 120, 255})
     if !Runtime.EndAndroidFrame() || posts != 2 || buffer[9 * 40 + 11] != cast(u32)0xff786e64 { return 11 }
     Runtime.BeginAndroidFrame()

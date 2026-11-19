@@ -22,6 +22,21 @@ main :: () -> s32 {
         captured.texture.width != 4 || captured.texture.height != 2 { return 2 }
     at := Bitmaps.BitmapHostSlot(captured.texture)
     if at < 0 || Bitmaps.bitmap_images[at].pixels[7] != cast(u32)0x800000ff { return 11 }
+    source[1] = cast(u32)0xff197f30
+    source[2] = cast(u32)0xffd12710
+    source[5] = cast(u32)0x80002c75
+    source[6] = cast(u32)0xffc5ffcc
+    region := Frames.AndroidFrameSnapshotPixels(1, 0, 2, 2)
+    if !FrameSurfaceValid(region) || !region.upright ||
+        region.texture.width != 2 || region.texture.height != 2 { return 12 }
+    region_slot := Bitmaps.BitmapHostSlot(region.texture)
+    if region_slot < 0 { return 13 }
+    item := *Bitmaps.bitmap_images[region_slot]
+    if item.pixels[0] != source[1] || item.pixels[1] != source[2] ||
+        item.pixels[2] != source[5] || item.pixels[3] != source[6] { return 14 }
+    unused FrameSurfaceRelease(region)
+    if FrameSurfaceValid(Frames.AndroidFrameSnapshotPixels(2, 1, 3, 1)) ||
+        FrameSurfaceValid(Frames.AndroidFrameSnapshotPixels(0, -1, 2, 2)) { return 15 }
     copy := FrameSurfaceCopy(captured)
     if !FrameSurfaceValid(copy) || copy.texture.id == captured.texture.id { return 3 }
     // Replacing the live NativeActivity pixels cannot change either snapshot.
@@ -53,6 +68,6 @@ main :: () -> s32 {
     unused CloseSession(session)
     Native.android_pixels = Native.WordsFromPointer(null, 0)
     Native.android_pixel_width = 0; Native.android_pixel_height = 0
-    print("NativeActivity frame snapshots: independent owned pixels, upright Image fade, disposal and owner isolation passed\n")
+    print("NativeActivity frame snapshots: independent owned pixels, strided viewport bounds, upright Image fade, disposal and owner isolation passed\n")
     return 0
 }

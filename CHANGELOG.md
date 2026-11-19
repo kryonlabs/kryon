@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Android viewport snapshots copy only the retained app content for route
+  fades, keeping system-bar pixels out of the transition.
 - Normal Android builds start when a previous UI test left its private
   test-driver folder behind; only builds with the driver use that folder.
 - Animated glTF material primitives skin and upload only their referenced
