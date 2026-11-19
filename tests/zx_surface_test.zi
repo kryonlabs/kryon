@@ -1,0 +1,148 @@
+// Binds the example's real ZX to a deterministic, display-free host.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "hosted_values"
+#import "input_protocol"
+Names :: #import "bundle_names";
+
+using HostValueKind;
+using BundleBackendPolicy;
+
+Event :: struct {
+    kind: s32
+    x: s32
+    y: s32
+    button: s32
+    key: s32
+    modifiers: s32
+    width: s32
+    height: s32
+    text: string
+}
+
+events: [11]Event = .[
+    .{.kind = 0},
+    .{.kind = 4, .x = 40, .y = 55},
+    .{.kind = 5, .x = 40, .y = 55, .button = 1},
+    .{.kind = 6, .x = 40, .y = 55, .button = 1},
+    .{.kind = 5, .x = 40, .y = 99, .button = 1},
+    .{.kind = 6, .x = 40, .y = 99, .button = 1},
+    .{.kind = 9, .text = "éx"},
+    .{.kind = 7, .key = KeyBackspace},
+    .{.kind = 8, .key = KeyBackspace},
+    .{.kind = 3, .width = 280, .height = 160},
+    .{.kind = 1}
+];
+
+Host :: struct {
+    cursor: s32
+    presents: s32
+    wait_ms: s32
+    opened: bool
+    closed: bool
+    label: u64
+    event_type: *u8
+    fields: [9]HostField
+}
+
+EncodeEvent :: (host: *Host, event: Event) -> HostValue {
+    names := string.["kind", "x", "y", "button", "key", "modifiers", "width", "height"]
+    values := s32.[event.kind, event.x, event.y, event.button, event.key, event.modifiers, event.width, event.height]
+    for index: 0..7 {
+        host.fields[index] = .{HostTextData(names[index]), HostScalar("s32", cast(s64)values[index])}
+    }
+    host.fields[8] = .{HostTextData("text"), .{.kind = HostString, .type_name = HostTextData("string"),
+        .data = HostTextData(event.text), .length = cast(usize)event.text.count}}
+    return .{.kind = HostRecord, .type_name = host.event_type, .fields = *host.fields[0], .field_count = 9}
+}
+
+FrameValid :: (host: *Host, args: *HostValue) -> bool {
+    width := args[0].integer
+    height := args[1].integer
+    rgba := args[2]
+    expected_width: s64 = ifx host.cursor >= 10 then 280 else 240
+    expected_height: s64 = ifx host.cursor >= 10 then 160 else 144
+    if width != expected_width || height != expected_height || rgba.kind != HostString ||
+        rgba.length != cast(usize)(width * height * 4) || rgba.data == null { return false }
+    // This corner is untouched by the widgets. Verify all channel offsets.
+    if rgba.data[0] != 248 || rgba.data[1] != 250 || rgba.data[2] != 252 || rgba.data[3] != 255 { return false }
+    hash: u64
+    glyph := false
+    for y: 8..31 {
+        for x: 12..42 {
+            at := (cast(s64)y * width + x) * 4
+            color := rgba.data[at]
+            if color < 128 { glyph = true }
+            hash = hash * 31 + cast(u64)color
+        }
+    }
+    if !glyph { return false }
+    if host.presents == 0 { host.label = hash }
+    // A completed click paints a different count with the same layout.
+    return host.cursor < 4 || hash != host.label
+}
+
+Call :: (context: *void, module: *u8, function: *u8, args: *HostValue, count: s32, reply: *HostValue) -> s32 {
+    unused module
+    host := cast(*Host)context
+    name := TextFromCString(function)
+    if name == "Open" && count == 3 && !host.opened && args[0].kind == HostString &&
+        HostValueText(args[0]) == "Kryon hosted surface" && args[1].integer == 240 && args[2].integer == 144 {
+        host.opened = true
+        reply.* = HostScalar("bool", 1)
+        return 1
+    }
+    if !host.opened || host.closed { return 0 }
+    if name == "Present" && count == 3 && FrameValid(host, args) {
+        host.presents += 1
+        reply.* = HostScalar("bool", 1)
+        return 1
+    }
+    if name == "Event" && count == 1 && args[0].integer == host.wait_ms &&
+        host.presents > 0 && host.cursor < cast(s32)events.count {
+        reply.* = EncodeEvent(host, events[host.cursor])
+        host.cursor += 1
+        return 1
+    }
+    if name == "Close" && count == 0 {
+        host.closed = true
+        reply.kind = HostVoid
+        return 1
+    }
+    print("Unexpected surface call % at event % after % presents\n", name, host.cursor, host.presents)
+    return 0
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 && argc != 3 { return 1 }
+    bundle := OpenBundle(argv[1])
+    if bundle == null { return 2 }
+    defer CloseBundle(bundle)
+    if BundleCapabilities(bundle) != 4 { return 3 }
+    host: Host
+    timed := argc == 3 && TextFromCString(argv[2]) == "timed"
+    host.wait_ms = ifx timed then 250 else 1000
+    bindings: [4]HostBinding
+    for index: 0..3 {
+        abi: BundleCapabilityAbi
+        if ReadBundleCapabilityAbi(bundle, cast(u64)index, *abi) == 0 ||
+            !Names.ModuleName(TextFromCString(abi.module), "zx_surface") { return 4 }
+        function := TextFromCString(abi.function)
+        if function == "Event" { host.event_type = abi.return_type }
+        else if function != "Open" && function != "Present" && function != "Close" { return 5 }
+        bindings[index] = .{abi.module, abi.function, Call, cast(*void)*host}
+    }
+    if host.event_type == null { return 6 }
+    options: BundleInstanceOptions = .{.backend = cast(BundleBackendPolicy)Engine}
+    instance := InstantiateBundleWithOptions(bundle, *bindings[0], 4, *options)
+    if instance == null { return 7 }
+    defer CloseBundleInstance(instance)
+    answer: s64
+    has_answer: s32
+    if RunBundleInstance(instance, *answer, *has_answer) == 0 || has_answer == 0 || answer != 0 { return 8 }
+    expected_frames := ifx timed then 11 else 10
+    if !host.closed || host.cursor != 11 || host.presents != expected_frames { return 9 }
+    print("Hosted surface Engine passed\n")
+    return 0
+}

@@ -202,6 +202,7 @@ open_uri = "src/backend/open_uri.zi"
 play_billing = "src/backend/play_billing.zi"
 # Headless frames: paints into a pixel buffer on every target.
 pixmap = "src/backend/pixmap.zi"
+"host/surface" = "src/backend/zx_surface.zi"
 pixmap_frame = "src/backend/pixmap_frame.zi"
 pixmap_image_owner = "src/backend/pixmap_image_owner.zi"
 pixmap_assets_android = "src/backend/pixmap_assets_android.zi"

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Kryon apps compiled to `.zx` can open a TaijiOS guest window, draw text and
+  widgets, and respond to pointer, keyboard, resize and close events.
 - Android viewport snapshots copy only the retained app content for route
   fades, keeping system-bar pixels out of the transition.
 - Normal Android builds start when a previous UI test left its private

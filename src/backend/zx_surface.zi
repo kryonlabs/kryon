@@ -1,0 +1,173 @@
+// The bundle owns UI state and paints through Kryon's software raster.
+using App :: #import "app_types";
+Pixels :: #import "pixmap";
+Utf8 :: #import "std/utf8";
+#import "std/vec"
+#import "geometry"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "input_protocol"
+#import "input_delivery"
+#import "input_take"
+#import "frame_snapshot"
+
+using FrameStatus;
+
+// A window and a software surface supplied to a portable program by its host.
+host_api :: #system_library "host_api";
+
+Idle :: 0
+Closed :: 1
+Redraw :: 2
+Resized :: 3
+PointerMoved :: 4
+ButtonDown :: 5
+ButtonUp :: 6
+KeyDown :: 7
+KeyUp :: 8
+TextCommitted :: 9
+
+SurfaceEvent :: struct {
+    kind: s32
+    x: s32
+    y: s32
+    button: s32
+    key: s32
+    modifiers: s32
+    width: s32
+    height: s32
+    text: string
+}
+
+Open :: (title: string, width: s32, height: s32) -> bool #reads #foreign host_api;
+Event :: (wait_ms: s32) -> SurfaceEvent #foreign host_api;
+// RGBA8, top down, tightly packed. The host consumes the bytes during the call.
+Present :: (width: s32, height: s32, rgba: string) -> bool #reads #foreign host_api;
+Close :: () #foreign host_api;
+
+// Two four-byte buffers, bounded to 32 MiB combined.
+SURFACE_PIXEL_LIMIT :: 4194304
+
+SurfaceSizeValid :: (width: s32, height: s32) -> bool {
+    return width > 0 && height > 0 && width <= 16384 && height <= 16384 &&
+        cast(s64)width * cast(s64)height <= SURFACE_PIXEL_LIMIT
+}
+
+SurfaceInput :: (input: *FrameInputSnapshot, queue: *InputDelivery, event: SurfaceEvent) {
+    if event.kind >= PointerMoved && event.kind <= ButtonUp {
+        input.pointer.x = cast(float32)event.x
+        input.pointer.y = cast(float32)event.y
+        if event.kind != PointerMoved {
+            down := event.kind == ButtonDown
+            if event.button == 1 {
+                input.pointer.pressed = down && !input.pointer.down
+                input.pointer.released = !down && input.pointer.down
+                input.pointer.down = down
+            } else if event.button == 3 {
+                input.secondary.pressed = down && !input.secondary.down
+                input.secondary.released = !down && input.secondary.down
+                input.secondary.down = down
+            }
+        }
+    } else if event.kind == KeyDown || event.kind == KeyUp {
+        input.modifiers = event.modifiers
+        if event.key > 0 && event.key < cast(s32)input.keys.count {
+            if event.kind == KeyDown {
+                repeat := (input.keys[event.key] & cast(u8)FrameKeyHeld) != 0
+                input.keys[event.key] = cast(u8)(FrameKeyHeld | (ifx repeat then FrameKeyRepeated else FrameKeyPressed))
+                shortcut := (event.modifiers & (KeyModifierControl | KeyModifierAlt)) != 0
+                InputDeliveryKey(queue, event.key, event.modifiers, shortcut)
+            } else {
+                input.keys[event.key] = cast(u8)FrameKeyReleased
+            }
+        }
+    }
+}
+
+SurfaceFrame :: (session: Session, draw: Draw, width: s32, height: s32,
+    input: FrameInputSnapshot, pixels: []u32) -> bool {
+    if !Pixels.PixmapBeginInto(cast(u32)Pixels.PixmapBackground, width, height, pixels) { return false }
+    defer Pixels.PixmapEndInto()
+    unused TreePointerUpdate(session, input.pointer)
+    TreeSecondaryPointerUpdate(session, input.secondary)
+    if !FrameInputBegin(session, input) { return false }
+    defer FrameInputEnd(session)
+    bounds: Rectangle = .{0.0, 0.0, cast(float32)width, cast(float32)height}
+    if BeginFrame(session, cast(u64)1, bounds) != cast(FrameStatus)FrameOk { return false }
+    App.CallDraw(draw, session.slot, session.epoch)
+    return EndFrame(session) == cast(FrameStatus)FrameOk
+}
+
+SurfacePresent :: (width: s32, height: s32, pixels: []u32, rgba: []u8) -> bool {
+    for index: cast(s64)0..pixels.count - 1 {
+        pixel := pixels[index]
+        at := index * 4
+        rgba[at] = cast(u8)(pixel >> 16)
+        rgba[at + 1] = cast(u8)(pixel >> 8)
+        rgba[at + 2] = cast(u8)pixel
+        rgba[at + 3] = cast(u8)255
+    }
+    return Present(width, height, TextView(rgba))
+}
+
+// A positive idle interval redraws on timeout, in addition to input frames.
+Run :: (window: Window, draw: Draw, idle_ms: s32 = 0) -> s32 {
+    width := ifx window.width > 0 then window.width else 960
+    height := ifx window.height > 0 then window.height else 600
+    if !SurfaceSizeValid(width, height) || !Open(window.title, width, height) { return 1 }
+    defer Close()
+    session := SessionOpen()
+    if !SessionValid(session) { return 1 }
+    defer { unused CloseSession(session) }
+
+    pixels: Vec(u32)
+    rgba: Vec(u8)
+    input: FrameInputSnapshot = .{.available = true, .focused = true}
+    queue: InputDelivery
+    event: SurfaceEvent = .{.kind = Redraw}
+    text_at: s32 = 0
+    wait_ms := ifx idle_ms > 0 && idle_ms < 1000 then idle_ms else 1000
+    while event.kind != Closed {
+        if event.kind == Resized {
+            if !SurfaceSizeValid(event.width, event.height) { return 1 }
+            width = event.width
+            height = event.height
+        }
+        if event.kind == TextCommitted {
+            if event.text.count > 2147483647 { return 1 }
+            while text_at < event.text.count && InputDeliveryAccepts(*queue, 0, 1) {
+                unit := Utf8.Decode(event.text, text_at)
+                InputDeliveryText(*queue, cast(s32)unit.value)
+                text_at = unit.after
+            }
+        }
+        if event.kind != Idle || queue.count > 0 || idle_ms > 0 {
+            count := cast(s64)width * cast(s64)height
+            if pixels.count != count && (!VecResizeBounded(pixels, count, SURFACE_PIXEL_LIMIT) ||
+                !VecResizeBounded(rgba, count * 4, SURFACE_PIXEL_LIMIT * 4)) { return 1 }
+            SurfaceInput(*input, *queue, event)
+            key, modifiers := InputDeliveryTake(*queue, session, input.modifiers)
+            unused KeyboardSend(session, key)
+            unused KeyboardModifiersSend(session, modifiers)
+            input.sequence += cast(u64)1
+            if !SurfaceFrame(session, draw, width, height, input, pixels[:]) ||
+                !SurfacePresent(width, height, pixels[:], rgba[:]) { return 1 }
+            input.pointer.pressed = false
+            input.pointer.released = false
+            input.secondary.pressed = false
+            input.secondary.released = false
+            if (event.kind == KeyDown || event.kind == KeyUp) &&
+                event.key > 0 && event.key < cast(s32)input.keys.count {
+                input.keys[event.key] &= cast(u8)FrameKeyHeld
+            }
+        }
+        // Finish delivering a commit before asking for the next key or event.
+        if event.kind == TextCommitted && text_at < event.text.count { continue }
+        text_at = 0
+        if queue.count > 0 { event = .{} }
+        else { event = Event(wait_ms) }
+    }
+    return 0
+}

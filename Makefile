@@ -255,7 +255,28 @@ zx-hosted-test: zx-player zx-canvas
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran \
 		python3 tests/zx_hosted_test.py
 
-test: zx-services-test zx-hosted-test zx-headless-test
+.PHONY: zx-surface-test
+zx-surface-test: project-toolchain
+	mkdir -p build/scratch/zx-surface
+	$(ZIRAN_BIN) bundle --project --bind-host pixmap --entry hosted_surface:main \
+		-o build/scratch/zx-surface/hosted_surface.zx examples/hosted_surface.zi
+	$(ZIRAN_BIN) build --project --target=c --root tests --entry zx_surface_test:main --prune-stale \
+		-o build/scratch/zx-surface/host tests/zx_surface_test.zi
+	$(CC) -O2 -ffunction-sections -fdata-sections -Wl,--gc-sections \
+		-I$(ZIRAN_INCLUDE) -Ibuild/scratch/zx-surface/host build/scratch/zx-surface/host/*.c \
+		$(ZIRAN_BUILD_DIR)/libziran.a -lm -lpthread -o build/scratch/zx-surface/test
+	build/scratch/zx-surface/test build/scratch/zx-surface/hosted_surface.zx > build/scratch/zx-surface/result || \
+		{ cat build/scratch/zx-surface/result; exit 1; }
+	cat build/scratch/zx-surface/result
+	grep -Fx 'click 1' build/scratch/zx-surface/result
+	grep -Fx 'text éx' build/scratch/zx-surface/result
+	grep -Fx 'text é' build/scratch/zx-surface/result
+	grep -Fx 'surface 280 x 160' build/scratch/zx-surface/result
+	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_TIMED --entry hosted_surface:main \
+		-o build/scratch/zx-surface/timed.zx examples/hosted_surface.zi
+	build/scratch/zx-surface/test build/scratch/zx-surface/timed.zx timed
+
+test: zx-services-test zx-hosted-test zx-headless-test zx-surface-test
 
 .PHONY: zx-canvas-test zx-android-test gallery-zx gallery-zx-test
 gallery-zx: project-toolchain
@@ -365,7 +386,7 @@ check: all ziran-test header-check docs-check project-test public-surface-check 
 # CI runs make test as parallel jobs on separate machines. The hosts shard takes
 # every test target not named here, so a new one cannot miss CI.
 CI_SHARD_ZX := renderer-consumer-test zx-native-test zx-reload-test zx-window-test zx-services-test zx-hosted-test \
-	zx-headless-test native-text-test native-accessibility-test
+	zx-headless-test zx-surface-test native-text-test native-accessibility-test
 CI_SHARD_CHECK := check
 CI_SHARD_WEB := canvas-test canvas-project-test program-entry-project-test zx-canvas-test \
 	page-route-project-test

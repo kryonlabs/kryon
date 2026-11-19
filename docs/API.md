@@ -1106,6 +1106,11 @@ non-graphical Ziran programs. A program that does not import Kryon uses no
 Kryon code. A portable `.zx` links only imported modules and needs a host
 binding for any platform effect they call.
 
+To run a portable `.zx` as a windowed app in a host such as TaijiOS, use
+[`kryon/host/surface`](BACKENDS.md#hosted-zx-software-surface). The bundle runs
+ordinary Kryon widgets with its own session and software raster. The host
+supplies the window, pixel presentation and ordered input events.
+
 An application runs another `.zx` inside its own window with
 [`hosted_app`](../src/backend/hosted_app.zi): `HostedAppOpen` takes the
 bundle's bytes, `HostedAppStart` asks the host about every capability the

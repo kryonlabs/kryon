@@ -104,6 +104,10 @@ full website from fixed source revisions before publishing.
 
 ## Current status
 
+An app compiled to `.zx` can use Kryon's
+[hosted software surface](docs/BACKENDS.md#hosted-zx-software-surface) for a
+guest window with text, pointer and keyboard input, and resize events.
+
 The [feature matrix](docs/FEATURE_MATRIX.md) records package and host coverage.
 The Canvas2D browser host is covered by private headless Chromium, WebAudio,
 and Wasm tests. See [accessibility](docs/ACCESSIBILITY.md) for platform coverage.

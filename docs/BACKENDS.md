@@ -79,6 +79,77 @@ The `image_preview` module also supplies `ImageCompress` for smaller upright
 JPEG copies. It keeps transparent and animated originals intact and returns
 no replacement when encoding would increase file size.
 
+## Hosted ZX software surface
+
+Import `kryon/host/surface` in a portable app and call `Run(window, draw)`
+with the same `Window` and `Draw` types as `kryon/app`. A `Frame` identifies
+the current session by slot and epoch. The bundle runs the widget tree,
+layout, hit testing, paint queue and pixmap raster, including text measurement
+and rasterization with Kryon's bundled fonts. Compile ordinary widget imports
+and bind their raster calls to `pixmap` inside the bundle.
+
+From the Kryon checkout, using canonical Ziran:
+
+```sh
+mkdir -p build/scratch/zx-surface
+ziran bundle --project --bind-host pixmap --entry hosted_surface:main \
+  -o build/scratch/zx-surface/hosted_surface.zx examples/hosted_surface.zi
+```
+
+A host supplies typed `HostBinding` callbacks for the four capabilities in
+[`zx_surface.zi`](../src/backend/zx_surface.zi). Bind the exact module name
+from the bundle's capability metadata. The module is `zx_surface` in the
+in-tree build and may be package-qualified in a consumer build.
+For a consumer project, use `--bind-host <kryon-package-id>_pixmap`, where
+`<kryon-package-id>` is the Kryon package's `id` in the project's `ziran.lock`.
+
+| Function | Signature | Host behavior |
+| --- | --- | --- |
+| `Open` | `(title: string, width: s32, height: s32) -> bool` | Create one hidden window per instance. The dimensions establish the initial pixel viewport. |
+| `Event` | `(wait_ms: s32) -> SurfaceEvent` | Return one event in FIFO order. Wait at most `wait_ms` when the queue is empty. Zero polls immediately. |
+| `Present` | `(width: s32, height: s32, rgba: string) -> bool` | Consume or copy exactly `width * height * 4` bytes during the call. A successful first frame shows the window. |
+| `Close` | `()` | Release the window and its input queue. Closing is idempotent. The host also releases them when the instance exits or traps. |
+
+`Present` uses tightly packed top-down RGBA8 with alpha 255. Its `string`
+is a byte span and can contain zeros. If a resize arrives during painting, the
+host can discard the stale frame and return success while delivering the resize
+event for the next frame. The app exits with status 1 if `Open` or `Present`
+fails or a resize provides unsupported dimensions. A close request exits
+with status 0. The bundle accepts up to 4,194,304 pixels per surface and up to
+16,384 pixels per dimension.
+
+`SurfaceEvent` has signed 32-bit fields `kind`, `x`, `y`, `button`, `key`,
+`modifiers`, `width` and `height`, plus `text: string`. Set unused fields to
+zero or the empty string. Return the event's declared record type from the
+capability metadata.
+
+| `kind` | Meaning | Payload |
+| --- | --- | --- |
+| 0 | Idle or timeout | |
+| 1 | Close requested or window lost | |
+| 2 | Redraw | |
+| 3 | Resize | Positive `width`, `height` in pixels |
+| 4 | Pointer move | Window-local `x`, `y` in pixels |
+| 5, 6 | Button down, up | `x`, `y`, `button` (1 left, 2 middle, 3 right) |
+| 7, 8 | Key down or repeat, up | `key`, `modifiers` |
+| 9 | Committed text | UTF-8 `text` |
+
+Use the portable [key codes](../src/ui/input_protocol.zi), including uppercase
+ASCII for letters and modifier bits 1 Shift, 2 Control and 4 Alt. Deliver text
+as a commit independently of the key press. Kryon routes left and right
+buttons through its primary and secondary widget input. Frames run on input,
+expose and resize. Pass a positive `idle_ms` to also redraw on timeouts at an
+interval of up to one second. For example, a stopwatch can redraw every 250 ms
+and read elapsed time from its host clock. Platform services such as clocks,
+clipboard and live IME composition require additional capabilities.
+
+`make zx-surface-test` builds and runs the example in the Ziran instruction
+engine with a typed host. It verifies the RGBA bytes, rendered count changing
+after a click, UTF-8 editing, resize, close and opt-in timeout redraw. An
+emulator can launch the same bundle by registering the four capabilities. In
+a TaijiOS window-manager context with the surface provider installed, run
+`zxrun -w /path/to/hosted_surface.zx` with the bundle under the guest root.
+
 ## Experimental SDL3 GPU renderer
 
 Custom Linux x86_64 GNU hosts can import `kryon/pixmap_sdl3` and
