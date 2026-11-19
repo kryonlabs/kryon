@@ -49,6 +49,12 @@ SceneGpuFrame :: struct {
  submit_ms: float64; readback_ms: float64; conversion_ms: float64
  prepare_ms: float64; shadow_ms: float64; draw_ms: float64
  draw_calls: s32; shadow_passes: s64
+ profile: SceneGpuProfile
+}
+SceneGpuProfile :: struct {
+ shader_setup_ms: float64; texture_upload_ms: float64
+ gpu_completion_ms: float64; pixel_transfer_ms: float64; image_copy_ms: float64
+ direct_resolve: bool
 }
 SceneGpuResources :: struct {
  gpu_bytes: s64; cpu_bytes: s64
@@ -69,7 +75,7 @@ GpuTransfer :: struct {
  buffer: u32; bytes: s64; fence: *void
  framebuffer: u32; texture: u32
  request_id: u64; camera: SceneCamera; width: s32; height: s32
- opaque: bool; frame: SceneGpuFrame; submitted_at: float64
+ opaque: bool; straight: bool; frame: SceneGpuFrame; submitted_at: float64; fence_at: float64
 }
 GpuVertex :: struct { p: [3]float32; n: [3]float32; c: [3]float32; uv: [2]float32; face: [3]float32 }
 GpuDraw :: struct { first: s32; count: s32; mesh: s32; node: s32; receive: bool; cast_shadow: bool; shown: bool; origin: Vector3 }
@@ -116,12 +122,20 @@ SceneGpuContext :: struct {
  bindings: Vec(GpuBindingCheck)
  resources: SceneGpuResources
  transfers: [2]GpuTransfer; last_request: u64
+ direct_readback: bool
+ profile_enabled: bool; texture_upload_ms: float64
  shadow_geometry: s64
  geometry_valid: bool
  // The snapshot was taken of a scene whose geometry was frozen.
  snapshot_frozen: bool
  snapshot_counts: [7]s64
  log: [2048]u8
+}
+
+// Profiling a synchronous read waits explicitly to separate completion from
+// transfer. Async completion still uses zero-timeout polls.
+SceneGpuSetProfiling :: (gpu: *SceneGpuContext, enabled: bool) {
+ gpu.profile_enabled=enabled
 }
 
 #if OS != .WEB || #defined(KRYON_WEBGL2) {
@@ -152,6 +166,9 @@ SceneGpuProbe :: (gpu: *SceneGpuContext)->SceneGpuCapabilities {
  CopyLabel(gpu.capabilities.renderer[: ],G.GetString(0x1f01))
  CopyLabel(gpu.capabilities.version[: ],G.GetString(0x1f02))
  CopyLabel(gpu.capabilities.vendor[: ],G.GetString(0x1f00))
+ #if OS == .ANDROID && #defined(__arm__) {
+  gpu.direct_readback=AndroidText.TextFromCString(*gpu.capabilities.renderer[0])=="PowerVR Rogue GE8320"
+ }
  G.GetInteger(0x0d33,*gpu.capabilities.max_texture_size)
  G.GetInteger(0x8872,*gpu.capabilities.texture_units)
  maximum: s32;G.GetInteger(0x8d57,*maximum)
@@ -208,18 +225,35 @@ SceneGpuRender :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,image
  frame:=RenderTarget(gpu,scene,camera)
  if !frame.ok {return frame}
  converting:=Now()
- if !StraightReadbackTarget(gpu,*gpu.straight_framebuffer,*gpu.straight_texture) {return .{diagnostic="straight RGBA readback target unavailable"}}
+ opaque_direct:=gpu.direct_readback&&scene.background.a>0
+ if opaque_direct {G.BindFramebuffer(0x8d40,gpu.resolve)}
+ else if !StraightReadbackTarget(gpu,*gpu.straight_framebuffer,*gpu.straight_texture) {return .{diagnostic="straight RGBA readback target unavailable"}}
  submitted:=Now()
  G.PixelStore(0x0d05,1);G.BindBuffer(0x88eb,0)
+ transfer:=submitted
+ if gpu.profile_enabled {
+  finish:=Now()
+  G.Finish()
+  transfer=Now()
+  frame.profile.gpu_completion_ms=transfer-finish
+ }
  G.ReadPixels(0,0,gpu.width,gpu.height,0x1908,0x1401,cast(*void)*gpu.readback[0])
  read:=Now()
  if G.GetError()!=0 {return .{diagnostic="GLES render/readback failed"}}
  // Commit only after successful GL completion, preserving the previous Image
- // on GPU failure. A single contiguous copy replaces row flips/alpha scans.
- if !CopyReadback(gpu,image,bytes) {return .{diagnostic="Image allocation failure"}}
+ // on GPU failure. Opaque resolves need only a copy in reverse row order.
+ copy:=ifx gpu.profile_enabled then Now() else read
+ copied:=ifx opaque_direct then ConvertReadback(gpu,image,true) else CopyReadback(gpu,image,bytes)
+ if !copied {return .{diagnostic="Image allocation failure"}}
+ published:=Now()
  gpu.resources.frames+=1
  frame.submit_ms+=submitted-converting
- frame.readback_ms=read-submitted;frame.conversion_ms=submitted-converting+Now()-read
+ frame.readback_ms=read-submitted;frame.conversion_ms=submitted-converting+published-read
+ if gpu.profile_enabled {
+  frame.profile.direct_resolve=opaque_direct
+  frame.profile.pixel_transfer_ms=read-transfer
+  frame.profile.image_copy_ms=published-copy
+ }
  return frame
 }
 
@@ -229,6 +263,7 @@ SceneGpuRender :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,image
 #if OS != .WEB || #defined(KRYON_WEBGL2) {
 RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->SceneGpuFrame {
  start:=Now()
+ gpu.texture_upload_ms=0.0
  if !PrepareGeometry(gpu,scene) { return .{diagnostic="invalid geometry or allocation failure"} }
  for at: 0..gpu.programs.count-1 {
   gpu.programs[at].used=false
@@ -238,6 +273,7 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
  defer Sweep(gpu)
  VecClear(gpu.bindings)
  shadow_features:=ShadowFeatures(scene)
+ setup:=ifx gpu.profile_enabled then Now() else 0.0
  for at: 0..scene.meshes.count-1 {
   m:=scene.meshes[at].material
   if m.shader!=null {
@@ -246,6 +282,7 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
   }
   if ProgramFor(gpu,m.shader,MaterialFeatures(m,camera.perspective)|shadow_features)==null { return .{diagnostic="material GLSL program rejected"} }
  }
+ shader_setup_ms:=ifx gpu.profile_enabled then Now()-setup else 0.0
  BindVertices(gpu)
  prepared:=Now();shadows_before:=gpu.resources.shadow_renders
  if !RenderShadows(gpu,scene) { return .{diagnostic="shadow framebuffer unavailable"} }
@@ -285,7 +322,8 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
  if G.GetError()!=0 {return .{diagnostic="GLES render/resolve failed"}}
  return .{ok=true,accelerated=true,submit_ms=submitted-start,
   prepare_ms=prepared-start,shadow_ms=shadowed-prepared,draw_ms=submitted-shadowed,
-  draw_calls=draw_calls,shadow_passes=gpu.resources.shadow_renders-shadows_before}
+  draw_calls=draw_calls,shadow_passes=gpu.resources.shadow_renders-shadows_before,
+  profile=.{shader_setup_ms=shader_setup_ms,texture_upload_ms=gpu.texture_upload_ms}}
 }
 // Use integer arithmetic on the quantized resolved texel, matching the CPU
 // formula exactly even at alpha 1, 127, 128 and 254. This pass also flips rows.
@@ -308,22 +346,26 @@ DropReadbackTarget :: (framebuffer: *u32,texture: *u32) {
  G.DeleteFramebuffers(1,framebuffer);G.DeleteTextures(1,texture)
  framebuffer[0]=0;texture[0]=0
 }
-StraightReadbackTarget :: (gpu: *SceneGpuContext,framebuffer: *u32,texture: *u32)->bool {
- if gpu.straight_program==0 {
-  gpu.straight_program=LoadSceneProgram(gpu,GpuProbeVertex,GpuStraightFragment)
-  if gpu.straight_program==0 {return false}
- }
+BindReadbackTarget :: (gpu: *SceneGpuContext,framebuffer: *u32,texture: *u32)->bool {
  if framebuffer[0]==0 {
   G.GenFramebuffers(1,framebuffer)
   G.BindFramebuffer(0x8d40,framebuffer[0])
   texture[0]=G.Texture(gpu.width,gpu.height,0x8058,0x1908,0x1401,null)
   G.FramebufferTexture(0x8d40,0x8ce0,0x0de1,texture[0],0)
-  if G.CheckFramebuffer(0x8d40)!=0x8cd5 {
+  status:=G.CheckFramebuffer(0x8d40);err:=G.GetError()
+  if status!=0x8cd5||err!=0 {
    DropReadbackTarget(framebuffer,texture)
-   unused G.GetError()
    return false
   }
  } else {G.BindFramebuffer(0x8d40,framebuffer[0])}
+ return true
+}
+StraightReadbackTarget :: (gpu: *SceneGpuContext,framebuffer: *u32,texture: *u32)->bool {
+ if gpu.straight_program==0 {
+  gpu.straight_program=LoadSceneProgram(gpu,GpuProbeVertex,GpuStraightFragment)
+  if gpu.straight_program==0 {return false}
+ }
+ if !BindReadbackTarget(gpu,framebuffer,texture) {return false}
  G.Viewport(0,0,gpu.width,gpu.height)
  G.Disable(0x0b71);G.Disable(0x0be2);G.Disable(0x0b44);G.Disable(0x0bd0)
  G.UseProgram(gpu.straight_program)
@@ -395,17 +437,29 @@ SceneGpuSubmit :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,width
  if index<0 {return .{ok=true,busy=true}}
  slot:=*gpu.transfers[index];bytes:=cast(s64)width*height*4
  start:=Now()
+ slot.opaque=scene.background.a>0
+ slot.straight=false
+ // Prepare a spare before drawing so allocation cannot stall this resolve.
+ // If the allocation fails, the existing PBO path still works.
+ direct_opaque:=gpu.direct_readback&&slot.opaque&&BindReadbackTarget(gpu,*slot.framebuffer,*slot.texture)
+ if direct_opaque {slot.bytes=bytes}
  frame:=RenderTarget(gpu,scene,camera)
  if !frame.ok {return .{diagnostic=frame.diagnostic}}
- #if OS == .ANDROID && #defined(__arm__) {
-  // Mapped pixel pack memory is slow to copy on this driver. Each pending
-  // frame gets a private straight-RGBA texture and is read after its fence.
-  if AndroidText.TextFromCString(*gpu.capabilities.renderer[0])=="PowerVR Rogue GE8320" {
-   if StraightReadbackTarget(gpu,*slot.framebuffer,*slot.texture) {
-    if slot.buffer!=0 {G.DeleteBuffers(1,*slot.buffer);slot.buffer=0}
-   } else {DropReadbackTarget(*slot.framebuffer,*slot.texture)}
-  }
+ if direct_opaque {
+  // The slot owns this resolve until its fence signals. Give later renders
+  // the slot's spare so they cannot overwrite the pending frame.
+  spare_framebuffer:=slot.framebuffer;spare_texture:=slot.texture
+  slot.framebuffer=gpu.resolve;slot.texture=gpu.resolved
+  gpu.resolve=spare_framebuffer;gpu.resolved=spare_texture
+ } else if gpu.direct_readback&&!slot.opaque {
+  // Keep the straight-alpha path for transparent output on PowerVR, where
+  // mapped pixel pack memory is slow to copy.
+  slot.straight=StraightReadbackTarget(gpu,*slot.framebuffer,*slot.texture)
+  if !slot.straight {DropReadbackTarget(*slot.framebuffer,*slot.texture)}
+ } else if slot.framebuffer!=0 {
+  DropReadbackTarget(*slot.framebuffer,*slot.texture)
  }
+ if slot.framebuffer!=0&&slot.buffer!=0 {G.DeleteBuffers(1,*slot.buffer);slot.buffer=0}
  if slot.framebuffer==0 {
   if slot.buffer==0 {G.GenBuffers(1,*slot.buffer);slot.bytes=0}
   G.BindBuffer(0x88eb,slot.buffer)
@@ -415,6 +469,10 @@ SceneGpuSubmit :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,width
   G.ReadPixels(0,0,width,height,0x1908,0x1401,null)
  }
  slot.bytes=bytes
+ if gpu.profile_enabled {
+  frame.profile.direct_resolve=direct_opaque
+  slot.fence_at=Now()
+ } else {slot.fence_at=0.0}
  slot.fence=G.FenceSync(0x9117,0)
  G.Flush()
  if slot.fence==null||G.GetError()!=0 {
@@ -423,7 +481,7 @@ SceneGpuSubmit :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,width
   return .{diagnostic=gpu.capabilities.async_diagnostic}
  }
  slot.request_id=request_id;slot.camera=camera;slot.width=width;slot.height=height
- slot.opaque=scene.background.a>0;slot.frame=frame;slot.submitted_at=start
+ slot.frame=frame;slot.submitted_at=start
  slot.frame.submit_ms=Now()-start
  gpu.last_request=request_id;gpu.resources.submitted_frames+=1
  return .{ok=true,queued=true,request_id=request_id,camera=camera,width=width,height=height,frame=slot.frame}
@@ -444,6 +502,7 @@ SceneGpuPoll :: (gpu: *SceneGpuContext,image: *Image)->SceneGpuAsyncResult {
  status:=G.ClientWaitSync(slot.fence,0,0)
  if status==0x911b {return .{ok=true}}
  if status!=0x911a&&status!=0x911c {return .{diagnostic="asynchronous fence wait failed"}}
+ completion:=ifx slot.fence_at>0.0 then Now()-slot.fence_at else 0.0
  if image.width!=slot.width||image.height!=slot.height {return .{diagnostic="completed frame size differs from output Image"}}
  if !VecResizeBounded(gpu.readback,slot.bytes,slot.bytes) {return .{diagnostic="readback allocation failed"}}
  start:=Now()
@@ -460,11 +519,17 @@ SceneGpuPoll :: (gpu: *SceneGpuContext,image: *Image)->SceneGpuAsyncResult {
   if G.UnmapBuffer(0x88eb)==0||G.GetError()!=0 {return .{diagnostic="completed pixel pack mapping invalid"}}
  }
  read:=Now()
- copied:=ifx slot.framebuffer!=0 then CopyReadback(gpu,image,slot.bytes) else ConvertReadback(gpu,image,slot.opaque)
+ copied:=ifx slot.straight then CopyReadback(gpu,image,slot.bytes) else ConvertReadback(gpu,image,slot.opaque)
  if !copied {return .{diagnostic="Image allocation failure"}}
+ published:=Now()
  result: SceneGpuAsyncResult=.{ok=true,completed=true,request_id=slot.request_id,camera=slot.camera,
-  width=slot.width,height=slot.height,frame=slot.frame,latency_ms=Now()-slot.submitted_at}
- result.frame.readback_ms=read-start;result.frame.conversion_ms=Now()-read
+  width=slot.width,height=slot.height,frame=slot.frame,latency_ms=published-slot.submitted_at}
+ result.frame.readback_ms=read-start;result.frame.conversion_ms=published-read
+ if slot.fence_at>0.0 {
+  result.frame.profile.gpu_completion_ms=completion
+  result.frame.profile.pixel_transfer_ms=result.frame.readback_ms
+  result.frame.profile.image_copy_ms=result.frame.conversion_ms
+ }
  G.DeleteSync(slot.fence);slot.fence=null;slot.request_id=0
  gpu.resources.frames+=1
  return result
@@ -565,6 +630,7 @@ SceneGpuRelease :: (gpu: *SceneGpuContext) {
  }
  for at:0..1 {gpu.transfers[at]=GpuTransfer.{}}
  gpu.last_request=0
+ gpu.direct_readback=false;gpu.texture_upload_ms=0.0
  gpu.context=null;gpu.display=null;gpu.attempted=false
  gpu.buffer=0;gpu.shadow_program=0;gpu.straight_program=0;gpu.dfg=0;gpu.shadow_geometry=0
  gpu.width=0;gpu.height=0
@@ -1212,7 +1278,9 @@ TextureFor :: (gpu: *SceneGpuContext,unit: s32,pixels: *u8,width: s32,height: s3
    t.used=true
    if cache_key!=0&&t.cache_key==cache_key {return t.id}
    if t.bytes.count==bytes&&G.CompareMemory((ifx t.bytes.count>0 then cast(*void)*t.bytes[0] else null),cast(*void)pixels,cast(usize)bytes)==0 {return t.id}
+   upload:=ifx gpu.profile_enabled then Now() else 0.0
    G.BindTexture(0x0de1,t.id);G.TexImage(0x0de1,0,0x8058,width,height,0,0x1908,0x1401,cast(*void)pixels)
+   if gpu.profile_enabled {gpu.texture_upload_ms+=Now()-upload}
    if cache_key==0 {
     if !VecResize(t.bytes,bytes) {return 0}
     unused G.CopyMemory((ifx t.bytes.count>0 then cast(*void)*t.bytes[0] else null),cast(*void)pixels,cast(usize)bytes)
@@ -1226,7 +1294,9 @@ TextureFor :: (gpu: *SceneGpuContext,unit: s32,pixels: *u8,width: s32,height: s3
   if !VecResize(value.bytes,bytes) {return 0}
   unused G.CopyMemory(cast(*void)*value.bytes[0],cast(*void)pixels,cast(usize)bytes)
  } else {VecFree(value.bytes)}
+ upload:=ifx gpu.profile_enabled then Now() else 0.0
  value.id=G.Texture(width,height,0x8058,0x1908,0x1401,cast(*void)pixels)
+ if gpu.profile_enabled {gpu.texture_upload_ms+=Now()-upload}
  id:=value.id
  gpu.resources.texture_uploads+=1
  return id

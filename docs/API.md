@@ -2096,6 +2096,15 @@ dimensions and returns `SceneGpuFrame` with `ok`, `accelerated`, `diagnostic`
 and submission/readback/conversion timings. Failure leaves the output untouched.
 `SceneGpuRenderOrCPU` explicitly permits the full-quality CPU renderer on
 failure, setting `accelerated=false`; inspect that flag when measuring GPU work.
+`SceneGpuSetProfiling(context, true)` adds stage timings in `frame.profile`.
+`shader_setup_ms` covers material program lookup, binding validation and shader
+setup. `texture_upload_ms` measures the driver calls that upload scene textures.
+For synchronous readback, `gpu_completion_ms` measures the explicit finish
+before `pixel_transfer_ms` measures the read. For async readback it measures
+the elapsed time from fence submission until a poll first sees it ready, so it
+includes polling delay. `image_copy_ms` measures publication to the owning
+Image, including any required pixel conversion. Profiling is off by default.
+`direct_resolve` identifies a frame that skipped the conversion draw.
 
 `SceneGpuCapabilities.async_available` separately probes pixel pack buffer
 readback, fences and read mapping. `async_diagnostic` explains unavailability;
@@ -2115,7 +2124,12 @@ work as the latest camera. The image must already have the completed size.
 Poll copies only a signaled buffer, validates its read mapping and then updates
 the reusable Image. One CPU staging buffer is shared with synchronous readback.
 Synchronous render can safely interleave while both transfer slots are pending.
-Async queues add at most `2 * width * height * 4` GPU buffer bytes.
+Async queues add at most `2 * width * height * 4` bytes of GPU transfer storage.
+On ARMv7 PowerVR Rogue GE8320, each pending opaque frame owns the resolved
+framebuffer until its fence signals. The renderer reads it directly and copies
+the rows into the Image in top-to-bottom order. Translucent frames still use
+straight-alpha conversion. The Android Pixmap presenter takes the same CPU
+Image pixels in both cases.
 
 `SceneGpuCancel` discards pending IDs and releases the transfer slots. Resize,
 release and context loss also discard them. Cancellation/resize/release may
@@ -2156,6 +2170,10 @@ Run the explicit native targets `make shader-glsl-test` and
 `make scene-gpu-test` through `build-queue --`. The ordinary public-surface
 local tests also compile and execute scene, material and translator imports as
 a separate package consumer in native and portable forms without linking EGL.
+Run `build-queue -- python3 tests/scene_gpu_test.py --readback-profile` to
+compare the two synchronous copy paths on a 2527×1423 opaque frame and verify
+their pixel hashes. The reported renderer identifies whether the run used a
+hardware or software GLES driver.
 
 ### Owned image pixels for scene textures
 

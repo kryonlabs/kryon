@@ -7,9 +7,6 @@ G :: #import, file "../src/backend/scene_gpu_gl.zi";
 #import "std/image"
 #import "std/vec"
 #import "std/text_tools"
-#if OS == .ANDROID && #defined(__arm__) {
- AndroidText :: #import "std/byte_text_linux";
-}
 libc :: #system_library "c";
 AsyncPause :: (microseconds: u32)->s32 #foreign libc "usleep";
 AsyncFlush :: (stream: *void)->s32 #foreign libc "fflush";
@@ -37,6 +34,7 @@ AsyncTests :: ()->bool {
  caps:=SceneGpuProbe(*gpu)
  if !caps.available||!caps.async_available {print("Async capability failed % %\n",caps.diagnostic,caps.async_diagnostic);return false}
  print("Async GPU % samples %\n",TextView(caps.renderer[:]),caps.samples)
+ SceneGpuSetProfiling(*gpu,true)
  scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
  program: ShaderProgram
  code: [3]ShaderInstruction=.[.{op=.ShaderUniform,dest=4,slot=0},.{op=.ShaderMultiply,dest=5,a=4,b=0},.{op=.ShaderOutput,a=5}]
@@ -54,8 +52,12 @@ AsyncTests :: ()->bool {
  defer VecFree(image.pixels);defer VecFree(sync.pixels);defer VecFree(expected.pixels)
  unready: s32
  for batch:0..15 {
+  // Run the PowerVR framebuffer path through real EGL on every test host.
+  gpu.direct_readback=batch%2==0
+  translucent_second:=batch%4!=2
   hashes: [2]u64;cameras: [2]SceneCamera
   for slot:0..1 {
+   scene.background=.{20,42,73,ifx slot==0||!translucent_second then cast(u8)255 else cast(u8)0}
    id:=cast(u64)(batch*2+slot+1)
    camera.position.x=cast(float64)(batch*2+slot)*0.006
    camera.shift_x=cast(float64)(batch%3-1)*0.45
@@ -74,6 +76,7 @@ AsyncTests :: ()->bool {
   busy:=SceneGpuSubmit(*gpu,*scene,camera,160,100,1000)
   if !busy.ok||!busy.busy||busy.queued||AsyncHash(*image)!=before||SceneGpuMemoryUsage(*gpu).pending_frames!=2 {return false}
   // Mutate the scene and render synchronously while both transfers are queued.
+  scene.background.a=0
   uniforms[0].x=0.95;SetPosition(*scene,a,0.4,0,0)
   scene.positions[0].x+=0.0001
   if !SceneGpuRender(*gpu,*scene,camera,*sync).ok {return false}
@@ -93,16 +96,19 @@ AsyncTests :: ()->bool {
   if !empty.ok||empty.completed||AsyncHash(*image)!=stable {return false}
   r:=SceneGpuMemoryUsage(*gpu)
   if r.pending_frames!=0||r.fences!=0 {return false}
-  #if OS == .ANDROID && #defined(__arm__) {
-   if AndroidText.TextFromCString(*caps.renderer[0])=="PowerVR Rogue GE8320" {
-    first_target:=gpu.transfers[0].framebuffer;second_target:=gpu.transfers[1].framebuffer
-    if first_target==0||second_target==0||first_target==second_target||r.buffers!=1||r.framebuffers!=5 {return false}
-    if batch==0 {print("PowerVR async slots use distinct readback framebuffers\n")}
-   } else if r.buffers!=3 {return false}
-  } else {
-   if r.buffers!=3 {return false}
+  if gpu.direct_readback {
+   first_target:=gpu.transfers[0].framebuffer;second_target:=gpu.transfers[1].framebuffer
+   if first_target==0||second_target==0||first_target==second_target||first_target==gpu.resolve||second_target==gpu.resolve||
+    gpu.transfers[0].straight||gpu.transfers[1].straight!=translucent_second||r.buffers!=1||r.framebuffers!=5 {return false}
+   if !first.frame.profile.direct_resolve||second.frame.profile.direct_resolve==translucent_second {return false}
+   if first.frame.profile.gpu_completion_ms<=0.0||first.frame.profile.pixel_transfer_ms<=0.0||first.frame.profile.image_copy_ms<=0.0 {return false}
+   if batch==0 {print("Opaque resolve ownership and transparent conversion use distinct fenced framebuffers\n")}
+  } else if r.buffers!=3 {
+   return false
   }
  }
+ gpu.direct_readback=true
+ scene.background=.{20,42,73,255}
  // The real large target exercises an unfinished fence without sync interleave.
  large:=NewImage(1280,800);defer VecFree(large.pixels)
  before_large:=AsyncHash(*large)
@@ -137,6 +143,8 @@ AsyncTests :: ()->bool {
  lost:=SceneGpuPoll(*gpu,*image)
  if lost.ok||lost.completed||SceneGpuMemoryUsage(*gpu).gpu_bytes!=0 {return false}
  for cycle:0..23 {
+  if !SceneGpuProbe(*gpu).available {return false}
+  gpu.direct_readback=true
   if !SceneGpuSubmit(*gpu,*scene,camera,80,50,1).queued {return false}
   if !SceneGpuSubmit(*gpu,*scene,camera,80,50,2).queued {return false}
   SceneGpuRelease(*gpu);SceneGpuRelease(*gpu)
@@ -146,7 +154,8 @@ AsyncTests :: ()->bool {
  }
  gpu.attempted=true;gpu.capabilities.diagnostic="test lacks full 4x coverage"
  if SceneGpuSubmit(*gpu,*scene,camera,80,50,1).ok {return false}
- if !SceneGpuRenderOrCPU(*gpu,*scene,camera,*image).ok {return false}
+ fallback:=SceneGpuRenderOrCPU(*gpu,*scene,camera,*image)
+ if !fallback.ok||fallback.accelerated||fallback.profile.direct_resolve {return false}
  SceneGpuRelease(*gpu)
  if !SceneGpuProbe(*gpu).available {return false}
  gpu.capabilities.async_available=false;gpu.capabilities.async_diagnostic="test lacks PBO mapping"
@@ -174,9 +183,14 @@ ReadbackAlphaParity :: ()->bool {
  camera:=OrthographicCamera(-1.0,1.0,1.0,-1.0,0.1,10.0);camera.position=.{0.0,0.0,3.0}
  sync:=NewImage(256,3);mapped:=NewImage(256,3)
  defer VecFree(sync.pixels);defer VecFree(mapped.pixels)
+ if !SceneGpuProbe(*gpu).available {return false}
  for request:1..2 {
   scene.background=.{48,96,144,ifx request==1 then cast(u8)255 else cast(u8)0}
+  gpu.direct_readback=false
   if !SceneGpuRender(*gpu,*scene,camera,*sync).ok {return false}
+  gpu.direct_readback=true
+  if !SceneGpuRender(*gpu,*scene,camera,*mapped).ok||AsyncHash(*sync)!=AsyncHash(*mapped) {return false}
+  gpu.direct_readback=request==1
   if !SceneGpuSubmit(*gpu,*scene,camera,256,3,cast(u64)request).queued||!AsyncWait(*gpu,*mapped).completed {return false}
   for at:0..sync.pixels.count-1 {
    if sync.pixels[at]!=mapped.pixels[at] {print("readback alpha mismatch byte % sync % mapped %\n",at,sync.pixels[at],mapped.pixels[at]);return false}
@@ -186,5 +200,52 @@ ReadbackAlphaParity :: ()->bool {
  print("GPU readbacks match for opaque clears and all 256 alpha values\n")
  return true
 }
+
+// Use the Balcony output size with textured geometry and an opaque clear.
+// Alternate the two sync paths on the same warmed context and verify pixels
+// outside the sampled stages. The async path is covered by AsyncTests.
+ReadbackProfile :: ()->bool {
+ gpu: SceneGpuContext;defer SceneGpuRelease(*gpu)
+ caps:=SceneGpuProbe(*gpu)
+ if !caps.available {print("GPU unavailable %\n",caps.diagnostic);return false}
+ print("Readback GPU %\n",TextView(caps.renderer[:]))
+ SceneGpuSetProfiling(*gpu,true)
+ scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
+ scene.background=.{32,48,64,255}
+ texture:=NewImage(2048,1024);defer VecFree(texture.pixels)
+ if !ImageValid(*texture) {return false}
+ for at:0..texture.pixels.count/4-1 {
+  texture.pixels[at*4]=cast(u8)(at%251)
+  texture.pixels[at*4+1]=cast(u8)((at/2048)%241)
+  texture.pixels[at*4+2]=100;texture.pixels[at*4+3]=255
+ }
+ material:=ImageMaterial(*scene,*texture,UnlitMaterial(.{255,255,255,255}))
+ panel:=Plane(*scene,3.0,1.5,material);SetPosition(*scene,panel,0.3,-0.1,0)
+ camera:=PerspectiveCamera(45,2527.0/1423.0,0.1,20);camera.position=.{0,0,3}
+ image:=NewImage(2527,1423);defer VecFree(image.pixels)
+ expected: u64
+ for sample:0..21 {
+  direct:=sample%2==0
+  gpu.direct_readback=direct
+  frame:=SceneGpuRender(*gpu,*scene,camera,*image)
+  if !frame.ok {print("Readback failed %\n",frame.diagnostic);return false}
+  if sample==0 {
+   expected=AsyncHash(*image)
+   if gpu.straight_framebuffer!=0||frame.profile.texture_upload_ms<=0.0 {return false}
+  } else if AsyncHash(*image)!=expected {return false}
+  p:=frame.profile
+  if p.direct_resolve!=direct {return false}
+  print("readback % % % % % % % %\n",sample,ifx direct then "resolve" else "straight",
+   p.shader_setup_ms,p.texture_upload_ms,p.gpu_completion_ms,p.pixel_transfer_ms,p.image_copy_ms,
+   frame.submit_ms+frame.readback_ms+p.image_copy_ms)
+ }
+ print("Readback frame hashes match %\n",expected)
+ return true
+}
 #program_export
-main :: ()->s32 {if !AsyncTests()||!ReadbackAlphaParity() {return 1};return 0}
+main :: (argc: s32, argv: **u8)->s32 {
+ unused argv
+ if argc==2 {return ifx ReadbackProfile() then 0 else 1}
+ if !AsyncTests()||!ReadbackAlphaParity() {return 1}
+ return 0
+}

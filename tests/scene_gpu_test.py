@@ -149,12 +149,16 @@ if __name__ == "__main__":
     parser.add_argument("--room", type=Path, help="Canonical Jungle checkout for the actual room fixture")
     parser.add_argument("--glx", action="store_true", help="Foreign GLX host restoration under private Xvfb")
     parser.add_argument("--async-test", action="store_true", help="Two-slot async identity, mutation and lifecycle")
+    parser.add_argument("--readback-profile", action="store_true", help="2527x1423 opaque resolve vs straight RGBA timing")
     parser.add_argument("--saved",action="store_true",help="Reparse saved IR before async native execution")
     parser.add_argument("--padding-variant", action="store_true",
                         help="Vary only native SceneMaterial padding in the actual room")
     args = parser.parse_args()
     if args.room:
         room(args.room, args.padding_variant)
+    elif args.readback_profile:
+        executable = build(ROOT / "tests/scene_gpu_async_test.zi", "scene_gpu_async_test:main")
+        subprocess.run([str(executable), "profile"], cwd=ROOT, env=private_env(), check=True)
     elif args.async_test:
         process = subprocess.Popen([str(build(ROOT / "tests/scene_gpu_async_test.zi", "scene_gpu_async_test:main",saved=args.saved))],
                                    cwd=ROOT, env=private_env(), stdout=subprocess.PIPE, text=True)
