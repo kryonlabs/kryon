@@ -2190,6 +2190,10 @@ composing. `BeginAndroidFrame()` borrows the NativeActivity surface for Pixmap;
 `EndAndroidFrame()` presents its device-pixel damage. The app owns its widgets,
 state and pacing. Resizing, density, insets, redraw and surface replacement
 invalidate retained pixels; an unchanged frame skips presentation.
+After polling, call `SetAndroidPausedSurfaceVisible(visible)` if the operating
+system reports that a floating window such as picture-in-picture is visible.
+This permits drawing on a live surface during an activity pause while
+preserving the usual pause and focus reports.
 
 Pixmap's `RasterSetTransform(scale, offset_x, offset_y)` and
 `RasterPointFromPixels(point)` use the same camera for painting and input.

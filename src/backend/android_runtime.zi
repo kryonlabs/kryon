@@ -18,6 +18,7 @@ AndroidApplicationMain :: (argc: s32, argv: **u8) -> s32 #foreign android_applic
 
 android_host_frame_open: bool;
 android_host_pixels_valid: bool;
+android_host_paused_surface_visible: bool;
 android_host_unchanged: bool;
 android_host_width: s32;
 android_host_height: s32;
@@ -33,6 +34,7 @@ android_main :: (app: *NativeAndroidApp) {
     if app == null { return }
     AndroidNativeStart(app)
     android_host_pixels_valid = false
+    android_host_paused_surface_visible = false
     android_host_frame_open = false
     defer { AndroidNativeClose() }
     defer { AndroidFrameTexturesClose() }
@@ -53,6 +55,21 @@ AndroidHostFocused :: () -> bool {
     return AndroidNativeApp() != null && !AndroidHostPaused() && android_frame_input.focused
 }
 
+// A host can keep drawing an Android-managed floating window while its
+// activity is paused. Focus and activity lifecycle still follow Android.
+#program_export
+SetAndroidPausedSurfaceVisible :: (visible: bool) {
+    if visible == android_host_paused_surface_visible { return }
+    android_host_paused_surface_visible = visible
+    android_host_pixels_valid = false
+}
+
+AndroidHostCanDraw :: () -> bool {
+    app := AndroidNativeApp()
+    return app != null && app.destroy_requested == 0 && !AndroidNativeDestroyRequested() &&
+        AndroidNativeWindowReady() && (!AndroidHostPaused() || android_host_paused_surface_visible)
+}
+
 // A timeout or missing window is not application shutdown. Drain queued
 // lifecycle/input events, but return false only when the activity is gone.
 #program_export
@@ -68,7 +85,7 @@ PollAndroidHost :: (timeout_ms: s32) -> bool {
     if resized || redraw || graphics != 0 {
         android_host_pixels_valid = false
     }
-    if AndroidHostPaused() || !AndroidNativeWindowReady() { android_host_pixels_valid = false }
+    if !AndroidHostCanDraw() { android_host_pixels_valid = false }
     return app.destroy_requested == 0 && !AndroidNativeDestroyRequested()
 }
 
@@ -90,7 +107,7 @@ AndroidHostViewport :: () -> Rectangle {
 BeginAndroidFrame :: () {
     if android_host_frame_open { return }
     android_host_unchanged = false
-    if AndroidHostPaused() || !AndroidNativeWindowReady() || AndroidNativeDestroyRequested() { return }
+    if !AndroidHostCanDraw() { return }
     width: s32; height: s32
     if !AndroidNativeSurfaceSize(*width, *height) || !AndroidNativeEnsurePixels(width, height) { return }
     zoom := AndroidLayoutZoom()
@@ -113,7 +130,7 @@ BeginAndroidFrame :: () {
 
 #program_export
 AndroidFrameReusable :: () -> bool {
-    if AndroidNativeApp() == null || AndroidHostPaused() || !AndroidNativeWindowReady() || AndroidNativeDestroyRequested() { return false }
+    if !AndroidHostCanDraw() { return false }
     if !android_host_frame_open && !pixmap_camera_set { return android_host_pixels_valid }
     scale_x := ifx android_host_frame_open then pixmap_scale_x else pixmap_camera_scale
     scale_y := ifx android_host_frame_open then pixmap_scale_y else pixmap_camera_scale
@@ -145,9 +162,8 @@ EndAndroidFrame :: () -> bool {
     PixmapEndInto()
     android_host_frame_open = false
     AndroidTouchFrameEnd()
-    // The app keeps ticking while paused or windowless. Presenting requires
-    // the same live surface that BeginAndroidFrame borrowed.
-    if AndroidHostPaused() || !AndroidNativeWindowReady() {
+    // The app can keep ticking without a drawable surface.
+    if !AndroidHostCanDraw() {
         android_host_pixels_valid = false
         return true
     }

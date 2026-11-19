@@ -148,15 +148,31 @@ main :: (argc: s32, argv: **u8) -> s32 {
     Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandPause)
     Runtime.BeginAndroidFrame()
     if !Runtime.AndroidHostPaused() || !Runtime.PollAndroidHost(0) || !Runtime.EndAndroidFrame() || posts != 3 { return 14 }
-    Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandResume)
+    Runtime.SetAndroidPausedSurfaceVisible(true)
+    Runtime.BeginAndroidFrame()
+    Raster.RasterRoundedRectangle(.{0.0, 0.0, 6.0, 5.0}, 0.0, 0, .{10, 20, 30, 255})
+    if !Runtime.EndAndroidFrame() || posts != 4 || !Runtime.AndroidHostPaused() ||
+        Runtime.AndroidHostFocused() || buffer[0] != cast(u32)0xff1e140a { return 18 }
+    if !Runtime.PollAndroidHost(0) || !Runtime.AndroidFrameReusable() { return 19 }
+    Runtime.BeginAndroidFrame()
+    Runtime.AndroidFrameUnchanged(true)
+    if !Runtime.EndAndroidFrame() || posts != 4 { return 20 }
+    Runtime.BeginAndroidFrame()
+    Runtime.SetAndroidPausedSurfaceVisible(false)
+    if Runtime.AndroidFrameReusable() || !Runtime.EndAndroidFrame() || posts != 4 { return 21 }
+    Runtime.SetAndroidPausedSurfaceVisible(true)
     Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandTermWindow)
     Runtime.BeginAndroidFrame()
-    if !Runtime.PollAndroidHost(0) || !Runtime.EndAndroidFrame() || posts != 3 { return 15 }
+    if !Runtime.EndAndroidFrame() || posts != 4 || Runtime.AndroidFrameReusable() { return 22 }
+    Runtime.SetAndroidPausedSurfaceVisible(false)
+    Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandResume)
+    Runtime.BeginAndroidFrame()
+    if !Runtime.PollAndroidHost(0) || !Runtime.EndAndroidFrame() || posts != 4 { return 15 }
     Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandInitWindow)
     Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandGainedFocus)
     Runtime.BeginAndroidFrame()
     fail_lock = true
-    if Runtime.EndAndroidFrame() || Runtime.AndroidFrameReusable() || posts != 3 { return 16 }
+    if Runtime.EndAndroidFrame() || Runtime.AndroidFrameReusable() || posts != 4 { return 16 }
     fail_lock = false
     queued_destroy = true
     if Runtime.PollAndroidHost(0) || Runtime.EndAndroidFrame() { return 17 }
