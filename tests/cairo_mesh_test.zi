@@ -124,6 +124,25 @@ main :: (argc: s32, argv: **u8) -> s32 {
     color := Pixel(44, 49)
     if color == background || ((color >> 16) & cast(u32)255) <= ((color >> 8) & cast(u32)255) ||
         ((color >> 8) & cast(u32)255) <= (color & cast(u32)255) { return 19 }
+    // Smooth sampling keeps a one-row texture opaque through its interior
+    // while preserving the transparent columns and the feather between them.
+    feather_text: Vec(u8)
+    BuilderPrint(*feather_text, "%/feather.png", root)
+    feather_path := BuilderFinish(feather_text)
+    if Raster.ImageWidth(feather_path) != 6 || Raster.ImageHeight(feather_path) != 1 { return 20 }
+    points[0] = .{0.0, 0.0}; points[1] = .{64.0, 0.0}
+    points[2] = .{0.0, 64.0}; points[3] = .{64.0, 64.0}
+    emitting_smooth = true
+    Raster.BeginRasterFrame()
+    Raster.RasterImageMesh(feather_path, 0, .{0.0, 0.0, 6.0, 1.0}, points[:],
+        2, 2, full, .{255, 255, 255, 255})
+    if !Raster.FinishRasterFrame() { return 21 }
+    emitting_smooth = false
+    cloth: u32 = cast(u32)0x518f67
+    if !Is(32, 1, cloth) || !Is(32, 62, cloth) ||
+        !Is(1, 1, background) || !Is(62, 62, background) { return 22 }
+    edge := (Pixel(8, 1) >> 8) & cast(u32)255
+    if edge <= 143 || edge >= 250 { return 23 }
     print("Cairo draws meshes and polygon-clipped images without leaking clips\n")
     return 0
 }

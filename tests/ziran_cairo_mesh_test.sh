@@ -15,6 +15,9 @@ image = Image.new('RGBA', (2, 2))
 image.putdata([(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255), (255, 255, 255, 255)])
 image.save(Path(sys.argv[1]) / 'mesh.png')
 Image.new('RGBA', (6, 1), (255, 255, 255, 128)).save(Path(sys.argv[1]) / 'sampling.png')
+feather = Image.new('RGBA', (6, 1))
+feather.putdata([(81, 143, 103, alpha) for alpha in (0, 255, 255, 255, 255, 0)])
+feather.save(Path(sys.argv[1]) / 'feather.png')
 PY
 libs="$(pkg-config --libs cairo freetype2 pangocairo fontconfig glib-2.0) -ldl -lm -lpthread"
 source="$repo/tests/cairo_mesh_test.zi"
