@@ -1,3 +1,5 @@
+#import "control_props"
+
 // A raster host selects a font only for the current measurement or label.
 // Names and font asset paths share the same bounded resource identity.
 TextTypefaceSelector :: #type (name: string) -> string #reads;
@@ -7,6 +9,17 @@ text_typeface_installed: bool;
 // Native raster entry points receive borrowed label bytes and the scoped
 // name from the same queued command.
 text_raster_typeface: string;
+
+// Paint and measurement share these inputs without depending on each other's
+// host functions. A synchronous host call borrows the current glyph style.
+text_glyph_style: TextGlyphStyle;
+glyph_metrics_revision: u64;
+
+SetTextGlyphStyle :: (style: TextGlyphStyle) -> TextGlyphStyle {
+    previous := text_glyph_style
+    if !SameTextGlyphStyle(style, previous) { text_glyph_style = style }
+    return previous
+}
 
 #program_export
 SetTextTypefaceSelector :: (select: TextTypefaceSelector) {

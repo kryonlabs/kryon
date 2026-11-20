@@ -10,7 +10,8 @@ KRYON_SOURCES := $(shell find ../src/ui ../src/backend -type f -name '*.zi' -pri
 BUILD_DIR ?= ../build/examples
 NATIVE_LIB := ../build/ziran/libkryon.a
 PROGRAMS := hello window
-NATIVE_PROGRAMS := $(addprefix $(BUILD_DIR)/,$(PROGRAMS))
+DESKTOP_PROGRAMS := $(PROGRAMS) motion_chart
+NATIVE_PROGRAMS := $(addprefix $(BUILD_DIR)/,$(DESKTOP_PROGRAMS))
 GO_PROGRAMS := $(addsuffix .go.stamp,$(addprefix $(BUILD_DIR)/matrix/,$(PROGRAMS)))
 WEB_PROGRAMS := $(addsuffix .web.stamp,$(addprefix $(BUILD_DIR)/matrix/,$(PROGRAMS)))
 ZX_PROGRAMS := $(addsuffix .zx,$(addprefix $(BUILD_DIR)/matrix/,$(PROGRAMS)))
@@ -73,7 +74,7 @@ $(BUILD_DIR)/matrix/$(1).zx: $(1).zi $(KRYON_SOURCES) ../ziran.toml Makefile
 		--entry $(1):main -o $$@ $(1).zi
 endef
 
-$(foreach program,$(PROGRAMS),$(eval $(call PROGRAM_RULES,$(program))))
+$(foreach program,$(DESKTOP_PROGRAMS),$(eval $(call PROGRAM_RULES,$(program))))
 
 .PHONY: widget-catalog widget-catalog-web
 widget-catalog:

@@ -1,14 +1,9 @@
 #import "control_props"
+Typeface :: #import "text_typeface";
 host_api :: #system_library "host_api";
 
-// Native text scopes its glyph inputs around a synchronous host call. Hosts
-// that draw the default face keep the existing measurement/raster ABI.
-text_glyph_style: TextGlyphStyle;
-
 UseTextGlyphStyle :: (style: TextGlyphStyle) -> TextGlyphStyle {
-    previous := text_glyph_style
-    if !SameTextGlyphStyle(style, previous) { text_glyph_style = style }
-    return previous
+    return Typeface.SetTextGlyphStyle(style)
 }
 
 // Font rasterizers report physical glyph measurements. UI layout stays in Kryon.
@@ -17,11 +12,6 @@ UseTextGlyphStyle :: (style: TextGlyphStyle) -> TextGlyphStyle {
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 #reads #foreign host_api;
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 #reads #foreign host_api;
-
-// Zero keeps layout uncached for hosts whose font services may change without
-// notification. A host opts in by publishing its initial metrics, then calls
-// GlyphMetricsChanged whenever it replaces fonts or changes their advances.
-glyph_metrics_revision: u64;
 
 // A shaping host can measure a caret in the full run, preserving ligatures
 // and bidi context. Other hosts keep their existing prefix measurements.
@@ -101,12 +91,14 @@ GlyphCaret :: (value: string, byte: s32, font: s32, typeface: string,
     return MeasureGlyphWidth(value[:byte], font, typeface)
 }
 
+// Zero keeps layout uncached. A host publishes its initial metrics, then
+// calls GlyphMetricsChanged when it replaces fonts or changes their advances.
 #program_export
-GlyphMetricsRevision :: () -> u64 { return glyph_metrics_revision }
+GlyphMetricsRevision :: () -> u64 { return Typeface.glyph_metrics_revision }
 
 #program_export
 GlyphMetricsChanged :: () {
-    glyph_metrics_revision += cast(u64)1
+    Typeface.glyph_metrics_revision += cast(u64)1
 }
 
 #program_export

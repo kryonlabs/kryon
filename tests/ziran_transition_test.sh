@@ -8,17 +8,84 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/transition.zi" "$work/transition.zi"
+cp "$repo/src/ui/motion.zi" "$work/motion.zi"
 cp "$repo/src/ui/drawing_props.zi" "$work/drawing_props.zi"
 cp "$repo/src/ui/geometry.zi" "$work/geometry.zi"
 cp "$repo/src/ui/text_align.zi" "$work/text_align.zi"
 cp "$ziran_root/std/math.zi" "$work/math.zi"
 cat > "$work/use_transition.zi" <<'EOF'
 #import "transition"
+Motion :: #import "motion";
 
 using TransitionPhase;
 
+Near :: (value: float32, expected: float32) -> bool {
+    return value > expected - 0.00002 && value < expected + 0.00002
+}
+
+TimedTracksWork :: () -> bool {
+    if Motion.Progress(Motion.TimingFor(.Linear), 0.5) != 0.5 ||
+        !Near(Motion.Progress(Motion.TimingFor(.Ease), 0.5), 0.8024034) ||
+        !Near(Motion.Progress(Motion.TimingFor(.EaseIn), 0.5), 0.3153568) ||
+        !Near(Motion.Progress(Motion.TimingFor(.EaseOut), 0.5), 0.6846432) ||
+        !Near(Motion.Progress(Motion.TimingFor(.EaseInOut), 0.5), 0.5) { return false }
+    if Motion.Progress(Motion.CubicBezier(-1.0, 0.0, 1.0, 1.0), 0.5) != 0.5 ||
+        Motion.Progress(Motion.CubicBezier(0.2, 1.4, 0.8, 1.4), 0.5) <= 1.0 ||
+        !Near(Motion.Progress(Motion.CubicBezier(1.0, 0.0, 0.0, 1.0), 0.5), 0.5) {
+        return false
+    }
+    frames: [3]Motion.Keyframe = .{
+        Motion.Keyframe.{.offset = 0.0, .value = 4.0},
+        Motion.Keyframe.{.offset = 0.25, .value = 16.0, .timing = Motion.TimingFor(.Ease)},
+        Motion.Keyframe.{.offset = 1.0, .value = 8.0}
+    }
+    track := Motion.BuildTrack(frames[:])
+    if Motion.At(track, 0.125) != 10.0 ||
+        Motion.At(track, 0.25) != 16.0 ||
+        !Near(Motion.At(track, 0.625), 9.580773) { return false }
+    before := Motion.Sample(track, -0.25, 1.0)
+    moving := Motion.Sample(track, 0.25, 2.0)
+    repeated := Motion.Sample(track, 1.125, 1.0, 2)
+    reversed := Motion.Sample(track, 1.375, 1.0, 2, true)
+    ended := Motion.Sample(track, 2.0, 1.0, 2, true)
+    decimal_end := Motion.Sample(track, 0.6, 0.6)
+    reduced := Motion.Sample(track, 0.0, 1.0, 1, false, true)
+    instant := Motion.Sample(track, 0.0, 0.0)
+    if before.active || before.value != 4.0 || !moving.active || moving.value != 10.0 ||
+        !repeated.active || repeated.value != 10.0 || !reversed.active ||
+        !Near(reversed.value, 9.580773) || ended.active || ended.value != 4.0 ||
+        decimal_end.active || decimal_end.value != 8.0 ||
+        reduced.active || reduced.value != 8.0 || instant.active || instant.value != 8.0 {
+        return false
+    }
+    frames[1].offset = 1.0
+    invalid := Motion.Sample(Motion.BuildTrack(frames[:]), 0.0, 1.0)
+    return !invalid.active && invalid.value == 0.0
+}
+
+TweenWorks :: () -> bool {
+    state: Motion.TweenState
+    timing := Motion.TimingFor(.Linear)
+    initial := Motion.TweenTo(*state, 0.0, 50.0, 1.0, timing)
+    started := Motion.TweenTo(*state, 10.0, 51.0, 1.0, timing)
+    moving := Motion.TweenTo(*state, 10.0, 51.25, 1.0, timing)
+    backward := Motion.TweenTo(*state, 10.0, 51.1, 1.0, timing)
+    reversal := Motion.TweenTo(*state, 0.0, 51.5, 1.0, timing)
+    reversed := Motion.TweenTo(*state, 0.0, 52.0, 1.0, timing)
+    settled := Motion.TweenTo(*state, 0.0, 52.5, 1.0, timing)
+    reduced := Motion.TweenTo(*state, 6.0, 53.0, 1.0, timing, true)
+    immediate := Motion.TweenTo(null, 8.0, 0.0, 1.0, timing)
+    return !initial.active && initial.value == 0.0 && started.active && started.value == 0.0 &&
+        moving.active && moving.value == 2.5 && backward.active && backward.value == 2.5 &&
+        reversal.active && reversal.value == 5.0 && reversed.active && reversed.value == 2.5 &&
+        !settled.active && settled.value == 0.0 && !reduced.active && reduced.value == 6.0 &&
+        !immediate.active && immediate.value == 8.0
+}
+
 #program_export
 Answer :: () -> s32 {
+    if !TimedTracksWork() { return 9 }
+    if !TweenWorks() { return 10 }
     if TransitionClampProgress(-2.0) != 0.0 { return 0 }
     if TransitionClampProgress(2.0) != 1.0 { return 0 }
     if TransitionSmoothProgress(0.5) != 0.5 { return 0 }

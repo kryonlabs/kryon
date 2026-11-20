@@ -17,7 +17,7 @@ OUTPUT = ROOT / "build/zx-test"
 def environment():
     env = os.environ.copy()
     for key in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY",
-                "DBUS_SESSION_BUS_ADDRESS", "SESSION_MANAGER"):
+                "DBUS_SESSION_BUS_ADDRESS", "SESSION_MANAGER", "GTK_THEME"):
         env.pop(key, None)
     env["PATH"] = str(ROOT / "build/bin") + os.pathsep + str(ZIRAN_ROOT / "build/bin") + os.pathsep + env["PATH"]
     env["ZIRAN_ROOT"] = str(ZIRAN_ROOT)
@@ -155,7 +155,7 @@ backend = "desktop"
     png = png_pixels(shot)
     assert png[:2] == (960, 600)
     assert rgb(png, 550, 130) == (230, 30, 40), "downloaded asset did not render"
-    assert rgb(png, 10, 10) == (248, 250, 252), "background did not render"
+    assert rgb(png, 10, 10) == (255, 255, 255), "default canvas did not render"
     assert any(sum(rgb(png, x, y)) < 400 for y in range(128, 165)
                for x in range(40, 350)), "text did not render"
 

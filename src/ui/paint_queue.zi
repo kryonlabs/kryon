@@ -3,7 +3,6 @@ Bitmaps :: #import "bitmap_store";
 #import "drawing_props"
 #import "control_props"
 #import "geometry"
-Metrics :: #import "font_metrics";
 #import "elevation"
 #import "image_behavior"
 #import "paint_texture"
@@ -659,8 +658,8 @@ EmitLabel :: (command: PaintCommand) {
     previous_name := text_raster_typeface
     text_raster_typeface = command.asset_path
     defer { text_raster_typeface = previous_name }
-    previous_style := Metrics.UseTextGlyphStyle(command.glyph_style)
-    defer { unused Metrics.UseTextGlyphStyle(previous_style) }
+    previous_style := SetTextGlyphStyle(command.glyph_style)
+    defer { unused SetTextGlyphStyle(previous_style) }
     if command.rotation != 0.0 {
         PaintTextRotated(command.value,command.x,command.y,command.font,command.color,
             command.clip,command.origin,command.rotation,command.text_outer_clip,
@@ -1293,7 +1292,7 @@ PaintCommandEqual :: (slot: s32, current: PaintCommand,
     current.italic != previous.data.italic { return false }
     if !SameTextGlyphStyle(current.glyph_style, previous.data.glyph_style) { return false }
     if (current.kind == PaintKindText || current.kind == PaintKindClippedText) &&
-        previous.text_revision != Metrics.GlyphMetricsRevision() { return false }
+        previous.text_revision != glyph_metrics_revision { return false }
     if !SnapshotAssetEqual(slot, current.asset_path, previous.asset_start,
         previous.asset_count) { return false }
     if current.texture_id != previous.data.texture_id ||
@@ -1376,7 +1375,7 @@ PaintSnapshotStore :: (session: Session) -> bool {
         previous.data = current
         previous.bitmap_revision = PaintBitmapRevision(current.texture_id)
         if current.kind == PaintKindText || current.kind == PaintKindClippedText {
-            previous.text_revision = Metrics.GlyphMetricsRevision()
+            previous.text_revision = glyph_metrics_revision
         }
         previous.emit = pending_paint[slot].items[index].emit
         previous.has_emitter = pending_paint[slot].items[index].has_emitter

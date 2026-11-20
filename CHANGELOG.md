@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- `kryon/motion` provides CSS easing, timed keyframes, and interruptible
+  value transitions for native widgets and charts. Samples tell apps when
+  their values have settled so they can stop requesting animation frames.
+- The ZX desktop player clears to the guest's default canvas color.
+  Retained paint keeps its text styling state usable without a glyph
+  measurement host.
 - The dashboard starter ships a locked dependency set and a quick start for
   rendering its first preview.
 - Smoothly scaled image meshes preserve the opacity of thin textures and

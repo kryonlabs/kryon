@@ -159,6 +159,30 @@ Bind selectors on widgets via `props.class_name = CSS.StyleClass("primary")` and
 - **At-rules**: `@import` (before rules), `@layer`, `@keyframes`, `@media` (`prefers-color-scheme`, `prefers-contrast`, `prefers-reduced-motion`, `pointer`, `min-width`, `max-width`, `-kryon-theme`, `-kryon-density`, `-kryon-pointer`, `-kryon-platform`).
 - **Web-only pass-through properties** (accepted by parser for `kryon/Dom`, ignored by native widgets): `width`, `height`, `min-width`, `max-width`, `max-height`, `margin*`, `display`, `flex*`, `justify-content`, `align-items`, `align-self`, `grid-*`, `text-align`, `text-decoration`, `text-transform`, `white-space`, `cursor`, `box-shadow`, `transition`, `animation`, `overflow`, `z-index`, `visibility`.
 
+Use `color-mix(in srgb, #2076c0 35%, transparent)` in a native color
+declaration or custom property to derive a tint from two literal colors.
+For native `@media (prefers-reduced-motion: reduce)` rules, set
+`env.reduced_motion` from `Theme.CurrentTheme().motion.reduced_motion` and
+reinstall the parsed sheet when that preference changes. DOM output uses
+the browser's live preference.
+
+### Map CSS motion to native values
+
+| CSS authoring pattern | Native Kryon equivalent |
+| --- | --- |
+| `transition: opacity 180ms ease-out` | `Motion.TweenTo(*opacity, target, now, 0.18, Motion.TimingFor(.EaseOut), reduce)` |
+| `@keyframes` with `0%`, `40%`, `100%` | `Motion.Keyframe` offsets `0.0`, `0.4`, `1.0` passed to `Motion.BuildTrack` |
+| `cubic-bezier(.2,.8,.2,1)` | `Motion.CubicBezier(0.2, 0.8, 0.2, 1.0)` |
+| `animation-duration` and `animation-iteration-count` | `Motion.Sample` with elapsed time, duration in seconds, and iteration count |
+| `animation-direction: alternate` | `alternate = true` in `Motion.Sample` |
+| `prefers-reduced-motion: reduce` | Pass the app or theme's reduced-motion setting to `TweenTo` and `Sample` |
+
+Import `Motion :: #import "kryon/motion";`. The app owns the clock, the values
+it animates, and each transition's state. A chart can sample one track and use
+its `.value` to interpolate every point. Request animation frames while any
+sample is `.active`. See the [checked example](../src/ui/motion_api_example.zi)
+and the [motion API](API.md#timed-motion-and-keyframes).
+
 ---
 
 ## 5. Runnable Example: Searchable Card with Real CSS

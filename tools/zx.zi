@@ -17,6 +17,7 @@
 #import "bundle_app"
 Video :: #import "video_linux";
 Bitmaps :: #import "bitmap_image";
+UiTheme :: #import "theme";
 #if OS == .LINUX {
     Service :: #import "service_linux";
     Theme :: #import "system_theme_host_linux";
@@ -401,9 +402,17 @@ RemoveAssetDirectory :: (path: string) -> bool {
     return CopyCString(path, bytes[:]) && RemoveDirectory(*bytes[0]) == 0 && ok
 }
 
+BundleThemeBackground :: (refresh: bool) -> u32 {
+    // The bundle owns its palette. Match its default canvas without applying
+    // a desktop palette to the clear color alone.
+    unused refresh
+    return UiTheme.CurrentBackground()
+}
+
 RunFrame :: (instance: *void, player: *Player) -> bool {
     BundleMediaTick(*player.media)
     BeginDesktopFrame()
+    SetRasterBackground(BundleThemeBackground)
     result: s64
     has_result: s32
     if RunBundleInstance(instance, *result, *has_result) == 0 { return false }

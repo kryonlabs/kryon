@@ -1,0 +1,41 @@
+Motion :: #import "motion";
+
+#scope_file
+
+// Keep frames and the output samples in the caller's state. One eased phase
+// moves every point on a fixed chart scale, including the final sample.
+ChartValues :: (track: Motion.Track, elapsed: float64, reduced: bool,
+    values: []float32) -> bool {
+    from: [3]float32 = .{0.20, 0.24, 0.42}
+    to: [3]float32 = .{0.35, 0.30, 0.91}
+    phase := Motion.Sample(track, elapsed, 0.6, 1, false, reduced)
+    for index: 0..2 {
+        values[index] = ifx phase.value == 1.0 then to[index] else from[index] + (to[index] - from[index]) * phase.value
+    }
+    return phase.active
+}
+
+#scope_export
+
+#program_export
+main :: () -> s32 {
+    // Validate the track once, after placing the keyframes in their storage.
+    keyframes: [2]Motion.Keyframe = .{
+        Motion.Keyframe.{.offset = 0.0, .value = 0.0,
+            .timing = Motion.TimingFor(.EaseOut)},
+        Motion.Keyframe.{.offset = 1.0, .value = 1.0}
+    }
+    track := Motion.BuildTrack(keyframes[:])
+    values: [3]float32
+    if !ChartValues(track, 0.3, false, values[:]) || values[2] <= 0.42 || values[2] >= 0.91 { return 1 }
+    if ChartValues(track, 0.0, true, values[:]) || values[2] != 0.91 { return 2 }
+
+    // Treat a target change like a CSS transition of a single property.
+    hover: Motion.TweenState
+    easing := Motion.TimingFor(.EaseOut)
+    unused Motion.TweenTo(*hover, 0.0, 0.0, 0.18, easing)
+    unused Motion.TweenTo(*hover, 1.0, 1.0, 0.18, easing)
+    reversed := Motion.TweenTo(*hover, 0.0, 1.09, 0.18, easing)
+    if !reversed.active || reversed.value <= 0.5 || reversed.value >= 1.0 { return 3 }
+    return 0
+}

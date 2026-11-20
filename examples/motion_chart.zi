@@ -1,0 +1,86 @@
+App :: #import "kryon/app";
+Box :: #import "kryon/box";
+Button :: #import "kryon/button";
+Desktop :: #import "kryon/desktop_runtime";
+Motion :: #import "kryon/motion";
+Shape :: #import "kryon/shape";
+Text :: #import "kryon/text";
+Theme :: #import "kryon/theme";
+#import "kryon/drawing_props"
+#import "kryon/frame_snapshot"
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/tree"
+
+week: Motion.TweenState;
+week_easing: Motion.Timing;
+current_week: bool = true;
+
+// Each frame samples one value. The whole series moves on a fixed scale.
+DrawSeries :: (session: Session, bounds: Rectangle, phase: float32, palette: Theme.Palette) {
+    grid := ColorFromPacked(palette.subtle_border)
+    line := ColorFromPacked(palette.accent)
+    shade := line
+    shade.a = 28
+    previous: [6]float32 = .{0.16, 0.26, 0.22, 0.38, 0.32, 0.42}
+    current: [6]float32 = .{0.20, 0.48, 0.34, 0.69, 0.63, 0.91}
+    points: [6]Vector2
+    bottom := bounds.y + bounds.height
+    for index: 0..4 {
+        y := bounds.y + bounds.height * cast(float32)index / 4.0
+        unused Shape.Draw(session, Shape.Props.{.key = cast(u64)(20 + index),
+            .start = .{bounds.x, y}, .end = .{bounds.x + bounds.width, y}, .color = grid})
+    }
+    for index: 0..5 {
+        value := previous[index] + (current[index] - previous[index]) * phase
+        points[index] = .{bounds.x + bounds.width * cast(float32)index / 5.0,
+            bottom - bounds.height * value}
+    }
+    for index: 0..4 {
+        from := points[index]
+        to := points[index + 1]
+        left := Vector2.{from.x, bottom}
+        right := Vector2.{to.x, bottom}
+        key := cast(u64)(30 + index * 3)
+        unused Shape.Triangle(session, Shape.TriangleProps.{.key = key,
+            .first = from, .second = to, .third = right, .color = shade})
+        unused Shape.Triangle(session, Shape.TriangleProps.{.key = key + 1,
+            .first = from, .second = right, .third = left, .color = shade})
+        unused Shape.Draw(session, Shape.Props.{.key = key + 2,
+            .start = from, .end = to, .thickness = 2.5, .color = line})
+    }
+    unused Shape.Circle(session, Shape.CircleProps.{.key = 50,
+        .center = points[5], .radius = 4.5, .fill = line})
+}
+
+Draw :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    bounds := TreeRootBounds(session)
+    if bounds.width < 280.0 || bounds.height < 240.0 { return }
+    theme := Theme.CurrentTheme()
+    x := bounds.x + 48.0
+    y := bounds.y + 46.0
+    unused Box.Draw(session, Box.Props.{.key = 1, .bounds = bounds,
+        .fill = ColorFromPacked(theme.colors.background)})
+    unused Box.Draw(session, Box.Props.{.key = 2, .radius = 18.0,
+        .bounds = .{x - 24.0, y - 22.0, bounds.width - 48.0, bounds.height - 48.0},
+        .fill = ColorFromPacked(theme.colors.surface_raised), .border = ColorFromPacked(theme.colors.border)})
+    Text.Draw(session, Text.Props.{.key = 3, .bounds = .{x, y, 104.0, 36.0}, .text = "Revenue", .size = 25})
+    if Button.Draw(session, Button.Props.{.key = 4, .label = "Switch week",
+        .bounds = .{bounds.x + bounds.width - 158.0, y, 110.0, 36.0}}) != 0 {
+        current_week = !current_week
+    }
+    Text.Draw(session, Text.Props.{.key = 5, .bounds = .{x, y + 42.0, 165.0, 24.0},
+        .text = ifx current_week then "Current week" else "Previous week", .size = 14})
+    now := cast(float64)CaptureFrameInput(session).elapsed_ms / 1000.0
+    target: float32 = ifx current_week then 1.0 else 0.0
+    phase := Motion.TweenTo(*week, target, now, 0.42 * cast(float64)theme.motion.multiplier,
+        week_easing, theme.motion.reduced_motion)
+    DrawSeries(session, .{x, y + 82.0, bounds.width - 96.0, bounds.height - 181.0}, phase.value, theme.colors)
+    if phase.active { Desktop.DesktopRequestFrame() }
+}
+
+main :: () -> s32 {
+    week_easing = Motion.TimingFor(.EaseOut)
+    return App.Run(App.Window.{.title = "Animated revenue chart", .width = 600, .height = 360}, Draw)
+}

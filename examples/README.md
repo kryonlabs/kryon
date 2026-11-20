@@ -78,6 +78,11 @@ button, pointer, capture, or test-driver code. Button behavior remains covered
 by the dedicated button examples and widget regression tests. The `test`
 target also compiles both programs for Go, C/Web, and portable ZX.
 
+`make -C examples ../build/examples/motion_chart` builds the animated revenue
+chart. Run `build/examples/motion_chart` from the repository root and click
+**Switch week**. One `kryon/motion` tween drives the full series. Clicking again
+mid-animation reverses smoothly from the currently displayed values.
+
 `make -C examples desktop-image-test` renders the canonical
 `Image.Draw(Image.Props)` with a path-backed PNG and red tint, then writes
 `build/examples/image-desktop.png`. The host imports Ziran's generic

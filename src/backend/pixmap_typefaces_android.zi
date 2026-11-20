@@ -7,6 +7,7 @@
 #import "font_metrics"
 #import "math"
 #import "paint_queue"
+#import "text_typeface"
 #import "utf8"
 #import "std/byte_text_linux"
 CString :: #import "std/c_string";

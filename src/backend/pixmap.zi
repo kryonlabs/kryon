@@ -1062,7 +1062,7 @@ PixmapMeasureCaret :: (value: string, byte: s32, font: s32, typeface: string) ->
 }
 
 PixmapMeasureWidth :: (value: string, font: s32, trailing: bool) -> s32 {
-    glyphs := Metrics.text_glyph_style
+    glyphs := Typeface.text_glyph_style
     tracking := PixmapTracking(glyphs.letter_spacing)
     bounded: bool = value.count <= PixmapMeasureBytes
     units: s64 = 0
@@ -1288,7 +1288,7 @@ PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, pen_font: s64, colo
     baseline: s64 = cast(s64)y * 256 + PixmapTextBaseline(font)
     pen: s64 = 0
     shift: s64 = 0
-    glyphs := Metrics.text_glyph_style
+    glyphs := Typeface.text_glyph_style
     tracking := PixmapTracking(glyphs.letter_spacing, pixmap_scale_x)
     next_cluster: s32 = 0
     if tracking != 0 { next_cluster = Grapheme.Next(value, 0) }

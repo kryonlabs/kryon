@@ -321,6 +321,7 @@ system_clipboard_windows = "src/backend/system_clipboard_windows.zi"
 background_window_windows = "src/backend/background_window_windows.zi"
 toggle_measure = "src/ui/toggle/toggle_measure.zi"
 transition = "src/ui/transition.zi"
+motion = "src/ui/motion.zi"
 text_selection = "src/ui/text_selection_widget.zi"
 
 box = "src/ui/box/box.zi"

@@ -1,0 +1,185 @@
+// Scalar motion sampled on the caller's clock, with no host or drawing imports.
+
+Easing :: enum {
+    Linear :: 0
+    Ease :: 1
+    EaseIn :: 2
+    EaseOut :: 3
+    EaseInOut :: 4
+}
+
+Timing :: struct {
+    curved: bool
+    x1: float64
+    y1: float64
+    x2: float64
+    y2: float64
+}
+
+Keyframe :: struct {
+    offset: float32
+    value: float32
+    timing: Timing
+}
+
+Track :: struct {
+    keyframes: []Keyframe
+}
+
+SampleResult :: struct {
+    value: float32
+    active: bool
+}
+
+TweenState :: struct {
+    initialized: bool
+    active: bool
+    now: float64
+    started: float64
+    value: float32
+    from: float32
+    target: float32
+    duration: float64
+    timing: Timing
+}
+
+#scope_file
+
+MaxSeconds :: 1.7976931348623157e308
+
+FiniteValue :: (value: float32) -> bool {
+    return value >= -3.402823466e38 && value <= 3.402823466e38
+}
+
+BezierValue :: (first: float64, second: float64, t: float64) -> float64 {
+    inverse := 1.0 - t
+    return 3.0 * inverse * t * (inverse * first + t * second) + t * t * t
+}
+
+Interpolate :: (from: float32, to: float32, progress: float32) -> float32 {
+    if progress == 0.0 { return from }
+    if progress == 1.0 { return to }
+    first := cast(float64)from
+    value := first + (cast(float64)to - first) * cast(float64)progress
+    if value > 3.402823466e38 { return 3.402823466e38 }
+    if value < -3.402823466e38 { return -3.402823466e38 }
+    return cast(float32)value
+}
+
+#scope_export
+
+// Invalid control points leave the timing linear. CSS permits y to overshoot.
+CubicBezier :: (x1: float32, y1: float32, x2: float32, y2: float32) -> Timing {
+    if !(x1 >= 0.0 && x1 <= 1.0 && x2 >= 0.0 && x2 <= 1.0) ||
+        !FiniteValue(y1) || !FiniteValue(y2) || (x1 == y1 && x2 == y2) {
+        return Timing.{}
+    }
+    return Timing.{true, cast(float64)x1, cast(float64)y1, cast(float64)x2, cast(float64)y2}
+}
+
+TimingFor :: (ease: Easing) -> Timing {
+    if ease == .Ease { return CubicBezier(0.25, 0.1, 0.25, 1.0) }
+    if ease == .EaseIn { return CubicBezier(0.42, 0.0, 1.0, 1.0) }
+    if ease == .EaseOut { return CubicBezier(0.0, 0.0, 0.58, 1.0) }
+    if ease == .EaseInOut { return CubicBezier(0.42, 0.0, 0.58, 1.0) }
+    return Timing.{}
+}
+
+Progress :: (timing: Timing, progress: float32) -> float32 {
+    if !(progress > 0.0) { return 0.0 }
+    if progress >= 1.0 { return 1.0 }
+    if !timing.curved { return progress }
+    // Bezier x is monotonic for valid CSS x control points. A fixed search
+    // also converges on near-flat portions where Newton iteration is unstable.
+    x := cast(float64)progress
+    low: float64 = 0.0
+    high: float64 = 1.0
+    for iteration: 0..19 {
+        middle := (low + high) * 0.5
+        if BezierValue(timing.x1, timing.x2, middle) < x { low = middle }
+        else { high = middle }
+    }
+    return cast(float32)BezierValue(timing.y1, timing.y2, (low + high) * 0.5)
+}
+
+// Validate once. Keep the borrowed frames alive and unchanged while using the track.
+BuildTrack :: (keyframes: []Keyframe) -> Track {
+    if keyframes.count < 2 || keyframes[0].offset != 0.0 ||
+        keyframes[keyframes.count - 1].offset != 1.0 { return Track.{} }
+    previous: float32 = -1.0
+    for frame: keyframes {
+        if !(frame.offset > previous && frame.offset <= 1.0) ||
+            !FiniteValue(frame.value) { return Track.{} }
+        previous = frame.offset
+    }
+    return Track.{keyframes}
+}
+
+// Timing belongs to the outgoing segment. Search only the enclosing pair.
+At :: (track: Track, progress: float32) -> float32 {
+    frames := track.keyframes
+    if frames.count < 2 { return 0.0 }
+    if !(progress > 0.0) { return frames[0].value }
+    last := frames.count - 1
+    if progress >= 1.0 { return frames[last].value }
+    low := 0
+    high := last
+    while high - low > 1 {
+        middle := low + (high - low) / 2
+        if progress < frames[middle].offset { high = middle }
+        else { low = middle }
+    }
+    first := frames[low]
+    second := frames[high]
+    part := (progress - first.offset) / (second.offset - first.offset)
+    return Interpolate(first.value, second.value, Progress(first.timing, part))
+}
+
+// Request another frame only while active. Negative elapsed is before playback.
+Sample :: (track: Track, elapsed: float64, duration: float64,
+    iterations: s32 = 1, alternate: bool = false, reduced_motion: bool = false) -> SampleResult {
+    if track.keyframes.count < 2 { return SampleResult.{} }
+    if !reduced_motion && iterations > 0 && duration > 0.0 && duration <= MaxSeconds {
+        cycles := elapsed / duration
+        if !(cycles >= 0.0) { return SampleResult.{At(track, 0.0), false} }
+        if cycles < cast(float64)iterations {
+            iteration := cast(s32)cycles
+            phase := cast(float32)(cycles - cast(float64)iteration)
+            if alternate && iteration % 2 != 0 { phase = 1.0 - phase }
+            return SampleResult.{At(track, phase), true}
+        }
+    }
+    final: float32 = ifx alternate && iterations > 0 && iterations % 2 == 0 then 0.0 else 1.0
+    return SampleResult.{At(track, final), false}
+}
+
+// Use one zero-initialized state per animated value. A new target starts at
+// the value sampled at the current time, including on reversals.
+TweenTo :: (state: *TweenState, target: float32, now: float64,
+    duration: float64, timing: Timing, reduced_motion: bool = false) -> SampleResult {
+    if !FiniteValue(target) { target = ifx state == null then 0.0 else state.target }
+    if state == null { return SampleResult.{target, false} }
+    if now >= state.now && now <= MaxSeconds { state.now = now }
+    if !state.initialized || reduced_motion || !(duration > 0.0 && duration <= MaxSeconds) {
+        state.initialized = true
+        state.value = target
+        state.target = target
+        state.active = false
+        return SampleResult.{target, false}
+    }
+    if state.active {
+        progress := cast(float32)((state.now - state.started) / state.duration)
+        state.active = progress < 1.0
+        eased := Progress(state.timing, progress)
+        state.value = Interpolate(state.from, state.target, eased)
+    }
+    if state.target != target {
+        state.from = state.value
+        state.target = target
+        state.started = state.now
+        state.duration = duration
+        state.timing = timing
+        state.active = state.from != target
+    }
+    return SampleResult.{state.value, state.active}
+}

@@ -83,6 +83,35 @@ their existing contracts. Pointer hover/press and keyboard focus draw state
 layers; keyboard focus adds a ring. `compact` retains the scrolling dock/rail
 layout used by Breeze, including its footer and drag/close behavior.
 
+## Timed motion and keyframes
+
+Import `kryon/motion` for a timed scalar transition or keyframe track.
+The module takes time and state from the caller and depends only on scalar
+math. Apply a sample to opacity, position, size, or several chart points.
+
+- `Motion.TimingFor(.EaseOut)` creates a CSS timing preset. The choices are
+  `.Linear`, `.Ease`, `.EaseIn`, `.EaseOut`, and `.EaseInOut`.
+  `Motion.CubicBezier(x1, y1, x2, y2)` accepts CSS control points, including
+  overshoot. Invalid control points yield linear timing. Use `Motion.Progress`
+  to ease a unit interval directly.
+- `Motion.BuildTrack(frames)` validates a borrowed slice of `Motion.Keyframe`
+  records. Start at offset `0`, end at `1`, and place any other offsets in
+  increasing order. A keyframe's timing governs the segment leaving it.
+  Keep the slice alive and unchanged. `Motion.At(track, progress)` samples
+  by normalized progress. `Motion.Sample(track, elapsed, duration, iterations,
+  alternate, reduced_motion)` samples by seconds and reports `.value` and
+  `.active`. Reduced motion settles at the same endpoint as ordinary playback.
+- `Motion.TweenTo(*state, target, now, duration, timing, reduced_motion)`
+  starts an implicit transition when the target changes. Give each value its
+  own zero-initialized `Motion.TweenState`. The first call initializes at the
+  supplied target. Changing targets mid-flight starts at the current value.
+  Pass monotonic seconds and request motion frames while `.active` is true.
+
+The [checked usage example](../src/ui/motion_api_example.zi) samples a whole
+series with one easing calculation per frame and shows an interrupted hover
+transition. Keep the chart's scale and the input series stable while they
+interpolate. Pass the resulting values to your usual chart drawing code.
+
 ## Widget motion
 
 `Menu.Props`, `TabBar.Props`, `Navigation.Props`, and `Collapsible.Props`
