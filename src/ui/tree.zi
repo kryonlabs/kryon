@@ -311,6 +311,16 @@ NodeGeometry :: struct {
         prefix: u32
     }
 
+    TreeLabelCapacity :: 65536
+
+    LabelBuffer :: struct {
+        bytes: Vec(u8)
+    }
+
+    TreeLabelText :: (buffer: *LabelBuffer, offset: s64, length: s64) -> string {
+        return TextView(buffer.bytes[offset:offset + length])
+    }
+
     TreeStore :: struct {
         committed: Vec(NodeCore)
         submitted: Vec(NodeCore)
@@ -319,8 +329,9 @@ NodeGeometry :: struct {
         committed_text: Vec(u8)
         submitted_text: Vec(u8)
         // Input keeps reading the committed buffer while its replacement is
-        // composed. Commit exchanges their roles without moving label bytes.
-        labels: [2][65536]u8
+        // composed. Each buffer reserves its full capacity on first use so
+        // neither appending a label nor committing moves borrowed label bytes.
+        labels: [2]LabelBuffer
         committed_label_buffer: s32
         submitted_label_count: s64
         // Complete ownership directory for the submitted frame, ordered by
@@ -578,31 +589,13 @@ NodeGeometry :: struct {
             } else {
                 semantic = trees[slot].submitted_semantics[node.semantic_index]
             }
+            committed_buffer := trees[slot].committed_label_buffer
+            labels := *trees[slot].labels[ifx committed then committed_buffer else 1 - committed_buffer]
             if semantic.label_length > 0 {
-                if committed {
-                    entry.semantic_label = TextView(
-                        trees[slot].labels[trees[slot].committed_label_buffer][
-                        semantic.label_offset:
-                        semantic.label_offset + semantic.label_length])
-                } else {
-                    entry.semantic_label = TextView(
-                        trees[slot].labels[1 - trees[slot].committed_label_buffer][
-                        semantic.label_offset:
-                        semantic.label_offset + semantic.label_length])
-                }
+                entry.semantic_label = TreeLabelText(labels, semantic.label_offset, semantic.label_length)
             }
             if semantic.detail_length > 0 {
-                if committed {
-                    entry.semantic_detail = TextView(
-                        trees[slot].labels[trees[slot].committed_label_buffer][
-                        semantic.detail_offset:
-                        semantic.detail_offset + semantic.detail_length])
-                } else {
-                    entry.semantic_detail = TextView(
-                        trees[slot].labels[1 - trees[slot].committed_label_buffer][
-                        semantic.detail_offset:
-                        semantic.detail_offset + semantic.detail_length])
-                }
+                entry.semantic_detail = TreeLabelText(labels, semantic.detail_offset, semantic.detail_length)
             }
             entry.style_class = semantic.style_class
             entry.style_id = semantic.style_id
@@ -1449,11 +1442,16 @@ NodeGeometry :: struct {
 
     TreeStoreLabel :: (slot: s32, value: string) -> s64 {
         if value.count == 0 { return 0 }
-        if value.count > 65536 {
+        if value.count > TreeLabelCapacity {
             trees[slot].error = cast(FrameStatus)FrameAllocationFailed
             return -1
         }
         buffer: s32 = 1 - trees[slot].committed_label_buffer
+        labels := *trees[slot].labels[buffer]
+        if labels.bytes.count == 0 && !VecResizeBounded(labels.bytes, TreeLabelCapacity, TreeLabelCapacity) {
+            trees[slot].error = cast(FrameStatus)FrameAllocationFailed
+            return -1
+        }
         prefix: u32
         byte: s64 = 0
         while byte < 4 {
@@ -1470,7 +1468,7 @@ NodeGeometry :: struct {
             if span.length == cast(u32)value.count {
                 before = span.prefix < prefix
                 if span.prefix == prefix {
-                    stored := TextView(trees[slot].labels[buffer][span.offset:cast(s64)span.offset + cast(s64)span.length])
+                    stored := TreeLabelText(labels, cast(s64)span.offset, cast(s64)span.length)
                     if stored == value { return cast(s64)span.offset }
                     byte = 4
                     while byte < value.count && stored[byte] == value[byte] { byte += 1 }
@@ -1480,7 +1478,7 @@ NodeGeometry :: struct {
             if before { low = middle + 1 } else { high = middle }
         }
         start: s64 = trees[slot].submitted_label_count
-        if value.count > 65536 - start {
+        if value.count > TreeLabelCapacity - start {
             trees[slot].error = cast(FrameStatus)FrameAllocationFailed
             return -1
         }
@@ -1501,7 +1499,7 @@ NodeGeometry :: struct {
         trees[slot].submitted_label_spans += 1
         byte = 0
         while byte < value.count {
-            trees[slot].labels[buffer][start + byte] = value[byte]
+            labels.bytes[start + byte] = value[byte]
             byte += 1
         }
         trees[slot].submitted_label_count = start + byte
@@ -1692,6 +1690,8 @@ NodeGeometry :: struct {
         VecFree(trees[slot].submitted_semantics)
         VecFree(trees[slot].committed_text)
         VecFree(trees[slot].submitted_text)
+        VecFree(trees[slot].labels[0].bytes)
+        VecFree(trees[slot].labels[1].bytes)
         VecFree(trees[slot].submitted_label_overflow)
         trees[slot].submitted_label_spans = 0
         VecFree(trees[slot].committed_interactions)
