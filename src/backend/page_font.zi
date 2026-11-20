@@ -5,6 +5,9 @@
 #import "number_text"
 #import "text_buffer"
 #import "web"
+#import "control_props"
+
+using FontStyle;
 
 PAGE_FONT_MAX :: 256
 
@@ -18,6 +21,8 @@ page_font_bytes: [96]u8;
 PageTextSize :: struct {
     face: s32
     size: s32
+    weight: s32
+    slant: FontStyle
     hundredths: s32
     ascent: float64
 }
@@ -40,9 +45,16 @@ PageFontAppend :: (index: s32, text: string) -> s32 {
 
 // A font-family-and-size shorthand such as "16.25px kryon-face-0" for a size
 // in hundredths of a pixel; monospace stands in when there is no face.
-PageFontSpec :: (hundredths: s32, face_id: s32) -> string {
+PageFontSpec :: (hundredths: s32, face_id: s32, glyphs: TextGlyphStyle = TextGlyphStyle.{}) -> string {
     part: [24]u8
-    index: s32 = PageFontAppend(0, FormatInteger((hundredths / 100), part[:]))
+    index: s32 = 0
+    if glyphs.style == cast(FontStyle)FontStyleItalic { index = PageFontAppend(index, "italic ") }
+    if glyphs.style == cast(FontStyle)FontStyleOblique { index = PageFontAppend(index, "oblique ") }
+    if glyphs.weight >= 1 && glyphs.weight <= 1000 {
+        index = PageFontAppend(index, FormatInteger(glyphs.weight, part[:]))
+        index = PageFontAppend(index, " ")
+    }
+    index = PageFontAppend(index, FormatInteger((hundredths / 100), part[:]))
     fraction: s32 = hundredths % 100
     page_font_bytes[index] = cast(u8)46
     page_font_bytes[index + 1] = cast(u8)(48 + fraction / 10)
@@ -164,8 +176,8 @@ PageMaxOf :: (left: s32, right: s32) -> s32 {
 // plus descent spans `size` pixels. Kryon lays text out like native, whose
 // fonts are scaled to that pixel height, while a CSS size is the em size;
 // browsers also disagree on a face's ascent and descent, so this is measured.
-PageFontHundredths :: (context: s32, face_id: s32, size: s32) -> s32 {
-    WebSet(context, WebName("font"), WebText(PageFontSpec(size * 100, face_id)))
+PageFontHundredths :: (context: s32, face_id: s32, size: s32, glyphs: TextGlyphStyle) -> s32 {
+    WebSet(context, WebName("font"), WebText(PageFontSpec(size * 100, face_id, glyphs)))
     metrics: s32 = WebAsObject(WebCall1(context, WebName("measureText"),
         WebText("H")))
     size_value: float64 = cast(float64)size
@@ -180,11 +192,12 @@ PageFontHundredths :: (context: s32, face_id: s32, size: s32) -> s32 {
 // Measure and draw with the same browser font at its final logical size.
 // The context's camera and device-pixel transform rasterise it directly at
 // the output resolution instead of resampling a glyph atlas.
-PageTextSizeFor :: (context: s32, face_id: s32, size: s32) -> PageTextSize {
+PageTextSizeFor :: (context: s32, face_id: s32, size: s32,
+    glyphs: TextGlyphStyle = TextGlyphStyle.{}) -> PageTextSize {
     index: s32 = 0
     while index < page_text_size_count {
         cached := page_text_sizes[index]
-        if cached.face == face_id && cached.size == size {
+        if cached.face == face_id && cached.size == size && cached.weight == glyphs.weight && cached.slant == glyphs.style {
             return cached
         }
         index += 1
@@ -192,8 +205,10 @@ PageTextSizeFor :: (context: s32, face_id: s32, size: s32) -> PageTextSize {
     result: PageTextSize
     result.face = face_id
     result.size = size
-    result.hundredths = PageFontHundredths(context, face_id, size)
-    WebSet(context, WebName("font"), WebText(PageFontSpec(result.hundredths, face_id)))
+    result.weight = glyphs.weight
+    result.slant = glyphs.style
+    result.hundredths = PageFontHundredths(context, face_id, size, glyphs)
+    WebSet(context, WebName("font"), WebText(PageFontSpec(result.hundredths, face_id, glyphs)))
     metrics := WebAsObject(WebCall1(context, WebName("measureText"), WebText("H")))
     result.ascent = PageMeasured(metrics, WebName("fontBoundingBoxAscent"),
         cast(float64)size * 0.8)
@@ -208,30 +223,52 @@ PageTextSizeFor :: (context: s32, face_id: s32, size: s32) -> PageTextSize {
     return result
 }
 
-PageTextWidth :: (face_id: s32, text: string, size: s32) -> float64 {
+// Only styled calls use native letterSpacing, and they restore the previous
+// drawing state when measuring or painting into a shared context.
+PageTextTracking :: (context: s32, spacing: float32) -> WebValue {
+    if spacing == 0.0 { return WebUndefined() }
+    attribute := WebName("letterSpacing")
+    previous := WebGet(context, attribute)
+    if WebIsUndefined(previous) { return previous }
+    part: [32]u8
+    number := FormatDecimal(cast(float64)spacing, 6, part[:])
+    count := PageFontAppend(0, number)
+    count = PageFontAppend(count, "px")
+    WebSet(context, attribute, WebText(TextView(page_font_bytes[:count])))
+    return previous
+}
+
+PageTextWidth :: (face_id: s32, text: string, size: s32, weight: s32 = 0,
+    slant: s32 = 0, spacing: float32 = 0.0) -> float64 {
     context := PageMeasureContext()
     if context == 0 || size <= 0 || text.count == 0 { return 0.0 }
     scope := WebScope()
-    style := PageTextSizeFor(context, face_id, size)
-    WebSet(context, WebName("font"), WebText(PageFontSpec(style.hundredths, face_id)))
+    glyphs := TextGlyphStyle.{weight, cast(FontStyle)slant, spacing}
+    style := PageTextSizeFor(context, face_id, size, glyphs)
+    WebSet(context, WebName("font"), WebText(PageFontSpec(style.hundredths, face_id, glyphs)))
+    previous := PageTextTracking(context, spacing)
     metrics := WebAsObject(WebCall1(context, WebName("measureText"), WebText(text)))
     width := WebGetNumber(metrics, WebName("width"))
+    if !WebIsUndefined(previous) { WebSet(context, WebName("letterSpacing"), previous) }
     WebEnd(scope)
     return width
 }
 
 PageTextDraw :: (face_id: s32, text: string, x: s32, y: s32, size: s32,
-    r: s32, g: s32, b: s32, a: s32) {
+    r: s32, g: s32, b: s32, a: s32, weight: s32 = 0, slant: s32 = 0, spacing: float32 = 0.0) {
     context := PageContext()
     if context == 0 || size <= 0 || text.count == 0 { return }
     scope := WebScope()
-    style := PageTextSizeFor(context, face_id, size)
-    WebSet(context, WebName("font"), WebText(PageFontSpec(style.hundredths, face_id)))
+    glyphs := TextGlyphStyle.{weight, cast(FontStyle)slant, spacing}
+    style := PageTextSizeFor(context, face_id, size, glyphs)
+    WebSet(context, WebName("font"), WebText(PageFontSpec(style.hundredths, face_id, glyphs)))
+    previous := PageTextTracking(context, spacing)
     WebSet(context, WebName("textBaseline"), WebText("alphabetic"))
     WebSet(context, WebName("textAlign"), WebText("left"))
     WebSet(context, page_names.fill_style, WebText(PageColor(r, g, b, a)))
     unused WebCall3(context, WebName("fillText"), WebText(text),
         WebNumber(cast(float64)x), WebNumber(cast(float64)y + style.ascent))
+    if !WebIsUndefined(previous) { WebSet(context, WebName("letterSpacing"), previous) }
     WebEnd(scope)
 }
 
@@ -280,7 +317,7 @@ PageGlyphMetrics :: (face_id: s32, codepoint: s32, size: s32, advance: *s32,
     ok: s32 = 0
     context: s32 = PageGlyphContext()
     if context != 0 {
-        font: string = PageFontSpec(PageFontHundredths(context, face_id, size), face_id)
+        font: string = PageFontSpec(PageFontHundredths(context, face_id, size, .{}), face_id)
         WebSet(context, WebName("font"), WebText(font))
         WebSet(context, WebName("textBaseline"), WebText("alphabetic"))
         character: s32 = WebAsObject(WebCall1(WebGetObject(WebGlobal, WebName("String")),

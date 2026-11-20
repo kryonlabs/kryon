@@ -22,7 +22,8 @@ if test "${widget_native:-0}" = 1; then
     for target in c; do
         output=$work/native-$target
         "$ziran" build --target="$target" --root "$repo/tests" \
-            $kryon_project_args \
+            --entry "$widget_test:main" \
+            $kryon_project_args "$@" \
             -o "$output" "$source"
             "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections \
                 -Wl,--gc-sections -I"$ziran_root/include" -I"$output" \

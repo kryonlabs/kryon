@@ -1,0 +1,13 @@
+#import "text_input"
+
+#program_export
+main :: () -> s32 {
+    width := TextInputContentWidth(280.0, 12)
+    state: CompositionState
+    next := CompositionTransitionFor(state, .{
+        .phase = .CompositionCommit,
+        .text = "staging"
+    }, true, false)
+    if width != 256 || !next.commit || next.commit_text != "staging" { return 1 }
+    return 0
+}

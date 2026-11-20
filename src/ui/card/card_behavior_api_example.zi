@@ -1,0 +1,16 @@
+#import "card_behavior"
+#import "card_props"
+#import "control_props"
+#import "geometry"
+Theme :: #import "theme";
+
+#program_export
+main :: () -> s32 {
+    unused Theme.InstallDefaultTheme(false)
+    outer := Rectangle.{20.0, 20.0, 320.0, 140.0}
+    inner := CardContentBounds(outer)
+    emphasis := CardEmphasis(.CardOutlined)
+    face := CardDefaultFace(emphasis, cast(s32)ButtonState.ButtonStateNormal)
+    if inner.width != 288.0 || inner.height != 108.0 || face.border_width != 1.0 { return 1 }
+    return 0
+}

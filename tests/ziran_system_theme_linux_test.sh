@@ -42,6 +42,8 @@ run xfce-dark
 rm "$config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml"
 printf '[Settings]\ngtk-theme-name=Fake-Light\n' > "$config/gtk-3.0/settings.ini"
 run gtk-light
+printf 'gtk-application-prefer-dark-theme=true\n' >> "$config/gtk-3.0/settings.ini"
+run gtk-prefer-dark
 
 rm "$config/gtk-3.0/settings.ini"
 GTK_THEME=Missing:dark env -u DISPLAY HOME="$work/home" XDG_CONFIG_HOME="$config" \

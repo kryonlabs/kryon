@@ -5,6 +5,8 @@ Slots :: #import "pixmap_typeface_slots";
 System :: #import "system_typeface_android";
 Pixels :: #import "pixmap";
 #import "drawing_props"
+#import "control_props"
+#import "font_metrics"
 #import "std/byte_text_linux"
 CString :: #import "std/c_string";
 c :: #system_library "c";
@@ -13,6 +15,46 @@ Read :: (data: *u8, size: usize, count: usize, file: *void) -> usize #foreign c 
 Close :: (file: *void) -> s32 #foreign c "fclose";
 font_bytes: [1048576]u8;
 pixels: [32768]u32;
+using FontStyle;
+
+FontInk :: (mask: Slots.PixmapTypefaceMask) -> u64 {
+    signature: u64
+    for coverage: mask.coverage { signature = signature * cast(u64)31 + cast(u64)coverage }
+    return signature
+}
+
+TestTypography :: () -> bool {
+    value := "éHHH"
+    regular := GlyphWidth(value, 28, "latin")
+    mask: Slots.PixmapTypefaceMask
+    if !Fonts.AndroidFontRaster(value, 28.0, *mask, "latin") || mask.coverage.count == 0 { return false }
+    before := FontInk(mask); right := mask.left + mask.width
+    glyphs := TextGlyphStyle.{.letter_spacing = 5.0}
+    previous := UseTextGlyphStyle(glyphs)
+    defer { unused UseTextGlyphStyle(previous) }
+    width := Pixels.MeasureGlyphWidth(value, 28, "latin")
+    if width < regular + 12 || width > regular + 23 ||
+        !Fonts.AndroidFontRaster(value, 28.0, *mask, "latin") || mask.left + mask.width < right + 12 { return false }
+    glyphs.letter_spacing = -2.0
+    unused UseTextGlyphStyle(glyphs)
+    if Pixels.MeasureGlyphWidth(value, 28, "latin") >= regular ||
+        !Fonts.AndroidFontRaster(value, 28.0, *mask, "latin") || mask.left + mask.width >= right { return false }
+    glyphs = .{.weight = 700}
+    unused UseTextGlyphStyle(glyphs)
+    if !Fonts.AndroidFontRaster(value, 28.0, *mask, "latin") || FontInk(mask) == before { return false }
+    glyphs = .{.style = cast(FontStyle)FontStyleItalic}
+    unused UseTextGlyphStyle(glyphs)
+    if !Fonts.AndroidFontRaster(value, 28.0, *mask, "latin") || FontInk(mask) == before { return false }
+    variant := Fonts.android_font_variant_next
+    revision := GlyphMetricsRevision()
+    signature := FontInk(mask)
+    if !Fonts.SelectTypeface("latin") || !Fonts.AndroidFontRaster(value, 28.0, *mask, "latin") ||
+        FontInk(mask) != signature || Fonts.android_font_variant_next != variant ||
+        GlyphMetricsRevision() != revision { return false }
+    unused UseTextGlyphStyle(previous)
+    return GlyphWidth(value, 28, "latin") == regular &&
+        Fonts.AndroidFontRaster(value, 28.0, *mask, "latin") && FontInk(mask) == before
+}
 
 TestFonts :: (env: *JniEnv) -> s32 {
     latin := "Hello world café"
@@ -22,6 +64,7 @@ TestFonts :: (env: *JniEnv) -> s32 {
     !Fonts.SelectTypeface("latin") { return 2 }
     width := Pixels.MeasureGlyphWidth(latin, 28, "")
     if width < builtin - 1 || width > builtin + 1 || Pixels.MeasureGlyphLineHeight(28, "") != 28 { return 3 }
+    if !TestTypography() { return 19 }
     if Fonts.LoadTypefaceFile("latin", "/data/local/tmp/kryon-android-typefaces-test/absent.ttf", null, 0) ||
     Pixels.MeasureGlyphWidth(latin, 28, "") != width { return 4 }
     count: s32

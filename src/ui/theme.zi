@@ -295,10 +295,31 @@ DefaultTheme :: (dark: bool, reduced_motion: bool = false) -> ThemeTokens {
 
 active_theme: ThemeTokens;
 active_theme_ready: bool;
+explicit_palette: bool;
+
+StoreTheme :: (theme: ThemeTokens) -> bool {
+    active_theme = theme; active_theme_ready = true; return true
+}
 
 #program_export
 InstallTheme :: (theme: ThemeTokens) -> bool {
-    active_theme = theme; active_theme_ready = true; return true
+    explicit_palette = true
+    return StoreTheme(theme)
+}
+
+FollowsSystemTheme :: () -> bool { return !explicit_palette }
+
+// A host updates the default palette without replacing an app's explicit
+// palette, fonts, metrics or reduced-motion setting.
+ApplySystemTheme :: (dark: bool, colors: Palette) -> bool {
+    if explicit_palette { return false }
+    current := CurrentTheme()
+    theme := DefaultTheme(dark, current.motion.reduced_motion)
+    theme.colors = colors
+    theme.fonts = current.fonts
+    theme.metrics = current.metrics
+    theme.motion = current.motion
+    return StoreTheme(theme)
 }
 
 #program_export
@@ -315,7 +336,7 @@ CurrentTheme :: () -> ThemeTokens {
 #program_export
 SetThemeMode :: (dark: bool) -> bool {
     theme: ThemeTokens = CurrentTheme()
-    if theme.dark == dark { return true }
+    if explicit_palette && theme.dark == dark { return true }
     replacement := DefaultTheme(dark, theme.motion.reduced_motion)
     replacement.metrics = theme.metrics
     replacement.fonts = theme.fonts
@@ -334,7 +355,7 @@ SetReducedMotion :: (reduced_motion: bool) -> bool {
         if theme.motion.multiplier > 0.0 { theme.motion.saved_multiplier = theme.motion.multiplier }
         theme.motion.multiplier = theme.motion.saved_multiplier
     }
-    return InstallTheme(theme)
+    return StoreTheme(theme)
 }
 
 #program_export

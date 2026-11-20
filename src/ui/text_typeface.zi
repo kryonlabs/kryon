@@ -4,6 +4,10 @@ TextTypefaceSelector :: #type (name: string) -> string #reads;
 text_typeface_selector: TextTypefaceSelector;
 text_typeface_installed: bool;
 
+// Native raster entry points receive borrowed label bytes and the scoped
+// name from the same queued command.
+text_raster_typeface: string;
+
 #program_export
 SetTextTypefaceSelector :: (select: TextTypefaceSelector) {
     text_typeface_selector = select

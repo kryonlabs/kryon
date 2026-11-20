@@ -3,8 +3,6 @@ Button :: #import "button";
 Text :: #import "text";
 Theme :: #import "theme";
 #import "text_host"
-// Caller-owned buffers use StateProps before this same widget and
-// StateApplyResult afterwards; commit remains on Result.
 // Portable compositions use the same widgets as retained native hosts.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
@@ -19,6 +17,8 @@ Theme :: #import "theme";
     #import "drawing_props"
     #import "font_metrics"
     #import "geometry"
+    #import "key_input"
+    Layout :: #import "layout";
     #import "paint_queue"
     #import "semantic"
     #import "style"
@@ -44,6 +44,125 @@ Theme :: #import "theme";
     using ButtonState;
     using StyleField;
     using CompositionPhase;
+
+    BindingResult :: struct {
+        node: s32
+        focused: bool
+        changed: bool
+        committed: bool
+        escaped: bool
+        paste_without_text: bool
+    }
+
+    // Default width stays steady while the text changes. An unset height
+    // uses the installed face and the theme's control size.
+    #program_export
+    Measure :: (props: TextField.Props) -> Rectangle {
+        bounds := props.bounds
+        if bounds.width > 0.0 && bounds.height > 0.0 { return bounds }
+        face := TextFieldFaceFor(props, false).value
+        scale := ifx props.scale > 0.0 then props.scale else 1.0
+        if bounds.height <= 0.0 {
+            minimum := StyleMinHeightValue(face.fields, face.min_height,
+                Theme.CurrentThemeMetric(.ThemeMetricControlHeightMedium))
+            bounds.height = minimum * scale
+        }
+        if bounds.width <= 0.0 {
+            font := ResolveFont(0, StyleFontValue(face.fields, face.font_size), 14)
+            padding := TextInputScaledMetric(face.padding_x, scale)
+            if padding < 0 { padding = 0 }
+            bounds.width = cast(float32)(GlyphWidth("00000000000000000000", font, face.typeface) + 2 * padding)
+        }
+        return bounds
+    }
+
+    // Preserve unrelated shortcuts, including a captured Tab, for the app.
+    TextFieldSessionInput :: (session: Session, input: Input, typed: []u8) -> Input {
+        key := KeyboardTake(session)
+        modifiers := KeyboardModifiers(session)
+        if (modifiers & KeyModifierAlt) != 0 {
+            if key != 0 { unused KeyboardSend(session, key) }
+            return input
+        }
+        text := TypedTextTake(session, typed)
+        observed := TextFieldInputFor(key, modifiers, text)
+        if !(observed.left || observed.right || observed.home || observed.end ||
+            observed.backspace || observed.delete_forward || observed.select_all ||
+            observed.copy || observed.cut || observed.paste || observed.commit || observed.escape) {
+            if key != 0 { unused KeyboardSend(session, key) }
+            if observed.text == "" { return input }
+        }
+        observed.composition_event = input.composition_event
+        observed.paste_text = input.paste_text
+        observed.focus = input.focus
+        observed.blur = input.blur
+        return observed
+    }
+
+    // Apply the ordinary TextField's edit to caller-owned storage. Use
+    // session_input=false to supply all keyboard input through Props.input.
+    #program_export
+    Bind :: (session: Session, state: *State, props: TextField.Props,
+        session_input: bool = true) -> BindingResult {
+        bound: BindingResult = .{.node = -1}
+        if state == null { return bound }
+        props = TextField.StatePropsFor(state, props)
+        parent := TreeCurrentParent(session)
+        previous := TreePrevious(session, parent, TextFieldKey(session, props), WidgetKindTextField)
+        retained_focus := TreeFocusedAt(session, previous)
+        // A cleared retained focus must not reuse a stale buffer flag.
+        props.focused = props.focused && retained_focus
+        width := Layout.ColumnWidth(session)
+        fill := props.bounds.width <= 0.0 && props.bounds.x == 0.0 && props.bounds.y == 0.0 && width >= 0.0
+        if fill { props.bounds.width = width }
+        if !fill || width > 0.0 { props.bounds = Measure(props) }
+        if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 {
+            state.focused = false
+            state.preedit_active = false
+            return bound
+        }
+        event := props.input.composition_event
+        preedit := event.phase == .CompositionStart || event.phase == .CompositionUpdate
+        if (preedit && event.text.count > state.preedit.count) ||
+            ((preedit || event.phase == .CompositionCommit) && !Utf8.Valid(event.text)) {
+            props.input.composition_event = .{.phase = .CompositionCancel}
+        }
+        // The session queues up to 32 UTF-8 codepoints.
+        typed: [128]u8
+        if session_input && !props.disabled && !props.input.blur && TreeInputAllowedAt(session, previous) &&
+            (retained_focus || props.input.focus) {
+            props.input = TextFieldSessionInput(session, props.input, typed[:])
+        }
+        store_preedit := false
+        {
+            draw_props := props
+            draw_props.composition = .{}
+            if state.preedit_active && retained_focus {
+                draw_props.composition = .{.active = true, .text = TextView(state.preedit[:state.preedit_length]),
+                    .cursor = state.preedit_cursor, .selection_length = state.preedit_selection}
+            }
+            result := Draw(session, draw_props)
+            bound.node = result.node
+            if !StateApplyResult(state, result) { return bound }
+            bound.focused = result.focused
+            bound.changed = result.edit.changed
+            bound.committed = result.committed
+            bound.escaped = result.escaped
+            bound.paste_without_text = result.paste_without_text
+            if result.composition_changed || !retained_focus {
+                state.preedit_active = result.composition.active
+                state.preedit_cursor = result.composition.cursor
+                state.preedit_selection = result.composition.selection_length
+                store_preedit = result.composition.active
+            }
+        }
+        if store_preedit {
+            // An active changed preedit came from this frame's validated event.
+            state.preedit_length = cast(s32)event.text.count
+            for byte, index: event.text { state.preedit[index] = byte }
+        }
+        return bound
+    }
 
     #program_export
     TextFieldKey :: (session: Session, props: TextField.Props) -> u64 {
@@ -243,96 +362,11 @@ Theme :: #import "theme";
         return edit
     }
 
-    // The caller supplies current text and raw input samples. Kryon returns the
-    // replacement range and next selection; the caller owns text storage.
-    TextFieldCore :: (session: Session, props: TextField.Props) -> Result {
-        result: Result
-        result.node = -1
-        result.cursor = Grapheme.Boundary(props.value, props.cursor)
-        result.anchor = Grapheme.Boundary(props.value, props.anchor)
-        result.scroll_x = props.scroll_x
-        result.focused = props.focused
-        result.composition = props.composition
-        if props.bounds.width <= 0.0 ||
-        props.bounds.height <= 0.0 { return result }
-        key: u64 = TextFieldKey(session, props)
-        previous: s32 = -1
-        if TreeIsBuilding(session) {
-            previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindTextField)
-        }
-        activated: bool = TreeTakeActivationAt(session, previous)
-        drag: PointerDrag = TreeTakeDragAt(session, previous)
-        // A press that focuses a numeric field selects its whole number until
-        // the release, so typing replaces the number; later taps place the
-        // cursor.
-        select_number: bool = TreePreviousWidgetState(session, previous).open &&
-        (drag.active || drag.ended || activated)
-        if props.numeric && drag.started { select_number = !props.focused }
-        if TreeHasFocus(session) { result.focused = TreeFocusedAt(session, previous) }
-        if props.disabled || props.input.blur { result.focused = false; TreeBlurAt(session, previous) }
-        // A focus request takes the session focus, as a blur releases it.
-        if !props.disabled && props.input.focus { result.focused = true; unused TreeFocusAt(session, previous) }
-        if previous >= 0 && !TreeInputAllowedAt(session, previous) { result.focused = false }
-        face: StyleFrame = TextFieldFaceFor(props, result.focused)
-        scale: float32 = props.scale
-        if scale <= 0.0 { scale = 1.0 }
-        font: s32 = ResolveFont(0,
-            StyleFontValue(face.value.fields,
-            face.value.font_size), 14)
-        padding_x: s32 = TextInputScaledMetric(
-            face.value.padding_x, scale)
-        if padding_x < 0 { padding_x = 0 }
-        clear_size: float32 = 0.0
-        if props.clear_label != "" && props.value != "" && !props.read_only {
-            clear_size = cast(float32)TextInputScaledMetric(44.0, scale)
-            if clear_size > props.bounds.height { clear_size = props.bounds.height }
-            if clear_size > props.bounds.width { clear_size = props.bounds.width }
-        }
-        display: string = props.value
-        secure_mask: [256]u8
-        if props.secure {
-            display = TextFieldSecureDisplay(props.value, props.display_value,
-                secure_mask[:])
-        }
-        text_width: s32 = GlyphWidth(display, font,
-            face.value.typeface)
-        scroll: TextFieldScroll = TextFieldScrollFor(
-            props.bounds.x, props.bounds.width - clear_size,
-            padding_x, text_width, result.scroll_x)
-        result.scroll_x = scroll.scroll
-        if !props.disabled &&
-        (activated || drag.started || drag.active || drag.ended) {
-            result.focused = true
-            sample_x: float32 = drag.x
-            if drag.started {
-                sample_x = props.bounds.x + drag.grab_x
-            } else if previous >= 0 {
-                // Drag observations are in window coordinates; glyph layout
-                // and queued paint use the field's declared coordinates.
-                sample_x -= TreeNodeAt(session, previous).bounds.x - props.bounds.x
-            }
-            selected: s32 = TextFieldCursorAtX(display,
-                TextPointerOffset(sample_x, scroll.text_origin_x),
-                font, face.value.typeface)
-            if props.secure {
-                count: s32 = TextFieldCodepoints(Text.TextSpan(display,
-                    0, selected))
-                selected = Grapheme.Boundary(props.value, TextFieldByteAfter(props.value, count))
-            }
-            // The press places the anchor. A release ends a drag with its
-            // selection kept (a click releases where it pressed, so it stays
-            // a caret); an activation without a release places it too.
-            if drag.started || (activated && !drag.ended) {
-                result.anchor = selected
-            }
-            result.cursor = selected
-            if select_number {
-                result.anchor = 0
-                result.cursor = cast(s32)props.value.count
-            }
-        }
+    // Keep the input transition independent of paint layout state.
+    TextFieldApplyInput :: (session: Session, props: TextField.Props,
+        previous: s32, pointer_changed: bool, result: Result) -> Result {
         composition_state: CompositionState = props.composition
-        if activated || drag.started || drag.active || drag.ended {
+        if pointer_changed {
             if composition_state.active {
                 composition_state = CompositionState.{}
                 result.composition_changed = true
@@ -498,6 +532,101 @@ Theme :: #import "theme";
             result.composition = CompositionState.{}
             result.composition_changed = result.composition_changed || props.composition.active
         }
+        return result
+    }
+
+    // The caller supplies current text and raw input samples. Kryon returns the
+    // replacement range and next selection; the caller owns text storage.
+    TextFieldCore :: (session: Session, props: TextField.Props) -> Result {
+        result: Result
+        result.node = -1
+        result.cursor = Grapheme.Boundary(props.value, props.cursor)
+        result.anchor = Grapheme.Boundary(props.value, props.anchor)
+        result.scroll_x = props.scroll_x
+        result.focused = props.focused
+        result.composition = props.composition
+        if props.bounds.width <= 0.0 ||
+        props.bounds.height <= 0.0 { return result }
+        key: u64 = TextFieldKey(session, props)
+        previous: s32 = -1
+        if TreeIsBuilding(session) {
+            previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindTextField)
+        }
+        activated: bool = TreeTakeActivationAt(session, previous)
+        drag: PointerDrag = TreeTakeDragAt(session, previous)
+        // A press that focuses a numeric field selects its whole number until
+        // the release, so typing replaces the number; later taps place the
+        // cursor.
+        select_number: bool = TreePreviousWidgetState(session, previous).open &&
+        (drag.active || drag.ended || activated)
+        if props.numeric && drag.started { select_number = !props.focused }
+        if TreeFocusedAt(session, previous) { result.focused = true }
+        else if props.focused && TreeHasFocus(session) { result.focused = false }
+        if props.disabled || props.input.blur { result.focused = false; TreeBlurAt(session, previous) }
+        // A focus request takes the session focus, as a blur releases it.
+        if !props.disabled && props.input.focus { result.focused = true; unused TreeFocusAt(session, previous) }
+        if previous >= 0 && !TreeInputAllowedAt(session, previous) { result.focused = false }
+        face_focused: bool = result.focused
+        face: StyleFrame = TextFieldFaceFor(props, face_focused)
+        scale: float32 = props.scale
+        if scale <= 0.0 { scale = 1.0 }
+        font: s32 = ResolveFont(0,
+            StyleFontValue(face.value.fields,
+            face.value.font_size), 14)
+        padding_x: s32 = TextInputScaledMetric(
+            face.value.padding_x, scale)
+        if padding_x < 0 { padding_x = 0 }
+        clear_size: float32 = 0.0
+        if props.clear_label != "" && props.value != "" && !props.read_only {
+            clear_size = cast(float32)TextInputScaledMetric(44.0, scale)
+            if clear_size > props.bounds.height { clear_size = props.bounds.height }
+            if clear_size > props.bounds.width { clear_size = props.bounds.width }
+        }
+        display: string = props.value
+        secure_mask: [256]u8
+        if props.secure {
+            display = TextFieldSecureDisplay(props.value, props.display_value,
+                secure_mask[:])
+        }
+        text_width: s32 = GlyphWidth(display, font,
+            face.value.typeface)
+        scroll: TextFieldScroll = TextFieldScrollFor(
+            props.bounds.x, props.bounds.width - clear_size,
+            padding_x, text_width, result.scroll_x)
+        result.scroll_x = scroll.scroll
+        if !props.disabled &&
+        (activated || drag.started || drag.active || drag.ended) {
+            result.focused = true
+            sample_x: float32 = drag.x
+            if drag.started {
+                sample_x = props.bounds.x + drag.grab_x
+            } else if previous >= 0 {
+                // Drag observations are in window coordinates; glyph layout
+                // and queued paint use the field's declared coordinates.
+                sample_x -= TreeNodeAt(session, previous).bounds.x - props.bounds.x
+            }
+            selected: s32 = TextFieldCursorAtX(display,
+                TextPointerOffset(sample_x, scroll.text_origin_x),
+                font, face.value.typeface)
+            if props.secure {
+                count: s32 = TextFieldCodepoints(Text.TextSpan(display,
+                    0, selected))
+                selected = Grapheme.Boundary(props.value, TextFieldByteAfter(props.value, count))
+            }
+            // The press places the anchor. A release ends a drag with its
+            // selection kept (a click releases where it pressed, so it stays
+            // a caret); an activation without a release places it too.
+            if drag.started || (activated && !drag.ended) {
+                result.anchor = selected
+            }
+            result.cursor = selected
+            if select_number {
+                result.anchor = 0
+                result.cursor = cast(s32)props.value.count
+            }
+        }
+        result = TextFieldApplyInput(session, props, previous,
+            activated || drag.started || drag.active || drag.ended, result)
         composing: bool = result.composition.active &&
         result.focused && !props.secure
         composition_prefix: string
@@ -523,7 +652,11 @@ Theme :: #import "theme";
                 result.scroll_x)
             result.scroll_x = scroll.scroll
         }
-        face = TextFieldFaceFor(props, result.focused)
+        // Input can change focus after the initial metrics were resolved.
+        // Otherwise the same immutable style request already has its face.
+        if result.focused != face_focused {
+            face = TextFieldFaceFor(props, result.focused)
+        }
         display_cursor: s32 = TextFieldDisplayByteFor(props.value,
             display, result.cursor, props.secure)
         cursor_prefix: string = Text.TextSpan(display, 0, display_cursor)
@@ -751,7 +884,12 @@ Theme :: #import "theme";
         if props.input.paste && props.input.paste_text.count == 0 {
             props.input.paste_text = TextMenuPasteText()
         }
-        opened: bool = TextMenuOpenRequested(session, key, props.bounds, props.disabled)
+        hit_bounds := props.bounds
+        if TreeIsBuilding(session) {
+            previous := TreePrevious(session, TreeCurrentParent(session), key, WidgetKindTextField)
+            if previous >= 0 { hit_bounds = TreeNodeAt(session, previous).bounds }
+        }
+        opened: bool = TextMenuOpenRequested(session, key, hit_bounds, props.disabled)
         result: Result = TextFieldCore(session, props)
         if result.clipboard_write { SystemClipboardSet(result.clipboard_text) }
         if opened { result.focused = true }

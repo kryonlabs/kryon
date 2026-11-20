@@ -1,10 +1,13 @@
 """Build the selected Frame source through the project tool without module aliases."""
+import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 
-from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
+from image_test_tools import png_pixels, rgb
+from toolchain import ROOT, ZIRAN, ZIRAN_ROOT, kryon_test_project
 
 
 def run(arguments, project, expected=0):
@@ -12,9 +15,107 @@ def run(arguments, project, expected=0):
     for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS'):
         environment.pop(key, None)
     result = subprocess.run([str(value) for value in arguments], cwd=project,
-                            env=environment, capture_output=True, text=True)
-    assert result.returncode == expected, (arguments, result.returncode, result.stdout, result.stderr)
+                            env=environment, capture_output=True, text=True, timeout=180)
+    assert result.returncode == expected, (arguments, result.returncode, result.stdout[-1500:], result.stderr[-5000:])
     return result
+
+
+def preview_test():
+    scratch = ROOT / 'build/scratch'
+    scratch.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='project-preview-', dir=scratch) as temporary:
+        project = Path(temporary)
+        kryon_test_project(project)
+        manifest = project / 'ziran.toml'
+        manifest.write_text(manifest.read_text().replace('module_roots = ["src"]',
+                                                         'module_roots = ["src", "previews"]'))
+        with manifest.open('a') as config:
+            config.write('''
+[tool.kryon]
+default_profile = "desktop"
+[tool.kryon.profiles.desktop]
+backend = "desktop"
+[tool.kryon.profiles.terminal]
+backend = "terminal"
+''')
+        run([ZIRAN, 'lock', '--offline'], project)
+        fixtures = project / 'previews'
+        fixtures.mkdir()
+        fixture = fixtures / 'controls.zi'
+        source = r'''Button :: #import "kryon/button";
+Snapshot :: #import "kryon/frame_snapshot";
+Env :: #import "std/environment_linux";
+#import "kryon/geometry"
+#import "kryon/session"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    scratch: [64]u8
+    if Env.EnvironmentRead("DISPLAY", scratch[:]).is_ok ||
+        Env.EnvironmentRead("WAYLAND_DISPLAY", scratch[:]).is_ok ||
+        Env.EnvironmentRead("SDL_VIDEODRIVER", scratch[:]).value != "dummy" { return 2 }
+    input := Snapshot.CaptureFrameInput(session)
+    if !input.available || input.elapsed_ms != 0 || input.delta_ms != 0 ||
+        input.focused || input.pointer.x != -1.0 || input.pointer.y != -1.0 {
+        print("preview input was not neutral\n")
+        return 1
+    }
+    unused Button.Draw(session, .{.key = cast(u64)9007199254740993,
+        .bounds = .{viewport.width - 135.0, 20.0, 120.0, 36.0},
+        .label = "Save \"café\"", .id = 19})
+    return 0
+}
+'''
+        fixture.write_text(source, encoding='utf-8')
+        output = project / 'output space'
+        output.mkdir()
+        front_door = ROOT / 'build/bin/kryon'
+        cli = [ZIRAN, 'tool', 'kryon', 'preview']
+        assert 'previews/FIXTURE.zi' in run([front_door, 'preview', '--help'], project).stdout
+        light = ['controls', '--width', '321', '--height', '179', '--theme', 'light']
+        args = [*light, '--output', 'output space/light.png']
+        run(['env', f"PATH={ZIRAN.parent}:{os.environ['PATH']}", 'DISPLAY=invalid-for-preview',
+             'WAYLAND_DISPLAY=invalid-for-preview', 'SDL_VIDEODRIVER=invalid-for-preview',
+             front_door, 'preview', *args], project)
+        run([*cli, *light, '--output', 'output space/repeat'], project)
+        run([*cli, 'controls', '--theme', 'dark', '--width', '173', '--height', '97',
+             '--output', 'output space/dark', '--profile', 'desktop'], project)
+
+        assert (output / 'light.png').read_bytes() == (output / 'repeat.png').read_bytes()
+        baseline = (output / 'light.json').read_bytes()
+        assert baseline == (output / 'repeat.json').read_bytes()
+        themes = []
+        for name, width, height in [('light', 321, 179), ('dark', 173, 97)]:
+            png = png_pixels(output / f'{name}.png')
+            assert png[:2] == (width, height)
+            themes.append(rgb(png, 1, 1))
+            tree = json.loads((output / f'{name}.json').read_bytes())
+            assert (tree['version'], tree['width'], tree['height']) == (1, width, height)
+            root, button = tree['nodes']
+            assert (root['index'], root['parent'], root['kind']) == (0, -1, 'screen')
+            assert (root['x'], root['y'], root['width'], root['height']) == (0, 0, width, height)
+            assert (button['parent'], button['role'], button['label'], button['key']) == (
+                0, 'button', 'Save "café"', 9007199254740993), button
+            assert button['focus_id'] == 19
+            assert (button['x'], button['y'], button['width'], button['height']) == (
+                width - 135, 20, 120, 36)
+            assert button['visible'] and button['enabled']
+        assert sum(themes[0]) > 650 and sum(themes[1]) < 200, themes
+
+        assert 'fixture not found: previews/missing.zi' in run(
+            [*cli, 'missing', *args[1:]], project, expected=2).stderr
+        assert 'integers from 1 through 4096' in run(
+            [*cli, 'controls', '--width', '4097', *args[3:]], project, expected=2).stderr
+        assert 'desktop C99' in run([*cli, *args, '--profile', 'terminal'], project, expected=2).stderr
+        assert 'parent exists and is writable' in run(
+            [*cli, *light, '--output', 'missing directory/preview'], project, expected=2).stderr
+        fixture.write_text('Frame :: ( {\n')
+        broken = run([*cli, *args], project, expected=2)
+        assert 'controls.zi' in broken.stderr and 'preview build or render failed' in broken.stderr, broken.stderr
+        assert (output / 'light.json').read_bytes() == baseline
+        assert (output / 'light.png').read_bytes() == (output / 'repeat.png').read_bytes()
+        assert not list(output.glob('.kryon-preview.*'))
+    print('Preview: byte-identical repeat PNG and JSON, two sizes and themes, widget bounds/role/label/key and actionable failures passed')
 
 
 def main():
@@ -103,4 +204,6 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
 
 
 if __name__ == '__main__':
-    main()
+    if sys.argv[1:] != ['--preview-only']:
+        main()
+    preview_test()

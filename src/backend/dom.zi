@@ -1,0 +1,30 @@
+Web :: #import "std/web";
+
+dom_close_requested: bool;
+
+// Replaces the author stylesheet of the current DOM profile. CSS is inserted
+// as text and follows the browser's ordinary cascade and media preferences.
+#program_export
+SetStyleSheet :: (css: string) -> bool {
+    scope := Web.WebScope()
+    defer Web.WebEnd(scope)
+    document := Web.WebGetObject(Web.WebGlobal, Web.WebName("document"))
+    if document == 0 { return false }
+    style := Web.WebAsObject(Web.WebCall1(document, Web.WebName("getElementById"),
+        Web.WebText("kryon-dom-author")))
+    if style == 0 { return false }
+    content := Web.WebName("textContent")
+    object := Web.WebGetObject(Web.WebGlobal, Web.WebName("Object"))
+    current := Web.WebGet(style, content)
+    if Web.WebAsBool(Web.WebCall2(object, Web.WebName("is"), current, Web.WebText(css))) {
+        return true
+    }
+    Web.WebSet(style, content, Web.WebText(css))
+    return !Web.WebFailed()
+}
+
+// Stops composition after the current frame. The final DOM stays visible.
+#program_export
+RequestClose :: () {
+    dom_close_requested = true
+}

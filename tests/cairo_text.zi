@@ -2,7 +2,234 @@
 #import "font_metrics"
 #import "drawing_props"
 TextField :: #import "kryon/text_field";
+#import "control_props"
+#import "geometry"
+#import "session"
+#import "style_sheet"
+#import "tree"
+#import "tree_draw"
+Faces :: #import "cairo_typefaces";
+Text :: #import "kryon/text";
+Button :: #import "kryon/button";
+Measure :: #import "kryon/text_measure";
+Codec :: #import "widget_codec";
+using StyleField;
+using FontStyle;
+using LineHeightUnit;
+using FrameStatus;
+using Text.Wrap;
 long_text: [2048]u8;
+
+TypographyRules :: (weight: s32, slant: FontStyle, spacing: float32,
+    height: float32, unit: LineHeightUnit) -> bool {
+    rules: StyleRules
+    rule: StyleRule
+    rule.selector = StyleDefaultSelector()
+    rule.selector.kind = StyleKindText()
+    rule.style.fields = cast(u32)StyleFontWeight | cast(u32)StyleFontStyle |
+        cast(u32)StyleLetterSpacing | cast(u32)StyleLineHeight
+    rule.style.font_weight = weight
+    rule.style.font_style = slant
+    rule.style.letter_spacing = spacing
+    rule.style.line_height = height
+    rule.style.line_height_unit = unit
+    rules.items[0] = rule
+    rules.count = 1
+    return InstallStyleRules(rules)
+}
+
+TypographyInk :: struct { count: s32; right: s32; top: s32; signature: u64; }
+
+ReadTypographyInk :: (top: s32, bottom: s32) -> TypographyInk {
+    ink: TypographyInk = .{.top = bottom}
+    pixels := RasterSurfaceData()
+    stride := RasterSurfaceStride()
+    for y: top..bottom - 1 {
+        for x: cast(s32)0..249 {
+            if pixels[y * stride + x * 4] < cast(u8)100 {
+                ink.count += 1
+                if y < ink.top { ink.top = y }
+                if x > ink.right { ink.right = x }
+                ink.signature = ink.signature * cast(u64)31 + cast(u64)(y * 250 + x)
+            }
+        }
+    }
+    return ink
+}
+
+DrawTypography :: (session: Session, props: Text.Props, unchanged: bool = false) -> bool {
+    BeginRasterFrame(true)
+    if BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 800.0, 140.0}) != cast(FrameStatus)FrameOk { return false }
+    Text.Draw(session, props)
+    result := EndFrameRetained(session, true)
+    return result.status == cast(FrameStatus)FrameOk && result.paint_unchanged == unchanged &&
+        FinishRasterFrame(unchanged)
+}
+
+CheckMixedLink :: (session: Session) -> bool {
+    links: [1]Text.Range = .[.{1, 4}]
+    props := Text.Props.{.text = "A אבג B", .size = 30, .links = links[:],
+        .bounds = Rectangle.{10.0, 8.0, 220.0, 44.0}}
+    prepared := Text.PrepareText(props, Text.TextFaceOf(props))
+    spans := GlyphSpansFor(props.text, 1, 4, 30, "", prepared.glyph_style)
+    defer GlyphSpansDone(spans)
+    if spans.count != 2 { return false }
+    first := GlyphSpanAt(spans, 0)
+    second := GlyphSpanAt(spans, 1)
+    if first.right >= second.left { return false }
+    x1 := 10.0 + cast(float32)(first.left + first.right) * 0.5
+    x2 := 10.0 + cast(float32)(second.left + second.right) * 0.5
+    gap := 10.0 + cast(float32)(first.right + second.left) * 0.5
+    if Text.TextLinkAt(session, props, x1, 10.0) != 0 || Text.TextLinkAt(session, props, x2, 10.0) != 0 ||
+        Text.TextLinkAt(session, props, gap, 10.0) != -1 || !DrawTypography(session, props) { return false }
+    slot := shaped_current
+    cached := shaped_entries[slot].span_next
+    return DrawTypography(session, props, true) && shaped_entries[slot].span_next == cached
+}
+
+ButtonTypographyRules :: (weight: s32, slant: FontStyle, spacing: float32) -> bool {
+    rule: StyleRule
+    rule.selector = StyleDefaultSelector()
+    rule.selector.kind = StyleKindButton()
+    rule.style = .{.fields = cast(u32)StyleFontWeight | cast(u32)StyleFontStyle |
+        cast(u32)StyleLetterSpacing | cast(u32)StyleFontSize | cast(u32)StyleBackground |
+        cast(u32)StyleForeground | cast(u32)StyleTypeface,
+        .font_weight = weight, .font_style = slant, .letter_spacing = spacing, .font_size = 30.0,
+        .typeface = "fixture", .background = cast(u32)0xffffffff, .foreground = cast(u32)0x000000ff}
+    rules: StyleRules
+    rules.count = 1; rules.items[0] = rule
+    return InstallStyleRules(rules)
+}
+
+DrawTypographyButton :: (session: Session, props: Button.Props, unchanged: bool = false) -> bool {
+    BeginRasterFrame(true)
+    if BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 800.0, 140.0}) != cast(FrameStatus)FrameOk { return false }
+    unused Button.Draw(session, props)
+    result := EndFrameRetained(session, true)
+    return result.status == cast(FrameStatus)FrameOk && result.paint_unchanged == unchanged &&
+        FinishRasterFrame(unchanged)
+}
+
+CheckButtonTypography :: (session: Session) -> bool {
+    normal := cast(FontStyle)FontStyleNormal
+    props := Button.Props.{.label = "HHHH", .bounds = .{10.0, 6.0, 220.0, 50.0},
+        .content_alignment = ContentAlignment.ContentAlignmentStart}
+    measured := props; measured.bounds.width = 0.0
+    if !ButtonTypographyRules(400, normal, 0.0) || !DrawTypographyButton(session, props) { return false }
+    regular := ReadTypographyInk(0, 55)
+    width := Button.ButtonMeasure(measured).width
+    if !ButtonTypographyRules(400, normal, 5.0) || Button.ButtonMeasure(measured).width != width + 15 ||
+        !DrawTypographyButton(session, props) || ReadTypographyInk(0, 55).right != regular.right + 15 ||
+        !DrawTypographyButton(session, props, true) { return false }
+    if !ButtonTypographyRules(600, normal, 0.0) || !DrawTypographyButton(session, props) ||
+        ReadTypographyInk(0, 55).count <= regular.count { return false }
+    return ButtonTypographyRules(400, cast(FontStyle)FontStyleItalic, 0.0) &&
+        DrawTypographyButton(session, props) && ReadTypographyInk(0, 55).signature != regular.signature
+}
+
+CheckTypography :: () -> s32 {
+    session := SessionOpen()
+    defer SessionClose(session)
+    if !Faces.LoadTypefaceFile("fixture", "fonts/noto/NotoSans-Regular.ttf", null, 0) ||
+        !Faces.LoadTypefaceFile("fixture-semibold", "fonts/noto/NotoSans-SemiBold.ttf", null, 0) ||
+        !Faces.LoadTypefaceFile("fixture-mono", "assets/fonts/LiberationMono-Regular.ttf", null, 0) { return 24 }
+    defer Faces.ReleaseTypefaces()
+    if GlyphWidth("iiii", 30, "fixture") == GlyphWidth("iiii", 30, "fixture-mono") { return 25 }
+
+    normal := cast(FontStyle)FontStyleNormal
+    factor := cast(LineHeightUnit)LineHeightFactor
+    absolute := cast(LineHeightUnit)LineHeightLength
+    props := Text.Props.{.text = "HHHH\nHHHH", .size = 30, .typeface = "fixture",
+        .bounds = Rectangle.{10.0, 8.0, 220.0, 125.0}}
+    if !TypographyRules(400, normal, 0.0, 1.5, factor) ||
+        Measure.TextHeight(session, props) != 90 || !DrawTypography(session, props) { return 26 }
+    regular := ReadTypographyInk(0, 50)
+    second := ReadTypographyInk(50, 100)
+    if regular.count < 20 || second.count != regular.count || second.top - regular.top != 45 { return 27 }
+    revision := GlyphMetricsRevision()
+    last_slot := shaped_next
+    if !DrawTypography(session, props, true) || GlyphMetricsRevision() != revision ||
+        shaped_next != last_slot { return 28 }
+    GlyphMetricsChanged()
+    if !DrawTypography(session, props) { return 48 }
+
+    if !TypographyRules(600, normal, 0.0, 1.5, factor) { return 29 }
+    if Text.TextFaceOf(props).value.font_weight != 600 { return 45 }
+    if Text.PrepareText(props, Text.TextFaceOf(props)).glyph_style.weight != 600 { return 46 }
+    if !DrawTypography(session, props) { return 47 }
+    semibold := ReadTypographyInk(0, 50)
+    if semibold.count <= regular.count || semibold.signature == regular.signature { return 30 }
+    if !TypographyRules(400, normal, 0.0, 1.5, factor) || !DrawTypography(session, props) ||
+        ReadTypographyInk(0, 50).signature != regular.signature { return 31 }
+
+    props.typeface = ""
+    props.text = "ffff"
+    if !DrawTypography(session, props) { return 32 }
+    upright := ReadTypographyInk(0, 50)
+    if !TypographyRules(400, cast(FontStyle)FontStyleItalic, 0.0, 1.5, factor) ||
+        !DrawTypography(session, props) { return 33 }
+    italic := ReadTypographyInk(0, 50)
+    if italic.count < 20 || italic.signature == upright.signature { return 34 }
+    if !TypographyRules(400, cast(FontStyle)FontStyleOblique, 0.0, 1.5, factor) ||
+        !DrawTypography(session, props) || ReadTypographyInk(0, 50).signature == upright.signature { return 49 }
+
+    props.text = "éHHH\néHHH"
+    if !TypographyRules(400, normal, 0.0, 34.0, absolute) || !DrawTypography(session, props) { return 35 }
+    unspaced := ReadTypographyInk(0, 40)
+    undecorated := Text.PrepareText(props, Text.TextFaceOf(props))
+    old_caret := Text.TextCaretBounds(props, undecorated, 3).x
+    if !TypographyRules(400, normal, 5.0, 54.0, absolute) ||
+        Measure.TextHeight(session, props) != 108 || !DrawTypography(session, props) { return 36 }
+    spaced := ReadTypographyInk(0, 60)
+    spaced_second := ReadTypographyInk(60, 120)
+    if spaced.right - unspaced.right != 15 || spaced_second.top - spaced.top != 54 { return 37 }
+    prepared := Text.PrepareText(props, Text.TextFaceOf(props))
+    caret := Text.TextCaretBounds(props, prepared, 3)
+    if caret.x <= old_caret || caret.height != 54.0 ||
+        Text.TextByteAtPoint(props, prepared, caret.x, caret.y + 2.0) != 3 { return 38 }
+    if GlyphWidth("éHHH", 30, "", prepared.glyph_style) != GlyphWidth("éHHH", 30, "", prepared.glyph_style) { return 39 }
+    links: [1]Text.Range = .[Text.Range.{3, 6}]
+    linked := props
+    linked.links = links[:]
+    if Text.TextLinkAt(session, linked, caret.x + 1.0, caret.y + 2.0) != 0 ||
+        Text.TextLinkAt(session, linked, caret.x - 1.0, caret.y + 2.0) != -1 { return 50 }
+    if !TypographyRules(400, normal, -2.0, 34.0, absolute) || !DrawTypography(session, props) ||
+        ReadTypographyInk(0, 40).right >= unspaced.right { return 40 }
+
+    props.text = "HHHH"
+    props.wrap = cast(Text.Wrap)TextWrapAnywhere
+    props.bounds.width = cast(float32)Measure.TextWidth(session, props)
+    if Measure.TextHeight(session, props) != 34 || !TypographyRules(400, normal, 5.0, 34.0, absolute) ||
+        Measure.TextHeight(session, props) <= 34 { return 41 }
+
+    legacy := cast(LineHeightUnit)LineHeightNormal
+    if !TypographyRules(400, normal, 0.0, 1.5, legacy) { return 42 }
+    props.bounds.width = 200.0
+    props.text = "HHHH\nHHHH"
+    props.line_gap = 9
+    legacy_height := Measure.TextHeight(session, props)
+    if !TypographyRules(400, normal, 0.0, 0.0, legacy) ||
+        Measure.TextHeight(session, props) + 9 != legacy_height { return 43 }
+    if !CheckMixedLink(session) { return 51 }
+    if !CheckButtonTypography(session) { return 52 }
+    return 0
+}
+
+CheckStyleCodec :: () -> bool {
+    buffer: Codec.WidgetStyleDataCodec
+    style := ActiveStyleRules().items[0].style
+    style.row_gap = 3.0; style.column_gap = 7.0
+    style.font_weight = 625; style.font_style = cast(FontStyle)FontStyleOblique
+    style.letter_spacing = -1.5; style.line_height = 1.35
+    style.line_height_unit = cast(LineHeightUnit)LineHeightFactor
+    value := Codec.WidgetEncodeStyleData(style, *buffer)
+    if !Codec.WidgetValidStyleData(value) { return false }
+    decoded := Codec.WidgetDecodeStyleData(value, *buffer)
+    return decoded.row_gap == style.row_gap && decoded.column_gap == style.column_gap &&
+        decoded.font_weight == style.font_weight && decoded.font_style == style.font_style &&
+        decoded.letter_spacing == style.letter_spacing && decoded.line_height == style.line_height &&
+        decoded.line_height_unit == style.line_height_unit
+}
 
 #program_export
 Run :: () -> s32 {
@@ -59,5 +286,8 @@ Run :: () -> s32 {
     middle := (left + right) / 2
     if left < 4 || right > 195 || middle < 88 || middle > 112 { return 22 }
     if solid_red < 52 || solid_red > 68 { return 23 }
+    result := CheckTypography()
+    if result != 0 { return result }
+    if !CheckStyleCodec() { return 44 }
     return 0
 }

@@ -22,7 +22,8 @@ for target in c go; do
         fi
     done
 done
-"$ziran" bundle --project --root "$repo/tests" --entry pixmap_typeface_test:main -o "$work/source.zx" "$source"
-"$ziran" bundle --root "$work/ir" --module-path "$work/ir" --entry pixmap_typeface_test:main -o "$work/saved.zx" "$work/ir/pixmap_typeface_test.zir"
+set -- --bind font_metrics:MeasureGlyphWidth=pixmap:MeasureGlyphWidth
+"$ziran" bundle --project --root "$repo/tests" "$@" --entry pixmap_typeface_test:main -o "$work/source.zx" "$source"
+"$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" --entry pixmap_typeface_test:main -o "$work/saved.zx" "$work/ir/pixmap_typeface_test.zir"
 test "$(env -u DISPLAY -u WAYLAND_DISPLAY "$ziran_root/build/bin/zi2zx" run --backend engine "$work/source.zx" | tail -1)" = 0
 test "$(env -u DISPLAY -u WAYLAND_DISPLAY "$ziran_root/build/bin/zi2zx" run --backend engine "$work/saved.zx" | tail -1)" = 0

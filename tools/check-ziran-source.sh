@@ -3,13 +3,25 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 
-# Every maintained src file is Ziran, except the module inventory. Checked
-# programs cannot reintroduce a handwritten implementation language or one of
-# the retired Kry formats. Both inventories stay empty.
+# Maintained src files are Ziran, the module inventory, or versioned API
+# example sidecars. Checked programs cannot reintroduce a handwritten
+# implementation language or a retired Kry format.
 expected_src=''
 expected_programs=''
 
 actual_src=$(cd "$repo" && rg --files -uu src -g '!*.zi' -g '!modules.txt' |
+    while IFS= read -r path; do
+        case "$path" in
+            *.zi.examples)
+                if test -f "${path%.examples}" &&
+                    IFS= read -r header < "$path" &&
+                    test "$header" = 'ziran-api-examples-v1'; then
+                    continue
+                fi
+                ;;
+        esac
+        printf '%s\n' "$path"
+    done |
     LC_ALL=C sort)
 actual_programs=$(cd "$repo" &&
     rg --files -uu src examples tests tools \
@@ -19,7 +31,7 @@ actual_programs=$(cd "$repo" &&
 
 
 if test "$actual_src" != "$expected_src"; then
-    printf 'Non-Ziran files remain under src. Maintained source must be .zi.\n' >&2
+    printf 'Unexpected files under src. Use .zi, modules.txt, or a versioned API example sidecar with matching .zi source.\n' >&2
     printf 'Expected:\n%s\nActual:\n%s\n' "$expected_src" "$actual_src" >&2
     exit 1
 fi

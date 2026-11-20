@@ -1,5 +1,6 @@
 #import "system_theme"
 Sheet :: #import "style_sheet";
+Theme :: #import "theme";
 
 Sweet :: "@define-color theme_fg_color #C3C7D1;\n@define-color theme_bg_color #161925;\n@define-color theme_base_color #181b28;\n@define-color theme_selected_bg_color #c50ed2;\n@define-color theme_selected_fg_color #fefefe;\n@define-color borders #090a0f;\n@define-color error_color #e6133e;\n@define-color warning_color #cc5500;\n@define-color success_color #0096b1;\n@define-color wm_bg_a shade(#161925, 1.2);\n";
 
@@ -46,5 +47,23 @@ main :: () -> s32 {
     if palette.found || !palette.dark { return 15 }
     palette = SystemPaletteFromCss("", false)
     if palette.found || palette.dark { return 16 }
+
+    // A host can change the defaults without replacing application rules.
+    if !Sheet.InstallStyleRules(rules) || !Theme.SetReducedMotion(true) { return 19 }
+    if !Theme.FollowsSystemTheme() || !SystemPaletteUpdateDefault(palette) { return 20 }
+    palette = SystemPaletteFromCss(Sweet, false)
+    if !SystemPaletteUpdateDefault(palette) || SystemPaletteUpdateDefault(palette) { return 21 }
+    theme := Theme.CurrentTheme()
+    if !theme.dark || !theme.motion.reduced_motion { return 22 }
+    if theme.colors.background != palette.background || theme.colors.foreground != palette.text { return 23 }
+    palette.danger = cast(u32)0xf00d33ff
+    if !SystemPaletteUpdateDefault(palette) || Theme.CurrentPalette().danger != palette.danger { return 24 }
+    active := Sheet.ActiveStyleRules()
+    if active.count != rules.count || active.items[0].style.background != rules.items[0].style.background { return 25 }
+
+    // Selecting even the current light/dark mode stops automatic updates.
+    if !Theme.SetThemeMode(true) || Theme.FollowsSystemTheme() { return 26 }
+    if SystemPaletteUpdateDefault(SystemPaletteFallback(false)) { return 27 }
+    if Theme.CurrentBackground() != Theme.DefaultPalette(true).background { return 28 }
     return 0
 }

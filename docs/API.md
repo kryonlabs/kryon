@@ -295,6 +295,54 @@ node and session epoch, including suspended embedded-app input.
 `input.focus` also transfers actual focus to a newly submitted TextField in
 its first frame, so the next queued key reaches it without an idle render.
 
+### Intrinsic layouts and bound text fields
+
+A retained form can use `Layout.Draw` for a column and `Layout.Row` for a row.
+Submit ordinary widgets inside the scope and close it with `End(session)`.
+Omit the bounds of an intrinsic button in a row or a bound text field in a
+column. The button sizes to its content, and the field fills the column's inner
+width and uses the themed control height. `Layout.Gap(.ThemeMetricSpace2)`
+resolves a theme spacing token in logical units. `Layout.LayoutContentBounds`
+measures unset outer dimensions from child rectangles, direction, main-axis gap
+and padding. Its optional `padding_y` sets the vertical inset independently.
+Pass a calculated dimension in `Layout.Props.bounds` to fit it to
+content, or use an explicit width to compose inside a viewport.
+
+Retained layout rules match `StyleKindRow()` or `StyleKindColumn()` and the
+optional `Layout.Props.id` and `class_name`. Styles support `StyleGap` as a
+shorthand and `StyleRowGap`, `StyleColumnGap`, `StylePaddingX` and
+`StylePaddingY` for independent spacing, rounded to the nearest logical pixel.
+A single-line row uses `column_gap` between children and a column uses `row_gap`.
+`Layout.Props` accepts uniform `gap` and `padding` over the style and independent
+`row_gap`, `column_gap`, `padding_x` and `padding_y` over those shorthands.
+Set the corresponding `_override` flag to supply explicit zero. Negative
+spacing is clamped to zero.
+
+For a native bound field, initialize `state.bytes` once from application-owned
+storage and set `state.length` to the number of UTF-8 bytes in the initial
+value. `TextField.Bind(session, *state, props)` draws and applies edits to that
+storage. Give each field a stable `key`. The same field keeps focus, selection,
+scroll and IME preedit across frames and resize. It consumes editing input from
+the focused session and uses the platform clipboard. Use the returned `changed`,
+`committed`, `escaped` and `paste_without_text` flags for application actions.
+For deterministic input, pass `false` as the fourth argument to `Bind`
+and provide the sample in `props.input`. Custom hosts can pass an IME sample
+in `props.input.composition_event`. Native platform text requests use the
+same bound widget.
+
+```zi
+// name.bytes points to persistent application storage.
+form := Layout.Draw(session, Layout.Props.{.key = 11, .bounds = bounds,
+    .gap = Layout.Gap(.ThemeMetricSpace2)})
+if form.opened {
+    edited := TextField.Bind(session, *name, TextField.Props.{.key = 42, .label = "Name"})
+    if edited.committed {
+        SaveName(TextView(name.bytes[:name.length]))
+    }
+    unused End(session)
+}
+```
+
 `TextField.State` keeps a field's value and interaction state in caller-owned
 storage. Import it and its helpers as `TextField :: #import "kryon/text_field";`.
 Give `bytes` a writable slice and set `length`, `cursor`, `anchor`, `scroll_x`
@@ -1431,6 +1479,32 @@ own content anchors and page indexes so reflow preserves the reading place.
 registered face or a font asset. Hosted fonts pass the same asset policy as
 images; absolute host paths are refused. Native and Canvas hosts select the face
 for measurement and for queued paint, restoring the interface font afterward.
+
+### Native Text typography
+
+Stylesheets set typography on `Text` and `Button` through `style.StyleData`. Set the
+matching `control_props.StyleField` bit for each value.
+
+| CSS property | StyleData fields | Supported values |
+| --- | --- | --- |
+| `font-weight` | `StyleFontWeight`, `font_weight: s32` | `normal` (400), `bold` (700), numbers from 1 to 1000. |
+| `font-style` | `StyleFontStyle`, `font_style: FontStyle` | `FontStyleNormal`, `FontStyleItalic`, and `FontStyleOblique`. |
+| `letter-spacing` | `StyleLetterSpacing`, `letter_spacing: float32` | `normal` (0) or a signed logical pixel length, including fractions, bounded to ±1024 logical pixels. |
+| `line-height` | `StyleLineHeight`, `line_height: float32`, `line_height_unit: LineHeightUnit` | `LineHeightNormal` with value 0 uses the natural glyph height. `LineHeightFactor` multiplies the font size by the value (so 125% is 1.25). `LineHeightLength` takes a logical pixel length. Both numeric units accept zero. |
+
+Explicit line height replaces the interline gap and centers the natural glyph
+box within each line. Text measures and paints the same rounded line height.
+Button measures the label's line box before positioning the glyphs and its optional
+detail. Legacy styles with a positive `line_height` and no unit keep the existing
+widget behavior. Text uses `Text.Props.line_gap`, and Button uses the legacy pixel height.
+
+Cairo/Pango and Canvas use their platform's font matching and synthesis when a
+family lacks the requested face. Canvas tracking requires `CanvasRenderingContext2D.letterSpacing`.
+Pixmap's bundled regular outlines apply tracking between extended graphemes.
+Android's selected Pixmap typeface uses Paint's native shaping and letter spacing.
+Android API 28 and later use numeric weights. Earlier versions group them into
+normal and bold, and Android maps oblique to italic. CSS relative weights and
+angle-based oblique are outside this API.
 
 `Text.Props.wrap = Text.Wrap.TextWrapAnywhere` wraps at extended Unicode grapheme
 boundaries, including inside unbroken usernames. Combining marks, emoji ZWJ

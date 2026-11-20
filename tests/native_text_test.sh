@@ -2,6 +2,7 @@
 set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
+cd "$repo"
 build=$repo/build/text-shaping
 mkdir -p "$build"
 exec 9>"$build/lock"
@@ -21,7 +22,8 @@ for source in source saved; do
             "$output"/*."$suffix" $(pkg-config --libs pangocairo fontconfig freetype2) \
             -lm -lpthread -ldl -o "$output/run"
         env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-            YUE_DESKTOP_RECOVERY=0 "$output/run"
+            -u SESSION_MANAGER -u GDK_DISPLAY YUE_DESKTOP_RECOVERY=0 \
+            KRYON_FONT_PATH="$repo/assets/fonts/LiberationSans-Regular.ttf" "$output/run"
     done
 done
-echo 'Native shaping, RTL caret and long text: source/saved IR, C PASS'
+echo 'Native shaping, typography, retained paint, RTL caret and style codecs: source/saved IR, C PASS'

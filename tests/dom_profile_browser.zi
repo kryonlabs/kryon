@@ -1,0 +1,102 @@
+#import "devtools_linux"
+#import "environment_linux"
+JSON :: #import "std/json_scan";
+
+AXValue :: (tree: string, at: s32, field: string) -> string {
+    object := JSON.FieldAt(tree, at, field)
+    span := JSON.ReadString(tree, JSON.FieldAt(tree, object, "value"))
+    if !span.valid { return "" }
+    return tree[span.start:span.end]
+}
+
+AXHasNode :: (tree: string, role: string, name: string) -> bool {
+    offset: [64]s32
+    count := JSON.ArrayPositions(tree, JSON.FieldAt(tree, 0, "nodes"), offset[:])
+    if count < 0 || count > offset.count { return false }
+    for index: 0..count - 1 {
+        if AXValue(tree, offset[index], "role") == role &&
+            AXValue(tree, offset[index], "name") == name { return true }
+    }
+    return false
+}
+
+#program_export
+main :: () -> s32 {
+    browser: Browser
+    if !BrowserServe(*browser, EnvironmentText("DOM_TEST_SITE")) { return 1 }
+    defer BrowserClose(*browser)
+    if !BrowserOpen(*browser, EnvironmentText("DOM_TEST_PROFILE")) { return 2 }
+    if !BrowserViewport(*browser, 360, 480, 1.0, false) ||
+        !BrowserCall(*browser, "Emulation.setEmulatedMedia", "{\"features\":[{\"name\":\"prefers-color-scheme\",\"value\":\"light\"},{\"name\":\"prefers-reduced-motion\",\"value\":\"no-preference\"}]}") ||
+        !BrowserNavigate(*browser, BrowserUrl(*browser, "/dom_profile-web.html")) { return 3 }
+    if !BrowserWait(*browser, "document.querySelector('main > button')?.textContent === 'Save'", 20000) { return 4 }
+    initial := #string JS
+(() => {
+    const page = document.querySelector('#kryon-dom-root > main');
+    const [save, disabled] = page.querySelectorAll(':scope > button');
+    const heading = page.querySelector(':scope > h2');
+    const style = getComputedStyle(save);
+    globalThis.kryonInitial = {page, save, disabled, heading};
+    save.addEventListener('click', () => { kryonInitial.clicks = (kryonInitial.clicks || 0) + 1; });
+    return page.getAttribute('aria-label') === 'DOM widget profile' &&
+        heading.textContent === 'Browser widgets' && page.querySelector('p').textContent === 'Ready' &&
+        page.textContent.includes('Narrow') && disabled.matches(':disabled') &&
+        disabled.getAttribute('aria-disabled') === 'true' && !disabled.hasAttribute('data-kryon-id') &&
+        !document.querySelector('canvas') && getComputedStyle(page).display === 'grid' &&
+        save.offsetWidth === 180 && save.offsetHeight >= 64 &&
+        save.getBoundingClientRect().top >= heading.getBoundingClientRect().bottom + 8 &&
+        style.fontSize === '17px' && Math.abs(parseFloat(style.lineHeight) - 23.8) < 0.01 &&
+        style.backgroundColor === 'rgb(16, 32, 48)' && style.transitionDuration === '0.123s' &&
+        save.getAttribute('aria-pressed') === null;
+})()
+JS;
+    if !BrowserTrue(*browser, initial) { return 5 }
+    if !BrowserCall(*browser, "Accessibility.getFullAXTree", "{}") ||
+        !AXHasNode(browser.result, "main", "DOM widget profile") ||
+        !AXHasNode(browser.result, "heading", "Browser widgets") ||
+        !AXHasNode(browser.result, "button", "Save") { return 12 }
+    if !BrowserKey(*browser, "Tab", "Tab", 9) ||
+        !BrowserWait(*browser, "document.activeElement === kryonInitial.save && kryonInitial.save.matches(':focus-visible')", 5000) { return 6 }
+    // Chromium's Enter key emits carriage-return text on the down event.
+    if !BrowserCall(*browser, "Input.dispatchKeyEvent", "{\"type\":\"keyDown\",\"key\":\"Enter\",\"code\":\"Enter\",\"text\":\"\\r\",\"windowsVirtualKeyCode\":13,\"nativeVirtualKeyCode\":13}") ||
+        !BrowserCall(*browser, "Input.dispatchKeyEvent", "{\"type\":\"keyUp\",\"key\":\"Enter\",\"code\":\"Enter\",\"windowsVirtualKeyCode\":13,\"nativeVirtualKeyCode\":13}") { return 7 }
+    updated := #string JS
+(() => {
+    const {page, save, disabled, heading} = kryonInitial;
+    const buttons = page.querySelectorAll(':scope > button');
+    return document.querySelector('main') === page && document.querySelector('h2') === heading &&
+        buttons[0] === disabled && buttons[1] === save && save.textContent === 'Save again' &&
+        document.activeElement === save && save.getAttribute('aria-pressed') === 'true' &&
+        save.dataset.kryonSelected === 'true' && getComputedStyle(save).outlineColor === 'rgb(102, 51, 153)';
+})()
+JS;
+    if !BrowserWait(*browser, updated, 5000) {
+        observed := BrowserText(*browser, "JSON.stringify({clicks:kryonInitial.clicks,buttons:[...document.querySelectorAll('main button')].map(b=>b.outerHTML),focused:document.activeElement?.outerHTML?.slice(0,220),retained:kryonInitial.save.isConnected,outline:getComputedStyle(kryonInitial.save).outlineColor})")
+        unused BrowserFail(*browser, "DOM after activation: ", observed)
+        return 8
+    }
+    x := BrowserNumber(*browser, "kryonInitial.save.getBoundingClientRect().x + 10", 0.0)
+    y := BrowserNumber(*browser, "kryonInitial.save.getBoundingClientRect().y + 10", 0.0)
+    if !BrowserClick(*browser, x, y) ||
+        !BrowserWait(*browser, "document.querySelector('p').textContent === 'Saved twice' && !document.querySelector('main').textContent.includes('Initial content')", 5000) { return 9 }
+    if !BrowserKey(*browser, " ", "Space", 32) ||
+        !BrowserWait(*browser, "document.querySelector('p').textContent === 'Saved three times'", 5000) { return 13 }
+    if !BrowserViewport(*browser, 640, 480, 1.0, false) ||
+        !BrowserCall(*browser, "Emulation.setEmulatedMedia", "{\"features\":[{\"name\":\"prefers-color-scheme\",\"value\":\"dark\"},{\"name\":\"prefers-reduced-motion\",\"value\":\"reduce\"}]}") ||
+        !BrowserWait(*browser, "document.querySelector('main').textContent.includes('Wide') && getComputedStyle(kryonInitial.save).backgroundColor === 'rgb(64, 80, 96)' && getComputedStyle(kryonInitial.save).transitionDuration === '0s'", 5000) { return 10 }
+    if !BrowserViewport(*browser, 720, 480, 1.0, false) ||
+        !BrowserWait(*browser, "kryonInitial.page.lastElementChild.textContent === 'Closed'", 5000) ||
+        !BrowserViewport(*browser, 360, 480, 1.0, false) { return 14 }
+    closed := #string JS
+(async () => {
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
+    return document.documentElement.clientWidth === 360 &&
+        document.querySelector('main') === kryonInitial.page &&
+        kryonInitial.page.lastElementChild.textContent === 'Closed';
+})()
+JS;
+    if !BrowserEvaluate(*browser, closed) || browser.result != "true" { return 15 }
+    if browser.exceptions.count > 0 { return 11 }
+    return 0
+}

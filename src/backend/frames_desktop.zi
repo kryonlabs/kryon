@@ -5,6 +5,7 @@ Desktop :: #import "desktop_loop";
 using SessionModule :: #import "session";
 using Geometry :: #import "geometry";
 #import "tree_frame"
+#import "desktop_theme"
 #if OS == .LINUX {
     using Access :: #import "desktop_accessibility_linux";
 }
@@ -28,5 +29,5 @@ Run :: (window: App.Window, draw: App.Draw) -> s32 {
     if width <= 0 { width = 960 }
     if height <= 0 { height = 600 }
     active_draw = draw
-    return Desktop.RunTitled(DrawFrame, width, height, window.title)
+    return Desktop.RunTitled(DrawFrame, width, height, window.title, .{.background = DesktopThemeBackground})
 }

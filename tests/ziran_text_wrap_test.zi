@@ -72,8 +72,38 @@ AnywhereTests :: () -> s32 {
     return 0
 }
 
+TokenTests :: () -> bool {
+    // ASCII runs, punctuation attached to ideographs, and script changes
+    // must keep the same borrowed byte ranges as full UTF-8 decoding.
+    token := TextTokenNext(" \tfoo(bar),baz", -1, false)
+    if !token.valid || token.start != 2 || token.end != 14 ||
+        token.next != 14 || token.icon || token.line_break { return false }
+    token = TextTokenNext("abあcd", 0, false)
+    if token.start != 0 || token.end != 2 { return false }
+    token = TextTokenNext("abあcd", token.next, false)
+    if token.start != 2 || token.end != 5 { return false }
+    token = TextTokenNext("abあcd", token.next, false)
+    if token.start != 5 || token.end != 7 { return false }
+    token = TextTokenNext("A(あ)", 0, false)
+    if token.end != 6 { return false }
+    token = TextTokenNext("x😀é", 0, false)
+    if token.end != 7 { return false }
+    invalid: [4]u8 = .[128, 255, 97, 32]
+    token = TextTokenNext(TextView(invalid[:]), 0, false)
+    if token.end != 3 { return false }
+    token = TextTokenNext("%iword", 0, true)
+    if !token.icon || token.end != 2 || token.next != 2 { return false }
+    token = TextTokenNext("%iword", 0, false)
+    if token.icon || token.end != 6 { return false }
+    token = TextTokenNext("\r\nword", 0, false)
+    if !token.line_break || token.next != 2 { return false }
+    token = TextTokenNext("word", 4, false)
+    return !token.valid && token.start == 4 && token.end == 4 && token.next == 4
+}
+
 #program_export
 main :: () -> s32 {
+    if !TokenTests() { return 27 }
     // Spaced text wraps at its spaces, as before.
     if Wrap("aa bb cc dd", 50.0) != 2 || wrapped[0] != "aa bb" ||
         wrapped[1] != "cc dd" { return 1 }

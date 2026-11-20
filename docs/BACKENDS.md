@@ -52,6 +52,7 @@ in the application.
 | `terminal` | `src/backend/terminal_run.zi` | 80 × 24 terminal cells via `terminal.zi` |
 | `desktop` | `src/backend/desktop_run.zi` | SDL2 window with Cairo raster |
 | `canvas` | `src/backend/canvas_run.zi` | Canvas2D page with Emscripten and Asyncify |
+| `dom` | `src/backend/dom_run.zi` | HTML elements with browser layout and CSS |
 | `android` | app `src/main.zi` → `android_run.zi` | Android NativeActivity package with direct `ANativeWindow` pixel presentation |
 
 The small application surface selects the host from the compile-time target.
@@ -78,6 +79,56 @@ window hidden until presentation succeeds.
 The `image_preview` module also supplies `ImageCompress` for smaller upright
 JPEG copies. It keeps transparent and animated originals intact and returns
 no replacement when encoding would increase file size.
+
+## HTML DOM profile
+
+```toml
+[tool.kryon.profiles.web]
+backend = "dom"
+```
+
+Run `ziran tool kryon build --profile web`. The C99 profile produces a
+self-contained `build/<package>-web.html`. It calls the app's exported
+`Frame(session: Session, viewport: Rectangle) -> s32` with the viewport in
+CSS pixels. Submit the retained widgets with their ordinary package APIs.
+Give widgets stable `key` values to retain their HTML elements as labels and
+sibling order change. Changing a node's parent, widget kind or tag creates a
+new element. Close widget scopes with `kryon/tree`'s `End(session)`.
+
+| Ziran API | HTML |
+| --- | --- |
+| `kryon/page` `Draw` and `Section` | `main` and `section` with the supplied accessible name |
+| `kryon/page` `Heading` or `kryon/text` `Draw` with heading semantics | `h1`–`h6` |
+| `kryon/text` `Draw` | `span`, or `p` with paragraph semantics |
+| `kryon/button` `Draw` | `button type="button"`, with browser tab focus and click, Enter and Space activation delivered through the shared widget result |
+| Retained row, column, grid, stack and scroll scopes | `div` with basic flex, grid or overflow rules |
+| Retained separator | `hr` |
+
+The root is `#kryon-dom-root`. `data-kryon-widget` holds the committed widget
+kind. `data-kryon-id` and `data-kryon-class` hold nonzero decimal style tokens
+when the widget publishes them. `data-kryon-selected="true"` marks selected
+nodes for CSS. Selected buttons expose `aria-pressed="true"`. Disabled and
+loading buttons are disabled in the browser and publish `aria-disabled` or
+`aria-busy` respectively.
+
+Import `Dom :: #import "kryon/dom";` in a DOM frame app and call
+`Dom.SetStyleSheet(css)` to replace the author stylesheet with CSS text.
+An app with multiple host profiles can guard DOM imports and setup with
+`#if #defined(KRYON_DOM)` while sharing its widget submissions.
+Passing an empty string clears the sheet. Scope rules to `#kryon-dom-root` as
+needed. The browser handles selectors, document flow, variables,
+`prefers-color-scheme`, and `prefers-reduced-motion`. Native style sheets
+continue to drive shared widget calculations and other hosts. Supply browser
+CSS separately, for example with the CSS package's `ExportCSS`.
+`Dom.RequestClose()` stops frame delivery after the current frame and leaves
+the final document visible.
+
+CSS controls the browser's geometry. The DOM profile uses the retained
+hierarchy and semantics and discards the raster paint queue. Other retained
+node kinds appear as generic containers. Use the Canvas profile for pixel
+painting, image rendering, and widgets requiring editing, dragging or custom
+pointer coordinates. `make dom-profile-test` builds the normal consumer
+profile and exercises it in private headless Chromium.
 
 ## Hosted ZX software surface
 

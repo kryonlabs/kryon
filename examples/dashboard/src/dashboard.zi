@@ -1,0 +1,853 @@
+// Generic, editable native dashboard starter built with Kryon widgets and CSS.
+Alert :: #import "kryon/alert";
+Badge :: #import "kryon/badge";
+Box :: #import "kryon/box";
+Button :: #import "kryon/button";
+Card :: #import "kryon/card";
+Checkbox :: #import "kryon/checkbox";
+EmptyState :: #import "kryon/empty_state";
+Loading :: #import "kryon/loading_indicator";
+Modal :: #import "kryon/modal";
+Progress :: #import "kryon/progress";
+Scroll :: #import "kryon/scroll";
+Separator :: #import "kryon/separator";
+Text :: #import "kryon/text";
+TextField :: #import "kryon/text_field";
+Toggle :: #import "kryon/toggle";
+Theme :: #import "kryon/theme";
+#import "kryon/control_props"
+#import "kryon/drawing_props"
+#import "kryon/frame_snapshot"
+#import "kryon/geometry"
+#import "kryon/semantic"
+#import "kryon/session"
+#import "kryon/style_sheet"
+#import "kryon/text_align"
+#import "kryon/tree"
+#import "model"
+#import "styles"
+
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ContentAlignment;
+using SemanticKind;
+
+// Persistent application state across frames.
+initialized: bool;
+dark_theme: bool;
+compact_density: bool;
+auto_refresh: bool = true;
+active_section: NavSection;
+active_filter: StatusFilter;
+view_state: ViewState;
+selected_service: s32 = 0;
+results_scroll: s32 = 0;
+settings_open: bool;
+alert_state: Alert.AlertState;
+
+// Search input state (caller-owned buffer).
+search_bytes: [128]u8;
+search_state: TextField.State;
+
+// Workspace name input inside Settings modal (caller-owned buffer).
+workspace_bytes: [64]u8;
+workspace_length: s32;
+draft_bytes: [64]u8;
+draft_state: TextField.State;
+draft_dark: bool;
+draft_compact: bool;
+draft_auto_refresh: bool;
+focus_workspace_pending: bool;
+
+// Frame-local formatting buffers.
+kpi_latency_buf: [24]u8;
+kpi_uptime_buf: [24]u8;
+kpi_healthy_buf: [24]u8;
+count_label_buf: [48]u8;
+row_latency_buf: [8][24]u8;
+detail_uptime_buf: [24]u8;
+detail_latency_buf: [24]u8;
+detail_rps_buf: [32]u8;
+filtered_indices: [SERVICE_COUNT]s32;
+
+// Optional fixture preset applied before the first frame.
+fixture_configured: bool;
+fixture_name: string = "";
+
+DashboardSetFixture :: (name: string) {
+    fixture_name = name
+    fixture_configured = true
+    initialized = false
+}
+
+ApplyFixturePreset :: (name: string) {
+    dark_theme = Theme.CurrentTheme().dark
+    compact_density = false
+    auto_refresh = true
+    active_section = .NavOverview
+    active_filter = .FilterAll
+    view_state = .ViewReady
+    selected_service = 0
+    results_scroll = 0
+    settings_open = false
+    alert_state = Alert.AlertState.{}
+    search_state.length = 0
+    search_state.cursor = 0
+    search_state.anchor = 0
+    search_state.scroll_x = 0
+    search_state.focused = false
+
+    if name == "dark" || name == "dark-wide" || name == "dark-narrow" {
+        dark_theme = true
+    } else if name == "light" || name == "light-wide" || name == "light-narrow" {
+        dark_theme = false
+    } else if name == "loading" {
+        view_state = .ViewLoading
+    } else if name == "empty" {
+        view_state = .ViewEmpty
+        search_state.length = CopyIntoBuffer(search_bytes[:], "nonexistent-region")
+        search_state.cursor = search_state.length
+        search_state.anchor = search_state.length
+    } else if name == "error" {
+        view_state = .ViewError
+    } else if name == "settings" || name == "settings-dark" {
+        if name == "settings-dark" { dark_theme = true }
+        OpenSettingsModal()
+    }
+}
+
+OpenSettingsModal :: () {
+    draft_dark = dark_theme
+    draft_compact = compact_density
+    draft_auto_refresh = auto_refresh
+    draft_state.bytes = draft_bytes[:]
+    draft_state.length = CopyIntoBuffer(draft_bytes[:], TextView(workspace_bytes[0:workspace_length]))
+    draft_state.cursor = draft_state.length
+    draft_state.anchor = draft_state.length
+    draft_state.scroll_x = 0
+    draft_state.focused = true
+    focus_workspace_pending = true
+    settings_open = true
+}
+
+CommitSettingsModal :: () {
+    dark_theme = draft_dark
+    compact_density = draft_compact
+    auto_refresh = draft_auto_refresh
+    if draft_state.length > 0 {
+        workspace_length = CopyIntoBuffer(workspace_bytes[:], TextView(draft_bytes[0:draft_state.length]))
+    }
+    settings_open = false
+}
+
+EnsureInitialized :: () {
+    if initialized { return }
+    search_state.bytes = search_bytes[:]
+    draft_state.bytes = draft_bytes[:]
+    workspace_length = CopyIntoBuffer(workspace_bytes[:], "Production Cluster")
+    if fixture_configured {
+        ApplyFixturePreset(fixture_name)
+    } else {
+        dark_theme = Theme.CurrentTheme().dark
+    }
+    initialized = true
+}
+
+HealthBadgeTone :: (health: ServiceHealth) -> Badge.BadgeTone {
+    if health == .HealthHealthy { return .BadgeToneSuccess }
+    if health == .HealthDegraded { return .BadgeToneWarning }
+    return .BadgeToneDanger
+}
+
+DrawChipButton :: (session: Session, key: u64, bounds: Rectangle, label: string, selected: bool) -> bool {
+    emphasis: ButtonEmphasis = .ButtonEmphasisOutline
+    tone: ButtonTone = .ButtonToneNeutral
+    if selected {
+        emphasis = .ButtonEmphasisSoft
+        tone = .ButtonToneAccent
+    }
+    return Button.Draw(session, Button.Props.{
+        .key = key,
+        .id = cast(s32)key,
+        .class_name = ClassId("chip"),
+        .bounds = bounds,
+        .label = label,
+        .size = .ControlSizeSmall,
+        .selected = selected,
+        .emphasis = emphasis,
+        .tone = tone,
+        .fit_content = true
+    }) != 0
+}
+
+DrawNavButton :: (session: Session, key: u64, bounds: Rectangle, label: string, selected: bool, icon: string) -> bool {
+    emphasis: ButtonEmphasis = .ButtonEmphasisGhost
+    tone: ButtonTone = .ButtonToneNeutral
+    if selected {
+        emphasis = .ButtonEmphasisSoft
+        tone = .ButtonToneAccent
+    }
+    return Button.Draw(session, Button.Props.{
+        .key = key,
+        .id = cast(s32)key,
+        .class_name = ClassId("nav-item"),
+        .bounds = bounds,
+        .label = label,
+        .icon_shape = icon,
+        .selected = selected,
+        .emphasis = emphasis,
+        .tone = tone,
+        .content_alignment = .ContentAlignmentStart,
+        .fit_content = true
+    }) != 0
+}
+
+DrawKpiCard :: (session: Session, key: u64, bounds: Rectangle, title: string, value: string,
+    badge_text: string, badge_tone: Badge.BadgeTone, progress_val: s32, progress_max: s32) {
+    card := Card.Draw(session, Card.Props.{
+        .key = key,
+        .class_name = ClassId("kpi-card"),
+        .bounds = bounds,
+        .variant = .CardOutlined
+    })
+    c := card.content
+    Text.Draw(session, Text.Props.{
+        .key = key * 10 + 1,
+        .bounds = Rectangle.{c.x, c.y, c.width - 84.0, 18.0},
+        .text = title,
+        .size = 12,
+        .semantic_kind = .SemanticParagraph
+    })
+    Badge.Draw(session, Badge.Props.{
+        .key = key * 10 + 2,
+        .bounds = Rectangle.{c.x + c.width - 78.0, c.y - 1.0, 78.0, 20.0},
+        .text = badge_text,
+        .tone = badge_tone,
+        .size = .ControlSizeSmall
+    })
+    Text.Draw(session, Text.Props.{
+        .key = key * 10 + 3,
+        .bounds = Rectangle.{c.x, c.y + 22.0, c.width, 28.0},
+        .text = value,
+        .size = 22,
+        .semantic_kind = .SemanticHeading,
+        .heading_level = 3
+    })
+    Progress.Draw(session, Progress.Props.{
+        .key = key * 10 + 4,
+        .bounds = Rectangle.{c.x, c.y + c.height - 8.0, c.width, 6.0},
+        .min = 0,
+        .max = progress_max,
+        .value = progress_val
+    })
+}
+
+DrawInspector :: (session: Session, bounds: Rectangle, item: ServiceItem) {
+    card := Card.Draw(session, Card.Props.{
+        .key = 600,
+        .class_name = ClassId("inspector-card"),
+        .bounds = bounds,
+        .variant = .CardOutlined
+    })
+    c := card.content
+    Text.Draw(session, Text.Props.{
+        .key = 601,
+        .bounds = Rectangle.{c.x, c.y, c.width - 90.0, 24.0},
+        .text = item.name,
+        .size = 18,
+        .semantic_kind = .SemanticHeading,
+        .heading_level = 2,
+        .wrap = .TextWrapEllipsis
+    })
+    Badge.Draw(session, Badge.Props.{
+        .key = 602,
+        .bounds = Rectangle.{c.x + c.width - 84.0, c.y + 1.0, 84.0, 22.0},
+        .text = HealthLabel(item.health),
+        .tone = HealthBadgeTone(item.health),
+        .dot = true
+    })
+    meta: Vec(u8)
+    BuilderPrint(*meta, "%  |  Owner: %", item.region, item.owner)
+    Text.Draw(session, Text.Props.{
+        .key = 603,
+        .bounds = Rectangle.{c.x, c.y + 28.0, c.width, 18.0},
+        .text = BuilderFinish(meta),
+        .size = 13,
+        .wrap = .TextWrapEllipsis
+    })
+    Separator.Draw(session, Separator.Props.{
+        .key = 604,
+        .bounds = Rectangle.{c.x, c.y + 52.0, c.width, 8.0}
+    })
+    Text.Draw(session, Text.Props.{
+        .key = 605,
+        .bounds = Rectangle.{c.x, c.y + 64.0, c.width, 46.0},
+        .text = item.summary,
+        .size = 13,
+        .wrap = .TextWrapAuto,
+        .semantic_kind = .SemanticParagraph
+    })
+
+    lat_str := FormatLatency(item.latency_ms, detail_latency_buf[:])
+    up_str := FormatPercentTenths(item.uptime_tenths, detail_uptime_buf[:])
+    rps_b: Vec(u8)
+    BuilderPrint(*rps_b, "% req/s", item.rps)
+    rps_len := CopyIntoBuffer(detail_rps_buf[:], BuilderFinish(rps_b))
+    rps_str := TextView(detail_rps_buf[0:rps_len])
+
+    col_w := (c.width - 16.0) / 3.0
+    stat_y := c.y + 116.0
+    Text.Draw(session, Text.Props.{.key = 606, .bounds = Rectangle.{c.x, stat_y, col_w, 16.0}, .text = "Latency", .size = 11})
+    Text.Draw(session, Text.Props.{.key = 607, .bounds = Rectangle.{c.x, stat_y + 18.0, col_w, 20.0}, .text = lat_str, .size = 14})
+    Text.Draw(session, Text.Props.{.key = 608, .bounds = Rectangle.{c.x + col_w + 8.0, stat_y, col_w, 16.0}, .text = "Uptime", .size = 11})
+    Text.Draw(session, Text.Props.{.key = 609, .bounds = Rectangle.{c.x + col_w + 8.0, stat_y + 18.0, col_w, 20.0}, .text = up_str, .size = 14})
+    Text.Draw(session, Text.Props.{.key = 610, .bounds = Rectangle.{c.x + (col_w + 8.0) * 2.0, stat_y, col_w, 16.0}, .text = "Throughput", .size = 11})
+    Text.Draw(session, Text.Props.{.key = 611, .bounds = Rectangle.{c.x + (col_w + 8.0) * 2.0, stat_y + 18.0, col_w, 20.0}, .text = rps_str, .size = 14})
+
+    if c.height >= 200.0 {
+        Text.Draw(session, Text.Props.{
+            .key = 612,
+            .bounds = Rectangle.{c.x, stat_y + 48.0, c.width, 16.0},
+            .text = "Latest change",
+            .size = 11
+        })
+        Text.Draw(session, Text.Props.{
+            .key = 613,
+            .bounds = Rectangle.{c.x, stat_y + 66.0, c.width, 22.0},
+            .text = item.audit_note,
+            .size = 12,
+            .wrap = .TextWrapEllipsis
+        })
+    }
+}
+
+DrawSettingsModal :: (session: Session) {
+    modal := Modal.Draw(session, Modal.Props.{
+        .key = 900,
+        .id = 900,
+        .title = "Dashboard settings",
+        .title_at_start = true,
+        .width = 460,
+        .height = 330,
+        .has_right_action = true,
+        .right_label = "Close",
+        .dismiss_on_outside = true
+    })
+    if modal.dismissed || modal.right_clicked {
+        settings_open = false
+        return
+    }
+    if !modal.opened { return }
+    defer { unused End(session) }
+
+    c := modal.layout.content
+    Text.Draw(session, Text.Props.{
+        .key = 901,
+        .bounds = Rectangle.{c.x, c.y, c.width, 18.0},
+        .text = "Workspace name",
+        .size = 13
+    })
+    focus_now := focus_workspace_pending
+    focus_workspace_pending = false
+    edited := TextField.Bind(session, *draft_state, TextField.Props.{
+        .key = 902,
+        .id = 902,
+        .focus_id = 902,
+        .class_name = ClassId("search-field"),
+        .bounds = Rectangle.{c.x, c.y + 22.0, c.width, 40.0},
+        .label = "Workspace name",
+        .placeholder = "Enter workspace title",
+        .input = .{.focus = focus_now}
+    })
+
+    Text.Draw(session, Text.Props.{
+        .key = 908,
+        .bounds = Rectangle.{c.x, c.y + 78.0, c.width - 112.0, 24.0},
+        .text = "Color theme",
+        .size = 14
+    })
+    dark_toggle := Toggle.Draw(session, Toggle.Props.{
+        .key = 903,
+        .id = 903,
+        .bounds = Rectangle.{c.x + c.width - 104.0, c.y + 74.0, 104.0, 32.0},
+        .label = "Dark theme",
+        .off_label = "Light",
+        .on_label = "Dark",
+        .value = draft_dark
+    })
+    if dark_toggle.changed { draft_dark = dark_toggle.value }
+
+    compact_box := Checkbox.Draw(session, Checkbox.Props.{
+        .key = 904,
+        .id = 904,
+        .bounds = Rectangle.{c.x, c.y + 114.0, c.width, 30.0},
+        .label = "Compact density",
+        .checked = draft_compact
+    })
+    if compact_box.changed { draft_compact = compact_box.checked }
+
+    refresh_box := Checkbox.Draw(session, Checkbox.Props.{
+        .key = 905,
+        .id = 905,
+        .bounds = Rectangle.{c.x, c.y + 150.0, c.width, 30.0},
+        .label = "Auto-refresh telemetry",
+        .checked = draft_auto_refresh
+    })
+    if refresh_box.changed { draft_auto_refresh = refresh_box.checked }
+
+    btn_y := c.y + c.height - 40.0
+    btn_w := (c.width - 12.0) * 0.5
+    if Button.Draw(session, Button.Props.{
+        .key = 906,
+        .id = 906,
+        .bounds = Rectangle.{c.x, btn_y, btn_w, 40.0},
+        .label = "Cancel",
+        .emphasis = .ButtonEmphasisOutline
+    }) != 0 {
+        settings_open = false
+    }
+    apply_clicked := Button.Draw(session, Button.Props.{
+        .key = 907,
+        .id = 907,
+        .class_name = ClassId("primary-btn"),
+        .bounds = Rectangle.{c.x + btn_w + 12.0, btn_y, btn_w, 40.0},
+        .label = "Apply",
+        .tone = .ButtonToneAccent,
+        .emphasis = .ButtonEmphasisFilled
+    }) != 0
+    if apply_clicked || edited.committed {
+        CommitSettingsModal()
+    }
+}
+
+DashboardFrame :: (session: Session, viewport: Rectangle) -> s32 {
+    EnsureInitialized()
+    snapshot := CaptureFrameInput(session)
+    unused EnsureDashboardTheme(dark_theme, compact_density, false)
+
+    // Root background surface.
+    Box.Draw(session, Box.Props.{
+        .key = 1,
+        .bounds = viewport,
+        .fill = ColorFromPacked(Theme.CurrentBackground())
+    })
+
+    wide := viewport.width >= 760.0
+    pad: float32 = ifx compact_density then 12.0 else 18.0
+    sidebar_w: float32 = ifx wide then 216.0 else 0.0
+    main_x := viewport.x + sidebar_w + pad
+    main_w := viewport.width - sidebar_w - pad * 2.0
+    if main_w < 120.0 { main_w = 120.0 }
+
+    nav_labels: [4]string = .["Overview", "Services", "Incidents", "Audit"]
+    nav_icons: [4]string = .[
+        "S1.8rr:M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z",
+        "S1.8rr:M4 6h16M4 12h16M4 18h16",
+        "S1.8rr:M12 9v4M12 17h.01M10.3 4.2L2.8 17a2 2 0 001.7 3h15a2 2 0 001.7-3L13.7 4.2a2 2 0 00-3.4 0",
+        "S1.8rr:M12 8v4l3 3M12 3a9 9 0 100 18 9 9 0 000-18"
+    ]
+
+    if wide {
+        sidebar_bounds := Rectangle.{viewport.x, viewport.y, sidebar_w, viewport.height}
+        Box.Draw(session, Box.Props.{
+            .key = 10,
+            .bounds = sidebar_bounds,
+            .fill = ColorFromPacked(Theme.CurrentSurface())
+        })
+        Separator.Draw(session, Separator.Props.{
+            .key = 11,
+            .bounds = Rectangle.{viewport.x + sidebar_w - 1.0, viewport.y, 1.0, viewport.height},
+            .vertical = true
+        })
+        Text.Draw(session, Text.Props.{
+            .key = 12,
+            .bounds = Rectangle.{viewport.x + 18.0, viewport.y + 18.0, sidebar_w - 36.0, 24.0},
+            .text = "Pulseboard",
+            .size = 18,
+            .semantic_kind = .SemanticHeading,
+            .heading_level = 1
+        })
+        Text.Draw(session, Text.Props.{
+            .key = 13,
+            .bounds = Rectangle.{viewport.x + 18.0, viewport.y + 44.0, sidebar_w - 36.0, 18.0},
+            .text = TextView(workspace_bytes[0:workspace_length]),
+            .size = 12,
+            .wrap = .TextWrapEllipsis
+        })
+        for i: cast(s32)0..3 {
+            nav_y := viewport.y + 82.0 + cast(float32)i * 44.0
+            if DrawNavButton(session, cast(u64)(20 + i),
+                Rectangle.{viewport.x + 12.0, nav_y, sidebar_w - 24.0, 38.0},
+                nav_labels[i], cast(s32)active_section == i, nav_icons[i]) {
+                active_section = cast(NavSection)i
+                view_state = .ViewReady
+                results_scroll = 0
+            }
+        }
+        footer_y := viewport.y + viewport.height - 96.0
+        theme_label := ifx dark_theme then "Light mode" else "Dark mode"
+        if Button.Draw(session, Button.Props.{
+            .key = 30,
+            .id = 30,
+            .class_name = ClassId("chip"),
+            .bounds = Rectangle.{viewport.x + 12.0, footer_y, sidebar_w - 24.0, 36.0},
+            .label = theme_label,
+            .emphasis = .ButtonEmphasisOutline,
+            .fit_content = true
+        }) != 0 {
+            dark_theme = !dark_theme
+        }
+        if Button.Draw(session, Button.Props.{
+            .key = 31,
+            .id = 31,
+            .class_name = ClassId("chip"),
+            .bounds = Rectangle.{viewport.x + 12.0, footer_y + 44.0, sidebar_w - 24.0, 36.0},
+            .label = "Settings",
+            .emphasis = .ButtonEmphasisSoft,
+            .fit_content = true
+        }) != 0 {
+            OpenSettingsModal()
+        }
+    }
+
+    // Header row.
+    cursor_y := viewport.y + pad
+    header_right_w: float32 = ifx wide then 246.0 else 180.0
+    Text.Draw(session, Text.Props.{
+        .key = 40,
+        .bounds = Rectangle.{main_x, cursor_y, main_w - header_right_w - 8.0, 28.0},
+        .text = SectionLabel(active_section),
+        .size = 22,
+        .semantic_kind = .SemanticHeading,
+        .heading_level = 1,
+        .wrap = .TextWrapEllipsis
+    })
+    if !wide {
+        theme_btn_label := ifx dark_theme then "Light" else "Dark"
+        if Button.Draw(session, Button.Props.{
+            .key = 30,
+            .id = 30,
+            .class_name = ClassId("chip"),
+            .bounds = Rectangle.{main_x + main_w - 172.0, cursor_y, 76.0, 32.0},
+            .label = theme_btn_label,
+            .size = .ControlSizeSmall,
+            .emphasis = .ButtonEmphasisOutline,
+            .fit_content = true
+        }) != 0 {
+            dark_theme = !dark_theme
+        }
+        if Button.Draw(session, Button.Props.{
+            .key = 31,
+            .id = 31,
+            .class_name = ClassId("chip"),
+            .bounds = Rectangle.{main_x + main_w - 90.0, cursor_y, 90.0, 32.0},
+            .label = "Settings",
+            .size = .ControlSizeSmall,
+            .emphasis = .ButtonEmphasisSoft,
+            .fit_content = true
+        }) != 0 {
+            OpenSettingsModal()
+        }
+    } else {
+        // State switcher chips on wide header for testing/exploring states cleanly.
+        state_labels: [3]string = .["Ready", "Loading", "Error"]
+        state_vals: [3]ViewState = .{.ViewReady, .ViewLoading, .ViewError}
+        for s: cast(s32)0..2 {
+            sx := main_x + main_w - 246.0 + cast(float32)s * 84.0
+            if DrawChipButton(session, cast(u64)(42 + s), Rectangle.{sx, cursor_y, 78.0, 30.0},
+                state_labels[s], view_state == state_vals[s]) {
+                view_state = state_vals[s]
+                alert_state.dismissed = false
+            }
+        }
+    }
+    cursor_y += 38.0
+
+    // Narrow horizontal navigation bar.
+    if !wide {
+        nav_w := (main_w - 18.0) / 4.0
+        for i: cast(s32)0..3 {
+            nx := main_x + cast(float32)i * (nav_w + 6.0)
+            if DrawChipButton(session, cast(u64)(20 + i), Rectangle.{nx, cursor_y, nav_w, 32.0},
+                nav_labels[i], cast(s32)active_section == i) {
+                active_section = cast(NavSection)i
+                view_state = .ViewReady
+                results_scroll = 0
+            }
+        }
+        cursor_y += 42.0
+    }
+
+    // KPI Summary Cards.
+    metrics := ComputeMetrics()
+    healthy_b: Vec(u8)
+    BuilderPrint(*healthy_b, "%/%", metrics.healthy, metrics.total)
+    h_len := CopyIntoBuffer(kpi_healthy_buf[:], BuilderFinish(healthy_b))
+    healthy_text := TextView(kpi_healthy_buf[0:h_len])
+    lat_text := FormatLatency(metrics.avg_latency_ms, kpi_latency_buf[:])
+    up_text := FormatPercentTenths(metrics.avg_uptime_tenths, kpi_uptime_buf[:])
+
+    kpi_h: float32 = 96.0
+    if wide {
+        kpi_w := (main_w - 24.0) / 3.0
+        DrawKpiCard(session, 100, Rectangle.{main_x, cursor_y, kpi_w, kpi_h},
+            "Healthy services", healthy_text,
+            ifx metrics.offline > 0 then "1 offline" else "Nominal",
+            ifx metrics.offline > 0 then .BadgeToneWarning else .BadgeToneSuccess,
+            metrics.healthy, metrics.total)
+        DrawKpiCard(session, 101, Rectangle.{main_x + kpi_w + 12.0, cursor_y, kpi_w, kpi_h},
+            "Mean p95 latency", lat_text, "EU / US", .BadgeToneInfo,
+            200 - metrics.avg_latency_ms, 200)
+        DrawKpiCard(session, 102, Rectangle.{main_x + (kpi_w + 12.0) * 2.0, cursor_y, kpi_w, kpi_h},
+            "Availability SLA", up_text, "30d", .BadgeToneAccent,
+            metrics.avg_uptime_tenths, 1000)
+        cursor_y += kpi_h + 14.0
+    } else {
+        kpi_w := (main_w - 10.0) * 0.5
+        DrawKpiCard(session, 100, Rectangle.{main_x, cursor_y, kpi_w, 86.0},
+            "Healthy", healthy_text, "SLA", .BadgeToneSuccess,
+            metrics.healthy, metrics.total)
+        DrawKpiCard(session, 101, Rectangle.{main_x + kpi_w + 10.0, cursor_y, kpi_w, 86.0},
+            "Latency", lat_text, "p95", .BadgeToneInfo,
+            200 - metrics.avg_latency_ms, 200)
+        cursor_y += 96.0
+    }
+
+    // Search + Filter Toolbar.
+    filter_labels: [3]string = .["All", "Healthy", "Attention"]
+    if wide {
+        filter_total_w: float32 = 258.0
+        search_w := main_w - filter_total_w - 12.0
+        unused TextField.Bind(session, *search_state, TextField.Props.{
+            .key = 200,
+            .id = 200,
+            .focus_id = 200,
+            .class_name = ClassId("search-field"),
+            .bounds = Rectangle.{main_x, cursor_y, search_w, 38.0},
+            .label = "Search services",
+            .placeholder = "Search services, regions, owners...",
+            .clear_label = "Clear search"
+        })
+        for f: cast(s32)0..2 {
+            fx := main_x + search_w + 12.0 + cast(float32)f * 88.0
+            if DrawChipButton(session, cast(u64)(210 + f), Rectangle.{fx, cursor_y + 2.0, 82.0, 34.0},
+                filter_labels[f], cast(s32)active_filter == f) {
+                active_filter = cast(StatusFilter)f
+                view_state = .ViewReady
+                results_scroll = 0
+            }
+        }
+        cursor_y += 48.0
+    } else {
+        unused TextField.Bind(session, *search_state, TextField.Props.{
+            .key = 200,
+            .id = 200,
+            .focus_id = 200,
+            .class_name = ClassId("search-field"),
+            .bounds = Rectangle.{main_x, cursor_y, main_w, 38.0},
+            .label = "Search services",
+            .placeholder = "Search services, regions...",
+            .clear_label = "Clear search"
+        })
+        cursor_y += 44.0
+        fw := (main_w - 12.0) / 3.0
+        for f: cast(s32)0..2 {
+            fx := main_x + cast(float32)f * (fw + 6.0)
+            if DrawChipButton(session, cast(u64)(210 + f), Rectangle.{fx, cursor_y, fw, 30.0},
+                filter_labels[f], cast(s32)active_filter == f) {
+                active_filter = cast(StatusFilter)f
+                view_state = .ViewReady
+                results_scroll = 0
+            }
+        }
+        cursor_y += 38.0
+    }
+
+    // Main content body area.
+    body_bounds := Rectangle.{main_x, cursor_y, main_w, viewport.y + viewport.height - cursor_y - pad}
+    if body_bounds.height < 120.0 { body_bounds.height = 120.0 }
+
+    query := TextView(search_bytes[0:search_state.length])
+    match_count := FilterIndices(active_section, active_filter, query, filtered_indices[:])
+
+    if view_state == .ViewLoading {
+        loading_card := Card.Draw(session, Card.Props.{
+            .key = 300,
+            .bounds = body_bounds,
+            .variant = .CardOutlined
+        })
+        lc := loading_card.content
+        now_sec := cast(float64)snapshot.elapsed_ms / 1000.0
+        Loading.Draw(session, Loading.Props.{
+            .key = 301,
+            .bounds = Rectangle.{lc.x, lc.y + lc.height * 0.28, lc.width, 32.0},
+            .now = now_sec,
+            .scale = 1.0
+        })
+        Text.Draw(session, Text.Props.{
+            .key = 302,
+            .bounds = Rectangle.{lc.x, lc.y + lc.height * 0.28 + 42.0, lc.width, 24.0},
+            .text = "Refreshing service telemetry...",
+            .size = 15,
+            .align = .TextAlignCenter
+        })
+        if Button.Draw(session, Button.Props.{
+            .key = 303,
+            .id = 303,
+            .bounds = Rectangle.{lc.x + (lc.width - 140.0) * 0.5, lc.y + lc.height * 0.28 + 78.0, 140.0, 36.0},
+            .label = "Cancel refresh",
+            .emphasis = .ButtonEmphasisOutline
+        }) != 0 {
+            view_state = .ViewReady
+        }
+    } else if view_state == .ViewError {
+        alert_res := Alert.Draw(session, Alert.Props.{
+            .key = 310,
+            .bounds = Rectangle.{body_bounds.x, body_bounds.y, body_bounds.width, 74.0},
+            .title = "Telemetry sync failed",
+            .description = "Collector endpoint eu-west-1 returned HTTP 503 Service Unavailable.",
+            .tone = .AlertToneDanger,
+            .dismissible = false
+        }, *alert_state)
+        unused alert_res
+        if Button.Draw(session, Button.Props.{
+            .key = 311,
+            .id = 311,
+            .class_name = ClassId("primary-btn"),
+            .bounds = Rectangle.{body_bounds.x, body_bounds.y + 88.0, 148.0, 38.0},
+            .label = "Retry sync",
+            .tone = .ButtonToneAccent,
+            .emphasis = .ButtonEmphasisFilled
+        }) != 0 {
+            view_state = .ViewReady
+        }
+        if Button.Draw(session, Button.Props.{
+            .key = 312,
+            .id = 312,
+            .bounds = Rectangle.{body_bounds.x + 160.0, body_bounds.y + 88.0, 136.0, 38.0},
+            .label = "Open settings",
+            .emphasis = .ButtonEmphasisOutline
+        }) != 0 {
+            OpenSettingsModal()
+        }
+    } else if view_state == .ViewEmpty || match_count == 0 {
+        empty_res := EmptyState.Draw(session, EmptyState.Props.{
+            .key = 320,
+            .id = 320,
+            .bounds = body_bounds,
+            .title = "No matching services",
+            .description = "Adjust your search query or reset filters to view all cluster services.",
+            .action = "Reset filters"
+        })
+        if empty_res.action {
+            search_state.length = 0
+            search_state.cursor = 0
+            search_state.anchor = 0
+            search_state.scroll_x = 0
+            active_filter = .FilterAll
+            active_section = .NavOverview
+            view_state = .ViewReady
+        }
+    } else {
+        // Ensure selected_service is one of the visible matches.
+        selected_visible := false
+        for i: cast(s32)0..match_count - 1 {
+            if filtered_indices[i] == selected_service { selected_visible = true; break }
+        }
+        if !selected_visible { selected_service = filtered_indices[0] }
+
+        list_bounds := body_bounds
+        inspector_bounds := Rectangle.{0.0, 0.0, 0.0, 0.0}
+        if wide {
+            list_w := body_bounds.width * 0.56
+            list_bounds = Rectangle.{body_bounds.x, body_bounds.y, list_w, body_bounds.height}
+            inspector_bounds = Rectangle.{body_bounds.x + list_w + 14.0, body_bounds.y,
+                body_bounds.width - list_w - 14.0, body_bounds.height}
+        } else {
+            ins_h: float32 = 186.0
+            if body_bounds.height > 320.0 {
+                list_h := body_bounds.height - ins_h - 10.0
+                list_bounds = Rectangle.{body_bounds.x, body_bounds.y, body_bounds.width, list_h}
+                inspector_bounds = Rectangle.{body_bounds.x, body_bounds.y + list_h + 10.0,
+                    body_bounds.width, ins_h}
+            }
+        }
+
+        // Results header count.
+        Text.Draw(session, Text.Props.{
+            .key = 400,
+            .bounds = Rectangle.{list_bounds.x, list_bounds.y, list_bounds.width, 20.0},
+            .text = FormatCountOf(match_count, SERVICE_COUNT, count_label_buf[:]),
+            .size = 12
+        })
+        scroll_area := Rectangle.{list_bounds.x, list_bounds.y + 24.0,
+            list_bounds.width, list_bounds.height - 24.0}
+        row_h: float32 = ifx compact_density then 50.0 else 56.0
+        row_gap: float32 = 8.0
+        content_h := cast(s32)(cast(float32)match_count * (row_h + row_gap))
+        scroll_res := Scroll.Draw(session, Scroll.Props.{
+            .key = 401,
+            .bounds = scroll_area,
+            .content_height = content_h,
+            .scroll_offset = results_scroll
+        })
+        results_scroll = scroll_res.scroll_offset
+        if scroll_res.opened {
+            for i: cast(s32)0..match_count - 1 {
+                svc_idx := filtered_indices[i]
+                svc := SERVICES[svc_idx]
+                ry := scroll_res.content.y + cast(float32)i * (row_h + row_gap)
+                row_w := scroll_res.viewport.width - 10.0
+                if row_w < 100.0 { row_w = scroll_res.viewport.width }
+                is_sel := svc_idx == selected_service
+                lat := FormatLatency(svc.latency_ms, row_latency_buf[svc_idx][:])
+                detail_b: Vec(u8)
+                if active_section == .NavAudit {
+                    BuilderPrint(*detail_b, "%  -  %", svc.audit_note, lat)
+                } else {
+                    BuilderPrint(*detail_b, "%  |  %  |  %", svc.region, svc.owner, lat)
+                }
+                row_emphasis: ButtonEmphasis = .ButtonEmphasisOutline
+                row_tone: ButtonTone = .ButtonToneNeutral
+                if is_sel {
+                    row_emphasis = .ButtonEmphasisSoft
+                    row_tone = .ButtonToneAccent
+                }
+                if Button.Draw(session, Button.Props.{
+                    .key = cast(u64)(500 + svc_idx),
+                    .id = 500 + svc_idx,
+                    .class_name = ClassId("result-row"),
+                    .bounds = Rectangle.{scroll_res.content.x, ry, row_w, row_h},
+                    .label = svc.name,
+                    .detail = BuilderFinish(detail_b),
+                    .selected = is_sel,
+                    .emphasis = row_emphasis,
+                    .tone = row_tone,
+                    .content_alignment = .ContentAlignmentStart,
+                    .fit_content = true
+                }) != 0 {
+                    selected_service = svc_idx
+                }
+                Badge.Draw(session, Badge.Props.{
+                    .key = cast(u64)(550 + svc_idx),
+                    .bounds = Rectangle.{scroll_res.content.x + row_w - 86.0, ry + (row_h - 20.0) * 0.5, 76.0, 20.0},
+                    .text = HealthLabel(svc.health),
+                    .tone = HealthBadgeTone(svc.health),
+                    .dot = true,
+                    .size = .ControlSizeSmall
+                })
+            }
+            unused End(session)
+        }
+        if inspector_bounds.width > 0.0 && inspector_bounds.height > 0.0 {
+            DrawInspector(session, inspector_bounds, SERVICES[selected_service])
+        }
+    }
+
+    if settings_open {
+        DrawSettingsModal(session)
+    }
+
+    return 0
+}

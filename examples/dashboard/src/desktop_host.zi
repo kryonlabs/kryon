@@ -1,0 +1,45 @@
+// Desktop host for the dashboard starter. Calls the same portable Frame
+// entry point as previews/ and adds window size overrides for fixture tests.
+App :: #import "kryon/app";
+Frames :: #import "kryon/host/desktop";
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/tree"
+#import "app"
+#import "dashboard"
+#import "std/c_string"
+#import "std/byte_text_linux"
+
+host_c :: #system_library "c";
+HostGetEnv :: (name: *u8) -> *u8 #foreign host_c "getenv";
+HostAtoi :: (text: *u8) -> s32 #foreign host_c "atoi";
+
+ReadWindowDimension :: (name: string, fallback: s32) -> s32 {
+    key: [32]u8
+    if !CopyCString(name, key[:]) { return fallback }
+    raw := HostGetEnv(*key[0])
+    if raw == null || raw.* == cast(u8)0 { return fallback }
+    value := HostAtoi(raw)
+    if value < 200 || value > 4096 { return fallback }
+    return value
+}
+
+DrawDashboard :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := TreeRootBounds(session)
+    unused Frame(session, viewport)
+}
+
+#program_export
+main :: () -> s32 {
+    fix_key: [32]u8
+    if CopyCString("KRYON_DASHBOARD_FIXTURE", fix_key[:]) {
+        raw := HostGetEnv(*fix_key[0])
+        if raw != null && raw.* != cast(u8)0 {
+            DashboardSetFixture(TextFromCString(raw))
+        }
+    }
+    width := ReadWindowDimension("KRYON_WINDOW_WIDTH", 1120)
+    height := ReadWindowDimension("KRYON_WINDOW_HEIGHT", 720)
+    return Frames.Run(App.Window.{.title = "Pulseboard", .width = width, .height = height}, DrawDashboard)
+}

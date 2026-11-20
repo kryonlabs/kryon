@@ -106,6 +106,29 @@ main :: () -> s32 {
     if TypedFrame(typed, 7) != 1 || TextHostTypedValue(0) != typed.text {
         return 8
     }
+    // More than the draw's temporary plans, including an empty line and
+    // multibyte text: overflow must paint every remaining line normally.
+    TextHostTyping()
+    long_text := Text.Props.{.key = cast(u64)11,
+        .bounds = Rectangle.{0.0, 0.0, 60.0, 200.0}, .class_name = 7,
+        .text = "a\né\n水\nb\n\nc\nd\ne\nf\ng"}
+    BeginFrame(TestSession(), cast(u64)8, Rectangle.{0.0, 0.0, 200.0, 300.0})
+    Text.Draw(TestSession(), long_text)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TextHostFailed() ||
+        TextHostLabels() != 9 || TextHostTypedValue(0) != "a" ||
+        TextHostTypedValue(1) != "é" || TextHostTypedValue(2) != "水" ||
+        TextHostTypedValue(3) != "b" ||
+        TreeNodeAt(TestSession(), 1).semantic_label != long_text.text { return 19 }
+    TextHostTyping()
+    TextHostInvalidateMetrics()
+    changed := Text.Props.{.key = cast(u64)12,
+        .bounds = Rectangle.{0.0, 0.0, 50.0, 100.0}, .class_name = 7,
+        .text = "abcd efgh"}
+    BeginFrame(TestSession(), cast(u64)9, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    Text.Draw(TestSession(), changed)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TextHostFailed() ||
+        TextHostLabels() != 2 || TextHostTypedValue(0) != "abcd" ||
+        TextHostTypedValue(1) != "efgh" || TextHostMeasurements() <= 3 { return 20 }
     return LinkChecks()
 }
 
@@ -124,7 +147,7 @@ LinkChecks :: () -> s32 {
     ranges: [1]Text.Range = .[Text.Range.{3, 10}]
     linked := Text.Props.{.key = cast(u64)10, .bounds = Rectangle.{0.0, 0.0, 80.0, 28.0},
         .text = "ab cdef gh", .class_name = 7, .links = ranges[:]}
-    BeginFrame(TestSession(), cast(u64)8, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 100.0})
     Text.Draw(TestSession(), linked)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TextHostFailed() ||
     TextHostLabels() != 3 || TextHostFills() != 2 {

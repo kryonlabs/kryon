@@ -1,0 +1,35 @@
+Layout :: #import "layout";
+Theme :: #import "theme";
+#import "geometry"
+#import "layout_behavior"
+#import "session"
+#import "tree"
+#import "tree_draw"
+
+#program_export
+main :: () -> s32 {
+    unused Theme.InstallDefaultTheme(false)
+    session := SessionOpen()
+    if !SessionValid(session) { return 1 }
+    defer { unused CloseSession(session) }
+    if BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 480.0, 320.0}) != .FrameOk { return 2 }
+    gap := Layout.Gap(.ThemeMetricSpace3)
+    items: [2]Rectangle = .{Rectangle.{0.0, 0.0, 200.0, 38.0}, Rectangle.{0.0, 0.0, 200.0, 38.0}}
+    bounds := Layout.LayoutContentBounds(Rectangle.{16.0, 16.0, 448.0, 0.0}, .FlexColumn, items[:], gap, 16)
+    col := Layout.Draw(session, Layout.Props.{
+        .key = 20,
+        .bounds = bounds,
+        .gap = gap,
+        .gap_override = true,
+        .padding = 16,
+        .padding_override = true
+    })
+    if col.opened {
+        if Layout.ColumnWidth(session) <= 0.0 { return 3 }
+        unused End(session)
+    } else {
+        return 4
+    }
+    if CommitFrame(session) != .FrameOk { return 5 }
+    return 0
+}

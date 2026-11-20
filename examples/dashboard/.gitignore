@@ -1,0 +1,3 @@
+# Local lock pins remote commits; keep it untracked while developing against
+# working-tree Kryon/CSS/Ziran overrides until upstream commits land.
+ziran.lock

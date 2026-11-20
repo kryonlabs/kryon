@@ -565,12 +565,28 @@ SystemPaletteApply :: (palette: SystemPalette) -> bool {
 
 applied: SystemPalette;
 applied_once: bool;
+default_applied: SystemPalette;
+default_applied_once: bool;
+
+SamePalette :: (left: SystemPalette, right: SystemPalette) -> bool {
+    return left.dark == right.dark && left.background == right.background && left.base == right.base &&
+        left.text == right.text && left.selected == right.selected && left.selected_text == right.selected_text &&
+        left.border == right.border && left.danger == right.danger && left.warning == right.warning && left.success == right.success
+}
+
+// The default palette sits below app stylesheet rules and custom tokens.
+SystemPaletteUpdateDefault :: (fresh: SystemPalette) -> bool {
+    if !Theme.FollowsSystemTheme() || (default_applied_once && SamePalette(fresh, default_applied)) { return false }
+    colors := ifx fresh.found then SystemPaletteColors(fresh) else Theme.DefaultPalette(fresh.dark)
+    if !Theme.ApplySystemTheme(fresh.dark, colors) { return false }
+    default_applied = fresh; default_applied_once = true
+    return true
+}
+
 // Applies fresh the first time and again whenever it differs from the palette
 // applied last; true when it applied. SystemPaletteFollow feeds it each frame.
 SystemPaletteUpdate :: (fresh: SystemPalette) -> bool {
-    if applied_once && fresh.dark == applied.dark && fresh.background == applied.background &&
-        fresh.base == applied.base && fresh.text == applied.text && fresh.selected == applied.selected &&
-        fresh.selected_text == applied.selected_text && fresh.border == applied.border { return false }
+    if applied_once && SamePalette(fresh, applied) { return false }
     if !SystemPaletteApply(fresh) { return false }
     applied = fresh; applied_once = true
     return true

@@ -25,7 +25,7 @@ using Text :: #import "text_props";
     TextWidth :: (session: Session, props: Text.Props) -> s32 {
         unused session
         prepared: PreparedText = PrepareText(props, TextFaceOf(props))
-        return GlyphWidth(props.text, prepared.font, prepared.typeface)
+        return GlyphWidth(props.text, prepared.font, prepared.typeface, prepared.glyph_style)
     }
     // The height Text takes to draw props.text in props.bounds.width, its
     // lines wrapped as props.wrap says, so a caller can place what follows

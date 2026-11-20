@@ -27,6 +27,10 @@ main :: () -> s32 {
         if !palette.found || palette.dark || palette.background != cast(u32)0xf6f5f4FF { return 5 }
         return 0
     }
+    if which == "gtk-prefer-dark" {
+        if palette.found || !palette.dark { return 9 }
+        return 0
+    }
     if which == "env-dark" {
         // Only GTK_THEME, naming a theme that is not installed.
         if SystemThemeName() != "Missing" { return 6 }

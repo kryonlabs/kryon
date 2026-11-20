@@ -340,6 +340,12 @@ StyleKindReorder :: () -> s32 {
     return 63
 }
 
+#program_export
+StyleKindRow :: () -> s32 { return 64 }
+
+#program_export
+StyleKindColumn :: () -> s32 { return 65 }
+
 StyleFacts :: struct {
     kind: s32
     name: s32
@@ -453,7 +459,8 @@ StyleIndexInstall :: () {
         state := installed_rules.items[source].state
         installed_selectors[i] = selector
         installed_states[i] = state
-        installed_fields |= installed_rules.items[source].style.fields & cast(u32)0x1ffffff
+        known_fields := (cast(u32)StyleFontStyle << cast(u32)1) - cast(u32)1
+        installed_fields |= installed_rules.items[source].style.fields & known_fields
         word := i / 64
         bit := cast(u64)1 << cast(u32)(i % 64)
         if selector.kind == 0 { installed_any_kind[word] |= bit }
@@ -482,10 +489,13 @@ StyleWithoutTypeface :: (source: StyleData) -> StyleData {
         .foreground = source.foreground, .border = source.border, .focus = source.focus,
         .radius = source.radius, .border_width = source.border_width, .opacity = source.opacity,
         .padding_x = source.padding_x, .padding_y = source.padding_y, .gap = source.gap,
+        .row_gap = source.row_gap, .column_gap = source.column_gap,
         .font_size = source.font_size, .icon_size = source.icon_size, .offset_x = source.offset_x,
         .offset_y = source.offset_y, .background_end = source.background_end,
         .material = source.material, .letter_spacing = source.letter_spacing,
         .min_height = source.min_height, .line_height = source.line_height,
+        .line_height_unit = source.line_height_unit,
+        .font_weight = source.font_weight, .font_style = source.font_style,
         .font_role = source.font_role, .elevation = source.elevation,
         .motion_duration = source.motion_duration,
         .motion_multiplier = source.motion_multiplier,
@@ -564,7 +574,11 @@ StyleCascade :: struct {
     padding_x_priority: StylePriority
     padding_y_priority: StylePriority
     gap_priority: StylePriority
+    row_gap_priority: StylePriority
+    column_gap_priority: StylePriority
     font_size_priority: StylePriority
+    font_weight_priority: StylePriority
+    font_style_priority: StylePriority
     icon_size_priority: StylePriority
     content_offset_priority: StylePriority
     background_end_priority: StylePriority
@@ -788,12 +802,17 @@ BeginStyleCascade :: (base: StyleData) -> StyleCascade {
     return cascade
 }
 
+StyleLayoutGapShorthand :: (kind: s32) -> bool {
+    return kind == StyleKindRow() || kind == StyleKindColumn()
+}
+
 // Applies rules to a cascade. The rules are a borrowed view and are read in
 // place, so resolving a face copies neither the rule table nor a rule nor the
 // cascade per rule; resolution runs for every widget every frame.
 #program_export
 ApplyStyleRules :: (cascade: StyleCascade, rules: []StyleRule,
     facts: StyleFacts, active_state: s32) -> StyleCascade {
+    layout_gap := StyleLayoutGapShorthand(facts.kind)
     index: s64 = 0
     while index < rules.count {
         if StyleRuleMatchesState(rules[index].state, active_state) &&
@@ -863,11 +882,36 @@ ApplyStyleRules :: (cascade: StyleCascade, rules: []StyleRule,
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleGap
                 cascade.gap_priority = priority
             }
+            row_gap := StyleHasField(rules[index].style, cast(u32)StyleRowGap)
+            column_gap := StyleHasField(rules[index].style, cast(u32)StyleColumnGap)
+            gap_shorthand := layout_gap && StyleHasField(rules[index].style, cast(u32)StyleGap)
+            if (row_gap || gap_shorthand) && StylePriorityWins(priority, cascade.row_gap_priority) {
+                cascade.result.row_gap = ifx row_gap then rules[index].style.row_gap else rules[index].style.gap
+                cascade.result.fields |= cast(u32)StyleRowGap
+                cascade.row_gap_priority = priority
+            }
+            if (column_gap || gap_shorthand) && StylePriorityWins(priority, cascade.column_gap_priority) {
+                cascade.result.column_gap = ifx column_gap then rules[index].style.column_gap else rules[index].style.gap
+                cascade.result.fields |= cast(u32)StyleColumnGap
+                cascade.column_gap_priority = priority
+            }
             if (rules[index].style.fields & cast(u32)StyleFontSize) != cast(u32)0 &&
             StylePriorityWins(priority, cascade.font_size_priority) {
                 cascade.result.font_size = rules[index].style.font_size
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleFontSize
                 cascade.font_size_priority = priority
+            }
+            if StyleHasField(rules[index].style, cast(u32)StyleFontWeight) &&
+            StylePriorityWins(priority, cascade.font_weight_priority) {
+                cascade.result.font_weight = rules[index].style.font_weight
+                cascade.result.fields |= cast(u32)StyleFontWeight
+                cascade.font_weight_priority = priority
+            }
+            if StyleHasField(rules[index].style, cast(u32)StyleFontStyle) &&
+            StylePriorityWins(priority, cascade.font_style_priority) {
+                cascade.result.font_style = rules[index].style.font_style
+                cascade.result.fields |= cast(u32)StyleFontStyle
+                cascade.font_style_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleLetterSpacing) != cast(u32)0 &&
             StylePriorityWins(priority, cascade.letter_spacing_priority) {
@@ -884,6 +928,7 @@ ApplyStyleRules :: (cascade: StyleCascade, rules: []StyleRule,
             if (rules[index].style.fields & cast(u32)StyleLineHeight) != cast(u32)0 &&
             StylePriorityWins(priority, cascade.line_height_priority) {
                 cascade.result.line_height = rules[index].style.line_height
+                cascade.result.line_height_unit = rules[index].style.line_height_unit
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleLineHeight
                 cascade.line_height_priority = priority
             }
@@ -983,6 +1028,10 @@ ResolveInstalledStyleRules :: (base: StyleData, facts: StyleFacts,
     active_state: s32) -> StyleData {
     remaining := installed_fields
     if remaining == 0 { return base }
+    layout_gap := StyleLayoutGapShorthand(facts.kind)
+    if layout_gap && (remaining & cast(u32)StyleGap) != 0 {
+        remaining |= cast(u32)StyleRowGap | cast(u32)StyleColumnGap
+    }
     kind := StyleBucket(facts.kind) * StyleIndexWords
     class_name := StyleBucket(facts.class_name) * StyleIndexWords
     state := StyleBucket(active_state) * StyleIndexWords
@@ -996,6 +1045,11 @@ ResolveInstalledStyleRules :: (base: StyleData, facts: StyleFacts,
             if StyleRuleMatchesState(installed_states[index], active_state) &&
             StyleSelectorMatches(installed_selectors[index], facts) {
                 value := installed_rules.items[installed_rule_indices[index]].style
+                if layout_gap && StyleHasField(value, cast(u32)StyleGap) {
+                    if !StyleHasField(value, cast(u32)StyleRowGap) { value.row_gap = value.gap }
+                    if !StyleHasField(value, cast(u32)StyleColumnGap) { value.column_gap = value.gap }
+                    value.fields |= cast(u32)StyleRowGap | cast(u32)StyleColumnGap
+                }
                 value.fields &= remaining
                 base = MergeValues(base, value)
                 remaining &= ~value.fields

@@ -18,7 +18,7 @@ ifndef ZIRAN_PACKAGE_ID
 $(error ZIRAN_PACKAGE_ID is required; run this through ziran tool kryon)
 endif
 
-ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 canvas/c99 pixmap/c99 desktop/zx pixmap/zx canvas/zx),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
+ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 canvas/c99 dom/c99 pixmap/c99 desktop/zx pixmap/zx canvas/zx),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
 $(error backend $(PROJECT_BACKEND) with codegen $(PROJECT_CODEGEN) is not available)
 endif
 
@@ -43,7 +43,8 @@ ifneq ($(strip $(PROJECT_LIBRARY)$(PROJECT_STATIC_ARCHIVE)$(PROJECT_NATIVE_ARTIF
 $(error a Zx profile cannot link a native library or static archive)
 endif
 endif
-ifneq ($(filter $(PROJECT_BACKEND),canvas),)
+BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas dom)
+ifneq ($(BROWSER_BACKEND),)
 ifeq ($(PROJECT_CODEGEN),c99)
 PROGRAM := $(PROJECT_BUILD_DIR)/$(PROJECT_NAME)-$(PROJECT_PROFILE).html
 endif
@@ -52,7 +53,6 @@ HOST_MODULE := $(PROJECT_BACKEND)_run
 ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),desktop/zx canvas/zx),)
 HOST_MODULE := zx_run
 endif
-BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas)
 # The program's name for its window, page and menu entry: the install name or
 # else the package name. The kryon tool passes it as KRYON_PROGRAM_TITLE, read
 # only as a shell variable, so the text cannot change a recipe. Native and ZX
@@ -60,7 +60,7 @@ BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas)
 # pages carry it in their HTML shell.
 PROGRAM_TITLE_FILE := $(if $(filter %.html,$(PROGRAM)),,$(if $(filter %.zx,$(PROGRAM)),$(PROGRAM:.zx=.title),$(PROGRAM).title))
 PAGE_SHELL := $(if $(BROWSER_BACKEND),$(GEN_DIR)/page-shell.html)
-PAGE_SHELL_SOURCE := $(KRYON_DIR)/mk/$(if $(filter zx,$(PROJECT_CODEGEN)),zx,canvas)-shell.html
+PAGE_SHELL_SOURCE := $(KRYON_DIR)/mk/$(if $(filter zx,$(PROJECT_CODEGEN)),zx,$(PROJECT_BACKEND))-shell.html
 HOST_ID := $(ZIRAN_PACKAGE_ID)_$(HOST_MODULE)
 PROJECT_CONFIG_FILES := ziran.toml ziran.lock
 # The test driver is test code: a build includes it only when
@@ -69,6 +69,15 @@ PROJECT_CONFIG_FILES := ziran.toml ziran.lock
 TEST_DRIVER_STATE := $(if $(KRYON_TEST_DRIVER),on,off)
 # A zx bundle's runtime pictures (kryon/bitmap_image) belong to its player.
 ZIRAN_MODULE_ARGS := --project $(if $(KRYON_TEST_DRIVER),--define KRYON_TEST_DRIVER) $(if $(filter zx,$(PROJECT_CODEGEN)),--define KRYON_ZX)
+ifeq ($(PROJECT_BACKEND),dom)
+ZIRAN_MODULE_ARGS += --define KRYON_DOM
+endif
+ifeq ($(PROJECT_BACKEND)/$(PROJECT_CODEGEN),desktop/c99)
+ifeq ($(shell uname -s),Linux)
+# The desktop host needs Linux settings even when the frame IR has no target OS.
+ZIRAN_MODULE_ARGS += --define KRYON_LINUX_DESKTOP
+endif
+endif
 HOST := $(KRYON_DIR)/src/backend/$(HOST_MODULE).zi
 ifneq ($(PROJECT_HOST),)
 PROJECT_HOST_PATH := $(realpath $(PROJECT_HOST))
@@ -86,6 +95,7 @@ UI_SOURCES := $(shell find $(KRYON_DIR)/src/ui -type f -name '*.zi')
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi $(KRYON_DIR)/src/backend/avif*.zi)
 ifneq ($(filter $(PROJECT_BACKEND),desktop),)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/app_asset_path.zi $(KRYON_DIR)/src/backend/app_asset.zi $(KRYON_DIR)/src/backend/program_title.zi
+HOST_SOURCES += $(KRYON_DIR)/src/backend/system_theme_linux.zi $(KRYON_DIR)/src/backend/parent_theme_linux.zi
 endif
 ifneq ($(filter $(PROJECT_BACKEND),desktop canvas),)
 HOST_SOURCES += $(KRYON_DIR)/src/ui/frame_input_provider.zi
@@ -102,6 +112,11 @@ endif
 # selects the host for the compiled target. A frame entry declares Frame and
 # the profile's host owns main.
 PROJECT_PROGRAM := $(shell grep -Eqs '^main[[:space:]]*::' '$(PROJECT_ENTRY)' && echo program)
+ifeq ($(PROJECT_BACKEND),dom)
+ifneq ($(PROJECT_PROGRAM),)
+$(error backend dom needs an exported Frame rather than main)
+endif
+endif
 # Track the export annotation belonging to main, rather than unrelated exports.
 # Every make version reads \# in an assignment as a literal number sign.
 PROJECT_HASH := \#
@@ -148,7 +163,9 @@ endif
 # target; untargeted IR is portable and selects no web host.
 WEB_TARGET := --target=c --target-os web --target-cpu wasm32
 ifneq ($(if $(filter c99,$(PROJECT_CODEGEN)),$(BROWSER_BACKEND)),)
+ifeq ($(PROJECT_BACKEND),canvas)
 HOST_ROOT_SOURCES += $(KRYON_DIR)/src/backend/canvas_raster.zi
+endif
 # Browser hosts resolve the app's packages like native ones; every saved
 # module is lowered because the browser runtime calls into the page.
 IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) $(WEB_TARGET) --define PLATFORM_WEB \
@@ -167,8 +184,8 @@ ifeq ($(PROJECT_BACKEND),desktop)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi $(KRYON_DIR)/src/backend/image_decode_desktop.zi $(KRYON_DIR)/src/backend/avif_decode.zi $(KRYON_DIR)/src/backend/accessibility_linux.zi $(KRYON_DIR)/src/backend/atspi_protocol.zi
 HOST_SOURCES += $(wildcard $(KRYON_DIR)/src/backend/gtk_*_linux.zi) $(KRYON_DIR)/src/backend/file_date_linux.zi
 endif
-ifneq ($(filter $(PROJECT_BACKEND),canvas),)
-CANVAS_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -lidbfs.js -sEXPORTED_RUNTIME_METHODS=FS
+ifneq ($(BROWSER_BACKEND),)
+WEB_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -lidbfs.js -sEXPORTED_RUNTIME_METHODS=FS
 include $(KRYON_DIR)/mk/emcc.mk
 # Ordinary Canvas applications may embed portable Ziran bundles through
 # std/bundle_host. Build that target's canonical runtime only when needed.
@@ -200,7 +217,7 @@ HOST_LIBS += $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfi
 HOST_LIBS += $(or $(shell pkg-config --libs libcurl 2>/dev/null),$(if $(filter Linux,$(shell uname -s)),-l:libcurl.so.4,-lcurl))
 RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 endif
-ifneq ($(filter $(PROJECT_BACKEND),canvas),)
+ifneq ($(BROWSER_BACKEND),)
 EM_CACHE ?= $(KRYON_DIR)/build/emscripten-cache
 WEB_PAGE_ASSET_ENTRIES := $(strip $(PROJECT_ASSETS) $(PROJECT_PRELOAD))
 WEB_PAGE_ASSET_SOURCES := $(foreach entry,$(WEB_PAGE_ASSET_ENTRIES),$(firstword $(subst @, ,$(entry))))
@@ -210,8 +227,12 @@ WEB_PAGE_ASSET_ARGS := $(foreach entry,$(WEB_PAGE_ASSET_ENTRIES),\
 	$(if $(findstring @,$(entry)),\
 		$(firstword $(subst @, ,$(entry)))@/$(lastword $(subst @, ,$(entry))),\
 		$(entry)@/$(entry)))
-WEB_PAGE_EMBED_ARGS := $(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf@/kryon-font.ttf $(WEB_PAGE_ASSET_ARGS)
-HOST_DEPS += $(WEB_PAGE_ASSET_FILES) $(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
+WEB_PAGE_EMBED_ARGS := $(WEB_PAGE_ASSET_ARGS)
+HOST_DEPS += $(WEB_PAGE_ASSET_FILES) $(ZIRAN_DIR)/web/ziran_web.js
+ifeq ($(PROJECT_BACKEND),canvas)
+WEB_PAGE_EMBED_ARGS := $(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf@/kryon-font.ttf $(WEB_PAGE_EMBED_ARGS)
+HOST_DEPS += $(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
+endif
 endif
 
 # The package driver validates these system names and preserves manifest order.
@@ -226,7 +247,7 @@ ifneq ($(PROJECT_LIBRARY),)
 HOST_LIBS += -l$(PROJECT_LIBRARY)
 endif
 ifneq ($(PROJECT_STATIC_ARCHIVE),)
-ifneq ($(filter $(PROJECT_BACKEND),canvas),)
+ifneq ($(BROWSER_BACKEND),)
 $(error static_archive requires a native profile)
 endif
 PROJECT_STATIC_ARCHIVE_PATH := $(shell realpath "$(PROJECT_STATIC_ARCHIVE)" 2>/dev/null)
@@ -364,12 +385,12 @@ $(GEN_DIR)/compile_commands.json: $(C_STAMP) $(ZIRAN)
 # browser validates, and carries the font once for both.
 # Deep app frames share the portable renderer suspension stack budget.
 WEB_LINK = EM_CACHE=$(EM_CACHE) $(EMCC) -O2 -I$(ZIRAN_DIR)/include -iquote $(C_DIR) \
-	$(C_DIR)/*.c $(CANVAS_LIBS) \
+	$(C_DIR)/*.c $(WEB_LIBS) \
 	-sASYNCIFY -sASYNCIFY_STACK_SIZE=1048576 -sSINGLE_FILE=1 -sEXIT_RUNTIME=1 -sENVIRONMENT=web -sSTACK_SIZE=8388608 \
 	-sALLOW_MEMORY_GROWTH=1
 
 $(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json $(HOST_DEPS) $(PAGE_SHELL) $(if $(PAGE_SHELL),$(KRYON_DIR)/mk/web-page.sh) $(CANVAS_RUNTIME_SOURCES) $(KRYON_DIR)/mk/ziran-project.mk
-ifneq ($(filter $(PROJECT_BACKEND),canvas),)
+ifneq ($(BROWSER_BACKEND),)
 	@runtime=; \
 		if test -f "$(C_DIR)/std_bundle_host.c"; then \
 			$(MAKE) --no-print-directory -f $(KRYON_DIR)/mk/ziran-project.mk $(CANVAS_RUNTIME) || exit $$?; \
@@ -404,8 +425,8 @@ else
 	$(ZIRAN) run $(PROGRAM)
 endif
 else
-ifneq ($(filter $(PROJECT_BACKEND),canvas),)
-	@echo "Kryon browser app: ./$@"
+ifneq ($(BROWSER_BACKEND),)
+	@echo "Kryon browser app: $(PROGRAM)"
 else
 	$(RUN_ENV) ./$(PROGRAM)
 endif

@@ -1,0 +1,48 @@
+Dom :: #import "dom";
+Web :: #import "std/web";
+#import "dom_tree"
+#import "dom_metrics"
+#import "dom_raster"
+#import "frame_entry"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "tree"
+#import "tree_draw"
+
+DomError :: (reason: string) -> s32 {
+    scope := Web.WebScope()
+    defer Web.WebEnd(scope)
+    console := Web.WebGetObject(Web.WebGlobal, Web.WebName("console"))
+    unused Web.WebCall1(console, Web.WebName("error"), Web.WebText(reason))
+    return 1
+}
+
+#program_export
+main :: () -> s32 {
+    if !DomTreeOpen() { return DomError("Kryon DOM could not open the document") }
+    defer DomTreeClose()
+    if !DomMetricsOpen() { return DomError("Kryon DOM could not open browser font metrics") }
+    defer DomMetricsClose()
+    session := SessionOpen()
+    if !SessionValid(session) { return DomError("Kryon DOM could not open a UI session") }
+    defer { unused CloseSession(session) }
+    while !Dom.dom_close_requested {
+        DomTreeInput(session)
+        viewport := DomViewport()
+        if BeginFrame(session, cast(u64)1, viewport) != FrameStatus.FrameOk {
+            return DomError(FrameFailureAt(session).message)
+        }
+        if Frame(session, viewport) != 0 {
+            TreeCancel(session)
+            return DomError("Kryon DOM application Frame returned an error")
+        }
+        if CommitFrame(session) != FrameStatus.FrameOk {
+            return DomError(FrameFailureAt(session).message)
+        }
+        PaintClear(session)
+        if !DomTreePublish(session) { return DomError("Kryon DOM could not update the document") }
+        if !Dom.dom_close_requested { Web.WebNextFrame(0.0) }
+    }
+    return 0
+}

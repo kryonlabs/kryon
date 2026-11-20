@@ -1,0 +1,9 @@
+#import "modal_behavior"
+
+#program_export
+main :: () -> s32 {
+    stay := ModalOutsideDismissalFor(true, false, false, false)
+    leave := ModalOutsideDismissalFor(true, false, true, false)
+    if stay.dismissed || !leave.dismissed { return 1 }
+    return 0
+}

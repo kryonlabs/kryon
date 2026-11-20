@@ -9,6 +9,35 @@ using Drawing :: #import "drawing_props";
 
 TextCellWidth :: (font: s32) -> s32 { return Glyphs.PixmapCellWidth(font) }
 
+// True when the bundled renderer would substitute a question mark for a
+// character. Bundled emoji and non-drawing modifiers need no fallback.
+TextCellNeedsFallback :: (value: string) -> bool {
+    if value.count <= 1 { return false }
+    replacement := Glyphs.PixmapGlyphFor(cast(u32)63)
+    at: s32
+    while at < cast(s32)value.count {
+        unit := Glyphs.PixmapNextUnit(value, at)
+        if unit.after <= at { break }
+        if unit.glyph == replacement && value[at:unit.after] != "?" { return true }
+        at = unit.after
+    }
+    return false
+}
+
+// Center an external glyph's device-pixel coverage in a logical text cell.
+RasterTextCellCoverage :: (coverage: []u8, width: s32, height: s32,
+    bounds: Rectangle, color: Color, clip: Rectangle) {
+    if width < 1 || height < 1 || cast(s64)width * cast(s64)height > coverage.count { return }
+    device := Pixels.PixmapDeviceBounds(bounds)
+    mask: Glyphs.PixmapGlyphMask
+    mask.width = width; mask.height = height
+    mask.left = cast(s32)device.x + (cast(s32)device.width - width) / 2
+    mask.top = cast(s32)device.y + (cast(s32)device.height - height) / 2
+    Pixels.PixmapClipPixels(RectangleIntersection(device, Pixels.PixmapDeviceBounds(clip)))
+    Pixels.PixmapBlendMask(mask, coverage, color)
+    Pixels.PixmapClipAll()
+}
+
 // Bounds, clip and font are already in device pixels. Both Unicode cells and
 // printable runs use this mask path, including narrow-cell resampling.
 RasterCellGlyph :: (glyph: s32, bounds: Rectangle, font: s32,

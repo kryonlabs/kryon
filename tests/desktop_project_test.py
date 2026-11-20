@@ -5,7 +5,9 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
+import time
 
 from image_test_tools import png_pixels, rgb, run, solid_png
 
@@ -14,20 +16,69 @@ from toolchain import ZIRAN_ROOT
 
 ROOT = Path(__file__).resolve().parents[1]
 ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
+DARK_BACKGROUND = (22, 25, 37)
+LIGHT_BACKGROUND = (246, 245, 244)
 
 
 def private_environment():
     env = os.environ.copy()
-    for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY",
+    for name in ("DISPLAY", "WAYLAND_DISPLAY", "WAYLAND_SOCKET", "XAUTHORITY",
                  "DBUS_SESSION_BUS_ADDRESS", "SESSION_MANAGER",
-                 "SDL_MOUSE_FOCUS_CLICKTHROUGH"):
+                 "XDG_SESSION_ID", "XDG_SESSION_TYPE", "DESKTOP_STARTUP_ID",
+                 "SDL_MOUSE_FOCUS_CLICKTHROUGH", "GTK_THEME", "KRYON_TEST_DRIVER",
+                 "THEME_PROBE_OVERRIDE", "HARMONY_APP_HOST_PID", "HARMONY_APP_CONTAINER"):
         env.pop(name, None)
-    env["YUE_DESKTOP_RECOVERY"] = "0"
+    env.update(YUE_DESKTOP_RECOVERY="0", HARMONY_DESKTOP_RECOVERY="0")
     return env
 
 
+def check_live_theme():
+    assert os.environ.get("KRYON_PRIVATE_XVFB") == "1"
+    env = os.environ.copy()
+    env.pop("KRYON_CAPTURE_PATH", None)
+    app = subprocess.Popen(["./build/desktop_probe-desktop"], env=env)
+    try:
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            found = subprocess.run([
+                "xdotool", "search", "--onlyvisible", "--pid", str(app.pid),
+                "--name", "^desktop_probe$"], capture_output=True, text=True, timeout=3)
+            if found.returncode == 0 and found.stdout.strip():
+                window = found.stdout.splitlines()[0]
+                break
+            assert app.poll() is None, app.returncode
+            time.sleep(0.05)
+        else:
+            raise AssertionError("desktop theme probe window did not appear")
+
+        settings = Path(env["XDG_CONFIG_HOME"]) / "gtk-3.0/settings.ini"
+        for name, expected in (("Fixture-Dark", DARK_BACKGROUND),
+                               ("Fixture-Light", LIGHT_BACKGROUND)):
+            pending = settings.with_suffix(".new")
+            pending.write_text(f"[Settings]\ngtk-theme-name={name}\n")
+            pending.replace(settings)
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                subprocess.run(["import", "-window", window, "-crop", "1x1+10+10",
+                                "PNG32:live-theme.png"], check=True, timeout=3)
+                actual = rgb(png_pixels(Path("live-theme.png")), 0, 0)
+                if actual == expected:
+                    break
+                time.sleep(0.05)
+            else:
+                raise AssertionError(f"{name} did not reach the live frame, got {actual}")
+    finally:
+        if app.poll() is None:
+            app.terminate()
+            try:
+                app.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                app.kill()
+                app.wait()
+
+
 def main():
-    for tool in ("xvfb-run", "xdotool", "xprop", "xfwm4", "dbus-run-session", "xmessage"):
+    for tool in ("xvfb-run", "xdotool", "xprop", "xfwm4", "dbus-run-session", "xmessage", "import"):
         assert shutil.which(tool), f"Install {tool} to test the desktop window"
     with tempfile.TemporaryDirectory(prefix="kryon-desktop-") as directory:
         project = Path(directory)
@@ -53,14 +104,23 @@ def main():
             'Image :: #import "kryon/image";\n'
             'Scroll :: #import "kryon/scroll";\n'
             'Text :: #import "kryon/text";\n'
+            'Theme :: #import "kryon/Theme";\n'
+            'Env :: #import "std/environment_linux";\n'
             '#import "kryon/geometry"\n'
             '#import "kryon/input_protocol"\n'
             '#import "kryon/session"\n'
             '#import "kryon/tree"\n'
             '#import "kryon/tree_input"\n'
             'scroll_offset: s32;\n'
+            'first_frame: bool = true;\n'
             '#program_export\n'
             'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
+            '    if first_frame {\n'
+            '        first_frame = false\n'
+            '        if Env.EnvironmentText("THEME_PROBE_OVERRIDE") == "light" {\n'
+            '            unused Theme.InstallDefaultTheme(false)\n'
+            '        }\n'
+            '    }\n'
             '    key: s32 = KeyboardTake(session)\n'
             '    if key == 65 { return 1 }\n'
             '    control: bool = (KeyboardModifiers(session) & KeyModifierControl) != 0\n'
@@ -109,13 +169,24 @@ def main():
             assert f"-I{(generated / 'c').resolve()}" in arguments
             assert arguments[-2:] == ["-c", entry["file"]], arguments[-2:]
 
+        env.update(HOME=str(project / "home"), XDG_DATA_HOME=str(project / "data"))
+        (project / "home").mkdir()
+        settings = project / "config/gtk-3.0/settings.ini"
+        settings.parent.mkdir(parents=True, exist_ok=True)
+        for name, bg, fg in (("Fixture-Light", "f6f5f4", "2e3436"),
+                             ("Fixture-Dark", "161925", "c3c7d1")):
+            css = project / f"data/themes/{name}/gtk-3.0/gtk.css"
+            css.parent.mkdir(parents=True)
+            css.write_text(f"@define-color theme_bg_color #{bg};\n"
+                           f"@define-color theme_fg_color #{fg};\n")
+        settings.write_text("[Settings]\ngtk-theme-name=Fixture-Light\n")
         capture = project / "capture.png"
         env["KRYON_CAPTURE_PATH"] = str(capture)
         run(["xvfb-run", "-a", "./build/desktop_probe-desktop"], project, env)
         png = png_pixels(capture)
         assert png[:2] == (960, 600), png[:2]
         assert rgb(png, 200, 200) == (230, 30, 40), "desktop image failed"
-        assert rgb(png, 10, 10) == (248, 250, 252), "desktop background failed"
+        assert rgb(png, 10, 10) == LIGHT_BACKGROUND, ("light startup background", rgb(png, 10, 10))
         # A 40-pixel font's line box is 40 pixels tall, descenders included,
         # as on the desktop and canvas hosts.
         ink = [y for y in range(90, 300) if any(
@@ -123,6 +194,24 @@ def main():
         assert ink, "desktop text failed"
         assert ink[0] >= 100 and ink[-1] < 140, (ink[0], ink[-1])
         assert ink[-1] >= 128, ("descenders missing", ink[-1])
+
+        settings.write_text("[Settings]\ngtk-theme-name=Fixture-Dark\n")
+        run(["xvfb-run", "-a", "./build/desktop_probe-desktop"], project, env)
+        png = png_pixels(capture)
+        assert rgb(png, 10, 10) == DARK_BACKGROUND, ("dark startup background", rgb(png, 10, 10))
+        assert any(sum(rgb(png, x, y)) > 550 for x in range(400, 570)
+                   for y in range(100, 140)), "dark system theme text is missing or unreadable"
+
+        run(["xvfb-run", "-a", "./build/desktop_probe-desktop"], project,
+            dict(env, THEME_PROBE_OVERRIDE="light"))
+        png = png_pixels(capture)
+        assert rgb(png, 10, 10) == (255, 255, 255), ("explicit first-frame background", rgb(png, 10, 10))
+        assert any(sum(rgb(png, x, y)) < 400 for x in range(400, 570)
+                   for y in range(100, 140)), "explicit first-frame text failed"
+
+        run(["xvfb-run", "-a", "-s", "-screen 0 1280x1024x24 -nolisten tcp",
+             "python3", str(Path(__file__).resolve()), "--theme-reload"],
+            project, dict(env, KRYON_PRIVATE_XVFB="1"))
 
         (project / "input_check.py").write_text(
             "import os\nimport subprocess\nimport sys\nimport time\n"
@@ -230,8 +319,12 @@ def main():
         # Direct windowfocus above would hide SDL swallowing that first click.
         run(["xvfb-run", "-a", "dbus-run-session", "--", "python3",
              "input_check.py", "secondary"], project, env)
-    print("desktop Ziran project: image, text line box, keyboard, modifiers, UTF-8 text, wheel, scroll widget, and first right-click passed")
+    print("desktop Ziran project: theme startup, override and reload, image, text line box, "
+          "keyboard, modifiers, UTF-8 text, wheel, scroll widget, and first right-click passed")
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] == ["--theme-reload"]:
+        check_live_theme()
+    else:
+        main()

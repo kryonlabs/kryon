@@ -133,6 +133,16 @@ main :: () -> s32 {
     if !CheckGlyph("é", .{30.0, 0.0, 8.0, 24.0}, .{32.0, 0.0, 4.0, 24.0}) { return 3 }
     if !CheckGlyph("Á", .{10.0, 0.0, 9.0, 24.0}, Bounds) { return 4 }
     if !CheckGlyph("⏺", .{20.0, 0.0, 16.0, 24.0}, Bounds) { return 5 }
+    if Cells.TextCellNeedsFallback("ASCII? café") || !Cells.TextCellNeedsFallback("中文") { return 18 }
+    coverage: [4]u8 = .[255, 255, 255, 255]
+    unused Pixels.PixmapBeginInto(cast(u32)0, 64, 32, pixels[:])
+    // Center the 2x2 mask at (13, 3), then clip its left column.
+    Cells.RasterTextCellCoverage(coverage[:], 2, 2, .{10.0, 0.0, 8.0, 8.0}, white, .{14.0, 0.0, 20.0, 16.0})
+    if (pixels[3 * 64 + 13] & cast(u32)0xffffff) != 0 ||
+        (pixels[3 * 64 + 14] & cast(u32)0xffffff) == 0 ||
+        (pixels[4 * 64 + 14] & cast(u32)0xffffff) == 0 ||
+        (pixels[5 * 64 + 14] & cast(u32)0xffffff) != 0 { return 19 }
+    Pixels.PixmapEndInto()
     session := Sessions.SessionOpen()
     fonts: [4]s32 = .[10, 14, 20, 24]
     pitches: [3]s32 = .[5, 8, 12]

@@ -1,5 +1,6 @@
 TypefaceSlots :: #import "pixmap_typeface_slots";
 #import "drawing_props"
+#import "control_props"
 #import "geometry"
 #import "utf8"
 #import "pixmap_text"
@@ -7,6 +8,8 @@ TypefaceSlots :: #import "pixmap_typeface_slots";
 #import "pixmap_gpu"
 ImageCanvas :: #import "image_canvas";
 Metrics :: #import "font_metrics";
+Grapheme :: #import "std/grapheme";
+Typeface :: #import "text_typeface";
 #import "math"
 #import "paint_texture"
 Bitmaps :: #import "bitmap_store";
@@ -548,7 +551,7 @@ PixmapResumeInto :: (width: s32, height: s32, pixels: []u32,
     if count > pixels.count { return false }
     // The bundled outlines and logical advances are immutable. Declare their
     // lifetime once so widgets can retain layout across unchanged frames.
-    if Metrics.GlyphMetricsRevision() == cast(u64)0 { Metrics.GlyphMetricsChanged() }
+    if !Metrics.has_caret_measure { Metrics.GlyphCaretInstall(PixmapMeasureCaret, false) }
     #if PIXMAP_LANCZOS {
         // A finished copy replaces what the last frame drew.
         if Lanczos.LanczosPump() { PaintResourcesChanged() }
@@ -1029,10 +1032,38 @@ PixmapLabelSlot :: (value: string) -> s32 {
     return cast(s32)(key & cast(u64)63)
 }
 
+PixmapTracking :: (spacing: float32, scale: float32 = 1.0) -> s64 {
+    if !(spacing >= -1024.0 && spacing <= 1024.0) { return 0 }
+    subpixels := cast(float64)spacing * cast(float64)scale * 256.0
+    return cast(s64)(subpixels + (ifx subpixels >= 0.0 then 0.5 else -0.5))
+}
+
+PixmapTrackedWidth :: (value: string, units: s64, font: s32, tracking: s64, trailing: bool) -> s32 {
+    if tracking == 0 { return PixmapTextWidth(units, font) }
+    width := PixmapUnits(units, font)
+    at: s32 = 0
+    while at < value.count {
+        at = Grapheme.Next(value, at)
+        if at < value.count { width += tracking }
+    }
+    if trailing { width += tracking }
+    return ifx width > 0 then cast(s32)((width + 128) / 256) else 0
+}
+
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
     if TypefaceSlots.active { return TypefaceSlots.PixmapTypefaceWidth(value, font, typeface) }
-    unused typeface
+    return PixmapMeasureWidth(value, font, false)
+}
+
+PixmapMeasureCaret :: (value: string, byte: s32, font: s32, typeface: string) -> s32 {
+    if TypefaceSlots.active { return TypefaceSlots.PixmapTypefaceWidth(value[:byte], font, typeface) }
+    return PixmapMeasureWidth(value[:byte], font, byte > 0 && byte < value.count)
+}
+
+PixmapMeasureWidth :: (value: string, font: s32, trailing: bool) -> s32 {
+    glyphs := Metrics.text_glyph_style
+    tracking := PixmapTracking(glyphs.letter_spacing)
     bounded: bool = value.count <= PixmapMeasureBytes
     units: s64 = 0
     at: s32 = 0
@@ -1040,7 +1071,7 @@ MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
     if bounded && pixmap_measure_count >= 0 {
         if value.count == pixmap_measure_count &&
             value == TextView(pixmap_measure_bytes[:pixmap_measure_count]) {
-            return PixmapTextWidth(pixmap_measure_units, font)
+            return PixmapTrackedWidth(value, pixmap_measure_units, font, tracking, trailing)
         }
         if value.count > pixmap_measure_count &&
             value[:pixmap_measure_count] == TextView(pixmap_measure_bytes[:pixmap_measure_count]) {
@@ -1057,7 +1088,7 @@ MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
         label_slot = PixmapLabelSlot(value)
         if pixmap_label_lengths[label_slot] == value.count &&
             TextView(pixmap_label_bytes[label_slot][:pixmap_label_lengths[label_slot]]) == value {
-            return PixmapTextWidth(pixmap_label_units[label_slot], font)
+            return PixmapTrackedWidth(value, pixmap_label_units[label_slot], font, tracking, trailing)
         }
     }
     copied: s32 = at
@@ -1092,7 +1123,7 @@ MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
         pixmap_label_lengths[label_slot] = cast(s32)value.count
         pixmap_label_units[label_slot] = units
     }
-    return PixmapTextWidth(units, font)
+    return PixmapTrackedWidth(value, units, font, tracking, trailing)
 }
 
 // The line box is the font size, as on the other hosts.
@@ -1242,7 +1273,8 @@ PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, pen_font: s64, colo
     if font <= 0 || pen_font <= 0 { return }
     if TypefaceSlots.active {
         shape: TypefaceSlots.PixmapTypefaceMask
-        if TypefaceSlots.PixmapTypefacePixels(value, cast(float32)pen_font / 256.0, *shape) &&
+        if TypefaceSlots.PixmapTypefacePixels(value, cast(float32)pen_font / 256.0,
+            Typeface.text_raster_typeface, pixmap_scale_x, *shape) &&
         shape.coverage.count > 0 {
             mask := PixmapGlyphMask.{x + shape.left, y + shape.top, shape.width, shape.height, 0}
             PixmapBlendMask(mask, shape.coverage, color)
@@ -1255,16 +1287,21 @@ PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, pen_font: s64, colo
     if pixmap_text_rotation == 0.0 && (y + font + reach <= pixmap_clip_top || y - reach >= pixmap_clip_bottom) { return }
     baseline: s64 = cast(s64)y * 256 + PixmapTextBaseline(font)
     pen: s64 = 0
+    shift: s64 = 0
+    glyphs := Metrics.text_glyph_style
+    tracking := PixmapTracking(glyphs.letter_spacing, pixmap_scale_x)
+    next_cluster: s32 = 0
+    if tracking != 0 { next_cluster = Grapheme.Next(value, 0) }
     mask: PixmapGlyphMask
     at: s32 = 0
     while at < cast(s32)value.count {
         unit: PixmapTextUnit = PixmapNextUnit(value, at)
         if unit.after <= at { break }
         at = unit.after
-        origin: s64 = cast(s64)x * 256 + PixmapFloorDiv(pen * pen_font, cast(s64)PixmapTextLine)
+        origin: s64 = cast(s64)x * 256 + PixmapFloorDiv(pen * pen_font, cast(s64)PixmapTextLine) + shift
         whole: s32 = cast(s32)PixmapFloorDiv(origin, 256)
         // Advances never move left, so no later glyph reaches the clip.
-        if pixmap_text_rotation == 0.0 && whole - reach >= pixmap_clip_right { break }
+        if tracking >= 0 && pixmap_text_rotation == 0.0 && whole - reach >= pixmap_clip_right { break }
         if pixmap_text_rotation != 0.0 || whole + PixmapTextWidth(unit.advance, font) + reach > pixmap_clip_left {
             if unit.emoji >= 0 {
                 PixmapDrawEmoji(unit.emoji, whole, y, font)
@@ -1274,6 +1311,10 @@ PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, pen_font: s64, colo
             }
         }
         pen += unit.advance
+        if tracking != 0 && at == next_cluster && at < value.count {
+            shift += tracking
+            next_cluster = Grapheme.Next(value, at)
+        }
     }
 }
 

@@ -4,5 +4,18 @@ Props :: struct {
     bounds: Rectangle
     gap: s32
     padding: s32
+    row_gap: s32
+    column_gap: s32
+    padding_x: s32
+    padding_y: s32
+    // Nonzero values override style. Set the corresponding flag for explicit zero.
+    gap_override: bool
+    padding_override: bool
+    row_gap_override: bool
+    column_gap_override: bool
+    padding_x_override: bool
+    padding_y_override: bool
     key: u64
+    id: s32
+    class_name: s32
 }

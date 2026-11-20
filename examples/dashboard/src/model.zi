@@ -1,0 +1,179 @@
+// Pure dashboard domain model and state helpers (no Kryon UI imports).
+#import "std/text_tools"
+
+ServiceHealth :: enum {
+    HealthHealthy :: 0
+    HealthDegraded :: 1
+    HealthOffline :: 2
+}
+
+NavSection :: enum {
+    NavOverview :: 0
+    NavServices :: 1
+    NavIncidents :: 2
+    NavAudit :: 3
+}
+
+StatusFilter :: enum {
+    FilterAll :: 0
+    FilterHealthy :: 1
+    FilterAttention :: 2
+}
+
+ViewState :: enum {
+    ViewReady :: 0
+    ViewLoading :: 1
+    ViewEmpty :: 2
+    ViewError :: 3
+}
+
+ServiceItem :: struct {
+    key: u64
+    name: string
+    region: string
+    owner: string
+    health: ServiceHealth
+    latency_ms: s32
+    uptime_tenths: s32
+    rps: s32
+    summary: string
+    audit_note: string
+}
+
+SERVICE_COUNT :: 8
+
+SERVICES: [8]ServiceItem = .[
+    .{key = 101, name = "Edge Gateway", region = "us-east-1", owner = "Platform", health = ServiceHealth.HealthHealthy, latency_ms = 14, uptime_tenths = 999, rps = 1840, summary = "TLS termination and regional traffic routing operating within SLA.", audit_note = "Deployed edge-proxy v4.18.2 (14m ago)"},
+    .{key = 102, name = "Auth Identity", region = "us-east-1", owner = "Security", health = ServiceHealth.HealthHealthy, latency_ms = 22, uptime_tenths = 999, rps = 920, summary = "OIDC token signing and session validation healthy across 3 replicas.", audit_note = "Rotated JWKS signing key #19 (1h ago)"},
+    .{key = 103, name = "Search Indexer", region = "eu-west-1", owner = "Discovery", health = ServiceHealth.HealthDegraded, latency_ms = 184, uptime_tenths = 984, rps = 410, summary = "Elevated p95 query latency during shard compaction in eu-west-1.", audit_note = "Auto-scaled read replicas 4 -> 6 (8m ago)"},
+    .{key = 104, name = "Billing Ledger", region = "us-west-2", owner = "Commerce", health = ServiceHealth.HealthHealthy, latency_ms = 31, uptime_tenths = 998, rps = 265, summary = "Idempotent invoice settlement and webhook delivery nominal.", audit_note = "Verified nightly ledger checksum (3h ago)"},
+    .{key = 105, name = "Telemetry Sink", region = "eu-west-1", owner = "Observability", health = ServiceHealth.HealthOffline, latency_ms = 0, uptime_tenths = 942, rps = 0, summary = "Collector handshake failing with HTTP 503 on eu-west-1 ingress.", audit_note = "Triggered failover alert #412 (2m ago)"},
+    .{key = 106, name = "Storage Blob", region = "us-west-2", owner = "Core Infra", health = ServiceHealth.HealthHealthy, latency_ms = 19, uptime_tenths = 999, rps = 1120, summary = "Object replication lag under 40ms across primary availability zones.", audit_note = "Completed bucket lifecycle sweep (5h ago)"},
+    .{key = 107, name = "Queue Worker", region = "ap-south-1", owner = "Automation", health = ServiceHealth.HealthDegraded, latency_ms = 96, uptime_tenths = 991, rps = 530, summary = "Backlog draining at 530 jobs/s after bursty webhook ingestion.", audit_note = "Raised worker concurrency limit to 32 (27m ago)"},
+    .{key = 108, name = "Config Registry", region = "global", owner = "Platform", health = ServiceHealth.HealthHealthy, latency_ms = 8, uptime_tenths = 1000, rps = 2190, summary = "Read-through feature flag and theme bundle distribution nominal.", audit_note = "Published schema revision 88 (4h ago)"}
+];
+
+DashboardMetrics :: struct {
+    total: s32
+    healthy: s32
+    degraded: s32
+    offline: s32
+    avg_latency_ms: s32
+    avg_uptime_tenths: s32
+}
+
+AsciiLower :: (byte: u8) -> u8 {
+    if byte >= #char "A" && byte <= #char "Z" { return byte + cast(u8)32 }
+    return byte
+}
+
+ContainsInsensitive :: (haystack: string, needle: string) -> bool {
+    if needle.count == 0 { return true }
+    if needle.count > haystack.count { return false }
+    start: s64 = 0
+    while start + needle.count <= haystack.count {
+        at: s64 = 0
+        while at < needle.count && AsciiLower(haystack[start + at]) == AsciiLower(needle[at]) {
+            at += 1
+        }
+        if at == needle.count { return true }
+        start += 1
+    }
+    return false
+}
+
+HealthLabel :: (health: ServiceHealth) -> string {
+    if health == .HealthHealthy { return "Healthy" }
+    if health == .HealthDegraded { return "Degraded" }
+    return "Offline"
+}
+
+SectionLabel :: (section: NavSection) -> string {
+    if section == .NavOverview { return "Overview" }
+    if section == .NavServices { return "Services" }
+    if section == .NavIncidents { return "Incidents" }
+    return "Audit"
+}
+
+ComputeMetrics :: () -> DashboardMetrics {
+    metrics: DashboardMetrics
+    metrics.total = SERVICE_COUNT
+    latency_sum: s32 = 0
+    latency_count: s32 = 0
+    uptime_sum: s32 = 0
+    for item: SERVICES {
+        if item.health == .HealthHealthy { metrics.healthy += 1 }
+        else if item.health == .HealthDegraded { metrics.degraded += 1 }
+        else { metrics.offline += 1 }
+        if item.latency_ms > 0 {
+            latency_sum += item.latency_ms
+            latency_count += 1
+        }
+        uptime_sum += item.uptime_tenths
+    }
+    if latency_count > 0 { metrics.avg_latency_ms = latency_sum / latency_count }
+    if SERVICE_COUNT > 0 { metrics.avg_uptime_tenths = uptime_sum / SERVICE_COUNT }
+    return metrics
+}
+
+ItemMatches :: (item: ServiceItem, section: NavSection, filter: StatusFilter, query: string) -> bool {
+    if section == .NavIncidents && item.health == .HealthHealthy { return false }
+    if filter == .FilterHealthy && item.health != .HealthHealthy { return false }
+    if filter == .FilterAttention && item.health == .HealthHealthy { return false }
+    trimmed := TextTrim(query)
+    if trimmed.count == 0 { return true }
+    return ContainsInsensitive(item.name, trimmed) ||
+        ContainsInsensitive(item.region, trimmed) ||
+        ContainsInsensitive(item.owner, trimmed) ||
+        ContainsInsensitive(HealthLabel(item.health), trimmed) ||
+        ContainsInsensitive(item.summary, trimmed)
+}
+
+FilterIndices :: (section: NavSection, filter: StatusFilter, query: string, out: []s32) -> s32 {
+    count: s32 = 0
+    for index: cast(s32)0..SERVICE_COUNT - 1 {
+        if ItemMatches(SERVICES[index], section, filter, query) {
+            if count < cast(s32)out.count {
+                out[count] = index
+                count += 1
+            }
+        }
+    }
+    return count
+}
+
+CopyIntoBuffer :: (target: []u8, text: string) -> s32 {
+    count := cast(s32)text.count
+    if count > cast(s32)target.count { count = cast(s32)target.count }
+    for index: 0..count - 1 { target[index] = text[index] }
+    return count
+}
+
+FormatPercentTenths :: (tenths: s32, out: []u8) -> string {
+    whole := tenths / 10
+    frac := tenths % 10
+    if frac < 0 { frac = -frac }
+    builder: Vec(u8)
+    BuilderPrint(*builder, "%.%", whole, frac)
+    BuilderAppend(builder, "%")
+    text := BuilderFinish(builder)
+    len := CopyIntoBuffer(out, text)
+    return TextView(out[0:len])
+}
+
+FormatLatency :: (ms: s32, out: []u8) -> string {
+    if ms <= 0 { return "offline" }
+    builder: Vec(u8)
+    BuilderPrint(*builder, "% ms", ms)
+    text := BuilderFinish(builder)
+    len := CopyIntoBuffer(out, text)
+    return TextView(out[0:len])
+}
+
+FormatCountOf :: (shown: s32, total: s32, out: []u8) -> string {
+    builder: Vec(u8)
+    BuilderPrint(*builder, "% of % services", shown, total)
+    text := BuilderFinish(builder)
+    len := CopyIntoBuffer(out, text)
+    return TextView(out[0:len])
+}

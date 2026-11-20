@@ -4,14 +4,13 @@ TextSchema :: #import "text_props";
 TextAppearance :: struct {
     font: s32
     color: u32
-    letter_spacing: s32
 }
 
 #program_export
 ResolveTextStyle :: (font: s32, inherited_font: s32, default_font: s32,
     color: u32, inherited_color: u32, fallback_color: u32, inherited_color_set: bool,
     color_set: bool,
-    disabled: bool, inherited_disabled: bool, letter_spacing: s32) -> TextAppearance {
+    disabled: bool, inherited_disabled: bool) -> TextAppearance {
     style: TextAppearance
     style.font = ResolveFont(font, inherited_font, default_font)
     style.color = color
@@ -30,10 +29,6 @@ ResolveTextStyle :: (font: s32, inherited_font: s32, default_font: s32,
        (color_set || !inherited_color_set || !inherited_disabled) {
         alpha: u32 = cast(u32)(cast(float32)(style.color & cast(u32)255) * 0.45)
         style.color = ((style.color >> cast(u32)8) << cast(u32)8) | alpha
-    }
-    style.letter_spacing = letter_spacing
-    if style.letter_spacing < 0 {
-        style.letter_spacing = 0
     }
     return style
 }

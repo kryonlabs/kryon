@@ -1,10 +1,12 @@
 #import "app_asset_path"
 #import "c_string"
 #import "drawing_props"
+#import "control_props"
 #import "geometry"
 #import "font_metrics"
 #import "paint_texture"
 #import "paint_queue"
+#import "text_typeface"
 ImageSchema :: #import "image_props";
 Bitmaps :: #import "bitmap_store";
 #import "math"
@@ -154,13 +156,25 @@ LayoutNew :: (paint: *void) -> *void #foreign pango "pango_cairo_create_layout";
 LayoutTextPointer :: (layout: *void) -> *u8 #foreign pango "pango_layout_get_text";
 LayoutText :: (layout: *void, text: *u8, count: s32) #foreign pango "pango_layout_set_text";
 LayoutFont :: (layout: *void, description: *void) #foreign pango "pango_layout_set_font_description";
+LayoutAttributes :: (layout: *void, attributes: *void) #foreign pango "pango_layout_set_attributes";
+AttributesNew :: () -> *void #foreign pango "pango_attr_list_new";
+AttributesInsert :: (attributes: *void, attribute: *void) #foreign pango "pango_attr_list_insert";
+AttributesUnref :: (attributes: *void) #foreign pango "pango_attr_list_unref";
+LetterSpacingAttribute :: (spacing: s32) -> *void #foreign pango "pango_attr_letter_spacing_new";
 LayoutSingleParagraph :: (layout: *void, single: s32) #foreign pango "pango_layout_set_single_paragraph_mode";
 LayoutSize :: (layout: *void, width: *s32, height: *s32) #foreign pango "pango_layout_get_pixel_size";
+LayoutLine :: (layout: *void, index: s32) -> *void #foreign pango "pango_layout_get_line_readonly";
+LayoutLineRanges :: (line: *void, first: s32, last: s32, positions: **s32,
+    count: *s32) #foreign pango "pango_layout_line_get_x_ranges";
+glib :: #system_library "glib-2.0";
+LayoutRangeFree :: (positions: *s32) #foreign glib "g_free";
 LayoutShow :: (paint: *void, layout: *void) #foreign pango "pango_cairo_show_layout";
 FontDescriptionNew :: () -> *void #foreign pango "pango_font_description_new";
 FontDescriptionFree :: (description: *void) #foreign pango "pango_font_description_free";
 FontFamily :: (description: *void, family: *u8) #foreign pango "pango_font_description_set_family";
 FontSize :: (description: *void, size: float64) #foreign pango "pango_font_description_set_absolute_size";
+FontWeight :: (description: *void, weight: s32) #foreign pango "pango_font_description_set_weight";
+FontSlant :: (description: *void, style: s32) #foreign pango "pango_font_description_set_style";
 LayoutUnref :: (layout: *void) #foreign objects "g_object_unref";
 LayoutRectangle :: struct { x: s32; y: s32; width: s32; height: s32; }
 LayoutCursor :: (layout: *void, index: s32, strong: *LayoutRectangle,
@@ -183,38 +197,78 @@ font_family: [256]u8;
 text_error: bool;
 // Pango owns each cached string and glyph run. A short bounded working set
 // avoids reshaping labels as measurement and painting alternate between them.
-ShapedEntry :: struct { layout: *void; font: s32; length: s64; }
+ShapedSpanEntry :: struct { first: s32; last: s32; spans: GlyphSpans }
+SHAPED_SPAN_LIMIT :: 8;
+ShapedEntry :: struct {
+    layout: *void
+    font: s32
+    family: s32
+    weight: s32
+    slant: FontStyle
+    spacing: s32
+    length: s64
+    spans: [SHAPED_SPAN_LIMIT]ShapedSpanEntry
+    span_count: s32
+    span_next: s32
+}
 SHAPED_LAYOUT_LIMIT :: 8;
 SHAPED_LABEL_BYTES :: 256;
 shaped_entries: [SHAPED_LAYOUT_LIMIT]ShapedEntry;
 shaped_next: s32;
+shaped_current: s32;
+
+RasterFontFamily :: struct { name: *u8; id: s32; }
+RasterFontResolve :: #type (typeface: string) -> RasterFontFamily #reads;
+raster_font_resolve: RasterFontResolve;
+
+ShapedFamily :: (typeface: string) -> RasterFontFamily {
+    if typeface != "" && raster_font_resolve != null {
+        selected := raster_font_resolve(typeface)
+        if selected.name != null { return selected }
+    }
+    if raster_family.name != null { return raster_family }
+    return .{.name = *font_family[0]}
+}
 
 
 ShapedLayout :: (value: string, font: s32, typeface: string) -> bool {
     if !CairoTextOpen() || font <= 0 || value.count > 2147483647 { return false }
+    family := ShapedFamily(typeface)
+    style := text_glyph_style
+    weight := ifx style.weight > 0 then style.weight else 400
+    spacing := cast(s32)(style.letter_spacing * 1024.0)
     for index: cast(s32)0..SHAPED_LAYOUT_LIMIT - 1 {
-        entry := shaped_entries[index]
-        if entry.layout == null || entry.font != font || entry.length != value.count { continue }
+        entry := *shaped_entries[index]
+        if entry.layout == null || entry.font != font || entry.length != value.count ||
+            entry.family != family.id || entry.weight != weight || entry.slant != style.style ||
+            entry.spacing != spacing { continue }
         stored := LayoutTextPointer(entry.layout)
         same := true
         for byte: cast(s64)0..value.count - 1 {
             if stored[byte] != value[byte] { same = false; break }
         }
-        if same { layout = entry.layout; return true }
+        if same { layout = entry.layout; shaped_current = index; return true }
     }
+    if !Utf8.Valid(value) { return false }
     slot := shaped_next
     // Long editor runs share one slot, so eight large documents cannot
     // accumulate merely because the host measured them in succession.
     if value.count > SHAPED_LABEL_BYTES { slot = 0 }
-    else { shaped_next = (shaped_next + 1) % SHAPED_LAYOUT_LIMIT }
+    else { shaped_next = (shaped_next % (SHAPED_LAYOUT_LIMIT - 1)) + 1 }
     if shaped_entries[slot].layout == null {
         shaped_entries[slot].layout = LayoutNew(paint)
         if shaped_entries[slot].layout == null { return false }
         LayoutSingleParagraph(shaped_entries[slot].layout, 1)
     }
     layout = shaped_entries[slot].layout
-    if !Utf8.Valid(value) { return false }
-    FontFamily(font_description, ifx raster_family != null then raster_family else *font_family[0])
+    if value.count + 1 > layout_capacity {
+        bytes: *u8 = LayoutReallocate(layout_bytes, cast(usize)(value.count + 1))
+        if bytes == null { return false }
+        layout_bytes = bytes; layout_capacity = value.count + 1
+    }
+    FontFamily(font_description, family.name)
+    FontWeight(font_description, weight)
+    FontSlant(font_description, cast(s32)style.style)
     // Text paint effects carry the host font, so measurement uses it too.
     SetFontSize(paint, cast(float64)font)
     extents: FontExtents
@@ -224,16 +278,27 @@ ShapedLayout :: (value: string, font: s32, typeface: string) -> bool {
     if total > 0.0 { size = cast(float64)font * cast(float64)font / total }
     FontSize(font_description, size * 1024.0)
     LayoutFont(layout, font_description)
-    if value.count + 1 > layout_capacity {
-        bytes: *u8 = LayoutReallocate(layout_bytes, cast(usize)(value.count + 1))
-        if bytes == null { return false }
-        layout_bytes = bytes; layout_capacity = value.count + 1
+    if spacing != shaped_entries[slot].spacing {
+        attributes: *void
+        if spacing != 0 {
+            attributes = AttributesNew()
+            AttributesInsert(attributes, LetterSpacingAttribute(spacing))
+        }
+        LayoutAttributes(layout, attributes)
+        if attributes != null { AttributesUnref(attributes) }
     }
     for byte: 0..cast(s32)value.count - 1 { layout_bytes[byte] = value[byte] }
     layout_bytes[value.count] = 0
     LayoutText(layout, layout_bytes, cast(s32)value.count)
     shaped_entries[slot].font = font
+    shaped_entries[slot].family = family.id
+    shaped_entries[slot].weight = weight
+    shaped_entries[slot].slant = style.style
+    shaped_entries[slot].spacing = spacing
     shaped_entries[slot].length = value.count
+    shaped_entries[slot].span_count = 0
+    shaped_entries[slot].span_next = 0
+    shaped_current = slot
     return true
 }
 
@@ -243,6 +308,34 @@ ShapedCaret :: (value: string, byte: s32, font: s32, typeface: string) -> s32 {
     LayoutCursor(layout, byte, *strong, *weak)
     return strong.x / 1024
 }
+
+ShapedSpanAt :: (positions: *s32, index: s32) -> GlyphSpan {
+    return GlyphSpan.{positions[index * 2] / 1024, positions[index * 2 + 1] / 1024}
+}
+
+ShapedSpans :: (value: string, first: s32, last: s32, font: s32, typeface: string) -> GlyphSpans {
+    spans: GlyphSpans
+    if !ShapedLayout(value, font, typeface) { return spans }
+    entry := *shaped_entries[shaped_current]
+    for index: cast(s32)0..entry.span_count - 1 {
+        cached := entry.spans[index]
+        if cached.first == first && cached.last == last { return cached.spans }
+    }
+    line := LayoutLine(layout, 0)
+    if line != null { LayoutLineRanges(line, first, last, *spans.positions, *spans.count) }
+    if spans.positions != null && spans.count <= GLYPH_INLINE_SPANS {
+        for index: cast(s32)0..spans.count - 1 { spans.stored[index] = ShapedSpanAt(spans.positions, index) }
+        LayoutRangeFree(spans.positions)
+        spans.positions = null
+        index := entry.span_next
+        entry.spans[index] = ShapedSpanEntry.{first, last, spans}
+        entry.span_next = (index + 1) % SHAPED_SPAN_LIMIT
+        if entry.span_count < SHAPED_SPAN_LIMIT { entry.span_count += 1 }
+    }
+    return spans
+}
+
+ShapedSpansDone :: (positions: *s32) { LayoutRangeFree(positions) }
 
 surface: *void;
 paint: *void;
@@ -274,7 +367,7 @@ raster_offset_y: float64;
 RasterAssetPath :: #type (path: string, output: []u8) -> string;
 raster_asset_path: RasterAssetPath;
 // A typeface the program selected (see cairo_typefaces), else Kryon's font.
-raster_family: *u8;
+raster_family: RasterFontFamily;
 Decode :: #import "image_decode_desktop";
 CachedImage :: struct {
     path: [4096]u8
@@ -512,7 +605,7 @@ CairoTextOpen :: () -> bool {
             FontQueryFree(pattern)
         }
     }
-    shaped_next = 0
+    shaped_next = 1
     layout = LayoutNew(paint)
     shaped_entries[0].layout = layout
     font_description = FontDescriptionNew()
@@ -521,6 +614,7 @@ CairoTextOpen :: () -> bool {
     LayoutSingleParagraph(layout, 1)
     measure: CaretMeasure = ShapedCaret
     GlyphCaretInstall(measure)
+    GlyphSpansInstall(ShapedSpans, ShapedSpanAt, ShapedSpansDone)
     return Status(paint) == 0
 }
 
@@ -560,9 +654,17 @@ CloseRaster :: () {
     raster_presented_surface = null
 }
 
+FrameBackground :: #type (refresh: bool) -> u32;
+FrameAppearance :: struct { background: FrameBackground }
+raster_appearance: FrameAppearance;
+
+#program_export
+SetRasterBackground :: (background: FrameBackground) { raster_appearance.background = background }
+
 #program_export
 BeginRasterFrame :: (retain: bool = false) {
     if raster_smooth_pump != null { unused raster_smooth_pump() }
+    raster_appearance = .{}
     frame_pending = true
     text_error = false
     if !retain { PrepareRasterPaint() }
@@ -575,8 +677,11 @@ PrepareRasterPaint :: () {
     frame_pending = false
     raster_presented_surface = null
     Save(paint)
-    SetSourceRGBA(paint, 248.0 / 255.0, 250.0 / 255.0,
-        252.0 / 255.0, 1.0)
+    color: Color = .{248, 250, 252, 255}
+    // Frame code may install a palette before emitting its first draw.
+    if raster_appearance.background != null { color = ColorFromPacked(raster_appearance.background(false)) }
+    SetSourceRGBA(paint, cast(float64)color.r / 255.0, cast(float64)color.g / 255.0,
+        cast(float64)color.b / 255.0, cast(float64)color.a / 255.0)
     Paint(paint)
     Restore(paint)
 }
@@ -756,7 +861,7 @@ RasterTriangles :: (points: []Vector2, color: Color) {
 RasterText :: (value: string, x: s32, y: s32,
     font: s32, color: Color) {
     PrepareRasterPaint()
-    if !ShapedLayout(value, font, "") { text_error = true; return }
+    if !ShapedLayout(value, font, text_raster_typeface) { text_error = true; return }
     MoveTo(paint, cast(float64)x, cast(float64)y)
     SetColor(color)
     LayoutShow(paint, layout)

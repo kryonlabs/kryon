@@ -1,4 +1,15 @@
+#import "control_props"
 host_api :: #system_library "host_api";
+
+// Native text scopes its glyph inputs around a synchronous host call. Hosts
+// that draw the default face keep the existing measurement/raster ABI.
+text_glyph_style: TextGlyphStyle;
+
+UseTextGlyphStyle :: (style: TextGlyphStyle) -> TextGlyphStyle {
+    previous := text_glyph_style
+    if !SameTextGlyphStyle(style, previous) { text_glyph_style = style }
+    return previous
+}
 
 // Font rasterizers report physical glyph measurements. UI layout stays in Kryon.
 // Every host only reads the strings during the call (it copies what it caches),
@@ -17,24 +28,75 @@ glyph_metrics_revision: u64;
 CaretMeasure :: #type (string, s32, s32, string) -> s32 #reads;
 caret_measure: CaretMeasure;
 has_caret_measure: bool;
+caret_preserves_layout: bool;
+
+// A logical span can cover several disjoint visual runs. The shaping host
+// owns the position pairs until the synchronous caller releases the span.
+GlyphSpan :: struct { left: s32; right: s32 }
+GLYPH_INLINE_SPANS :: 4;
+GlyphSpans :: struct { positions: *s32; count: s32; stored: [GLYPH_INLINE_SPANS]GlyphSpan }
+GlyphSpanMeasure :: #type (string, s32, s32, s32, string) -> GlyphSpans #reads;
+GlyphSpanPosition :: #type (*s32, s32) -> GlyphSpan;
+GlyphSpanRelease :: #type (*s32) -> void;
+glyph_span_measure: GlyphSpanMeasure;
+glyph_span_position: GlyphSpanPosition;
+glyph_span_release: GlyphSpanRelease;
+has_glyph_spans: bool;
+
+GlyphSpansInstall :: (measure: GlyphSpanMeasure, position: GlyphSpanPosition, release: GlyphSpanRelease) {
+    glyph_span_measure = measure
+    glyph_span_position = position
+    glyph_span_release = release
+    has_glyph_spans = true
+}
+
+GlyphSpansFor :: (value: string, first: s32, last: s32, font: s32, typeface: string,
+    style: TextGlyphStyle) -> GlyphSpans {
+    if has_glyph_spans {
+        previous := UseTextGlyphStyle(style)
+        defer { unused UseTextGlyphStyle(previous) }
+        return glyph_span_measure(value, first, last, font, typeface)
+    }
+    a := GlyphCaret(value, first, font, typeface, style)
+    b := GlyphCaret(value, last, font, typeface, style)
+    spans: GlyphSpans
+    spans.count = 1
+    spans.stored[0] = ifx a <= b then GlyphSpan.{a, b} else GlyphSpan.{b, a}
+    return spans
+}
+
+GlyphSpanAt :: (spans: GlyphSpans, index: s32) -> GlyphSpan {
+    if spans.positions == null { return spans.stored[index] }
+    return glyph_span_position(spans.positions, index)
+}
+
+GlyphSpansDone :: (spans: GlyphSpans) {
+    if spans.positions != null { glyph_span_release(spans.positions) }
+}
 
 #program_export
-GlyphCaretInstall :: (measure: CaretMeasure) {
+GlyphCaretInstall :: (measure: CaretMeasure, preserves_layout: bool = true) {
     caret_measure = measure
     has_caret_measure = true
+    caret_preserves_layout = preserves_layout
     GlyphMetricsChanged()
 }
 
 #program_export
 GlyphCaretClear :: () {
     has_caret_measure = false
+    caret_preserves_layout = false
+    has_glyph_spans = false
     GlyphMetricsChanged()
 }
 
 #program_export
-GlyphCaret :: (value: string, byte: s32, font: s32, typeface: string) -> s32 {
+GlyphCaret :: (value: string, byte: s32, font: s32, typeface: string,
+    style: TextGlyphStyle = TextGlyphStyle.{}) -> s32 {
     if byte < 0 { byte = 0 }
     if byte > value.count { byte = cast(s32)value.count }
+    previous := UseTextGlyphStyle(style)
+    defer { unused UseTextGlyphStyle(previous) }
     if has_caret_measure { measure: CaretMeasure = caret_measure; return measure(value, byte, font, typeface) }
     return MeasureGlyphWidth(value[:byte], font, typeface)
 }
@@ -49,11 +111,16 @@ GlyphMetricsChanged :: () {
 
 #program_export
 GlyphWidth :: (value: string, font: s32,
-    typeface: string) -> s32 {
+    typeface: string, style: TextGlyphStyle = TextGlyphStyle.{}) -> s32 {
+    previous := UseTextGlyphStyle(style)
+    defer { unused UseTextGlyphStyle(previous) }
     return MeasureGlyphWidth(value, font, typeface)
 }
 
 #program_export
-GlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+GlyphLineHeight :: (font: s32, typeface: string,
+    style: TextGlyphStyle = TextGlyphStyle.{}) -> s32 {
+    previous := UseTextGlyphStyle(style)
+    defer { unused UseTextGlyphStyle(previous) }
     return MeasureGlyphLineHeight(font, typeface)
 }

@@ -1,5 +1,6 @@
 TextSchema :: #import "text_props";
 #import "font_metrics"
+#import "control_props"
 #import "text_align"
 #import "utf8"
 Grapheme :: #import "std/grapheme";
@@ -106,6 +107,7 @@ TextTokenNext :: (value: string, offset: s32, icons: bool) -> TextToken {
         offset += 2
     } else {
         previous: u32 = cast(u32)0
+        previous_ideographic: bool = false
         have_previous: bool = false
         while offset < cast(s32)value.count {
             current = value[offset]
@@ -114,13 +116,26 @@ TextTokenNext :: (value: string, offset: s32, icons: bool) -> TextToken {
             if icons && current == cast(u8)37 &&
                 offset + 1 < cast(s32)value.count &&
                 value[offset + 1] == cast(u8)105 { break }
-            point: Decoded = Decode(value, offset)
-            if have_previous && TextBreaksBetween(previous, point.value) {
+            // ASCII cannot introduce an ideographic break. Decode only the
+            // multibyte characters, and retain the previous classification so
+            // ordinary words do not repeat Unicode range checks per letter.
+            point: u32 = cast(u32)current
+            after := offset + 1
+            ideographic: bool = false
+            if current >= cast(u8)128 {
+                decoded := Decode(value, offset)
+                point = decoded.value
+                after = decoded.after
+                ideographic = TextIdeographic(point)
+            }
+            if have_previous && (previous_ideographic || ideographic) &&
+                !TextNoBreakBefore(point) && !TextNoBreakAfter(previous) {
                 break
             }
-            previous = point.value
+            previous = point
+            previous_ideographic = ideographic
             have_previous = true
-            offset = point.after
+            offset = after
         }
     }
     token.end = offset
@@ -139,6 +154,7 @@ TextLineCache :: struct {
     hash: u64
     count: s64
     face: u64
+    glyph_style: TextGlyphStyle
     font: s32
     width: float32
     wrap: s32
@@ -157,27 +173,29 @@ TextLineHash :: (value: string) -> u64 {
 }
 
 TextLineCacheMatches :: (entry: *TextLineCache, revision: u64, hash: u64, count: s64, face: u64,
-    font: s32, width: float32, wrap: s32) -> bool {
+    font: s32, width: float32, wrap: s32, glyph_style: TextGlyphStyle) -> bool {
     return entry.revision == revision && entry.hash == hash && entry.count == count && entry.face == face &&
-        entry.font == font && entry.width == width && entry.wrap == wrap
+        entry.font == font && entry.width == width && entry.wrap == wrap &&
+        SameTextGlyphStyle(entry.glyph_style, glyph_style)
 }
 
 // Auto keeps oversized words intact and uses TextTokenNext's word boundaries.
 // Anywhere instead wraps between complete extended grapheme clusters.
 #program_export
 NextTextLine :: (value: string, start: s32, max_width: float32,
-    wrap: TextSchema.Wrap, font: s32, typeface: string) -> TextLinePlan {
+    wrap: TextSchema.Wrap, font: s32, typeface: string,
+    glyph_style: TextGlyphStyle = TextGlyphStyle.{}) -> TextLinePlan {
     revision := GlyphMetricsRevision()
     if revision == cast(u64)0 || start < 0 || start > cast(s32)value.count {
-        return NextTextLineUncached(value, start, max_width, wrap, font, typeface)
+        return NextTextLineUncached(value, start, max_width, wrap, font, typeface, glyph_style)
     }
     hash := TextLineHash(value)
     face := TextLineHash(typeface)
     slot := text_line_last
-    if !TextLineCacheMatches(*text_line_cache[slot], revision, hash, value.count, face, font, max_width, cast(s32)wrap) {
+    if !TextLineCacheMatches(*text_line_cache[slot], revision, hash, value.count, face, font, max_width, cast(s32)wrap, glyph_style) {
         found: bool
         for index: cast(s32)0..TEXT_LINE_SLOTS - 1 {
-            if TextLineCacheMatches(*text_line_cache[index], revision, hash, value.count, face, font, max_width, cast(s32)wrap) {
+            if TextLineCacheMatches(*text_line_cache[index], revision, hash, value.count, face, font, max_width, cast(s32)wrap, glyph_style) {
                 slot = index
                 found = true
                 break
@@ -189,7 +207,7 @@ NextTextLine :: (value: string, start: s32, max_width: float32,
                 if text_line_cache[index].used < text_line_cache[slot].used { slot = index }
             }
             text_line_cache[slot] = .{.revision = revision, .hash = hash, .count = value.count, .face = face,
-                .font = font, .width = max_width, .wrap = cast(s32)wrap}
+                .font = font, .width = max_width, .wrap = cast(s32)wrap, .glyph_style = glyph_style}
         }
         text_line_last = slot
     }
@@ -204,7 +222,7 @@ NextTextLine :: (value: string, start: s32, max_width: float32,
         else { high = middle }
     }
     if low < entry.rows && entry.lines[low].start == start { return entry.lines[low] }
-    line := NextTextLineUncached(value, start, max_width, wrap, font, typeface)
+    line := NextTextLineUncached(value, start, max_width, wrap, font, typeface, glyph_style)
     // Measuring can load a fallback font, which moves the revision.
     if entry.rows < TEXT_LINE_ROWS && GlyphMetricsRevision() == revision {
         row := entry.rows
@@ -219,7 +237,7 @@ NextTextLine :: (value: string, start: s32, max_width: float32,
 }
 
 NextTextLineUncached :: (value: string, start: s32, max_width: float32,
-    wrap: TextSchema.Wrap, font: s32, typeface: string) -> TextLinePlan {
+    wrap: TextSchema.Wrap, font: s32, typeface: string, glyph_style: TextGlyphStyle) -> TextLinePlan {
     line: TextLinePlan = .{.start = start, .end = start, .next = cast(s32)value.count + 1}
     if start >= cast(s32)value.count { return line }
     if wrap == cast(TextSchema.Wrap)TextWrapAnywhere && max_width > 0.0 {
@@ -230,7 +248,7 @@ NextTextLineUncached :: (value: string, start: s32, max_width: float32,
                 line.next = after
                 return line
             }
-            width := GlyphWidth(value[start:after], font, typeface)
+            width := GlyphWidth(value[start:after], font, typeface, glyph_style)
             if line.end > start && cast(float32)width > max_width {
                 line.next = offset
                 return line
@@ -250,12 +268,12 @@ NextTextLineUncached :: (value: string, start: s32, max_width: float32,
         if !token.valid { break }
         if token.line_break {
             line.next = token.next
-            if !wrapped && line.end > line.start { line.width = GlyphWidth(value[line.start:line.end], font, typeface) }
+            if !wrapped && line.end > line.start { line.width = GlyphWidth(value[line.start:line.end], font, typeface, glyph_style) }
             return line
         }
         candidate: string = value[line.start:token.end]
         width: s32 = 0
-        if wrapped { width = GlyphWidth(candidate, font, typeface) }
+        if wrapped { width = GlyphWidth(candidate, font, typeface, glyph_style) }
         if wrapped &&
             line.end > line.start && cast(float32)width > max_width {
             line.next = token.start
@@ -267,7 +285,7 @@ NextTextLineUncached :: (value: string, start: s32, max_width: float32,
     }
     // Without wrapping, measure the complete line once, preserving the same
     // token boundaries and trailing-space policy as wrapped text.
-    if !wrapped && line.end > line.start { line.width = GlyphWidth(value[line.start:line.end], font, typeface) }
+    if !wrapped && line.end > line.start { line.width = GlyphWidth(value[line.start:line.end], font, typeface, glyph_style) }
     return line
 }
 
@@ -295,10 +313,10 @@ TextDefaultLineGap :: (scale: float32) -> s32 {
 TextLayoutTotalHeight :: (line_count: s32, drawn_line_height: s32,
     line_gap: s32) -> s32 {
     if line_count <= 0 { return 0 }
-    height: s32 = line_count * drawn_line_height
-    if line_count > 1 { height += (line_count - 1) * line_gap }
+    height := cast(s64)line_count * drawn_line_height + cast(s64)(line_count - 1) * line_gap
     if height < 0 { return 0 }
-    return height
+    if height > 2147483647 { return 2147483647 }
+    return cast(s32)height
 }
 
 #program_export

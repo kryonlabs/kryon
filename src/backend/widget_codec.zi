@@ -5484,7 +5484,7 @@ WidgetTypeStyleData :: "style.StyleData"
 WidgetSliceTypeStyleData :: "[]style.StyleData"
 
 WidgetStyleDataCodec :: struct {
-    fields: [27]HostField
+    fields: [32]HostField
 }
 
 WidgetEncodeStyleData :: (data: StyleData, codec: *WidgetStyleDataCodec) -> HostValue {
@@ -5500,22 +5500,27 @@ WidgetEncodeStyleData :: (data: StyleData, codec: *WidgetStyleDataCodec) -> Host
     codec.fields[8] = HostField.{.name = HostTextData("padding_x"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.padding_x}}
     codec.fields[9] = HostField.{.name = HostTextData("padding_y"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.padding_y}}
     codec.fields[10] = HostField.{.name = HostTextData("gap"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.gap}}
-    codec.fields[11] = HostField.{.name = HostTextData("font_size"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.font_size}}
-    codec.fields[12] = HostField.{.name = HostTextData("icon_size"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.icon_size}}
-    codec.fields[13] = HostField.{.name = HostTextData("offset_x"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.offset_x}}
-    codec.fields[14] = HostField.{.name = HostTextData("offset_y"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.offset_y}}
-    codec.fields[15] = HostField.{.name = HostTextData("background_end"), .value = HostScalar("u32", cast(s64)data.background_end)}
-    codec.fields[16] = HostField.{.name = HostTextData("material"), .value = HostScalar("control_props.MaterialKind", cast(s64)data.material)}
-    codec.fields[17] = HostField.{.name = HostTextData("typeface"), .value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.typeface), .length = cast(usize)data.typeface.count}}
-    codec.fields[18] = HostField.{.name = HostTextData("letter_spacing"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.letter_spacing}}
-    codec.fields[19] = HostField.{.name = HostTextData("min_height"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.min_height}}
-    codec.fields[20] = HostField.{.name = HostTextData("line_height"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.line_height}}
-    codec.fields[21] = HostField.{.name = HostTextData("font_role"), .value = HostScalar("control_props.FontRole", cast(s64)data.font_role)}
-    codec.fields[22] = HostField.{.name = HostTextData("elevation"), .value = HostScalar("control_props.ElevationRole", cast(s64)data.elevation)}
-    codec.fields[23] = HostField.{.name = HostTextData("motion_duration"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.motion_duration}}
-    codec.fields[24] = HostField.{.name = HostTextData("motion_multiplier"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.motion_multiplier}}
-    codec.fields[25] = HostField.{.name = HostTextData("motion_easing"), .value = HostScalar("control_props.MotionEasing", cast(s64)data.motion_easing)}
-    codec.fields[26] = HostField.{.name = HostTextData("motion_reduced"), .value = HostScalar("bool", ifx data.motion_reduced then 1 else 0)}
+    codec.fields[11] = HostField.{.name = HostTextData("row_gap"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.row_gap}}
+    codec.fields[12] = HostField.{.name = HostTextData("column_gap"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.column_gap}}
+    codec.fields[13] = HostField.{.name = HostTextData("font_size"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.font_size}}
+    codec.fields[14] = HostField.{.name = HostTextData("icon_size"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.icon_size}}
+    codec.fields[15] = HostField.{.name = HostTextData("offset_x"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.offset_x}}
+    codec.fields[16] = HostField.{.name = HostTextData("offset_y"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.offset_y}}
+    codec.fields[17] = HostField.{.name = HostTextData("background_end"), .value = HostScalar("u32", cast(s64)data.background_end)}
+    codec.fields[18] = HostField.{.name = HostTextData("material"), .value = HostScalar("control_props.MaterialKind", cast(s64)data.material)}
+    codec.fields[19] = HostField.{.name = HostTextData("typeface"), .value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.typeface), .length = cast(usize)data.typeface.count}}
+    codec.fields[20] = HostField.{.name = HostTextData("letter_spacing"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.letter_spacing}}
+    codec.fields[21] = HostField.{.name = HostTextData("min_height"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.min_height}}
+    codec.fields[22] = HostField.{.name = HostTextData("line_height"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.line_height}}
+    codec.fields[23] = HostField.{.name = HostTextData("font_role"), .value = HostScalar("control_props.FontRole", cast(s64)data.font_role)}
+    codec.fields[24] = HostField.{.name = HostTextData("elevation"), .value = HostScalar("control_props.ElevationRole", cast(s64)data.elevation)}
+    codec.fields[25] = HostField.{.name = HostTextData("motion_duration"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.motion_duration}}
+    codec.fields[26] = HostField.{.name = HostTextData("motion_multiplier"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.motion_multiplier}}
+    codec.fields[27] = HostField.{.name = HostTextData("motion_easing"), .value = HostScalar("control_props.MotionEasing", cast(s64)data.motion_easing)}
+    codec.fields[28] = HostField.{.name = HostTextData("motion_reduced"), .value = HostScalar("bool", ifx data.motion_reduced then 1 else 0)}
+    codec.fields[29] = HostField.{.name = HostTextData("font_weight"), .value = HostScalar("s32", cast(s64)data.font_weight)}
+    codec.fields[30] = HostField.{.name = HostTextData("font_style"), .value = HostScalar("control_props.FontStyle", cast(s64)data.font_style)}
+    codec.fields[31] = HostField.{.name = HostTextData("line_height_unit"), .value = HostScalar("control_props.LineHeightUnit", cast(s64)data.line_height_unit)}
     return value
 }
 
@@ -5534,22 +5539,27 @@ WidgetDecodeStyleData :: (value: HostValue, codec: *WidgetStyleDataCodec) -> Sty
     data.padding_x = cast(float32)HostFieldValue(*value, 8, "padding_x", *zero).real
     data.padding_y = cast(float32)HostFieldValue(*value, 9, "padding_y", *zero).real
     data.gap = cast(float32)HostFieldValue(*value, 10, "gap", *zero).real
-    data.font_size = cast(float32)HostFieldValue(*value, 11, "font_size", *zero).real
-    data.icon_size = cast(float32)HostFieldValue(*value, 12, "icon_size", *zero).real
-    data.offset_x = cast(float32)HostFieldValue(*value, 13, "offset_x", *zero).real
-    data.offset_y = cast(float32)HostFieldValue(*value, 14, "offset_y", *zero).real
-    data.background_end = cast(u32)HostFieldValue(*value, 15, "background_end", *zero).bits
-    data.material = cast(MaterialKind)HostFieldValue(*value, 16, "material", *zero).integer
-    data.typeface = HostValueText(HostFieldValue(*value, 17, "typeface", *zero).*)
-    data.letter_spacing = cast(float32)HostFieldValue(*value, 18, "letter_spacing", *zero).real
-    data.min_height = cast(float32)HostFieldValue(*value, 19, "min_height", *zero).real
-    data.line_height = cast(float32)HostFieldValue(*value, 20, "line_height", *zero).real
-    data.font_role = cast(FontRole)HostFieldValue(*value, 21, "font_role", *zero).integer
-    data.elevation = cast(ElevationRole)HostFieldValue(*value, 22, "elevation", *zero).integer
-    data.motion_duration = cast(float32)HostFieldValue(*value, 23, "motion_duration", *zero).real
-    data.motion_multiplier = cast(float32)HostFieldValue(*value, 24, "motion_multiplier", *zero).real
-    data.motion_easing = cast(MotionEasing)HostFieldValue(*value, 25, "motion_easing", *zero).integer
-    data.motion_reduced = HostFieldValue(*value, 26, "motion_reduced", *zero).integer != 0
+    data.row_gap = cast(float32)HostFieldValue(*value, 11, "row_gap", *zero).real
+    data.column_gap = cast(float32)HostFieldValue(*value, 12, "column_gap", *zero).real
+    data.font_size = cast(float32)HostFieldValue(*value, 13, "font_size", *zero).real
+    data.icon_size = cast(float32)HostFieldValue(*value, 14, "icon_size", *zero).real
+    data.offset_x = cast(float32)HostFieldValue(*value, 15, "offset_x", *zero).real
+    data.offset_y = cast(float32)HostFieldValue(*value, 16, "offset_y", *zero).real
+    data.background_end = cast(u32)HostFieldValue(*value, 17, "background_end", *zero).bits
+    data.material = cast(MaterialKind)HostFieldValue(*value, 18, "material", *zero).integer
+    data.typeface = HostValueText(HostFieldValue(*value, 19, "typeface", *zero).*)
+    data.letter_spacing = cast(float32)HostFieldValue(*value, 20, "letter_spacing", *zero).real
+    data.min_height = cast(float32)HostFieldValue(*value, 21, "min_height", *zero).real
+    data.line_height = cast(float32)HostFieldValue(*value, 22, "line_height", *zero).real
+    data.font_role = cast(FontRole)HostFieldValue(*value, 23, "font_role", *zero).integer
+    data.elevation = cast(ElevationRole)HostFieldValue(*value, 24, "elevation", *zero).integer
+    data.motion_duration = cast(float32)HostFieldValue(*value, 25, "motion_duration", *zero).real
+    data.motion_multiplier = cast(float32)HostFieldValue(*value, 26, "motion_multiplier", *zero).real
+    data.motion_easing = cast(MotionEasing)HostFieldValue(*value, 27, "motion_easing", *zero).integer
+    data.motion_reduced = HostFieldValue(*value, 28, "motion_reduced", *zero).integer != 0
+    data.font_weight = cast(s32)HostFieldValue(*value, 29, "font_weight", *zero).integer
+    data.font_style = cast(FontStyle)HostFieldValue(*value, 30, "font_style", *zero).integer
+    data.line_height_unit = cast(LineHeightUnit)HostFieldValue(*value, 31, "line_height_unit", *zero).integer
     return data
 }
 
@@ -5566,22 +5576,27 @@ WidgetValidStyleData :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 8, "padding_x", "float32", cast(s32)HostReal) { return false }
     if !HostFieldScalarValid(*value, 9, "padding_y", "float32", cast(s32)HostReal) { return false }
     if !HostFieldScalarValid(*value, 10, "gap", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 11, "font_size", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 12, "icon_size", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 13, "offset_x", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 14, "offset_y", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 15, "background_end", "u32", cast(s32)HostUnsigned) { return false }
-    if !HostFieldScalarValid(*value, 16, "material", "control_props.MaterialKind", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 17, "typeface", "string", cast(s32)HostString) { return false }
-    if !HostFieldScalarValid(*value, 18, "letter_spacing", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 19, "min_height", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 20, "line_height", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 21, "font_role", "control_props.FontRole", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 22, "elevation", "control_props.ElevationRole", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 23, "motion_duration", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 24, "motion_multiplier", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 25, "motion_easing", "control_props.MotionEasing", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 26, "motion_reduced", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 11, "row_gap", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 12, "column_gap", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 13, "font_size", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 14, "icon_size", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 15, "offset_x", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 16, "offset_y", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 17, "background_end", "u32", cast(s32)HostUnsigned) { return false }
+    if !HostFieldScalarValid(*value, 18, "material", "control_props.MaterialKind", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 19, "typeface", "string", cast(s32)HostString) { return false }
+    if !HostFieldScalarValid(*value, 20, "letter_spacing", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 21, "min_height", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 22, "line_height", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 23, "font_role", "control_props.FontRole", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 24, "elevation", "control_props.ElevationRole", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 25, "motion_duration", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 26, "motion_multiplier", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 27, "motion_easing", "control_props.MotionEasing", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 28, "motion_reduced", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 29, "font_weight", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 30, "font_style", "control_props.FontStyle", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 31, "line_height_unit", "control_props.LineHeightUnit", cast(s32)HostInteger) { return false }
     return true
 }
 

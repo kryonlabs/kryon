@@ -1,5 +1,18 @@
 using PropsModule :: #import "layout_props";
 using BehaviorModule :: #import "layout_behavior";
+Theme :: #import "theme";
+
+// Resolve a theme spacing role into the same logical units as Props.gap.
+#program_export
+Gap :: (token: Theme.ThemeMetricRole) -> s32 {
+    return LayoutPixelMetric(Theme.CurrentThemeMetric(token))
+}
+
+LayoutPixelMetric :: (value: float32) -> s32 {
+    if !(value > 0.0) { return 0 }
+    if value >= 2147483520.0 { return 2147483647 }
+    return cast(s32)(value + 0.5)
+}
 // Hosted programs get the layout's props and behavior; the retained tree
 // placement comes only with a retained program.
 #if !#defined(KRYON_HOSTED_UI) {
@@ -7,10 +20,21 @@ using BehaviorModule :: #import "layout_behavior";
 #import "grid"
 #import "grid_props"
 #import "session"
+#import "style"
+#import "style_sheet"
 #import "tree"
 #import "widget_kind"
 
 using WidgetKind;
+
+// The space a column child may fill, or -1 outside a column.
+#program_export
+ColumnWidth :: (session: Session) -> float32 {
+    parent_index := TreeCurrentParent(session)
+    if TreeSubmittedNodeAt(session, parent_index).kind != WidgetKindColumn { return -1.0 }
+    parent := TreeLayoutAt(session, parent_index)
+    return LayoutMetricsFor(parent.bounds, parent.gap, parent.padding, parent.padding_y).content.width
+}
 
 LayoutContainer :: struct {
     node: s32
@@ -20,6 +44,7 @@ LayoutContainer :: struct {
     content: Rectangle
     gap: s32
     padding: s32
+    padding_y: s32
 }
 
 GridResult :: struct {
@@ -31,7 +56,7 @@ TreePlaceLinear :: (session: Session, parent_index: s32, bounds: Rectangle,
     horizontal: bool) -> Rectangle {
     parent: LayoutInfo = TreeLayoutAt(session, parent_index)
     metrics: LayoutMetrics = LayoutMetricsFor(parent.bounds,
-        parent.gap, parent.padding)
+        parent.gap, parent.padding, parent.padding_y)
     progress: LayoutProgress = TreeLayoutProgressAt(session, parent_index)
     cursor: float32 = LayoutCursorForChild(metrics, horizontal,
         progress.count, progress.extent)
@@ -61,7 +86,7 @@ TreePlaceRow :: (session: Session, parent_index: s32, bounds: Rectangle) -> Rect
 TreePlaceStack :: (session: Session, parent_index: s32, bounds: Rectangle) -> Rectangle {
     parent: LayoutInfo = TreeLayoutAt(session, parent_index)
     metrics: LayoutMetrics = LayoutMetricsFor(parent.bounds,
-        parent.gap, parent.padding)
+        parent.gap, parent.padding, parent.padding_y)
     return StackChildBounds(bounds, bounds, metrics)
 }
 
@@ -88,27 +113,69 @@ TreePlaceGrid :: (session: Session, parent_index: s32, bounds: Rectangle) -> Rec
     return grid.item
 }
 
+LayoutFace :: (props: PropsModule.Props, kind: s32) -> StyleData {
+    style_kind: s32 = 0
+    if kind == WidgetKindRow { style_kind = StyleKindRow() }
+    if kind == WidgetKindColumn { style_kind = StyleKindColumn() }
+    defaults: StyleData
+    if style_kind == 0 { return defaults }
+    facts := StyleDefaultFacts(style_kind)
+    facts.id = props.id
+    facts.class_name = props.class_name
+    return ResolveInstalledStyleRules(defaults, facts, StyleStateAny())
+}
+
+LayoutSpacingFor :: (axis: s32, axis_override: bool, uniform: s32,
+    uniform_override: bool, styled: float32) -> s32 {
+    value := LayoutPixelMetric(styled)
+    if uniform != 0 || uniform_override { value = uniform }
+    if axis != 0 || axis_override { value = axis }
+    if value < 0 { return 0 }
+    return value
+}
+
 #program_export
 ContainerFor :: (session: Session, props: PropsModule.Props,
     kind: s32) -> LayoutContainer {
     result: LayoutContainer = .{.node = -1, .kind = kind, .bounds = props.bounds}
-    parent: Rectangle = TreeCurrentParentBounds(session)
+    parent_index := TreeCurrentParent(session)
+    parent_kind := TreeSubmittedNodeAt(session, parent_index).kind
+    parent := TreeCurrentParentBounds(session)
+    if parent_kind == WidgetKindRow || parent_kind == WidgetKindColumn || parent_kind == WidgetKindStack {
+        outer := TreeLayoutAt(session, parent_index)
+        parent = LayoutMetricsFor(outer.bounds, outer.gap, outer.padding, outer.padding_y).content
+    }
     if result.bounds.width <= 0.0 { result.bounds.width = parent.width }
     if result.bounds.height <= 0.0 { result.bounds.height = parent.height }
-    metrics: LayoutMetrics = LayoutMetricsFor(result.bounds,
-        props.gap, props.padding)
+    face := LayoutFace(props, kind)
+    gap := props.gap
+    if kind == WidgetKindRow {
+        gap = LayoutSpacingFor(props.column_gap, props.column_gap_override,
+            props.gap, props.gap_override, face.column_gap)
+    } else if kind == WidgetKindColumn {
+        gap = LayoutSpacingFor(props.row_gap, props.row_gap_override,
+            props.gap, props.gap_override, face.row_gap)
+    }
+    padding := LayoutSpacingFor(props.padding_x, props.padding_x_override,
+        props.padding, props.padding_override, face.padding_x)
+    padding_y := LayoutSpacingFor(props.padding_y, props.padding_y_override,
+        props.padding, props.padding_override, face.padding_y)
+    metrics := LayoutMetricsFor(result.bounds, gap, padding, padding_y)
     result.content = metrics.content
     result.gap = metrics.gap
     result.padding = metrics.padding
+    result.padding_y = metrics.padding_y
     if !TreeIsBuilding(session) { return result }
     key: u64 = props.key
     if key == cast(u64)0 { key = TreeNextKey(session) }
     result.node = TreeSubmitCurrent(session, key, kind, result.bounds)
     if result.node < 0 { return result }
     result.bounds = TreeSubmittedBounds(session, result.node)
-    metrics = LayoutMetricsFor(result.bounds, props.gap, props.padding)
+    metrics = LayoutMetricsFor(result.bounds, result.gap, result.padding, result.padding_y)
     result.content = metrics.content
-    TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0)
+    TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0, result.padding_y)
+    if props.id != 0 { TreeSetStyleId(session, result.node, props.id) }
+    if props.class_name != 0 { TreeSetStyleClass(session, result.node, props.class_name) }
     result.opened = TreePushScope(session, result.node)
     return result
 }
@@ -162,8 +229,8 @@ Grid :: (session: Session, props: GridProps) -> GridResult {
 }
 
 ContainerMetrics :: (container: LayoutContainer) -> LayoutMetrics {
-    return LayoutMetricsFor(container.bounds, container.gap,
-        container.padding)
+    return .{.content = container.content, .gap = container.gap,
+        .padding = container.padding, .padding_y = container.padding_y}
 }
 
 #program_export

@@ -1,6 +1,7 @@
 #import "ziran_mesh_noop_host"
 #import "drawing_props"
 #import "geometry"
+Metrics :: #import "font_metrics";
 
 texts: s32;
 fills: s32;
@@ -16,6 +17,12 @@ link_y: [8]s32;
 link_colors: [8]Color;
 link_fills: [4]Rectangle;
 link_fill_colors: [4]Color;
+text_measure_calls: s32;
+change_metrics: bool;
+
+// A fallback font can become available during the first measurement.
+TextHostInvalidateMetrics :: () { text_measure_calls = 0; change_metrics = true }
+TextHostMeasurements :: () -> s32 { return text_measure_calls }
 
 // Linked text records each painted piece and each underline.
 #program_export
@@ -99,6 +106,8 @@ InkIsExpected :: (color: Color) -> bool {
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
+    text_measure_calls += 1
+    if change_metrics { change_metrics = false; Metrics.GlyphMetricsChanged() }
     if font != 14 || typeface.count != 0 { failed = true }
     return (cast(s32)value.count) * 10
 }

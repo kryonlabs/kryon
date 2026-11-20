@@ -1,5 +1,6 @@
 #import "geometry"
 #import "drawing_props"
+#import "control_props"
 #import "semantic"
 #import "text_align"
 
@@ -73,7 +74,10 @@ PreparedText :: struct {
     font: s32
     color: Color
     typeface: string
+    glyph_style: TextGlyphStyle
     line_height: s32
+    glyph_height: s32
+    glyph_offset: s32
     line_gap: s32
     line_count: s32
     wrap: Wrap

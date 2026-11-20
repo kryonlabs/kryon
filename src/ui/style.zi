@@ -1,9 +1,11 @@
 #import "control_props"
 #import "geometry"
+#import "math"
 #import "surface"
 
 using ButtonState;
 using StyleField;
+using LineHeightUnit;
 
 StateFlags :: struct {
     disabled: bool
@@ -54,6 +56,8 @@ StyleData :: struct {
     padding_x: float32
     padding_y: float32
     gap: float32
+    row_gap: float32
+    column_gap: float32
     font_size: float32
     icon_size: float32
     offset_x: float32
@@ -70,6 +74,9 @@ StyleData :: struct {
     motion_multiplier: float32
     motion_easing: MotionEasing
     motion_reduced: bool
+    font_weight: s32
+    font_style: FontStyle
+    line_height_unit: LineHeightUnit
 }
 
 StyleFrame :: struct {
@@ -172,6 +179,8 @@ MergeValues :: (base: StyleData, override: StyleData) -> StyleData {
     if (override.fields & cast(u32)StylePaddingX) != cast(u32)0 { base.padding_x = override.padding_x }
     if (override.fields & cast(u32)StylePaddingY) != cast(u32)0 { base.padding_y = override.padding_y }
     if (override.fields & cast(u32)StyleGap) != cast(u32)0 { base.gap = override.gap }
+    if (override.fields & cast(u32)StyleRowGap) != cast(u32)0 { base.row_gap = override.row_gap }
+    if (override.fields & cast(u32)StyleColumnGap) != cast(u32)0 { base.column_gap = override.column_gap }
     if (override.fields & cast(u32)StyleFontSize) != cast(u32)0 { base.font_size = override.font_size }
     if (override.fields & cast(u32)StyleIconSize) != cast(u32)0 { base.icon_size = override.icon_size }
     if (override.fields & cast(u32)StyleContentOffset) != cast(u32)0 { base.offset_x = override.offset_x }
@@ -181,7 +190,12 @@ MergeValues :: (base: StyleData, override: StyleData) -> StyleData {
     if (override.fields & cast(u32)StyleTypeface) != cast(u32)0 { base.typeface = override.typeface }
     if (override.fields & cast(u32)StyleLetterSpacing) != cast(u32)0 { base.letter_spacing = override.letter_spacing }
     if (override.fields & cast(u32)StyleMinHeight) != cast(u32)0 { base.min_height = override.min_height }
-    if (override.fields & cast(u32)StyleLineHeight) != cast(u32)0 { base.line_height = override.line_height }
+    if (override.fields & cast(u32)StyleLineHeight) != cast(u32)0 {
+        base.line_height = override.line_height
+        base.line_height_unit = override.line_height_unit
+    }
+    if (override.fields & cast(u32)StyleFontWeight) != cast(u32)0 { base.font_weight = override.font_weight }
+    if (override.fields & cast(u32)StyleFontStyle) != cast(u32)0 { base.font_style = override.font_style }
     if (override.fields & cast(u32)StyleFontRole) != cast(u32)0 { base.font_role = override.font_role }
     if (override.fields & cast(u32)StyleElevation) != cast(u32)0 { base.elevation = override.elevation }
     if (override.fields & cast(u32)StyleMotionDuration) != cast(u32)0 { base.motion_duration = override.motion_duration }
@@ -204,6 +218,36 @@ StyleLineHeightValue :: (fields: u32, line_height: float32,
     fallback: float32) -> float32 {
     if (fields & cast(u32)StyleLineHeight) == cast(u32)0 || line_height <= 0.0 { return fallback }
     return line_height
+}
+
+StyleTextGlyphs :: (style: StyleData) -> TextGlyphStyle {
+    glyphs: TextGlyphStyle
+    if (style.fields & cast(u32)StyleFontWeight) != 0 && style.font_weight >= 1 && style.font_weight <= 1000 {
+        glyphs.weight = style.font_weight
+    }
+    if (style.fields & cast(u32)StyleFontStyle) != 0 { glyphs.style = style.font_style }
+    if (style.fields & cast(u32)StyleLetterSpacing) != 0 && Finite32(style.letter_spacing) {
+        glyphs.letter_spacing = style.letter_spacing
+        if glyphs.letter_spacing < -1024.0 { glyphs.letter_spacing = -1024.0 }
+        if glyphs.letter_spacing > 1024.0 { glyphs.letter_spacing = 1024.0 }
+    }
+    return glyphs
+}
+
+// A negative result leaves the widget's existing line-height policy in effect.
+StyleTypedLineHeight :: (style: StyleData, font: float32, natural: float32) -> float32 {
+    if (style.fields & cast(u32)StyleLineHeight) == 0 { return -1.0 }
+    amount := cast(float64)style.line_height
+    unit := style.line_height_unit
+    if unit == cast(LineHeightUnit)LineHeightNormal {
+        return ifx amount == 0.0 then natural else -1.0
+    }
+    if unit == cast(LineHeightUnit)LineHeightFactor {
+        amount *= cast(float64)font
+    } else if unit != cast(LineHeightUnit)LineHeightLength {
+        return -1.0
+    }
+    return ifx amount >= 0.0 && amount <= 2147483520.0 then cast(float32)amount else -1.0
 }
 
 #program_export

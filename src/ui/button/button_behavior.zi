@@ -16,6 +16,7 @@ using IconPlacement;
 using ContentAlignment;
 using ButtonState;
 using StyleField;
+using LineHeightUnit;
 
 ButtonInput :: struct {
     flags: StateFlags
@@ -154,8 +155,20 @@ MeasureBounds :: (props: ButtonSchema.Props, paint: StyleData, minimum_height: f
     bounds: Rectangle = props.bounds
     text_height: float32 = 0.0
     if props.label != "" && !props.icon_only {
-        text_height = StyleLineHeightValue(paint.fields, paint.line_height,
-            cast(float32)font) / scale + detail_height / scale
+        logical_font := cast(float32)font / scale
+        natural := logical_font
+        if (paint.fields & cast(u32)StyleLineHeight) != 0 &&
+            paint.line_height_unit == cast(LineHeightUnit)LineHeightNormal && paint.line_height == 0.0 {
+            natural = cast(float32)GlyphLineHeight(font, paint.typeface, StyleTextGlyphs(paint)) / scale
+        }
+        text_height = StyleTypedLineHeight(paint, logical_font, natural)
+        if text_height < 0.0 {
+            text_height = logical_font
+            if paint.line_height_unit == cast(LineHeightUnit)LineHeightNormal {
+                text_height = StyleLineHeightValue(paint.fields, paint.line_height, cast(float32)font) / scale
+            }
+        }
+        text_height += detail_height / scale
     }
     height: float32 = FitHeight(bounds.height / scale, minimum_height / scale,
         text_height, paint.padding_y)

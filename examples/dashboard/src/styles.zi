@@ -1,0 +1,199 @@
+// Kryon CSS stylesheet and theme coordination for the dashboard starter.
+CSS :: #import "css/Css";
+Theme :: #import "kryon/theme";
+
+sheet: CSS.CssSheet;
+sheet_parsed: bool;
+applied_dark: s32 = -1;
+applied_compact: s32 = -1;
+
+dashboard_css :: #string CSS
+:root {
+  --surface-card: #ffffff;
+  --surface-sunken: #f3f5f8;
+  --surface-hover: #eef2f6;
+  --surface-selected: #e2f2eb;
+  --text-primary: #0f172a;
+  --text-muted: #526072;
+  --text-selected: #065f46;
+  --border-subtle: #dde3eb;
+  --border-strong: #94a3b8;
+  --accent: hwb(160deg 2% 41%);
+  --accent-text: #ffffff;
+  --focus-ring: hwb(199deg 5% 8% / 95%);
+  --card-pad: 16px;
+  --control-height: 36px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-card: #181d25;
+    --surface-sunken: #10141b;
+    --surface-hover: #222936;
+    --surface-selected: #133529;
+    --text-primary: #f1f5f9;
+    --text-muted: #94a3b8;
+    --text-selected: #6ee7b7;
+    --border-subtle: #2b3340;
+    --border-strong: #526072;
+    --accent: #34d399;
+    --accent-text: #052e1f;
+    --focus-ring: #38bdf8;
+  }
+}
+
+@media (-kryon-density: compact) {
+  :root {
+    --card-pad: 12px;
+    --control-height: 32px;
+  }
+}
+
+Card {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  -kryon-elevation: rest;
+}
+
+Card.kpi-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+
+Card.inspector-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+
+Button.nav-item {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  border-radius: 8px;
+  min-block-size: var(--control-height);
+  padding: 6px 12px;
+  outline-color: var(--focus-ring);
+  -kryon-font-role: control;
+}
+
+Button.nav-item:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  opacity: 96%;
+}
+
+Button.nav-item:selected {
+  background: var(--surface-selected);
+  color: var(--text-selected);
+}
+
+Button.chip {
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  min-height: 30px;
+  padding: 4px 10px;
+  outline-color: var(--focus-ring);
+}
+
+Button.chip:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+Button.chip:selected {
+  background: var(--surface-selected);
+  color: var(--text-selected);
+  border-color: var(--accent);
+}
+
+Button.result-row {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 12px;
+  outline-color: var(--focus-ring);
+}
+
+Button.result-row:hover {
+  background: var(--surface-hover);
+}
+
+Button.result-row:selected {
+  background: var(--surface-selected);
+  color: var(--text-selected);
+  border-color: var(--accent);
+}
+
+Button.primary-btn {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-radius: 8px;
+  min-height: var(--control-height);
+  outline-color: var(--focus-ring);
+}
+
+TextField.search-field {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 0px 12px;
+  outline-color: var(--focus-ring);
+}
+
+TextField.search-field:focus {
+  border-color: var(--accent);
+}
+
+Modal {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  -kryon-elevation: floating;
+}
+CSS;
+
+ClassId :: (name: string) -> s32 {
+    return CSS.StyleClass(name)
+}
+
+ElementId :: (name: string) -> s32 {
+    return CSS.StyleId(name)
+}
+
+EnsureDashboardTheme :: (dark: bool, compact: bool, reduced_motion: bool) -> bool {
+    want_dark: s32 = ifx dark then 1 else 0
+    want_compact: s32 = ifx compact then 1 else 0
+    if sheet_parsed && applied_dark == want_dark && applied_compact == want_compact {
+        return true
+    }
+    unused Theme.InstallDefaultTheme(dark, reduced_motion)
+    if !sheet_parsed {
+        CSS.CssSheetReset(*sheet)
+        if !CSS.CssSheetParse(*sheet, dashboard_css, "dashboard.css", CSS.CssNoImports) {
+            return false
+        }
+        sheet_parsed = true
+    }
+    env := CSS.CssEnvironmentWithNames(
+        CSS.CssDefaultEnvironment(),
+        ifx dark then "dark" else "light",
+        "normal",
+        ifx compact then "compact" else "comfortable",
+        "mouse",
+        "desktop")
+    if !CSS.CssSheetInstall(*sheet, env, null) {
+        return false
+    }
+    applied_dark = want_dark
+    applied_compact = want_compact
+    return true
+}

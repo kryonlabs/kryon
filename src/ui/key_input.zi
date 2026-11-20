@@ -1,5 +1,5 @@
-TextArea :: #import "textarea";
-TextField :: #import "textfield";
+TextArea :: #import "text_area_props";
+TextField :: #import "text_field_props";
 // A frame's keyboard input as a text field reads it: the key and modifiers a
 // host reported and the text typed since the last frame.
 #import "session"

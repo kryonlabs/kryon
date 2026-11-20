@@ -33,7 +33,7 @@ Draw :: (session: Session, props: Props) -> FlowResult {
 FlowChildBounds :: (flow: FlowResult, declared: Rectangle,
     measured: Rectangle, child_index: s32,
     previous_width_sum: float32) -> Rectangle {
-    container: Layout.LayoutContainer = .{.bounds = flow.bounds, .gap = flow.gap, .padding = flow.padding}
+    container: Layout.LayoutContainer = .{.content = flow.content, .gap = flow.gap}
     return Layout.RowChildBounds(container, declared, measured,
         child_index, previous_width_sum)
 }

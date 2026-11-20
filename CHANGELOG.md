@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- `kryon preview` renders a named UI fixture at a chosen size and theme to a
+  PNG and a JSON widget tree. The dashboard example shows responsive layouts,
+  forms and preview states, and the HTML-to-Kryon guide maps common elements
+  to native widgets. Native layouts compose rows and grids, and text fields
+  bind directly to caller-owned state. Web projects can choose the `dom`
+  backend to render semantic HTML with browser CSS and focus behavior.
 - Kryon apps compiled to `.zx` can open a TaijiOS guest window, draw text and
   widgets, and respond to pointer, keyboard, resize and close events.
 - Android viewport snapshots copy only the retained app content for route

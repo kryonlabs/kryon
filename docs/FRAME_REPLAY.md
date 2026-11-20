@@ -1,5 +1,57 @@
 # Frame capture, replay and inspection
 
+## Native fixture preview
+
+From a Linux project with a desktop C99 profile, run:
+
+```sh
+kryon preview controls --theme light --width 800 --height 480 --output build/controls.png
+ziran tool kryon preview controls --theme dark --width 360 --height 640 --output build/controls-dark
+```
+
+`--output` accepts a PNG path or a prefix, relative to the project root or
+absolute. Its parent directory must exist. Both forms write `<prefix>.png`
+and `<prefix>.json`. Each dimension accepts 1–4096 pixels. The project default
+profile is used unless `--profile NAME` selects another desktop C99 profile.
+
+Register `previews` in `[package] module_roots`, for example
+`module_roots = ["src", "previews"]`. Each fixture is a uniquely named module
+at `previews/<fixture>.zi`. Its entry is the same frame export used by the
+default desktop host:
+
+```zi
+Button :: #import "kryon/button";
+#import "kryon/geometry"
+#import "kryon/session"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    unused Button.Draw(session, .{.key = cast(u64)7,
+        .bounds = .{16.0, 16.0, viewport.width - 32.0, 36.0}, .label = "Save"})
+    return 0
+}
+```
+
+Return zero after composing the frame. Fixture code can import the project's
+ordinary view modules and assets. Use explicit sample data and the supplied
+viewport. The preview runs offscreen with the native Cairo renderer, neutral
+input, zero frame time and a fixed light or dark palette with reduced motion.
+A frame can be recomposed while smooth image copies finish, so keep fixture
+state stable across calls. Repeat runs with the same fixture, assets and
+renderer/font versions produce the same output when the fixture uses fixed
+data and host-supplied time. The command exits after capturing the artifacts.
+
+The JSON contains `version`, `width`, `height` and `nodes` in retained-tree
+order. Each node has `index` and `parent` (`-1` at the root), `kind`, `label`
+where available, `x`, `y`, `width`, `height`, and clipped `visible_*` bounds.
+`role` uses the semantic role when available and the widget kind otherwise.
+`key` is an unsigned 64-bit widget key, which a consumer
+should parse without losing integer precision. Where supplied, `focus_id`
+identifies a focus target. Bounds are viewport pixels reported to one decimal
+place. Secure field values are redacted as in test-driver inspection.
+
+## Portable frame replay
+
 `EndFrameCapture(session)` commits a frame and records its retained nodes and
 resolved paint commands before emitting raster effects. It replaces
 `EndFrame(session)` in a capture-enabled application. Bind the capture

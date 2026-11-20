@@ -32,5 +32,29 @@ Answer :: () -> s32 {
     if InstallStyleRules(invalid) { return 6 }
     current = ActiveStyleRules()
     if current.items[0].style.typeface != "second 🙂" { return 7 }
+
+    spacing: StyleRules
+    spacing.count = 3
+    selector := StyleDefaultSelector()
+    selector.kind = StyleKindColumn()
+    selector.class_name = 73
+    spacing.items[0] = .{.selector = selector,
+        .style = .{.fields = cast(u32)StyleRowGap | cast(u32)StyleColumnGap,
+            .row_gap = 7.5, .column_gap = 28.0}}
+    selector.class_name = 0
+    selector.id = 76
+    spacing.items[1] = .{.selector = selector, .order = 1,
+        .style = .{.fields = cast(u32)StyleGap, .gap = 12.0}}
+    spacing.items[2] = .{.selector = selector, .order = 2,
+        .style = .{.fields = cast(u32)StyleRowGap | cast(u32)StylePaddingY, .padding_y = 2.0}}
+    if !InstallStyleRules(spacing) { return 8 }
+    facts := StyleDefaultFacts(StyleKindColumn())
+    facts.id = 76
+    facts.class_name = 73
+    direct := ResolveStyleRules(spacing, StyleData.{}, facts, StyleStateAny())
+    installed := ResolveInstalledStyleRules(StyleData.{}, facts, StyleStateAny())
+    if direct.row_gap != 0.0 || direct.column_gap != 12.0 || direct.padding_y != 2.0 { return 9 }
+    if installed.fields != direct.fields || installed.row_gap != direct.row_gap ||
+        installed.column_gap != direct.column_gap || installed.padding_y != direct.padding_y { return 10 }
     return 42
 }

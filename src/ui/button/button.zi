@@ -171,8 +171,9 @@ Theme :: #import "theme";
             return Vector2.{0.0, 0.0}
         }
         detail_font := ButtonDetailFont(font)
-        return Vector2.{cast(float32)GlyphWidth(props.detail, detail_font, face.typeface),
-            cast(float32)GlyphLineHeight(detail_font, face.typeface)}
+        glyphs := StyleTextGlyphs(face)
+        return Vector2.{cast(float32)GlyphWidth(props.detail, detail_font, face.typeface, glyphs),
+            cast(float32)GlyphLineHeight(detail_font, face.typeface, glyphs)}
     }
 
     // Fit the resolved face, preserving interaction styling and the hit target.
@@ -192,6 +193,8 @@ Theme :: #import "theme";
         }
         width := cast(float32)label_width
         height := cast(float32)label_height
+        line_height := StyleTypedLineHeight(face, cast(float32)font, height)
+        if line_height >= 0.0 { height = line_height + ButtonDetailSize(props, font, face).y }
         if props.icon_placement == cast(IconPlacement)IconPlacementAbove {
             if icon_size > width {
                 width = icon_size
@@ -226,8 +229,9 @@ Theme :: #import "theme";
         if fitted_font < 1 {
             fitted_font = 1
         }
+        glyphs := StyleTextGlyphs(face)
         while fitted_font > 1 && !props.icon_only &&
-        cast(float32)GlyphWidth(props.label, fitted_font, face.typeface) +
+        cast(float32)GlyphWidth(props.label, fitted_font, face.typeface, glyphs) +
         face.padding_x * 2.0 > bounds.width {
             fitted_font -= 1
         }
@@ -305,12 +309,18 @@ Theme :: #import "theme";
         icon_image.texture.id != cast(u32)0 || has_shape
         picture := !has_shape && (props.image.asset_path != "" || props.image.texture.id != cast(u32)0) &&
             props.image.asset_path != "icons/ui.webp"
+        detail := ButtonDetailSize(props, font, face)
+        line_height := StyleTypedLineHeight(face, cast(float32)font, cast(float32)label_height)
+        typed_line_height := line_height >= 0.0
+        if !typed_line_height { line_height = cast(float32)label_height }
+        content_height := line_height
+        if typed_line_height { content_height += detail.y }
         icon_size := ButtonPictureSize(bounds.width, bounds.height, face.icon_size,
             props.icon_only, picture)
         if picture && !props.icon_only && props.label != "" &&
             props.icon_placement != cast(IconPlacement)IconPlacementTrailing {
             icon_size = ButtonLabeledPictureSize(bounds.width, bounds.height, icon_size,
-                cast(float32)label_height, face.gap,
+                content_height, face.gap,
                 props.icon_placement == cast(IconPlacement)IconPlacementAbove)
         }
         content: ButtonContent = ContentLayout(bounds.width, bounds.height,
@@ -319,7 +329,7 @@ Theme :: #import "theme";
             cast(s32)props.icon_placement == IconPlacementTrailing,
             face.offset_x, face.offset_y,
             props.icon_placement == cast(IconPlacement)IconPlacementAbove,
-            cast(float32)label_height, props.content_alignment,
+            content_height, props.content_alignment,
             face.padding_x)
         if has_shape && content.icon_size > 0.0 {
             PaintSvgIcon(session, node, props.icon_shape,
@@ -396,20 +406,22 @@ Theme :: #import "theme";
         }
         if !props.icon_only && props.label != "" {
             // The label and its detail line are centred together.
-            detail := ButtonDetailSize(props, font, face)
             x: s32 = cast(s32)(bounds.x + content.text_x)
-            y: s32 = cast(s32)(bounds.y +
-                (bounds.height - cast(float32)label_height - detail.y) * 0.5 +
-                face.offset_y)
+            line_y := bounds.y + (bounds.height - line_height - detail.y) * 0.5 + face.offset_y
             if props.icon_placement == cast(IconPlacement)IconPlacementAbove && has_image {
-                y = cast(s32)(bounds.y + content.text_y)
+                line_y = bounds.y + content.text_y
             }
+            y := cast(s32)(line_y + (line_height - cast(float32)label_height) * 0.5)
+            glyphs := StyleTextGlyphs(face)
             PaintClippedLabel(session, node, props.label, x, y, font,
-                ColorFromPacked(Opacity(face.foreground, opacity)), bounds)
+                ColorFromPacked(Opacity(face.foreground, opacity)), bounds, face.typeface,
+                0.0, .{}, glyphs)
             if detail.y > 0.0 {
-                PaintClippedLabel(session, node, props.detail, x, y + label_height,
+                detail_y := ifx typed_line_height then cast(s32)(line_y + line_height) else y + label_height
+                PaintClippedLabel(session, node, props.detail, x, detail_y,
                     ButtonDetailFont(font),
-                    ColorFromPacked(Opacity(face.foreground, opacity * 0.7)), bounds)
+                    ColorFromPacked(Opacity(face.foreground, opacity * 0.7)), bounds, face.typeface,
+                    0.0, .{}, glyphs)
             }
         }
     }
@@ -425,7 +437,7 @@ Theme :: #import "theme";
             StyleFontValue(face.fields, face.font_size), 14)
         label_width: s32 = 0
         if props.label != "" && !props.icon_only {
-            label_width = GlyphWidth(props.label, font, face.typeface)
+            label_width = GlyphWidth(props.label, font, face.typeface, StyleTextGlyphs(face))
         }
         detail := ButtonDetailSize(props, font, face)
         if cast(s32)detail.x > label_width {
@@ -461,9 +473,10 @@ Theme :: #import "theme";
             StyleFontValue(face.fields, face.font_size), 14)
         label_width: s32 = 0
         label_height: s32 = 0
+        glyphs := StyleTextGlyphs(face)
         if props.label != "" && !props.icon_only {
-            label_width = GlyphWidth(props.label, font, face.typeface)
-            label_height = GlyphLineHeight(font, face.typeface)
+            label_width = GlyphWidth(props.label, font, face.typeface, glyphs)
+            label_height = GlyphLineHeight(font, face.typeface, glyphs)
         }
         // A detail line widens the text to its own width and adds its height.
         detail := ButtonDetailSize(props, font, face)
@@ -484,8 +497,10 @@ Theme :: #import "theme";
                 label_width, label_height)
             font = ResolveFont(0, StyleFontValue(face.fields, face.font_size), 14)
             if props.label != "" && !props.icon_only {
-                label_width = GlyphWidth(props.label, font, face.typeface)
-                label_height = GlyphLineHeight(font, face.typeface)
+                label_width = GlyphWidth(props.label, font, face.typeface, glyphs)
+                label_height = GlyphLineHeight(font, face.typeface, glyphs)
+                fitted_detail := ButtonDetailSize(props, font, face)
+                if cast(s32)fitted_detail.x > label_width { label_width = cast(s32)fitted_detail.x }
             }
         }
         node: s32 = -1

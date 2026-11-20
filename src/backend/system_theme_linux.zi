@@ -176,14 +176,14 @@ SystemPaletteRead :: () -> SystemPalette {
         return hosted
     }
     name: string = SystemThemeName()
-    hint: bool = LowerContains(name, "dark") || LowerContains(Environment("GTK_THEME"), ":dark")
     ini: string = ConfigFile("gtk-3.0/settings.ini", file_buffer[:])
     prefer: string = CssTrim(ValueAfter(ini, "gtk-application-prefer-dark-theme=", 10))
-    if prefer == "1" || prefer == "true" || prefer == "True" { hint = true }
+    prefer_dark := prefer == "1" || prefer == "true" || prefer == "True" ||
+        LowerContains(Environment("GTK_THEME"), ":dark")
+    hint := LowerContains(name, "dark") || prefer_dark
     if name.count == 0 { return SystemPaletteFallback(hint) }
     home: string = Environment("HOME")
     data: string = Environment("XDG_DATA_HOME")
-    bases: [4]s32
     candidate: s32 = 0
     while candidate < 4 {
         at: s32 = 0
@@ -217,7 +217,9 @@ SystemPaletteRead :: () -> SystemPalette {
                     size += 1 + more
                 }
             }
-            return SystemPaletteFromCss(TextFromBytes(css_buffer[0:size]), hint)
+            palette := SystemPaletteFromCss(TextFromBytes(css_buffer[0:size]), hint)
+            if prefer_dark && !palette.dark { return SystemPaletteFallback(true) }
+            return palette
         }
         candidate += 1
     }

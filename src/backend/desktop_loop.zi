@@ -10,6 +10,7 @@
 #import "frame_driver"
 #import "input_protocol"
 #import "input_delivery"
+#import "frame_input_provider"
 using Geometry :: #import "geometry";
 #import "program_title"
 using SessionModule :: #import "session";
@@ -20,6 +21,12 @@ Timer :: #import "std/timer_linux";
 
 frame_activity: Clock.FrameActivity;
 last_pointer: Vector2; last_width: float32; last_height: float32;
+last_background: u32;
+FrameTreeCapture :: #type (session: Session, width: s32, height: s32, path: string) -> bool;
+FrameCapture :: struct {
+    tree: FrameTreeCapture
+    path: string
+}
 
 #if OS == .WINDOWS {
     Process :: #import "desktop_process_windows";
@@ -42,15 +49,26 @@ DesktopError :: (message: string) -> s32 {
 }
 
 DrawFrame :: (session: Session, draw: FrameDraw, title: string = "",
-    keyboard_activity: bool = false) -> bool {
+    keyboard_activity: bool = false, appearance: FrameAppearance = .{},
+    capture_input: *FrameInputProvider = null) -> bool {
+    background := appearance.background
+    clear := ifx background == null then cast(u32)0xf8fafcff else background(true)
+    background_changed := clear != last_background
+    last_background = clear
     origin: Vector2 = DesktopOrigin()
     if access_frame != null { access_frame(cast(s32)origin.x, cast(s32)origin.y) }
     BeginDesktopFrame()
+    SetRasterBackground(background)
     viewport: Rectangle = DesktopViewport()
     pointer: PointerFrame = PollPointer()
     secondary := PollSecondaryPointer()
     wheel := DesktopWheelMove()
-    active := keyboard_activity || pointer.down || pointer.pressed || pointer.released ||
+    if capture_input != null {
+        pointer = capture_input.sample.pointer
+        secondary = capture_input.sample.secondary
+        wheel = 0.0
+    }
+    active := background_changed || keyboard_activity || pointer.down || pointer.pressed || pointer.released ||
         secondary.down || secondary.pressed || secondary.released || wheel != 0.0 ||
         pointer.x != last_pointer.x || pointer.y != last_pointer.y ||
         viewport.width != last_width || viewport.height != last_height
@@ -61,15 +79,27 @@ DrawFrame :: (session: Session, draw: FrameDraw, title: string = "",
         // Without the tree driver, widgets and other painters draw directly.
         // Cairo can reuse its previous pixels only if no paint reached it.
         unused draw(session, viewport)
-        DesktopFrameUnchanged(DesktopFrameReusable() && compare && frame_pending)
+        DesktopFrameUnchanged(!background_changed && DesktopFrameReusable() && compare && frame_pending)
     } else {
+        seconds: float64 = 0.0
+        frame_input := capture_input
+        if frame_input == null {
+            seconds = cast(float64)Timer.MonotonicMilliseconds() / 1000.0
+            frame_input = DesktopFrameInputPrepare()
+        }
         input := FrameDriverInput.{.draw = draw, .viewport = viewport, .pointer = pointer,
             .secondary = secondary, .wheel = wheel,
-            .seconds = cast(float64)Timer.MonotonicMilliseconds() / 1000.0,
-            .reusable = DesktopFrameReusable(), .compare = compare,
-            .frame_input = DesktopFrameInputPrepare()}
+            .seconds = seconds,
+            .reusable = !background_changed && DesktopFrameReusable(), .compare = compare,
+            .frame_input = frame_input}
         finished := frame_run(session, input)
-        if !finished.ok { return false }
+        if !finished.ok {
+            if capture_input != null {
+                unused DesktopError("kryon: preview fixture did not commit a frame; check its return value and widget tree")
+            }
+            return false
+        }
+        if capture_input != null { return FinishRasterFrame() }
         unused DesktopCursorApply(finished.cursor)
         DesktopFrameUnchanged(finished.paint_unchanged)
     }
@@ -85,12 +115,13 @@ DrawFrame :: (session: Session, draw: FrameDraw, title: string = "",
 // Runs `draw` in a desktop window of `width` by `height` pixels until it
 // closes, and returns the program's exit status. The window takes its title
 // from the file the project tool writes beside the program.
-Run :: (draw: FrameDraw, width: s32 = 960, height: s32 = 600) -> s32 {
-    return RunTitled(draw, width, height, ProgramTitle())
+Run :: (draw: FrameDraw, width: s32 = 960, height: s32 = 600, appearance: FrameAppearance = .{}) -> s32 {
+    return RunTitled(draw, width, height, ProgramTitle(), appearance)
 }
 
 // Runs `draw` in a window titled `title`.
-RunTitled :: (draw: FrameDraw, width: s32, height: s32, title: string) -> s32 {
+RunTitled :: (draw: FrameDraw, width: s32, height: s32, title: string,
+    appearance: FrameAppearance = .{}, capture: FrameCapture = .{}) -> s32 {
     if !OpenDesktopTitled(width, height, title) {
         CloseDesktop()
         return DesktopError("kryon: could not open the desktop window")
@@ -102,21 +133,37 @@ RunTitled :: (draw: FrameDraw, width: s32, height: s32, title: string) -> s32 {
     }
     ok: bool = true
     if CaptureRequested() {
-        ok = PollDesktop() && DrawFrame(session, draw, title)
+        capture_input: FrameInputProvider
+        input: *FrameInputProvider = null
+        if capture.tree != null {
+            // A preview receives the same neutral input and clock on every run.
+            FrameInputProviderGather(*capture_input, .{.pointer = .{.x = -1.0, .y = -1.0}})
+            input = *capture_input
+        } else { ok = PollDesktop() }
+        if ok { ok = DrawFrame(session, draw, title, appearance = appearance, capture_input = input) }
         // A capture shows smooth pictures' finished Lanczos copies.
         settled := 0
         while ok && settled < 64 && RasterSettle() {
-            ok = DrawFrame(session, draw, title)
+            if input != null { FrameInputProviderEnd(input) }
+            ok = DrawFrame(session, draw, title, appearance = appearance, capture_input = input)
             settled += 1
         }
-        if ok { ok = CaptureConfigured() }
+        if input != null { FrameInputProviderEnd(input) }
+        if ok && capture.tree != null && !capture.tree(session, width, height, capture.path) {
+            unused DesktopError("kryon: could not write the preview widget tree with the requested viewport")
+            ok = false
+        }
+        if ok {
+            ok = CaptureConfigured()
+            if !ok && capture.tree != null { unused DesktopError("kryon: could not write the preview PNG") }
+        }
     } else {
         while ok {
             if !PollDesktop() { break }
             if frame_test_input != null { frame_test_input(DesktopInputQueue()) }
             keyboard_activity := frame_keys != null &&
                 frame_keys(session, DesktopInputQueue(), DesktopModifiers())
-            ok = DrawFrame(session, draw, title, keyboard_activity)
+            ok = DrawFrame(session, draw, title, keyboard_activity, appearance)
             if frame_after != null { frame_after(session) }
             if ok { PauseDesktop() }
         }

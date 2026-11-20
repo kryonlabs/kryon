@@ -1,0 +1,36 @@
+[package]
+name = "dashboard"
+entry = "src/app.zi"
+module_roots = ["src", "previews"]
+links = ["X11", "cairo"]
+tool = "kryon"
+
+[toolchain]
+git = "https://github.com/ziranlang/ziran.git"
+ref = "master"
+
+[dependencies.kryon]
+git = "https://github.com/kryonlabs/kryon.git"
+ref = "master"
+
+[dependencies.css]
+git = "https://github.com/kryonlabs/css.git"
+ref = "master"
+
+[tool.kryon]
+default_profile = "desktop"
+entry = "src/app.zi"
+
+[tool.kryon.profiles.desktop]
+backend = "desktop"
+host = "src/desktop_host.zi"
+
+[tool.kryon.profiles.portable]
+backend = "desktop"
+codegen = "zx"
+
+[tool.kryon.profiles.web]
+backend = "canvas"
+
+[tool.kryon.profiles.shot]
+backend = "pixmap"

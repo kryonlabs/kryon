@@ -38,7 +38,7 @@ Width :: (props: PropsModule.Props, item: BreadcrumbItem, index: s32) -> float32
     face := Button.ButtonInstalledFaceFor(action, state)
     font := ResolveFont(0, StyleFontValue(face.fields, face.font_size), 14)
     return MeasureBounds(action, face, Button.ButtonMinimumHeight(action.size), font,
-        cast(float32)GlyphWidth(item.label, font, face.typeface),
+        cast(float32)GlyphWidth(item.label, font, face.typeface, StyleTextGlyphs(face)),
         0.0, 1.0, false, 0.0).width
 }
 Visible :: (index: s32, first: s32, active: s32) -> bool {

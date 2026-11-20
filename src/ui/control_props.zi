@@ -98,4 +98,30 @@ StyleMotionDuration :: 2097152
 StyleMotionMultiplier :: 4194304
 StyleMotionEasing :: 8388608
 StyleMotionReduced :: 16777216
+StyleRowGap :: 33554432
+StyleColumnGap :: 67108864
+StyleFontWeight :: 134217728
+StyleFontStyle :: 268435456
+}
+
+FontStyle :: enum {
+    FontStyleNormal :: 0
+    FontStyleOblique :: 1
+    FontStyleItalic :: 2
+}
+
+TextGlyphStyle :: struct {
+    weight: s32
+    style: FontStyle
+    letter_spacing: float32
+}
+
+SameTextGlyphStyle :: (a: TextGlyphStyle, b: TextGlyphStyle) -> bool {
+    return a.weight == b.weight && a.style == b.style && a.letter_spacing == b.letter_spacing
+}
+
+LineHeightUnit :: enum {
+    LineHeightNormal :: 0
+    LineHeightFactor :: 1
+    LineHeightLength :: 2
 }

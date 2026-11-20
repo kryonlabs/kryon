@@ -1,0 +1,39 @@
+#import "drawing_props"
+#import "geometry"
+
+// Retained widgets also expose direct paint operations through these host
+// effects. A document has no pixel destination: its visible output is the
+// committed semantics tree and browser CSS. Font metrics have their own host.
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {}
+
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) {}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32, segments: s32, color: Color) {}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {}
+
+#program_export
+RasterTextRotated :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle, origin: Vector2, rotation: float32,
+    outer_clip: Rectangle, outer_clipped: bool, emphasis: bool, italic: bool) {}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32, source: Rectangle,
+    bounds: Rectangle, clip: Rectangle, origin: Vector2, rotation: float32,
+    radius: float32, tint: Color) {}
+
+#program_export
+RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
+    points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) {}

@@ -5,7 +5,7 @@ Utf8 :: #import "std/utf8"
 using Vectors :: #import "std/vec"
 
 // The caller owns bytes; length excludes unused capacity, with no trailing
-// zero required. Composition and clipboard lifetimes remain with the caller.
+// zero required. Bind keeps preedit bytes separately from the value.
 State :: struct {
     bytes: []u8
     length: s32
@@ -13,6 +13,11 @@ State :: struct {
     anchor: s32
     scroll_x: s32
     focused: bool
+    preedit: [4096]u8
+    preedit_length: s32
+    preedit_cursor: s32
+    preedit_selection: s32
+    preedit_active: bool
 }
 
 Input :: struct {
@@ -92,7 +97,7 @@ Result :: struct {
     edit: Edit
 }
 
-StateValid :: (state: State) -> bool {
+StateValid :: (state: *State) -> bool {
     return state.bytes.count <= 2147483647 && state.length >= 0 &&
         state.length <= state.bytes.count &&
         Utf8.Valid(TextView(state.bytes[:state.length]))
@@ -104,6 +109,10 @@ StateValid :: (state: State) -> bool {
 #program_export
 StateProps :: (state: State,
     props: Props) -> Props {
+    return StatePropsFor(*state, props)
+}
+
+StatePropsFor :: (state: *State, props: Props) -> Props {
     if !StateValid(state) {
         props.value = ""
         props.disabled = true
@@ -131,7 +140,7 @@ StateProps :: (state: State,
 StateApplyEdit :: (state: *State,
     edit: Edit) -> bool {
     if state == null { return false }
-    if !StateValid(state.*) { return false }
+    if !StateValid(state) { return false }
     if !edit.changed { return true }
     if edit.start < 0 || edit.end < edit.start || edit.end > state.length {
         return false

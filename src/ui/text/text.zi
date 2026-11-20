@@ -82,6 +82,17 @@ using Text :: #import "text_props";
         return range.end == text.count || (text[range.end] & cast(u8)192) != cast(u8)128
     }
 
+    TextLineCaret :: (props: Text.Props, prepared: PreparedText, line: TextLinePlan, at: s32) -> s32 {
+        return GlyphCaret(props.text[line.start:line.end], at - line.start,
+            prepared.font, prepared.typeface, prepared.glyph_style)
+    }
+
+    TextLineSpans :: (props: Text.Props, prepared: PreparedText, line: TextLinePlan,
+        first: s32, last: s32) -> GlyphSpans {
+        return GlyphSpansFor(props.text[line.start:line.end], first - line.start, last - line.start,
+            prepared.font, prepared.typeface, prepared.glyph_style)
+    }
+
     PaintTextEmphasis :: (session: Session, node: s32, props: Text.Props,
         prepared: PreparedText, line: TextLinePlan, x: s32, y: s32, clip: Rectangle) {
         previous_end: s32 = 0
@@ -104,10 +115,22 @@ using Text :: #import "text_props";
             at := start
             while at < end {
                 run := TextLinkRunAt(props, at, end)
-                left := x + GlyphWidth(props.text[line.start:at], prepared.font, prepared.typeface)
                 color := ifx run.link then TextLinkColor(prepared.color) else prepared.color
-                PaintClippedEmphasis(session, node, props.text[at:run.end], left, y,
-                    prepared.font, color, clip, prepared.typeface, props.rotation, TextOrigin(props, prepared))
+                origin := TextOrigin(props, prepared)
+                if caret_preserves_layout {
+                    spans := TextLineSpans(props, prepared, line, at, run.end)
+                    for index: cast(s32)0..spans.count - 1 {
+                        span := GlyphSpanAt(spans, index)
+                        run_clip := TextRunClip(clip, x + span.left, x + span.right)
+                        PaintClippedEmphasis(session, node, props.text[line.start:line.end], x, y,
+                            prepared.font, color, run_clip, prepared.typeface, props.rotation, origin, prepared.glyph_style)
+                    }
+                    GlyphSpansDone(spans)
+                } else {
+                    from := x + TextLineCaret(props, prepared, line, at)
+                    PaintClippedEmphasis(session, node, props.text[at:run.end], from, y,
+                        prepared.font, color, clip, prepared.typeface, props.rotation, origin, prepared.glyph_style)
+                }
                 at = run.end
             }
         }
@@ -158,32 +181,63 @@ using Text :: #import "text_props";
     // characters in the link color and underlined, the others in the text's
     // color.
     PaintTextLineRuns :: (session: Session, node: s32, props: Text.Props,
-        prepared: PreparedText, line_start: s32, value: string, x: s32, y: s32, clip: Rectangle) {
-        line_end := line_start + cast(s32)value.count
-        at := line_start
-        while at < line_end {
-            run := TextLinkRunAt(props, at, line_end)
-            left := x + GlyphWidth(props.text[line_start:at], prepared.font, prepared.typeface)
-            if !run.link {
-                PaintClippedLabel(session, node, props.text[at:run.end], left, y, prepared.font,
-                    prepared.color, clip, prepared.typeface, props.rotation, TextOrigin(props, prepared))
-            } else {
-                color := TextLinkColor(prepared.color)
-                PaintClippedLabel(session, node, props.text[at:run.end], left, y, prepared.font,
-                    color, clip, prepared.typeface, props.rotation, TextOrigin(props, prepared))
-                width := GlyphWidth(props.text[at:run.end], prepared.font, prepared.typeface)
-                underline := RectangleIntersection(Rectangle.{cast(float32)left,
-                        cast(float32)(y + prepared.line_height - 1), cast(float32)width, 1.0}, clip)
-                if underline.width > 0.0 && underline.height > 0.0 {
-                    PaintTextRule(session,node,props,prepared,underline,color)
+        prepared: PreparedText, line: TextLinePlan, x: s32, y: s32, clip: Rectangle) {
+        origin := TextOrigin(props, prepared)
+        value := props.text[line.start:line.end]
+        at := line.start
+        while at < line.end {
+            run := TextLinkRunAt(props, at, line.end)
+            color := ifx run.link then TextLinkColor(prepared.color) else prepared.color
+            if !run.link && at == line.start && run.end == line.end {
+                PaintClippedLabel(session, node, value, x, y, prepared.font,
+                    color, clip, prepared.typeface, props.rotation, origin, prepared.glyph_style)
+                break
+            }
+            if !caret_preserves_layout {
+                from := x + TextLineCaret(props, prepared, line, at)
+                PaintClippedLabel(session, node, props.text[at:run.end], from, y, prepared.font,
+                    color, clip, prepared.typeface, props.rotation, origin, prepared.glyph_style)
+            }
+            if caret_preserves_layout || run.link {
+                spans := TextLineSpans(props, prepared, line, at, run.end)
+                for index: cast(s32)0..spans.count - 1 {
+                    span := GlyphSpanAt(spans, index)
+                    run_clip := TextRunClip(clip, x + span.left, x + span.right)
+                    if caret_preserves_layout {
+                        PaintClippedLabel(session, node, value, x, y, prepared.font,
+                            color, run_clip, prepared.typeface, props.rotation, origin, prepared.glyph_style)
+                    }
+                    if run.link {
+                        underline := RectangleIntersection(Rectangle.{run_clip.x,
+                            cast(float32)(y + prepared.glyph_height - 1), run_clip.width, 1.0}, clip)
+                        if underline.width > 0.0 && underline.height > 0.0 {
+                            PaintTextRule(session, node, props, prepared, underline, color)
+                        }
+                    }
                 }
+                GlyphSpansDone(spans)
             }
             at = run.end
         }
     }
 
+    TextRunClip :: (clip: Rectangle, from: s32, to: s32) -> Rectangle {
+        left := ifx from < to then from else to
+        right := ifx from < to then to else from
+        return RectangleIntersection(clip, Rectangle.{cast(float32)left, clip.y,
+            cast(float32)(right - left), clip.height})
+    }
+
     #program_export
     PrepareText :: (props: Text.Props, face: TextFace) -> PreparedText {
+        lines: []TextLinePlan
+        return PrepareTextWithLines(props, face, lines)
+    }
+
+    // The draw owns these borrowed plans only until its paint is queued.
+    // Overflow keeps the ordinary line-at-a-time layout path.
+    PrepareTextWithLines :: (props: Text.Props, face: TextFace,
+        lines: []TextLinePlan) -> PreparedText {
         prepared: PreparedText
         prepared.bounds = props.bounds
         prepared.typeface = ifx props.typeface != "" then props.typeface else face.value.typeface
@@ -194,14 +248,22 @@ using Text :: #import "text_props";
             false, (face.value.fields & cast(u32)StyleForeground) != cast(u32)0,
             // A stylesheet's opacity already supplies the disabled face;
             // the fallback must not fade it a second time.
-            props.disabled && (face.value.fields & cast(u32)StyleOpacity) == cast(u32)0, false, 0)
+            props.disabled && (face.value.fields & cast(u32)StyleOpacity) == cast(u32)0, false)
         prepared.font = appearance.font
         prepared.color = ColorFromPacked(Opacity(appearance.color,
             StyleOpacityValue(face.value.fields, face.value.opacity)))
-        prepared.line_height = GlyphLineHeight(prepared.font,
-            prepared.typeface)
-        if prepared.line_height < 1 { prepared.line_height = prepared.font }
+        prepared.glyph_style = StyleTextGlyphs(face.value)
+        prepared.glyph_height = GlyphLineHeight(prepared.font, prepared.typeface, prepared.glyph_style)
+        if prepared.glyph_height < 1 { prepared.glyph_height = prepared.font }
+        prepared.line_height = prepared.glyph_height
         prepared.line_gap = ifx props.line_gap > 0 then props.line_gap else TextDefaultLineGap(1.0)
+        line_height := StyleTypedLineHeight(face.value, cast(float32)prepared.font,
+            cast(float32)prepared.glyph_height)
+        if line_height >= 0.0 {
+            prepared.line_height = cast(s32)(cast(float64)line_height + 0.5)
+            prepared.line_gap = 0
+            prepared.glyph_offset = (prepared.line_height - prepared.glyph_height) / 2
+        }
         prepared.wrap = cast(Wrap)TextWrapPolicy(props.bounds.width,
             cast(s32)props.wrap)
 
@@ -210,7 +272,8 @@ using Text :: #import "text_props";
         while start <= (cast(s32)props.text.count) {
             line: TextLinePlan = NextTextLine(props.text, start,
                 props.bounds.width, prepared.wrap, prepared.font,
-                prepared.typeface)
+                prepared.typeface, prepared.glyph_style)
+            if prepared.line_count < lines.count { lines[prepared.line_count] = line }
             prepared.line_count += 1
             if line.width > maximum { maximum = line.width }
             start = line.next
@@ -225,14 +288,11 @@ using Text :: #import "text_props";
     // The longest start of value, ending on a whole character, that is at
     // most max_width wide.
     TextEllipsisStart :: (value: string, max_width: s32, font: s32,
-        typeface: string) -> string {
+        typeface: string, glyph_style: TextGlyphStyle) -> string {
         end: s32 = cast(s32)value.count
         while end > 0 {
-            end -= 1
-            while end > 0 && (value[end] & cast(u8)192) == cast(u8)128 {
-                end -= 1
-            }
-            if GlyphWidth(value[0:end], font, typeface) <= max_width {
+            end = Grapheme.Previous(value, end)
+            if GlyphWidth(value[0:end], font, typeface, glyph_style) <= max_width {
                 return value[0:end]
             }
         }
@@ -265,6 +325,12 @@ using Text :: #import "text_props";
     #program_export
     PaintTextLines :: (session: Session, node: s32, props: Text.Props,
         prepared: PreparedText) {
+        lines: []TextLinePlan
+        PaintTextLinesWithPlans(session, node, props, prepared, lines, GlyphMetricsRevision())
+    }
+
+    PaintTextLinesWithPlans :: (session: Session, node: s32, props: Text.Props,
+        prepared: PreparedText, lines: []TextLinePlan, revision: u64) {
         total_height: s32 = TextLayoutTotalHeight(prepared.line_count,
             prepared.line_height, prepared.line_gap)
         y: s32 = cast(s32)prepared.bounds.y +
@@ -277,10 +343,17 @@ using Text :: #import "text_props";
             typed_end = TextCharactersEnd(props.text, props.typed)
         }
         start: s32 = 0
+        line_index: s32 = 0
         while start <= (cast(s32)props.text.count) {
-            line: TextLinePlan = NextTextLine(props.text, start,
-                prepared.bounds.width, prepared.wrap, prepared.font,
-                prepared.typeface)
+            line: TextLinePlan
+            if line_index < lines.count && GlyphMetricsRevision() == revision {
+                line = lines[line_index]
+            } else {
+                line = NextTextLine(props.text, start,
+                    prepared.bounds.width, prepared.wrap, prepared.font,
+                    prepared.typeface, prepared.glyph_style)
+            }
+            line_index += 1
             if line.start >= typed_end && typed_end < cast(s32)props.text.count {
                 break
             }
@@ -293,11 +366,11 @@ using Text :: #import "text_props";
             cast(float32)line.width > prepared.bounds.width
             dots_width: s32 = 0
             if ellipsis {
-                dots_width = GlyphWidth("...", prepared.font, prepared.typeface)
+                dots_width = GlyphWidth("...", prepared.font, prepared.typeface, prepared.glyph_style)
                 value = TextEllipsisStart(value,
                     cast(s32)prepared.bounds.width - dots_width,
-                    prepared.font, prepared.typeface)
-                line.width = GlyphWidth(value, prepared.font, prepared.typeface) +
+                    prepared.font, prepared.typeface, prepared.glyph_style)
+                line.width = GlyphWidth(value, prepared.font, prepared.typeface, prepared.glyph_style) +
                 dots_width
                 line.end = line.start + cast(s32)value.count
             }
@@ -308,35 +381,37 @@ using Text :: #import "text_props";
             if line.end > typed_end {
                 value = TextSpan(props.text, line.start, typed_end - line.start)
                 line.end = typed_end
-                line.width = GlyphWidth(value, prepared.font, prepared.typeface)
+                line.width = GlyphWidth(value, prepared.font, prepared.typeface, prepared.glyph_style)
                 ellipsis = false
             }
             // A line that starts inside the box is drawn whole: a box a little
             // shorter than the line must not cut off the bottoms of its glyphs.
             // Lines that start below the box are still clipped away.
             clip: Rectangle = prepared.bounds
+            glyph_y := y + prepared.glyph_offset
             if cast(float32)y < clip.y + clip.height {
-                if cast(float32)y < clip.y {
-                    clip.height += clip.y - cast(float32)y
-                    clip.y = cast(float32)y
+                if cast(float32)glyph_y < clip.y {
+                    clip.height += clip.y - cast(float32)glyph_y
+                    clip.y = cast(float32)glyph_y
                 }
-                line_bottom: float32 = cast(float32)(y + prepared.line_height)
+                line_bottom: float32 = cast(float32)(glyph_y + prepared.glyph_height)
                 if line_bottom > clip.y + clip.height {
                     clip.height = line_bottom - clip.y
                 }
             }
             if value != "" {
-                PaintTextLineRuns(session, node, props, prepared, line.start, value, x, y, clip)
+                PaintTextLineRuns(session, node, props, prepared, line, x, glyph_y, clip)
                 if ellipsis {
                     PaintClippedLabel(session, node, "...",
-                        x + line.width - dots_width, y, prepared.font,
-                        prepared.color, clip, prepared.typeface, props.rotation, TextOrigin(props, prepared))
+                        x + line.width - dots_width, glyph_y, prepared.font,
+                        prepared.color, clip, prepared.typeface, props.rotation,
+                        TextOrigin(props, prepared), prepared.glyph_style)
                 }
-                PaintTextEmphasis(session, node, props, prepared, line, x, y, clip)
+                PaintTextEmphasis(session, node, props, prepared, line, x, glyph_y, clip)
                 if props.strikethrough {
                     strike: Rectangle = TextStrikethroughBounds(cast(float32)x,
-                        cast(float32)y, cast(float32)line.width,
-                        cast(float32)prepared.line_height, 1.0)
+                        cast(float32)glyph_y, cast(float32)line.width,
+                        cast(float32)prepared.glyph_height, 1.0)
                     strike = RectangleIntersection(strike, prepared.bounds)
                     if strike.width > 0.0 && strike.height > 0.0 {
                         PaintTextRule(session,node,props,prepared,strike,prepared.color)
@@ -382,7 +457,9 @@ using Text :: #import "text_props";
             props.bounds = TreeRootBounds(session)
         }
         face: TextFace = TextFaceOf(props)
-        prepared: PreparedText = PrepareText(props, face)
+        lines: [8]TextLinePlan
+        revision := GlyphMetricsRevision()
+        prepared: PreparedText = PrepareTextWithLines(props, face, lines[:])
         node: s32 = -1
         if TreeIsBuilding(session) {
             node = TreeSubmitCurrent(session, props.key, WidgetKindText,
@@ -400,7 +477,9 @@ using Text :: #import "text_props";
         if props.selectable && node >= 0 && TextSelectionPresent(session, node, props, prepared) {
             return
         }
-        PaintTextLines(session, node, props, prepared)
+        count: s32 = prepared.line_count
+        if count > lines.count { count = cast(s32)lines.count }
+        PaintTextLinesWithPlans(session, node, props, prepared, lines[:count], revision)
     }
 
     Draw :: (frame: $T, props: Text.Props) {
@@ -423,7 +502,7 @@ using Text :: #import "text_props";
         start: s32 = 0
         while start <= cast(s32)props.text.count {
             line := NextTextLine(props.text, start, prepared.bounds.width,
-                prepared.wrap, prepared.font, prepared.typeface)
+                prepared.wrap, prepared.font, prepared.typeface, prepared.glyph_style)
             bottom := top + prepared.line_height + prepared.line_gap
             if y >= cast(float32)top && y < cast(float32)bottom {
                 left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
@@ -439,11 +518,14 @@ using Text :: #import "text_props";
                     if first >= last {
                         continue
                     }
-                    from := left + GlyphWidth(props.text[line.start:first], prepared.font, prepared.typeface)
-                    to := left + GlyphWidth(props.text[line.start:last], prepared.font, prepared.typeface)
-                    if x >= cast(float32)from && x < cast(float32)to {
-                        return cast(s32)index
+                    spans := TextLineSpans(props, prepared, line, first, last)
+                    hit := false
+                    for visual: cast(s32)0..spans.count - 1 {
+                        span := GlyphSpanAt(spans, visual)
+                        if x >= cast(float32)(left + span.left) && x < cast(float32)(left + span.right) { hit = true; break }
                     }
+                    GlyphSpansDone(spans)
+                    if hit { return cast(s32)index }
                 }
                 return -1
             }
@@ -470,21 +552,24 @@ using Text :: #import "text_props";
         start: s32 = 0
         while start <= props.text.count {
             line := NextTextLine(props.text, start, prepared.bounds.width,
-                prepared.wrap, prepared.font, prepared.typeface)
+                prepared.wrap, prepared.font, prepared.typeface, prepared.glyph_style)
             if y < cast(float32)(top + prepared.line_height + prepared.line_gap) || line.next > props.text.count {
                 left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
                     line.width, cast(s32)props.align)
                 at := line.start
+                nearest := at
+                distance := x - cast(float32)(left + TextLineCaret(props, prepared, line, at))
+                if distance < 0.0 { distance = -distance }
                 while at < line.end {
-                    next := Grapheme.Next(props.text, at)
-                    before := GlyphWidth(props.text[line.start:at], prepared.font, prepared.typeface)
-                    after := GlyphWidth(props.text[line.start:next], prepared.font, prepared.typeface)
-                    if x < cast(float32)left + cast(float32)(before + after) / 2.0 {
-                        return at
+                    at = Grapheme.Next(props.text, at)
+                    next_distance := x - cast(float32)(left + TextLineCaret(props, prepared, line, at))
+                    if next_distance < 0.0 { next_distance = -next_distance }
+                    if next_distance <= distance {
+                        nearest = at
+                        distance = next_distance
                     }
-                    at = next
                 }
-                return line.end
+                return nearest
             }
             start = line.next
             top += prepared.line_height + prepared.line_gap
@@ -497,11 +582,11 @@ using Text :: #import "text_props";
         start: s32 = 0
         while start <= props.text.count {
             line := NextTextLine(props.text, start, prepared.bounds.width,
-                prepared.wrap, prepared.font, prepared.typeface)
+                prepared.wrap, prepared.font, prepared.typeface, prepared.glyph_style)
             if at <= line.end || line.next > props.text.count {
                 left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
                     line.width, cast(s32)props.align)
-                width := GlyphWidth(props.text[line.start:at], prepared.font, prepared.typeface)
+                width := TextLineCaret(props, prepared, line, at)
                 return Rectangle.{cast(float32)(left + width), cast(float32)top,
                     1.0, cast(float32)prepared.line_height}
             }
@@ -519,17 +604,20 @@ using Text :: #import "text_props";
         start: s32 = 0
         while start <= props.text.count {
             line := NextTextLine(props.text, start, prepared.bounds.width,
-                prepared.wrap, prepared.font, prepared.typeface)
+                prepared.wrap, prepared.font, prepared.typeface, prepared.glyph_style)
             from := ifx first > line.start then first else line.start
             to := ifx last < line.end then last else line.end
             if from < to {
                 left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
                     line.width, cast(s32)props.align)
-                before := GlyphWidth(props.text[line.start:from], prepared.font, prepared.typeface)
-                after := GlyphWidth(props.text[line.start:to], prepared.font, prepared.typeface)
-                PaintTextRule(session,node,props,prepared,RectangleIntersection(prepared.bounds,
-                    Rectangle.{cast(float32)(left + before), cast(float32)top,
-                        cast(float32)(after - before), cast(float32)prepared.line_height}),color)
+                row := RectangleIntersection(prepared.bounds, Rectangle.{prepared.bounds.x,
+                    cast(float32)top, prepared.bounds.width, cast(float32)prepared.line_height})
+                spans := TextLineSpans(props, prepared, line, from, to)
+                for index: cast(s32)0..spans.count - 1 {
+                    span := GlyphSpanAt(spans, index)
+                    PaintTextRule(session, node, props, prepared, TextRunClip(row, left + span.left, left + span.right), color)
+                }
+                GlyphSpansDone(spans)
             }
             start = line.next
             top += prepared.line_height + prepared.line_gap

@@ -1,0 +1,14 @@
+#import "kryon/geometry"
+#import "kryon/session"
+#import "dashboard"
+
+preview_ready: bool;
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    if !preview_ready {
+        preview_ready = true
+        DashboardSetFixture("loading")
+    }
+    return DashboardFrame(session, viewport)
+}

@@ -20,6 +20,10 @@
 #import "session"
 #import "paint_queue"
 #import "web"
+#import "control_props"
+#import "font_metrics"
+Fonts :: #import "page_font";
+using FontStyle;
 
 scheduled_frames: s32;
 
@@ -177,6 +181,66 @@ MeshLossFrame :: (session: Session) -> bool {
 CanvasTestText :: (face: s32, size: s32, zoom: float32, width: s32,
     dark: bool) -> s32 #foreign browser "canvas_test_text";
 
+CanvasInk :: struct { right: s32; ink: s64; signature: u64 }
+type_pixels: [221184]u8;
+
+CanvasTypographyInk :: (value: string) -> CanvasInk {
+    BeginDrawing()
+    ClearBackground(.{255, 255, 255, 255})
+    RasterText(value, 4, 3, 28, .{0, 0, 0, 255})
+    EndDrawing()
+    scope := WebScope(); defer WebEnd(scope)
+    dpi := PageDpi()
+    width := cast(s32)(150.0 * dpi); height := cast(s32)(45.0 * dpi)
+    image := WebAsObject(WebCall4(page_ctx, WebName("getImageData"), WebNumber(0.0), WebNumber(0.0),
+        WebNumber(cast(float64)width), WebNumber(cast(float64)height)))
+    data := WebGetObject(image, WebName("data"))
+    ink: CanvasInk
+    if data == 0 || width * height * 4 > type_pixels.count { return ink }
+    unused WebCopyOut(data, cast(*void)*type_pixels[0], width * height * 4)
+    for y: cast(s32)0..height - 1 {
+        for x: cast(s32)0..width - 1 {
+            dark := 255 - cast(s32)type_pixels[(y * width + x) * 4]
+            if dark > 32 {
+                ink.ink += cast(s64)dark
+                ink.signature = ink.signature * cast(u64)31 + cast(u64)(y * width + x)
+                if x > ink.right { ink.right = x }
+            }
+        }
+    }
+    return ink
+}
+
+TestCanvasTypography :: () -> bool {
+    value := "éHHH"
+    normal := GlyphWidth(value, 28, "")
+    before := CanvasTypographyInk(value)
+    glyphs := TextGlyphStyle.{.letter_spacing = 6.0}
+    previous := UseTextGlyphStyle(glyphs)
+    defer { unused UseTextGlyphStyle(previous) }
+    tracked := MeasureGlyphWidth(value, 28, "")
+    plus := CanvasTypographyInk(value)
+    dpi := PageDpi()
+    if before.ink <= 0 || tracked - normal < 18 || tracked - normal > 24 ||
+        plus.right - before.right < cast(s32)(17.0 * dpi) { return false }
+    cached := Fonts.page_text_size_count
+    slot := Fonts.page_text_size_next
+    if MeasureGlyphWidth(value, 28, "") != tracked || CanvasTypographyInk(value).signature != plus.signature ||
+        cached != Fonts.page_text_size_count || slot != Fonts.page_text_size_next { return false }
+    glyphs.letter_spacing = -2.0
+    unused UseTextGlyphStyle(glyphs)
+    if MeasureGlyphWidth(value, 28, "") >= normal || CanvasTypographyInk(value).right >= before.right { return false }
+    glyphs = .{.weight = 700}
+    unused UseTextGlyphStyle(glyphs)
+    bold := CanvasTypographyInk(value)
+    glyphs = .{.style = cast(FontStyle)FontStyleItalic}
+    unused UseTextGlyphStyle(glyphs)
+    slanted := CanvasTypographyInk(value)
+    unused UseTextGlyphStyle(previous)
+    return bold.ink > before.ink && slanted.ink > 0 && slanted.signature != before.signature &&
+        MeasureGlyphWidth(value, 28, "") == normal && CanvasTypographyInk(value).signature == before.signature
+}
+
 // Compare UI text with browser text drawn directly at the output resolution.
 // An atlas resized from its seed size cannot pass this pixel comparison.
 TestTextResolution :: (loaded: bool) {
@@ -217,6 +281,7 @@ main :: () -> s32 {
     CopyCString("Canvas Zi runtime", title[:])
     InitWindow(160, 120, *title[0])
     if !IsWindowReady() || GetScreenWidth() != 160 { return 1 }
+    if !TestCanvasTypography() { return 49 }
     if !TestExternalFramePacing() { return 31 }
     if !TestSpriteState(false) || !TestSpriteState(true) { CanvasTestFail(46) }
     if !TestRetainedCanvas() { CanvasTestFail(47) }

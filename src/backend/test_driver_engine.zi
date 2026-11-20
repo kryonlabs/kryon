@@ -23,6 +23,7 @@ TestDriverRead :: (data: *u8, size: usize, count: usize,
 TestDriverWrite :: (data: *u8, size: usize, count: usize,
     file: *void) -> usize #foreign test_driver_c "fwrite";
 TestDriverClose :: (file: *void) -> s32 #foreign test_driver_c "fclose";
+TestDriverFileError :: (file: *void) -> s32 #foreign test_driver_c "ferror";
 TestDriverRename :: (source: *u8, destination: *u8) -> s32 #foreign test_driver_c "rename";
 TestDriverRemove :: (path: *u8) -> s32 #foreign test_driver_c "remove";
 
@@ -795,7 +796,7 @@ TestDriverPutField :: (file: *void, name: string) {
     TestDriverPut(file, "\":")
 }
 
-TestDriverPutNode :: (file: *void, session: Session, node: TestDriverNode) {
+TestDriverPutNode :: (file: *void, session: Session, node: TestDriverNode, role_fallback: bool) {
     entry := node.entry
     TestDriverPut(file, "{\"index\":")
     TestDriverPutInteger(file, cast(s64)node.index)
@@ -803,10 +804,12 @@ TestDriverPutNode :: (file: *void, session: Session, node: TestDriverNode) {
     TestDriverPutInteger(file, cast(s64)entry.parent)
     TestDriverPutField(file, "key")
     TestDriverPutUnsigned(file, entry.key)
+    kind := TestDriverKindName(entry.kind)
+    role := TestDriverRoleName(entry.semantic_kind)
     TestDriverPutField(file, "kind")
-    TestDriverPutString(file, TestDriverKindName(entry.kind))
+    TestDriverPutString(file, kind)
     TestDriverPutField(file, "role")
-    TestDriverPutString(file, TestDriverRoleName(entry.semantic_kind))
+    TestDriverPutString(file, ifx role == "" && role_fallback then kind else role)
     TestDriverPutField(file, "label")
     TestDriverPutString(file, entry.semantic_label)
     TestDriverPutField(file, "detail")
@@ -857,6 +860,51 @@ TestDriverPutNode :: (file: *void, session: Session, node: TestDriverNode) {
     TestDriverPut(file, "}")
 }
 
+TestDriverPutNodes :: (file: *void, session: Session, only: s32, all: bool,
+    selector: TestDriverSelector, role_fallback: bool = false) {
+    TestDriverPut(file, "[")
+    written: s32 = 0
+    if only >= 0 && only < TreeCount(session) {
+        TestDriverPutNode(file, session, TestDriverNodeAt(session, only), role_fallback)
+    } else if all {
+        count := TreeCount(session)
+        index: s32 = 0
+        while index < count {
+            node := TestDriverNodeAt(session, index)
+            if TestDriverMatches(session, node, selector) {
+                if written > 0 { TestDriverPut(file, ",") }
+                TestDriverPutNode(file, session, node, role_fallback)
+                written += 1
+            }
+            index += 1
+        }
+    }
+    TestDriverPut(file, "]")
+}
+
+// The one-shot preview and the interactive test driver inspect the same nodes.
+TestDriverWriteTree :: (session: Session, width: s32, height: s32, path: string) -> bool {
+    if TreeCount(session) < 1 { return false }
+    bounds := TreeNodeAt(session, 0).bounds
+    if bounds.x != 0.0 || bounds.y != 0.0 ||
+    bounds.width != cast(float32)width || bounds.height != cast(float32)height { return false }
+    name: [TEST_DRIVER_PATH_LIMIT]u8
+    mode: [3]u8
+    if !CopyCString(path, name[:]) || !CopyCString("wb", mode[:]) { return false }
+    file := TestDriverOpen(*name[0], *mode[0])
+    if file == null { return false }
+    TestDriverPut(file, "{\"version\":1,\"width\":")
+    TestDriverPutInteger(file, cast(s64)width)
+    TestDriverPutField(file, "height")
+    TestDriverPutInteger(file, cast(s64)height)
+    TestDriverPutField(file, "nodes")
+    selector: TestDriverSelector
+    TestDriverPutNodes(file, session, -1, true, selector, role_fallback = true)
+    TestDriverPut(file, "}\n")
+    ok := TestDriverFileError(file) == 0
+    return TestDriverClose(file) == 0 && ok
+}
+
 // Writes the reply and its nodes: none, one (only >= 0), every match of
 // selector (all), or the whole tree (all without selector).
 TestDriverReply :: (session: Session, error: string, only: s32,
@@ -883,24 +931,8 @@ TestDriverReply :: (session: Session, error: string, only: s32,
     TestDriverPutField(file, "hit")
     TestDriverPutInteger(file, cast(s64)test_driver.hit_index)
     TestDriverPutField(file, "nodes")
-    TestDriverPut(file, "[")
-    written: s32 = 0
-    if only >= 0 && only < TreeCount(session) {
-        TestDriverPutNode(file, session, TestDriverNodeAt(session, only))
-    } else if all {
-        count := TreeCount(session)
-        index: s32 = 0
-        while index < count {
-            node := TestDriverNodeAt(session, index)
-            if TestDriverMatches(session, node, selector) {
-                if written > 0 { TestDriverPut(file, ",") }
-                TestDriverPutNode(file, session, node)
-                written += 1
-            }
-            index += 1
-        }
-    }
-    TestDriverPut(file, "]}\n")
+    TestDriverPutNodes(file, session, only, all, selector)
+    TestDriverPut(file, "}\n")
     unused TestDriverClose(file)
     unused TestDriverRename(*test_driver.reply_temporary_path[0], *test_driver.reply_path[0])
 }

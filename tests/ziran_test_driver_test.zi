@@ -5,6 +5,9 @@
 #import "session"
 #import "geometry"
 Button :: #import "kryon/button";
+Layout :: #import "kryon/layout";
+TextField :: #import "kryon/text_field";
+#import "system_clipboard_host"
 Text :: #import "kryon/text";
 #import "tree"
 #import "tree_draw"
@@ -46,6 +49,11 @@ ordered_enter_presses: s32;
 typed: [256]u8;
 typed_count: s32;
 label: string = "Hello";
+show_form: bool;
+name_bytes: [32]u8;
+name_field: TextField.State;
+form_commits: s32;
+form_width: float32 = 210.0;
 directory: string;
 reply: [65536]u8;
 reply_count: s64;
@@ -112,6 +120,12 @@ Frame :: () -> bool {
     real: PointerFrame
     pointer_seen = TestDriverPointer(session, real)
     unused TreePointerUpdate(session, pointer_seen)
+    if show_form {
+        TestDriverInput(*delivery)
+        key, modifiers := InputDeliveryTake(*delivery, session, 0)
+        unused KeyboardSend(session, key)
+        unused KeyboardModifiersSend(session, modifiers)
+    }
     if ordered_delivery {
         TestDriverInput(*delivery)
         if consume_ordered_delivery {
@@ -133,6 +147,14 @@ Frame :: () -> bool {
     // Hidden below the frame.
     Text.Draw(session, Text.Props.{.text = "Below", .size = 14,
             .bounds = Rectangle.{20.0, 900.0, 200.0, 20.0}})
+    if show_form {
+        form := Layout.Draw(session, Layout.Props.{.key = 20, .bounds = .{20.0, 120.0, form_width, 100.0},
+            .gap = Layout.Gap(.ThemeMetricSpace2)})
+        if !form.opened { return false }
+        bound := TextField.Bind(session, *name_field, TextField.Props.{.key = 21, .label = "Name"})
+        if bound.committed { form_commits += 1 }
+        unused End(session)
+    }
     codepoint := TestDriverCodepoint()
     while codepoint != 0 {
         if codepoint < 128 && typed_count < 255 {
@@ -275,5 +297,13 @@ main :: () -> s32 {
     // before that key has actually been accepted on a later frame.
     if !RunBackpressuredKey("19\tkey\tcode=257") || ordered_enter_presses != 1 ||
     !Has("\"serial\":19,\"ok\":true") { return 80 }
+
+    show_form = true
+    name_field.bytes = name_bytes[:]
+    if !Frame() || Run("20\tpress\tlabel=Name") != 4 || !name_field.focused { return 81 }
+    if Run("21\ttype\ttext=Café") < 1 || TextView(name_bytes[:name_field.length]) != "Café" { return 82 }
+    form_width = 126.5
+    if Run("22\tkey\tcode=257") < 1 || form_commits != 1 || !name_field.focused { return 83 }
+    if !Frame() || !Frame() || Run("23\tstatus") != 1 || Has("\"stable_frames\":0,") { return 84 }
     return 0
 }

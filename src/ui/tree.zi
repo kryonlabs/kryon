@@ -271,6 +271,7 @@ NodeGeometry :: struct {
         placement: TreePlacement
         gap: s32
         padding: s32
+        padding_y: s32
         columns: s32
         min_item_width: s32
         max_columns: s32
@@ -298,6 +299,7 @@ NodeGeometry :: struct {
         bounds: Rectangle
         gap: s32
         padding: s32
+        padding_y: s32
         columns: s32
         min_item_width: s32
         max_columns: s32
@@ -702,6 +704,7 @@ NodeGeometry :: struct {
             layout: LayoutData = trees[slot].layouts[node.layout_index]
             info.gap = layout.gap
             info.padding = layout.padding
+            info.padding_y = layout.padding_y
             info.columns = layout.columns
             info.min_item_width = layout.min_item_width
             info.max_columns = layout.max_columns
@@ -1039,7 +1042,7 @@ NodeGeometry :: struct {
     #program_export
     TreeSetLayout :: (session: Session, index: s32, gap: s32, padding: s32,
         columns: s32, min_item_width: s32,
-        max_columns: s32) {
+        max_columns: s32, padding_y: s32 = -1) {
         slot: s32 = SessionIndex(session)
         if !trees[slot].building || index < 0 ||
         index >= trees[slot].submitted_count { return }
@@ -1047,6 +1050,7 @@ NodeGeometry :: struct {
         if layout < 0 { return }
         trees[slot].layouts[layout].gap = gap
         trees[slot].layouts[layout].padding = padding
+        trees[slot].layouts[layout].padding_y = ifx padding_y >= 0 then padding_y else padding
         trees[slot].layouts[layout].columns = columns
         trees[slot].layouts[layout].min_item_width = min_item_width
         trees[slot].layouts[layout].max_columns = max_columns

@@ -2,6 +2,8 @@ Pixels :: #import "pixmap";
 Slots :: #import "pixmap_typeface_slots";
 #import "geometry"
 #import "drawing_props"
+#import "control_props"
+Metrics :: #import "font_metrics";
 #import "std/byte_text_linux"
 
 coverage: [65536]u8;
@@ -14,7 +16,10 @@ Width :: (value: string, font: s32, typeface: string) -> s32 {
     unused typeface; width_calls += 1
     return cast(s32)value.count * font / 2
 }
-Raster :: (value: string, font: float32, output: *Slots.PixmapTypefaceMask) -> bool {
+Raster :: (value: string, font: float32, output: *Slots.PixmapTypefaceMask,
+    typeface: string, scale: float32) -> bool {
+    unused typeface
+    unused scale
     seen_font = font
     width := cast(s32)(cast(float32)value.count * font / 2.0 + 0.5)
     height := cast(s32)(font + 0.5)
@@ -25,6 +30,40 @@ Raster :: (value: string, font: float32, output: *Slots.PixmapTypefaceMask) -> b
     output.* = .{-2, 1, width, height, coverage[0:width * height]}
     return true
 }
+typography_pixels: [4096]u32;
+TypographyRight :: (value: string) -> s32 {
+    if !Pixels.PixmapBeginInto(0, 128, 32, typography_pixels[:]) { return -1 }
+    Pixels.RasterText(value, 12, 4, 22, .{255, 255, 255, 255})
+    Pixels.PixmapEndInto()
+    right: s32 = -1
+    for y: cast(s32)0..31 {
+        for x: cast(s32)0..127 {
+            if typography_pixels[y * 128 + x] != 0 && x > right { right = x }
+        }
+    }
+    return right
+}
+
+CheckTracking :: () -> bool {
+    value := "éHHH"
+    plain := Pixels.MeasureGlyphWidth(value, 22, "")
+    before := TypographyRight(value)
+    style := TextGlyphStyle.{.letter_spacing = 5.0}
+    previous := Metrics.UseTextGlyphStyle(style)
+    defer { unused Metrics.UseTextGlyphStyle(previous) }
+    if before <= 12 || Pixels.MeasureGlyphWidth(value, 22, "") != plain + 15 ||
+        TypographyRight(value) != before + 15 { return false }
+    revision := Metrics.GlyphMetricsRevision()
+    cache := Pixels.pixmap_measure_count
+    caret := Metrics.GlyphCaret(value, 3, 22, "", style)
+    if caret != Pixels.MeasureGlyphWidth("é", 22, "") + 5 ||
+        Metrics.GlyphCaret(value, cast(s32)value.count, 22, "", style) != plain + 15 ||
+        Metrics.GlyphMetricsRevision() != revision || cache != value.count { return false }
+    style.letter_spacing = -2.0
+    unused Metrics.UseTextGlyphStyle(style)
+    return Pixels.MeasureGlyphWidth(value, 22, "") == plain - 6 && TypographyRight(value) == before - 6
+}
+
 Draw :: (dx: s32, dy: s32) {
     Pixels.RasterTextClipped("ab", dx, dy, 12, .{200, 80, 30, 128}, .{cast(float32)dx - 1.0, cast(float32)dy, 20.0, 20.0})
     Pixels.RasterTextRotated("cd", dx + 20, dy + 20, 12, .{40, 200, 60, 128},
@@ -36,6 +75,7 @@ Draw :: (dx: s32, dy: s32) {
 main :: () -> s32 {
     builtin := Pixels.MeasureGlyphWidth("ab", 12, "")
     if Slots.active || builtin <= 0 { return 1 }
+    if !CheckTracking() { return 9 }
     Slots.PixmapTypefaceUse(Width, Raster)
     if Pixels.MeasureGlyphWidth("ab", 12, "") != 12 || width_calls != 1 ||
     Pixels.MeasureGlyphLineHeight(12, "") != 12 { return 2 }

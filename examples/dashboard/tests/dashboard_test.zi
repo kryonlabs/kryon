@@ -1,0 +1,161 @@
+// Unit, private-display interactive, and fixture matrix visual tests for the dashboard starter.
+#import "model"
+#import "kryon/private_display"
+#import "kryon/test_driver_client"
+#import "std/file"
+
+failures: s32;
+
+Expect :: (ok: bool, what: string) {
+    if ok { return }
+    failures += 1
+    print("FAIL: %\n", what)
+}
+
+CheckModel :: () {
+    metrics := ComputeMetrics()
+    Expect(metrics.total == 8 && metrics.healthy == 5 && metrics.degraded == 2 && metrics.offline == 1,
+        "model computes accurate service counts")
+    indices: [8]s32
+    all_count := FilterIndices(.NavOverview, .FilterAll, "", indices[:])
+    Expect(all_count == 8, "overview filter returns all 8 services")
+    auth_count := FilterIndices(.NavOverview, .FilterAll, "AUTH", indices[:])
+    Expect(auth_count == 1 && SERVICES[indices[0]].name == "Auth Identity",
+        "case-insensitive search matches Auth Identity")
+    inc_count := FilterIndices(.NavIncidents, .FilterAll, "", indices[:])
+    Expect(inc_count == 3, "incidents section filters to degraded and offline services")
+    miss_count := FilterIndices(.NavOverview, .FilterAll, "does-not-exist", indices[:])
+    Expect(miss_count == 0, "non-matching search returns zero services")
+
+    buf: [32]u8
+    Expect(FormatPercentTenths(988, buf[:]) == "98.8%", "percent tenths formatting")
+    Expect(FormatLatency(0, buf[:]) == "offline", "zero latency formats as offline")
+    Expect(FormatLatency(22, buf[:]) == "22 ms", "positive latency formats in ms")
+}
+
+RunInteractiveSuite :: (binary: string, out_dir: string) {
+    display := OpenPrivateDisplay(1120, 720, Joined(out_dir, "/xvfb-interactive.log", ""))
+    if !display.valid { Expect(false, display.error); return }
+    defer ClosePrivateDisplay(*display)
+
+    driver := DriverOpen(Joined(out_dir, "/driver-interactive", ""))
+    args: [1]string = .[binary]
+    extra: [2]string = .[DriverEnvironment(*driver), "KRYON_DASHBOARD_FIXTURE=light"]
+    app := StartOnDisplay(*display, args[:], extra[:], "", Joined(out_dir, "/app-interactive.log", ""))
+    if !app.started { Expect(false, "interactive dashboard did not start"); return }
+    defer { unused StopOwnedProcess(*app, 5000) }
+    DriverWatch(*driver, app.pid, Joined(out_dir, "/app-interactive.log", ""))
+    if FindOwnedWindow(*display, app.pid, 15000) == 0 {
+        Expect(false, "interactive dashboard opened no window")
+        return
+    }
+
+    // 1. Initial populated state.
+    Expect(DriverWait(*driver, .{label = "8 of 8 services"}, 10000), "initial count shows 8 of 8")
+    Expect(DriverFind(*driver, .{label = "Edge Gateway", role = "button"}) == 1, "Edge Gateway row visible")
+    Expect(DriverFind(*driver, .{label = "Production Cluster"}) == 1, "default workspace name shown")
+
+    // 2. Search filtering -> EmptyState -> Reset filters.
+    Expect(DriverPress(*driver, .{role = "text_field"}), "focus search text field")
+    Expect(DriverType(*driver, "auth"), "type search query auth")
+    Expect(DriverWait(*driver, .{label = "1 of 8 services"}, 5000), "search narrows to 1 of 8")
+    Expect(DriverWaitGone(*driver, .{label = "Edge Gateway"}, 5000), "non-matching row hidden")
+    Expect(DriverFind(*driver, .{label = "Auth Identity", role = "button"}) == 1, "Auth Identity remains visible")
+
+    Expect(DriverPress(*driver, .{role = "text_field"}), "refocus search field")
+    Expect(DriverType(*driver, "-missing-xyz"), "append unmatched text")
+    Expect(DriverWait(*driver, .{label = "No matching services"}, 5000), "empty state renders on zero matches")
+    Expect(DriverPress(*driver, .{label = "Reset filters", role = "button"}), "press Reset filters")
+    Expect(DriverWait(*driver, .{label = "8 of 8 services"}, 5000), "reset filters restores all 8 services")
+
+    // 3. Sidebar navigation & filter chips.
+    Expect(DriverPress(*driver, .{label = "Incidents", role = "button"}), "switch to Incidents nav")
+    Expect(DriverWait(*driver, .{label = "3 of 8 services"}, 5000), "incidents shows 3 degraded/offline services")
+    Expect(DriverPress(*driver, .{label = "Overview", role = "button"}), "return to Overview nav")
+    Expect(DriverWait(*driver, .{label = "8 of 8 services"}, 5000), "overview restores 8 services")
+
+    // 4. Loading and Error states + recovery.
+    Expect(DriverPress(*driver, .{label = "Loading", role = "button"}), "trigger loading state")
+    Expect(DriverWait(*driver, .{label = "Refreshing service telemetry..."}, 5000), "loading indicator shown")
+    Expect(DriverPress(*driver, .{label = "Cancel refresh", role = "button"}), "cancel loading state")
+    Expect(DriverWait(*driver, .{label = "8 of 8 services"}, 5000), "ready state restored from loading")
+
+    Expect(DriverPress(*driver, .{label = "Error", role = "button"}), "trigger error state")
+    Expect(DriverWait(*driver, .{label = "Telemetry sync failed"}, 5000), "error alert shown")
+    Expect(DriverPress(*driver, .{label = "Retry sync", role = "button"}), "retry from error state")
+    Expect(DriverWait(*driver, .{label = "8 of 8 services"}, 5000), "ready state restored from error")
+
+    // 5. Keyboard Tab focus traversal & keyboard-operable Settings modal (Escape + Apply).
+    Expect(DriverKey(*driver, DRIVER_KEY_TAB, false, false), "Tab moves focus")
+    Expect(DriverKey(*driver, DRIVER_KEY_TAB, false, true), "Shift+Tab moves focus back")
+
+    Expect(DriverPress(*driver, .{label = "Settings", role = "button"}), "open Settings modal")
+    Expect(DriverWait(*driver, .{label = "Dashboard settings"}, 5000), "settings modal opens")
+    Expect(DriverKey(*driver, DRIVER_KEY_ESCAPE, false, false), "Escape closes settings modal")
+    Expect(DriverWaitGone(*driver, .{label = "Dashboard settings"}, 5000), "modal dismissed on Escape")
+
+    Expect(DriverPress(*driver, .{label = "Settings", role = "button"}), "reopen Settings modal")
+    Expect(DriverWait(*driver, .{label = "Dashboard settings"}, 5000), "settings modal reopens")
+    Expect(DriverKey(*driver, 65, true, false), "Ctrl+A selects workspace name")
+    Expect(DriverType(*driver, "Staging EU"), "type new workspace name")
+    Expect(DriverPress(*driver, .{label = "Dark theme", role = "toggle"}), "toggle Dark theme in settings")
+    Expect(DriverPress(*driver, .{label = "Apply", role = "button"}), "apply settings")
+    Expect(DriverWaitGone(*driver, .{label = "Dashboard settings"}, 5000), "modal closes after Apply")
+    Expect(DriverWait(*driver, .{label = "Staging EU"}, 5000), "updated workspace name shown in sidebar")
+    Expect(DriverWait(*driver, .{label = "Light mode", role = "button"}, 5000), "theme switched to dark")
+}
+
+RunFixtureCapture :: (binary: string, out_dir: string, fixture: string,
+    width: s32, height: s32, expected_label: string) {
+    log_tag := Joined(out_dir, Joined("/", fixture, ""), "")
+    display := OpenPrivateDisplay(width, height, Joined(log_tag, "-xvfb.log", ""))
+    if !display.valid { Expect(false, display.error); return }
+    defer ClosePrivateDisplay(*display)
+
+    driver := DriverOpen(Joined(log_tag, "-driver", ""))
+    args: [1]string = .[binary]
+    env_fix := Joined("KRYON_DASHBOARD_FIXTURE=", fixture, "")
+    w_buf: Vec(u8)
+    BuilderPrint(*w_buf, "KRYON_WINDOW_WIDTH=%", width)
+    h_buf: Vec(u8)
+    BuilderPrint(*h_buf, "KRYON_WINDOW_HEIGHT=%", height)
+    extra: [4]string = .[DriverEnvironment(*driver), env_fix, BuilderFinish(w_buf), BuilderFinish(h_buf)]
+    app := StartOnDisplay(*display, args[:], extra[:], "", Joined(log_tag, "-app.log", ""))
+    if !app.started { Expect(false, Joined("fixture did not start: ", fixture, "")); return }
+    defer { unused StopOwnedProcess(*app, 5000) }
+    DriverWatch(*driver, app.pid, Joined(log_tag, "-app.log", ""))
+    if FindOwnedWindow(*display, app.pid, 15000) == 0 {
+        Expect(false, Joined("fixture opened no window: ", fixture, ""))
+        return
+    }
+    Expect(DriverWait(*driver, .{label = expected_label}, 10000),
+        Joined("fixture renders expected label: ", fixture, ""))
+    shot_path := Joined(out_dir, Joined("/", Joined(fixture, ".png", ""), ""), "")
+    Expect(DriverCapture(*driver, shot_path), Joined("capture PNG for fixture: ", fixture, ""))
+    data, ok := ReadEntireFile(shot_path)
+    Expect(ok && data.count > 1024, Joined("captured PNG is non-empty: ", fixture, ""))
+}
+
+main :: () -> s32 {
+    CheckModel()
+    out_dir := "../../build/examples/dashboard/test-artifacts"
+    binary := "../../build/examples/dashboard/dashboard-desktop"
+    unused CreateDirectory("../../build")
+    unused CreateDirectory("../../build/examples")
+    unused CreateDirectory("../../build/examples/dashboard")
+    unused CreateDirectory(out_dir)
+
+    RunInteractiveSuite(binary, out_dir)
+    RunFixtureCapture(binary, out_dir, "light-wide", 1120, 720, "Dark mode")
+    RunFixtureCapture(binary, out_dir, "dark-wide", 1120, 720, "Light mode")
+    RunFixtureCapture(binary, out_dir, "light-narrow", 460, 760, "Dark")
+    RunFixtureCapture(binary, out_dir, "dark-narrow", 460, 760, "Light")
+    RunFixtureCapture(binary, out_dir, "loading", 1120, 720, "Refreshing service telemetry...")
+    RunFixtureCapture(binary, out_dir, "empty", 1120, 720, "No matching services")
+    RunFixtureCapture(binary, out_dir, "error", 1120, 720, "Telemetry sync failed")
+    RunFixtureCapture(binary, out_dir, "settings", 1120, 720, "Dashboard settings")
+
+    if failures > 0 { return 1 }
+    print("dashboard_test: all checks passed\n")
+    return 0
+}

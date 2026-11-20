@@ -1,5 +1,6 @@
 #import "c_string"
 #import "drawing_props"
+#import "control_props"
 #import "geometry"
 #import "paint_texture"
 #import "canvas_state"
@@ -19,6 +20,7 @@ ImageSchema :: #import "image_props";
 #import "page_core"
 #import "canvas_window"
 #import "web"
+Metrics :: #import "font_metrics";
 
 libm :: #system_library "m";
 CanvasSqrt :: (value: float32) -> float32 #foreign libm "sqrtf";
@@ -105,7 +107,9 @@ MeasureGlyphWidth :: (value: string, font: s32,
     defer { unused TextTypefaceUse(previous) }
     face: s32 = 0
     if canvas_font_loaded { face = CanvasFontFace(canvas_font) }
-    return cast(s32)(PageTextWidth(face, value, font) + 0.5)
+    glyphs := Metrics.text_glyph_style
+    width := PageTextWidth(face, value, font, glyphs.weight, cast(s32)glyphs.style, glyphs.letter_spacing)
+    return ifx width > 0.0 then cast(s32)(width + 0.5) else 0
 }
 
 #program_export
@@ -161,7 +165,9 @@ RasterText :: (value: string, x: s32, y: s32,
     font: s32, color: Color) {
     face: s32 = 0
     if canvas_font_loaded { face = CanvasFontFace(canvas_font) }
-    PageTextDraw(face, value, x, y, font, color.r, color.g, color.b, color.a)
+    glyphs := Metrics.text_glyph_style
+    PageTextDraw(face, value, x, y, font, color.r, color.g, color.b, color.a,
+        glyphs.weight, cast(s32)glyphs.style, glyphs.letter_spacing)
 }
 
 #program_export

@@ -3,6 +3,12 @@
 
 #import "geometry"
 Layout :: #import "kryon/layout";
+Button :: #import "kryon/button";
+#import "style"
+#import "control_props"
+#import "drawing_props"
+#import "style_sheet"
+using StyleField;
 TextField :: #import "kryon/text_field";
 #import "paint_queue"
 #import "semantic"
@@ -20,13 +26,6 @@ using WidgetKind;
 using CompositionPhase;
 using FrameStatus;
 using PaintKind;
-
-// The composition host supplies raster effects. Importing the general noop
-// host as well would export the same native C symbols twice.
-#program_export
-ImageWidth :: (asset_path: string) -> s32 { unused asset_path; return 0 }
-#program_export
-ImageHeight :: (asset_path: string) -> s32 { unused asset_path; return 0 }
 
 phase: s32;
 value: string;
@@ -558,6 +557,8 @@ main :: () -> s32 {
     if masked != 0 { return 100 + masked }
     placed := PlacedField()
     if placed != 0 { return 50 + placed }
+    binding := BoundForm()
+    if binding != 0 { return 150 + binding }
     return 0
 }
 
@@ -702,5 +703,126 @@ PasswordKeyboard :: () -> s32 {
         step += 1
     }
     unused SessionClose(session)
+    return 0
+}
+
+// A styled column lays out two editable controls and an intrinsic action row.
+// The same retained identity receives input after resize and across idle frames.
+BoundForm :: () -> s32 {
+    session := SessionOpen()
+    defer { unused SessionClose(session) }
+    style: StyleRules
+    style.count = 5
+    selector := StyleDefaultSelector()
+    selector.kind = StyleKindColumn()
+    selector.class_name = 73
+    style.items[0] = .{.selector = selector,
+        .style = .{.fields = cast(u32)StyleRowGap | cast(u32)StyleColumnGap |
+            cast(u32)StylePaddingX | cast(u32)StylePaddingY,
+            .row_gap = 7.5, .column_gap = 28.0, .padding_x = 4.5, .padding_y = 2.0}}
+    selector.kind = StyleKindRow()
+    selector.class_name = 0
+    selector.id = 74
+    style.items[1] = .{.selector = selector,
+        .style = .{.fields = cast(u32)StyleGap | cast(u32)StyleRowGap, .gap = 5.0, .row_gap = 28.0}}
+    selector.kind = StyleKindTextField()
+    selector.id = 0
+    style.items[2] = .{.selector = selector,
+        .style = .{.fields = cast(u32)StyleMinHeight, .min_height = 31.0}}
+    selector.kind = StyleKindColumn()
+    selector.id = 76
+    style.items[3] = .{.selector = selector, .order = 1,
+        .style = .{.fields = cast(u32)StyleGap, .gap = 12.0}}
+    style.items[4] = .{.selector = selector, .order = 2,
+        .style = .{.fields = cast(u32)StyleRowGap, .row_gap = 0.0}}
+    if !InstallStyleRules(style) { return 1 }
+    defer { unused InstallStyleRules(StyleRules.{}) }
+    bytes: [32]u8
+    other_bytes: [32]u8
+    state := TextField.State.{.bytes = bytes[:]}
+    other := TextField.State.{.bytes = other_bytes[:]}
+    identity: u64
+    field_node: s32
+    button_node: s32
+    for step: 0..12 {
+        input: TextField.Input
+        if step == 1 { unused TypedCodepointSend(session, 233) }
+        if step == 2 {
+            state.anchor = 0
+            unused KeyboardModifiersSend(session, KeyModifierControl)
+            unused KeyboardSend(session, 88)
+        }
+        if step == 3 { unused KeyboardSend(session, 86) }
+        if step == 4 {
+            unused KeyboardModifiersSend(session, 0)
+            input.composition_event = .{.phase = .CompositionUpdate, .text = "仮", .cursor = 3}
+        }
+        if step == 6 { input.composition_event = .{.phase = .CompositionCommit, .text = "本"} }
+        if step == 7 { unused KeyboardSend(session, KeyEnter) }
+        if step == 8 { unused KeyboardSend(session, KeyTab) }
+        if step == 9 { unused TypedCodepointSend(session, 120) }
+        if step == 10 { unused TreeActivateAt(session, button_node) }
+        width: float32 = ifx step < 5 then 221.5 else 117.5
+        if BeginFrame(session, 1, .{0.0, 0.0, 320.0, 192.0}) != .FrameOk { return 2 }
+        column := Layout.Draw(session, Layout.Props.{.key = 80, .class_name = 73,
+            .bounds = .{10.5, 12.5, width, 152.0}})
+        if !column.opened || column.content.x != 15.5 || column.content.y != 14.5 ||
+            column.content.width != width - 10.0 || column.gap != 8 { return 3 }
+        if step == 0 { input.focus = true }
+        first := TextField.Bind(session, *state, TextField.Props.{.key = 81, .label = "Name", .input = input})
+        second := TextField.Bind(session, *other, TextField.Props.{.key = 82, .label = "Email"})
+        row := Layout.Row(session, Layout.Props.{.key = 83, .id = 74, .bounds = .{.height = 36.0}})
+        if !row.opened || row.gap != 5 || row.bounds.width != column.content.width { return 4 }
+        pressed := Button.Draw(session, Button.Props.{.key = 84, .label = "Save"}) != 0
+        unused Button.Draw(session, Button.Props.{.key = 85, .label = "Cancel"})
+        unused End(session)
+        unused End(session)
+        finished := EndFrameRetained(session, true)
+        if finished.status != .FrameOk { return 5 }
+        if first.node < 0 || second.node < 0 { return 6 }
+        field_node = first.node
+        button_node = row.node + 1
+        first_node := TreeNodeAt(session, field_node)
+        second_node := TreeNodeAt(session, second.node)
+        if first_node.bounds.width != width - 10.0 || first_node.bounds.height != 31.0 ||
+            second_node.bounds.y != first_node.bounds.y + 39.0 { return 7 }
+        if step == 0 { identity = first_node.identity_generation }
+        if first_node.identity_generation != identity { return 8 }
+        action := TreeNodeAt(session, button_node).bounds
+        if action.width <= 0.0 || TreeNodeAt(session, button_node + 1).bounds.x != action.x + action.width + 5.0 {
+            return 9
+        }
+        if first.focused != (step < 8) || second.focused != (step >= 8 && step < 10) { return 10 }
+        if first.changed != (step == 1 || step == 2 || step == 3 || step == 6) ||
+            first.committed != (step == 7) || pressed != (step == 10) { return 11 }
+        if step == 1 && TextView(bytes[:state.length]) != "é" { return 12 }
+        if step == 2 && (state.length != 0 || stored_length != 2) { return 13 }
+        if step == 5 && (!state.preedit_active || TextView(state.preedit[:state.preedit_length]) != "仮") { return 14 }
+        if step >= 6 && (state.preedit_active || TextView(bytes[:state.length]) != "é本") { return 15 }
+        if step >= 9 && TextView(other_bytes[:other.length]) != "x" { return 16 }
+        if step >= 11 && (!finished.paint_unchanged || second.changed || second.committed) { return 17 }
+    }
+    if BeginFrame(session, 1, .{0.0, 0.0, 320.0, 192.0}) != .FrameOk { return 18 }
+    explicit := Layout.Draw(session, Layout.Props.{.class_name = 73,
+        .bounds = .{10.5, 12.5, 120.0, 80.0}, .gap_override = true, .padding_override = true})
+    if explicit.gap != 0 || explicit.content.x != explicit.bounds.x ||
+        explicit.content.y != explicit.bounds.y || explicit.content.width != explicit.bounds.width { return 19 }
+    unused End(session)
+    unstyled := Layout.Row(session, Layout.Props.{.bounds = .{.width = 120.0, .height = 30.0}})
+    if unstyled.gap != 0 || unstyled.content.x != unstyled.bounds.x ||
+        unstyled.content.y != unstyled.bounds.y || unstyled.content.width != unstyled.bounds.width { return 20 }
+    unused End(session)
+    axes := Layout.Draw(session, Layout.Props.{.class_name = 73, .id = 76,
+        .bounds = .{10.5, 12.5, 120.0, 80.0}, .padding = 6, .padding_x_override = true})
+    if axes.gap != 0 || axes.content.x != 10.5 || axes.content.y != 18.5 ||
+        axes.content.width != 120.0 || axes.content.height != 68.0 { return 23 }
+    unused End(session)
+    negative := Layout.Row(session, Layout.Props.{.id = 74,
+        .bounds = .{10.5, 12.5, 120.0, 80.0}, .gap = 4, .row_gap = 9, .column_gap = -1,
+        .padding_x = 3, .padding_y = -2})
+    if negative.gap != 0 || negative.content.x != 13.5 || negative.content.y != 12.5 ||
+        negative.content.width != 114.0 || negative.content.height != 80.0 { return 24 }
+    unused End(session)
+    if EndFrame(session) != .FrameOk { return 21 }
     return 0
 }
