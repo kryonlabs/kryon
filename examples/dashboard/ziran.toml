@@ -6,16 +6,16 @@ links = ["X11", "cairo"]
 tool = "kryon"
 
 [toolchain]
-git = "https://github.com/ziranlang/ziran.git"
-ref = "d60a9c91fa78c875a25a77ddf284d2482760e443"
+git = "https://git.waozi.xyz/ziranlang/ziran.git"
+ref = "9432a110709c4a4f72c4f732fcfc368e15213a54"
 
 [dependencies.kryon]
-git = "https://github.com/kryonlabs/kryon.git"
-ref = "35fc05cbb776ed17fecf760fe8ae85127e01f5a3"
+git = "https://git.waozi.xyz/kryonlabs/kryon.git"
+ref = "b107847a7893d3af1c891ef61eb43f3011658621"
 
 [dependencies.css]
-git = "https://github.com/kryonlabs/css.git"
-ref = "ad4ec746bba579ec2450791f99ce1ea9ce21f3a7"
+git = "https://git.waozi.xyz/kryonlabs/css.git"
+ref = "eba580e376695d352eb91e8008295bca3bf58d33"
 
 [tool.kryon]
 default_profile = "desktop"
