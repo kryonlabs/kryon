@@ -54,6 +54,15 @@ env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u S
 
 Each fixture in `previews/` exports `Frame` for `kryon preview`.
 
+Pass comma-separated widths to build the fixture once and capture each
+viewport. This writes `default-light-460.png`, `default-light-768.png`, and
+`default-light-1120.png`, each with a JSON widget tree of the same name.
+
+```sh
+mkdir -p build/previews
+kryon preview default --theme light --width 460,768,1120 --height 760 --output build/previews/default-light
+```
+
 ```sh
 mkdir -p build/previews
 kryon preview default  --theme light --width 1120 --height 720 --output build/previews/default-light-wide

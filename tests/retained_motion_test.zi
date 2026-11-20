@@ -3,6 +3,7 @@ Layout :: #import "layout";
 LayoutMotion :: #import "layout_motion";
 Motion :: #import "motion";
 StyleMotion :: #import "style_motion";
+Theme :: #import "theme";
 #import "control_props"
 #import "drawing_props"
 #import "frame_motion"
@@ -125,6 +126,125 @@ LayoutFrame :: (session: Session, time: float64, reverse: bool, expected_x: floa
     return false
 }
 
+SizeFrameAction :: enum { Submit; Cancel; Remove; }
+
+SizeFrame :: (session: Session, time: float64, target: Rectangle, expected: Rectangle,
+    options: LayoutMotion.Options, moving: bool, action: SizeFrameAction = .Submit) -> bool {
+    if !Start(session, time) { return false }
+    if FrameMotionMoving(session) && RetainFrame(session) { return false }
+    remove := action == .Remove
+    outer := Layout.Draw(session, .{.key = 20})
+    if !outer.opened || !LayoutMotion.Children(session) { return false }
+    row := Layout.Row(session, .{.key = 21})
+    if !row.opened || !LayoutMotion.Children(session, options) { return false }
+    if !remove { unused Button.Draw(session, .{.key = 1, .bounds = target}) }
+    if !End(session) || !End(session) { return false }
+    if !remove {
+        fill := PendingPaintAt(session, 0)
+        if fill.bounds.width != expected.width || fill.bounds.height != expected.height ||
+            fill.clip_set != (expected.width != target.width || expected.height != target.height) { return false }
+    } else if PendingPaintCount(session) != 0 { return false }
+    if action == .Cancel { TreeCancel(session); return true }
+    if EndFrameRetained(session, true).status != cast(FrameStatus)FrameOk ||
+        FrameMotionMoving(session) != moving { return false }
+    node := TreeChild(session, row.node, 1, WidgetKindButton)
+    if remove { return node < 0 && TreeHitAt(session, 1.0, 1.0) < 0 }
+    hit := TreeInputAt(session, node).bounds
+    if node < 0 || hit.width != expected.width || hit.height != expected.height ||
+        TreeHitAt(session, hit.x + hit.width, hit.y + hit.height * 0.5) >= 0 { return false }
+    if hit.width == 0.0 || hit.height == 0.0 { return TreeHitAt(session, hit.x, hit.y) < 0 }
+    return TreeHitAt(session, hit.x + hit.width - 1.0, hit.y + hit.height - 1.0) == node
+}
+
+LayoutSizes :: (session: Session) -> bool {
+    options: LayoutMotion.Options = .{.seconds = 1.0, .enter = true, .resize = true}
+    zero: Rectangle
+    small := Rectangle.{0.0, 0.0, 48.0, 28.0}
+    half := Rectangle.{0.0, 0.0, 24.0, 14.0}
+    large := Rectangle.{0.0, 0.0, 96.0, 56.0}
+    middle := Rectangle.{0.0, 0.0, 72.0, 42.0}
+    interrupted := Rectangle.{0.0, 0.0, 60.0, 35.0}
+    other := SessionOpen()
+    defer { unused CloseSession(other) }
+    enter_only := options
+    enter_only.resize = false
+    if !SizeFrame(session, 20.0, small, zero, options, true) ||
+        !SizeFrame(other, 0.0, large, zero, enter_only, true) ||
+        !SizeFrame(session, 20.5, small, half, options, true) ||
+        !SizeFrame(other, 0.5, large, small, enter_only, true) ||
+        !SizeFrame(other, 1.0, large, large, enter_only, false) ||
+        !SizeFrame(other, 1.5, small, small, enter_only, false) ||
+        !SizeFrame(session, 21.0, small, small, options, false) { return false }
+    if !SizeFrame(session, 22.0, large, small, options, true) ||
+        !SizeFrame(session, 22.25, small, interrupted, options, true, .Cancel) ||
+        !SizeFrame(session, 22.5, small, middle, options, true) ||
+        !SizeFrame(session, 23.0, small, interrupted, options, true) ||
+        !SizeFrame(session, 23.5, small, small, options, false) { return false }
+    if !Start(session, 24.0) || !RetainFrame(session) { return false }
+    idle := EndFrameRetained(session, true)
+    if idle.status != cast(FrameStatus)FrameOk || !idle.paint_unchanged || FrameMotionMoving(session) { return false }
+    if !SizeFrame(session, 25.0, small, zero, options, false, .Remove) ||
+        !SizeFrame(session, 26.0, large, zero, options, true) { return false }
+    options.reduced_motion = true
+    if !SizeFrame(session, 26.25, small, small, options, false) ||
+        !SizeFrame(session, 27.0, small, zero, options, false, .Remove) { return false }
+    return SizeFrame(session, 28.0, large, large, options, false)
+}
+
+PresenceFrame :: (session: Session, state: *LayoutMotion.PresenceState, time: float64,
+    present: bool, fraction: float32, moving: bool, reduced: bool = false) -> bool {
+    if !Start(session, time) { return false }
+    if FrameMotionMoving(session) && RetainFrame(session) { return false }
+    previous := TreePrevious(session, TreeCurrentParent(session), 7, WidgetKindButton)
+    identity := TreeInputAt(session, previous).identity_generation
+    sample := LayoutMotion.Presence(session, state, present,
+        .{.seconds = 1.0, .reduced_motion = reduced})
+    if sample.fraction != fraction || sample.interactive != present ||
+        sample.draw != (present || moving) { return false }
+    if !sample.interactive { TreeBlurAt(session, previous) }
+    if sample.draw {
+        height: float32 = 1.0 + 28.0 * sample.fraction
+        if Button.Draw(session, .{.key = 7, .id = 7, .disabled = !sample.interactive,
+            .bounds = .{0.0, 0.0, 48.0, height}}) != 0 ||
+            PendingPaintAt(session, 0).bounds.height != height { return false }
+    }
+    if (PendingPaintCount(session) > 0) != sample.draw ||
+        EndFrameRetained(session, true).status != cast(FrameStatus)FrameOk ||
+        FrameMotionMoving(session) != moving { return false }
+    node := TreeChild(session, 0, 7, WidgetKindButton)
+    if !sample.draw { return node < 0 && TreeHitAt(session, 0.0, 0.0) < 0 }
+    if node < 0 || (identity != 0 && TreeInputAt(session, node).identity_generation != identity) { return false }
+    if sample.interactive { return TreeHitAt(session, 0.0, 0.0) == node && TreeFocusAt(session, node) }
+    return TreeHitAt(session, 0.0, 0.0) < 0 && !TreeFocusAt(session, node) && !TreeFocusedAt(session, node)
+}
+
+LayoutPresence :: (session: Session) -> bool {
+    state: LayoutMotion.PresenceState
+    if !PresenceFrame(session, *state, 30.0, true, 1.0, false) ||
+        !TreeActivateAt(session, TreeChild(session, 0, 7, WidgetKindButton)) ||
+        !PresenceFrame(session, *state, 31.0, false, 1.0, true) ||
+        !PresenceFrame(session, *state, 31.25, false, 0.75, true) ||
+        !PresenceFrame(session, *state, 31.5, true, 0.5, true) ||
+        !PresenceFrame(session, *state, 32.0, true, 0.75, true) ||
+        !PresenceFrame(session, *state, 32.5, true, 1.0, false) ||
+        !PresenceFrame(session, *state, 33.0, false, 1.0, true) ||
+        !PresenceFrame(session, *state, 33.5, false, 0.5, true) ||
+        !PresenceFrame(session, *state, 34.0, false, 0.0, false) { return false }
+    if !Start(session, 35.0) || !RetainFrame(session) { return false }
+    idle := EndFrameRetained(session, true)
+    if idle.status != cast(FrameStatus)FrameOk || !idle.paint_unchanged || FrameMotionMoving(session) { return false }
+    if !PresenceFrame(session, *state, 36.0, true, 0.0, true) ||
+        !PresenceFrame(session, *state, 36.5, true, 1.0, false, true) ||
+        !PresenceFrame(session, *state, 37.0, false, 0.0, false, true) { return false }
+    fresh: LayoutMotion.PresenceState
+    if !PresenceFrame(session, *fresh, 38.0, false, 0.0, false) ||
+        !PresenceFrame(session, *fresh, 39.0, true, 0.0, true) ||
+        !PresenceFrame(session, *fresh, 40.0, true, 1.0, false) ||
+        !Theme.SetReducedMotion(true) { return false }
+    defer { unused Theme.SetReducedMotion(false) }
+    return PresenceFrame(session, *fresh, 41.0, false, 0.0, false)
+}
+
 #program_export
 main :: () -> s32 {
     session := SessionOpen()
@@ -144,5 +264,7 @@ main :: () -> s32 {
         print("retained layout transition failed\n")
         return 4
     }
+    if !LayoutSizes(session) { print("retained layout size or entry transition failed\n"); return 6 }
+    if !LayoutPresence(session) { print("retained layout presence failed\n"); return 7 }
     return 0
 }

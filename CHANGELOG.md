@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preview fixtures build once for comma-separated viewport widths and produce
+  a PNG and widget tree for each width. The machine-readable HTML map lists
+  native widget imports, entry points, and layout equivalents.
+- Retained layouts accept styled width and height. Keyed children can animate
+  entry and resize, and apps can use a presence sample to animate exit.
 - Opt-in retained style transitions and keyframes animate native widget paint.
   Keyed layout reorders ease through the same geometry used for input.
 

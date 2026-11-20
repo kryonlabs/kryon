@@ -459,7 +459,7 @@ StyleIndexInstall :: () {
         state := installed_rules.items[source].state
         installed_selectors[i] = selector
         installed_states[i] = state
-        known_fields := (cast(u32)StyleFontStyle << cast(u32)1) - cast(u32)1
+        known_fields := (cast(u32)StyleHeight << cast(u32)1) - cast(u32)1
         installed_fields |= installed_rules.items[source].style.fields & known_fields
         word := i / 64
         bit := cast(u64)1 << cast(u32)(i % 64)
@@ -494,6 +494,7 @@ StyleWithoutTypeface :: (source: StyleData) -> StyleData {
         .offset_y = source.offset_y, .background_end = source.background_end,
         .material = source.material, .letter_spacing = source.letter_spacing,
         .min_height = source.min_height, .line_height = source.line_height,
+        .width = source.width, .height = source.height,
         .line_height_unit = source.line_height_unit,
         .font_weight = source.font_weight, .font_style = source.font_style,
         .font_role = source.font_role, .elevation = source.elevation,
@@ -593,6 +594,8 @@ StyleCascade :: struct {
     motion_multiplier_priority: StylePriority
     motion_easing_priority: StylePriority
     motion_reduced_priority: StylePriority
+    width_priority: StylePriority
+    height_priority: StylePriority
 }
 #program_export
 StyleDefaultFacts :: (kind: s32) -> StyleFacts {
@@ -802,7 +805,7 @@ BeginStyleCascade :: (base: StyleData) -> StyleCascade {
     return cascade
 }
 
-StyleLayoutGapShorthand :: (kind: s32) -> bool {
+StyleIsLinearLayout :: (kind: s32) -> bool {
     return kind == StyleKindRow() || kind == StyleKindColumn()
 }
 
@@ -812,7 +815,7 @@ StyleLayoutGapShorthand :: (kind: s32) -> bool {
 #program_export
 ApplyStyleRules :: (cascade: StyleCascade, rules: []StyleRule,
     facts: StyleFacts, active_state: s32) -> StyleCascade {
-    layout_gap := StyleLayoutGapShorthand(facts.kind)
+    linear_layout := StyleIsLinearLayout(facts.kind)
     index: s64 = 0
     while index < rules.count {
         if StyleRuleMatchesState(rules[index].state, active_state) &&
@@ -884,7 +887,7 @@ ApplyStyleRules :: (cascade: StyleCascade, rules: []StyleRule,
             }
             row_gap := StyleHasField(rules[index].style, cast(u32)StyleRowGap)
             column_gap := StyleHasField(rules[index].style, cast(u32)StyleColumnGap)
-            gap_shorthand := layout_gap && StyleHasField(rules[index].style, cast(u32)StyleGap)
+            gap_shorthand := linear_layout && StyleHasField(rules[index].style, cast(u32)StyleGap)
             if (row_gap || gap_shorthand) && StylePriorityWins(priority, cascade.row_gap_priority) {
                 cascade.result.row_gap = ifx row_gap then rules[index].style.row_gap else rules[index].style.gap
                 cascade.result.fields |= cast(u32)StyleRowGap
@@ -924,6 +927,18 @@ ApplyStyleRules :: (cascade: StyleCascade, rules: []StyleRule,
                 cascade.result.min_height = rules[index].style.min_height
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleMinHeight
                 cascade.min_height_priority = priority
+            }
+            if linear_layout && StyleHasField(rules[index].style, cast(u32)StyleWidth) &&
+            StylePriorityWins(priority, cascade.width_priority) {
+                cascade.result.width = rules[index].style.width
+                cascade.result.fields |= cast(u32)StyleWidth
+                cascade.width_priority = priority
+            }
+            if linear_layout && StyleHasField(rules[index].style, cast(u32)StyleHeight) &&
+            StylePriorityWins(priority, cascade.height_priority) {
+                cascade.result.height = rules[index].style.height
+                cascade.result.fields |= cast(u32)StyleHeight
+                cascade.height_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleLineHeight) != cast(u32)0 &&
             StylePriorityWins(priority, cascade.line_height_priority) {
@@ -1028,9 +1043,15 @@ ResolveInstalledStyleRules :: (base: StyleData, facts: StyleFacts,
     active_state: s32) -> StyleData {
     remaining := installed_fields
     if remaining == 0 { return base }
-    layout_gap := StyleLayoutGapShorthand(facts.kind)
-    if layout_gap && (remaining & cast(u32)StyleGap) != 0 {
-        remaining |= cast(u32)StyleRowGap | cast(u32)StyleColumnGap
+    linear_layout := StyleIsLinearLayout(facts.kind)
+    if linear_layout {
+        if (remaining & cast(u32)StyleGap) != 0 {
+            remaining |= cast(u32)StyleRowGap | cast(u32)StyleColumnGap
+        }
+    } else {
+        // Ignore container size bits so they cannot prolong another widget's search.
+        remaining &= ~(cast(u32)StyleWidth | cast(u32)StyleHeight)
+        if remaining == 0 { return base }
     }
     kind := StyleBucket(facts.kind) * StyleIndexWords
     class_name := StyleBucket(facts.class_name) * StyleIndexWords
@@ -1045,7 +1066,7 @@ ResolveInstalledStyleRules :: (base: StyleData, facts: StyleFacts,
             if StyleRuleMatchesState(installed_states[index], active_state) &&
             StyleSelectorMatches(installed_selectors[index], facts) {
                 value := installed_rules.items[installed_rule_indices[index]].style
-                if layout_gap && StyleHasField(value, cast(u32)StyleGap) {
+                if linear_layout && StyleHasField(value, cast(u32)StyleGap) {
                     if !StyleHasField(value, cast(u32)StyleRowGap) { value.row_gap = value.gap }
                     if !StyleHasField(value, cast(u32)StyleColumnGap) { value.column_gap = value.gap }
                     value.fields |= cast(u32)StyleRowGap | cast(u32)StyleColumnGap

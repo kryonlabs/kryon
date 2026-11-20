@@ -12,11 +12,19 @@ A concise, agent-readable reference for translating HTML/CSS interfaces into nat
 | Component / element state | Caller-owned structs or file-scope variables (`bool`, `s32`, `TextField.State`, `[N]u8`) | Widgets never own application state; read `Result` structs each frame. |
 | `key` / `id` attribute | `.key = cast(u64)N`, `.id = CSS.StyleId("...")`, `.class_name = CSS.StyleClass("...")` | Every sibling widget in a frame needs a unique nonzero `key`. |
 | Parent/child nesting | Container returns `.opened: bool`; submit children, then call `End(session)` | Applies to `Page.Draw`, `Page.Section`, `Layout.*`, `Scroll.Draw`, `Modal.Draw`, `Collapsible.Draw`. |
-| `window.innerWidth` / `@media (min-width)` | Branch in `.zi` on `viewport.width` (or `IsDesktopWidth`) | Native CSS skips `width`, `display`, `flex*`, and viewport `@media` queries; `.zi` computes `Rectangle` bounds. |
+| `window.innerWidth` / `@media (min-width)` | Branch in `.zi` on `viewport.width` (or `IsDesktopWidth`) | In native CSS, match viewport media rules against the stylesheet environment. Use layout scopes for flow and CSS `width` and `height` to size retained rows and columns. |
 
 ---
 
 ## 2. Semantic HTML Element -> Kryon Widget Table
+
+Agents and editor tools can load [ui-map.json](ui-map.json) for the native
+imports and callable symbols. Match the most specific HTML selector first.
+The `css` value gives the Kryon stylesheet selector. When `scope` is present,
+draw the children and call `End(session)` only if that result field is true.
+`lists` gives the ordered slice arguments after props as `[name, item type]`
+pairs. Item types without a package path are exported by the widget module or
+are built-in Ziran types.
 
 | HTML Element / Pattern | Kryon Package & Call | Key Props / Notes |
 | --- | --- | --- |
@@ -153,11 +161,12 @@ Bind selectors on widgets via `props.class_name = CSS.StyleClass("primary")` and
   - Colors: `color`, `background` (color or two-stop vertical `linear-gradient([to bottom | 180deg,] top, bottom)`), `background-color`, `border-color`, `outline-color` (focus ring).
   - Borders & shape: `border` (`width`, `solid` or `none`, `color`), `border-width`, `border-style` (`solid` | `none`), `border-radius`, `opacity` (unitless number or clamped `0%`–`100%`).
   - Spacing & sizing: `padding` (1–4 values; top/bottom and left/right must be equal), `padding-inline`, `padding-block`, `gap` (one value for both axes or two values in `row column` order), `row-gap`, `column-gap` (`Row` reads `column-gap`, `Column` reads `row-gap`, uniform-gap controls read the first `gap` value; accepts `normal` = 0 or nonnegative `px`/`rem`), `min-height`, `min-block-size` (logical alias for `min-height`), `translate` (`x [y]`).
+  - Retained `Row` and `Column` also accept `width` and `height` as positive `px` or `rem` lengths or `auto`. Other size expressions pass through to the browser.
   - Typography: `font-size`, `font-family`; native `Text`, `Heading`, and `ParagraphText` read `font-weight` (`normal` = 400, `bold` = 700, or `1`–`1000`), `font-style` (`normal` | `italic` | `oblique` without angle), and `letter-spacing` (`normal` or signed `px` / `rem`); `Text` and `Button` accept `line-height` (`normal`, nonnegative unitless factor, `%` of font size, or nonnegative `px` / `rem`).
   - Kryon extensions: `-kryon-material` (`lightfield` | `flat` | `glass`), `-kryon-icon-size`, `-kryon-font-role` (`inherit` | `control` | `body` | `heading` | `code`), `-kryon-elevation` (`none` | `rest` | `raised` | `floating`), `-kryon-motion-duration`, `-kryon-motion-multiplier`, `-kryon-motion-easing` (`inherit` | `standard` | `linear` | `instant`), `-kryon-motion-reduced` (`reduce` | `no-preference`).
 - **Units & values**: hex (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`), CSS named colors, `rgb()`, `rgba()`, `hsl()`, `hsla()`, `hwb(hue white% black% [/ alpha])`, hue angle units (`deg`, `rad`, `grad`, `turn`), `px`, `rem` (`16px`), `s`, `ms`, `:root` custom properties (`--token: ...;`) with `var(--token, fallback)`. `em` and `%` lengths are rejected (use `px` or `rem`).
 - **At-rules**: `@import` (before rules), `@layer`, `@keyframes`, `@media` (`prefers-color-scheme`, `prefers-contrast`, `prefers-reduced-motion`, `pointer`, `min-width`, `max-width`, `-kryon-theme`, `-kryon-density`, `-kryon-pointer`, `-kryon-platform`).
-- **Web-only pass-through properties** (accepted by parser for `kryon/Dom`, ignored by native widgets): `width`, `height`, `min-width`, `max-width`, `max-height`, `margin*`, `display`, `flex*`, `justify-content`, `align-items`, `align-self`, `grid-*`, `text-align`, `text-decoration`, `text-transform`, `white-space`, `cursor`, `box-shadow`, `overflow`, `z-index`, `visibility`.
+- **Web-only pass-through properties** (accepted by parser for `kryon/Dom`, ignored by native widgets): `min-width`, `max-width`, `max-height`, `margin*`, `display`, `flex*`, `justify-content`, `align-items`, `align-self`, `grid-*`, `text-align`, `text-decoration`, `text-transform`, `white-space`, `cursor`, `box-shadow`, `overflow`, `z-index`, `visibility`.
 
 Use `color-mix(in srgb, #2076c0 35%, transparent)` in a native color
 declaration or custom property to derive a tint from two literal colors.
@@ -184,6 +193,8 @@ button.save:hover { background-color: #2443ac; }
 | UI effect | Kryon API |
 | --- | --- |
 | Move keyed items when a row, column or grid reflows | `LayoutMotion.Children(session)` from `kryon/layout_motion` in the open layout scope |
+| Grow an entering item or ease a size change | `LayoutMotion.Children` with `.enter` or `.resize` |
+| Keep drawing an exiting item until it settles | `LayoutMotion.Presence` with caller-owned state |
 | Animate a custom shape, number, angle or graph value | `Motion.TweenTo` or `Motion.Sample` from `kryon/motion` |
 | Animate a changing line chart | `Plot.AnimatedLineChart` with reusable chart state from `plot/Plot` |
 

@@ -1006,19 +1006,31 @@ NodeGeometry :: struct {
             trees[slot].staged_identity_generation += cast(u64)1
             node.identity_generation = trees[slot].staged_identity_generation
         }
-        if layout_motion_sample != null && old_index >= 0 && parent_index >= 0 && !node.auto_key {
+        if layout_motion_sample != null && parent_index >= 0 && !node.auto_key {
             parent_bounds := trees[slot].submitted[parent_index].bounds
-            old_parent := trees[slot].committed[old_index].parent
-            old_parent_bounds := trees[slot].committed[old_parent].bounds
-            previous := trees[slot].committed[old_index].bounds
             target := node.bounds
-            previous.x -= old_parent_bounds.x
-            previous.y -= old_parent_bounds.y
             target.x -= parent_bounds.x
             target.y -= parent_bounds.y
-            placed := layout_motion_sample(session, parent_index, node.identity_generation, target, previous)
+            previous := target
+            if old_index >= 0 {
+                old_parent := trees[slot].committed[old_index].parent
+                old_parent_bounds := trees[slot].committed[old_parent].bounds
+                previous = trees[slot].committed[old_index].bounds
+                previous.x -= old_parent_bounds.x
+                previous.y -= old_parent_bounds.y
+            }
+            placed := layout_motion_sample(session, parent_index, node.identity_generation,
+                target, previous, old_index >= 0)
             node.bounds.x += placed.x - target.x
             node.bounds.y += placed.y - target.y
+            node.bounds.width = placed.width
+            node.bounds.height = placed.height
+            // Full paints use the sampled bounds. Clip content and descendants
+            // that still draw from the measured size during the transition.
+            if placed.width != target.width || placed.height != target.height {
+                node.clip = ifx node.clipped then RectangleIntersection(node.clip, node.bounds) else node.bounds
+                node.clipped = true
+            }
         }
         if !VecPush(trees[slot].submitted, node) {
             trees[slot].error = cast(FrameStatus)FrameAllocationFailed

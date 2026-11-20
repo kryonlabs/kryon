@@ -122,12 +122,16 @@ links animate their color and opacity. Images animate the surface properties
 the image already paints. Give each moving widget a stable key.
 
 `kryon/layout_motion` moves keyed children through a reflow or reorder. Open a
-layout scope and call `LayoutMotion.Children(session)` before drawing the
-children. Pass `.seconds`, `.timing` and `.reduced_motion` options to control the
-motion. The final layout is computed once per frame, and an interrupted move
-continues from the child's visible position. Painted and hit-test positions
-follow the same sampled geometry. Moving a parent also moves its relative
-children. Size changes use the new layout size immediately.
+layout scope and call `LayoutMotion.Children(session)` before drawing its
+children. Set `.resize = true` to animate width and height changes and
+`.enter = true` to grow newly mounted children from zero size at their placed
+origin. Each option applies to direct keyed children of that scope.
+
+Set `.seconds`, `.timing` and `.reduced_motion` to control the transition.
+The layout reserves each child's target space while its visible size changes.
+Paint and hit testing use the sampled bounds, and interrupted transitions
+continue from the current sample. Moving a parent also moves its relative
+children. Reduced motion and zero duration settle immediately.
 
 ```zi
 Layout :: #import "kryon/layout";
@@ -137,12 +141,49 @@ Button :: #import "kryon/button";
 
 row := Layout.Row(session, .{.key = 1, .gap = 12})
 if row.opened {
-    unused LayoutMotion.Children(session)
+    unused LayoutMotion.Children(session, .{.seconds = 0.24,
+        .resize = true, .enter = true})
     unused Button.Draw(session, .{.key = 2, .label = "First"})
     unused Button.Draw(session, .{.key = 3, .label = "Second"})
     unused End(session)
 }
 ```
+
+For exit motion, keep the child’s data and a `LayoutMotion.PresenceState` in
+application state. Call `LayoutMotion.Presence` each composed frame, including
+while the child is absent. Its first sample is fully visible if present and
+fully hidden if absent. Later changes animate from the current sample and
+honor reduced motion. The result gives a `fraction` from 0 to 1. Submit the
+child while `draw` is true. Use `interactive` to disable input as soon as
+exit begins. Optional `PresenceOptions` control `.seconds`, `.timing` and
+`.reduced_motion`.
+
+```zi
+LayoutMotion :: #import "kryon/layout_motion";
+Button :: #import "kryon/button";
+#import "kryon/session"
+#import "kryon/tree"
+#import "kryon/tree_input"
+#import "kryon/widget_kind"
+
+PrintAction :: (session: Session, presence: *LayoutMotion.PresenceState,
+    available: bool) -> bool {
+    sample := LayoutMotion.Presence(session, presence, available)
+    if !sample.interactive {
+        previous := TreePrevious(session, TreeCurrentParent(session), 7,
+            cast(s32)WidgetKind.WidgetKindButton)
+        TreeBlurAt(session, previous)
+    }
+    if !sample.draw { return false }
+    // Keep a positive explicit height throughout the transition.
+    return Button.Draw(session, .{.key = 7, .id = 7, .label = "Print",
+        .bounds = .{0.0, 0.0, 88.0, 1.0 + 35.0 * sample.fraction},
+        .fit_content = true, .disabled = !sample.interactive}) != 0
+}
+```
+
+Hold one state per child and session. If your composition can cancel a frame,
+sample into a copy of the state and keep the copy when the frame commits.
 
 A custom retained host can set monotonic seconds with
 `kryon/frame_motion.SetFrameMotionTime` before `BeginFrame` and use

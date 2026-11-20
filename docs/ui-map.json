@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "backend": "native",
+  "elements": [
+    {"html": ["html", "body"], "import": "kryon/page", "call": "Draw", "css": "Page", "scope": "opened"},
+    {"html": ["main", "section"], "import": "kryon/page", "call": "Section", "css": "Section", "scope": "opened"},
+    {"html": ["article", ".card"], "import": "kryon/card", "call": "Draw", "css": "Card", "content": "result.content"},
+    {"html": ["div", "form", "ul", "ol"], "import": "kryon/layout", "call": "Draw", "css": "Column", "scope": "opened"},
+    {"html": ["header"], "import": "kryon/toolbar", "call": "Draw", "css": "Toolbar", "lists": [["options", "kryon/dropdown.Option"], ["actions", "ToolbarAction"]]},
+    {"html": ["nav"], "import": "kryon/navigation", "call": "Draw", "css": "NavigationBar", "lists": [["items", "NavigationBarItem"]]},
+    {"html": ["[role=tablist]"], "import": "kryon/tab_bar", "call": "Draw", "css": "TabBar", "lists": [["tabs", "Tab"]]},
+    {"html": ["h1", "h2", "h3", "h4", "h5", "h6"], "import": "kryon/page", "call": "Heading", "css": "Heading", "props": {"level": 1}, "level_from_tag": true},
+    {"html": ["p"], "import": "kryon/page", "call": "ParagraphText", "css": "ParagraphText"},
+    {"html": ["span", "label"], "import": "kryon/text", "call": "Draw", "css": "Text"},
+    {"html": ["a[href]"], "import": "kryon/link", "call": "Draw", "css": "Link", "event": "open_url"},
+    {"html": ["button"], "import": "kryon/button", "call": "Draw", "css": "Button"},
+    {"html": ["input", "input[type=text]", "input[type=search]"], "import": "kryon/text_field", "call": "Bind", "css": "TextField", "state": "State"},
+    {"html": ["input[type=password]"], "import": "kryon/text_field", "call": "Bind", "css": "TextField", "state": "State", "props": {"secure": true}},
+    {"html": ["input[type=number]"], "import": "kryon/text_field", "call": "Bind", "css": "TextField", "state": "State", "props": {"numeric": true}},
+    {"html": ["textarea"], "import": "kryon/text_area", "call": "Draw", "css": "TextArea"},
+    {"html": ["input[type=checkbox]"], "import": "kryon/checkbox", "call": "Draw", "css": "Checkbox", "event": "changed"},
+    {"html": ["[role=switch]"], "import": "kryon/toggle", "call": "Draw", "css": "Toggle", "event": "changed"},
+    {"html": ["input[type=radio]"], "import": "kryon/radio", "call": "Draw", "css": "Radio"},
+    {"html": ["select"], "import": "kryon/dropdown", "call": "Draw", "css": "Dropdown", "lists": [["options", "Option"]]},
+    {"html": ["select[multiple]"], "import": "kryon/list_box", "call": "ListBoxMulti", "css": "ListBoxMulti", "lists": [["items", "ListBoxItem"], ["selected", "bool"]]},
+    {"html": ["input[type=range]"], "import": "kryon/slider", "call": "Draw", "css": "Slider"},
+    {"html": ["progress"], "import": "kryon/progress", "call": "Draw", "css": "Progress"},
+    {"html": ["fieldset"], "import": "kryon/fieldset", "call": "Draw", "css": "Fieldset"},
+    {"html": ["details"], "import": "kryon/collapsible", "call": "Draw", "css": "Collapsible", "lists": [["headers", "CollapsibleHeader"]], "content": "result.content"},
+    {"html": ["dialog"], "import": "kryon/modal", "call": "Draw", "css": "Modal", "scope": "opened"},
+    {"html": ["hr"], "import": "kryon/separator", "call": "Draw", "css": "Separator"},
+    {"html": ["img"], "import": "kryon/image", "call": "Draw", "css": "Image"},
+    {"html": ["svg"], "import": "kryon/svg_icon", "call": "Draw"}
+  ],
+  "layouts": [
+    {"pattern": "display: flex; flex-direction: row", "import": "kryon/layout", "call": "Row", "scope": "opened"},
+    {"pattern": "display: flex; flex-direction: column", "import": "kryon/layout", "call": "Draw", "scope": "opened"},
+    {"pattern": "display: grid", "import": "kryon/layout", "call": "Grid", "scope": "container.opened"},
+    {"pattern": "overflow-y: auto", "import": "kryon/scroll", "call": "Draw", "scope": "opened"}
+  ]
+}

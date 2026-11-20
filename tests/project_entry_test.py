@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import tomllib
 
 from image_test_tools import png_pixels, rgb
 from toolchain import ROOT, ZIRAN, ZIRAN_ROOT, kryon_test_project
@@ -18,6 +19,53 @@ def run(arguments, project, expected=0):
                             env=environment, capture_output=True, text=True, timeout=180)
     assert result.returncode == expected, (arguments, result.returncode, result.stdout[-1500:], result.stderr[-5000:])
     return result
+
+
+def check_ui_map(project):
+    catalog = json.loads((ROOT / 'docs/ui-map.json').read_text())
+    assert (catalog['version'], catalog['backend']) == (1, 'native')
+    selectors = [selector for entry in catalog['elements'] for selector in entry['html']]
+    assert len(selectors) == len(set(selectors)), 'duplicate HTML selector in UI map'
+    exports = tomllib.loads((ROOT / 'ziran.toml').read_text())['exports']
+    imports = {}
+
+    def widget_alias(path):
+        package, module = path.split('/')
+        assert package == 'kryon' and module in exports, path
+        return imports.setdefault(path, f'Widget{len(imports)}')
+
+    calls = []
+    for index, entry in enumerate(catalog['elements'] + catalog['layouts']):
+        alias = widget_alias(entry['import'])
+        props = ', '.join(f'.{name} = {json.dumps(value)}' for name, value in entry.get('props', {}).items())
+        arguments = ['session']
+        if 'state' in entry:
+            calls.append(f'    state{index}: {alias}.{entry["state"]}')
+            arguments.append(f'*state{index}')
+        arguments.append('.{' + props + '}')
+        for name, item in entry.get('lists', ()):
+            if '/' in item:
+                path, type_name = item.split('.')
+                item = f'{widget_alias(path)}.{type_name}'
+            elif item != 'bool':
+                item = f'{alias}.{item}'
+            calls.append(f'    {name}{index}: []{item}')
+            arguments.append(f'{name}{index}')
+        call = f'{alias}.{entry["call"]}({", ".join(arguments)})'
+        fields = [entry[key].removeprefix('result.') for key in ('scope', 'content', 'event') if key in entry]
+        if fields:
+            calls.append(f'    result{index} := {call}')
+            calls.extend(f'    unused result{index}.{field}' for field in fields)
+        else:
+            calls.append(f'    {call}')
+    source = project / 'src/ui_map_check.zi'
+    source.write_text('\n'.join([
+        *(f'{alias} :: #import "{module}";' for module, alias in imports.items()),
+        '#import "kryon/session"', '#program_export', 'CheckUiMap :: (session: Session) {',
+        *calls, '}', '',
+    ]))
+    run([ZIRAN, 'ir', '--project', '--root', source.parent, '-o', project / 'map-ir', source], project)
+    source.unlink()
 
 
 def preview_test():
@@ -41,6 +89,7 @@ backend = "terminal"
         run([ZIRAN, 'lock', '--offline'], project)
         fixtures = project / 'previews'
         fixtures.mkdir()
+        check_ui_map(project)
         fixture = fixtures / 'controls.zi'
         source = r'''Button :: #import "kryon/button";
 Snapshot :: #import "kryon/frame_snapshot";
@@ -102,10 +151,23 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
             assert button['visible'] and button['enabled']
         assert sum(themes[0]) > 650 and sum(themes[1]) < 200, themes
 
+        run([*cli, 'controls', '--width', '173,321,760', '--height', '179', '--theme', 'light',
+             '--output', 'output space/responsive.png'], project)
+        for width in (173, 321, 760):
+            prefix = output / f'responsive-{width}'
+            assert png_pixels(prefix.with_suffix('.png'))[:2] == (width, 179)
+            tree = json.loads(prefix.with_suffix('.json').read_bytes())
+            assert (tree['width'], tree['height'], tree['nodes'][1]['x']) == (width, 179, width - 135)
+        assert (output / 'responsive-321.png').read_bytes() == (output / 'light.png').read_bytes()
+        assert (output / 'responsive-321.json').read_bytes() == baseline
+
         assert 'fixture not found: previews/missing.zi' in run(
             [*cli, 'missing', *args[1:]], project, expected=2).stderr
-        assert 'integers from 1 through 4096' in run(
-            [*cli, 'controls', '--width', '4097', *args[3:]], project, expected=2).stderr
+        for invalid in ('4097', '173,', ',173', '173,,321', '173,4097'):
+            assert 'integers from 1 through 4096' in run(
+                [*cli, 'controls', '--width', invalid, *args[3:]], project, expected=2).stderr
+        assert 'same width more than once' in run(
+            [*cli, 'controls', '--width', '173,0173', *args[3:]], project, expected=2).stderr
         assert 'desktop C99' in run([*cli, *args, '--profile', 'terminal'], project, expected=2).stderr
         assert 'parent exists and is writable' in run(
             [*cli, *light, '--output', 'missing directory/preview'], project, expected=2).stderr
@@ -115,7 +177,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         assert (output / 'light.json').read_bytes() == baseline
         assert (output / 'light.png').read_bytes() == (output / 'repeat.png').read_bytes()
         assert not list(output.glob('.kryon-preview.*'))
-    print('Preview: byte-identical repeat PNG and JSON, two sizes and themes, widget bounds/role/label/key and actionable failures passed')
+    print('Preview: responsive PNG and JSON batch, two themes, byte-identical repeats, widget geometry and actionable failures passed')
 
 
 def main():

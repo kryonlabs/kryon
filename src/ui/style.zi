@@ -77,6 +77,9 @@ StyleData :: struct {
     font_weight: s32
     font_style: FontStyle
     line_height_unit: LineHeightUnit
+    // Outer size in logical pixels. With the field bit set, zero means auto.
+    width: float32
+    height: float32
 }
 
 StyleFrame :: struct {
@@ -202,6 +205,8 @@ MergeValues :: (base: StyleData, override: StyleData) -> StyleData {
     if (override.fields & cast(u32)StyleMotionMultiplier) != cast(u32)0 { base.motion_multiplier = override.motion_multiplier }
     if (override.fields & cast(u32)StyleMotionEasing) != cast(u32)0 { base.motion_easing = override.motion_easing }
     if (override.fields & cast(u32)StyleMotionReduced) != cast(u32)0 { base.motion_reduced = override.motion_reduced }
+    if (override.fields & cast(u32)StyleWidth) != 0 { base.width = override.width }
+    if (override.fields & cast(u32)StyleHeight) != 0 { base.height = override.height }
     base.fields = base.fields | override.fields
     return base
 }

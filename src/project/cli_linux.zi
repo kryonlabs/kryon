@@ -332,8 +332,8 @@ Usage :: () -> s32 {
 }
 
 PreviewUsage :: () -> s32 {
-    PrintFd(1, "usage: kryon preview FIXTURE --theme light|dark --width PX --height PX --output FILE.png|PREFIX [--profile NAME]\n")
-    PrintFd(1, "       Builds previews/FIXTURE.zi with the selected desktop C99 profile and writes PNG and JSON.\n")
+    PrintFd(1, "usage: kryon preview FIXTURE --theme light|dark --width PX[,PX...] --height PX --output FILE.png|PREFIX [--profile NAME]\n")
+    PrintFd(1, "       Builds previews/FIXTURE.zi once and writes PNG and JSON. Multiple widths append -PX to the prefix.\n")
     return 0
 }
 
@@ -357,6 +357,26 @@ PreviewDimension :: (value: string) -> s32 {
     }
     if result > 4096 { return 0 }
     return result
+}
+
+NextPreviewWidth :: (widths: string, position: *s32) -> string {
+    start := position.*
+    while position.* < widths.count && widths[position.*] != #char "," { position.* += 1 }
+    finish := position.*
+    position.* += 1
+    return widths[start:finish]
+}
+
+PreviewWidthError :: (widths: string) -> string {
+    seen: [4097]bool
+    position: s32 = 0
+    while position <= widths.count {
+        width := PreviewDimension(NextPreviewWidth(widths, *position))
+        if width == 0 { return "preview --width must list integers from 1 through 4096 separated by commas" }
+        if seen[width] { return "preview --width lists the same width more than once" }
+        seen[width] = true
+    }
+    return ""
 }
 
 ParsePreview :: (command_line: string) -> PreviewOptions {
@@ -388,12 +408,14 @@ ParsePreview :: (command_line: string) -> PreviewOptions {
     }
     if options.theme != "light" && options.theme != "dark" {
         options.error = "preview --theme must be light or dark"
-    } else if PreviewDimension(options.width) == 0 || PreviewDimension(options.height) == 0 {
-        options.error = "preview --width and --height must be integers from 1 through 4096"
+    } else if PreviewDimension(options.height) == 0 {
+        options.error = "preview --height must be an integer from 1 through 4096"
     } else if options.output == "" {
         options.error = "preview needs --output FILE.png or PREFIX"
     } else if options.profile != "" && !ProjectNameValid(options.profile) {
         options.error = "invalid preview profile name; use kryon profiles to list profiles"
+    } else {
+        options.error = PreviewWidthError(options.width)
     }
     return options
 }
@@ -425,28 +447,7 @@ PreviewLockDirectory :: (path: *u8) -> *void {
     return directory
 }
 
-PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string) -> s32 {
-    build_root_bytes: [4096]u8
-    build_path_bytes: [4096]u8
-    build_option_bytes: [4096]u8
-    build_directory := "build/preview"
-    build_root := Join("build/preview/", profile.name, build_root_bytes[:])
-    build_path := Join(build_root, "/", build_path_bytes[:])
-    if build_root == "" || build_path == "" { return Error("preview build directory is too long") }
-    build_root = Join(build_path, options.fixture, build_root_bytes[:])
-    if build_root == "" { return Error("preview build directory is too long") }
-    args[5] = "run"
-    args[22] = Join("PROJECT_BUILD_DIR=", build_root, build_option_bytes[:])
-    args[23] = "PROJECT_PROGRAM=" // Bind Frame even if the fixture declares a main.
-    if args[22] == "" { return Error("preview build directory is too long") }
-
-    prefix := options.output
-    if prefix.count >= 4 && prefix[prefix.count - 4:prefix.count] == ".png" {
-        prefix = prefix[0:prefix.count - 4]
-    }
-    if prefix == "" || prefix[prefix.count - 1] == #char "/" {
-        return Error("preview --output must name a file or prefix")
-    }
+PreviewCapture :: (prefix: string, width: string, height: string, args: []string) -> s32 {
     png_bytes: [4096]u8
     tree_bytes: [4096]u8
     parent_bytes: [4096]u8
@@ -482,40 +483,24 @@ PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string)
         RawUnlink(*staged_tree_bytes[0])
     }
 
-    mkdir: [4]string = .["mkdir", "-p", "--", build_root]
-    if RunChild(mkdir[:]) != 0 { return Error("cannot create the preview build directory") }
-    unused CString(build_directory, build_path_bytes[:])
-    lock := PreviewLockDirectory(*build_path_bytes[0])
-    if lock == null { return Error("cannot lock the preview build directory") }
-    defer { RawCloseDirectory(lock) }
-
-    display_env: [10]string = .["DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "GDK_DISPLAY",
-        "DBUS_SESSION_BUS_ADDRESS", "SESSION_MANAGER", "DESKTOP_SESSION",
-        "XDG_SESSION_ID", "XDG_SESSION_TYPE", "XDG_RUNTIME_DIR"]
-    for name: display_env {
-        key: [64]u8
-        if !CString(name, key[:]) || RawUnsetenv(*key[0]) != 0 {
-            return Error("cannot isolate preview from the desktop session")
-        }
-    }
-    if !SetEnvironment("HARMONY_DESKTOP_RECOVERY", "0") ||
-    !SetEnvironment("YUE_DESKTOP_RECOVERY", "0") ||
-    !SetEnvironment("SDL_VIDEODRIVER", "dummy") ||
-    !SetEnvironment("SDL_RENDER_DRIVER", "software") ||
-    !SetEnvironment("KRYON_TEST_DRIVER", stage) ||
+    if !SetEnvironment("KRYON_TEST_DRIVER", stage) ||
     !SetEnvironment("KRYON_CAPTURE_PATH", staged_png) ||
     !SetEnvironment("KRYON_PREVIEW_TREE", staged_tree) ||
-    !SetEnvironment("KRYON_PREVIEW_THEME", options.theme) ||
-    !SetEnvironment("KRYON_PREVIEW_WIDTH", options.width) ||
-    !SetEnvironment("KRYON_PREVIEW_HEIGHT", options.height) {
+    !SetEnvironment("KRYON_PREVIEW_WIDTH", width) {
         return Error("cannot configure the preview renderer")
+    }
+    // Build under the preview lock on the first capture only.
+    if args[5] == "build" {
+        if RunChild(args) != 0 {
+            return Error("preview build or render failed; see diagnostics above, add previews to [package] module_roots and export Frame from the fixture")
+        }
+        args[5] = "run-built"
     }
     if RunChild(args) != 0 {
         return Error("preview build or render failed; see diagnostics above, add previews to [package] module_roots and export Frame from the fixture")
     }
-    if RawLock(RawDirectoryFd(lock), 8) != 0 { return Error("cannot unlock the preview build directory") }
     if !Exists(staged_tree) || !PreviewPngSizeMatches(*staged_png_bytes[0],
-        PreviewDimension(options.width), PreviewDimension(options.height)) {
+        PreviewDimension(width), PreviewDimension(height)) {
         return Error("preview did not produce a widget tree and PNG of the requested size; export Frame from the fixture")
     }
     if !CString(parent, parent_bytes[:]) { return Error("preview output directory is too long") }
@@ -530,6 +515,69 @@ PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string)
     PrintFd(1, "\n")
     PrintFd(1, tree)
     PrintFd(1, "\n")
+    return 0
+}
+
+PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string) -> s32 {
+    prefix := options.output
+    if prefix.count >= 4 && prefix[prefix.count - 4:prefix.count] == ".png" {
+        prefix = prefix[0:prefix.count - 4]
+    }
+    if prefix == "" || prefix[prefix.count - 1] == #char "/" {
+        return Error("preview --output must name a file or prefix")
+    }
+
+    build_root_bytes: [4096]u8
+    build_path_bytes: [4096]u8
+    build_option_bytes: [4096]u8
+    build_root := Join("build/preview/", profile.name, build_root_bytes[:])
+    build_path := Join(build_root, "/", build_path_bytes[:])
+    if build_root == "" || build_path == "" { return Error("preview build directory is too long") }
+    build_root = Join(build_path, options.fixture, build_root_bytes[:])
+    if build_root == "" { return Error("preview build directory is too long") }
+    args[5] = "build"
+    args[22] = Join("PROJECT_BUILD_DIR=", build_root, build_option_bytes[:])
+    args[23] = "PROJECT_PROGRAM=" // Bind Frame even if the fixture declares a main.
+    if args[22] == "" { return Error("preview build directory is too long") }
+    mkdir: [4]string = .["mkdir", "-p", "--", build_root]
+    if RunChild(mkdir[:]) != 0 { return Error("cannot create the preview build directory") }
+    unused CString("build/preview", build_path_bytes[:])
+    lock := PreviewLockDirectory(*build_path_bytes[0])
+    if lock == null { return Error("cannot lock the preview build directory") }
+    defer { RawCloseDirectory(lock) }
+
+    display_env: [11]string = .["DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "GDK_DISPLAY",
+        "DBUS_SESSION_BUS_ADDRESS", "SESSION_MANAGER", "DESKTOP_SESSION", "ICEAUTHORITY",
+        "XDG_SESSION_ID", "XDG_SESSION_TYPE", "XDG_RUNTIME_DIR"]
+    for name: display_env {
+        key: [64]u8
+        if !CString(name, key[:]) || RawUnsetenv(*key[0]) != 0 {
+            return Error("cannot isolate preview from the desktop session")
+        }
+    }
+    if !SetEnvironment("HARMONY_DESKTOP_RECOVERY", "0") ||
+    !SetEnvironment("YUE_DESKTOP_RECOVERY", "0") ||
+    !SetEnvironment("SDL_VIDEODRIVER", "dummy") ||
+    !SetEnvironment("SDL_RENDER_DRIVER", "software") ||
+    !SetEnvironment("KRYON_PREVIEW_THEME", options.theme) ||
+    !SetEnvironment("KRYON_PREVIEW_HEIGHT", options.height) {
+        return Error("cannot configure the preview renderer")
+    }
+    position: s32 = 0
+    width := NextPreviewWidth(options.width, *position)
+    if position > options.width.count { return PreviewCapture(prefix, width, options.height, args) }
+    stem_bytes: [4096]u8
+    stem := Join(prefix, "-", stem_bytes[:])
+    if stem == "" { return Error("preview output path is too long") }
+    while width != "" {
+        sized_bytes: [4096]u8
+        sized_prefix := Join(stem, width, sized_bytes[:])
+        if sized_prefix == "" { return Error("preview output path is too long") }
+        status := PreviewCapture(sized_prefix, width, options.height, args)
+        if status != 0 { return status }
+        if position > options.width.count { break }
+        width = NextPreviewWidth(options.width, *position)
+    }
     return 0
 }
 

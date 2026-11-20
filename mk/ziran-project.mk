@@ -428,6 +428,8 @@ else
 ifneq ($(BROWSER_BACKEND),)
 	@echo "Kryon browser app: $(PROGRAM)"
 else
+.PHONY: run-built
+run run-built:
 	$(RUN_ENV) ./$(PROGRAM)
 endif
 endif

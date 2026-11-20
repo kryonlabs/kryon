@@ -1,5 +1,5 @@
 #import "geometry"
 #import "session"
 
-LayoutMotionSample :: #type (Session, s32, u64, Rectangle, Rectangle) -> Rectangle;
+LayoutMotionSample :: #type (Session, s32, u64, Rectangle, Rectangle, bool) -> Rectangle;
 layout_motion_sample: LayoutMotionSample;

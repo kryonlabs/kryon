@@ -16,9 +16,11 @@ LayoutPixelMetric :: (value: float32) -> s32 {
 // Hosted programs get the layout's props and behavior; the retained tree
 // placement comes only with a retained program.
 #if !#defined(KRYON_HOSTED_UI) {
+#import "control_props"
 #import "geometry"
 #import "grid"
 #import "grid_props"
+#import "math"
 #import "session"
 #import "style"
 #import "style_sheet"
@@ -26,6 +28,7 @@ LayoutPixelMetric :: (value: float32) -> s32 {
 #import "widget_kind"
 
 using WidgetKind;
+using StyleField;
 
 // The space a column child may fill, or -1 outside a column.
 #program_export
@@ -134,6 +137,13 @@ LayoutSpacingFor :: (axis: s32, axis_override: bool, uniform: s32,
     return value
 }
 
+LayoutExtentFor :: (declared: float32, inherited: float32, styled: float32,
+    has_style: bool) -> float32 {
+    if !(declared <= 0.0) { return declared }
+    if has_style && styled > 0.0 && Finite32(styled) { return styled }
+    return inherited
+}
+
 #program_export
 ContainerFor :: (session: Session, props: PropsModule.Props,
     kind: s32) -> LayoutContainer {
@@ -145,9 +155,11 @@ ContainerFor :: (session: Session, props: PropsModule.Props,
         outer := TreeLayoutAt(session, parent_index)
         parent = LayoutMetricsFor(outer.bounds, outer.gap, outer.padding, outer.padding_y).content
     }
-    if result.bounds.width <= 0.0 { result.bounds.width = parent.width }
-    if result.bounds.height <= 0.0 { result.bounds.height = parent.height }
     face := LayoutFace(props, kind)
+    result.bounds.width = LayoutExtentFor(props.bounds.width, parent.width,
+        face.width, StyleHasField(face, cast(u32)StyleWidth))
+    result.bounds.height = LayoutExtentFor(props.bounds.height, parent.height,
+        face.height, StyleHasField(face, cast(u32)StyleHeight))
     gap := props.gap
     if kind == WidgetKindRow {
         gap = LayoutSpacingFor(props.column_gap, props.column_gap_override,

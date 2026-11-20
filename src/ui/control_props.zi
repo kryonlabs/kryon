@@ -102,6 +102,8 @@ StyleRowGap :: 33554432
 StyleColumnGap :: 67108864
 StyleFontWeight :: 134217728
 StyleFontStyle :: 268435456
+StyleWidth :: 536870912
+StyleHeight :: 1073741824
 }
 
 FontStyle :: enum {
