@@ -59,7 +59,9 @@ for mode in ('keyboard', 'unicode'):
             subprocess.run(['import', '-window', window, 'PNG32:' + str(shot)], check=True)
             png = png_pixels(shot)
             assert rgb(png, 550, 130) == (230, 30, 40), 'embedded image missing'
-            assert rgb(png, 10, 10) == (248, 250, 252), 'canvas background missing'
+            # The bare bundle uses the light Kryon theme's canvas color.
+            background = rgb(png, 10, 10)
+            assert background == (255, 255, 255), f'unexpected canvas background: {background}'
             assert any(sum(rgb(png, x, y)) < 400 for y in range(128, 165)
                        for x in range(40, 350)), 'text missing'
             subprocess.run(['xdotool', 'windowsize', '--sync', window, '1100', '700'], check=True)
