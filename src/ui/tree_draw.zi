@@ -6,6 +6,7 @@
 #import "text_editing"
 #import "text_selection_host"
 #import "scroll_sampling"
+#import "frame_motion"
 
 using FrameStatus;
 
@@ -46,6 +47,7 @@ BeginFrame :: (session: Session, screen_key: u64,
     TextEditingFrameBegin(session)
     PaintClear(session)
     frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, SessionIndex(session), false)
+    FrameMotionBegin(session)
     TreeStart(session, screen_key, bounds)
     return TreeFrameStatus(session)
 }
@@ -57,7 +59,8 @@ BeginFrame :: (session: Session, screen_key: u64,
 RetainFrame :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
     slot := SessionIndex(session)
-    if SessionFlagGet(frame_input_changed, slot) || !SessionFlagGet(paint_snapshots_valid, slot) || TextEditingFocused(session) || TextSelectionBusy(session) || ScrollSampleMoving(session) ||
+    if SessionFlagGet(frame_motion_active | frame_motion_dirty, slot) ||
+        SessionFlagGet(frame_input_changed, slot) || !SessionFlagGet(paint_snapshots_valid, slot) || TextEditingFocused(session) || TextSelectionBusy(session) || ScrollSampleMoving(session) ||
         !trees[slot].building || trees[slot].error != cast(FrameStatus)FrameOk ||
         trees[slot].submitted_count != 1 || trees[slot].committed_count < 1 ||
         trees[slot].scope_depth != 1 || PendingPaintCount(session) != 0 { return false }
@@ -95,6 +98,7 @@ CommitFrame :: (session: Session) -> FrameStatus {
         PaintClear(session)
         return cast(FrameStatus)FramePaintOverflow
     }
+    FrameMotionCommit(session)
     FrameInputCommit(session)
     return cast(FrameStatus)FrameOk
 }
@@ -220,6 +224,7 @@ CommitFrameDamaged :: (session: Session) -> FrameEndResult {
 CloseSession :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
     frame_retained = SessionFlagSet(frame_retained, SessionIndex(session), false)
+    FrameMotionClose(session)
     TreeDispose(session)
     PaintDispose(session)
     TreeInputReset(session)

@@ -1,0 +1,54 @@
+#import "session"
+
+// Hosts supply a monotonic clock. Optional motion modules own their history
+// and publish activity only after the tree accepts the frame.
+FrameMotionHook :: #type (Session, bool) -> void;
+frame_style_motion: FrameMotionHook;
+frame_layout_motion: FrameMotionHook;
+
+frame_motion_time: [9]float64;
+frame_motion_active: u32;
+frame_motion_next: u32;
+frame_motion_dirty: u32;
+
+#program_export
+SetFrameMotionTime :: (session: Session, seconds: float64) {
+    slot := SessionIndex(session)
+    if slot != 0 && seconds >= 0.0 && seconds <= 1.7976931348623157e308 {
+        frame_motion_time[slot] = seconds
+    }
+}
+
+#program_export
+FrameMotionMoving :: (session: Session) -> bool {
+    return SessionFlagGet(frame_motion_active, SessionIndex(session))
+}
+
+FrameMotionInvalidate :: () { frame_motion_dirty = cast(u32)0x1fe }
+
+FrameMotionMark :: (session: Session) {
+    frame_motion_next = SessionFlagSet(frame_motion_next, session.slot, true)
+}
+
+FrameMotionBegin :: (session: Session) {
+    frame_motion_next = SessionFlagSet(frame_motion_next, session.slot, false)
+    if frame_style_motion != null { frame_style_motion(session, false) }
+    if frame_layout_motion != null { frame_layout_motion(session, false) }
+}
+
+FrameMotionCommit :: (session: Session) {
+    slot := session.slot
+    frame_motion_active = SessionFlagSet(frame_motion_active, slot, SessionFlagGet(frame_motion_next, slot))
+    frame_motion_dirty = SessionFlagSet(frame_motion_dirty, slot, false)
+    if frame_style_motion != null { frame_style_motion(session, true) }
+    if frame_layout_motion != null { frame_layout_motion(session, true) }
+}
+
+FrameMotionClose :: (session: Session) {
+    slot := session.slot
+    frame_motion_time[slot] = 0.0
+    frame_motion_active = SessionFlagSet(frame_motion_active, slot, false)
+    expired := Session.{.slot = slot}
+    if frame_style_motion != null { frame_style_motion(expired, false) }
+    if frame_layout_motion != null { frame_layout_motion(expired, false) }
+}

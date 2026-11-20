@@ -102,6 +102,7 @@ DrawFrame :: (session: Session, draw: FrameDraw, title: string = "",
         if capture_input != null { return FinishRasterFrame() }
         unused DesktopCursorApply(finished.cursor)
         DesktopFrameUnchanged(finished.paint_unchanged)
+        if finished.motion_active { DesktopRequestFrame() }
     }
     // Present before publishing accessibility changes: they never change
     // pixels, and assistive technology reads the same finished tree.

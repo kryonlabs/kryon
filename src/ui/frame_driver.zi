@@ -21,7 +21,7 @@ FrameDriverInput :: struct {
     pointer: PointerFrame
     secondary: SecondaryPointerFrame
     wheel: float32
-    // Monotonic seconds, for scrolling momentum.
+    // Monotonic seconds, for scrolling and retained motion.
     seconds: float64
     // The host still shows the last frame, so an unchanged frame keeps it.
     reusable: bool
@@ -46,6 +46,7 @@ FrameCursor :: struct {
 FrameDriverResult :: struct {
     ok: bool
     paint_unchanged: bool
+    motion_active: bool
     cursor: FrameCursor
 }
 

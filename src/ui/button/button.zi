@@ -22,6 +22,7 @@ Theme :: #import "theme";
     #import "image_lookup"
     #import "paint_queue"
     #import "style"
+    #import "style_motion_slot"
     #import "style_sheet"
     #import "svg_icon_behavior"
     #import "surface"
@@ -516,6 +517,10 @@ Theme :: #import "theme";
             }
             TreeSetStyleClass(session, node, props.class_name)
             TreeSetStyleId(session, node, props.id)
+            if style_motion_sample != null {
+                face = style_motion_sample(session, TreeSubmittedIdentity(session, node),
+                    ButtonFaceFacts(props, state), face)
+            }
         }
         PaintButtonForNode(session, node, props, bounds, face, font,
             label_width, label_height,

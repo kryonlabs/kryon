@@ -14,6 +14,7 @@
 #import "geometry"
 #import "tree"
 #import "tree_draw"
+#import "frame_motion"
 #import "tree_input"
 #import "scroll_device"
 #import "key_input"
@@ -264,6 +265,7 @@ BundleAppFrame :: (host: *BundleApp, bounds: Rectangle, pointer: PointerFrame,
         app.input.paste_text = pasted
         app.area_input.paste_text = pasted
     }
+    SetFrameMotionTime(app.session, seconds)
     if BeginFrame(app.session, cast(u64)1, bounds) != FrameStatus.FrameOk { return false }
     bundle_drawing_app = host
     WidgetHostBegin(app.session, BundleAppAssetAllowed, BundleAppAssetResolve)

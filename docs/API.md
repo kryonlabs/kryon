@@ -112,6 +112,44 @@ series with one easing calculation per frame and shows an interrupted hover
 transition. Keep the chart's scale and the input series stable while they
 interpolate. Pass the resulting values to your usual chart drawing code.
 
+## Retained style and layout motion
+
+`kryon/style_motion` installs typed transition rules and keyframes over the
+normal widget style cascade. For CSS authoring, use `css/motion` to install
+a parsed or packed sheet. Buttons use animated background, text and border
+colors, opacity, corner radius, border width and content offset. Text and
+links animate their color and opacity. Images animate the surface properties
+the image already paints. Give each moving widget a stable key.
+
+`kryon/layout_motion` moves keyed children through a reflow or reorder. Open a
+layout scope and call `LayoutMotion.Children(session)` before drawing the
+children. Pass `.seconds`, `.timing` and `.reduced_motion` options to control the
+motion. The final layout is computed once per frame, and an interrupted move
+continues from the child's visible position. Painted and hit-test positions
+follow the same sampled geometry. Moving a parent also moves its relative
+children. Size changes use the new layout size immediately.
+
+```zi
+Layout :: #import "kryon/layout";
+LayoutMotion :: #import "kryon/layout_motion";
+Button :: #import "kryon/button";
+#import "kryon/tree"
+
+row := Layout.Row(session, .{.key = 1, .gap = 12})
+if row.opened {
+    unused LayoutMotion.Children(session)
+    unused Button.Draw(session, .{.key = 2, .label = "First"})
+    unused Button.Draw(session, .{.key = 3, .label = "Second"})
+    unused End(session)
+}
+```
+
+A custom retained host can set monotonic seconds with
+`kryon/frame_motion.SetFrameMotionTime` before `BeginFrame` and use
+`FrameMotionMoving` after commit to keep the frame loop active during motion.
+Desktop, Android and Canvas frame hosts supply their own clocks. The web DOM
+backend uses CSS motion through the browser.
+
 ## Widget motion
 
 `Menu.Props`, `TabBar.Props`, `Navigation.Props`, and `Collapsible.Props`

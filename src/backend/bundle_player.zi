@@ -146,6 +146,11 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         if raster_status >= 0 { return raster_status }
     }
     if player.platform!=null { return player.platform(player.context,module_name,function_name,args,count,result) }
+    if ModuleName(module,"clock") && count == 0 {
+        result.kind = HostInteger
+        result.integer = -1
+        return 1
+    }
     return 0
 }
 #program_export

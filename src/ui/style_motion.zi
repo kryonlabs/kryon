@@ -1,0 +1,375 @@
+#import "control_props"
+#import "frame_motion"
+#import "motion_history"
+#import "session"
+#import "style"
+#import "style_motion_slot"
+#import "style_sheet"
+#import "vec"
+Motion :: #import "motion";
+
+using StyleField;
+
+SupportedFields :: () -> u32 {
+    return cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleRadius | cast(u32)StyleBorderWidth |
+        cast(u32)StyleOpacity | cast(u32)StyleContentOffset
+}
+
+Keyframe :: struct {
+    offset: float32
+    style: StyleData
+}
+
+Animation :: struct {
+    key: u64
+    frames: []Keyframe
+    seconds: float64
+    delay: float64
+    timing: Motion.Timing
+    iterations: float64
+    alternate: bool
+    reverse: bool
+    backwards: bool
+    forwards: bool
+}
+
+Rule :: struct {
+    selector: StyleSelector
+    state: s32
+    layer: s32
+    order: s32
+    transition_fields: u32
+    transition_set: bool
+    transition_seconds: float64
+    transition_delay: float64
+    transition_timing: Motion.Timing
+    animation_set: bool
+    animation: Animation
+}
+
+#scope_file
+
+ChannelField :: (channel: s32) -> u32 {
+    if channel == 0 { return cast(u32)StyleBackground }
+    if channel == 1 { return cast(u32)StyleForeground }
+    if channel == 2 { return cast(u32)StyleBorder }
+    if channel == 3 { return cast(u32)StyleRadius }
+    if channel == 4 { return cast(u32)StyleBorderWidth }
+    if channel == 5 { return cast(u32)StyleOpacity }
+    return cast(u32)StyleContentOffset
+}
+
+MaxKeyframes :: 16384
+
+InstalledRule :: struct {
+    value: Rule
+    priority: StylePriority
+    first: s64
+    count: s64
+    fields: u32
+}
+
+Value :: struct { color: u32; x: float32; y: float32; }
+Transition :: struct {
+    from: Value
+    target: Value
+    started: float64
+    seconds: float64
+    timing: Motion.Timing
+    running: bool
+}
+
+Row :: struct {
+    channels: [7]Transition
+    animation_key: u64
+    animation_started: float64
+    now: float64
+}
+
+Phase :: struct {
+    applies: bool
+    active: bool
+    progress: float32
+}
+
+rules: Vec(InstalledRule);
+frames: Vec(Keyframe);
+reduce_motion: bool;
+histories: [9]MotionHistory(Row);
+
+StyleMotionFrame :: (session: Session, commit: bool) {
+    history := *histories[session.slot]
+    if commit { MotionHistoryCommit(history) }
+    else { MotionHistoryStart(history, session.epoch) }
+}
+
+ValueAt :: (style: StyleData, channel: s32) -> Value {
+    if channel == 0 { return .{.color = style.background} }
+    if channel == 1 { return .{.color = style.foreground} }
+    if channel == 2 { return .{.color = style.border} }
+    if channel == 3 { return .{.x = style.radius} }
+    if channel == 4 { return .{.x = style.border_width} }
+    if channel == 5 { return .{.x = StyleOpacityValue(style.fields, style.opacity)} }
+    return .{.x = style.offset_x, .y = style.offset_y}
+}
+
+WriteValue :: (style: *StyleData, channel: s32, value: Value) {
+    style.fields |= ChannelField(channel)
+    if channel == 0 { style.background = value.color }
+    else if channel == 1 { style.foreground = value.color }
+    else if channel == 2 { style.border = value.color }
+    else if channel == 3 { style.radius = ifx value.x > 0.0 then value.x else 0.0 }
+    else if channel == 4 { style.border_width = ifx value.x > 0.0 then value.x else 0.0 }
+    else if channel == 5 {
+        style.opacity = ifx value.x >= 1.0 then 1.0 else ifx value.x > 0.0 then value.x else 0.0
+    } else {
+        style.offset_x = value.x
+        style.offset_y = value.y
+    }
+}
+
+BlendColor :: (from: u32, to: u32, at: float32) -> u32 {
+    if at <= 0.0 { return from }
+    if at >= 1.0 { return to }
+    output: u32
+    for channel: cast(u32)0..cast(u32)3 {
+        shift := channel * 8
+        a := cast(float32)((from >> shift) & cast(u32)255)
+        b := cast(float32)((to >> shift) & cast(u32)255)
+        output |= cast(u32)(a + (b - a) * at + 0.5) << shift
+    }
+    return output
+}
+
+Blend :: (channel: s32, from: Value, to: Value, progress: float32) -> Value {
+    if channel < 3 { return .{.color = BlendColor(from.color, to.color, progress)} }
+    return .{.x = from.x + (to.x - from.x) * progress,
+        .y = from.y + (to.y - from.y) * progress}
+}
+
+TransitionValue :: (state: *Transition, channel: s32, now: float64) -> Value {
+    if !state.running { return state.target }
+    if now < state.started { return state.from }
+    if state.seconds == 0.0 {
+        state.running = false
+        return state.target
+    }
+    progress := cast(float32)((now - state.started) / state.seconds)
+    state.running = progress < 1.0
+    return Blend(channel, state.from, state.target, Motion.Progress(state.timing, progress))
+}
+
+ApplyTransitions :: (row: *Row, rule: *Rule, initialized: bool, reduced: bool, target: StyleData) -> StyleData {
+    fields := rule.transition_fields & SupportedFields()
+    if reduced || rule.transition_seconds + rule.transition_delay <= 0.0 { fields = 0 }
+    output := target
+    for channel: cast(s32)0..6 {
+        field := ChannelField(channel)
+        value := ValueAt(target, channel)
+        state := *row.channels[channel]
+        if !initialized || (fields & field) == 0 {
+            state.target = value
+            state.running = false
+            continue
+        }
+        previous := TransitionValue(state, channel, row.now)
+        if state.target.color != value.color || state.target.x != value.x || state.target.y != value.y {
+            state.from = previous
+            state.target = value
+            state.seconds = rule.transition_seconds
+            state.started = row.now + rule.transition_delay
+            state.timing = rule.transition_timing
+            state.running = true
+            previous = TransitionValue(state, channel, row.now)
+        }
+        if state.running {
+            WriteValue(*output, channel, previous)
+        }
+    }
+    return output
+}
+
+AnimationPhase :: (animation: *Animation, elapsed: float64, reduced: bool) -> Phase {
+    elapsed -= animation.delay
+    if elapsed < 0.0 && !reduced {
+        return .{.applies = animation.backwards, .active = true,
+            .progress = ifx animation.reverse then 1.0 else 0.0}
+    }
+    iterations := animation.iterations
+    position: float64 = 0.0
+    if animation.seconds > 0.0 { position = elapsed / animation.seconds }
+    completed := reduced || animation.seconds == 0.0 || (iterations >= 0.0 && position >= iterations)
+    if completed {
+        if !animation.forwards { return .{} }
+        position = ifx iterations > 0.0 then iterations else 1.0
+    }
+    // Iterations above double's exact integer range have no fractional part.
+    whole: u64
+    fraction: float32
+    if position > 0.0 && position < 9007199254740992.0 {
+        whole = cast(u64)position
+        fraction = cast(float32)(position - cast(float64)whole)
+    }
+    if completed && fraction == 0.0 && position > 0.0 {
+        if whole > 0 { whole -= 1 }
+        fraction = 1.0
+    }
+    reversed := animation.reverse != (animation.alternate && (whole & cast(u64)1) != 0)
+    if reversed { fraction = 1.0 - fraction }
+    return .{true, !completed, fraction}
+}
+
+AnimationValue :: (rule: *InstalledRule, channel: s32, target: Value, progress: float32) -> Value {
+    left := target
+    right := target
+    from: float32
+    to: float32 = 1.0
+    for index: rule.first..rule.first + rule.count - 1 {
+        frame := *frames[index]
+        if (frame.style.fields & ChannelField(channel)) == 0 { continue }
+        if frame.offset > progress {
+            right = ValueAt(frame.style, channel)
+            to = frame.offset
+            break
+        }
+        left = ValueAt(frame.style, channel)
+        from = frame.offset
+    }
+    if from >= to { return left }
+    return Blend(channel, left, right,
+        Motion.Progress(rule.value.animation.timing, (progress - from) / (to - from)))
+}
+
+RulePick :: struct {
+    transition: s64
+    animation: s64
+    track: bool
+}
+
+SelectRules :: (facts: StyleFacts) -> RulePick {
+    result := RulePick.{-1, -1, false}
+    for index: 0..rules.count - 1 {
+        item := *rules[index]
+        selector := item.value.selector
+        matches := StyleRuleMatchesState(item.value.state, facts.state) &&
+            StyleSelectorMatches(selector, facts)
+        if !matches {
+            // A transition declared on :hover needs the value from the
+            // preceding, non-hovered frame as its interpolation start.
+            if !result.track && item.value.transition_set && item.value.transition_fields != 0 {
+                selector.state = StyleAny()
+                result.track = StyleSelectorMatches(selector, facts)
+            }
+            continue
+        }
+        if item.value.transition_set && (result.transition < 0 ||
+            StylePriorityWins(item.priority, rules[result.transition].priority)) {
+            result.transition = index
+        }
+        if item.value.animation_set && (result.animation < 0 ||
+            StylePriorityWins(item.priority, rules[result.animation].priority)) {
+            result.animation = index
+        }
+    }
+    return result
+}
+
+Sample :: (session: Session, identity: u64, facts: StyleFacts, target: StyleData) -> StyleData {
+    if identity == 0 { return target }
+    selected := SelectRules(facts)
+    transition := selected.transition
+    animation := selected.animation
+    if transition < 0 && animation < 0 && !selected.track { return target }
+    history := *histories[session.slot]
+    if history.epoch != session.epoch { MotionHistoryStart(history, session.epoch) }
+    row: Row
+    initialized := MotionHistoryRead(history, identity, *row)
+    now := frame_motion_time[session.slot]
+    if now > row.now { row.now = now }
+    reduced := reduce_motion || target.motion_reduced
+    empty: Rule
+    transition_rule := *empty
+    if transition >= 0 { transition_rule = *rules[transition].value }
+    output := ApplyTransitions(*row, transition_rule, initialized, reduced, target)
+    for channel: 0..6 {
+        if row.channels[channel].running { FrameMotionMark(session); break }
+    }
+    if animation >= 0 && rules[animation].value.animation.key != 0 && rules[animation].fields != 0 {
+        item := *rules[animation]
+        config := *item.value.animation
+        if row.animation_key != config.key {
+            row.animation_key = config.key
+            row.animation_started = row.now
+        }
+        phase := AnimationPhase(config, row.now - row.animation_started, reduced)
+        if phase.applies {
+            for channel: cast(s32)0..6 {
+                if (item.fields & ChannelField(channel)) != 0 {
+                    WriteValue(*output, channel, AnimationValue(item, channel,
+                        ValueAt(target, channel), phase.progress))
+                }
+            }
+        }
+        if phase.active { FrameMotionMark(session) }
+    } else { row.animation_key = 0 }
+    if !MotionHistoryWrite(history, identity, row) { return target }
+    return output
+}
+
+FiniteTime :: (time: float64) -> bool {
+    return time >= -1.7976931348623157e308 && time <= 1.7976931348623157e308
+}
+
+#scope_export
+
+// Install a borrowed rule table. Copied keyframes outlive the caller's sheet.
+// Validation and allocation complete before replacing the active cascade.
+Install :: (source: []Rule, reduced_motion: bool) -> bool {
+    if source.count > StyleRuleCapacity { return false }
+    count: s64
+    for index: 0..source.count - 1 {
+        rule := *source[index]
+        animation := *rule.animation
+        if !FiniteTime(rule.transition_seconds) || rule.transition_seconds < 0.0 ||
+            !FiniteTime(rule.transition_delay) || !FiniteTime(animation.seconds) || animation.seconds < 0.0 ||
+            !FiniteTime(animation.delay) || !FiniteTime(animation.iterations) ||
+            animation.frames.count > MaxKeyframes - count { return false }
+        last_offset: float32
+        for at: 0..animation.frames.count - 1 {
+            frame := *animation.frames[at]
+            if !(frame.offset >= last_offset && frame.offset <= 1.0) { return false }
+            last_offset = frame.offset
+        }
+        count += animation.frames.count
+    }
+    next_rules: Vec(InstalledRule)
+    next_frames: Vec(Keyframe)
+    if !VecResizeBounded(next_rules, source.count, StyleRuleCapacity) ||
+        !VecResizeBounded(next_frames, count, MaxKeyframes) { return false }
+    first: s64
+    empty_frames: []Keyframe
+    for index: 0..source.count - 1 {
+        rule := *source[index]
+        item := *next_rules[index]
+        item.value = rule.*
+        item.value.animation.frames = empty_frames
+        item.priority = .{true, rule.layer, StyleSelectorSpecificity(rule.selector), rule.order}
+        item.first = first
+        item.count = rule.animation.frames.count
+        for at: 0..rule.animation.frames.count - 1 {
+            frame := *rule.animation.frames[at]
+            next_frames[first] = frame.*
+            next_frames[first].style.typeface = ""
+            item.fields |= frame.style.fields & SupportedFields()
+            first += 1
+        }
+    }
+    VecSwap(rules, next_rules)
+    VecSwap(frames, next_frames)
+    reduce_motion = reduced_motion
+    frame_style_motion = StyleMotionFrame
+    style_motion_sample = Sample
+    FrameMotionInvalidate()
+    return true
+}

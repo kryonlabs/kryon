@@ -58,8 +58,9 @@ not_in_a_plain_page: [5]string = .["image", "lanczos_cache", "std_resample", "pa
     "test_driver"];
 
 // What a web frame example with no picture, text field or scroll carries none of.
-not_in_a_plain_web_frame: [8]string = .["image", "lanczos_cache", "std_resample", "page_mesh",
-    "test_driver", "text_request", "text_input_platform", "scroll_device"];
+not_in_a_plain_web_frame: [11]string = .["image", "lanczos_cache", "std_resample", "page_mesh",
+    "test_driver", "text_request", "text_input_platform", "scroll_device",
+    "style_motion", "layout_motion", "motion_history"];
 
 // What no example that shows no picture or video carries.
 not_without_pictures: [10]string = .["image_decode_desktop", "avif_decode", "lanczos_cache",
@@ -69,10 +70,10 @@ not_without_pictures: [10]string = .["image_decode_desktop", "avif_decode", "lan
 // What a frame example carries none of when it shows no picture, edits no
 // text and has no scroll, tabs, text area or grid: the picture chain, text
 // input and the scroll device.
-not_in_a_plain_frame: [14]string = .["image_decode_desktop", "avif_decode", "lanczos_cache",
+not_in_a_plain_frame: [17]string = .["image_decode_desktop", "avif_decode", "lanczos_cache",
     "ziran_image_decode", "riff", "bmff", "native_api", "video_linux", "std_thread_linux",
     "std_parallel_linux", "app_asset_path", "text_request", "text_input_platform",
-    "scroll_device"];
+    "scroll_device", "style_motion", "layout_motion", "motion_history"];
 
 failures: s32;
 

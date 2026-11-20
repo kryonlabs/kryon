@@ -12,6 +12,7 @@
 #import "input_delivery"
 #import "input_take"
 #import "frame_driver"
+#import "frame_motion"
 #import "canvas_frame"
 #import "page_core"
 #import "program_title"
@@ -456,8 +457,10 @@ CanvasWheelMove :: () -> float32 {
 #program_export
 CanvasSampleScroll :: (session: Session, pointer: PointerFrame, wheel: float32,
     mouse_selects: bool = true) {
+    seconds := PageNow() / 1000.0
+    SetFrameMotionTime(session, seconds)
     ScrollSampleBegin(session, .{pointer.x, pointer.y}, pointer.pressed, pointer.down,
-        pointer.released, wheel, PageNow() / 1000.0)
+        pointer.released, wheel, seconds)
     // A test driver may supply a simulated wheel step without a DOM event.
     if wheel != CanvasWheelMove() { return }
     ScrollSampleBrowserInput(session, .{cast(float32)canvas_frame_input.scroll_x,

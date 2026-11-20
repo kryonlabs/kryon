@@ -30,6 +30,8 @@ using Text :: #import "text_props";
     #import "text_layout"
     #import "semantic"
     #import "style"
+    #import "style_motion_slot"
+    #import "style_sheet"
     #import "surface"
     #import "text_behavior"
     #import "text_align"
@@ -234,14 +236,8 @@ using Text :: #import "text_props";
         return PrepareTextWithLines(props, face, lines)
     }
 
-    // The draw owns these borrowed plans only until its paint is queued.
-    // Overflow keeps the ordinary line-at-a-time layout path.
-    PrepareTextWithLines :: (props: Text.Props, face: TextFace,
-        lines: []TextLinePlan) -> PreparedText {
-        prepared: PreparedText
-        prepared.bounds = props.bounds
-        prepared.typeface = ifx props.typeface != "" then props.typeface else face.value.typeface
-        appearance: TextAppearance = ResolveTextStyle(props.size, 0,
+    TextAppearanceFor :: (props: Text.Props, face: TextFace) -> TextAppearance {
+        return ResolveTextStyle(props.size, 0,
             ResolveFont(0, StyleFontValue(face.value.fields,
             face.value.font_size), face.fallback_font),
             face.value.foreground, cast(u32)0, Theme.CurrentText(),
@@ -249,9 +245,23 @@ using Text :: #import "text_props";
             // A stylesheet's opacity already supplies the disabled face;
             // the fallback must not fade it a second time.
             props.disabled && (face.value.fields & cast(u32)StyleOpacity) == cast(u32)0, false)
-        prepared.font = appearance.font
-        prepared.color = ColorFromPacked(Opacity(appearance.color,
+    }
+
+    TextPaintColor :: (face: TextFace, color: u32) -> Color {
+        return ColorFromPacked(Opacity(color,
             StyleOpacityValue(face.value.fields, face.value.opacity)))
+    }
+
+    // The draw owns these borrowed plans only until its paint is queued.
+    // Overflow keeps the ordinary line-at-a-time layout path.
+    PrepareTextWithLines :: (props: Text.Props, face: TextFace,
+        lines: []TextLinePlan) -> PreparedText {
+        prepared: PreparedText
+        prepared.bounds = props.bounds
+        prepared.typeface = ifx props.typeface != "" then props.typeface else face.value.typeface
+        appearance := TextAppearanceFor(props, face)
+        prepared.font = appearance.font
+        prepared.color = TextPaintColor(face, appearance.color)
         prepared.glyph_style = StyleTextGlyphs(face.value)
         prepared.glyph_height = GlyphLineHeight(prepared.font, prepared.typeface, prepared.glyph_style)
         if prepared.glyph_height < 1 { prepared.glyph_height = prepared.font }
@@ -468,6 +478,13 @@ using Text :: #import "text_props";
             TreeSetLabel(session, node, props.text)
             TreeSetStyleClass(session, node, props.class_name)
             TreeSetStyleId(session, node, props.id)
+            if style_motion_sample != null {
+                state := ifx props.disabled then cast(s32)ButtonState.ButtonStateDisabled else cast(s32)ButtonState.ButtonStateNormal
+                kind := ifx props.style_kind > 0 then props.style_kind else StyleKindText()
+                face.value = style_motion_sample(session, TreeSubmittedIdentity(session, node),
+                    StyleTextFacts(props.id, props.class_name, kind, state), face.value)
+                prepared.color = TextPaintColor(face, TextAppearanceFor(props, face).color)
+            }
             TreeSetSemantic(session, node, props.semantic_kind, props.heading_level)
             hidden: s32 = TextHiddenLines(props, prepared)
             if hidden > 0 {

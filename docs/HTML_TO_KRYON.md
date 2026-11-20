@@ -157,7 +157,7 @@ Bind selectors on widgets via `props.class_name = CSS.StyleClass("primary")` and
   - Kryon extensions: `-kryon-material` (`lightfield` | `flat` | `glass`), `-kryon-icon-size`, `-kryon-font-role` (`inherit` | `control` | `body` | `heading` | `code`), `-kryon-elevation` (`none` | `rest` | `raised` | `floating`), `-kryon-motion-duration`, `-kryon-motion-multiplier`, `-kryon-motion-easing` (`inherit` | `standard` | `linear` | `instant`), `-kryon-motion-reduced` (`reduce` | `no-preference`).
 - **Units & values**: hex (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`), CSS named colors, `rgb()`, `rgba()`, `hsl()`, `hsla()`, `hwb(hue white% black% [/ alpha])`, hue angle units (`deg`, `rad`, `grad`, `turn`), `px`, `rem` (`16px`), `s`, `ms`, `:root` custom properties (`--token: ...;`) with `var(--token, fallback)`. `em` and `%` lengths are rejected (use `px` or `rem`).
 - **At-rules**: `@import` (before rules), `@layer`, `@keyframes`, `@media` (`prefers-color-scheme`, `prefers-contrast`, `prefers-reduced-motion`, `pointer`, `min-width`, `max-width`, `-kryon-theme`, `-kryon-density`, `-kryon-pointer`, `-kryon-platform`).
-- **Web-only pass-through properties** (accepted by parser for `kryon/Dom`, ignored by native widgets): `width`, `height`, `min-width`, `max-width`, `max-height`, `margin*`, `display`, `flex*`, `justify-content`, `align-items`, `align-self`, `grid-*`, `text-align`, `text-decoration`, `text-transform`, `white-space`, `cursor`, `box-shadow`, `transition`, `animation`, `overflow`, `z-index`, `visibility`.
+- **Web-only pass-through properties** (accepted by parser for `kryon/Dom`, ignored by native widgets): `width`, `height`, `min-width`, `max-width`, `max-height`, `margin*`, `display`, `flex*`, `justify-content`, `align-items`, `align-self`, `grid-*`, `text-align`, `text-decoration`, `text-transform`, `white-space`, `cursor`, `box-shadow`, `overflow`, `z-index`, `visibility`.
 
 Use `color-mix(in srgb, #2076c0 35%, transparent)` in a native color
 declaration or custom property to derive a tint from two literal colors.
@@ -166,22 +166,31 @@ For native `@media (prefers-reduced-motion: reduce)` rules, set
 reinstall the parsed sheet when that preference changes. DOM output uses
 the browser's live preference.
 
-### Map CSS motion to native values
+### CSS and layout motion
 
-| CSS authoring pattern | Native Kryon equivalent |
+Install motion styles with `css/motion`. Supported native styles animate
+through `transition` and `@keyframes`, including duration, delays, easing,
+direction, fill modes and repeat counts. For example, a native Button with
+`class_name = CSS.StyleClass("save")` uses these rules.
+
+```css
+button.save {
+  background-color: #365bd6;
+  transition: background-color 180ms ease-out;
+}
+button.save:hover { background-color: #2443ac; }
+```
+
+| UI effect | Kryon API |
 | --- | --- |
-| `transition: opacity 180ms ease-out` | `Motion.TweenTo(*opacity, target, now, 0.18, Motion.TimingFor(.EaseOut), reduce)` |
-| `@keyframes` with `0%`, `40%`, `100%` | `Motion.Keyframe` offsets `0.0`, `0.4`, `1.0` passed to `Motion.BuildTrack` |
-| `cubic-bezier(.2,.8,.2,1)` | `Motion.CubicBezier(0.2, 0.8, 0.2, 1.0)` |
-| `animation-duration` and `animation-iteration-count` | `Motion.Sample` with elapsed time, duration in seconds, and iteration count |
-| `animation-direction: alternate` | `alternate = true` in `Motion.Sample` |
-| `prefers-reduced-motion: reduce` | Pass the app or theme's reduced-motion setting to `TweenTo` and `Sample` |
+| Move keyed items when a row, column or grid reflows | `LayoutMotion.Children(session)` from `kryon/layout_motion` in the open layout scope |
+| Animate a custom shape, number, angle or graph value | `Motion.TweenTo` or `Motion.Sample` from `kryon/motion` |
+| Animate a changing line chart | `Plot.AnimatedLineChart` with reusable chart state from `plot/Plot` |
 
-Import `Motion :: #import "kryon/motion";`. The app owns the clock, the values
-it animates, and each transition's state. A chart can sample one track and use
-its `.value` to interpolate every point. Request animation frames while any
-sample is `.active`. See the [checked example](../src/ui/motion_api_example.zi)
-and the [motion API](API.md#timed-motion-and-keyframes).
+See the [retained motion API](API.md#retained-style-and-layout-motion) for
+supported native widget properties and the [scalar motion API](API.md#timed-motion-and-keyframes)
+for application-owned tracks. The DOM backend applies motion directly through
+browser CSS.
 
 ---
 

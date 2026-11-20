@@ -14,6 +14,7 @@
 #import "android_surface"
 #import "android_touch"
 #import "frame_entry"
+#import "frame_motion"
 #import "frame_texture_android"
 #import "std/byte_text_linux"
 #import "drawing_props"
@@ -115,9 +116,10 @@ DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
         pointer: PointerFrame = TestDriverPointer(session, PollPointer())
         TreePointerUpdate(session, pointer)
         TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
+        seconds := cast(float64)Clock.MonotonicMilliseconds() / 1000.0
+        SetFrameMotionTime(session, seconds)
         BeginScrollFrame(session, Vector2.{pointer.x, pointer.y},
-            pointer.pressed, pointer.down, pointer.released, 0.0,
-            cast(float64)Clock.MonotonicMilliseconds() / 1000.0)
+            pointer.pressed, pointer.down, pointer.released, 0.0, seconds)
         key := AndroidTouchTakeKey()
         if key == 0 {
             for candidate: cast(s32)0..349 {
@@ -262,7 +264,7 @@ android_main :: (app: *NativeAndroidApp) {
 
         reuse = true
         next_frame_ms = AndroidNextFrame(*quiet_frames, frame_started_ms,
-            Clock.MonotonicMilliseconds(), paint_unchanged, events,
+            Clock.MonotonicMilliseconds(), paint_unchanged && !FrameMotionMoving(session), events,
             android_frame_input.pointer.down || android_touch_secondary_down)
     }
     if !ok { unused AndroidError("kryon: android frame rendering failed") }

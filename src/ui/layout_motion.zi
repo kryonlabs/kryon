@@ -1,0 +1,79 @@
+#import "frame_motion"
+#import "geometry"
+#import "layout_motion_slot"
+#import "motion_history"
+#import "session"
+#import "tree"
+Motion :: #import "motion";
+Theme :: #import "theme";
+#import "vec"
+
+Options :: struct {
+    seconds: float64
+    timing: Motion.Timing
+    reduced_motion: bool
+}
+
+LayoutTransition :: struct {
+    x: Motion.TweenState
+    y: Motion.TweenState
+}
+
+layout_history: [9]MotionHistory(LayoutTransition);
+LayoutScope :: struct {
+    enabled: bool
+    options: Options
+}
+
+layout_scopes: [9]Vec(LayoutScope);
+
+LayoutMotionFrame :: (session: Session, commit: bool) {
+    history := *layout_history[session.slot]
+    if commit {
+        MotionHistoryCommit(history)
+        return
+    }
+    MotionHistoryStart(history, session.epoch)
+    if session.epoch == 0 { VecFree(layout_scopes[session.slot]) }
+    else { unused VecResize(layout_scopes[session.slot], 0) }
+}
+
+LayoutMotionPlace :: (session: Session, parent: s32, identity: u64,
+    target: Rectangle, previous: Rectangle) -> Rectangle {
+    scopes := *layout_scopes[session.slot]
+    if parent >= scopes.count || !scopes.*[parent].enabled { return target }
+    options := scopes.*[parent].options
+    now := frame_motion_time[session.slot]
+    row: LayoutTransition
+    history := *layout_history[session.slot]
+    if !MotionHistoryRead(history, identity, *row) {
+        unused Motion.TweenTo(*row.x, previous.x, now, 0.0, options.timing)
+        unused Motion.TweenTo(*row.y, previous.y, now, 0.0, options.timing)
+    }
+    x := Motion.TweenTo(*row.x, target.x, now, options.seconds, options.timing, options.reduced_motion)
+    y := Motion.TweenTo(*row.y, target.y, now, options.seconds, options.timing, options.reduced_motion)
+    if !MotionHistoryWrite(history, identity, row) { return target }
+    if x.active || y.active { FrameMotionMark(session) }
+    target.x = x.value
+    target.y = y.value
+    return target
+}
+
+// Call in an open Row, Column, Grid or other group before drawing its children.
+// Keyed children keep their visual position during a reorder or reflow.
+Children :: (session: Session, options: Options = .{.seconds = 0.24, .timing = .{.curved = true, .x2 = 0.58, .y2 = 1.0}}) -> bool {
+    if !SessionValid(session) || !TreeIsBuilding(session) { return false }
+    parent := TreeCurrentParent(session)
+    if parent < 0 { return false }
+    history := *layout_history[session.slot]
+    if history.epoch != session.epoch { MotionHistoryStart(history, session.epoch) }
+    frame_layout_motion = LayoutMotionFrame
+    layout_motion_sample = LayoutMotionPlace
+    theme := Theme.CurrentTheme()
+    options.reduced_motion = options.reduced_motion || theme.motion.reduced_motion
+    options.seconds *= cast(float64)theme.motion.multiplier
+    scopes := *layout_scopes[session.slot]
+    if parent >= scopes.count && !VecResize(<<scopes, cast(s64)parent + 1) { return false }
+    scopes.*[parent] = .{true, options}
+    return true
+}

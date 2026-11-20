@@ -23,6 +23,7 @@ using BehaviorModule :: #import "image_behavior";
 Bitmaps :: #import "bitmap_store";
 #import "paint_queue"
 #import "style"
+#import "style_motion_slot"
 #import "style_sheet"
 #import "surface"
 #import "tree"
@@ -165,6 +166,13 @@ Draw :: (session: Session, image: Image.Props) {
     }
     faces: ImageFaces = ImageFacesFor(image,
         DefaultImageFaces())
+    if node >= 0 && style_motion_sample != null {
+        facts := StyleDefaultFacts(StyleKindImage())
+        facts.id = image.id
+        facts.class_name = image.class_name
+        facts.state = cast(s32)ButtonStateNormal
+        faces.surface = style_motion_sample(session, TreeSubmittedIdentity(session, node), facts, faces.surface)
+    }
     radius: float32 = 0.0
     if (faces.surface.fields & cast(u32)StyleRadius) != cast(u32)0 {
         radius = faces.surface.radius

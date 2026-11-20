@@ -29,6 +29,7 @@ NodeGeometry :: struct {
     #import "cursor"
     #import "widget_key"
     #import "vec"
+    #import "layout_motion_slot"
 
     // A retained node keeps its identity only when its key, kind, and parent key
     // match the previous committed tree.
@@ -650,6 +651,12 @@ NodeGeometry :: struct {
         return geometry
     }
 
+    TreeSubmittedIdentity :: (session: Session, index: s32) -> u64 {
+        slot := SessionIndex(session)
+        if !trees[slot].building || index < 0 || index >= trees[slot].submitted_count { return 0 }
+        return trees[slot].submitted[index].identity_generation
+    }
+
     #program_export
     TreeSubmittedBounds :: (session: Session, index: s32) -> Rectangle {
         empty: Rectangle
@@ -998,6 +1005,20 @@ NodeGeometry :: struct {
             }
             trees[slot].staged_identity_generation += cast(u64)1
             node.identity_generation = trees[slot].staged_identity_generation
+        }
+        if layout_motion_sample != null && old_index >= 0 && parent_index >= 0 && !node.auto_key {
+            parent_bounds := trees[slot].submitted[parent_index].bounds
+            old_parent := trees[slot].committed[old_index].parent
+            old_parent_bounds := trees[slot].committed[old_parent].bounds
+            previous := trees[slot].committed[old_index].bounds
+            target := node.bounds
+            previous.x -= old_parent_bounds.x
+            previous.y -= old_parent_bounds.y
+            target.x -= parent_bounds.x
+            target.y -= parent_bounds.y
+            placed := layout_motion_sample(session, parent_index, node.identity_generation, target, previous)
+            node.bounds.x += placed.x - target.x
+            node.bounds.y += placed.y - target.y
         }
         if !VecPush(trees[slot].submitted, node) {
             trees[slot].error = cast(FrameStatus)FrameAllocationFailed

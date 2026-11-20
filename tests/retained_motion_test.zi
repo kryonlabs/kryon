@@ -1,0 +1,148 @@
+Button :: #import "button";
+Layout :: #import "layout";
+LayoutMotion :: #import "layout_motion";
+Motion :: #import "motion";
+StyleMotion :: #import "style_motion";
+#import "control_props"
+#import "drawing_props"
+#import "frame_motion"
+#import "geometry"
+#import "paint_queue"
+#import "pixmap"
+#import "session"
+#import "style_sheet"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "widget_kind"
+
+using StyleField;
+using ButtonState;
+using WidgetKind;
+using FrameStatus;
+
+button_bounds: Rectangle = .{0.0, 0.0, 48.0, 28.0};
+
+Start :: (session: Session, seconds: float64) -> bool {
+    SetFrameMotionTime(session, seconds)
+    return BeginFrame(session, 1, .{0.0, 0.0, 160.0, 120.0}) == cast(FrameStatus)FrameOk
+}
+
+ForKind :: (kind: s32) -> StyleSelector {
+    any := StyleAny()
+    return .{.kind = kind, .role = any, .tone = any, .emphasis = any,
+        .size = any, .state = any, .validation = any, .orientation = any, .placement = any}
+}
+
+ButtonFrame :: (session: Session, seconds: float64, state: s32, expected_red: u8,
+    expected_opacity: u8, moving: bool, cancel: bool = false) -> bool {
+    if !Start(session, seconds) { return false }
+    unused Button.Draw(session, .{.key = 1, .bounds = button_bounds, .state = cast(ButtonState)state})
+    first := PendingPaintAt(session, 0)
+    if first.color.r != expected_red || first.color.a != expected_opacity { return false }
+    if cancel { TreeCancel(session); return true }
+    return CommitFrame(session) == cast(FrameStatus)FrameOk && FrameMotionMoving(session) == moving
+}
+
+Transitions :: (session: Session) -> bool {
+    selector := ForKind(StyleKindButton())
+    colors: StyleRules
+    colors.count = 3
+    colors.items[0] = .{.selector = selector, .style = .{.fields = cast(u32)StyleBackground,
+        .background = 0x200000ff}}
+    colors.items[1] = .{.selector = selector, .state = ButtonStateHover, .order = 1,
+        .style = .{.fields = cast(u32)StyleBackground, .background = 0xa00000ff}}
+    colors.items[2] = .{.selector = selector, .state = ButtonStatePressed, .order = 2,
+        .style = .{.fields = cast(u32)StyleBackground, .background = 0xe00000ff}}
+    if !InstallStyleRules(colors) { return false }
+    transitions: [1]StyleMotion.Rule = .{.{.selector = selector,
+        .transition_set = true, .transition_fields = cast(u32)StyleBackground,
+        .transition_seconds = 1.0}}
+    if !StyleMotion.Install(transitions[:], false) { return false }
+    if !ButtonFrame(session, 0.0, ButtonStateNormal, 32, 255, false) ||
+        !ButtonFrame(session, 1.0, ButtonStateHover, 32, 255, true) ||
+        !ButtonFrame(session, 1.5, ButtonStateHover, 96, 255, true) ||
+        !ButtonFrame(session, 1.75, ButtonStatePressed, 128, 255, true, true) ||
+        !ButtonFrame(session, 2.0, ButtonStateNormal, 160, 255, true) ||
+        !ButtonFrame(session, 2.5, ButtonStateNormal, 96, 255, true) ||
+        !ButtonFrame(session, 3.0, ButtonStateNormal, 32, 255, false) { return false }
+    if !StyleMotion.Install(transitions[:], true) { return false }
+    return ButtonFrame(session, 3.25, ButtonStateHover, 160, 255, false)
+}
+
+InstallKeyframes :: () -> bool {
+    frames: [2]StyleMotion.Keyframe = .{
+        .{.offset = 0.0, .style = .{.fields = cast(u32)StyleOpacity, .opacity = 0.25}},
+        .{.offset = 1.0, .style = .{.fields = cast(u32)StyleOpacity, .opacity = 1.0}}}
+    rules: [1]StyleMotion.Rule
+    rules[0].selector = ForKind(StyleKindButton())
+    rules[0].animation_set = true
+    rules[0].animation = .{.key = 1, .frames = frames[:], .seconds = 2.0,
+        .delay = 1.0, .iterations = 2.0, .alternate = true, .backwards = true, .forwards = true}
+    // All frame storage goes out of scope before the retained tree samples it.
+    return StyleMotion.Install(rules[:], false)
+}
+
+DelayedHover :: (session: Session) -> bool {
+    rules: [1]StyleMotion.Rule = .{.{.selector = ForKind(StyleKindButton()),
+        .state = ButtonStateHover, .transition_set = true,
+        .transition_fields = cast(u32)StyleBackground, .transition_delay = 0.5}}
+    return StyleMotion.Install(rules[:], false) &&
+        ButtonFrame(session, 3.3, ButtonStateNormal, 32, 255, false) &&
+        ButtonFrame(session, 3.4, ButtonStateHover, 32, 255, true) &&
+        ButtonFrame(session, 3.65, ButtonStateHover, 32, 255, true) &&
+        ButtonFrame(session, 3.95, ButtonStateHover, 160, 255, false)
+}
+
+Keyframes :: (session: Session) -> bool {
+    if !InstallKeyframes() { return false }
+    return ButtonFrame(session, 4.0, ButtonStateNormal, 32, 63, true) &&
+        ButtonFrame(session, 5.0, ButtonStateNormal, 32, 63, true) &&
+        ButtonFrame(session, 6.0, ButtonStateNormal, 32, 159, true) &&
+        ButtonFrame(session, 7.0, ButtonStateNormal, 32, 255, true) &&
+        ButtonFrame(session, 8.0, ButtonStateNormal, 32, 159, true) &&
+        ButtonFrame(session, 9.0, ButtonStateNormal, 32, 63, false)
+}
+
+LayoutFrame :: (session: Session, time: float64, reverse: bool, expected_x: float32,
+    moving: bool, reduced: bool = false) -> bool {
+    if !Start(session, time) { return false }
+    row := Layout.Row(session, .{.key = 10, .gap = 8})
+    if !row.opened || !LayoutMotion.Children(session, .{.seconds = 1.0,
+        .timing = Motion.TimingFor(.Linear), .reduced_motion = reduced}) { return false }
+    first: u64 = ifx reverse then 2 else 1
+    second: u64 = ifx reverse then 1 else 2
+    unused Button.Draw(session, .{.key = first, .bounds = button_bounds})
+    unused Button.Draw(session, .{.key = second, .bounds = button_bounds})
+    if !End(session) || CommitFrame(session) != cast(FrameStatus)FrameOk { return false }
+    node := TreeChild(session, row.node, 1, WidgetKindButton)
+    if node < 0 || TreeInputAt(session, node).bounds.x != expected_x ||
+        FrameMotionMoving(session) != moving { return false }
+    for index: cast(s32)0..PendingPaintCount(session) - 1 {
+        command := PendingPaintAt(session, index)
+        if command.node == node { return command.bounds.x == expected_x }
+    }
+    return false
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    defer { unused CloseSession(session); PixmapCloseWorkers() }
+    PixmapBegin(0)
+    if !Transitions(session) { print("retained style transition failed\n"); return 1 }
+    if !DelayedHover(session) { print("retained delayed hover transition failed\n"); return 5 }
+    if !Keyframes(session) { print("retained keyframes failed\n"); return 2 }
+    empty: []StyleMotion.Rule
+    if !StyleMotion.Install(empty, false) { return 3 }
+    if !LayoutFrame(session, 10.0, false, 0.0, false) ||
+        !LayoutFrame(session, 11.0, true, 0.0, true) ||
+        !LayoutFrame(session, 11.5, true, 28.0, true) ||
+        !LayoutFrame(session, 11.75, false, 42.0, true) ||
+        !LayoutFrame(session, 12.25, false, 21.0, true) ||
+        !LayoutFrame(session, 12.5, true, 56.0, false, true) {
+        print("retained layout transition failed\n")
+        return 4
+    }
+    return 0
+}

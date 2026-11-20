@@ -409,6 +409,11 @@ push-check:
 		$(MAKE) --no-print-directory source-check public-surface-check docs-check zx-player desktop-project-test gamepad-test text-hook-hosts-ir-test
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
 		$(MAKE) --no-print-directory test-focus TEST=ziran_pixmap_gpu_test
+.PHONY: retained-motion-test
+retained-motion-test:
+	"$(ZIRAN_BIN)" run --project --target=c --root tests tests/retained_motion_test.zi
+test: retained-motion-test
+
 .PHONY: text-hook-hosts-ir-test
 text-hook-hosts-ir-test:
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/text_hook_hosts_ir_test.sh

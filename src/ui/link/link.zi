@@ -9,6 +9,7 @@ Theme :: #import "theme";
 #import "paint_queue"
 #import "semantic"
 #import "style"
+#import "style_motion_slot"
 #import "style_sheet"
 #import "surface"
 #import "tree"
@@ -76,6 +77,10 @@ Draw :: (session: Session, props: PropsModule.Props) -> LinkResult {
         TreeSetLabel(session, result.node, props.text)
         TreeSetSemantic(session, result.node, cast(SemanticKind)SemanticLink, 0)
         TreeSetSemanticDetail(session, result.node, props.link)
+        if style_motion_sample != null {
+            face.value = style_motion_sample(session, TreeSubmittedIdentity(session, result.node),
+                StyleTextFacts(props.id, props.class_name, StyleKindLink(), state), face.value)
+        }
     }
     appearance: LinkAppearance = ResolveLinkAppearance(face,
         hovered, props.disabled)

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Opt-in retained style transitions and keyframes animate native widget paint.
+  Keyed layout reorders ease through the same geometry used for input.
+
 - `kryon/motion` provides CSS easing, timed keyframes, and interruptible
   value transitions for native widgets and charts. Samples tell apps when
   their values have settled so they can stop requesting animation frames.

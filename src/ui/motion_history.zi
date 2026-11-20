@@ -1,0 +1,82 @@
+#import "vec"
+
+MotionIndexEntry :: struct {
+    identity: u64
+    row: s64
+}
+
+// Stage observations separately from the last accepted tree. A cancelled
+// submission cannot change the next animation's start or keep dead nodes alive.
+MotionHistory :: struct($T: Type) {
+    accepted_index: Vec(MotionIndexEntry)
+    drafted_index: Vec(MotionIndexEntry)
+    accepted: Vec(T)
+    drafted: Vec(T)
+    epoch: u64
+}
+
+MotionHistoryStart :: (history: *MotionHistory($T), epoch: u64) {
+    if history.epoch != epoch {
+        VecFree(history.accepted_index)
+        VecFree(history.drafted_index)
+        VecFree(history.accepted)
+        VecFree(history.drafted)
+        history.epoch = epoch
+    }
+    if history.drafted.count == 0 { return }
+    unused VecResize(history.drafted, 0)
+    for at: 0..history.drafted_index.count - 1 {
+        history.drafted_index[at].identity = 0
+    }
+}
+
+MotionHistoryCommit :: (history: *MotionHistory($T)) {
+    VecSwap(history.accepted_index, history.drafted_index)
+    VecSwap(history.accepted, history.drafted)
+}
+
+MotionIndexSlot :: (index: *Vec(MotionIndexEntry), identity: u64) -> s64 {
+    mixed := identity * cast(u64)0x9e3779b97f4a7c15
+    mask := index.count - 1
+    at := cast(s64)((mixed ^ (mixed >> 32)) & cast(u64)mask)
+    while index.*[at].identity != 0 && index.*[at].identity != identity {
+        at = (at + 1) & mask
+    }
+    return at
+}
+
+MotionIndexGrow :: (index: *Vec(MotionIndexEntry)) -> bool {
+    count := index.count * 2
+    if count < 8 { count = 8 }
+    fresh: Vec(MotionIndexEntry)
+    if !VecResize(fresh, count) { return false }
+    for at: 0..index.count - 1 {
+        entry := index.*[at]
+        if entry.identity != 0 { fresh[MotionIndexSlot(*fresh, entry.identity)] = entry }
+    }
+    VecSwap(<<index, fresh)
+    return true
+}
+
+MotionHistoryRead :: (history: *MotionHistory($T), identity: u64, value: *T) -> bool {
+    if history.accepted.count == 0 { return false }
+    index := *history.accepted_index
+    at := MotionIndexSlot(index, identity)
+    if index.*[at].identity == 0 { return false }
+    <<value = history.accepted[index.*[at].row]
+    return true
+}
+
+MotionHistoryWrite :: (history: *MotionHistory($T), identity: u64, value: T) -> bool {
+    row := history.drafted.count
+    index := *history.drafted_index
+    if (row + 1) * 2 > index.count && !MotionIndexGrow(index) { return false }
+    at := MotionIndexSlot(index, identity)
+    if index.*[at].identity != 0 {
+        history.drafted[index.*[at].row] = value
+        return true
+    }
+    if !VecPush(history.drafted, value) { return false }
+    index.*[at] = .{identity, row}
+    return true
+}
