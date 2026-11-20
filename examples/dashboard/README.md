@@ -8,9 +8,21 @@ A reusable, editable native Kryon dashboard starter demonstrating:
 - Explicit loading (`LoadingIndicator`), empty (`EmptyState`), and error (`Alert` + retry) states
 - Keyboard-operable settings modal (`Modal.Draw`, `Toggle`, `Checkbox`, `TextField.Bind`, `Tab` / `Shift+Tab`, `Enter`, `Escape`)
 
-## Reproducible working-tree setup (Kryon / CSS / Ziran)
+## Quick start
 
-When running inside this Kryon checkout before starter/library changes are tagged on remote `master`, create `examples/dashboard/ziran.local.toml` (gitignored) so both `dashboard` and `css` resolve against the **same** local Kryon package identity (`https://github.com/kryonlabs/kryon.git` in `ziran.toml` and `packages/css/ziran.toml`):
+Run these commands from `examples/dashboard/` with `ziran` and `kryon` on your path.
+
+```sh
+ziran fetch --locked
+mkdir -p build/previews
+kryon preview default --theme light --width 1120 --height 720 --output build/previews/default
+```
+
+Open `build/previews/default.png` for the rendered dashboard and `build/previews/default.json` for its widget tree. The checked-in lockfile pins the Ziran toolchain and gives the app and its stylesheet the same Kryon package. When updating CSS or Kryon, match the dashboard’s Kryon revision to the one declared by CSS before regenerating the lock.
+
+## Develop against local packages
+
+Create a `ziran.local.toml` in `examples/dashboard/` to exercise changes in the canonical working directories.
 
 ```toml
 [overrides]
@@ -22,16 +34,7 @@ avif = "../../../../ziranlang/packages/avif"
 webp = "../../../../ziranlang/packages/webp"
 ```
 
-Then lock and verify the single shared Kryon identity and overrides from `examples/dashboard/`:
-
-```sh
-ziran lock
-ziran pkg list
-ziran pkg path kryon
-ziran pkg path Css
-```
-
-(`ziran.lock` is listed in `examples/dashboard/.gitignore` so local development locks are kept out of commits pinning unreleased Kryon changes.)
+Run `ziran pkg paths kryon css ziran` to confirm the local sources. Use ordinary project commands during local development to leave the shared lockfile intact.
 
 ## Typecheck, build, and test
 
@@ -49,14 +52,14 @@ env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u S
 
 ## Named preview fixtures
 
-Fixtures in `previews/` (`default`, `loading`, `empty`, `error`, `settings`) export `Frame` for `kryon preview`:
+Each fixture in `previews/` exports `Frame` for `kryon preview`.
 
 ```sh
-mkdir -p ../../build/examples/dashboard/previews
-../../build/bin/kryon preview default  --theme light --width 1120 --height 720 --output ../../build/examples/dashboard/previews/default-light-wide
-../../build/bin/kryon preview default  --theme dark  --width 460  --height 760 --output ../../build/examples/dashboard/previews/default-dark-narrow
-../../build/bin/kryon preview loading  --theme light --width 1120 --height 720 --output ../../build/examples/dashboard/previews/loading
-../../build/bin/kryon preview empty    --theme light --width 1120 --height 720 --output ../../build/examples/dashboard/previews/empty
-../../build/bin/kryon preview error    --theme light --width 1120 --height 720 --output ../../build/examples/dashboard/previews/error
-../../build/bin/kryon preview settings --theme dark  --width 1120 --height 720 --output ../../build/examples/dashboard/previews/settings-dark
+mkdir -p build/previews
+kryon preview default  --theme light --width 1120 --height 720 --output build/previews/default-light-wide
+kryon preview default  --theme dark  --width 460  --height 760 --output build/previews/default-dark-narrow
+kryon preview loading  --theme light --width 1120 --height 720 --output build/previews/loading
+kryon preview empty    --theme light --width 1120 --height 720 --output build/previews/empty
+kryon preview error    --theme light --width 1120 --height 720 --output build/previews/error
+kryon preview settings --theme dark  --width 1120 --height 720 --output build/previews/settings-dark
 ```

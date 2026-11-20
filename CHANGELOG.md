@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The dashboard starter ships a locked dependency set and a quick start for
+  rendering its first preview.
 - Smoothly scaled image meshes preserve the opacity of thin textures and
   keep transparent edges feathered.
 - `kryon preview` renders a named UI fixture at a chosen size and theme to a
