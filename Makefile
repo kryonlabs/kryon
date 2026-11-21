@@ -444,6 +444,12 @@ push-check:
 		$(MAKE) --no-print-directory source-check public-surface-check docs-check zx-player desktop-project-test gamepad-test text-hook-hosts-ir-test
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
 		$(MAKE) --no-print-directory test-focus TEST=ziran_pixmap_gpu_test
+
+.PHONY: pdf-export-test
+pdf-export-test:
+	sh tests/pdf_export_test.sh
+test: pdf-export-test
+
 .PHONY: retained-motion-test
 retained-motion-test:
 	"$(ZIRAN_BIN)" run --project --target=c --root tests tests/retained_motion_test.zi

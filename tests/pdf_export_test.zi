@@ -1,0 +1,40 @@
+Pdf :: #import "kryon/pdf_export";
+
+#program_export
+main :: () -> s32 {
+    document: Pdf.PdfDocument
+    rgba: [8]u8 = .{255, 0, 0, 255, 0, 0, 255, 128}
+    bounds := Pdf.PdfBounds.{20.0, 20.0, 80.0, 80.0}
+    if Pdf.PdfTextHeight(*document, "closed", 100.0, 18.0) != 0 ||
+        Pdf.PdfImagePixels(*document, rgba[:], 2, 1, bounds) { return 1 }
+    if !Pdf.PdfOpen(*document, "build/scratch/pdf-export/api.pdf", 300.0, 300.0) { return 2 }
+    if Pdf.PdfImagePixels(*document, rgba[:7], 2, 1, bounds) ||
+        Pdf.PdfImagePixels(*document, rgba[:], 0, 1, bounds) ||
+        Pdf.PdfImagePixels(*document, rgba[:], 2147483647, 2147483647, bounds) ||
+        Pdf.PdfImagePixels(*document, rgba[:], 2, 1, .{0.0, 0.0, 0.0, 80.0}) { return 3 }
+    if !Pdf.PdfPageColor(*document, 0xffffffff) ||
+        !Pdf.PdfImagePixels(*document, rgba[:], 2, 1, bounds) ||
+        !Pdf.PdfImage(*document, "build/scratch/pdf-export/rgba.png", .{120.0, 20.0, 80.0, 80.0}) { return 4 }
+    if rgba[0] != 255 || rgba[1] != 0 || rgba[2] != 0 || rgba[3] != 255 ||
+        rgba[4] != 0 || rgba[5] != 0 || rgba[6] != 255 || rgba[7] != 128 { return 5 }
+    // The PDF must retain the drawn image, not the caller's subsequently reused bytes.
+    for at: 0..7 { rgba[at] = 0 }
+    if !Pdf.PdfPage(*document) || !Pdf.PdfPageColor(*document, 0xffffffff) { return 6 }
+    text := "Café Mowgli — forêt.\n你好 日本語 한국어\nEND-OF-BOOK"
+    narrow := Pdf.PdfTextHeight(*document, text, 130.0, 18.0)
+    wide := Pdf.PdfTextHeight(*document, text, 260.0, 18.0)
+    line := Pdf.PdfTextHeight(*document, "Mowgli", 260.0, 18.0)
+    bold := Pdf.PdfTextHeight(*document, "Mowgli", 260.0, 18.0, true)
+    if line <= 0 || bold <= 0 || narrow <= wide || wide <= line || narrow > 260 { return 7 }
+    if Pdf.PdfTextHeight(*document,
+        "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20", 130.0, 18.0) <= 300 { return 11 }
+    if Pdf.PdfTextHeight(*document, "", 100.0, 18.0) != 0 ||
+        Pdf.PdfTextHeight(*document, text, 0.0, 18.0) != 0 ||
+        Pdf.PdfTextHeight(*document, text, 2147483647.0, 18.0) != 0 ||
+        Pdf.PdfTextHeight(*document, text, 100.0, 0.0) != 0 { return 8 }
+    if !Pdf.PdfText(*document, text, .{20.0, 20.0, 130.0, cast(float64)narrow},
+        18.0, 0x000000ff, false) || !Pdf.PdfPage(*document) || !Pdf.PdfClose(*document) { return 9 }
+    if Pdf.PdfTextHeight(*document, text, 130.0, 18.0) != 0 { return 10 }
+    print("PDF RGBA and wrapped text local tests passed\n")
+    return 0
+}

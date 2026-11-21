@@ -1392,7 +1392,7 @@ Other platform services an application may import:
 | Module | Surface |
 | --- | --- |
 | [`file_export`](../src/backend/file_export.zi) | `ExportBytes` and `ExportFile`: hand a finished file to the user as a browser download or through Android's share sheet |
-| [`pdf_export`](../src/backend/pdf_export.zi) | `PdfOpen`, `PdfImage`, `PdfText`, `PdfPage` and `PdfClose`: compose Linux-native PDF pages from full-resolution images and searchable UTF-8 text |
+| [`pdf_export`](../src/backend/pdf_export.zi) | `PdfOpen`, `PdfImage`, `PdfImagePixels`, `PdfText`, `PdfTextHeight`, `PdfPage` and `PdfClose`: compose Linux-native PDF pages from full-resolution images and searchable UTF-8 text |
 | [`file_picker`](../src/backend/file_picker.zi) | `PickFile(FilePickerProps, output)`: zenity on Linux and BSD, Windows' common dialog, and the browser's chooser, which copies the file into the page's file system |
 | [`window_close`](../src/backend/window_close.zi) | `WindowCloseWatch(window)` and `WindowCloseTake()`: close requests for the application's own SDL or Win32 window, so it can ask first or hide to a tray |
 | [`idle_time`](../src/backend/idle_time.zi) | `IdleMilliseconds()` from the session's idle service over D-Bus, and `IsWaylandSession()` |
@@ -1403,6 +1403,19 @@ Other platform services an application may import:
 | [`http_transfer`](../src/backend/http_transfer.zi) | `HttpTransferStart`, `HttpTransferPoll` and `HttpTransferCancel`: HTTP requests that run while the application draws, through curl on a worker thread, the Android activity's transport, or the browser's `fetch` |
 | [`page_socket`](../src/backend/page_socket.zi) | `PageSocketOpen`, `PageSocketPoll` and `PageSocketClose`: a browser WebSocket for text events, polled each frame, with bounded messages and a token carried as a subprotocol |
 | [`browser_viewport`](../src/backend/browser_viewport.zi) | `BrowserViewportMeasure` and `BrowserResizeSettled`: the room a canvas application has in the browser, and when a new size has settled enough to resize to, for applications that size their own canvas |
+
+`PdfImagePixels(document, pixels, width, height, bounds)` draws tightly packed
+straight RGBA bytes, contained and centered in `PdfBounds` without changing their
+aspect ratio. It preserves alpha, does not modify or retain the caller's bytes,
+and returns false for invalid dimensions, byte count or a closed document.
+`PdfImage` loads a file and uses the same renderer.
+
+`PdfTextHeight(document, text, width, size, bold=false)` returns the full wrapped
+height in PDF points, using the same Noto Sans font, fallback fonts and word wrap
+as `PdfText`, without drawing or limiting the number of lines. It returns zero
+for empty or invalid UTF-8, nonpositive width/size, dimensions exceeding Pango's
+fixed-point range, or a closed document. Measure each paragraph before placing
+it; add a page when its measured height exceeds the remaining space.
 
 After a completed HTTP poll, `transfer.failure` distinguishes a response that
 exceeded the caller's buffer (`HTTP_TRANSFER_FAILURE_CAPACITY`) from a transport

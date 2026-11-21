@@ -91,37 +91,45 @@ PdfImage :: (document: *PdfDocument, path: string, bounds: PdfBounds) -> bool {
     if document.paint == null || path.count == 0 || bounds.width <= 0.0 || bounds.height <= 0.0 { return false }
     image := ImagePixels.LoadImagePixels(path)
     defer VecFree(image.pixels)
-    count := cast(s64)image.width * image.height
-    if image.width <= 0 || image.height <= 0 || count <= 0 || image.pixels.count != count * 4 { return false }
+    return PdfImagePixels(document, image.pixels[:], image.width, image.height, bounds)
+}
+
+// Draws caller-owned, tightly packed straight RGBA bytes synchronously. The
+// source is neither changed nor retained; it may be reused after this call.
+PdfImagePixels :: (document: *PdfDocument, pixels: []u8, width: s32, height: s32, bounds: PdfBounds) -> bool {
+    if document == null || document.paint == null || width <= 0 || height <= 0 ||
+        width > 536870911 || !(bounds.width > 0.0) || !(bounds.height > 0.0) { return false }
+    count := cast(s64)width * height
+    if pixels.count != count * 4 { return false }
     converted: Vec(u8)
     defer VecFree(converted)
     if !VecResize(converted, count * 4) { return false }
     for at: cast(s64)0..count - 1 {
         source := at * 4
-        alpha := cast(u32)image.pixels[source + 3]
-        red := (cast(u32)image.pixels[source] * alpha + 127) / 255
-        green := (cast(u32)image.pixels[source + 1] * alpha + 127) / 255
-        blue := (cast(u32)image.pixels[source + 2] * alpha + 127) / 255
+        alpha := cast(u32)pixels[source + 3]
+        red := (cast(u32)pixels[source] * alpha + 127) / 255
+        green := (cast(u32)pixels[source + 1] * alpha + 127) / 255
+        blue := (cast(u32)pixels[source + 2] * alpha + 127) / 255
         // Cairo ARGB32 is native-endian; Linux's little-endian bytes are BGRA.
         converted[at * 4] = cast(u8)blue
         converted[at * 4 + 1] = cast(u8)green
         converted[at * 4 + 2] = cast(u8)red
         converted[at * 4 + 3] = cast(u8)alpha
     }
-    surface := PdfImageSurface(*converted[0], 0, image.width, image.height, image.width * 4)
+    surface := PdfImageSurface(*converted[0], 0, width, height, width * 4)
     if surface == null || PdfSurfaceStatus(surface) != 0 {
         if surface != null { PdfSurfaceDestroy(surface) }
         return false
     }
-    scale := bounds.width / cast(float64)image.width
-    if bounds.height / cast(float64)image.height < scale { scale = bounds.height / cast(float64)image.height }
-    width := cast(float64)image.width * scale
-    height := cast(float64)image.height * scale
+    scale := bounds.width / cast(float64)width
+    if bounds.height / cast(float64)height < scale { scale = bounds.height / cast(float64)height }
+    drawn_width := cast(float64)width * scale
+    drawn_height := cast(float64)height * scale
     PdfSave(document.paint)
     PdfRectangle(document.paint, bounds.x, bounds.y, bounds.width, bounds.height)
     PdfClip(document.paint)
-    PdfTranslate(document.paint, bounds.x + (bounds.width - width) / 2.0,
-        bounds.y + (bounds.height - height) / 2.0)
+    PdfTranslate(document.paint, bounds.x + (bounds.width - drawn_width) / 2.0,
+        bounds.y + (bounds.height - drawn_height) / 2.0)
     PdfScale(document.paint, scale, scale)
     PdfSetSourceSurface(document.paint, surface, 0.0, 0.0)
     PdfPatternFilter(PdfGetSource(document.paint), 4)
@@ -136,20 +144,22 @@ PdfStringData :: (value: string) -> *u8 {
     return descriptor.data
 }
 
-// Text remains text in the PDF (including fallback fonts for CJK), so it can
-// be selected, searched and extracted. Pango wraps words inside bounds.
-PdfText :: (document: *PdfDocument, value: string, bounds: PdfBounds, size: float64,
-    color: u32 = 0x3e332aff, centered: bool = true, bold: bool = false) -> bool {
-    if document.paint == null || value.count == 0 || value.count > 2147483647 ||
-        !Utf8.Valid(value) || bounds.width <= 0.0 || bounds.height <= 0.0 || size <= 0.0 { return false }
+#scope_file
+// Measurement and drawing share font selection and wrapping. Omitting the
+// height leaves the new Pango layout unbounded so pagination can measure all
+// lines before deciding which page they fit on.
+PdfTextLayout :: (document: *PdfDocument, value: string, width: float64, height: float64,
+    size: float64, centered: bool, bold: bool) -> *void {
+    if document == null || document.paint == null || value.count == 0 || value.count > 2147483647 ||
+        !Utf8.Valid(value) || !(width > 0.0) || width > 2097151.0 ||
+        !(size > 0.0) || size > 2097151.0 || height > 2097151.0 { return null }
     layout := PdfLayoutNew(document.paint)
     description := PdfFontNew()
     if layout == null || description == null {
         if layout != null { PdfObjectFree(layout) }
         if description != null { PdfFontFree(description) }
-        return false
+        return null
     }
-    defer PdfObjectFree(layout)
     defer PdfFontFree(description)
     family: [32]u8
     unused CopyCString("Noto Sans", family[:])
@@ -158,10 +168,34 @@ PdfText :: (document: *PdfDocument, value: string, bounds: PdfBounds, size: floa
     if bold { PdfFontWeight(description, 700) }
     PdfLayoutFont(layout, description)
     PdfLayoutText(layout, PdfStringData(value), cast(s32)value.count)
-    PdfLayoutWidth(layout, cast(s32)(bounds.width * 1024.0))
-    PdfLayoutHeight(layout, cast(s32)(bounds.height * 1024.0))
+    PdfLayoutWidth(layout, cast(s32)(width * 1024.0))
+    if height > 0.0 { PdfLayoutHeight(layout, cast(s32)(height * 1024.0)) }
     PdfLayoutWrap(layout, 2)
     PdfLayoutAlign(layout, ifx centered then 1 else 0)
+    return layout
+}
+#scope_export
+
+// The complete wrapped height in PDF points, without drawing or clipping.
+// Returns zero for empty/invalid text, invalid dimensions or a closed document.
+PdfTextHeight :: (document: *PdfDocument, value: string, width: float64, size: float64,
+    bold: bool = false) -> s32 {
+    layout := PdfTextLayout(document, value, width, 0.0, size, false, bold)
+    if layout == null { return 0 }
+    defer PdfObjectFree(layout)
+    text_width: s32; text_height: s32
+    PdfLayoutSize(layout, *text_width, *text_height)
+    return text_height
+}
+
+// Text remains text in the PDF (including fallback fonts for CJK), so it can
+// be selected, searched and extracted. Pango wraps words inside bounds.
+PdfText :: (document: *PdfDocument, value: string, bounds: PdfBounds, size: float64,
+    color: u32 = 0x3e332aff, centered: bool = true, bold: bool = false) -> bool {
+    if !(bounds.height > 0.0) { return false }
+    layout := PdfTextLayout(document, value, bounds.width, bounds.height, size, centered, bold)
+    if layout == null { return false }
+    defer PdfObjectFree(layout)
     text_width: s32; text_height: s32
     PdfLayoutSize(layout, *text_width, *text_height)
     y := bounds.y

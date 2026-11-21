@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Native PDF exports can draw caller-owned RGBA pixels and measure complete
+  wrapped text before pagination, preserving image proportions and searchable text.
+
 - Pixmap applications that supply their own framebuffer can register, clear and
   reload images without requiring the built-in framebuffer.
 
