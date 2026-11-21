@@ -16,6 +16,15 @@ value_bytes: [128]u8;
 last_width: s32;
 last_height: s32;
 
+#if #defined(SURFACE_SMOKE_ROWS) {
+    row_host :: #system_library "host_api";
+    PresentRows :: (width: s32, height: s32, first: s32, rgba: string) -> bool #reads #foreign row_host;
+
+    SendRows :: (width: s32, height: s32, first: s32, rgba: string) -> bool {
+        return PresentRows(width, height, first, rgba)
+    }
+}
+
 #if #defined(SURFACE_SMOKE_CLOCK) {
     #import "kryon/frame_snapshot"
     clock_tick: s64;
@@ -65,7 +74,9 @@ Draw :: (frame: Surface.Frame) {
 main :: () -> s32 {
     value.bytes = value_bytes[:]
     window: Surface.Window = .{.title = "Kryon hosted surface", .width = 240, .height = 144}
-    #if #defined(SURFACE_SMOKE_CLOCK) {
+    #if #defined(SURFACE_SMOKE_ROWS) {
+        return Surface.RunRetainedRows(window, Draw, SendRows, 250)
+    } else #if #defined(SURFACE_SMOKE_CLOCK) {
         result := Surface.RunRetained(window, Draw, 250, clock = SmokeClock)
         return ifx clock_ok && clock_tick == 60 then result else 2
     } else {

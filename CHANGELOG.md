@@ -10,6 +10,9 @@
 - Portable ZX surfaces can retain the previous presentation and reconstruct
   changed pixels in bounded raster strips while still processing input and
   idle callbacks.
+- Portable ZX apps can stream changed rows to a host that retains its pixels,
+  reducing guest framebuffer memory for larger windows.
+- Concurrent desktop builds can share completed AVIF libraries safely.
 - Hosted ZX surfaces route wheel input to Kryon widgets and can sample an
   optional monotonic clock during frame callbacks.
 - Portable apps can share GTK style records with the native GTK renderer.

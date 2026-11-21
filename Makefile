@@ -274,7 +274,13 @@ zx-surface-test: project-toolchain
 	grep -Fx 'surface 280 x 160' build/scratch/zx-surface/result
 	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_TIMED --entry hosted_surface:main \
 		-o build/scratch/zx-surface/timed.zx examples/hosted_surface.zi
-	build/scratch/zx-surface/test build/scratch/zx-surface/timed.zx timed
+	build/scratch/zx-surface/test build/scratch/zx-surface/timed.zx timed > build/scratch/zx-surface/timed-result
+	cat build/scratch/zx-surface/timed-result
+	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_ROWS \
+		--define KRYON_PIXMAP_EXTERNAL_BUFFER --entry hosted_surface:main \
+		-o build/scratch/zx-surface/rows.zx examples/hosted_surface.zi
+	build/scratch/zx-surface/test build/scratch/zx-surface/rows.zx rows > build/scratch/zx-surface/rows-result
+	cmp build/scratch/zx-surface/timed-result build/scratch/zx-surface/rows-result
 	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_TIMED \
 		--define KRYON_PIXMAP_EXTERNAL_BUFFER --entry hosted_surface:main \
 		-o build/scratch/zx-surface/external.zx examples/hosted_surface.zi

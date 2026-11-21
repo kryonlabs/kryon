@@ -47,6 +47,9 @@ Host :: struct {
     label: u64
     frame_hash: u64
     sequence_hash: u64
+    row_end: s32
+    row_pending: bool
+    row_frame: [280 * 160 * 4]u8
     event_type: *u8
     fields: [9]HostField
 }
@@ -88,6 +91,51 @@ FrameValid :: (host: *Host, args: *HostValue) -> bool {
     return host.cursor < 4 || hash != host.label
 }
 
+RecordFrame :: (host: *Host, rgba: HostValue) {
+    host.presents += 1
+    if host.cursor <= cast(s32)events.count { host.presented_at |= cast(u32)1 << cast(u32)host.cursor }
+    hash := cast(u64)14695981039346656037
+    for index: cast(s64)0..cast(s64)rgba.length - 1 {
+        hash = (hash ^ cast(u64)rgba.data[index]) * cast(u64)1099511628211
+    }
+    host.frame_hash = hash
+}
+
+CollectRows :: (host: *Host, args: *HostValue) -> bool {
+    width := args[0].integer
+    height := args[1].integer
+    first := args[2].integer
+    rgba := args[3]
+    expected_width := ifx host.cursor >= 10 then 280 else 240
+    expected_height := ifx host.cursor >= 10 then 160 else 144
+    if width != expected_width || height != expected_height || first < 0 || first >= height ||
+        rgba.kind != HostString || rgba.data == null || rgba.length == 0 ||
+        rgba.length % cast(usize)(width * 4) != 0 { return false }
+    rows := cast(s64)rgba.length / (width * 4)
+    full := host.cursor == 0 || host.cursor == 10 || host.cursor == 11
+    if rows > 32 || first + rows > height || (host.row_pending && first != host.row_end) ||
+        (full && !host.row_pending && first != 0) { return false }
+    at := first * width * 4
+    for index: cast(s64)0..cast(s64)rgba.length - 1 { host.row_frame[at + index] = rgba.data[index] }
+    host.row_end = cast(s32)(first + rows)
+    host.row_pending = true
+    return true
+}
+
+FinishRows :: (host: *Host) -> bool {
+    if !host.row_pending { return true }
+    width := ifx host.cursor >= 10 then 280 else 240
+    height := ifx host.cursor >= 10 then 160 else 144
+    full := host.cursor == 0 || host.cursor == 10 || host.cursor == 11
+    if full && host.row_end != height { return false }
+    args := HostValue.[HostScalar("s32", width), HostScalar("s32", height),
+        .{.kind = HostString, .data = *host.row_frame[0], .length = cast(usize)(width * height * 4)}]
+    if !FrameValid(host, *args[0]) { return false }
+    RecordFrame(host, args[2])
+    host.row_pending = false
+    return true
+}
+
 Call :: (context: *void, module: *u8, function: *u8, args: *HostValue, count: s32, reply: *HostValue) -> s32 {
     unused module
     host := cast(*Host)context
@@ -100,20 +148,15 @@ Call :: (context: *void, module: *u8, function: *u8, args: *HostValue, count: s3
     }
     if !host.opened || host.closed { return 0 }
     if name == "Present" && count == 3 && FrameValid(host, args) {
-        host.presents += 1
-        if host.cursor <= cast(s32)events.count {
-            host.presented_at |= cast(u32)1 << cast(u32)host.cursor
-        }
-        rgba := args[2]
-        hash := cast(u64)14695981039346656037
-        for index: cast(s64)0..cast(s64)rgba.length - 1 {
-            hash = (hash ^ cast(u64)rgba.data[index]) * cast(u64)1099511628211
-        }
-        host.frame_hash = hash
+        RecordFrame(host, args[2])
         reply.* = HostScalar("bool", 1)
         return 1
     }
-    if name == "Event" && count == 1 && args[0].integer == host.wait_ms && host.presents > 0 {
+    if name == "PresentRows" && count == 4 && CollectRows(host, args) {
+        reply.* = HostScalar("bool", 1)
+        return 1
+    }
+    if name == "Event" && count == 1 && args[0].integer == host.wait_ms && FinishRows(host) && host.presents > 0 {
         host.sequence_hash = (host.sequence_hash ^ host.frame_hash) * cast(u64)1099511628211
         scripted := cast(s32)events.count
         event: Event
@@ -144,16 +187,21 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if BundleCapabilities(bundle) != 4 { return 3 }
     host: Host
     full := argc == 3 && TextFromCString(argv[2]) == "timed-full"
-    timed := full || (argc == 3 && TextFromCString(argv[2]) == "timed")
+    rows := argc == 3 && TextFromCString(argv[2]) == "rows"
+    timed := full || rows || (argc == 3 && TextFromCString(argv[2]) == "timed")
     host.wait_ms = ifx timed then 250 else 1000
     bindings: [4]HostBinding
     for index: 0..3 {
         abi: BundleCapabilityAbi
-        if ReadBundleCapabilityAbi(bundle, cast(u64)index, *abi) == 0 ||
-            !Names.ModuleName(TextFromCString(abi.module), "zx_surface") { return 4 }
+        if ReadBundleCapabilityAbi(bundle, cast(u64)index, *abi) == 0 { return 4 }
         function := TextFromCString(abi.function)
+        source := TextFromCString(abi.module)
+        if rows && function == "PresentRows" {
+            if !Names.ModuleName(source, "hosted_surface") { return 4 }
+        } else if !Names.ModuleName(source, "zx_surface") { return 4 }
         if function == "Event" { host.event_type = abi.return_type }
-        else if function != "Open" && function != "Present" && function != "Close" { return 5 }
+        else if function != "Open" && function != "Close" &&
+            function != (ifx rows then "PresentRows" else "Present") { return 5 }
         bindings[index] = .{abi.module, abi.function, Call, cast(*void)*host}
     }
     if host.event_type == null { return 6 }

@@ -5,9 +5,7 @@ import shutil
 import sys
 
 
-def main():
-    build = Path(sys.argv[1])
-    inputs = dict(argument.split("=", 1) for argument in sys.argv[2:])
+def configure(build, inputs):
     build.mkdir(parents=True, exist_ok=True)
     stamp = build / "kryon-config.json"
     contents = json.dumps(inputs, sort_keys=True, indent=2) + "\n"
@@ -23,6 +21,13 @@ def main():
         cache.unlink(missing_ok=True)
         shutil.rmtree(build / "CMakeFiles", ignore_errors=True)
         stamp.write_text(contents)
+    return stamp
+
+
+def main():
+    build = Path(sys.argv[1])
+    inputs = dict(argument.split("=", 1) for argument in sys.argv[2:])
+    configure(build, inputs)
 
 
 if __name__ == "__main__":

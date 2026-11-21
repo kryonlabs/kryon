@@ -139,6 +139,18 @@ layout, hit testing, paint queue and pixmap raster, including text measurement
 and rasterization with Kryon's bundled fonts. Compile ordinary widget imports
 and bind their raster calls to `pixmap` inside the bundle.
 
+`RunRetainedRows(window, draw, present, idle_ms, clock)` lets the host retain
+pixels while the app keeps only one strip of output. The `SurfaceRowsPresenter`
+callback takes `(width: s32, height: s32, first: s32, rgba: string) -> bool`.
+Each call supplies up to 32 complete opaque RGBA8 rows beginning at zero-based
+`first`. Consume or copy those bytes before returning. Initial draw, resize
+and expose deliver every row in order. Ordinary updates deliver affected rows
+and unchanged frames deliver none. Use built-in queued paint with this entry
+point. A presenter that returns `false` ends the loop with an error.
+
+Define `KRYON_PIXMAP_EXTERNAL_BUFFER` when the portable app always uses
+caller-supplied pixmap storage. This also omits the static fallback framebuffer.
+
 From the Kryon checkout, using canonical Ziran:
 
 ```sh

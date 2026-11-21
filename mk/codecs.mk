@@ -43,12 +43,6 @@ $(WEBP_BUILD)/kryon-config.json: codec-config-force
 	@python3 $(KRYON_DIR)/scripts/codec_configure.py "$(WEBP_BUILD)" \
 		"source=$(KRYON_DIR)/cmake/webp" "compiler=$(CODEC_CC)" \
 		"webp=$(WEBP_PACKAGE)" "package=$(WEBP_CODEC_PACKAGE)" "flags=$(WEBP_CFLAGS)"
-$(AVIF_BUILD)/kryon-config.json: codec-config-force
-	@python3 $(KRYON_DIR)/scripts/codec_configure.py "$(AVIF_BUILD)" \
-		"source=$(KRYON_DIR)/cmake/avif" "compiler=$(CODEC_CC)" \
-		"avif=$(AVIF_PACKAGE)" "aom=$(AOM_PACKAGE)" \
-		"dav1d=$(DAV1D_PACKAGE)" "package=$(AVIF_CODEC_PACKAGE)"
-
 $(OPUS_A): $$(OPUS_INPUTS) $(OPUS_BUILD)/kryon-config.json $(KRYON_DIR)/scripts/codec_configure.py
 	cmake -S $(AUDIO_CODEC_PACKAGE)/native -B $(OPUS_BUILD) -DOPUS_DIR="$(OPUS_PACKAGE)" \
 		-DSAMPLERATE_DIR="$(SAMPLERATE_PACKAGE)" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
@@ -67,14 +61,19 @@ $(WEBP_A): $$(WEBP_INPUTS) $(WEBP_BUILD)/kryon-config.json $(KRYON_DIR)/scripts/
 	command cmake --build $(WEBP_BUILD) --target kryonwebp --parallel $(CODEC_JOBS)
 	@test -f $@
 
-$(AVIF_A): $$(AVIF_INPUTS) $(AVIF_BUILD)/kryon-config.json $(KRYON_DIR)/scripts/codec_configure.py
-	cmake -S $(KRYON_DIR)/cmake/avif -B $(AVIF_BUILD) -DAVIF_DIR="$(AVIF_PACKAGE)" -DAOM_DIR="$(AOM_PACKAGE)" \
-		-DDAV1D_DIR="$(DAV1D_PACKAGE)" -DKRYON_AVIF_PACKAGE_DIR="$(AVIF_CODEC_PACKAGE)" \
-		-DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$(CODEC_CC)"
-	command cmake --build $(AVIF_BUILD) --target avif_static $(if $(filter Linux,$(CODEC_HOST_OS)),kryonavif) --parallel $(CODEC_JOBS)
-	@test -f $@
+# Always check freshness inside the build-directory lock. Downstream make
+# processes can share this directory even when their project roots differ.
+$(AVIF_BUILD)/kryon-built: codec-config-force
+	python3 $(KRYON_DIR)/scripts/build_avif.py "$(AVIF_BUILD)" --jobs "$(CODEC_JOBS)" \
+		--archive "$(AVIF_A)" --aom-archive "$(AOM_A)" \
+		$(if $(filter Linux,$(CODEC_HOST_OS)),--shared-library "$(AVIF_SO)") \
+		$(foreach source,$(AVIF_INPUTS) $(KRYON_DIR)/scripts/codec_configure.py $(KRYON_DIR)/scripts/build_avif.py,--input "$(source)") \
+		"source=$(KRYON_DIR)/cmake/avif" "compiler=$(CODEC_CC)" \
+		"avif=$(AVIF_PACKAGE)" "aom=$(AOM_PACKAGE)" \
+		"dav1d=$(DAV1D_PACKAGE)" "package=$(AVIF_CODEC_PACKAGE)"
 
-$(AOM_A) $(AVIF_SO): $(AVIF_A)
+# Make must recheck library mtimes after the shared build replaces them.
+$(AVIF_A) $(AOM_A) $(AVIF_SO): $(AVIF_BUILD)/kryon-built
 	@test -f $@
 
 endif
