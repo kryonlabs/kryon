@@ -1,0 +1,97 @@
+Surface :: #import "kryon/host/surface";
+Scroll :: #import "kryon/scroll";
+#import "kryon/session"
+#import "kryon/geometry"
+#import "kryon/frame_snapshot"
+#import "kryon/input_protocol"
+#import "input_delivery"
+#import "kryon/tree"
+#import "kryon/tree_draw"
+#import "kryon/tree_input"
+#import "kryon/scroll_device"
+
+ParentBounds :: Rectangle.{4.0, 4.0, 84.0, 76.0}
+ChildBounds :: Rectangle.{22.0, 22.0, 54.0, 44.0}
+pixels: [96 * 96]u32;
+parent_offset: s32;
+child_offset: s32;
+take_first: bool;
+taken: float32;
+valid: bool;
+sample: FrameInputSnapshot;
+
+Draw :: (frame: Surface.Frame) {
+    session: Session = .{frame.slot, frame.epoch}
+    sample = CaptureFrameInput(session)
+    suspended := TreeInputSuspend(session)
+    blocked := ScrollWheelTake(session, 2, ChildBounds, true) == 0.0
+    valid = TreeInputResume(session, suspended) && blocked
+    if !valid { return }
+    if take_first { taken = PointerWheelTake(session, ParentBounds) }
+    outer := Scroll.Draw(session, .{.key = 1, .bounds = ParentBounds, .content_height = 260,
+        .scroll_offset = parent_offset, .immediate_wheel = true})
+    valid = outer.opened
+    if !outer.opened { return }
+    defer { valid = End(session) && valid }
+    parent_offset = outer.scroll_offset
+    inner := Scroll.Draw(session, .{.key = 2, .bounds = ChildBounds, .content_height = 180,
+        .scroll_offset = child_offset, .immediate_wheel = true})
+    valid = inner.opened
+    if !inner.opened { return }
+    valid = End(session)
+    child_offset = inner.scroll_offset
+    if !take_first { taken = PointerWheelTake(session, ParentBounds) }
+}
+
+Render :: (session: Session, input: FrameInputSnapshot) -> bool {
+    return Surface.SurfaceFrame(session, Draw, 96, 96, input, pixels[:]) && valid
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    if !SessionValid(session) { return 1 }
+    defer { unused CloseSession(session) }
+    input: FrameInputSnapshot = .{.available = true, .focused = true}
+    queue: InputDelivery
+    if !Render(session, input) { return 2 }
+
+    // Wire value 11 carries signed milli-detents at the wheel position.
+    Surface.SurfaceInput(*input, *queue, .{.kind = 11, .x = 40, .y = 40, .button = -1500})
+    if !Render(session, input) || parent_offset != 0 || child_offset <= 0 || taken != 0.0 ||
+        sample.wheel != -1.5 || sample.pointer.x != 40.0 || sample.pointer.y != 40.0 { return 3 }
+    previous := child_offset
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.PointerWheel, .x = 40, .y = 40, .button = 500})
+    if !Render(session, input) || parent_offset != 0 || child_offset >= previous || taken != 0.0 ||
+        sample.wheel != 0.5 { return 4 }
+    previous = child_offset
+
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.PointerWheel, .x = 94, .y = 90, .button = -1000})
+    if !Render(session, input) || parent_offset != 0 || child_offset != previous || taken != 0.0 { return 5 }
+    Surface.SurfaceInput(*input, *queue, .{.kind = 10, .x = 40, .y = 40, .button = -1000})
+    if !Render(session, input) || parent_offset != 0 || child_offset != previous || taken != 0.0 ||
+        sample.wheel != 0.0 || sample.pointer.x != 94.0 { return 6 }
+
+    take_first = true
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.PointerWheel, .x = 40, .y = 40, .button = -1250})
+    if !Render(session, input) || taken != -1.25 || parent_offset != 0 || child_offset != previous { return 7 }
+    take_first = false
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.PointerWheel, .x = 12, .y = 12, .button = -1000})
+    if !Render(session, input) || taken != 0.0 || parent_offset <= 0 || child_offset != previous { return 8 }
+    outer_previous := parent_offset
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.Idle})
+    if !Render(session, input) || sample.wheel != 0.0 || taken != 0.0 || parent_offset != outer_previous { return 9 }
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.PointerWheel, .x = 12, .y = 12, .button = 1000})
+    if !Render(session, input) || taken != 0.0 || parent_offset != 0 || child_offset != previous { return 13 }
+
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.ButtonDown, .x = 92, .y = 90, .button = 3})
+    if !input.secondary.pressed || !input.secondary.down || input.pointer.down { return 10 }
+    input.secondary.pressed = false
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.PointerWheel, .x = 94, .y = 90, .button = 1})
+    if !Render(session, input) || !sample.secondary.down || sample.secondary.pressed || sample.secondary.released ||
+        sample.pointer.down || sample.pointer.pressed || sample.pointer.released || sample.wheel <= 0.0 { return 11 }
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.ButtonUp, .x = 94, .y = 90, .button = 3})
+    if input.secondary.down || !input.secondary.released || input.wheel != 0.0 { return 12 }
+    print("Surface wheel signs, bounds, nested delivery, one consumer and button independence\n")
+    return 0
+}

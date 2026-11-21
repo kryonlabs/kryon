@@ -275,10 +275,13 @@ zx-surface-test: project-toolchain
 	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_TIMED --entry hosted_surface:main \
 		-o build/scratch/zx-surface/timed.zx examples/hosted_surface.zi
 	build/scratch/zx-surface/test build/scratch/zx-surface/timed.zx timed
+	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_CLOCK --entry hosted_surface:main \
+		-o build/scratch/zx-surface/clocked.zx examples/hosted_surface.zi
+	build/scratch/zx-surface/test build/scratch/zx-surface/clocked.zx timed
 
 .PHONY: surface-render-test
 surface-render-test: project-toolchain
-	@set -e; for name in window_chrome_test zx_surface_damage_test; do \
+	@set -e; for name in window_chrome_test zx_surface_damage_test zx_surface_wheel_test; do \
 		out=build/scratch/$$name; mkdir -p "$$out"; \
 		$(ZIRAN_BIN) build --project --target=c --root tests --bind-host pixmap \
 			--entry $$name:main --exe -o "$$out/c" "tests/$$name.zi"; \
@@ -953,7 +956,13 @@ test: native-assets-install-test
 .PHONY: gtk-style-linux-test
 gtk-style-linux-test: project-toolchain
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u WAYLAND_SOCKET -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER -u ICEAUTHORITY YUE_DESKTOP_RECOVERY=0 python3 tests/gtk_style_linux_test.py
-test: gtk-style-linux-test
+.PHONY: gtk-style-types-test
+gtk-style-types-test: project-toolchain
+	@mkdir -p build/scratch/gtk-style-types
+	$(ZIRAN_BIN) bundle --project --root tests --entry gtk_style_types_test:main \
+		-o build/scratch/gtk-style-types/test.zx tests/gtk_style_types_test.zi
+	@test "$$($(ZIRAN_BIN) run build/scratch/gtk-style-types/test.zx)" = 0
+test: gtk-style-linux-test gtk-style-types-test
 
 .PHONY: desktop-native-test
 desktop-native-test: project-toolchain

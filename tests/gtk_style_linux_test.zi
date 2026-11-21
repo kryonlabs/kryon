@@ -1,4 +1,5 @@
 Native :: #import "gtk_style_linux";
+StyleTypes :: #import "kryon/gtk_style_types";
 Painter :: #import "gtk_painter_linux";
 Scroll :: #import "gtk_scroll_linux";
 Raster :: #import "cairo_raster";
@@ -443,7 +444,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if argc != 4 { return 1 }
     classes: [2]string = .["fixture-root","background"]
     flat: [1]string = .["flat"]
-    nodes: [2]Native.GtkStyleNode = .[
+    nodes: [2]StyleTypes.GtkStyleNode = .[
         .{.widget_type="GtkWindow",.element="window",.classes=classes[:]},
         .{.widget_type="GtkButton",.element="button",.name="target",.classes=flat[:]}]
     if TextFromCString(argv[3]) == "no-display" {

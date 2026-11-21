@@ -16,8 +16,26 @@ value_bytes: [128]u8;
 last_width: s32;
 last_height: s32;
 
+#if #defined(SURFACE_SMOKE_CLOCK) {
+    #import "kryon/frame_snapshot"
+    clock_tick: s64;
+    clock_ok: bool = true;
+
+    SmokeClock :: () -> s64 {
+        clock_tick += 1
+        if clock_tick == 3 { return 1001 }
+        return 1000 + (clock_tick - 1) * 17
+    }
+}
+
 Draw :: (frame: Surface.Frame) {
     session: Session = .{frame.slot, frame.epoch}
+    #if #defined(SURFACE_SMOKE_CLOCK) {
+        timing := CaptureFrameInput(session)
+        elapsed := ifx clock_tick == 3 then 17 else (clock_tick - 1) * 17
+        delta := ifx clock_tick == 1 || clock_tick == 3 then 0 else ifx clock_tick == 4 then 34 else 17
+        clock_ok = clock_ok && timing.elapsed_ms == elapsed && timing.delta_ms == delta
+    }
     viewport := TreeRootBounds(session)
     width := viewport.width - 24.0
     if cast(s32)viewport.width != last_width || cast(s32)viewport.height != last_height {
@@ -47,9 +65,14 @@ Draw :: (frame: Surface.Frame) {
 main :: () -> s32 {
     value.bytes = value_bytes[:]
     window: Surface.Window = .{.title = "Kryon hosted surface", .width = 240, .height = 144}
-    #if #defined(SURFACE_SMOKE_TIMED) {
-        return Surface.RunRetained(window, Draw, 250)
+    #if #defined(SURFACE_SMOKE_CLOCK) {
+        result := Surface.RunRetained(window, Draw, 250, clock = SmokeClock)
+        return ifx clock_ok && clock_tick == 60 then result else 2
     } else {
-        return Surface.Run(window, Draw)
+        #if #defined(SURFACE_SMOKE_TIMED) {
+            return Surface.RunRetained(window, Draw, 250)
+        } else {
+            return Surface.Run(window, Draw)
+        }
     }
 }

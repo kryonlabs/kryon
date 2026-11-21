@@ -184,6 +184,8 @@ capability metadata.
 | 5, 6 | Button down, up | `x`, `y`, `button` (1 left, 2 middle, 3 right) |
 | 7, 8 | Key down or repeat, up | `key`, `modifiers` |
 | 9 | Committed text | UTF-8 `text` |
+| 10 | Reserved for Taiji visibility | |
+| 11 | Vertical wheel | Window-local `x`, `y` and signed milli-detents in `button` |
 
 Use the portable [key codes](../src/ui/input_protocol.zi), including uppercase
 ASCII for letters and modifier bits 1 Shift, 2 Control and 4 Alt. Deliver text
@@ -193,6 +195,11 @@ expose and resize. Pass a positive `idle_ms` to also redraw on timeouts at an
 interval of up to one second. For example, a stopwatch can redraw every 250 ms
 and read elapsed time from its host clock. Platform services such as clocks,
 clipboard and live IME composition require additional capabilities.
+
+Send one kind-11 event per vertical wheel sample. Positive `button` values
+scroll up and negative values scroll down. Use `1000` units per detent and
+leave the other payload fields zero. The wheel sample keeps held buttons and
+keys in their current state and clears before the next callback.
 
 `make zx-surface-test` builds and runs the example in the Ziran instruction
 engine with a typed host. It verifies the RGBA bytes, rendered count changing

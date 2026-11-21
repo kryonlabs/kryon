@@ -265,7 +265,8 @@ ScrollObservationFor :: (session: Session, key: u64, bounds: Rectangle,
     wheel_target: u64 = TreeScrollAt(session,
         input.mouse.x, input.mouse.y, true)
     wheel_targeted: bool = wheel_target == cast(u64)0 || wheel_target == key
-    if inside && wheel_targeted && !device.wheel_consumed && !input.owner_captured {
+    if inside && wheel_targeted && !device.wheel_consumed && !input.owner_captured &&
+        !PointerWheelConsumed(session) {
         input.pixel_wheel = device.pixel_wheel
         if device.pixel_wheel {
             wheel := device.wheel_pixels
@@ -292,7 +293,7 @@ ScrollWheelTake :: (session: Session, key: u64, bounds: Rectangle,
     scroll_device_current = slot
     device := *scroll_devices[slot]
     if !scrolls || !ScrollDeviceSampled(session) || ScrollDeviceWheelFor(horizontal) == 0.0 ||
-        device.wheel_consumed || device.owner != cast(u64)0 {
+        device.wheel_consumed || device.owner != cast(u64)0 || PointerWheelConsumed(session) {
         return 0.0
     }
     if !TreeScrollAllowed(session, key) || !ScrollPointInside(device.mouse, bounds) {
@@ -303,6 +304,7 @@ ScrollWheelTake :: (session: Session, key: u64, bounds: Rectangle,
         return 0.0
     }
     device.wheel_consumed = true
+    PointerWheelConsume(session)
     return ScrollDeviceWheelFor(horizontal)
 }
 
@@ -347,7 +349,10 @@ ScrollDeviceContentDrag :: (session: Session, key: u64, bounds: Rectangle,
 #program_export
 CommitScroll :: (key: u64, frame: ScrollFrame) {
     device := ScrollDeviceCurrent()
-    if frame.consume_wheel { device.wheel_consumed = true }
+    if frame.consume_wheel {
+        device.wheel_consumed = true
+        PointerWheelConsume(device.session)
+    }
     if key == cast(u64)0 { return }
     if frame.flinging {
         device.fling_owner = key

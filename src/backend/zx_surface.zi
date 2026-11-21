@@ -12,6 +12,7 @@ Utf8 :: #import "std/utf8";
 #import "input_delivery"
 #import "input_take"
 #import "frame_snapshot"
+#import "scroll_sampling"
 #import "paint_queue"
 #import "math"
 
@@ -30,6 +31,8 @@ ButtonUp :: 6
 KeyDown :: 7
 KeyUp :: 8
 TextCommitted :: 9
+// Kind 10 is used by Taiji for visibility notifications.
+PointerWheel :: 11
 
 SurfaceEvent :: struct {
     kind: s32
@@ -59,7 +62,12 @@ SurfaceSizeValid :: (width: s32, height: s32) -> bool {
 }
 
 SurfaceInput :: (input: *FrameInputSnapshot, queue: *InputDelivery, event: SurfaceEvent) {
-    if event.kind >= PointerMoved && event.kind <= ButtonUp {
+    input.wheel = 0.0
+    if event.kind == PointerWheel {
+        input.pointer.x = cast(float32)event.x
+        input.pointer.y = cast(float32)event.y
+        input.wheel = cast(float32)event.button / 1000.0
+    } else if event.kind >= PointerMoved && event.kind <= ButtonUp {
         input.pointer.x = cast(float32)event.x
         input.pointer.y = cast(float32)event.y
         if event.kind != PointerMoved {
@@ -250,9 +258,14 @@ SurfaceFrameInto :: (session: Session, draw: Draw, width: s32, height: s32,
 }
 
 SurfaceBeginInput :: (session: Session, input: FrameInputSnapshot) -> bool {
+    if !FrameInputBegin(session, input) { return false }
     unused TreePointerUpdate(session, input.pointer)
     TreeSecondaryPointerUpdate(session, input.secondary)
-    return FrameInputBegin(session, input)
+    PointerWheelSend(session, input.pointer.x, input.pointer.y, input.wheel)
+    if input.wheel != 0.0 { PointerWheelShare(session) }
+    ScrollSampleBegin(session, .{input.pointer.x, input.pointer.y}, input.pointer.pressed,
+        input.pointer.down, input.pointer.released, input.wheel, cast(float64)input.elapsed_ms / 1000.0)
+    return true
 }
 
 SurfaceCompose :: (session: Session, draw: Draw, width: s32, height: s32) -> bool {
@@ -309,19 +322,23 @@ SurfaceRenderRetained :: (composition: *SurfaceComposition, width: s32, height: 
 }
 
 // A positive idle interval composes on timeout, in addition to input frames.
-Run :: (window: Window, draw: Draw, idle_ms: s32 = 0) -> s32 {
+SurfaceClock :: #type () -> s64;
+SurfaceClockNone :: () -> s64 { return -1 }
+
+Run :: (window: Window, draw: Draw, idle_ms: s32 = 0, clock: SurfaceClock = SurfaceClockNone) -> s32 {
     renderer: SurfaceRenderer = SurfaceRenderFull
-    return SurfaceRun(window, draw, idle_ms, renderer, 0)
+    return SurfaceRun(window, draw, idle_ms, renderer, 0, clock)
 }
 
 // Opt in for apps that use queued widgets and drawing. Keep the default
 // entry independent so it does not link retention into full-raster bundles.
-RunRetained :: (window: Window, draw: Draw, idle_ms: s32 = 0) -> s32 {
+RunRetained :: (window: Window, draw: Draw, idle_ms: s32 = 0, clock: SurfaceClock = SurfaceClockNone) -> s32 {
     renderer: SurfaceRenderer = SurfaceRenderRetained
-    return SurfaceRun(window, draw, idle_ms, renderer, SURFACE_STRIP_ROWS)
+    return SurfaceRun(window, draw, idle_ms, renderer, SURFACE_STRIP_ROWS, clock)
 }
 
-SurfaceRun :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRenderer, strip_rows: s32) -> s32 {
+SurfaceRun :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRenderer, strip_rows: s32,
+    clock: SurfaceClock = SurfaceClockNone) -> s32 {
     width := ifx window.width > 0 then window.width else 960
     height := ifx window.height > 0 then window.height else 600
     if !SurfaceSizeValid(width, height) || !Open(window.title, width, height) { return 1 }
@@ -337,6 +354,7 @@ SurfaceRun :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRender
     input: FrameInputSnapshot = .{.available = true, .focused = true}
     queue: InputDelivery
     event: SurfaceEvent = .{.kind = Redraw}
+    clock_origin: s64 = -1
     text_at: s32 = 0
     wait_ms := ifx idle_ms > 0 && idle_ms < 1000 then idle_ms else 1000
     while event.kind != Closed {
@@ -363,6 +381,18 @@ SurfaceRun :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRender
             rgba_limit := ifx rgba_count > rgba.capacity then rgba_count else rgba.capacity
             if rgba.count != rgba_count && !VecResizeBounded(rgba, rgba_count, rgba_limit) { return 1 }
             SurfaceInput(*input, *queue, event)
+            input.delta_ms = 0
+            if clock != null {
+                now := clock()
+                if now >= 0 {
+                    if clock_origin < 0 { clock_origin = now }
+                    elapsed := now - clock_origin
+                    if elapsed >= input.elapsed_ms {
+                        input.delta_ms = elapsed - input.elapsed_ms
+                        input.elapsed_ms = elapsed
+                    }
+                }
+            }
             key, modifiers := InputDeliveryTake(*queue, session, input.modifiers)
             unused KeyboardSend(session, key)
             unused KeyboardModifiersSend(session, modifiers)

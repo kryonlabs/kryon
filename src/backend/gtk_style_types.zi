@@ -1,0 +1,55 @@
+// Shared GTK style values used by native renderers and portable fallbacks.
+GtkStyleNormal :: 0;
+GtkStyleActive :: 1;
+GtkStylePrelight :: 2;
+GtkStyleSelected :: 4;
+GtkStyleDisabled :: 8;
+GtkStyleFocused :: 32;
+GtkStyleChecked :: 2048;
+GtkFileDateStyle :: enum { LocaleDate; RelativeDate; }
+
+GtkStyleProviderAttachment :: struct { provider: u64; priority: u32 }
+GtkStyleNode :: struct {
+    widget_type: string
+    element: string
+    name: string
+    classes: []string
+    state: u32
+    providers: []GtkStyleProviderAttachment
+    // Optional position in a homogeneous sibling group; zero count is unknown.
+    sibling_index: s32
+    sibling_count: s32
+}
+GtkStyleInsets :: struct { left: s32; right: s32; top: s32; bottom: s32 }
+GtkStyleMetrics :: struct {
+    available: bool
+    foreground: u32
+    background: u32
+    border: GtkStyleInsets
+    padding: GtkStyleInsets
+    margin: GtkStyleInsets
+    font_family: [256]u8
+    font_size: float64
+    font_weight: s32
+    font_style: s32
+    dpi: float64
+    vertical_separator: s32
+    horizontal_separator: s32
+}
+// Owns rgba. Do not copy an owning value; release it through its address.
+GtkStyleBitmap :: struct { width: s32; height: s32; rgba: []u8 }
+GtkTextMetrics :: struct { available: bool; width: s32; height: s32; baseline: s32 }
+GtkWidgetMetrics :: struct {
+    available: bool; minimum_width: s32; minimum_height: s32; natural_width: s32; natural_height: s32;
+    item_x: s32; item_y: s32; item_width: s32; item_height: s32;
+    arrow_x: s32; arrow_y: s32; arrow_width: s32; arrow_height: s32;
+    control_x: s32; control_y: s32; control_width: s32; control_height: s32;
+}
+GtkWidgetMarginLeft :: 1;
+GtkWidgetMarginRight :: 2;
+GtkWidgetMarginTop :: 4;
+GtkWidgetMarginBottom :: 8;
+GtkWidgetMarginVertical :: 12;
+GtkWidgetMarginAll :: 15;
+// Only selected edges override GTK's widget-template margins.
+GtkWidgetMeasureOptions :: struct { margin: GtkStyleInsets; margin_edges: u32 }

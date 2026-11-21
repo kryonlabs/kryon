@@ -1,0 +1,16 @@
+Style :: #import "kryon/gtk_style_types";
+
+#program_export
+main :: () -> s32 {
+    classes: [1]string = .["active"]
+    node: Style.GtkStyleNode = .{.widget_type = "GtkButton", .classes = classes[:],
+        .state = Style.GtkStyleActive | Style.GtkStyleFocused}
+    metrics: Style.GtkStyleMetrics
+    bitmap: Style.GtkStyleBitmap
+    widget: Style.GtkWidgetMetrics
+    options: Style.GtkWidgetMeasureOptions = .{.{1, 2, 3, 4}, Style.GtkWidgetMarginVertical}
+    if node.classes[0] != "active" || node.state != 33 || node.providers.count != 0 { return 1 }
+    if metrics.available || widget.available || bitmap.rgba.count != 0 { return 2 }
+    if options.margin.top != 3 || options.margin_edges != 12 { return 3 }
+    return 0
+}

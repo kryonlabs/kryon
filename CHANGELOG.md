@@ -10,6 +10,9 @@
 - Portable ZX surfaces can retain the previous presentation and reconstruct
   changed pixels in bounded raster strips while still processing input and
   idle callbacks.
+- Hosted ZX surfaces route wheel input to Kryon widgets and can sample an
+  optional monotonic clock during frame callbacks.
+- Portable apps can share GTK style records with the native GTK renderer.
 
 - Preview fixtures build once for comma-separated viewport widths and produce
   a PNG and widget tree for each width. The machine-readable HTML map lists

@@ -84,6 +84,7 @@ PointerWheelState :: struct {
     x: float32
     y: float32
     delta: float32
+    shared: bool
 }
 
 active_wheel: [9]PointerWheelState;
@@ -132,7 +133,7 @@ TreeInputSuspend :: (session: Session) -> InputSnapshot {
     active_focus[slot] = 0
     active_focus_visible = SessionFlagSet(active_focus_visible, slot, false)
     active_codepoints[slot] = TypedInputQueue.{}
-    active_wheel[slot] = PointerWheelState.{}
+    active_wheel[slot] = .{.shared = snapshot.wheel.shared}
     return snapshot
 }
 
@@ -269,7 +270,23 @@ PointerWheelSend :: (session: Session, x: float32, y: float32,
     index: s32 = SessionIndex(session)
     active_wheel[index].x = x
     active_wheel[index].y = y
-    active_wheel[index].delta = delta
+    active_wheel[index] = .{.x = x, .y = y, .delta = delta}
+}
+
+// A host can publish the same vertical sample to scroll_device and the tree.
+// Taking it through either interface consumes that sample for both.
+PointerWheelShare :: (session: Session) {
+    active_wheel[SessionIndex(session)].shared = true
+}
+
+PointerWheelConsumed :: (session: Session) -> bool {
+    wheel := active_wheel[SessionIndex(session)]
+    return wheel.shared && wheel.delta == 0.0
+}
+
+PointerWheelConsume :: (session: Session) {
+    wheel := *active_wheel[SessionIndex(session)]
+    if wheel.shared { wheel.delta = 0.0 }
 }
 
 #program_export

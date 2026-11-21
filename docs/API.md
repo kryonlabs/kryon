@@ -1273,6 +1273,18 @@ when idle. Apps that draw through Kryon's paint queue can call
 It keeps the last RGBA frame, repaints damage in bounded strips, and presents
 on damage or a host redraw request. Custom paint emitters use a full replay.
 
+Surface wheel events reach Kryon scroll widgets and `CaptureFrameInput` for
+the current callback. Pass `clock = Clock.Milliseconds` to either entry point
+to sample the monotonic `kryon/clock` service on each callback. This fills
+`elapsed_ms` and `delta_ms` and lets scroll widgets animate wheel motion.
+With the default clock, wheel motion is immediate and the four Surface host
+bindings suffice.
+
+Import `kryon/gtk_style_types` for GTK style nodes, state flags, metrics and
+bitmap records in portable code. The records are shared with `GtkStyleLinux`.
+An empty metrics record has `available = false` so portable callers can use
+their own palette and layout when native GTK measurement is unavailable.
+
 Import `kryon/window_chrome` to draw a themed caption and window controls.
 Pass the current `Session` and `Chrome.Props` to `Chrome.Draw`, with a stable
 key, bounds, title, focus flag, and a bit mask of enabled controls. The host
