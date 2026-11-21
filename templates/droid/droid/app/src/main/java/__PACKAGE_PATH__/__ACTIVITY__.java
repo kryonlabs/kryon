@@ -507,6 +507,8 @@ public class __ACTIVITY__ extends NativeActivity {
             flags |= View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
             flags |= View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
             flags |= View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN;
+            flags |= View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+            flags &= ~View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
             getWindow().getDecorView().setSystemUiVisibility(flags);
         }
     }

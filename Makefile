@@ -885,6 +885,7 @@ test: android-notifications-scaffold-test
 .PHONY: android-launch-uri-test
 android-launch-uri-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS python3 tests/android_launch_uri_test.py
+	@python3 tests/android_system_bars_test.py
 
 test: android-launch-uri-test
 
