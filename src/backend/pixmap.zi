@@ -421,6 +421,15 @@ PixmapPrepareImage :: (slot: s32, source: *Rectangle, width: float32, height: fl
         return false
     }
 
+    // Use the rasterizer's half-open pixel-center rule at both edges. Rounding
+    // a half-pixel start upward otherwise leaves a hole beside an exact clip.
+    PixmapSampleBounds :: (bounds: Rectangle) -> Rectangle {
+        left := CeilInteger(bounds.x - 0.5); top := CeilInteger(bounds.y - 0.5)
+        right := CeilInteger(bounds.x + bounds.width - 0.5)
+        bottom := CeilInteger(bounds.y + bounds.height - 0.5)
+        return Rectangle.{cast(float32)left, cast(float32)top, cast(float32)(right - left), cast(float32)(bottom - top)}
+    }
+
     // The copy slot to draw SLOT's SOURCE over DESTINATION (device pixels,
     // unrotated) with, or -1 to draw the image itself. COPY_SOURCE is the
     // copy's whole area and SNAPPED the pixels it covers; SMOOTH says a copy
@@ -431,7 +440,7 @@ PixmapPrepareImage :: (slot: s32, source: *Rectangle, width: float32, height: fl
         width := pixmap_image_widths[slot]; height := pixmap_image_heights[slot]
         count := cast(s64)width * height
         if width <= 0 || height <= 0 || PixmapSourceCount(slot) < count { return -1 }
-        snapped.* = RectangleSnap(destination)
+        snapped.* = PixmapSampleBounds(destination)
         if !Lanczos.LanczosEligible(source, width, height, snapped.*) { return -1 }
         key: Lanczos.LanczosKey = .{PixmapLanczosContent(slot), pixmap_image_revisions[slot], PIXMAP_LANCZOS_SESSION,
             source, cast(s32)snapped.width, cast(s32)snapped.height}

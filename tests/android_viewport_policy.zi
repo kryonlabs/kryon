@@ -1,6 +1,14 @@
 #import, file "../src/backend/android_surface.zi";
 
 PolicyCheck :: () -> s32 {
+    // The hidden status bar contributes zero visible inset. Navigation and a
+    // real camera cutout remain safe areas even in an immersive activity.
+    hidden: AndroidWindowInsets = .{.system_bottom = 24}
+    full := ResolveViewport(1080, 2220, hidden, AndroidViewportPolicySafeArea(), 1)
+    if full.y != 0 || full.height != 2196 || full.insets.bottom != 24 { return 12 }
+    hidden.cutout_top = 70
+    full = ResolveViewport(1080, 2220, hidden, AndroidViewportPolicySafeArea(), 1)
+    if full.y != 70 || full.height != 2126 { return 13 }
     insets: AndroidWindowInsets = .{.system_left = -1, .system_top = 53, .system_right = 84,
         .system_bottom = 24, .ime_bottom = 120, .cutout_left = 4, .cutout_top = 60,
         .cutout_right = 80, .cutout_bottom = 8}

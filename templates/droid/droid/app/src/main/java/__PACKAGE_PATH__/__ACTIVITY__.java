@@ -569,7 +569,7 @@ public class __ACTIVITY__ extends NativeActivity {
             // real GL surface through Kryon's viewport policies.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 Insets systemBars =
-                    insets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars());
+                    insets.getInsets(WindowInsets.Type.systemBars());
                 Insets ime = insets.getInsets(WindowInsets.Type.ime());
                 systemLeft = systemBars.left;
                 systemTop = systemBars.top;

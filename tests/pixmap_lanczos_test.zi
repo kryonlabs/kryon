@@ -62,6 +62,28 @@ CopySlots :: () -> s32 {
     return count
 }
 
+// Pixel 96 has its center on the shared x=96.5 edge at Android's 2.75x
+// density. Both the first draw and a settled resampled copy must cover it.
+AdjacentTiles :: () -> bool {
+    background := cast(u32)0xff00ff01
+    if !Pixels.PixmapBeginInto(background, 128, 128, surface[:], true) { return false }
+    Texture.emitting_smooth = true
+    for row: cast(s32)0..1 {
+        for column: cast(s32)0..1 {
+            bounds := Rectangle.{11.25 + cast(float32)column * 85.25, 12.25 + cast(float32)row * 85.25, 85.25, 85.25}
+            Pixels.RasterImage("opaque", 0, .{0.0, 0.0, 512.0, 512.0}, bounds,
+                .{0.0, 0.0, 128.0, 128.0}, .{}, 0.0, 0.0, .{255, 255, 255, 255})
+        }
+    }
+    Pixels.PixmapEndInto()
+    for y: cast(s32)13..127 {
+        for x: cast(s32)12..127 {
+            if surface[y * 128 + x] == background { print("tile seam at %, %\n", x, y); return false }
+        }
+    }
+    return true
+}
+
 // Each smooth draw first samples bilinearly and starts its Lanczos copy;
 // once the copy is made it is drawn from a copy slot, the same on every
 // later frame, and saved for tests/lanczos_goldens.py to compare with Pillow.
@@ -89,7 +111,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
             }
             if Pixels.PixmapLanczosPending() { print("an exact copy started another: % %\n", sources[kind], index); return 7 }
             if !Save(directory, sources[kind], index) { return 8 }
-            snapped := RectangleSnap(targets[index])
+            snapped := Pixels.PixmapSampleBounds(targets[index])
             print("pixmap % % % % % %\n", sources[kind], index, snapped.x, snapped.y, snapped.width, snapped.height)
         }
     }
@@ -109,6 +131,14 @@ main :: (argc: s32, argv: **u8) -> s32 {
             print("marker copy was evicted by cover\n"); return 24
         }
     }
+    if !AdjacentTiles() { return 25 }
+    // Fractional density produces four width/height combinations; the cache
+    // admits a bounded number of jobs per frame, so settle every combination.
+    for warm: cast(s32)0..7 {
+        unused Pixels.PixmapLanczosWait()
+        if !AdjacentTiles() { return 26 }
+    }
+    if !AdjacentTiles() || Pixels.PixmapLanczosPending() { return 27 }
     // A sharp image never makes a copy.
     if !Draw(sources[0], boxes[1], targets[1], tints[0], false) || Pixels.PixmapLanczosPending() { return 9 }
     // Replacing or clearing a picture frees its copies and their slots.

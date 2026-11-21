@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep hidden Android status bars out of the safe-area inset while preserving visible bars, camera cutouts and the keyboard.
+- Cover shared half-pixel image edges consistently in smooth raster draws, preventing background seams between adjacent tiles at fractional display densities.
 - Native hosted style codecs preserve width and height across record encoding,
   decoding and validation, while retaining older host field layouts.
 
