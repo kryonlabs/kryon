@@ -5484,7 +5484,7 @@ WidgetTypeStyleData :: "style.StyleData"
 WidgetSliceTypeStyleData :: "[]style.StyleData"
 
 WidgetStyleDataCodec :: struct {
-    fields: [34]HostField
+    fields: [35]HostField
 }
 
 WidgetEncodeStyleData :: (data: StyleData, codec: *WidgetStyleDataCodec) -> HostValue {
@@ -5523,6 +5523,7 @@ WidgetEncodeStyleData :: (data: StyleData, codec: *WidgetStyleDataCodec) -> Host
     codec.fields[31] = HostField.{.name = HostTextData("line_height_unit"), .value = HostScalar("control_props.LineHeightUnit", cast(s64)data.line_height_unit)}
     codec.fields[32] = HostField.{.name = HostTextData("width"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.width}}
     codec.fields[33] = HostField.{.name = HostTextData("height"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.height}}
+    codec.fields[34] = HostField.{.name = HostTextData("grid_tracks"), .value = HostScalar("s32", cast(s64)data.grid_tracks)}
     return value
 }
 
@@ -5564,6 +5565,7 @@ WidgetDecodeStyleData :: (value: HostValue, codec: *WidgetStyleDataCodec) -> Sty
     data.line_height_unit = cast(LineHeightUnit)HostFieldValue(*value, 31, "line_height_unit", *zero).integer
     data.width = cast(float32)HostFieldValue(*value, 32, "width", *zero).real
     data.height = cast(float32)HostFieldValue(*value, 33, "height", *zero).real
+    data.grid_tracks = cast(s32)HostFieldValue(*value, 34, "grid_tracks", *zero).integer
     return data
 }
 
@@ -5603,6 +5605,7 @@ WidgetValidStyleData :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 31, "line_height_unit", "control_props.LineHeightUnit", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 32, "width", "float32", cast(s32)HostReal) { return false }
     if !HostFieldScalarValid(*value, 33, "height", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 34, "grid_tracks", "s32", cast(s32)HostInteger) { return false }
     return true
 }
 
