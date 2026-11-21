@@ -1,0 +1,36 @@
+Codec :: #import "widget_codec"
+#import "style"
+#import "control_props"
+#import "std/bundle_host"
+using StyleField;
+using HostValueKind;
+
+#program_export
+Main :: () -> s32 {
+    storage: Codec.WidgetStyleDataCodec
+    style: StyleData
+    style.fields = cast(u32)StyleWidth | cast(u32)StyleHeight
+    style.width = 125.5
+    style.height = 47.25
+    value := Codec.WidgetEncodeStyleData(style, *storage)
+    if !Codec.WidgetValidStyleData(value) { return 1 }
+    decoded := Codec.WidgetDecodeStyleData(value, *storage)
+    if decoded.fields != style.fields || decoded.width != style.width || decoded.height != style.height { return 2 }
+    // Wire fields match by name rather than assuming the host's order.
+    saved := value.fields[0]
+    value.fields[0] = value.fields[32]
+    value.fields[32] = saved
+    if !Codec.WidgetValidStyleData(value) { return 3 }
+    decoded = Codec.WidgetDecodeStyleData(value, *storage)
+    if decoded.width != style.width || decoded.height != style.height || decoded.fields != style.fields { return 4 }
+    value = Codec.WidgetEncodeStyleData(style, *storage)
+    value.fields[33].value.kind = cast(s32)HostString
+    if Codec.WidgetValidStyleData(value) { return 5 }
+    // Earlier hosts omit the appended size fields; those values remain auto.
+    value = Codec.WidgetEncodeStyleData(style, *storage)
+    value.field_count = cast(usize)32
+    if !Codec.WidgetValidStyleData(value) { return 6 }
+    decoded = Codec.WidgetDecodeStyleData(value, *storage)
+    if decoded.width != 0.0 || decoded.height != 0.0 { return 7 }
+    return 0
+}

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Native hosted style codecs preserve width and height across record encoding,
+  decoding and validation, while retaining older host field layouts.
+
 - Preview fixtures build once for comma-separated viewport widths and produce
   a PNG and widget tree for each width. The machine-readable HTML map lists
   native widget imports, entry points, and layout equivalents.

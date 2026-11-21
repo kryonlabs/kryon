@@ -5484,7 +5484,7 @@ WidgetTypeStyleData :: "style.StyleData"
 WidgetSliceTypeStyleData :: "[]style.StyleData"
 
 WidgetStyleDataCodec :: struct {
-    fields: [32]HostField
+    fields: [34]HostField
 }
 
 WidgetEncodeStyleData :: (data: StyleData, codec: *WidgetStyleDataCodec) -> HostValue {
@@ -5521,6 +5521,8 @@ WidgetEncodeStyleData :: (data: StyleData, codec: *WidgetStyleDataCodec) -> Host
     codec.fields[29] = HostField.{.name = HostTextData("font_weight"), .value = HostScalar("s32", cast(s64)data.font_weight)}
     codec.fields[30] = HostField.{.name = HostTextData("font_style"), .value = HostScalar("control_props.FontStyle", cast(s64)data.font_style)}
     codec.fields[31] = HostField.{.name = HostTextData("line_height_unit"), .value = HostScalar("control_props.LineHeightUnit", cast(s64)data.line_height_unit)}
+    codec.fields[32] = HostField.{.name = HostTextData("width"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.width}}
+    codec.fields[33] = HostField.{.name = HostTextData("height"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.height}}
     return value
 }
 
@@ -5560,6 +5562,8 @@ WidgetDecodeStyleData :: (value: HostValue, codec: *WidgetStyleDataCodec) -> Sty
     data.font_weight = cast(s32)HostFieldValue(*value, 29, "font_weight", *zero).integer
     data.font_style = cast(FontStyle)HostFieldValue(*value, 30, "font_style", *zero).integer
     data.line_height_unit = cast(LineHeightUnit)HostFieldValue(*value, 31, "line_height_unit", *zero).integer
+    data.width = cast(float32)HostFieldValue(*value, 32, "width", *zero).real
+    data.height = cast(float32)HostFieldValue(*value, 33, "height", *zero).real
     return data
 }
 
@@ -5597,6 +5601,8 @@ WidgetValidStyleData :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 29, "font_weight", "s32", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 30, "font_style", "control_props.FontStyle", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 31, "line_height_unit", "control_props.LineHeightUnit", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 32, "width", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 33, "height", "float32", cast(s32)HostReal) { return false }
     return true
 }
 
