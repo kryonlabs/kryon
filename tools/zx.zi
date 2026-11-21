@@ -5,6 +5,7 @@
 #import "c_string"
 #import "cairo_raster"
 #import "desktop_runtime"
+#import "frame_driver"
 #import "session"
 #import "tree_input"
 #import "geometry"
@@ -67,8 +68,8 @@ Supported :: (module: string, function: string) -> bool {
     if ModuleName(module, "zx_run") {
         return function == "ReadBundleInput" || function == "TakeBundleCodepoint" ||
             function == "BundleTextInputHost" || function == "BundleFrameFinishedHost" ||
-            function == "BundleFrameReusableHost" || function == "BundleTextEditorHost" ||
-            function == "BundleTextRequestHost"
+            function == "BundleFrameReusableHost" || function == "BundleFrameCursorHost" ||
+            function == "BundleTextEditorHost" || function == "BundleTextRequestHost"
     }
     if ModuleName(module, "font_metrics") {
         return function == "MeasureGlyphWidth" || function == "MeasureGlyphLineHeight"
@@ -185,6 +186,20 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     }
     if function == "BundleFrameFinishedHost" && count == 1 && args[0].kind == HostInteger {
         DesktopFrameUnchanged(args[0].integer != 0)
+        return 1
+    }
+    // The bundle resolved its tree's cursor; apply it on the player's window.
+    if function == "BundleFrameCursorHost" && count == 7 && args[0].kind == HostInteger &&
+    args[1].kind == HostString && args[1].length <= cast(usize)4096 &&
+    args[2].kind == HostInteger && args[3].kind == HostInteger &&
+    args[4].kind == HostInteger && args[5].kind == HostInteger &&
+    args[6].kind == HostInteger {
+        asset: string
+        if args[1].length > 0 { asset = TextFromBytes(BytesFromPointer(args[1].data, cast(u64)args[1].length)) }
+        cursor := FrameCursor.{asset, cast(s32)args[2].integer,
+            cast(s32)args[3].integer, cast(s32)args[4].integer, cast(s32)args[5].integer,
+            args[6].integer != 0, cast(s32)args[0].integer}
+        unused DesktopCursorApply(cursor)
         return 1
     }
     // A bundle's runtime pictures, owned by the session the player runs.

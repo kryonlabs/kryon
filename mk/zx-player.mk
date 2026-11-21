@@ -11,6 +11,9 @@ PLAYER_LDFLAGS ?= -Wl,--gc-sections
 PLAYER_PACKAGES := sdl2 cairo freetype2 pangocairo fontconfig glib-2.0 x11
 endif
 ZIRAN := $(ZIRAN_DIR)/build/bin/ziran
+# The player links the codec archives; include their build rules so any
+# caller of this file (this makefile or another project's) resolves them.
+include $(KRYON_DIR)/mk/codecs.mk
 PLAYER_HTTP_LIBS := $(or $(shell pkg-config --libs libcurl 2>/dev/null),$(if $(filter Linux,$(shell uname -s)),-l:libcurl.so.4,-lcurl))
 PLAYER_DIR := $(KRYON_DIR)/build/zx-player
 PLAYER := $(KRYON_DIR)/build/bin/zx

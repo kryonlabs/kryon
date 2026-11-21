@@ -8,6 +8,7 @@
 #import "frame_motion"
 MotionClock :: #import "clock";
 #import "tree_input"
+#import "cursor"
 #import "widget_kind"
 #import "text_host"
 #import "text_request"
@@ -33,6 +34,9 @@ BundleInput :: struct {
 ReadBundleInput :: () -> BundleInput #foreign host_api;
 TakeBundleCodepoint :: () -> s32 #foreign host_api;
 BundleTextInputHost :: (focused: bool) #foreign host_api;
+// The frame's resolved cursor: the host applies it before the next frame.
+BundleFrameCursorHost :: (shape: s32, asset_path: string, width: s32,
+    height: s32, hotspot_x: s32, hotspot_y: s32, hidden: bool) #foreign host_api;
 BundleFrameFinishedHost :: (unchanged: bool) #foreign host_api;
 BundleFrameReusableHost :: () -> bool #foreign host_api;
 BundleTextEditorHost :: (identity: u64, value: string, cursor: s32,
@@ -159,6 +163,9 @@ main :: () -> s32 {
     BundleTextEditorHost(bundle_editor_identity, TextView(bundle_editor_bytes[:bundle_editor_count]),
         bundle_editor_cursor, bundle_editor_anchor, bundle_editor_flags)
     BundleFrameFinishedHost(finished.paint_unchanged)
+    props := CursorResolve(bundle_session, TreeCursor(bundle_session))
+    BundleFrameCursorHost(props.shape, props.asset_path, props.width, props.height,
+        props.hotspot_x, props.hotspot_y, props.hidden)
     BundleTextInputHost(TreeTextInputActive(bundle_session))
     return 0
 }

@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- Portable ZX players forward each frame-resolved cursor to the host so
+  bundled apps get pointer feedback without app-specific host code.
+
 
 - Keep Android codec builds reproducible and exclude build-machine paths from library loading.
 
