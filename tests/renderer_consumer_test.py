@@ -95,6 +95,15 @@ class RendererConsumerTest(unittest.TestCase):
             str(self.root / 'lib/libkryonavif.so'), '-Wl,--as-needed',
             '-Wl,-rpath,' + str(self.root / 'lib'), '-Wl,-rpath,$ORIGIN/../lib'])
 
+    def test_android_codec_has_no_build_machine_search_paths(self):
+        self.meta.update(artifact='renderer-desktop', platform='android-armv7-bionic',
+                         shared_libraries=['lib/libkryonavif.so'])
+        result = self.consume()
+        flags = renderer.renderer_link(result)
+        self.assertEqual(flags[-3:], ['-Wl,--no-as-needed',
+            str(self.root / 'lib/libkryonavif.so'), '-Wl,--as-needed'])
+        self.assertFalse(any('rpath' in flag for flag in flags))
+
     def test_web_glue_and_virtual_preloads(self):
         self.meta.update(artifact='renderer-web', platform='emscripten-wasm32-emscripten', archives=[],
             include_directories=[], js_libraries=['web/glue.js'],

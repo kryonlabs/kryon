@@ -60,6 +60,7 @@ endfunction()
 # sections, align for 16 KB page devices, route fopen() through Kryon's APK
 # asset reader, retain native crash symbols, and link Android's system APIs.
 function(kryon_android_app target)
+    set_target_properties(${target} PROPERTIES SKIP_BUILD_RPATH TRUE)
     if(NOT ZI2C_BIN)
         find_program(ZI2C_BIN NAMES zi2c REQUIRED)
     endif()

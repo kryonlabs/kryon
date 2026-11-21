@@ -72,8 +72,9 @@ def renderer_link(meta, *, preloads=True):
         # Retain the lazy codec in DT_NEEDED so application packaging tools copy
         # it. The first path supports the development artifact; ORIGIN supports
         # installed AppDirs independently of cwd and system codec packages.
-        flags.extend(['-Wl,--no-as-needed', library, '-Wl,--as-needed',
-                      '-Wl,-rpath,' + str(Path(library).parent), '-Wl,-rpath,$ORIGIN/../lib'])
+        flags.extend(['-Wl,--no-as-needed', library, '-Wl,--as-needed'])
+        if not meta['platform'].startswith('android-'):
+            flags.extend(['-Wl,-rpath,' + str(Path(library).parent), '-Wl,-rpath,$ORIGIN/../lib'])
     for path in meta['js_libraries']:
         flags.extend(['--js-library', path])
     if preloads:
@@ -252,6 +253,7 @@ def build(name, target, stage, root):
             run(['cmake', '-S', root / 'cmake/desktop-codecs', '-B', work,
                  '-DCMAKE_BUILD_TYPE=Release', '-DBUILD_SHARED_LIBS=OFF',
                  '-DCMAKE_POLICY_VERSION_MINIMUM=3.5',
+                 '-DCMAKE_SHARED_LINKER_FLAGS=-Wl,--build-id=none',
                  f'-DCMAKE_TOOLCHAIN_FILE={ndk}/build/cmake/android.toolchain.cmake',
                  f'-DANDROID_ABI={abi}', f'-DANDROID_PLATFORM=android-{api}',
                  f'-DWEBP_DIR={webp_source}', f'-DKRYON_WEBP_PACKAGE_DIR={webp_package}',
