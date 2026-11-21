@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Pixmap applications that supply their own framebuffer can register, clear and
+  reload images without requiring the built-in framebuffer.
+
 - Native grids can measure dashboard rows and spans from item heights, apply
   CSS tracks and spacing, and compose cards with stylesheet padding. Native
   heading, paragraph and link selectors match their styled text widgets.

@@ -246,7 +246,7 @@ PixmapClearImage :: (slot: s32) {
     if pixmap_image_lengths[slot] > 0 { pixmap_image_revision += 1; pixmap_image_revisions[slot] = pixmap_image_revision }
     pixmap_image_natural_widths[slot] = 0; pixmap_image_natural_heights[slot] = 0
     pixmap_image_lengths[slot] = 0; pixmap_image_widths[slot] = 0
-    pixmap_image_heights[slot] = 0; pixmap_image_pixels[slot].value = pixmap_pixels[0:0]
+    pixmap_image_heights[slot] = 0; pixmap_image_pixels[slot] = .{}
     pixmap_image_index_built = false
 }
 
@@ -319,7 +319,8 @@ PixmapImageIndex :: (path: string) -> s32 {
 
 // Metadata-only slots own no pixels. A file source fills them at first draw.
 PixmapSetImageInfo :: (slot: s32, path: string, width: s32, height: s32) -> bool {
-    return PixmapSetImageStorage(slot, path, 0, 0, width, height, pixmap_pixels[0:0])
+    empty: []u32
+    return PixmapSetImageStorage(slot, path, 0, 0, width, height, empty)
 }
 
 #program_export
@@ -401,7 +402,7 @@ PixmapPrepareImage :: (slot: s32, source: *Rectangle, width: float32, height: fl
         if entry.texture == cast(u32)0 { return }
         slot := PixmapCopyImageStart + cast(s32)entry.texture - 1
         pixmap_image_widths[slot] = 0; pixmap_image_heights[slot] = 0
-        pixmap_image_pixels[slot].value = pixmap_pixels[0:0]
+        pixmap_image_pixels[slot] = .{}
         pixmap_image_revision += 1; pixmap_image_revisions[slot] = pixmap_image_revision
         entry.texture = 0
     }
