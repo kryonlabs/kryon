@@ -1,6 +1,10 @@
 # HTML & CSS to Kryon / Ziran Mapping
 
-A concise, agent-readable reference for translating HTML/CSS interfaces into native Kryon `.zi` code and Kryon CSS (`kryonlabs/css`).
+Use this guide to port a dashboard into native Kryon. Write the view in `.zi`,
+keep the supported CSS declarations, and build the same frame into `.zx` with a
+portable Kryon profile. The [responsive dashboard fixture](../examples/dashboard/previews/responsive.zi)
+shows the composition and [its README](../examples/dashboard/README.md) has
+build and verification commands.
 
 ---
 
@@ -12,7 +16,7 @@ A concise, agent-readable reference for translating HTML/CSS interfaces into nat
 | Component / element state | Caller-owned structs or file-scope variables (`bool`, `s32`, `TextField.State`, `[N]u8`) | Widgets never own application state; read `Result` structs each frame. |
 | `key` / `id` attribute | `.key = cast(u64)N`, `.id = CSS.StyleId("...")`, `.class_name = CSS.StyleClass("...")` | Every sibling widget in a frame needs a unique nonzero `key`. |
 | Parent/child nesting | Container returns `.opened: bool`; submit children, then call `End(session)` | Applies to `Page.Draw`, `Page.Section`, `Layout.*`, `Scroll.Draw`, `Modal.Draw`, `Collapsible.Draw`. |
-| `window.innerWidth` / `@media (min-width)` | Branch in `.zi` on `viewport.width` (or `IsDesktopWidth`) | In native CSS, match viewport media rules against the stylesheet environment. Use layout scopes for flow and CSS `width` and `height` to size retained rows and columns. |
+| `window.innerWidth` / `@media` | Pass `viewport.width` to `CSS.CssEnvironmentWithViewportWidth(env, viewport.width)` | Native width, min-width and max-width accept literal `px`, `rem` or unitless zero. Use `CssSheetSameMedia` to avoid reinstalling while the matching rules stay the same. |
 
 ---
 
@@ -30,7 +34,7 @@ are built-in Ziran types.
 | --- | --- | --- |
 | `<html>`, `<body>` | `Page :: #import "kryon/page";` -> `Page.Draw(session, Page.Props.{...})` or `Layout.Screen` | Call `End(session)` if `result.opened`. Also fill root background with `Box.Draw`. |
 | `<main>`, `<section>` | `Page.Section(session, Page.SectionProps.{.bounds, .label, .key})` | Sets `SemanticSection`; close with `End(session)` when `opened`. |
-| `<article>`, `.card` | `Card :: #import "kryon/card";` -> `Card.Draw(session, Card.Props.{.bounds, .variant})` | Variants: `.CardFilled`, `.CardElevated`, `.CardOutlined`. Draw children inside `result.content` (does not push scope). |
+| `<article>`, `.card` | `Card :: #import "kryon/card";` -> `Card.Draw(session, Card.Props.{.bounds, .variant})` | Variants: `.CardFilled`, `.CardElevated`, `.CardOutlined`. CSS padding sets `result.content`. Draw children inside that rectangle. |
 | `<div>` (styled box) | `Box :: #import "kryon/box";` -> `Box.Draw(session, Box.Props.{.bounds, .fill, .border, .radius})` | Decorative only; captures no input. |
 | `<header>` / toolbar | `Toolbar :: #import "kryon/toolbar";` or `TitleBar :: #import "kryon/title_bar";` | Or `Layout.Row` + `Button` / `Text`. |
 | `<nav>` (rail / bar) | `Navigation :: #import "kryon/navigation";` -> `Navigation.Draw(session, props, items)` | Use `.compact = true, .fit_items = true` for embedded panels/rails, or vertical `Button` list. |
@@ -49,6 +53,7 @@ are built-in Ziran types.
 | `<progress>` | `Progress :: #import "kryon/progress";` -> `Progress.Draw(session, .{.bounds, .min, .max, .value})` | Linear progress bar. |
 | `<fieldset>` | `Fieldset :: #import "kryon/fieldset";` -> `Fieldset.Draw(...)` | Grouped form section. |
 | `<ul>` / `<select multiple>` | `ListBox :: #import "kryon/list_box";` -> `ListBox.Draw(...)` / `ListBox.ListBoxMulti(...)` | Built-in scroll + keyboard Up/Down/Home/End, or use `Scroll` + `Button` rows for rich rows. |
+| `<table>`, `<th>`, `<td>` | `Scroll.Draw` + `Layout.Grid` + `Text.Draw` | Give all rows the same explicit tracks. Use `.horizontal = true` and `.content_width` to preserve the columns on narrow viewports. Label headers and cells in reading order. |
 | `<details>` / accordion | `Collapsible :: #import "kryon/collapsible";` -> `Collapsible.Draw(...)` | Animated reveal; draw body inside `result.content` when open. |
 | `<dialog>` | `Modal :: #import "kryon/modal";` -> `Modal.Draw(session, props)` or `Dialog.Dialog(...)` | Scoped container (`if modal.opened { ... End(session) }`); `modal.dismissed` fires on Escape/scrim. |
 | `<hr>` | `Separator :: #import "kryon/separator";` -> `Separator.Draw(session, .{.bounds, .vertical})` | Horizontal or vertical divider, optional centered `.label`. |
@@ -108,15 +113,65 @@ if sc.opened {
   - `FlexDirection`: `.FlexRow`, `.FlexColumn`
   - `JustifyContent`: `.JustifyStart`, `.JustifyCenter`, `.JustifyEnd`, `.JustifySpaceBetween`, `.JustifySpaceAround`, `.JustifySpaceEvenly`
   - `AlignItems`: `.AlignStart`, `.AlignCenter`, `.AlignEnd`, `.AlignStretch`
-- **CSS Grid (`grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))`)** -> `Grid :: #import "kryon/grid";` (`MeasureGrid`, `BeginGridCursor`, `GridStep`, `GridCellBounds`):
-  - Supply `.columns` (fixed) or `.min_item_width` + `.max_columns` (responsive), `.gap`, `.padding`.
-- **Responsive Column Stack (`@media` max-width container)** -> `using PageLayout :: #import "kryon/PageLayout";`:
-  - `page := PageFor(viewport, 520.0)`
-  - `row := NextRow(*page, 40.0)`
-  - `left := RowPart(*page, row, 0, 2)` / `right := RowPart(*page, row, 1, 2)`
+- **CSS Grid** uses `Layout.Grid(session, Grid.GridProps.{.key, .class_name}, items[:])`.
+  Provide each item's height and optional span. The grid measures the rows, fills its parent column or section's inner width by default, and gives back a `GridCursor` for drawing. Two-argument calls retain automatic placement for unpositioned single-track children.
+- **CSS `grid-column: 1/-1`** maps to `Grid.GridItem.{.column_span = -1}`. Positive spans occupy that many tracks. Use `Grid.GridStep(cursor, item.height, item.column_span)` for the returned `cursor.item` bounds.
+- **Breakpoint layout** uses the same stylesheet and frame code at every width. Set the viewport in the CSS environment before submitting widgets. `PageLayout.PageFor` remains available for manually centered or capped page geometry.
 - **Split Pane** -> `PanedView.Draw(session, PanedView.Props.{.bounds, .split, .has_split = true, .vertical = true})` -> read `panes.first`, `panes.second`, `panes.split`.
 
 ---
+
+## Author a responsive dashboard
+
+```css
+Grid.metrics {
+  grid-template-columns: repeat(auto-fit, minmax(min(165px, 100%), 1fr));
+  gap: 14px;
+}
+Grid.charts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+Card.panel { background: #151f30; border: 1px solid #29384f; border-radius: 16px; padding: 20px; }
+@media (max-width: 820px) {
+  Grid.charts { grid-template-columns: minmax(0, 1fr); }
+  Card.panel { padding: 12px; }
+}
+```
+
+```zi
+CSS :: #import "css/Css";
+Grid :: #import "kryon/grid";
+Layout :: #import "kryon/layout";
+
+// Inside a Column or Section scope, after installing the viewport styles:
+items: [3]Grid.GridItem = .[.{.height = 340, .column_span = -1}, .{.height = 240}, .{.height = 240}]
+charts := Layout.Grid(session, Grid.GridProps.{.key = 30, .class_name = CSS.StyleClass("charts")}, items[:])
+if charts.container.opened {
+    cursor := charts.cursor
+    for i: 0..2 {
+        cursor = Grid.GridStep(cursor, items[i].height, items[i].column_span)
+        // Draw each keyed Card/Plot in cursor.item.
+    }
+    unused End(session)
+}
+```
+
+| Dashboard HTML/CSS | Native authoring |
+| --- | --- |
+| `main { max-width: 1480px; margin: auto }` | Cap and center the outer rectangle once, then use a `Column` or `Page` with CSS padding and gap. |
+| `display: grid`, equal `1fr` tracks | Select `Layout.Grid` in `.zi`. Use `1fr`, `minmax(0, 1fr)`, or `repeat(N, ...)` in CSS. `N` is 1–1024. |
+| `repeat(auto-fit, minmax(min(165px, 100%), 1fr))` | Use the same declaration on `Grid`. Measured grids collapse unused tracks. A single track can shrink below the minimum. Literal minimums also work without the `min(...)` wrapper. |
+| `grid-column: 1/-1` | Set `.column_span = -1` on the corresponding `GridItem`. Arbitrary line numbers, named areas, unequal tracks, dense packing and explicit row templates stay in the browser layout. |
+| `@media (max-width: 820px)` | Keep the declaration and supply logical viewport width to the native CSS environment. Orientation, height, print and range-operator queries stay browser-side. |
+| `gap: 12px 14px`, `padding: 8px 12px` | Use the same CSS on `Grid`. Grid interprets row and column gap independently and follows the native axis-pair padding model. Card uses axis padding for its content rectangle. |
+| `font-size: clamp(...)`, `padding: clamp(...)` | Use literal sizes in width media rules, or calculate the clamp from the viewport in `.zi` and pass an explicit size or padding prop. `vw`, `em`, `calc()` and `clamp()` do not resolve as native lengths. |
+| `font-weight`, `line-height`, `letter-spacing` | Keep native-supported literal properties on `Heading` and `Text`. Use a typeface with fixed-width digits or a mono face for numeric columns. CSS `font-variant-numeric` and `text-transform` do not apply to native text. |
+| `background: radial-gradient(...)` | Use the base `background-color`, or a supported two-stop `linear-gradient` on a surface that draws gradients. The native CSS parser does not accept radial gradients. |
+| Wrapped navigation, `a[href="#section"]` | Use native `Link`/`Button` controls and a `Row` or measured grid. Handle navigation and scrolling in the frame. The native runtime has no DOM fragment links or CSS flex wrap. |
+| `.table-scroll`, `white-space: nowrap`, border-collapse | Use `Scroll.Draw` with `.horizontal = true` and a shared `Grid` for row/cell slots. Use `.wrap = .TextWrapNone` and separators for row lines. Browser table layout and border collapse have no native counterpart. |
+| `details > summary`, `pre`, `code` | `Collapsible.Draw` with caller-owned open state, and `Text.Draw` with a code typeface and explicit wrap or scroll policy. |
+| Plotly line/step, bars, heatmaps, waterfalls and candles | Import `plot/Plot`. Use `XYChart` for named shared-axis line, point or step series, `BarChart` for signed categories, `HeatmapChart` for a row-major matrix, `WaterfallChart` for deltas and totals, and `TimeCandleChart` for OHLC. Give `ChartProps.bounds` the native panel content rectangle and pass typed data. |
 
 ## 4. Kryon CSS Support (`kryonlabs/css`)
 
@@ -128,7 +183,7 @@ Theme :: #import "kryon/theme";
 
 sheet: CSS.CssSheet;
 
-ApplyStyles :: (dark: bool, compact: bool) -> bool {
+ApplyStyles :: (dark: bool, compact: bool, viewport_width: float32) -> bool {
     unused Theme.InstallDefaultTheme(dark)
     CSS.CssSheetReset(*sheet)
     if !CSS.CssSheetParse(*sheet, app_css, "app.css", CSS.CssNoImports) {
@@ -141,15 +196,17 @@ ApplyStyles :: (dark: bool, compact: bool) -> bool {
         ifx compact then "compact" else "comfortable",
         "mouse",
         "desktop")
-    return CSS.CssSheetInstall(*sheet, env, null)
+    return CSS.CssSheetInstall(*sheet, CSS.CssEnvironmentWithViewportWidth(env, viewport_width), null)
 }
 ```
 
 Bind selectors on widgets via `props.class_name = CSS.StyleClass("primary")` and `props.id = CSS.StyleId("save")`.
 
+Parse once per stylesheet in a running app. The example reparses to show the complete setup.
+
 ### Supported Selectors
 
-- **Widget types**: `*`, `Any`, `App`, `Button`, `Text`, `TextField`, `TextArea`, `Surface`, `Dropdown`, `Card`, `Slider`, `SliderThumb`, `Toggle`, `ToggleThumb`, `Scroll`, `ScrollThumb`, `Checkbox`, `Radio`, `Progress`, `Separator`, `NavigationBar`, `NavigationBarItem`, `Selectable`, `Fieldset`, `Link`, `TabBar`, `Tab`, `TabClose`, `SegmentedControl`, `Segment`, `Menu`, `MenuItem`, `MenuSeparator`, `ListBox`, `ListBoxItem`, `ListBoxMulti`, `ListBoxMultiItem`, `TreeView`, `TreeViewItem`, `TableView`, `Collapsible`, `Modal`, `Toast`, `Toolbar`, `TitleBar`, `Image`, `Heading`, `ParagraphText`, `Page`, `Section`, `Popup`, `Row`, `Column`.
+- **Widget types**: `*`, `Any`, `App`, `Button`, `Text`, `TextField`, `TextArea`, `Surface`, `Dropdown`, `Card`, `Slider`, `SliderThumb`, `Toggle`, `ToggleThumb`, `Scroll`, `ScrollThumb`, `Checkbox`, `Radio`, `Progress`, `Separator`, `NavigationBar`, `NavigationBarItem`, `Selectable`, `Fieldset`, `Link`, `TabBar`, `Tab`, `TabClose`, `SegmentedControl`, `Segment`, `Menu`, `MenuItem`, `MenuSeparator`, `ListBox`, `ListBoxItem`, `ListBoxMulti`, `ListBoxMultiItem`, `TreeView`, `TreeViewItem`, `TableView`, `Collapsible`, `Modal`, `Toast`, `Toolbar`, `TitleBar`, `Image`, `Heading`, `ParagraphText`, `Page`, `Section`, `Popup`, `Row`, `Column`, `Grid`.
 - **Classes & IDs**: at most one `.class` and one `#id` per compound selector (e.g. `Button.primary#save:hover`).
 - **Kryon attributes**: `[tone=Neutral|Accent|Danger|Success|Warning]`, `[emphasis=Filled|Soft|Outline|Ghost|Link]`, `[size=Small|Medium|Large]`, `[role=Label|Panel|Track|Fill|Header|Close|...]`, `[state=any|normal|hover|pressed|focus|disabled|loading|selected]`.
 - **State pseudo-classes** (max 1 per selector): `:hover`, `:active`, `:focus`, `:focus-visible`, `:disabled`, `:selected`, `:checked`, `:loading`.
@@ -161,12 +218,13 @@ Bind selectors on widgets via `props.class_name = CSS.StyleClass("primary")` and
   - Colors: `color`, `background` (color or two-stop vertical `linear-gradient([to bottom | 180deg,] top, bottom)`), `background-color`, `border-color`, `outline-color` (focus ring).
   - Borders & shape: `border` (`width`, `solid` or `none`, `color`), `border-width`, `border-style` (`solid` | `none`), `border-radius`, `opacity` (unitless number or clamped `0%`–`100%`).
   - Spacing & sizing: `padding` (1–4 values; top/bottom and left/right must be equal), `padding-inline`, `padding-block`, `gap` (one value for both axes or two values in `row column` order), `row-gap`, `column-gap` (`Row` reads `column-gap`, `Column` reads `row-gap`, uniform-gap controls read the first `gap` value; accepts `normal` = 0 or nonnegative `px`/`rem`), `min-height`, `min-block-size` (logical alias for `min-height`), `translate` (`x [y]`).
-  - Retained `Row` and `Column` also accept `width` and `height` as positive `px` or `rem` lengths or `auto`. Other size expressions pass through to the browser.
+  - Retained `Row`, `Column` and `Grid` also accept `width` and `height` as positive `px` or `rem` lengths or `auto`. Other size expressions pass through to the browser.
+  - Use `border-color: var(--line)` and `border-width` for typed border variables.
   - Typography: `font-size`, `font-family`; native `Text`, `Heading`, and `ParagraphText` read `font-weight` (`normal` = 400, `bold` = 700, or `1`–`1000`), `font-style` (`normal` | `italic` | `oblique` without angle), and `letter-spacing` (`normal` or signed `px` / `rem`); `Text` and `Button` accept `line-height` (`normal`, nonnegative unitless factor, `%` of font size, or nonnegative `px` / `rem`).
   - Kryon extensions: `-kryon-material` (`lightfield` | `flat` | `glass`), `-kryon-icon-size`, `-kryon-font-role` (`inherit` | `control` | `body` | `heading` | `code`), `-kryon-elevation` (`none` | `rest` | `raised` | `floating`), `-kryon-motion-duration`, `-kryon-motion-multiplier`, `-kryon-motion-easing` (`inherit` | `standard` | `linear` | `instant`), `-kryon-motion-reduced` (`reduce` | `no-preference`).
 - **Units & values**: hex (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`), CSS named colors, `rgb()`, `rgba()`, `hsl()`, `hsla()`, `hwb(hue white% black% [/ alpha])`, hue angle units (`deg`, `rad`, `grad`, `turn`), `px`, `rem` (`16px`), `s`, `ms`, `:root` custom properties (`--token: ...;`) with `var(--token, fallback)`. `em` and `%` lengths are rejected (use `px` or `rem`).
-- **At-rules**: `@import` (before rules), `@layer`, `@keyframes`, `@media` (`prefers-color-scheme`, `prefers-contrast`, `prefers-reduced-motion`, `pointer`, `min-width`, `max-width`, `-kryon-theme`, `-kryon-density`, `-kryon-pointer`, `-kryon-platform`).
-- **Web-only pass-through properties** (accepted by parser for `kryon/Dom`, ignored by native widgets): `min-width`, `max-width`, `max-height`, `margin*`, `display`, `flex*`, `justify-content`, `align-items`, `align-self`, `grid-*`, `text-align`, `text-decoration`, `text-transform`, `white-space`, `cursor`, `box-shadow`, `overflow`, `z-index`, `visibility`.
+- **At-rules**: `@import` (before rules), `@layer`, `@keyframes`, `@media` (`prefers-color-scheme`, `prefers-contrast`, `prefers-reduced-motion`, `pointer`, `width`, `min-width`, `max-width`, `-kryon-theme`, `-kryon-density`, `-kryon-pointer`, `-kryon-platform`).
+- **Web-only pass-through properties** (accepted by parser for `kryon/Dom`, ignored by native widgets): `min-width`, `max-width`, `max-height`, `margin*`, `display`, `flex*`, `justify-content`, `align-items`, `align-self`, grid declarations outside the native track subset, `text-align`, `text-decoration`, `text-transform`, `white-space`, `cursor`, `box-shadow`, `overflow`, `z-index`, `visibility`.
 
 Use `color-mix(in srgb, #2076c0 35%, transparent)` in a native color
 declaration or custom property to derive a tint from two literal colors.

@@ -271,6 +271,7 @@ NodeGeometry :: struct {
     LayoutData :: struct {
         placement: TreePlacement
         gap: s32
+        row_gap: s32
         padding: s32
         padding_y: s32
         columns: s32
@@ -299,6 +300,7 @@ NodeGeometry :: struct {
     LayoutInfo :: struct {
         bounds: Rectangle
         gap: s32
+        row_gap: s32
         padding: s32
         padding_y: s32
         columns: s32
@@ -703,6 +705,7 @@ NodeGeometry :: struct {
         if node.layout_index >= 0 {
             layout: LayoutData = trees[slot].layouts[node.layout_index]
             info.gap = layout.gap
+            info.row_gap = layout.row_gap
             info.padding = layout.padding
             info.padding_y = layout.padding_y
             info.columns = layout.columns
@@ -1068,13 +1071,14 @@ NodeGeometry :: struct {
     #program_export
     TreeSetLayout :: (session: Session, index: s32, gap: s32, padding: s32,
         columns: s32, min_item_width: s32,
-        max_columns: s32, padding_y: s32 = -1) {
+        max_columns: s32, padding_y: s32 = -1, row_gap: s32 = -1) {
         slot: s32 = SessionIndex(session)
         if !trees[slot].building || index < 0 ||
         index >= trees[slot].submitted_count { return }
         layout: s32 = TreeEnsureLayout(session, index)
         if layout < 0 { return }
         trees[slot].layouts[layout].gap = gap
+        trees[slot].layouts[layout].row_gap = ifx row_gap >= 0 then row_gap else gap
         trees[slot].layouts[layout].padding = padding
         trees[slot].layouts[layout].padding_y = ifx padding_y >= 0 then padding_y else padding
         trees[slot].layouts[layout].columns = columns

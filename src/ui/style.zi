@@ -80,6 +80,8 @@ StyleData :: struct {
     // Outer size in logical pixels. With the field bit set, zero means auto.
     width: float32
     height: float32
+    // Positive: equal columns. Negative: auto-fit with this minimum width.
+    grid_tracks: s32
 }
 
 StyleFrame :: struct {
@@ -207,6 +209,7 @@ MergeValues :: (base: StyleData, override: StyleData) -> StyleData {
     if (override.fields & cast(u32)StyleMotionReduced) != cast(u32)0 { base.motion_reduced = override.motion_reduced }
     if (override.fields & cast(u32)StyleWidth) != 0 { base.width = override.width }
     if (override.fields & cast(u32)StyleHeight) != 0 { base.height = override.height }
+    if (override.fields & cast(u32)StyleGridTracks) != 0 { base.grid_tracks = override.grid_tracks }
     base.fields = base.fields | override.fields
     return base
 }

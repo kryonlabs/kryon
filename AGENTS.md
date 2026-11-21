@@ -74,6 +74,12 @@ One widget concept has one public implementation. `Text.Draw(Text.Props)` and
 `Image.Draw(Image.Props)` are the intended text and image widget surfaces. Do not
 add parallel wrappers or expose raw texture draw calls as app widget APIs.
 
+For native dashboards, start with [HTML/CSS mapping](docs/HTML_TO_KRYON.md),
+[widget mappings](docs/ui-map.json), and the
+[responsive frame](examples/dashboard/previews/responsive.zi). Use the same
+`.zi` frame for native and `.zx` builds. Use `Layout.Grid` with CSS viewport
+conditions for responsive cards and chart panels.
+
 ## Testing and desktop safety
 
 Test changed modules through all relevant generated targets and portable

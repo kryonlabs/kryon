@@ -1,11 +1,15 @@
 #import "geometry"
-#import "grid_props"
+using PropsModule :: #import "grid_props";
 
 #program_export
 MeasureGrid :: (props: GridProps) -> GridMetrics {
     grid: GridMetrics
     gap: s32 = ifx props.gap >= 0 then props.gap else 0
     padding: s32 = ifx props.padding >= 0 then props.padding else 0
+    row_gap := ifx props.row_gap != 0 || props.row_gap_override then props.row_gap else gap
+    padding_y := ifx props.padding_y != 0 || props.padding_y_override then props.padding_y else padding
+    if row_gap < 0 { row_gap = 0 }
+    if padding_y < 0 { padding_y = 0 }
     available: s32
     columns: s32 = props.columns
     min_width: s32
@@ -13,11 +17,13 @@ MeasureGrid :: (props: GridProps) -> GridMetrics {
     grid.bounds = props.bounds
     grid.gap = gap
     grid.padding = padding
+    grid.padding_y = padding_y
+    grid.row_gap = row_gap
     grid.content = Rectangle.{
         props.bounds.x + cast(float32)padding,
-        props.bounds.y + cast(float32)padding,
+        props.bounds.y + cast(float32)padding_y,
         props.bounds.width - cast(float32)(padding * 2),
-        props.bounds.height - cast(float32)(padding * 2)
+        props.bounds.height - cast(float32)(padding_y * 2)
     }
     if grid.content.width < 0.0 { grid.content.width = 0.0 }
     if grid.content.height < 0.0 { grid.content.height = 0.0 }
@@ -58,16 +64,19 @@ GridStep :: (cursor: GridCursor, height: s32, column_span: s32) -> GridCursor {
     width: s32
 
     if height < 0 { height = 0 }
-    span = ifx column_span > 0 then column_span else 1
+    span = column_span
+    if span < 0 { span = columns }
+    if span == 0 { span = 1 }
     if span > columns { span = columns }
     if cursor.col > 0 && cursor.col + span > columns {
-        cursor.y += cursor.row_height + cursor.metrics.gap
-        cursor.used_height += cursor.row_height + cursor.metrics.gap
+        cursor.y += cursor.row_height + cursor.metrics.row_gap
+        cursor.used_height += cursor.row_height + cursor.metrics.row_gap
         cursor.col = 0
         cursor.row_height = 0
     }
 
     width = cursor.metrics.cell_width * span + cursor.metrics.gap * (span - 1)
+    if span == columns { width = cast(s32)cursor.metrics.content.width }
     cursor.item = Rectangle.{
         cast(float32)(cursor.x + cursor.col * (cursor.metrics.cell_width + cursor.metrics.gap)),
         cast(float32)cursor.y,
@@ -77,13 +86,22 @@ GridStep :: (cursor: GridCursor, height: s32, column_span: s32) -> GridCursor {
     if height > cursor.row_height { cursor.row_height = height }
     cursor.col += span
     if cursor.col >= columns {
-        cursor.y += cursor.row_height + cursor.metrics.gap
-        cursor.used_height += cursor.row_height + cursor.metrics.gap
+        cursor.y += cursor.row_height + cursor.metrics.row_gap
+        cursor.used_height += cursor.row_height + cursor.metrics.row_gap
         cursor.col = 0
         cursor.row_height = 0
     }
     return cursor
 }
+// Content height includes intervening row gaps, with neither a leading nor trailing gap.
+#program_export
+GridItemsHeight :: (cursor: GridCursor, items: []GridItem) -> s32 {
+    if items.count == 0 { return 0 }
+    for item: items { cursor = GridStep(cursor, item.height, item.column_span) }
+    if cursor.col == 0 { return cursor.used_height - cursor.metrics.row_gap }
+    return cursor.used_height + cursor.row_height
+}
+
 // Equal cells: a grid of tiles that share one height, laid out across the
 // columns MeasureGrid chose for the width, such as an app launcher.
 
@@ -100,7 +118,7 @@ GridRowCount :: (metrics: GridMetrics, count: s32) -> s32 {
 GridCellsHeight :: (metrics: GridMetrics, count: s32, cell_height: s32) -> s32 {
     rows: s32 = GridRowCount(metrics, count)
     if rows == 0 { return 0 }
-    return rows * cell_height + (rows - 1) * metrics.gap
+    return rows * cell_height + (rows - 1) * metrics.row_gap
 }
 
 // Bounds of equal cell index, in reading order.
@@ -112,7 +130,7 @@ GridCellBounds :: (metrics: GridMetrics, index: s32, cell_height: s32) -> Rectan
     row: s32 = index / columns
     return Rectangle.{
         metrics.content.x + cast(float32)(column * (metrics.cell_width + metrics.gap)),
-        metrics.content.y + cast(float32)(row * (cell_height + metrics.gap)),
+        metrics.content.y + cast(float32)(row * (cell_height + metrics.row_gap)),
         cast(float32)metrics.cell_width,
         cast(float32)cell_height
     }
@@ -127,7 +145,7 @@ GridIndexAt :: (metrics: GridMetrics, x: float32, y: float32,
     columns: s32 = ifx metrics.columns > 0 then metrics.columns else 1
     if count <= 0 { return 0 }
     pitch_x: s32 = metrics.cell_width + metrics.gap
-    pitch_y: s32 = cell_height + metrics.gap
+    pitch_y: s32 = cell_height + metrics.row_gap
     if pitch_x <= 0 { pitch_x = 1 }
     if pitch_y <= 0 { pitch_y = 1 }
     column: s32 = 0

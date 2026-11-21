@@ -23,6 +23,9 @@ Draw :: (session: Session, props: PropsModule.Props) -> CardResult {
         StyleAny(), cast(s32)ButtonTone.ButtonToneNeutral, cast(s32)emphasis,
         cast(s32)ControlSize.ControlSizeMedium, state)
     face := ResolveInstalledStyleRules(CardDefaultFace(emphasis, state), facts, state)
+    padding_x := ifx StyleHasField(face, cast(u32)StyleField.StylePaddingX) then face.padding_x else 16.0
+    padding_y := ifx StyleHasField(face, cast(u32)StyleField.StylePaddingY) then face.padding_y else 16.0
+    result.content = CardContentBounds(props.bounds, padding_x, padding_y)
     opacity := StyleOpacityValue(face.fields, face.opacity)
     if props.disabled && opacity == 1.0 { opacity = 0.45 }
     if props.variant == .CardElevated {

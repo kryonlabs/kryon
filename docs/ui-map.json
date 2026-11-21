@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "backend": "native",
   "elements": [
     {"html": ["html", "body"], "import": "kryon/page", "call": "Draw", "css": "Page", "scope": "opened"},
@@ -26,6 +26,8 @@
     {"html": ["input[type=range]"], "import": "kryon/slider", "call": "Draw", "css": "Slider"},
     {"html": ["progress"], "import": "kryon/progress", "call": "Draw", "css": "Progress"},
     {"html": ["fieldset"], "import": "kryon/fieldset", "call": "Draw", "css": "Fieldset"},
+    {"html": ["table"], "import": "kryon/layout", "call": "Grid", "css": "Grid", "scope": "container.opened", "items": "kryon/grid.GridItem", "scroll": "kryon/scroll"},
+    {"html": ["th", "td", "code", "pre", "strong"], "import": "kryon/text", "call": "Draw", "css": "Text"},
     {"html": ["details"], "import": "kryon/collapsible", "call": "Draw", "css": "Collapsible", "lists": [["headers", "CollapsibleHeader"]], "content": "result.content"},
     {"html": ["dialog"], "import": "kryon/modal", "call": "Draw", "css": "Modal", "scope": "opened"},
     {"html": ["hr"], "import": "kryon/separator", "call": "Draw", "css": "Separator"},
@@ -35,7 +37,10 @@
   "layouts": [
     {"pattern": "display: flex; flex-direction: row", "import": "kryon/layout", "call": "Row", "scope": "opened"},
     {"pattern": "display: flex; flex-direction: column", "import": "kryon/layout", "call": "Draw", "scope": "opened"},
-    {"pattern": "display: grid", "import": "kryon/layout", "call": "Grid", "scope": "container.opened"},
+    {"pattern": "display: grid", "import": "kryon/layout", "call": "Grid", "css": "Grid", "scope": "container.opened", "items": "kryon/grid.GridItem", "placement": "kryon/grid.GridStep"},
     {"pattern": "overflow-y: auto", "import": "kryon/scroll", "call": "Draw", "scope": "opened"}
-  ]
+  ],
+  "viewport": {"import": "css/Css", "environment": "CssEnvironmentWithViewportWidth", "install": "CssSheetInstall", "same_media": "CssSheetSameMedia", "features": ["width", "min-width", "max-width"], "units": ["px", "rem", "unitless zero"]},
+  "grid_columns": {"native": ["1fr", "minmax(0, 1fr)", "repeat(N, 1fr)", "repeat(N, minmax(0, 1fr))", "repeat(auto-fit, minmax(LENGTH, 1fr))", "repeat(auto-fit, minmax(min(LENGTH, 100%), 1fr))"], "full_row": {"html": "grid-column: 1/-1", "prop": "GridItem.column_span", "value": -1}},
+  "charts": {"import": "plot/Plot", "bounds": "ChartProps.bounds", "line_point_step": "XYChart", "categorical": "BarChart", "matrix": "HeatmapChart", "deltas_and_totals": "WaterfallChart", "ohlc": "TimeCandleChart"}
 }

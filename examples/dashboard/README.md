@@ -72,3 +72,29 @@ kryon preview empty    --theme light --width 1120 --height 720 --output build/pr
 kryon preview error    --theme light --width 1120 --height 720 --output build/previews/error
 kryon preview settings --theme dark  --width 1120 --height 720 --output build/previews/settings-dark
 ```
+
+## CSS viewport grids and portable ZX
+
+[`previews/responsive.zi`](previews/responsive.zi) uses CSS for the KPI grid,
+chart panel tracks, padding, colors and headline size. The metrics flow into
+four columns at 1200 pixels and two at 550. The first chart panel spans the
+row, and the remaining two stack below 820 pixels. The trade ledger keeps a
+shared column grid inside a horizontal scroll viewport. Chart slots are
+ready for Plot, with native API equivalents in the
+[HTML/CSS mapping](../../docs/HTML_TO_KRYON.md#author-a-responsive-dashboard).
+
+Use the checkout overrides above or update both Kryon and CSS in your
+project to the matching revisions from CSS's manifest and run `ziran lock`.
+From the Kryon root, generate native snapshots, compile the same `.zi` frame
+into ZX, and exercise the bundle on private Xvfb:
+
+```sh
+make -j1 build/bin/kryon zx-player
+python3 tests/responsive_dashboard_test.py
+```
+
+The fixture writes two PNGs, two widget trees and `responsive.zx` under
+`build/scratch/dashboard-responsive/`. The test checks measured placement,
+clipping, colors, typography, and button input before and after a resize.
+For an app, make the dashboard frame your entry and run
+`kryon build --profile portable` to produce its `.zx` bundle.

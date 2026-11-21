@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Native grids can measure dashboard rows and spans from item heights, apply
+  CSS tracks and spacing, and compose cards with stylesheet padding. Native
+  heading, paragraph and link selectors match their styled text widgets.
+
 - Pointer drags no longer activate controls on release, including after moving
   away and back. X11 window-manager grabs no longer become application clicks.
 - Portable ZX players forward each frame-resolved cursor to the host so

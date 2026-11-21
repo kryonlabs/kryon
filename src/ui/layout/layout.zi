@@ -97,7 +97,8 @@ TreePlaceStack :: (session: Session, parent_index: s32, bounds: Rectangle) -> Re
 TreePlaceGrid :: (session: Session, parent_index: s32, bounds: Rectangle) -> Rectangle {
     parent: LayoutInfo = TreeLayoutAt(session, parent_index)
     grid: GridCursor = BeginGridCursor(GridProps.{.bounds = parent.bounds, .gap = parent.gap,
-        .padding = parent.padding, .columns = parent.columns,
+        .padding = parent.padding, .padding_y = parent.padding_y, .padding_y_override = true,
+        .row_gap = parent.row_gap, .row_gap_override = true, .columns = parent.columns,
         .min_item_width = parent.min_item_width, .max_columns = parent.max_columns})
     progress: LayoutProgress = TreeLayoutProgressAt(session, parent_index)
     if progress.grid_initialized {
@@ -120,6 +121,7 @@ LayoutFace :: (props: PropsModule.Props, kind: s32) -> StyleData {
     style_kind: s32 = 0
     if kind == WidgetKindRow { style_kind = StyleKindRow() }
     if kind == WidgetKindColumn { style_kind = StyleKindColumn() }
+    if kind == WidgetKindGrid { style_kind = StyleKindGrid() }
     defaults: StyleData
     if style_kind == 0 { return defaults }
     facts := StyleDefaultFacts(style_kind)
@@ -144,17 +146,23 @@ LayoutExtentFor :: (declared: float32, inherited: float32, styled: float32,
     return inherited
 }
 
+LayoutParentBounds :: (session: Session, kind: s32) -> Rectangle {
+    parent_index := TreeCurrentParent(session)
+    parent_kind := TreeSubmittedNodeAt(session, parent_index).kind
+    parent := TreeCurrentParentBounds(session)
+    if parent_kind == WidgetKindRow || parent_kind == WidgetKindColumn || parent_kind == WidgetKindStack ||
+        (kind == WidgetKindGrid && (parent_kind == WidgetKindPage || parent_kind == WidgetKindSection)) {
+        outer := TreeLayoutAt(session, parent_index)
+        parent = LayoutMetricsFor(outer.bounds, outer.gap, outer.padding, outer.padding_y).content
+    }
+    return parent
+}
+
 #program_export
 ContainerFor :: (session: Session, props: PropsModule.Props,
     kind: s32) -> LayoutContainer {
     result: LayoutContainer = .{.node = -1, .kind = kind, .bounds = props.bounds}
-    parent_index := TreeCurrentParent(session)
-    parent_kind := TreeSubmittedNodeAt(session, parent_index).kind
-    parent := TreeCurrentParentBounds(session)
-    if parent_kind == WidgetKindRow || parent_kind == WidgetKindColumn || parent_kind == WidgetKindStack {
-        outer := TreeLayoutAt(session, parent_index)
-        parent = LayoutMetricsFor(outer.bounds, outer.gap, outer.padding, outer.padding_y).content
-    }
+    parent := LayoutParentBounds(session, kind)
     face := LayoutFace(props, kind)
     result.bounds.width = LayoutExtentFor(props.bounds.width, parent.width,
         face.width, StyleHasField(face, cast(u32)StyleWidth))
@@ -177,14 +185,18 @@ ContainerFor :: (session: Session, props: PropsModule.Props,
     result.gap = metrics.gap
     result.padding = metrics.padding
     result.padding_y = metrics.padding_y
+    return OpenContainer(session, props, result)
+}
+
+OpenContainer :: (session: Session, props: PropsModule.Props,
+    result: LayoutContainer) -> LayoutContainer {
     if !TreeIsBuilding(session) { return result }
     key: u64 = props.key
     if key == cast(u64)0 { key = TreeNextKey(session) }
-    result.node = TreeSubmitCurrent(session, key, kind, result.bounds)
+    result.node = TreeSubmitCurrent(session, key, result.kind, result.bounds)
     if result.node < 0 { return result }
     result.bounds = TreeSubmittedBounds(session, result.node)
-    metrics = LayoutMetricsFor(result.bounds, result.gap, result.padding, result.padding_y)
-    result.content = metrics.content
+    result.content = LayoutMetricsFor(result.bounds, result.gap, result.padding, result.padding_y).content
     TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0, result.padding_y)
     if props.id != 0 { TreeSetStyleId(session, result.node, props.id) }
     if props.class_name != 0 { TreeSetStyleClass(session, result.node, props.class_name) }
@@ -225,19 +237,59 @@ Screen :: (session: Session, props: PropsModule.Props) -> LayoutContainer {
     return ContainerFor(session, props, WidgetKindGroup)
 }
 
+EmptyGridItems :: () -> []GridItem {
+    items: []GridItem
+    return items
+}
+
 #program_export
-Grid :: (session: Session, props: GridProps) -> GridResult {
-    row: PropsModule.Props = .{.bounds = props.bounds, .gap = props.gap, .padding = props.padding,
-        .key = props.key}
-    result: GridResult
-    result.container = ContainerFor(session, row, WidgetKindGrid)
-    TreeSetLayout(session, result.container.node, result.container.gap,
-        result.container.padding, props.columns, props.min_item_width,
-        props.max_columns)
-    TreeSetPlacement(session, result.container.node, TreePlaceGrid)
-    props.bounds = result.container.bounds
-    result.cursor = BeginGridCursor(props)
-    return result
+Grid :: (session: Session, props: GridProps, items: []GridItem = EmptyGridItems()) -> GridResult {
+    scope: PropsModule.Props = .{.key = props.key, .id = props.id, .class_name = props.class_name}
+    face := LayoutFace(scope, WidgetKindGrid)
+    parent := LayoutParentBounds(session, WidgetKindGrid)
+    props.bounds.width = LayoutExtentFor(props.bounds.width, parent.width,
+        face.width, StyleHasField(face, cast(u32)StyleWidth))
+    props.row_gap = LayoutSpacingFor(props.row_gap, props.row_gap_override,
+        props.gap, props.gap_override, face.row_gap)
+    props.row_gap_override = true
+    props.gap = LayoutSpacingFor(0, false, props.gap, props.gap_override, face.column_gap)
+    props.padding_y = LayoutSpacingFor(props.padding_y, props.padding_y_override,
+        props.padding, props.padding_override, face.padding_y)
+    props.padding_y_override = true
+    props.padding = LayoutSpacingFor(0, false, props.padding, props.padding_override, face.padding_x)
+    if props.columns <= 0 && props.min_item_width <= 0 {
+        if face.grid_tracks >= 0 { props.columns = face.grid_tracks }
+        else {
+            props.min_item_width = -face.grid_tracks
+            // Collapse empty auto-fit tracks when declared items fit in one row.
+            occupied: s64 = 0
+            for item: items {
+                if item.column_span < 0 { occupied = 0; break }
+                occupied += ifx item.column_span > 0 then item.column_span else 1
+            }
+            if occupied > 0 && occupied <= 2147483647 &&
+                (props.max_columns <= 0 || occupied < cast(s64)props.max_columns) {
+                props.max_columns = cast(s32)occupied
+            }
+        }
+    }
+    content_height := parent.height
+    if items.count > 0 {
+        content_height = cast(float32)(GridItemsHeight(BeginGridCursor(props), items) + 2 * props.padding_y)
+    }
+    props.bounds.height = LayoutExtentFor(props.bounds.height, content_height,
+        face.height, StyleHasField(face, cast(u32)StyleHeight))
+
+    metrics := MeasureGrid(props)
+    container: LayoutContainer = .{.node = -1, .kind = WidgetKindGrid, .bounds = props.bounds,
+        .content = metrics.content, .gap = props.gap, .padding = props.padding,
+        .padding_y = props.padding_y}
+    container = OpenContainer(session, scope, container)
+    TreeSetLayout(session, container.node, props.gap, props.padding, metrics.columns,
+        0, 0, props.padding_y, props.row_gap)
+    if items.count == 0 { TreeSetPlacement(session, container.node, TreePlaceGrid) }
+    props.bounds = container.bounds
+    return .{.container = container, .cursor = BeginGridCursor(props)}
 }
 
 ContainerMetrics :: (container: LayoutContainer) -> LayoutMetrics {

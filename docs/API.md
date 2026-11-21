@@ -426,6 +426,16 @@ A single-line row uses `column_gap` between children and a column uses `row_gap`
 Set the corresponding `_override` flag to supply explicit zero. Negative
 spacing is clamped to zero.
 
+`Layout.Grid(session, Grid.GridProps, items)` uses CSS `Grid` width, height,
+padding, row/column gaps, and equal `grid-template-columns` tracks. Pass
+`[]Grid.GridItem` for a measured grid. Each item supplies its height and span.
+With unset height, the grid reserves the tallest item's height per row plus
+inter-row spacing and block padding. Call `Grid.GridStep` on the returned
+cursor for each item and draw using `cursor.item`. A negative span fills a row.
+Close `result.container.opened` with `End(session)`. A two-argument `Layout.Grid`
+continues to place unpositioned children one track at a time. See the
+[HTML/CSS mapping](HTML_TO_KRYON.md#author-a-responsive-dashboard).
+
 For a native bound field, initialize `state.bytes` once from application-owned
 storage and set `state.length` to the number of UTF-8 bytes in the initial
 value. `TextField.Bind(session, *state, props)` draws and applies edits to that

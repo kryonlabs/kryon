@@ -8,6 +8,20 @@ GridProps :: struct {
     gap: s32
     padding: s32
     key: u64
+    id: s32
+    class_name: s32
+    row_gap: s32
+    padding_y: s32
+    gap_override: bool
+    row_gap_override: bool
+    padding_override: bool
+    padding_y_override: bool
+}
+
+GridItem :: struct {
+    height: s32
+    // Zero or one uses one column. Negative spans the full grid.
+    column_span: s32
 }
 
 GridMetrics :: struct {
@@ -17,6 +31,8 @@ GridMetrics :: struct {
     gap: s32
     padding: s32
     cell_width: s32
+    row_gap: s32
+    padding_y: s32
 }
 
 GridCursor :: struct {

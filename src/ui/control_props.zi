@@ -106,6 +106,8 @@ StyleWidth :: 536870912
 StyleHeight :: 1073741824
 }
 
+StyleGridTracks :: 0x80000000
+
 FontStyle :: enum {
     FontStyleNormal :: 0
     FontStyleOblique :: 1
