@@ -583,6 +583,8 @@ public class __ACTIVITY__ extends NativeActivity {
                 systemTop = insets.getSystemWindowInsetTop();
                 systemRight = insets.getSystemWindowInsetRight();
                 systemBottom = insets.getSystemWindowInsetBottom();
+                if ((getWindow().getDecorView().getSystemUiVisibility()
+                        & View.SYSTEM_UI_FLAG_FULLSCREEN) != 0) systemTop = 0;
                 imeBottom = inferImeBottom(systemBottom);
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

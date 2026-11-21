@@ -7,7 +7,7 @@
 
 - Keep Android codec builds reproducible and exclude build-machine paths from library loading.
 
-- Keep hidden Android status bars out of the safe-area inset while preserving visible bars, camera cutouts and the keyboard; hide the status bar consistently on older Android devices.
+- Keep hidden Android status bars out of the safe-area inset while preserving visible bars, camera cutouts and the keyboard; hide the status bar consistently on older Android devices without leaving a blank strip.
 - Cover shared half-pixel image edges consistently in smooth raster draws, preventing background seams between adjacent tiles at fractional display densities.
 - Native hosted style codecs preserve width and height across record encoding,
   decoding and validation, while retaining older host field layouts.
