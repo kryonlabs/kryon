@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+
+- Pointer drags no longer activate controls on release, including after moving
+  away and back. X11 window-manager grabs no longer become application clicks.
 - Portable ZX players forward each frame-resolved cursor to the host so
   bundled apps get pointer feedback without app-specific host code.
 

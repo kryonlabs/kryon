@@ -1,0 +1,95 @@
+Desktop :: #import "desktop_runtime";
+
+sdl :: #system_library "SDL2";
+Delay :: (ms: u32) #foreign sdl "SDL_Delay";
+WindowPosition :: (window: *void, x: *s32, y: *s32) #foreign sdl "SDL_GetWindowPosition";
+x11 :: #system_library "X11";
+OpenDisplay :: (name: *u8) -> *void #foreign x11 "XOpenDisplay";
+CloseDisplay :: (display: *void) -> s32 #foreign x11 "XCloseDisplay";
+Root :: (display: *void) -> u64 #foreign x11 "XDefaultRootWindow";
+Grab :: (display: *void, window: u64, owner_events: s32, mask: u32,
+    pointer_mode: s32, keyboard_mode: s32, confine: u64, cursor: u64, time: u64) -> s32 #foreign x11 "XGrabPointer";
+Ungrab :: (display: *void, time: u64) -> s32 #foreign x11 "XUngrabPointer";
+Sync :: (display: *void, discard: s32) -> s32 #foreign x11 "XSync";
+xtst :: #system_library "Xtst";
+Move :: (display: *void, screen: s32, x: s32, y: s32, delay: u64) -> s32 #foreign xtst "XTestFakeMotionEvent";
+Button :: (display: *void, button: u32, down: s32, delay: u64) -> s32 #foreign xtst "XTestFakeButtonEvent";
+
+SampleCases :: () -> s32 {
+    // A WM-owned press and its release remain foreign across polls.
+    held := Desktop.DesktopButtonSample(1, 0, true, 0, 0, 0, 0)
+    if held.down != 0 || held.pressed != 0 || held.foreign != 1 { return 1 }
+    still := Desktop.DesktopButtonSample(1, 1, true, 0, held.foreign, 0, 0)
+    if still.down != 0 || still.pressed != 0 || still.released != 0 { return 2 }
+    ended := Desktop.DesktopButtonSample(0, 1, true, 0, still.foreign, 0, 1)
+    if ended.down != 0 || ended.released != 0 || ended.foreign != 0 { return 3 }
+    // Opening mid-grab must not adopt the already held button.
+    initial := Desktop.DesktopButtonSample(1, 0, false, 0, 0, 0, 0)
+    if initial.down != 0 || initial.foreign != 1 { return 4 }
+    // An SDL-cached press recovers a missed event; its release is kept.
+    recovered := Desktop.DesktopButtonSample(1, 0, true, 1, 0, 0, 0)
+    if recovered.down != 1 || recovered.pressed != 1 { return 5 }
+    released := Desktop.DesktopButtonSample(0, 1, true, 0, 0, 0, 0)
+    if released.released != 1 { return 6 }
+    // A complete tap between polls keeps both event edges.
+    tap := Desktop.DesktopButtonSample(0, 0, true, 0, 0, 1, 1)
+    if tap.pressed != 1 || tap.released != 1 { return 7 }
+    // A real window event takes ownership back. Other buttons are independent.
+    owned := Desktop.DesktopButtonSample(5, 1, true, 5, 1, 5, 0)
+    if owned.down != 5 || owned.pressed != 5 || owned.foreign != 0 { return 8 }
+    return 0
+}
+
+// All synthetic input goes to this test's private Xvfb. A grab on its root
+// reproduces a window manager moving the app without sending it button events.
+GrabCase :: () -> s32 {
+    if !Desktop.OpenDesktopSized(160, 120) { return 10 }
+    defer Desktop.CloseDesktop()
+    Desktop.BeginDesktopFrame()
+    if !Desktop.EndDesktopFrame() { return 11 }
+    display := OpenDisplay(null)
+    if display == null { return 12 }
+    defer { unused CloseDisplay(display) }
+    x: s32; y: s32
+    WindowPosition(Desktop.DesktopWindow(), *x, *y)
+    unused Move(display, -1, x + 50, y + 50, 0)
+    unused Sync(display, 0)
+    Delay(30)
+    if !Desktop.PollDesktop() { return 13 }
+    if Grab(display, Root(display), 0, 12, 1, 1, 0, 0, 0) != 0 { return 14 }
+    defer { unused Ungrab(display, 0); unused Sync(display, 0) }
+    unused Button(display, 1, 1, 0)
+    unused Sync(display, 0)
+    Delay(20)
+    if !Desktop.PollDesktop() { return 15 }
+    pointer := Desktop.PollPointer()
+    if pointer.down || pointer.pressed || pointer.released { return 16 }
+    unused Button(display, 1, 0, 0)
+    unused Sync(display, 0)
+    Delay(20)
+    if !Desktop.PollDesktop() { return 17 }
+    pointer = Desktop.PollPointer()
+    if pointer.down || pointer.pressed || pointer.released { return 18 }
+    unused Ungrab(display, 0)
+    unused Sync(display, 0)
+    unused Button(display, 1, 1, 0)
+    unused Sync(display, 0)
+    Delay(20)
+    if !Desktop.PollDesktop() { return 19 }
+    pointer = Desktop.PollPointer()
+    if !pointer.down || !pointer.pressed { return 20 }
+    unused Button(display, 1, 0, 0)
+    unused Sync(display, 0)
+    Delay(20)
+    if !Desktop.PollDesktop() { return 21 }
+    pointer = Desktop.PollPointer()
+    if pointer.down || !pointer.released { return 22 }
+    return 0
+}
+
+#program_export
+main :: () -> s32 {
+    sampled := SampleCases()
+    if sampled != 0 { return sampled }
+    return GrabCase()
+}

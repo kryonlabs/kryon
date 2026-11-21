@@ -27,6 +27,8 @@ PointerState :: struct {
     released_x: float32
     released_y: float32
     captures_drag: bool
+    // Once a press moves beyond tap slop it stays a drag, even if it returns.
+    dragged: bool
     // The control a press focuses once it becomes a click; see
     // TreePointerUpdate.
     focus_generation: u64
@@ -465,6 +467,8 @@ TreeTextFocused :: (session: Session) -> bool {
     return false
 }
 
+// Moving more than eight logical pixels from a press cancels its click,
+// including if it returns before release. Drag delivery itself stays intact.
 // A press focuses the control under it. While a text field has the focus, a
 // press on another control waits until it becomes a click, so a drag that a
 // scroll takes over leaves the text focused and the soft keyboard open, as
@@ -495,6 +499,7 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
     }
     if frame.pressed {
         active_pointer[input_slot].captures_drag = false
+        active_pointer[input_slot].dragged = false
         active_pointer[input_slot].held_generation = 0
         active_pointer[input_slot].pressed_generation = 0
         active_pointer[input_slot].released_generation = 0
@@ -512,6 +517,11 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
             entry.captures_drag
         }
     }
+    if (frame.down || frame.released) && active_pointer[input_slot].held_generation != 0 {
+        dx := frame.x - active_pointer[input_slot].press.x
+        dy := frame.y - active_pointer[input_slot].press.y
+        if dx * dx + dy * dy > 64.0 { active_pointer[input_slot].dragged = true }
+    }
     if frame.down && active_pointer[input_slot].held_generation != 0 {
         active_pointer[input_slot].held_x = frame.x
         active_pointer[input_slot].held_y = frame.y
@@ -522,7 +532,7 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
             active_pointer[input_slot].held_generation
             active_pointer[input_slot].released_x = frame.x
             active_pointer[input_slot].released_y = frame.y
-            if hit >= 0 && active_pointer[input_slot].held_generation ==
+            if !active_pointer[input_slot].dragged && hit >= 0 && active_pointer[input_slot].held_generation ==
             trees[input_slot].committed[hit].identity_generation {
                 active_pointer[input_slot].activation_generation =
                 active_pointer[input_slot].held_generation

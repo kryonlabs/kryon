@@ -1668,6 +1668,8 @@ uppercase ASCII, named keys from 256 (Escape), as `desktop_keys` maps SDL's.
   `DesktopWheelMoveX()` gives the poll's sideways wheel steps (positive to
   the right) beside `DesktopWheelMove()`. Over another window of the program
   the main window's pointer is at -1, -1 and presses nothing.
+  On X11 a button held by another client's grab, such as a window-manager
+  move, produces no application press or release.
   `OpenDesktopWindow(width, height, title, options)` opens the window with
   any of `DesktopWindowResizable`, `DesktopWindowUndecorated`,
   `DesktopWindowTopmost` and `DesktopWindowAlwaysRun` (keep the frame cadence

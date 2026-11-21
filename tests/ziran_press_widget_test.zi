@@ -49,6 +49,35 @@ Answer :: () -> s32 {
     if !Frame(0.2) || !result.clicked || !result.released || result.held ||
     result.x != 20.0 || result.y != 20.0 { return 3 }
 
+    // Small hand jitter is still a tap.
+    Pointer(20.0, 20.0, true, true, false)
+    if !Frame(0.21) { return 43 }
+    Pointer(24.0, 24.0, false, false, true)
+    if !Frame(0.22) || !result.clicked { return 44 }
+    // A drag inside the same large control must not activate it.
+    Pointer(20.0, 20.0, true, true, false)
+    if !Frame(0.23) { return 45 }
+    Pointer(60.0, 20.0, true, false, false)
+    if !Frame(0.24) || !result.down { return 46 }
+    Pointer(60.0, 20.0, false, false, true)
+    if !Frame(0.25) || result.clicked || !result.released { return 47 }
+    // Returning to the start does not turn that drag back into a tap.
+    Pointer(20.0, 20.0, true, true, false)
+    if !Frame(0.26) { return 48 }
+    Pointer(200.0, 20.0, true, false, false)
+    if !Frame(0.27) { return 49 }
+    Pointer(20.0, 20.0, false, false, true)
+    if !Frame(0.28) || result.clicked || !result.released { return 50 }
+    // A slow frame may first see movement on release.
+    Pointer(20.0, 20.0, true, true, false)
+    if !Frame(0.29) { return 51 }
+    Pointer(70.0, 20.0, false, false, true)
+    if !Frame(0.30) || result.clicked { return 52 }
+    Pointer(20.0, 20.0, true, true, false)
+    if !Frame(0.31) { return 53 }
+    Pointer(20.0, 20.0, false, false, true)
+    if !Frame(0.32) || !result.clicked { return 54 }
+
     // A long press holds once and does not click when it lifts.
     Pointer(20.0, 20.0, true, true, false)
     if !Frame(1.0) || !result.down || result.held { return 4 }

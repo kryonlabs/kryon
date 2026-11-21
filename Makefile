@@ -850,6 +850,11 @@ window-focus-test:
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER YUE_DESKTOP_RECOVERY=0 python3 tests/window_focus_test.py
 test: window-focus-test
 
+.PHONY: desktop-pointer-test
+desktop-pointer-test:
+	sh tests/ziran_desktop_pointer_test.sh
+test: desktop-pointer-test
+
 # Asset audio uses actual decoders on a private null device and a muted private
 # browser. It never connects to the owner's audio session or desktop.
 .PHONY: asset-audio-test

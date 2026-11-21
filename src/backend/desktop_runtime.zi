@@ -169,6 +169,8 @@ texture: *void;
 pointer: PointerFrame;
 desktop_physical_buttons: u32;
 desktop_physical_sampled: bool;
+// The physical buttons held by a press this window never received.
+desktop_foreign_buttons: u32;
 secondary: SecondaryPointerFrame;
 // The middle button, sampled like the right one.
 middle: SecondaryPointerFrame;
@@ -498,7 +500,7 @@ OpenDesktopWindow :: (width: s32, height: s32, title_text: string, options: u32)
     if Init(cast(u32)0x2020) != 0 { return DesktopOpenFailed("start SDL video", true) }
     RasterUseWake(DesktopLanczosWake)
     FrameInputProviderReset(*desktop_frame_input)
-    desktop_physical_buttons=0; desktop_physical_sampled=false
+    desktop_physical_buttons=0; desktop_physical_sampled=false; desktop_foreign_buttons=0
     desktop_frame_input_pending_carry = false
     desktop_quit = false
     desktop_intercept_close = false
@@ -689,7 +691,7 @@ DesktopApplyResize :: () -> bool {
 #program_export
 CloseDesktop :: () {
     FrameInputProviderReset(*desktop_frame_input)
-    desktop_physical_buttons=0; desktop_physical_sampled=false
+    desktop_physical_buttons=0; desktop_physical_sampled=false; desktop_foreign_buttons=0
     desktop_frame_input_pending_carry = false
     desktop_quit = false
     desktop_intercept_close = false
@@ -724,6 +726,50 @@ CloseDesktop :: () {
     window = null
     desktop_drop_first = 0
     desktop_drop_count = 0
+}
+
+// SDL_BUTTON_LMASK, SDL_BUTTON_MMASK and SDL_BUTTON_RMASK.
+DesktopButtonLeft :: 1;
+DesktopButtonMiddle :: 2;
+DesktopButtonRight :: 4;
+
+DesktopButtonPoll :: struct {
+    // The physical buttons this window may act on.
+    down: u32
+    pressed: u32
+    released: u32
+    // The physical buttons held by a press this window never received.
+    foreign: u32
+}
+
+// One X11 poll's buttons. physical is the server's state and previous the last
+// poll's; cached is what SDL was told by events and events_pressed and
+// events_released are the edges those events carried; foreign was held back by
+// the last poll. A press the server shows that no event reported and SDL's
+// cache does not hold reaches only another client, such as a window manager
+// moving the window under Meta: this window sees neither it nor its release,
+// and a later event for it takes it back. A press SDL does hold is a missed
+// event: it is pressed here.
+DesktopButtonSample :: (physical: u32, previous: u32, sampled: bool, cached: u32,
+    foreign: u32, events_pressed: u32, events_released: u32) -> DesktopButtonPoll {
+    poll: DesktopButtonPoll
+    poll.pressed = events_pressed
+    kept: u32 = foreign & ~events_pressed
+    poll.released = events_released & ~kept
+    foreign_now: u32 = kept
+    if sampled {
+        began: u32 = physical & ~previous & ~events_pressed
+        ended: u32 = previous & ~physical
+        foreign_now |= began & ~cached
+        poll.pressed |= began & cached
+        poll.released |= ended & ~kept
+    } else {
+        // Starting while another client holds a button must not adopt it.
+        foreign_now |= physical & ~cached & ~events_pressed
+    }
+    poll.foreign = foreign_now & physical
+    poll.down = physical & ~poll.foreign
+    return poll
 }
 
 #program_export
@@ -1022,20 +1068,33 @@ PollDesktop :: () -> bool {
     // X11's SDL event cache can miss a release while another window has
     // keyboard focus, then suppress the next press as already held. Query
     // actual button state there and retain event edges for taps between polls.
-    // Other drivers keep their existing event-backed sampling.
+    // A press SDL never reported and its cache does not hold is another
+    // client's, such as a window manager's Meta drag or title bar, and acts
+    // on nothing here. Other drivers keep their existing event-backed sampling.
     driver:=GetCurrentVideoDriver()
     if driver!=null && TextFromCString(driver)=="x11" {
+        cached := buttons
         buttons=GetGlobalMouseState(null,null)
         if elsewhere { buttons = 0 }
-        if desktop_physical_sampled {
-            if (buttons&cast(u32)1)!=0 && (desktop_physical_buttons&cast(u32)1)==0 { pressed=true }
-            if (buttons&cast(u32)1)==0 && (desktop_physical_buttons&cast(u32)1)!=0 { released=true }
-            if (buttons&cast(u32)4)!=0 && (desktop_physical_buttons&cast(u32)4)==0 { right_pressed=true }
-            if (buttons&cast(u32)4)==0 && (desktop_physical_buttons&cast(u32)4)!=0 { right_released=true }
-            if (buttons&cast(u32)2)!=0 && (desktop_physical_buttons&cast(u32)2)==0 { middle_pressed=true }
-            if (buttons&cast(u32)2)==0 && (desktop_physical_buttons&cast(u32)2)!=0 { middle_released=true }
-        }
+        events_pressed: u32 = 0
+        if pressed { events_pressed |= DesktopButtonLeft }
+        if middle_pressed { events_pressed |= DesktopButtonMiddle }
+        if right_pressed { events_pressed |= DesktopButtonRight }
+        events_released: u32 = 0
+        if released { events_released |= DesktopButtonLeft }
+        if middle_released { events_released |= DesktopButtonMiddle }
+        if right_released { events_released |= DesktopButtonRight }
+        poll := DesktopButtonSample(buttons, desktop_physical_buttons, desktop_physical_sampled,
+            cached, desktop_foreign_buttons, events_pressed, events_released)
+        pressed = (poll.pressed & DesktopButtonLeft) != 0
+        middle_pressed = (poll.pressed & DesktopButtonMiddle) != 0
+        right_pressed = (poll.pressed & DesktopButtonRight) != 0
+        released = (poll.released & DesktopButtonLeft) != 0
+        middle_released = (poll.released & DesktopButtonMiddle) != 0
+        right_released = (poll.released & DesktopButtonRight) != 0
         desktop_physical_buttons=buttons; desktop_physical_sampled=true
+        desktop_foreign_buttons = poll.foreign
+        buttons = poll.down
     }
     down: bool = (buttons & cast(u32)1) != cast(u32)0
     // A press and release inside one poll (a tap) still counts as held for
