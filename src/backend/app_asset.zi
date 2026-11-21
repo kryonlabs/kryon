@@ -1,5 +1,5 @@
-// A file the application ships: on Android a path inside the APK's assets,
-// elsewhere an ordinary file.
+// A file the application ships: on Android a relative path inside the APK's
+// assets, or an absolute file path; elsewhere an ordinary file.
 #import "app_asset_path"
 #import "android_jni"
 #import "std/file_linux"
@@ -75,10 +75,17 @@ ReadAppAsset :: (path: string) -> string {
     name: [4096]u8
     if !CopyCString(resolved_path, name[:]) { return "" }
     count: s64
+    bytes: *u8
     #if #defined(ANDROID_BUILD) {
-        bytes := AppAssetReadAndroid(*name[0], *count)
+        // Hosted bundles extract verified pictures into private files. Those
+        // absolute paths must use the filesystem rather than AssetManager.
+        if resolved_path.count > 0 && resolved_path[0] == cast(u8)47 {
+            bytes = AppAssetReadFile(*name[0], *count)
+        } else {
+            bytes = AppAssetReadAndroid(*name[0], *count)
+        }
     } else {
-        bytes := AppAssetReadFile(*name[0], *count)
+        bytes = AppAssetReadFile(*name[0], *count)
     }
     if bytes == null { return "" }
     if count <= 0 { AppAssetRelease(cast(*void)bytes); return "" }
