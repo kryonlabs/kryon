@@ -1267,6 +1267,20 @@ To run a portable `.zx` as a windowed app in a host such as TaijiOS, use
 ordinary Kryon widgets with its own session and software raster. The host
 supplies the window, pixel presentation and ordered input events.
 
+Call `Surface.Run(window, Draw, 250)` to compose on input and every 250 ms
+when idle. Apps that draw through Kryon's paint queue can call
+`Surface.RunRetained(window, Draw, 250)` with the same window and callback.
+It keeps the last RGBA frame, repaints damage in bounded strips, and presents
+on damage or a host redraw request. Custom paint emitters use a full replay.
+
+Import `kryon/window_chrome` to draw a themed caption and window controls.
+Pass the current `Session` and `Chrome.Props` to `Chrome.Draw`, with a stable
+key, bounds, title, focus flag, and a bit mask of enabled controls. The host
+can use `Chrome.PointerPress` with a per-window `Chrome.State`, position,
+and millisecond timestamp. Call `Chrome.CancelClick` when a press becomes a
+drag or pointer capture ends. `Chrome.KeyPress` maps unhandled keys for the
+focused window. The caller dispatches the returned `Chrome.Action`.
+
 An application runs another `.zx` inside its own window with
 [`hosted_app`](../src/backend/hosted_app.zi): `HostedAppOpen` takes the
 bundle's bytes, `HostedAppStart` asks the host about every capability the

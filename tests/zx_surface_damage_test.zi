@@ -1,0 +1,118 @@
+// Compare the portable Surface renderer to its full-raster path after every
+// callback, including pixels outside the changed area and across strip seams.
+Surface :: #import "kryon/host/surface";
+Pixels :: #import "pixmap";
+Button :: #import "kryon/button";
+Text :: #import "kryon/text";
+Theme :: #import "kryon/theme";
+#import "kryon/frame_snapshot"
+#import "kryon/input_protocol"
+#import "kryon/session"
+#import "kryon/tree_draw"
+#import "kryon/paint_queue"
+#import "kryon/drawing_props"
+
+PIXELS :: 400 * 480
+scratch: [480 * Surface.SURFACE_STRIP_ROWS]u32;
+full: [PIXELS]u32;
+rgba: [PIXELS * 4]u8;
+image: [16]u32;
+
+stage: s32;
+callbacks: s32;
+retained: s32;
+observed_time: s64;
+custom_paints: s32;
+
+EmitCustom :: (command: PaintCommand) {
+    custom_paints += 1
+    EmitRoundedFill(command)
+}
+
+Draw :: (frame: Surface.Frame) {
+    session: Session = .{frame.slot, frame.epoch}
+    callbacks += 1
+    observed_time = CaptureFrameInput(session).elapsed_ms
+    if (stage == 10 || stage == 14) && RetainFrame(session) { retained += 1; return }
+    unused Button.Draw(session, .{.key = 4, .bounds = .{12.0, 10.0, 120.0, 36.0}, .label = "Hover"})
+    color := ifx stage >= 4 then Color.{28, 140, 150, 190} else Color.{24, 48, 90, 180}
+    PaintRoundedFill(session, -1, .{10.2, 62.8, 365.5, 26.0}, 4.0, 8, color)
+    PaintRoundedFill(session, -1, .{142.0, 49.0, 40.0, 56.0}, 3.0, 8, .{140, 46, 64, 130})
+    label := ifx stage >= 5 then "Edited: café Ω" else "Original"
+    Text.Draw(session, .{.key = 5, .bounds = .{18.0, 66.0, 130.0, 22.0}, .text = label})
+    x: float32 = ifx stage >= 13 then 60.0 else ifx stage >= 6 then 45.0 else 30.0
+    PaintRoundedFill(session, -1, .{x, 126.0, 20.0, 8.0}, 1.0, 6, .{81, 80, 58, 255})
+    Text.Draw(session, .{.key = 6, .bounds = .{25.0, 164.0, 100.0, 28.0}, .text = "Rotated", .rotation = 22.0})
+    PaintVerticalGradient(session, -1, .{16.0, 217.7, 68.0, 45.0}, .{10, 230, 20, 120}, .{20, 40, 230, 160})
+    PaintLine(session, -1, .{100.3, 270.7, -90.0, -50.0}, .{200, 160, 10, 170})
+    white: Color = .{255, 255, 255, 255}
+    PaintImage(session, -1, "sample.png", 0, .{0.0, 0.0, 4.0, 4.0}, .{106.2, 215.8, 48.0, 49.0},
+        .{90.2, 204.8, 100.0, 85.0}, .{0.0, 0.0}, 0.0, 2.0, white)
+    PaintImage(session, -1, "sample.png", 0, .{0.0, 0.0, 4.0, 4.0}, .{192.2, 215.8, 48.0, 49.0},
+        .{160.2, 204.8, 118.0, 95.0}, .{12.0, 4.0}, 27.0, 3.0, white)
+    if stage >= 15 {
+        SubmitPaint(session, .{.has_emitter = true, .emit = EmitCustom,
+            .data = .{.node = -1, .bounds = .{30.0, 178.5, 80.0, 64.0}, .color = .{105, 80, 20, 180}}})
+    }
+}
+
+Compare :: (count: s32) -> bool {
+    for at: 0..count - 1 {
+        pixel := full[at]
+        base := at * 4
+        if rgba[base] != cast(u8)(pixel >> 16) || rgba[base+1] != cast(u8)(pixel >> 8) ||
+            rgba[base+2] != cast(u8)pixel || rgba[base+3] != 255 {
+            print("RGBA differs at stage %, pixel %\n", stage, at)
+            return false
+        }
+    }
+    return true
+}
+
+#program_export
+main :: () -> s32 {
+    fast := SessionOpen()
+    baseline := SessionOpen()
+    if !SessionValid(fast) || !SessionValid(baseline) { return 1 }
+    defer { unused CloseSession(fast); unused CloseSession(baseline) }
+    for at: 0..15 { image[at] = cast(u32)0x904040c0 + cast(u32)(at * 8192) }
+    image[0] = cast(u32)0xff209040
+    if !Pixels.PixmapSetImage(0, "sample.png", 4, 4, image[:]) { return 10 }
+    defer Pixels.PixmapClearImage(0)
+    paint: Surface.SurfacePaint
+    input: FrameInputSnapshot = .{.available = true, .focused = true}
+    for turn: cast(s32)0..16 {
+        stage = turn
+        // A stationary idle frame, move onto the button, move again inside
+        // it, change one row, edit text, animate a shape and then resize to
+        // the same pixel count with a different stride.
+        width: s32 = ifx turn >= 7 then 480 else 400
+        height: s32 = ifx turn >= 7 then 400 else 480
+        input.elapsed_ms = cast(s64)turn * 250
+        input.sequence += 1
+        if turn == 2 { input.pointer.x = 20.0; input.pointer.y = 20.0 }
+        if turn == 3 { input.pointer.x = 40.0 }
+        if turn == 8 { unused Theme.InstallDefaultTheme(true) }
+        if turn == 9 { PaintResourcesChanged() }
+        if turn == 11 && !Pixels.RasterSetTransform(1.25, -2.5, -16.5) { return 11 }
+        if turn == 14 && !Pixels.RasterSetTransform(1.5, -4.5, -12.5) { return 11 }
+        if !Surface.SurfaceFrameInto(fast, Draw, width, height, input, scratch[:], rgba[:], *paint) ||
+            !Surface.SurfaceFrame(baseline, Draw, width, height, input, full[:]) { return 2 }
+        if observed_time != input.elapsed_ms || callbacks != (turn + 1) * 2 { return 3 }
+        area := cast(s32)(paint.damage.width * paint.damage.height)
+        print("Surface stage %: % / % pixels processed in % strips\n", turn, area, PIXELS, paint.strips)
+        if turn == 0 || turn == 7 || turn == 9 || turn == 11 || turn >= 14 {
+            if area != PIXELS { return 4 }
+        } else if turn == 1 || turn == 3 || turn == 10 || turn == 12 {
+            if area != 0 { return 5 }
+        } else if area <= 0 || (turn != 8 && area >= PIXELS) { return 6 }
+        if turn < 15 {
+            if paint.strips != (cast(s32)paint.damage.height + Surface.SURFACE_STRIP_ROWS - 1) / Surface.SURFACE_STRIP_ROWS { return 9 }
+        } else if paint.strips != 0 || custom_paints != (turn - 14) * 2 { return 12 }
+        if FramePaintUnchanged(fast) != (area == 0) { return 13 }
+        if !Compare(width * height) { return 7 }
+    }
+    if retained != 2 { return 8 }
+    print("Strip raster RGBA matches the complete raster on all seventeen callbacks\n")
+    return 0
+}

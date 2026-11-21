@@ -1,0 +1,204 @@
+// Window decoration and input policy. The caller owns the window and acts
+// on the returned commands.
+Button :: #import "button";
+Text :: #import "text";
+Theme :: #import "theme";
+#import "geometry"
+#import "input_protocol"
+#import "session"
+#import "tree"
+#import "drawing_props"
+#import "paint_queue"
+#import "text_align"
+#import "control_props"
+
+ControlClose :: 1
+ControlResize :: 2
+ControlTask :: 4
+ControlHide :: 8
+ControlHelp :: 16
+ControlOK :: 32
+
+Action :: enum {
+    None :: 0
+    Drag :: 1
+    Lower :: 2
+    Close :: 3
+    Resize :: 4
+    Task :: 5
+    Hide :: 6
+    Help :: 7
+    OK :: 8
+}
+
+Props :: struct {
+    key: u64
+    bounds: Rectangle
+    title: string
+    focused: bool
+    controls: u32
+}
+
+State :: struct {
+    click_pending: bool
+    click_at_ms: s64
+    click_point: Vector2
+}
+
+Layout :: struct {
+    caption: Rectangle
+    close: Rectangle
+    resize: Rectangle
+    task: Rectangle
+    hide: Rectangle
+    help: Rectangle
+    ok: Rectangle
+}
+
+TakeControl :: (available: *Rectangle, mask: u32, control: u32) -> Rectangle {
+    if (mask & control) == 0 || available.width <= 0.0 { return .{} }
+    width := available.height
+    if width > available.width { width = available.width }
+    available.width -= width
+    return .{available.x + available.width, available.y, width, available.height}
+}
+
+LayoutFor :: (props: Props) -> Layout {
+    result: Layout
+    room := props.bounds
+    if room.width <= 0.0 || room.height <= 0.0 { return result }
+    result.close = TakeControl(*room, props.controls, ControlClose)
+    result.ok = TakeControl(*room, props.controls, ControlOK)
+    result.task = TakeControl(*room, props.controls, ControlTask)
+    result.hide = TakeControl(*room, props.controls, ControlHide)
+    result.resize = TakeControl(*room, props.controls, ControlResize)
+    result.help = TakeControl(*room, props.controls, ControlHelp)
+    result.caption = room
+    return result
+}
+
+Hit :: (layout: Layout, point: Vector2) -> Action {
+    if PointInBounds(point.x, point.y, layout.close) { return .Close }
+    if PointInBounds(point.x, point.y, layout.resize) { return .Resize }
+    if PointInBounds(point.x, point.y, layout.hide) { return .Hide }
+    if PointInBounds(point.x, point.y, layout.task) { return .Task }
+    if PointInBounds(point.x, point.y, layout.ok) { return .OK }
+    if PointInBounds(point.x, point.y, layout.help) { return .Help }
+    if PointInBounds(point.x, point.y, layout.caption) { return .Drag }
+    return .None
+}
+
+// Clear after movement becomes a drag, on capture loss or when reusing the
+// state for a different window. Timestamp zero is a valid first press.
+CancelClick :: (state: *State) { state.click_pending = false }
+
+PointerPress :: (state: *State, props: Props, point: Vector2, time_ms: s64) -> Action {
+    action := Hit(LayoutFor(props), point)
+    if action != .Drag || time_ms < 0 {
+        CancelClick(state)
+        return action
+    }
+    dx := point.x - state.click_point.x
+    dy := point.y - state.click_point.y
+    if state.click_pending && state.click_at_ms >= 0 && time_ms >= state.click_at_ms && time_ms - state.click_at_ms <= 400 &&
+        dx >= -4.0 && dx <= 4.0 && dy >= -4.0 && dy <= 4.0 {
+        CancelClick(state)
+        return .Lower
+    }
+    state.click_pending = true
+    state.click_at_ms = time_ms
+    state.click_point = point
+    return .Drag
+}
+
+// For a focused window, after the application has had a chance to handle
+// the key. Function-key codes follow the portable host key table.
+KeyPress :: (props: Props, key: s32, modifiers: s32) -> Action {
+    if !props.focused { return .None }
+    if key == 293 && modifiers == KeyModifierAlt && (props.controls & ControlClose) != 0 { return .Close }
+    if modifiers != 0 { return .None }
+    if key == 290 && (props.controls & ControlHelp) != 0 { return .Help }
+    if key == KeyEnter && (props.controls & ControlOK) != 0 { return .OK }
+    return .None
+}
+
+CaptionTextBounds :: (layout: Layout) -> Rectangle {
+    bounds := layout.caption
+    if bounds.width <= 12.0 { return .{} }
+    bounds.x += 6.0
+    bounds.width -= 12.0
+    return bounds
+}
+
+CaptionBackground :: (props: Props) -> u32 {
+    return ifx props.focused then Theme.CurrentRaised() else Theme.CurrentSunken()
+}
+
+CaptionForeground :: () -> u32 { return Theme.CurrentText() }
+
+CaptionFont :: (props: Props) -> s32 {
+    size := Theme.TypeSmall()
+    if size > props.bounds.height - 4.0 { size = props.bounds.height - 4.0 }
+    if size < 1.0 { return 1 }
+    return cast(s32)size
+}
+
+ControlGlyph :: (action: Action) -> string {
+    if action == .Close { return "×" }
+    if action == .Resize { return "↗" }
+    if action == .Task { return "≡" }
+    if action == .Hide { return "−" }
+    if action == .Help { return "?" }
+    if action == .OK { return "OK" }
+    return ""
+}
+
+ControlLabel :: (action: Action) -> string {
+    if action == .Close { return "Close" }
+    if action == .Resize { return "Resize" }
+    if action == .Task { return "Task" }
+    if action == .Hide { return "Hide" }
+    if action == .Help { return "Help" }
+    if action == .OK { return "OK" }
+    return ""
+}
+
+DrawControl :: (session: Session, key: u64, bounds: Rectangle, action: Action) -> bool {
+    if bounds.width <= 0.0 || bounds.height <= 0.0 { return false }
+    clicked := Button.Draw(session, .{.key = key, .bounds = bounds, .label = ControlGlyph(action),
+        .fit_content = true, .size = .ControlSizeSmall,
+        .tone = ifx action == .Close then .ButtonToneDanger else .ButtonToneNeutral}) != 0
+    if TreeIsBuilding(session) {
+        node := TreeSubmittedCount(session) - 1
+        if node > 0 && TreeSubmittedNodeAt(session, node).key == key {
+            TreeSetLabel(session, node, ControlLabel(action))
+        }
+    }
+    return clicked
+}
+
+// Declare inside a frame. Hosts that route primary presses with PointerPress
+// use Draw for presentation. An ordinary Kryon tree can dispatch the returned
+// Button activation, including focus traversal and keyboard activation.
+Draw :: (session: Session, props: Props) -> Action {
+    if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return .None }
+    key := props.key
+    if key == 0 { key = TreeNextKey(session) }
+    parent := TreeCurrentParent(session)
+    PaintRoundedFill(session, parent, props.bounds, 0.0, 0, ColorFromPacked(CaptionBackground(props)))
+    layout := LayoutFor(props)
+    caption := CaptionTextBounds(layout)
+    base := key * cast(u64)65599
+    if caption.width > 0.0 && props.title != "" {
+        Text.Draw(session, .{.key = base, .bounds = caption, .text = props.title,
+            .size = CaptionFont(props), .wrap = .TextWrapEllipsis, .vertical_align = .TextAlignCenter})
+    }
+    action: Action
+    if DrawControl(session, base + 2, layout.help, .Help) { action = .Help }
+    if DrawControl(session, base + 6, layout.resize, .Resize) { action = .Resize }
+    if DrawControl(session, base + 5, layout.hide, .Hide) { action = .Hide }
+    if DrawControl(session, base + 4, layout.task, .Task) { action = .Task }
+    if DrawControl(session, base + 3, layout.ok, .OK) { action = .OK }
+    if DrawControl(session, base + 1, layout.close, .Close) { action = .Close }
+    return action
+}

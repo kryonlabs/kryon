@@ -276,7 +276,20 @@ zx-surface-test: project-toolchain
 		-o build/scratch/zx-surface/timed.zx examples/hosted_surface.zi
 	build/scratch/zx-surface/test build/scratch/zx-surface/timed.zx timed
 
-test: zx-services-test zx-hosted-test zx-headless-test zx-surface-test
+.PHONY: surface-render-test
+surface-render-test: project-toolchain
+	@set -e; for name in window_chrome_test zx_surface_damage_test; do \
+		out=build/scratch/$$name; mkdir -p "$$out"; \
+		$(ZIRAN_BIN) build --project --target=c --root tests --bind-host pixmap \
+			--entry $$name:main --exe -o "$$out/c" "tests/$$name.zi"; \
+		"$$out/c/$$name"; \
+		$(ZIRAN_BIN) bundle --project --root tests --bind-host pixmap \
+			--entry $$name:main -o "$$out/test.zx" "tests/$$name.zi"; \
+		$(ZIRAN_BIN) run "$$out/test.zx" > "$$out/result"; \
+		cat "$$out/result"; test "$$(tail -1 "$$out/result")" = 0; \
+	done
+
+test: zx-services-test zx-hosted-test zx-headless-test zx-surface-test surface-render-test
 
 .PHONY: zx-canvas-test zx-android-test gallery-zx gallery-zx-test
 gallery-zx: project-toolchain
@@ -386,7 +399,7 @@ check: all ziran-test header-check docs-check project-test public-surface-check 
 # CI runs make test as parallel jobs on separate machines. The hosts shard takes
 # every test target not named here, so a new one cannot miss CI.
 CI_SHARD_ZX := renderer-consumer-test zx-native-test zx-reload-test zx-window-test zx-services-test zx-hosted-test \
-	zx-headless-test zx-surface-test native-text-test native-accessibility-test
+	zx-headless-test zx-surface-test surface-render-test native-text-test native-accessibility-test
 CI_SHARD_CHECK := check
 CI_SHARD_WEB := canvas-test canvas-project-test program-entry-project-test zx-canvas-test \
 	page-route-project-test

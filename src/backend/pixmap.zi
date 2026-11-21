@@ -90,6 +90,8 @@ pixmap_pixels: [576000]u32;
 pixmap_surface: []u32 = pixmap_pixels[:];
 pixmap_width: s32 = PixmapWidth;
 pixmap_height: s32 = PixmapHeight;
+pixmap_storage_top: s32;
+pixmap_storage_bottom: s32 = PixmapHeight;
 // Opaque ARGB hosts can write their alpha byte with the color itself, rather
 // than traversing every changed pixel again after painting. RGB surfaces use
 // zero here; transparency still blends over the surface's RGB background.
@@ -546,9 +548,12 @@ PixmapBeginInto :: (background: u32, width: s32, height: s32, pixels: []u32,
 #program_export
 PixmapResumeInto :: (width: s32, height: s32, pixels: []u32,
     opaque: bool = false) -> bool {
-    if width <= 0 || height <= 0 || width > 16384 || height > 16384 { return false }
-    count := cast(s64)width * cast(s64)height
-    if count > pixels.count { return false }
+    return PixmapResumeRowsInto(width, height, 0, height, pixels, opaque)
+}
+
+PixmapResumeRowsInto :: (width: s32, height: s32, first_row: s32, rows: s32,
+    pixels: []u32, opaque: bool = false) -> bool {
+    if !PixmapBindRows(width, height, first_row, rows, pixels) { return false }
     // The bundled outlines and logical advances are immutable. Declare their
     // lifetime once so widgets can retain layout across unchanged frames.
     if !Metrics.has_caret_measure { Metrics.GlyphCaretInstall(PixmapMeasureCaret, false) }
@@ -557,8 +562,17 @@ PixmapResumeInto :: (width: s32, height: s32, pixels: []u32,
         if Lanczos.LanczosPump() { PaintResourcesChanged() }
     }
     if pixmap_camera_set { PixmapApplyCamera() }
-    pixmap_surface = pixels; pixmap_width = width; pixmap_height = height
     pixmap_alpha = ifx opaque then cast(u32)0xff000000 else cast(u32)0
+    return true
+}
+
+// Attach a row range while preserving full-surface geometry and transforms.
+PixmapBindRows :: (width: s32, height: s32, first_row: s32, rows: s32, pixels: []u32) -> bool {
+    if width <= 0 || height <= 0 || width > 16384 || height > 16384 ||
+        first_row < 0 || rows <= 0 || first_row > height - rows ||
+        (pixmap_gpu_active && rows != height) || cast(s64)width * cast(s64)rows > pixels.count { return false }
+    pixmap_surface = pixels; pixmap_width = width; pixmap_height = height
+    pixmap_storage_top = first_row; pixmap_storage_bottom = first_row + rows
     pixmap_damage_active = false
     PixmapClipAll()
     return true
@@ -567,6 +581,7 @@ PixmapResumeInto :: (width: s32, height: s32, pixels: []u32,
 #program_export
 PixmapEndInto :: () {
     pixmap_surface = pixmap_pixels[:]; pixmap_width = PixmapWidth; pixmap_height = PixmapHeight
+    pixmap_storage_top = 0; pixmap_storage_bottom = PixmapHeight
     pixmap_scale_x = 1.0; pixmap_scale_y = 1.0
     pixmap_offset_x = 0.0; pixmap_offset_y = 0.0
     pixmap_alpha = cast(u32)0
@@ -576,9 +591,9 @@ PixmapEndInto :: () {
 
 PixmapClipAll :: () {
     pixmap_clip_left = 0
-    pixmap_clip_top = 0
+    pixmap_clip_top = pixmap_storage_top
     pixmap_clip_right = pixmap_width
-    pixmap_clip_bottom = pixmap_height
+    pixmap_clip_bottom = pixmap_storage_bottom
     if pixmap_damage_active {
         pixmap_clip_left = pixmap_damage_left; pixmap_clip_top = pixmap_damage_top
         pixmap_clip_right = pixmap_damage_right; pixmap_clip_bottom = pixmap_damage_bottom
@@ -594,9 +609,9 @@ PixmapDamageBegin :: (bounds: Rectangle, background: u32, clear: bool = true) {
     pixmap_damage_right = CeilInteger(bounds.x + bounds.width)
     pixmap_damage_bottom = CeilInteger(bounds.y + bounds.height)
     if pixmap_damage_left < 0 { pixmap_damage_left = 0 }
-    if pixmap_damage_top < 0 { pixmap_damage_top = 0 }
+    if pixmap_damage_top < pixmap_storage_top { pixmap_damage_top = pixmap_storage_top }
     if pixmap_damage_right > pixmap_width { pixmap_damage_right = pixmap_width }
-    if pixmap_damage_bottom > pixmap_height { pixmap_damage_bottom = pixmap_height }
+    if pixmap_damage_bottom > pixmap_storage_bottom { pixmap_damage_bottom = pixmap_storage_bottom }
     pixmap_damage_active = true; PixmapClipAll()
     if !clear { return }
     background = background | pixmap_alpha
@@ -621,7 +636,8 @@ PixmapClearRowsData :: struct { background: u32; left: s32; right: s32 }
 PixmapClearRange :: (start: s32, end: s32, data: PixmapClearRowsData) {
     surface := pixmap_surface; stride := pixmap_width
     for y: cast(s32)start..cast(s32)end - 1 {
-        for at: y * stride + data.left..y * stride + data.right - 1 { surface[at] = data.background }
+        row := (y - pixmap_storage_top) * stride
+        for at: row + data.left..row + data.right - 1 { surface[at] = data.background }
     }
 }
 
@@ -641,9 +657,9 @@ PixmapClipPixels :: (clip: Rectangle) {
     pixmap_clip_right = PixmapRound(clip.x + clip.width)
     pixmap_clip_bottom = PixmapRound(clip.y + clip.height)
     if pixmap_clip_left < 0 { pixmap_clip_left = 0 }
-    if pixmap_clip_top < 0 { pixmap_clip_top = 0 }
+    if pixmap_clip_top < pixmap_storage_top { pixmap_clip_top = pixmap_storage_top }
     if pixmap_clip_right > pixmap_width { pixmap_clip_right = pixmap_width }
-    if pixmap_clip_bottom > pixmap_height { pixmap_clip_bottom = pixmap_height }
+    if pixmap_clip_bottom > pixmap_storage_bottom { pixmap_clip_bottom = pixmap_storage_bottom }
     if pixmap_damage_active {
         if pixmap_clip_left < pixmap_damage_left { pixmap_clip_left = pixmap_damage_left }
         if pixmap_clip_top < pixmap_damage_top { pixmap_clip_top = pixmap_damage_top }
@@ -669,7 +685,7 @@ PixmapBlend :: (x: s32, y: s32, color: Color, coverage: s32) {
     alpha: s32 = cast(s32)color.a * coverage / 255
     if alpha <= 0 { return }
     if pixmap_gpu_active { PixmapGpuPixel(x, y, Color.{color.r, color.g, color.b, cast(u8)alpha}); return }
-    index: s32 = y * pixmap_width + x
+    index: s32 = (y - pixmap_storage_top) * pixmap_width + x
     // Full alpha mixes to the color itself.
     if alpha >= 255 {
         pixmap_surface[index] = (cast(u32)color.r << cast(u32)16) |
@@ -852,7 +868,7 @@ PixmapFillRange :: (start: s32, end: s32, data: PixmapFillRowsData) {
     y: s32 = cast(s32)start
     while y < cast(s32)end {
         corner_row: bool = y < y0 + r || y >= y1 - r
-        row: s32 = y * stride
+        row: s32 = (y - pixmap_storage_top) * stride
         // Large Material corners contain broad empty and solid regions.
         // Locate the two monotone boundaries once per row, then sample only
         // the antialiased edge. Reflection keeps the original 4x4 coverage
@@ -920,7 +936,8 @@ PixmapSolidSpan :: (left: s32, right: s32, y: s32, color: Color) {
     if y < pixmap_clip_top || y >= pixmap_clip_bottom { return }
     if left < pixmap_clip_left { left = pixmap_clip_left }
     if right > pixmap_clip_right { right = pixmap_clip_right }
-    if left < right { PixmapFillSpan(pixmap_surface[y * pixmap_width + left:y * pixmap_width + right], color) }
+    row := (y - pixmap_storage_top) * pixmap_width
+    if left < right { PixmapFillSpan(pixmap_surface[row + left:row + right], color) }
 }
 
 // Strokes a rounded rectangle's inside edge `width` pixels thick.
@@ -1254,7 +1271,8 @@ PixmapBlendMask :: (mask: PixmapGlyphMask, coverage: []u8, color: Color) {
     for y: top..bottom - 1 {
         row := (y - mask.top) * mask.width + left - mask.left
         at: s32 = 0
-        for *pixel: surface[y * stride + left:y * stride + right] {
+        target := (y - pixmap_storage_top) * stride
+        for *pixel: surface[target + left:target + right] {
             alpha := cast(u32)coverage[row + at]; at += 1
             if source_alpha != cast(u32)255 { alpha = source_alpha * alpha / cast(u32)255 }
             if alpha == cast(u32)0 { continue }
@@ -1424,7 +1442,7 @@ PixmapFillTriangle :: (triangle: ImageCanvas.MeshTriangle, color: Color) {
         if end > pixmap_clip_right { end = pixmap_clip_right }
         if first < end && pixmap_gpu_active { PixmapGpuRect(first, y, end, y + 1, color) }
         else if first < end {
-            row: s32 = y * pixmap_width
+            row: s32 = (y - pixmap_storage_top) * pixmap_width
             PixmapFillSpan(pixmap_surface[row + first:row + end], color)
         }
         y += 1
@@ -1564,7 +1582,8 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32, source: Rectangle,
             image := pixmap_image_pixels[slot].value
             if slot < PixmapAssetImageLimit && image.count > 0 {
                 source_start := cast(usize)*image[0]; source_end := source_start + cast(usize)image.count * 4
-                target_start := cast(usize)*pixmap_surface[0]; target_end := target_start + cast(usize)(pixmap_width * pixmap_height) * 4
+                target_start := cast(usize)*pixmap_surface[0]
+                target_end := target_start + cast(usize)(pixmap_width * (pixmap_storage_bottom - pixmap_storage_top)) * 4
                 independent = source_end <= target_start || target_end <= source_start
             }
             PixmapRows(FloorInteger(top), CeilInteger(bottom), CeilInteger(right) - FloorInteger(left), procedure, cast(*void)*rows, independent)
@@ -1757,7 +1776,7 @@ PixmapImageRange :: (start: s32, end: s32, data: PixmapImageRowsData) {
             sy := source.y + local_y * source.height / destination.height
             if !Finite32(sy) || sy < 0.0 || sy >= cast(float32)image_height { continue }
             source_row := FloorInteger(sy) * image_width
-            target_row := y * stride
+            target_row := (y - pixmap_storage_top) * stride
             for x: data.left..data.right - 1 {
                 px := cast(float32)x + 0.5
                 if !ImageCanvas.InsideRoundedClip(px, py, clip, radius) { continue }
@@ -1846,10 +1865,11 @@ PixmapDigits :: (value: s32, output: []u8, at: s32) -> s32 {
 // Prints the frame as a plain (P3) PPM image, one pixel row per line.
 #program_export
 PixmapPresent :: () {
-    print("P3\n% %\n255\n", pixmap_width, pixmap_height)
+    rows := pixmap_storage_bottom - pixmap_storage_top
+    print("P3\n% %\n255\n", pixmap_width, rows)
     row: [11520]u8
     y: s32 = 0
-    while y < pixmap_height {
+    while y < rows {
         length: s32 = 0
         x: s32 = 0
         while x < pixmap_width {

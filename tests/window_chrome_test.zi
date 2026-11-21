@@ -1,0 +1,73 @@
+Chrome :: #import "kryon/window_chrome";
+Pixmap :: #import "kryon/pixmap";
+#import "kryon/input_protocol"
+#import "kryon/session"
+#import "kryon/tree"
+#import "kryon/tree_draw"
+#import "kryon/tree_input"
+
+using Chrome.Action;
+using FrameStatus;
+
+pixels: [5760]u32;
+
+Render :: (session: Session, props: Chrome.Props) -> (action: Chrome.Action, ok: bool) {
+    if !Pixmap.PixmapBeginInto(0, 240, 24, pixels[:]) { return .None, false }
+    defer Pixmap.PixmapEndInto()
+    if BeginFrame(session, 1, props.bounds) != cast(FrameStatus)FrameOk { return .None, false }
+    action := Chrome.Draw(session, props)
+    return action, EndFrame(session) == cast(FrameStatus)FrameOk
+}
+
+#program_export
+main :: () -> s32 {
+    props: Chrome.Props = .{.key = 3, .bounds = .{10.0, 5.0, 240.0, 24.0}, .title = "Documents",
+        .focused = true, .controls = Chrome.ControlClose | Chrome.ControlResize | Chrome.ControlTask |
+            Chrome.ControlHide | Chrome.ControlHelp | Chrome.ControlOK}
+    layout := Chrome.LayoutFor(props)
+    if Chrome.Hit(layout, .{226.0, 5.0}) != .Close || Chrome.Hit(layout, .{225.0, 5.0}) != .OK ||
+        Chrome.Hit(layout, .{190.0, 9.0}) != .Task || Chrome.Hit(layout, .{170.0, 8.0}) != .Hide ||
+        Chrome.Hit(layout, .{145.0, 8.0}) != .Resize || Chrome.Hit(layout, .{125.0, 8.0}) != .Help ||
+        Chrome.Hit(layout, .{105.0, 9.0}) != .Drag || Chrome.Hit(layout, .{250.0, 5.0}) != .None { return 1 }
+    state: Chrome.State
+    if Chrome.PointerPress(*state, props, .{20.0, 8.0}, 0) != .Drag ||
+        Chrome.PointerPress(*state, props, .{24.0, 12.0}, 400) != .Lower ||
+        Chrome.PointerPress(*state, props, .{20.0, 8.0}, 401) != .Drag ||
+        Chrome.PointerPress(*state, props, .{20.0, 8.0}, 802) != .Drag ||
+        Chrome.PointerPress(*state, props, .{25.0, 8.0}, 803) != .Drag ||
+        Chrome.PointerPress(*state, props, .{240.0, 8.0}, 804) != .Close ||
+        Chrome.PointerPress(*state, props, .{25.0, 8.0}, 805) != .Drag { return 2 }
+    Chrome.CancelClick(*state)
+    if Chrome.PointerPress(*state, props, .{25.0, 8.0}, 806) != .Drag ||
+        Chrome.PointerPress(*state, props, .{25.0, 8.0}, 805) != .Drag { return 3 }
+
+    if Chrome.KeyPress(props, 293, KeyModifierAlt) != .Close || Chrome.KeyPress(props, 290, 0) != .Help ||
+        Chrome.KeyPress(props, KeyEnter, 0) != .OK || Chrome.KeyPress(props, KeyEnter, KeyModifierControl) != .None { return 4 }
+    props.controls = Chrome.ControlClose
+    layout = Chrome.LayoutFor(props)
+    if layout.resize.width != 0.0 || layout.help.width != 0.0 || layout.ok.width != 0.0 ||
+        Chrome.Hit(layout, .{125.0, 8.0}) != .Drag || Chrome.KeyPress(props, 290, 0) != .None { return 5 }
+    props.bounds = .{0.0, 0.0, 18.0, 24.0}
+    props.controls |= Chrome.ControlResize
+    layout = Chrome.LayoutFor(props)
+    if layout.close.width != 18.0 || layout.resize.width != 0.0 || Chrome.Hit(layout, .{17.0, 10.0}) != .Close { return 6 }
+
+    props.bounds.width = 240.0
+    session := SessionOpen()
+    if !SessionValid(session) { return 7 }
+    defer { unused CloseSession(session) }
+    _, shown := Render(session, props)
+    if !shown || !TreeFocusAt(session, 2) { return 8 }
+    active := pixels[0]
+    unused KeyboardSend(session, KeyTab)
+    _, tabbed := Render(session, props)
+    if !tabbed || !TreeFocusVisibleAt(session, 3) { return 9 }
+    unused KeyboardSend(session, KeyEnter)
+    action, activated := Render(session, props)
+    if !activated || action != .Close { return 9 }
+    props.focused = false
+    _, inactive := Render(session, props)
+    if !inactive || pixels[0] == active || Chrome.KeyPress(props, 293, KeyModifierAlt) != .None { return 10 }
+    print("Window chrome layout, click thresholds, focus paint and keyboard: OK\n")
+    return 0
+}

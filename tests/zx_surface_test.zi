@@ -31,16 +31,22 @@ events: [11]Event = .[
     .{.kind = 7, .key = KeyBackspace},
     .{.kind = 8, .key = KeyBackspace},
     .{.kind = 3, .width = 280, .height = 160},
-    .{.kind = 1}
+    .{.kind = 2}
 ];
+
+IdleSamples :: 24
+MotionSamples :: 24
 
 Host :: struct {
     cursor: s32
     presents: s32
+    presented_at: u32
     wait_ms: s32
     opened: bool
     closed: bool
     label: u64
+    frame_hash: u64
+    sequence_hash: u64
     event_type: *u8
     fields: [9]HostField
 }
@@ -95,12 +101,28 @@ Call :: (context: *void, module: *u8, function: *u8, args: *HostValue, count: s3
     if !host.opened || host.closed { return 0 }
     if name == "Present" && count == 3 && FrameValid(host, args) {
         host.presents += 1
+        if host.cursor <= cast(s32)events.count {
+            host.presented_at |= cast(u32)1 << cast(u32)host.cursor
+        }
+        rgba := args[2]
+        hash := cast(u64)14695981039346656037
+        for index: cast(s64)0..cast(s64)rgba.length - 1 {
+            hash = (hash ^ cast(u64)rgba.data[index]) * cast(u64)1099511628211
+        }
+        host.frame_hash = hash
         reply.* = HostScalar("bool", 1)
         return 1
     }
-    if name == "Event" && count == 1 && args[0].integer == host.wait_ms &&
-        host.presents > 0 && host.cursor < cast(s32)events.count {
-        reply.* = EncodeEvent(host, events[host.cursor])
+    if name == "Event" && count == 1 && args[0].integer == host.wait_ms && host.presents > 0 {
+        host.sequence_hash = (host.sequence_hash ^ host.frame_hash) * cast(u64)1099511628211
+        scripted := cast(s32)events.count
+        event: Event
+        if host.cursor < scripted { event = events[host.cursor] }
+        else if host.cursor < scripted + IdleSamples { event.kind = 0 }
+        else if host.cursor < scripted + IdleSamples + MotionSamples {
+            event = .{.kind = 4, .x = 2 + host.cursor % 4, .y = 140}
+        } else { event.kind = 1 }
+        reply.* = EncodeEvent(host, event)
         host.cursor += 1
         return 1
     }
@@ -121,7 +143,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
     defer CloseBundle(bundle)
     if BundleCapabilities(bundle) != 4 { return 3 }
     host: Host
-    timed := argc == 3 && TextFromCString(argv[2]) == "timed"
+    full := argc == 3 && TextFromCString(argv[2]) == "timed-full"
+    timed := full || (argc == 3 && TextFromCString(argv[2]) == "timed")
     host.wait_ms = ifx timed then 250 else 1000
     bindings: [4]HostBinding
     for index: 0..3 {
@@ -141,8 +164,26 @@ main :: (argc: s32, argv: **u8) -> s32 {
     answer: s64
     has_answer: s32
     if RunBundleInstance(instance, *answer, *has_answer) == 0 || has_answer == 0 || answer != 0 { return 8 }
-    expected_frames := ifx timed then 11 else 10
-    if !host.closed || host.cursor != 11 || host.presents != expected_frames { return 9 }
-    print("Hosted surface Engine passed\n")
+    print("Hosted surface Engine: % presents, event mask %\n", host.presents, host.presented_at)
+    print("Visible RGBA sequence: %\n", host.sequence_hash)
+    if !host.closed || host.cursor != cast(s32)events.count + IdleSamples + MotionSamples + 1 { return 9 }
+    if full { return ifx host.presents == host.cursor then 0 else 9 }
+    if !timed {
+        // The three-argument default paints every non-idle host event.
+        expected: u32 = 1
+        count := MotionSamples + 1
+        for index: cast(s32)0..cast(s32)events.count - 1 {
+            if events[index].kind != 0 {
+                expected |= cast(u32)1 << cast(u32)(index + 1)
+                count += 1
+            }
+        }
+        return ifx host.presents == count && host.presented_at == expected then 0 else 9
+    }
+    // An unchanged idle frame never presents. A host expose still requests
+    // the latest complete image after the resize.
+    required: u32 = (1 << 0) | (1 << 2) | (1 << 4) | (1 << 8) | (1 << 10) | (1 << 11)
+    if (host.presented_at & required) != required || (host.presented_at & (1 << 1)) != 0 ||
+        host.presents >= cast(s32)events.count + 1 { return 9 }
     return 0
 }

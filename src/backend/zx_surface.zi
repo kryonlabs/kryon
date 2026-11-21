@@ -12,6 +12,8 @@ Utf8 :: #import "std/utf8";
 #import "input_delivery"
 #import "input_take"
 #import "frame_snapshot"
+#import "paint_queue"
+#import "math"
 
 using FrameStatus;
 
@@ -47,8 +49,9 @@ Event :: (wait_ms: s32) -> SurfaceEvent #foreign host_api;
 Present :: (width: s32, height: s32, rgba: string) -> bool #reads #foreign host_api;
 Close :: () #foreign host_api;
 
-// Two four-byte buffers, bounded to 32 MiB combined.
+// Bound the two full-frame buffers of the full raster path to 32 MiB.
 SURFACE_PIXEL_LIMIT :: 4194304
+SURFACE_STRIP_ROWS :: 32
 
 SurfaceSizeValid :: (width: s32, height: s32) -> bool {
     return width > 0 && height > 0 && width <= 16384 && height <= 16384 &&
@@ -86,34 +89,239 @@ SurfaceInput :: (input: *FrameInputSnapshot, queue: *InputDelivery, event: Surfa
     }
 }
 
+SurfacePaint :: struct {
+    width: s32
+    height: s32
+    viewport: Rectangle
+    images: u64
+    damage: Rectangle
+    strips: s32
+}
+
+// Keep one bounded copy of the paint plan. Large scenes still render in full;
+// this limit affects snapshot storage, never how much paint the app can submit.
+SurfaceSnapshotFits :: (slot: s32) -> bool {
+    return pending_paint[slot].items.count <= 2048 && pending_short_text[slot].count <= 256 &&
+        pending_medium_text[slot].count <= 32 && pending_text[slot].count <= 4 && pending_mesh[slot].count <= 8
+}
+
+SurfaceCommit :: (session: Session, width: s32, height: s32, pixels: []u32,
+    rgba: []u8, paint: *SurfacePaint) -> bool {
+    slot := SessionIndex(session)
+    retained := SessionFlagGet(frame_retained, slot)
+    if CommitFrame(session) != cast(FrameStatus)FrameOk { return false }
+    viewport := Pixels.PixmapLogicalBounds()
+    images := Pixels.PixmapImageRevision()
+    same_surface := paint.width == width && paint.height == height && paint.images == images &&
+        paint.viewport.x == viewport.x && paint.viewport.y == viewport.y &&
+        paint.viewport.width == viewport.width && paint.viewport.height == viewport.height
+    paint.width = width
+    paint.height = height
+    paint.viewport = viewport
+    paint.images = images
+    paint.damage = .{}
+    paint.strips = 0
+
+    if retained && same_surface {
+        frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, slot, true)
+        return true
+    }
+    change: PaintFrameDamage
+    tiled := paint_recorder == null
+    if retained {
+        for index: cast(s64)0..paint_snapshots[slot].count - 1 {
+            if !paint_snapshots[slot][index].builtin_emitter { tiled = false; break }
+        }
+    } else {
+        for index: cast(s64)0..pending_paint[slot].items.count - 1 {
+            if !pending_paint[slot].items[index].builtin_emitter { tiled = false; break }
+        }
+        if !tiled || !SurfaceSnapshotFits(slot) {
+            PaintSnapshotInvalidate(session)
+        } else {
+            if same_surface { change = PaintDamage(session) }
+            if !change.unchanged && !PaintSnapshotStore(session) { change.partial = false }
+        }
+    }
+    if change.unchanged {
+        frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, slot, true)
+        PaintClear(session)
+        return true
+    }
+
+    area := viewport
+    if change.partial && Finite32(change.area.x) && Finite32(change.area.y) &&
+        Finite32(change.area.x + change.area.width) && Finite32(change.area.y + change.area.height) {
+        area = RectangleIntersection(change.area, viewport)
+    }
+    if area.width <= 0.0 || area.height <= 0.0 { PaintClear(session); return true }
+    if !tiled { return SurfaceReplayFull(session, width, height, retained, rgba, paint) }
+    return SurfaceReplayStrips(session, width, height, area, retained, pixels, rgba, paint)
+}
+
+SurfaceReplayArea :: (session: Session, clip: Rectangle) {
+    slot := SessionIndex(session)
+    for index: cast(s32)0..cast(s32)pending_paint[slot].items.count - 1 {
+        queued := *pending_paint[slot].items[index]
+        if !queued.has_emitter { continue }
+        data := PendingPaintAt(session, index)
+        box: Rectangle
+        if PaintCommandArea(data, *box) {
+            intersection := RectangleIntersection(box, clip)
+            if intersection.width <= 0.0 || intersection.height <= 0.0 { continue }
+        }
+        resolved := queued.*
+        resolved.data = data
+        EmitPaint(resolved)
+    }
+}
+
+// Rebuild complete layers in each affected strip and immediately convert it
+// into the retained host buffer. All device operations see full coordinates.
+SurfaceReplayStrips :: (session: Session, width: s32, height: s32, area: Rectangle,
+    retained: bool, pixels: []u32, rgba: []u8, paint: *SurfacePaint) -> bool {
+    region := Pixels.PixmapDeviceBounds(area)
+    top := FloorInteger(region.y)
+    bottom := CeilInteger(region.y + region.height)
+    if top < 0 { top = 0 }
+    if bottom > height { bottom = height }
+    first := top
+    while first < bottom {
+        rows := bottom - first
+        if rows > SURFACE_STRIP_ROWS { rows = SURFACE_STRIP_ROWS }
+        if !Pixels.PixmapBindRows(width, height, first, rows, pixels) { return false }
+        Pixels.PixmapDamageBegin(area, cast(u32)Pixels.PixmapBackground)
+        clipped := Pixels.PixmapDamageBounds()
+        if retained {
+            if !PaintSnapshotEmit(session) { return false }
+        } else {
+            scale_x := Pixels.pixmap_scale_x
+            scale_y := Pixels.pixmap_scale_y
+            SurfaceReplayArea(session, .{(clipped.x - Pixels.pixmap_offset_x) / scale_x,
+                (clipped.y - Pixels.pixmap_offset_y) / scale_y, clipped.width / scale_x, clipped.height / scale_y})
+        }
+        Pixels.PixmapDamageEnd()
+        SurfaceConvert(width, pixels, rgba, clipped, first)
+        paint.damage = .{clipped.x, cast(float32)top, clipped.width, cast(float32)(bottom - top)}
+        paint.strips += 1
+        first += rows
+    }
+    PaintClear(session)
+    return true
+}
+
+// Custom emitters and recorders must observe a single replay of each command.
+SurfaceReplayFull :: (session: Session, width: s32, height: s32, retained: bool,
+    rgba: []u8, paint: *SurfacePaint) -> bool {
+    pixels: Vec(u32)
+    count := cast(s64)width * cast(s64)height
+    if !VecResizeBounded(pixels, count, count) || !Pixels.PixmapBindRows(width, height, 0, height, pixels[:]) { return false }
+    defer Pixels.PixmapEndInto()
+    Pixels.PixmapDamageBegin(paint.viewport, cast(u32)Pixels.PixmapBackground)
+    paint.damage = Pixels.PixmapDamageBounds()
+    if retained {
+        if !PaintSnapshotEmit(session) { return false }
+    } else { PaintFlush(session) }
+    Pixels.PixmapDamageEnd()
+    SurfaceConvert(width, pixels[:], rgba, paint.damage)
+    return true
+}
+
 SurfaceFrame :: (session: Session, draw: Draw, width: s32, height: s32,
     input: FrameInputSnapshot, pixels: []u32) -> bool {
     if !Pixels.PixmapBeginInto(cast(u32)Pixels.PixmapBackground, width, height, pixels) { return false }
     defer Pixels.PixmapEndInto()
-    unused TreePointerUpdate(session, input.pointer)
-    TreeSecondaryPointerUpdate(session, input.secondary)
-    if !FrameInputBegin(session, input) { return false }
+    if !SurfaceBeginInput(session, input) { return false }
     defer FrameInputEnd(session)
-    bounds: Rectangle = .{0.0, 0.0, cast(float32)width, cast(float32)height}
-    if BeginFrame(session, cast(u64)1, bounds) != cast(FrameStatus)FrameOk { return false }
-    App.CallDraw(draw, session.slot, session.epoch)
+    if !SurfaceCompose(session, draw, width, height) { return false }
     return EndFrame(session) == cast(FrameStatus)FrameOk
 }
 
-SurfacePresent :: (width: s32, height: s32, pixels: []u32, rgba: []u8) -> bool {
-    for index: cast(s64)0..pixels.count - 1 {
-        pixel := pixels[index]
-        at := index * 4
-        rgba[at] = cast(u8)(pixel >> 16)
-        rgba[at + 1] = cast(u8)(pixel >> 8)
-        rgba[at + 2] = cast(u8)pixel
-        rgba[at + 3] = cast(u8)255
+SurfaceFrameInto :: (session: Session, draw: Draw, width: s32, height: s32,
+    input: FrameInputSnapshot, pixels: []u32, rgba: []u8, paint: *SurfacePaint) -> bool {
+    rows := ifx height < SURFACE_STRIP_ROWS then height else SURFACE_STRIP_ROWS
+    if paint == null || rgba.count < cast(s64)width * cast(s64)height * 4 ||
+        !Pixels.PixmapResumeRowsInto(width, height, 0, rows, pixels) { return false }
+    defer Pixels.PixmapEndInto()
+    if !SurfaceBeginInput(session, input) { return false }
+    defer FrameInputEnd(session)
+    if !SurfaceCompose(session, draw, width, height) { return false }
+    return SurfaceCommit(session, width, height, pixels, rgba, paint)
+}
+
+SurfaceBeginInput :: (session: Session, input: FrameInputSnapshot) -> bool {
+    unused TreePointerUpdate(session, input.pointer)
+    TreeSecondaryPointerUpdate(session, input.secondary)
+    return FrameInputBegin(session, input)
+}
+
+SurfaceCompose :: (session: Session, draw: Draw, width: s32, height: s32) -> bool {
+    bounds: Rectangle = .{0.0, 0.0, cast(float32)width, cast(float32)height}
+    if BeginFrame(session, cast(u64)1, bounds) != cast(FrameStatus)FrameOk { return false }
+    App.CallDraw(draw, session.slot, session.epoch)
+    return true
+}
+
+SurfaceConvert :: (width: s32, pixels: []u32, rgba: []u8, damage: Rectangle, first_row: s32 = 0) {
+    left := cast(s32)damage.x
+    right := left + cast(s32)damage.width
+    top := cast(s32)damage.y
+    bottom := top + cast(s32)damage.height
+    offset := first_row * width
+    for row: top..bottom - 1 {
+        for index: row * width + left..row * width + right - 1 {
+            pixel := pixels[index - offset]
+            at := index * 4
+            rgba[at] = cast(u8)(pixel >> 16)
+            rgba[at + 1] = cast(u8)(pixel >> 8)
+            rgba[at + 2] = cast(u8)pixel
+            rgba[at + 3] = cast(u8)255
+        }
     }
+}
+
+SurfacePresent :: (width: s32, height: s32, pixels: []u32, rgba: []u8) -> bool {
+    SurfaceConvert(width, pixels, rgba, .{0.0, 0.0, cast(float32)width, cast(float32)height})
     return Present(width, height, TextView(rgba))
 }
 
-// A positive idle interval redraws on timeout, in addition to input frames.
+SurfaceComposition :: struct {
+    session: Session
+    draw: Draw
+}
+
+SurfaceRenderer :: #type (composition: *SurfaceComposition, width: s32, height: s32,
+    input: FrameInputSnapshot, pixels: []u32, rgba: []u8, paint: *SurfacePaint, refresh: bool) -> bool;
+
+SurfaceRenderFull :: (composition: *SurfaceComposition, width: s32, height: s32,
+    input: FrameInputSnapshot, pixels: []u32, rgba: []u8, paint: *SurfacePaint, refresh: bool) -> bool {
+    unused paint
+    unused refresh
+    return SurfaceFrame(composition.session, composition.draw, width, height, input, pixels) &&
+        SurfacePresent(width, height, pixels, rgba)
+}
+
+SurfaceRenderRetained :: (composition: *SurfaceComposition, width: s32, height: s32,
+    input: FrameInputSnapshot, pixels: []u32, rgba: []u8, paint: *SurfacePaint, refresh: bool) -> bool {
+    if !SurfaceFrameInto(composition.session, composition.draw, width, height, input, pixels, rgba, paint) { return false }
+    if !refresh && (paint.damage.width <= 0.0 || paint.damage.height <= 0.0) { return true }
+    return Present(width, height, TextView(rgba))
+}
+
+// A positive idle interval composes on timeout, in addition to input frames.
 Run :: (window: Window, draw: Draw, idle_ms: s32 = 0) -> s32 {
+    renderer: SurfaceRenderer = SurfaceRenderFull
+    return SurfaceRun(window, draw, idle_ms, renderer, 0)
+}
+
+// Opt in for apps that use queued widgets and drawing. Keep the default
+// entry independent so it does not link retention into full-raster bundles.
+RunRetained :: (window: Window, draw: Draw, idle_ms: s32 = 0) -> s32 {
+    renderer: SurfaceRenderer = SurfaceRenderRetained
+    return SurfaceRun(window, draw, idle_ms, renderer, SURFACE_STRIP_ROWS)
+}
+
+SurfaceRun :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRenderer, strip_rows: s32) -> s32 {
     width := ifx window.width > 0 then window.width else 960
     height := ifx window.height > 0 then window.height else 600
     if !SurfaceSizeValid(width, height) || !Open(window.title, width, height) { return 1 }
@@ -122,8 +330,10 @@ Run :: (window: Window, draw: Draw, idle_ms: s32 = 0) -> s32 {
     if !SessionValid(session) { return 1 }
     defer { unused CloseSession(session) }
 
+    composition: SurfaceComposition = .{session, draw}
     pixels: Vec(u32)
     rgba: Vec(u8)
+    paint: SurfacePaint
     input: FrameInputSnapshot = .{.available = true, .focused = true}
     queue: InputDelivery
     event: SurfaceEvent = .{.kind = Redraw}
@@ -145,15 +355,20 @@ Run :: (window: Window, draw: Draw, idle_ms: s32 = 0) -> s32 {
         }
         if event.kind != Idle || queue.count > 0 || idle_ms > 0 {
             count := cast(s64)width * cast(s64)height
-            if pixels.count != count && (!VecResizeBounded(pixels, count, SURFACE_PIXEL_LIMIT) ||
-                !VecResizeBounded(rgba, count * 4, SURFACE_PIXEL_LIMIT * 4)) { return 1 }
+            pixel_count := count
+            if strip_rows > 0 && height > strip_rows { pixel_count = cast(s64)width * strip_rows }
+            pixel_limit := ifx pixel_count > pixels.capacity then pixel_count else pixels.capacity
+            if pixels.count != pixel_count && !VecResizeBounded(pixels, pixel_count, pixel_limit) { return 1 }
+            rgba_count := count * 4
+            rgba_limit := ifx rgba_count > rgba.capacity then rgba_count else rgba.capacity
+            if rgba.count != rgba_count && !VecResizeBounded(rgba, rgba_count, rgba_limit) { return 1 }
             SurfaceInput(*input, *queue, event)
             key, modifiers := InputDeliveryTake(*queue, session, input.modifiers)
             unused KeyboardSend(session, key)
             unused KeyboardModifiersSend(session, modifiers)
             input.sequence += cast(u64)1
-            if !SurfaceFrame(session, draw, width, height, input, pixels[:]) ||
-                !SurfacePresent(width, height, pixels[:], rgba[:]) { return 1 }
+            if !renderer(*composition, width, height, input, pixels[:], rgba[:], *paint,
+                event.kind == Redraw || event.kind == Resized) { return 1 }
             input.pointer.pressed = false
             input.pointer.released = false
             input.secondary.pressed = false

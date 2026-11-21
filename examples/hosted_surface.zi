@@ -48,7 +48,7 @@ main :: () -> s32 {
     value.bytes = value_bytes[:]
     window: Surface.Window = .{.title = "Kryon hosted surface", .width = 240, .height = 144}
     #if #defined(SURFACE_SMOKE_TIMED) {
-        return Surface.Run(window, Draw, 250)
+        return Surface.RunRetained(window, Draw, 250)
     } else {
         return Surface.Run(window, Draw)
     }

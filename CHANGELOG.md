@@ -5,6 +5,12 @@
 - Native hosted style codecs preserve width and height across record encoding,
   decoding and validation, while retaining older host field layouts.
 
+- `kryon/window_chrome` provides a themed title bar with window actions shared
+  by native and ZX hosts.
+- Portable ZX surfaces can retain the previous presentation and reconstruct
+  changed pixels in bounded raster strips while still processing input and
+  idle callbacks.
+
 - Preview fixtures build once for comma-separated viewport widths and produce
   a PNG and widget tree for each width. The machine-readable HTML map lists
   native widget imports, entry points, and layout equivalents.
