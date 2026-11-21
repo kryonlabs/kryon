@@ -275,6 +275,10 @@ zx-surface-test: project-toolchain
 	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_TIMED --entry hosted_surface:main \
 		-o build/scratch/zx-surface/timed.zx examples/hosted_surface.zi
 	build/scratch/zx-surface/test build/scratch/zx-surface/timed.zx timed
+	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_TIMED \
+		--define KRYON_PIXMAP_EXTERNAL_BUFFER --entry hosted_surface:main \
+		-o build/scratch/zx-surface/external.zx examples/hosted_surface.zi
+	build/scratch/zx-surface/test build/scratch/zx-surface/external.zx timed
 	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_CLOCK --entry hosted_surface:main \
 		-o build/scratch/zx-surface/clocked.zx examples/hosted_surface.zi
 	build/scratch/zx-surface/test build/scratch/zx-surface/clocked.zx timed
@@ -291,6 +295,15 @@ surface-render-test: project-toolchain
 		$(ZIRAN_BIN) run "$$out/test.zx" > "$$out/result"; \
 		cat "$$out/result"; test "$$(tail -1 "$$out/result")" = 0; \
 	done
+	$(ZIRAN_BIN) build --project --target=c --root tests --bind-host pixmap \
+		--define KRYON_PIXMAP_EXTERNAL_BUFFER --entry zx_surface_damage_test:main --exe \
+		-o build/scratch/zx_surface_damage_test/external-c tests/zx_surface_damage_test.zi
+	build/scratch/zx_surface_damage_test/external-c/zx_surface_damage_test
+	$(ZIRAN_BIN) bundle --project --root tests --bind-host pixmap \
+		--define KRYON_PIXMAP_EXTERNAL_BUFFER --entry zx_surface_damage_test:main \
+		-o build/scratch/zx_surface_damage_test/external.zx tests/zx_surface_damage_test.zi
+	$(ZIRAN_BIN) run build/scratch/zx_surface_damage_test/external.zx > build/scratch/zx_surface_damage_test/external-result
+	cmp build/scratch/zx_surface_damage_test/result build/scratch/zx_surface_damage_test/external-result
 
 test: zx-services-test zx-hosted-test zx-headless-test zx-surface-test surface-render-test
 

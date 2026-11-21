@@ -69,8 +69,46 @@ Compare :: (count: s32) -> bool {
     return true
 }
 
+#if #defined(KRYON_PIXMAP_EXTERNAL_BUFFER) {
+    PaintWithoutStorage :: () {
+        Pixels.PixmapBegin(cast(u32)0x123456)
+        Pixels.PixmapDamageBegin(.{-4.0, -4.0, 12.0, 12.0}, 0)
+        Pixels.PixmapClipTo(.{-4.0, -4.0, 12.0, 12.0})
+        Pixels.PixmapFillRounded(-4, -4, 8, 8, 0, .{255, 255, 255, 255})
+        Pixels.PixmapDamageEnd()
+        Pixels.PixmapPresent()
+    }
+
+    BorrowedStorageTest :: () -> bool {
+        clear: u32 = 0x123456
+        guard: u32 = 0xabcdef
+        backing: [6]u32
+        backing[0] = guard; backing[5] = guard
+        if Pixels.pixmap_surface.count != 0 { return false }
+        PaintWithoutStorage()
+        if Pixels.pixmap_surface.count != 0 || Pixels.pixmap_width != 0 || Pixels.pixmap_height != 0 { return false }
+
+        pixels := backing[1:5]
+        if !Pixels.PixmapBeginInto(clear, 2, 2, pixels) { return false }
+        if Pixels.PixmapBeginInto(0, 0, 2, pixels) || Pixels.PixmapBeginInto(0, 3, 2, pixels) ||
+            Pixels.PixmapResumeRowsInto(2, 2, 2, 1, pixels) { return false }
+        Pixels.PixmapBegin(0)
+        Pixels.PixmapBlend(1, 0, .{255, 255, 255, 255}, 255)
+        if backing[1] != clear || backing[2] != cast(u32)0xffffff || backing[3] != clear || backing[4] != clear { return false }
+
+        Pixels.PixmapEndInto()
+        PaintWithoutStorage()
+        return Pixels.pixmap_surface.count == 0 && Pixels.pixmap_width == 0 && Pixels.pixmap_height == 0 &&
+            backing[0] == guard && backing[5] == guard && backing[1] == clear && backing[2] == cast(u32)0xffffff &&
+            backing[3] == clear && backing[4] == clear
+    }
+}
+
 #program_export
 main :: () -> s32 {
+    #if #defined(KRYON_PIXMAP_EXTERNAL_BUFFER) {
+        if !BorrowedStorageTest() { return 14 }
+    }
     fast := SessionOpen()
     baseline := SessionOpen()
     if !SessionValid(fast) || !SessionValid(baseline) { return 1 }

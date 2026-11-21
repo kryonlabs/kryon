@@ -86,12 +86,25 @@ PixmapHeight :: 600;
 // The desktop host's background, so screenshots of both line up.
 PixmapBackground :: 16317180;
 
-pixmap_pixels: [576000]u32;
-pixmap_surface: []u32 = pixmap_pixels[:];
-pixmap_width: s32 = PixmapWidth;
-pixmap_height: s32 = PixmapHeight;
+// Hosted clients that always lend their own storage can omit the PPM backing store.
+PIXMAP_EXTERNAL_BUFFER :: #defined(KRYON_PIXMAP_EXTERNAL_BUFFER);
+#if PIXMAP_EXTERNAL_BUFFER {
+    PIXMAP_IDLE_WIDTH :: 0;
+    PIXMAP_IDLE_HEIGHT :: 0;
+} else {
+    PIXMAP_IDLE_WIDTH :: PixmapWidth;
+    PIXMAP_IDLE_HEIGHT :: PixmapHeight;
+    pixmap_pixels: [576000]u32;
+}
+#if PIXMAP_EXTERNAL_BUFFER {
+    pixmap_surface: []u32;
+} else {
+    pixmap_surface: []u32 = pixmap_pixels[:];
+}
+pixmap_width: s32 = PIXMAP_IDLE_WIDTH;
+pixmap_height: s32 = PIXMAP_IDLE_HEIGHT;
 pixmap_storage_top: s32;
-pixmap_storage_bottom: s32 = PixmapHeight;
+pixmap_storage_bottom: s32 = PIXMAP_IDLE_HEIGHT;
 // Opaque ARGB hosts can write their alpha byte with the color itself, rather
 // than traversing every changed pixel again after painting. RGB surfaces use
 // zero here; transparency still blends over the surface's RGB background.
@@ -506,8 +519,8 @@ PixmapLanczosWait :: () -> bool {
 // Pixels outside [clip_left, clip_right) x [clip_top, clip_bottom) are kept.
 pixmap_clip_left: s32;
 pixmap_clip_top: s32;
-pixmap_clip_right: s32 = PixmapWidth;
-pixmap_clip_bottom: s32 = PixmapHeight;
+pixmap_clip_right: s32 = PIXMAP_IDLE_WIDTH;
+pixmap_clip_bottom: s32 = PIXMAP_IDLE_HEIGHT;
 // A retained frame can restrict every raster effect to its damaged pixels.
 // Per-command clips and ClipAll must never widen this outer clip.
 pixmap_damage_active: bool;
@@ -516,9 +529,13 @@ pixmap_damage_top: s32;
 pixmap_damage_right: s32;
 pixmap_damage_bottom: s32;
 
+// With KRYON_PIXMAP_EXTERNAL_BUFFER this leaves the current attachment intact.
+// Use PixmapBeginInto to start a frame in caller-owned storage in that mode.
 #program_export
 PixmapBegin :: (background: u32) {
-    unused PixmapBeginInto(background, PixmapWidth, PixmapHeight, pixmap_pixels[:])
+    #if !PIXMAP_EXTERNAL_BUFFER {
+        unused PixmapBeginInto(background, PixmapWidth, PixmapHeight, pixmap_pixels[:])
+    }
 }
 
 // Rasterize into caller-owned storage. Keep it alive until painting finishes;
@@ -580,8 +597,14 @@ PixmapBindRows :: (width: s32, height: s32, first_row: s32, rows: s32, pixels: [
 
 #program_export
 PixmapEndInto :: () {
-    pixmap_surface = pixmap_pixels[:]; pixmap_width = PixmapWidth; pixmap_height = PixmapHeight
-    pixmap_storage_top = 0; pixmap_storage_bottom = PixmapHeight
+    #if PIXMAP_EXTERNAL_BUFFER {
+        empty: []u32
+        pixmap_surface = empty
+    } else {
+        pixmap_surface = pixmap_pixels[:]
+    }
+    pixmap_width = PIXMAP_IDLE_WIDTH; pixmap_height = PIXMAP_IDLE_HEIGHT
+    pixmap_storage_top = 0; pixmap_storage_bottom = PIXMAP_IDLE_HEIGHT
     pixmap_scale_x = 1.0; pixmap_scale_y = 1.0
     pixmap_offset_x = 0.0; pixmap_offset_y = 0.0
     pixmap_alpha = cast(u32)0
@@ -604,6 +627,9 @@ PixmapClipAll :: () {
 // damaged area before replay so removed and translucent paint cannot leave
 // pixels from an earlier frame behind.
 PixmapDamageBegin :: (bounds: Rectangle, background: u32, clear: bool = true) {
+    #if PIXMAP_EXTERNAL_BUFFER {
+        if pixmap_width == 0 { return }
+    }
     bounds = PixmapDeviceBounds(bounds)
     pixmap_damage_left = FloorInteger(bounds.x); pixmap_damage_top = FloorInteger(bounds.y)
     pixmap_damage_right = CeilInteger(bounds.x + bounds.width)
@@ -1863,8 +1889,12 @@ PixmapDigits :: (value: s32, output: []u8, at: s32) -> s32 {
 }
 
 // Prints the frame as a plain (P3) PPM image, one pixel row per line.
+// An external-buffer build has no frame to print until a surface is attached.
 #program_export
 PixmapPresent :: () {
+    #if PIXMAP_EXTERNAL_BUFFER {
+        if pixmap_width == 0 { return }
+    }
     rows := pixmap_storage_bottom - pixmap_storage_top
     print("P3\n% %\n255\n", pixmap_width, rows)
     row: [11520]u8
