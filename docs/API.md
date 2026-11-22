@@ -1468,6 +1468,19 @@ palette, 32-pixel height and item width, 20-pixel icons, workspace and clock wid
 and compact corner, padding and font sizes. Apply these tokens within the panel's
 palette scope; application compositions retain their own saved layout and state.
 
+## Workspace pager and centered panel groups
+
+`workspace_pager.Draw(session, props, windows)` draws miniature workspace tiles
+from the caller's real count, active workspace and desktop window geometry.
+It returns the clicked workspace index, or -1. `Cell`, `WindowBounds` and `Width`
+expose the same geometry for sizing and verification. The default is two rows;
+window workspace -1 is sticky, and rectangles are clipped to each tile.
+
+`Layout.CenteredBandsFor(bounds, width)` reserves a geometrically centered band
+and returns disjoint leading and trailing rectangles. The center stays fixed
+when the surrounding content changes; an oversized center is limited to the
+available width and side groups can scroll within their remaining rectangles.
+
 ## Linked desktop ZX player
 
 Native launchers import `kryon/desktop_zx` and call

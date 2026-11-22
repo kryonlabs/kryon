@@ -268,3 +268,21 @@ FlexStep :: (cursor: FlexCursor, width: float32, height: float32) -> FlexCursor 
     cursor.remaining -= 1
     return cursor
 }
+
+CenteredBands :: struct {
+    leading: Rectangle
+    center: Rectangle
+    trailing: Rectangle
+}
+
+#program_export
+LayoutCenteredBands :: (bounds: Rectangle, width: float32) -> CenteredBands {
+    if width < 0.0 { width = 0.0 }
+    if width > bounds.width { width = bounds.width }
+    if width < 0.0 { width = 0.0 }
+    side := (bounds.width - width) / 2.0
+    if side < 0.0 { side = 0.0 }
+    return .{.{bounds.x, bounds.y, side, bounds.height},
+        .{bounds.x + side, bounds.y, width, bounds.height},
+        .{bounds.x + side + width, bounds.y, side, bounds.height}}
+}

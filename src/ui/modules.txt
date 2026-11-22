@@ -256,3 +256,4 @@ widget_key.zi
 widget_kind.zi
 window_flags.zi
 zoom.zi
+workspace_pager/workspace_pager.zi

@@ -1,0 +1,81 @@
+Pager :: #import "kryon/workspace_pager";
+Layout :: #import "kryon/layout";
+Pixmap :: #import "kryon/pixmap";
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/tree"
+#import "kryon/tree_draw"
+#import "kryon/tree_input"
+#import "kryon/input_protocol"
+using FrameStatus;
+
+pixels: [40960]u32;
+windows: [2]Pager.Window;
+
+Render :: (session: Session, props: Pager.Props) -> s32 {
+    if !Pixmap.PixmapBeginInto(0, 640, 64, pixels[:]) { return -2 }
+    defer Pixmap.PixmapEndInto()
+    if BeginFrame(session, 1, .{0.0, 0.0, 640.0, 64.0}) != cast(FrameStatus)FrameOk { return -2 }
+    result := Pager.Draw(session, props, windows[:])
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return -2 }
+    return result
+}
+
+#program_export
+main :: () -> s32 {
+    widths: [5]float32 = .[40.0, 160.0, 320.0, 800.0, 1024.0]
+    for index: cast(s32)0..4 {
+        bounds := Rectangle.{7.0, 3.0, widths[index], 32.0}
+        bands := Layout.CenteredBandsFor(bounds, 80.0)
+        if bands.center.x + bands.center.width / 2.0 != bounds.x + bounds.width / 2.0 ||
+            bands.leading.x + bands.leading.width > bands.center.x ||
+            bands.center.x + bands.center.width > bands.trailing.x ||
+            bands.trailing.x + bands.trailing.width != bounds.x + bounds.width ||
+            bands.leading.width < 0.0 || bands.trailing.width < 0.0 { return 1 }
+    }
+    props := Pager.Props.{.key = cast(u64)2000, .bounds = .{4.0, 2.0, 100.0, 30.0},
+        .count = 4, .current = 0, .desktop_width = 1600, .desktop_height = 900}
+    windows[0] = .{160, 90, 800, 450, 0, true}
+    windows[1] = .{-800, -450, 1200, 900, 2, false}
+    if Pager.WindowBounds(props, windows[0], 1).width != 0.0 ||
+        Pager.WindowBounds(props, windows[0], 0).width <= 0.0 ||
+        Pager.WindowBounds(props, windows[1], 2).width <= 0.0 { return 2 }
+    counts: [5]s32 = .[1, 4, 5, 8, 128]
+    session := SessionOpen()
+    if !SessionValid(session) { return 3 }
+    defer { unused CloseSession(session) }
+    for sample: cast(s32)0..4 {
+        props.count = counts[sample]
+        props.bounds.width = Pager.Width(props)
+        if props.bounds.width > 630.0 { props.bounds.width = 630.0 }
+        if Render(session, props) < -1 { return 4 }
+        for index: cast(s32)0..props.count - 1 {
+            cell := Pager.Cell(props, index)
+            if cell.width <= 0.0 || cell.height <= 0.0 ||
+                cell.x < props.bounds.x || cell.y < props.bounds.y ||
+                cell.x + cell.width > props.bounds.x + props.bounds.width ||
+                cell.y + cell.height > props.bounds.y + props.bounds.height { return 5 }
+            x := cell.x + cell.width / 2.0; y := cell.y + cell.height / 2.0
+            TreePointerUpdate(session, .{x, y, true, true, false})
+            unused Render(session, props)
+            TreePointerUpdate(session, .{x, y, false, false, true})
+            if Render(session, props) != index { return 6 }
+            props.current = index
+            unused Render(session, props)
+        }
+    }
+    props.count = 4; props.current = 0; props.bounds.width = Pager.Width(props)
+    unused Render(session, props)
+    active := pixels[3 * 640 + 5]
+    props.current = 1
+    unused Render(session, props)
+    if pixels[3 * 640 + 5] == active { return 7 }
+    props.disabled = true
+    cell := Pager.Cell(props, 2)
+    TreePointerUpdate(session, .{cell.x + 2.0, cell.y + 2.0, true, true, false})
+    unused Render(session, props)
+    TreePointerUpdate(session, .{cell.x + 2.0, cell.y + 2.0, false, false, true})
+    if Render(session, props) != -1 { return 8 }
+    print("Workspace pager real counts, all tiles, window membership, active paint and centered bands: OK\n")
+    return 0
+}

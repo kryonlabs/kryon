@@ -334,3 +334,8 @@ StackChildBoundsFor :: (container: LayoutContainer,
         ContainerMetrics(container))
 }
 }
+
+#program_export
+CenteredBandsFor :: (bounds: Rectangle, width: float32) -> BehaviorModule.CenteredBands {
+    return BehaviorModule.LayoutCenteredBands(bounds, width)
+}

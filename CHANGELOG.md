@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add miniature workspace tiles with real window geometry and symmetric centered panel bands.
+
 - Share Sweet dark window chrome and compact dark panel style tokens across native and ZX applications.
 
 - Hosted desktop ZX shells can run approved child bundles in their own

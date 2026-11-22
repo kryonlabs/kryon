@@ -341,7 +341,7 @@ zx-surface-test: project-toolchain
 
 .PHONY: surface-render-test
 surface-render-test: project-toolchain
-	@set -e; for name in window_chrome_test zx_surface_damage_test zx_surface_wheel_test; do \
+	@set -e; for name in window_chrome_test workspace_pager_test zx_surface_damage_test zx_surface_wheel_test; do \
 		out=build/scratch/$$name; mkdir -p "$$out"; \
 		$(ZIRAN_BIN) build --project --target=c --root tests --bind-host pixmap \
 			--entry $$name:main --exe -o "$$out/c" "tests/$$name.zi"; \
