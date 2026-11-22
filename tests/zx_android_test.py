@@ -10,7 +10,7 @@ import time
 import tempfile
 import zipfile
 
-from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
+from toolchain import ROOT, ZIRAN, ZIRAN_ROOT, pinned, kryon_only
 from android_soft_keyboard import soft_keyboard_text, wait_keyboard_visible
 from android_png_probe import png_pixels, rgb, solid_png
 
@@ -57,7 +57,7 @@ if not a.skip_build:
     (project / 'assets').mkdir(exist_ok=True)
     (project / 'src/app.zi').write_bytes((ROOT / 'tests/zx/mobile_app.zi').read_bytes())
     solid_png(project / 'assets/red.png', 32, 32, (230, 30, 40, 255))
-    (project / 'ziran.toml').write_text('''[package]
+    (project / 'ziran.toml').write_text(pinned('''[package]
 name = "zx_android_probe"
 entry = "src/app.zi"
 module_roots = ["src"]
@@ -82,9 +82,9 @@ assets = "assets"
 package = "com.kryon.zxtest"
 abis = "x86_64,arm64-v8a,armeabi-v7a"
 min_sdk = "21"
-''')
-    (project / 'ziran.local.toml').write_text(
-        f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
+'''))
+    (project / 'ziran.local.toml').write_text(kryon_only(
+        f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n'))
     run([ZIRAN, 'lock'])
     for profile in ('portable', 'android'):
         run([ZIRAN, 'tool', 'kryon', 'build', '--profile', profile])

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build a real Ziran application with the Canvas2D profile and load it."""
 
-from toolchain import JS_RUNTIME
+from toolchain import JS_RUNTIME, pinned, kryon_only
 
 import os
 from pathlib import Path
@@ -24,7 +24,7 @@ def run(command, directory):
 with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") as directory:
     project = Path(directory)
     (project / "src").mkdir()
-    (project / "ziran.toml").write_text(
+    (project / "ziran.toml").write_text(pinned(
         '[package]\nname = "canvas_probe"\nentry = "src/app.zi"\n'
         'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
         '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
@@ -33,14 +33,14 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
         'ref = "master"\n\n'
         '[tool.kryon]\ndefault_profile = "web"\n\n'
         '[tool.kryon.profiles.web]\nbackend = "canvas"\n'
-    )
+    ))
     overrides = {
         "kryon": str(ROOT),
         "ziran": str(ZIRAN_ROOT),
     }
-    (project / "ziran.local.toml").write_text(
+    (project / "ziran.local.toml").write_text(kryon_only(
         "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
-    )
+    ))
     (project / "src/app.zi").write_text(
         '#import "kryon/geometry"\n'
         '#import "kryon/session"\n'

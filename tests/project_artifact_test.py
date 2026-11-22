@@ -5,7 +5,7 @@ import subprocess
 import shutil
 import tempfile
 
-from toolchain import ZIRAN_ROOT
+from toolchain import ZIRAN_ROOT, pinned, kryon_only
 from project_static_archive_test import request_exit
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -26,7 +26,7 @@ def main():
     try:
         work=Path(temporary);provider=work/'provider';provider.mkdir()
         # Synthetic fixture repository, not a copy of a maintained source tree.
-        (provider/'ziran.toml').write_text('''[package]
+        (provider/'ziran.toml').write_text(pinned('''[package]
 name = "support"
 module_roots = ["."]
 [tool]
@@ -37,7 +37,7 @@ outputs = ["support.a", "link.txt"]
 [artifacts.extra]
 inputs = ["value.c", "provider.sh", "Makefile"]
 outputs = ["support.a", "link.txt"]
-''')
+'''))
         (provider/'.gitignore').write_text('/build/\n')
         (provider/'value.c').write_text('int ArtifactValue(void) { return 77; }\n')
         (provider/'Makefile').write_text('build/bin/provider: provider.sh\n\tmkdir -p build/bin\n\tcp provider.sh $@\n\tchmod +x $@\n')
@@ -52,7 +52,7 @@ printf 'archive\\tsupport.a\\n' > "$ZIRAN_ARTIFACT_OUTPUT/link.txt"
         run(['git','-c','user.name=Waozi','-c','user.email=waozi@proton.me',
              '-c','commit.gpgsign=false','commit','-qm','Native support fixture'],provider)
         project=work/'project';(project/'src').mkdir(parents=True)
-        (project/'ziran.toml').write_text(f'''[package]
+        (project/'ziran.toml').write_text(pinned(f'''[package]
 name = "artifact_probe"
 entry = "src/app.zi"
 module_roots = ["src"]
@@ -72,8 +72,8 @@ default_profile = "tui"
 backend = "terminal"
 native_artifacts = "support:native support:extra"
 native_platform = "linux-x86_64-gnu"
-''')
-        (project/'ziran.local.toml').write_text(f'[overrides]\nziran = "{ZIRAN_ROOT}"\nkryon = "{ROOT}"\nsupport = "{provider}"\n')
+'''))
+        (project/'ziran.local.toml').write_text(kryon_only(f'[overrides]\nziran = "{ZIRAN_ROOT}"\nkryon = "{ROOT}"\nsupport = "{provider}"\n'))
         (project/'src/app.zi').write_text('''#import "kryon/geometry"
 #import "kryon/session"
 #import "kryon/tree_input"

@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-from toolchain import ZIRAN, ZIRAN_ROOT
+from toolchain import ZIRAN, ZIRAN_ROOT, pinned, kryon_only
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,7 +31,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="kryon-project-host-") as temporary:
         project = Path(temporary) / "project"
         (project / "src").mkdir(parents=True)
-        (project / "ziran.toml").write_text(
+        (project / "ziran.toml").write_text(pinned(
             '[package]\nname = "host_probe"\ntool = "kryon"\n'
             'entry = "src/app.zi"\nmodule_roots = ["src"]\n'
             'bridge_modules = ["app"]\n\n'
@@ -42,10 +42,10 @@ def main():
             '[tool.kryon]\ndefault_profile = "tui"\n\n'
             '[tool.kryon.profiles.tui]\nbackend = "terminal"\n'
             'host = "src/runner.zi"\n'
-        )
-        (project / "ziran.local.toml").write_text(
+        ))
+        (project / "ziran.local.toml").write_text(kryon_only(
             f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n'
-        )
+        ))
         (project / "src/app.zi").write_text(
             '#import "kryon/geometry"\n'
             '#import "kryon/session"\n'

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Test fixtures lock against the exact Gitea Ziran the starter templates pin and this checkout's Kryon revision through one helper in tests/toolchain.py, overriding only Kryon, so checked packages lock in every fixture.
+
 - Measure native grid rows from each item’s available track width.
 
 - The app starter opts into the Material look preset in dark mode through a pinned CSS package revision that shares its Kryon, so its lock holds one Kryon; light mode keeps Kryon's default theme.

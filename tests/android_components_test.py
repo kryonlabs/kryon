@@ -7,7 +7,7 @@ import shlex
 import subprocess
 import time
 
-from toolchain import UI_MODULE_ARGS, ROOT, ZIRAN, ZIRAN_ROOT
+from toolchain import UI_MODULE_ARGS, ROOT, ZIRAN, ZIRAN_ROOT, pinned, kryon_only
 from android_soft_keyboard import soft_keyboard_text
 from android_png_probe import png_pixels, rgb
 
@@ -34,7 +34,7 @@ def run(command, **kw):
 if not a.skip_build:
     (project / 'src').mkdir(exist_ok=True)
     (project / 'assets').mkdir(exist_ok=True)
-    (project / 'ziran.toml').write_text('''[package]
+    (project / 'ziran.toml').write_text(pinned('''[package]
 name = "android_components"
 entry = "src/main.zi"
 module_roots = ["src"]
@@ -54,8 +54,8 @@ assets = "assets"
 package = "com.kryon.componenttest"
 abis = "armeabi-v7a"
 min_sdk = "21"
-''')
-    (project / 'ziran.local.toml').write_text(f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
+'''))
+    (project / 'ziran.local.toml').write_text(kryon_only(f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n'))
     run([ZIRAN, 'lock'])
     fixture = ROOT / 'tests/android_components'
     for name, defines in [('a-v1', []), ('b-v1', ['ANDROID_COMPONENT_B']),

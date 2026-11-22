@@ -16,7 +16,7 @@ import time
 import zlib
 from urllib.parse import urlsplit
 
-from toolchain import ZIRAN, ZIRAN_ROOT
+from toolchain import ZIRAN, ZIRAN_ROOT, pinned, kryon_only
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,21 +67,21 @@ def prepare_project():
     (PROJECT / 'assets/nested').mkdir()
     write_color_probe(PROJECT / 'assets/nested/duplicate.png',
                       b'\x1e\x3c\xdc\xff', b'\x00\x00\x00\x00')
-    (PROJECT / 'ziran.toml').write_text(
+    (PROJECT / 'ziran.toml').write_text(pinned(
         '[package]\nname = "canvas_no_webgl"\nentry = "src/app.zi"\n'
         'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
         '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\nref = "master"\n\n'
         '[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\nref = "master"\n\n'
         '[tool.kryon]\ndefault_profile = "web"\n\n'
         '[tool.kryon.profiles.web]\nbackend = "canvas"\nhost = "src/host.zi"\n'
-        'assets = "assets"\n')
+        'assets = "assets"\n'))
     (PROJECT / 'src/host.zi').write_text(
         'using App :: #import "app";\n'
         '#import "kryon/canvas_app_run"\n\n'
         '#program_export\n'
         'CanvasAppMain :: () -> s64 { return App.Main() }\n')
-    (PROJECT / 'ziran.local.toml').write_text(
-        '[overrides]\nkryon = "%s"\nziran = "%s"\n' % (ROOT, ZIRAN_ROOT))
+    (PROJECT / 'ziran.local.toml').write_text(kryon_only(
+        '[overrides]\nkryon = "%s"\nziran = "%s"\n' % (ROOT, ZIRAN_ROOT)))
     shutil.copyfile(ROOT / 'tests/canvas_no_webgl_app.zi',
                     PROJECT / 'src/app.zi')
     run([ZIRAN, 'lock'], PROJECT)

@@ -9,7 +9,7 @@ import subprocess
 import sys
 import time
 from PIL import Image
-from toolchain import UI_MODULE_ARGS, ROOT, ZIRAN_ROOT, ZIRAN
+from toolchain import UI_MODULE_ARGS, ROOT, ZIRAN_ROOT, ZIRAN, pinned, kryon_only
 
 OUTPUT = ROOT / 'build/test/cursor-api'
 ENV = dict(os.environ)
@@ -220,7 +220,7 @@ def main():
         image.paste(Image.new('RGBA',(768,768),(*colour,255)),(128,128))
         image.save(OUTPUT/f'assets/{name}.png')
     shutil.copyfile(ROOT/'tests/cursor_app.zi',OUTPUT/'src/app.zi')
-    (OUTPUT/'ziran.toml').write_text('''[package]
+    (OUTPUT/'ziran.toml').write_text(pinned('''[package]
 name = "cursor_probe"
 entry = "src/app.zi"
 module_roots = ["src"]
@@ -239,8 +239,8 @@ backend = "desktop"
 [tool.kryon.profiles.web]
 backend = "canvas"
 assets = "assets"
-''')
-    (OUTPUT/'ziran.local.toml').write_text(f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
+'''))
+    (OUTPUT/'ziran.local.toml').write_text(kryon_only(f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n'))
     run([ZIRAN,'lock'],OUTPUT)
     for profile in ('desktop','web'):
         run([ZIRAN,'tool','kryon','check','--profile',profile],OUTPUT)

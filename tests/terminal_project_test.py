@@ -9,7 +9,7 @@ import tempfile
 import time
 
 
-from toolchain import ZIRAN_ROOT
+from toolchain import ZIRAN_ROOT, pinned, kryon_only
 
 ROOT = Path(__file__).resolve().parents[1]
 ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
@@ -67,7 +67,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="kryon-terminal-") as directory:
         project = Path(directory)
         (project / "src").mkdir()
-        (project / "ziran.toml").write_text(
+        (project / "ziran.toml").write_text(pinned(
             '[package]\nname = "terminal_probe"\nentry = "src/app.zi"\n'
             'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
             '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
@@ -76,14 +76,14 @@ def main():
             'ref = "master"\n\n'
             '[tool.kryon]\ndefault_profile = "tui"\n\n'
             '[tool.kryon.profiles.tui]\nbackend = "terminal"\n'
-        )
+        ))
         overrides = {
             "kryon": str(ROOT),
             "ziran": str(ZIRAN_ROOT),
         }
-        (project / "ziran.local.toml").write_text(
+        (project / "ziran.local.toml").write_text(kryon_only(
             "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
-        )
+        ))
         (project / "src/app.zi").write_text(
             '#import "kryon/geometry"\n'
             '#import "kryon/input_protocol"\n'

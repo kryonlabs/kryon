@@ -5,7 +5,7 @@ import shutil
 import stat
 import subprocess
 import tomllib
-from toolchain import ZIRAN_ROOT
+from toolchain import ZIRAN_ROOT, pinned, kryon_only
 
 ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / 'build/scratch/native-assets-install'
@@ -50,12 +50,12 @@ assets = "assets"
 profile = "desktop"
 icon_name = "system-file-manager"
 '''
-    (project / 'ziran.toml').write_text(manifest)
+    (project / 'ziran.toml').write_text(pinned(manifest))
     overrides = {'kryon': ROOT, 'ziran': ZIRAN_ROOT}
     local = ROOT / 'ziran.local.toml'
     if local.exists():
         overrides.update({name: (ROOT / path).resolve() for name, path in tomllib.loads(local.read_text()).get('overrides', {}).items()})
-    (project / 'ziran.local.toml').write_text('[overrides]\n' + ''.join(f'{name} = "{path}"\n' for name, path in overrides.items()))
+    (project / 'ziran.local.toml').write_text(kryon_only('[overrides]\n' + ''.join(f'{name} = "{path}"\n' for name, path in overrides.items())))
     env = os.environ.copy()
     for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER', 'ICEAUTHORITY'):
         env.pop(name, None)
@@ -137,7 +137,7 @@ icon_name = "system-file-manager"
         shutil.move(project / 'assets-hidden', project / 'assets')
         shutil.move(Path(str(program) + '.assets-hidden'), Path(str(program) + '.assets'))
     # Removing the declaration and assets must retain assetsless build/install behavior.
-    (project / 'ziran.toml').write_text(manifest.replace('assets = "assets"\n', ''))
+    (project / 'ziran.toml').write_text(pinned(manifest.replace('assets = "assets"\n', '')))
     (project / 'src/host.zi').write_text('#program_export\nmain :: () -> s32 { return 0 }\n')
     run(ZIRAN, 'install', '--prefix', prefix)
     run(installed, cwd=neutral)

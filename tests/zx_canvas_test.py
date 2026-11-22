@@ -1,6 +1,6 @@
 """The same app.zx runs on desktop and through the browser VM renderer."""
 
-from toolchain import JS_RUNTIME
+from toolchain import JS_RUNTIME, pinned, kryon_only
 import os
 import re
 from pathlib import Path
@@ -21,7 +21,7 @@ source = ('#import "kryon/image_raster"\n'
 source = source.replace('    frames += 1', '    if startup_width != 32 || outside_width != 0 { return 1 }\n    frames += 1')
 (project / 'src/app.zi').write_text(source)
 solid_png(project / 'assets/red.png', 32, 32, (230, 30, 40, 255))
-(project / 'ziran.toml').write_text('''[package]
+(project / 'ziran.toml').write_text(pinned('''[package]
 name = "zx_canvas_probe"
 entry = "src/app.zi"
 module_roots = ["src"]
@@ -42,8 +42,8 @@ assets = "assets"
 backend = "canvas"
 codegen = "zx"
 assets = "assets"
-''')
-(project / 'ziran.local.toml').write_text(f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
+'''))
+(project / 'ziran.local.toml').write_text(kryon_only(f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n'))
 env = os.environ.copy()
 for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
     env.pop(name, None)

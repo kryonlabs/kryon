@@ -7,7 +7,7 @@ import sys
 import time
 
 from PIL import ImageGrab
-from toolchain import ROOT, ZIRAN_ROOT, ZIRAN
+from toolchain import ROOT, ZIRAN_ROOT, ZIRAN, pinned, kryon_only
 
 OUTPUT = ROOT / 'build/test/window-focus'
 APP = '''Box :: #import "kryon/box";
@@ -93,7 +93,7 @@ def main():
     OUTPUT.mkdir(parents=True,exist_ok=True)
     (OUTPUT/'src').mkdir(exist_ok=True)
     (OUTPUT/'src/app.zi').write_text(APP)
-    (OUTPUT/'ziran.toml').write_text('''[package]
+    (OUTPUT/'ziran.toml').write_text(pinned('''[package]
 name = "window_focus"
 entry = "src/app.zi"
 module_roots = ["src"]
@@ -116,8 +116,8 @@ backend = "desktop"
 [tool.kryon.profiles.portable]
 backend = "desktop"
 codegen = "zx"
-''')
-    (OUTPUT/'ziran.local.toml').write_text(f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
+'''))
+    (OUTPUT/'ziran.local.toml').write_text(kryon_only(f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n'))
     env = dict(os.environ)
     for key in ['DISPLAY','WAYLAND_DISPLAY','XAUTHORITY','DBUS_SESSION_BUS_ADDRESS','SESSION_MANAGER']: env.pop(key,None)
     env['YUE_DESKTOP_RECOVERY'] = '0'

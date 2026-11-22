@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
+from toolchain import ROOT, ZIRAN, ZIRAN_ROOT, pinned, kryon_only
 sys.path.insert(0, str(ZIRAN_ROOT / "scripts"))
 sys.path.insert(0, str(ROOT / "scripts"))
 from ziran_artifacts import Artifact
@@ -33,7 +33,7 @@ def codec_consumer(env):
     project = OUT / "consumer"
     project.mkdir(parents=True, exist_ok=True)
     pin = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ZIRAN_ROOT, text=True).strip()
-    (project / "ziran.toml").write_text(f'''[package]
+    (project / "ziran.toml").write_text(pinned(f'''[package]
 name = "android_codec_consumer"
 module_roots = ["."]
 [toolchain]
@@ -45,13 +45,13 @@ ref = "master"
 [tool.kryon.renderer]
 android_ndk = {json.dumps(str(NDK))}
 android_api = "21"
-''')
+'''))
     overrides = {"kryon": str(ROOT), "ziran": str(ZIRAN_ROOT)}
     for package in ("audio", "avif", "webp", "image_codec"):
         overrides[package] = subprocess.check_output(
             [str(ZIRAN), "pkg", "path", package, "--offline"], cwd=ROOT, env=env, text=True).strip()
-    (project / "ziran.local.toml").write_text("[overrides]\n" + "".join(
-        f"{name} = {json.dumps(path)}\n" for name, path in overrides.items()))
+    (project / "ziran.local.toml").write_text(kryon_only("[overrides]\n" + "".join(
+        f"{name} = {json.dumps(path)}\n" for name, path in overrides.items())))
     subprocess.run([str(ZIRAN), "lock", "--offline"], cwd=project, env=env, check=True, stdout=sys.stderr)
     return project
 

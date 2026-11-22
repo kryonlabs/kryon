@@ -9,7 +9,7 @@ import tempfile
 import time
 
 
-from toolchain import ZIRAN_ROOT
+from toolchain import ZIRAN_ROOT, pinned, kryon_only
 
 ROOT = Path(__file__).resolve().parents[1]
 ZIRAN = ZIRAN_ROOT / "build/bin/ziran"
@@ -72,7 +72,7 @@ def main():
         )
         run(["cc", "-c", "library.c", "-o", "build/library.o"], project)
         run(["ar", "rcs", "build/libdemo.a", "build/library.o"], project)
-        (project / "ziran.toml").write_text(
+        (project / "ziran.toml").write_text(pinned(
             '[package]\nname = "static_archive_probe"\n'
             'entry = "src/app.zi"\nmodule_roots = ["src"]\n'
             'bridge_modules = ["app"]\n\n'
@@ -83,15 +83,15 @@ def main():
             '[tool.kryon]\ndefault_profile = "tui"\n\n'
             '[tool.kryon.profiles.tui]\nbackend = "terminal"\n'
             'codegen = "c99"\nstatic_archive = "build/escape.a"\n'
-        )
+        ))
         overrides = {
             "kryon": str(ROOT),
             "ziran": str(ZIRAN_ROOT),
         }
-        (project / "ziran.local.toml").write_text(
+        (project / "ziran.local.toml").write_text(kryon_only(
             "[overrides]\n"
             + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
-        )
+        ))
         (project / "src/app.zi").write_text(
             '#import "kryon/geometry"\n'
             '#import "kryon/session"\n'
@@ -111,11 +111,11 @@ def main():
         expect_failure(
             [str(ZIRAN), "tool", "kryon", "build", "--profile", "tui"], project
         )
-        (project / "ziran.toml").write_text(
+        (project / "ziran.toml").write_text(pinned(
             (project / "ziran.toml").read_text().replace(
                 "build/escape.a", "build/libdemo.a"
             )
-        )
+        ))
         run([str(ZIRAN), "tool", "kryon", "build", "--profile", "tui"], project)
         request_exit(project / "build/static_archive_probe-tui", project, 77)
     print("Kryon project static archive link passed")

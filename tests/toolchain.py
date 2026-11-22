@@ -30,23 +30,59 @@ def chromium_temp_directory():
     return tempfile.TemporaryDirectory(prefix="kr-", dir="/var/tmp" if os.path.isdir("/var/tmp") else "/tmp")
 
 
-def kryon_test_project(directory):
+def fixture_identity():
+    """The [toolchain] and [dependencies.kryon] tables of a fixture project:
+    the exact Gitea Ziran the starter templates pin, which Kryon's checked
+    packages lock against, and this checkout's revision of Kryon."""
+    import tomllib
+    toolchain = tomllib.loads((ROOT / "templates/app/ziran.toml").read_text())["toolchain"]
+    revision = subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"],
+                                       cwd=ROOT, text=True).strip()
+    return (f'[toolchain]\ngit = "{toolchain["git"]}"\nref = "{toolchain["ref"]}"\n'
+            f'[dependencies.kryon]\ngit = "https://git.waozi.xyz/kryonlabs/kryon.git"\n'
+            f'ref = "{revision}"\n')
+
+
+def fixture_overrides(package_overrides=()):
+    """A fixture's ziran.local.toml: this Kryon checkout and any packages under
+    test. Ziran stays the pinned toolchain; a local toolchain override would
+    not match the checked package metadata."""
+    overrides = (("kryon", ROOT), *package_overrides)
+    return "[overrides]\n" + "".join(
+        name + " = " + json.dumps(str(path)) + "\n" for name, path in overrides)
+
+
+def pinned(manifest):
+    """MANIFEST with its [toolchain] and [dependencies.kryon] tables replaced
+    by fixture_identity(), wherever the fixture declared them."""
+    kept = []
+    table = ""
+    for line in manifest.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("["):
+            table = stripped
+            if table in ("[toolchain]", "[dependencies.kryon]"):
+                continue
+        if table in ("[toolchain]", "[dependencies.kryon]") and stripped.split("=")[0].strip() in ("git", "ref"):
+            continue
+        kept.append(line)
+    return "\n".join(kept).rstrip("\n") + "\n" + fixture_identity()
+
+
+def kryon_only(overrides):
+    """A fixture's ziran.local.toml text without its ziran line: checked
+    packages lock only against the pinned toolchain, never a local one."""
+    return "".join(line + "\n" for line in overrides.splitlines()
+                   if line.replace(" ", "").split("=")[0] != "ziran")
+
+
+def kryon_test_project(directory, package_overrides=()):
     """Resolve an ordinary consumer fixture against the canonical local packages."""
     directory = Path(directory)
     (directory / "src").mkdir(parents=True, exist_ok=True)
-    (directory / "ziran.toml").write_text("""[package]
-name = "kryon_test_fixture"
-module_roots = ["src"]
-[toolchain]
-git = "https://github.com/ziranlang/ziran.git"
-ref = "master"
-[dependencies.kryon]
-git = "https://github.com/kryonlabs/kryon.git"
-ref = "master"
-""")
-    overrides = (("kryon", ROOT), ("ziran", ZIRAN_ROOT))
-    (directory / "ziran.local.toml").write_text("[overrides]\n" + "".join(
-        name + " = " + json.dumps(str(path)) + "\n" for name, path in overrides))
+    (directory / "ziran.toml").write_text(
+        '[package]\nname = "kryon_test_fixture"\nmodule_roots = ["src"]\n' + fixture_identity())
+    (directory / "ziran.local.toml").write_text(fixture_overrides(package_overrides))
     subprocess.run([str(ZIRAN), "lock", "--offline"], cwd=directory, check=True)
     packages = json.loads((directory / "ziran.lock").read_text())["packages"]
     return next(package["id"] for package in packages if package["name"] == "kryon")

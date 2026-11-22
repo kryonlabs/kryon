@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Owned asset audio: real native decoder/device, source + saved IR, hosted VM."""
 
-from toolchain import JS_RUNTIME
+from toolchain import JS_RUNTIME, pinned, kryon_only
 import argparse
 import json
 import os
@@ -123,10 +123,10 @@ def main():
     guest = consumer / 'src/media_audio_guest.zi'
     shutil.copyfile(ROOT / 'tests/media_audio_guest.zi', guest)
     shutil.copyfile(ROOT / 'tests/pcm_audio_behavior.zi', consumer / 'src/pcm_audio_behavior.zi')
-    (consumer / 'ziran.toml').write_text('[package]\nname = "audio_consumer"\nmodule_roots = ["src"]\n[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\nref = "master"\n[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\nref = "master"\n')
-    (consumer / 'ziran.local.toml').write_text('[overrides]\n' + ''.join(
+    (consumer / 'ziran.toml').write_text(pinned('[package]\nname = "audio_consumer"\nmodule_roots = ["src"]\n[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\nref = "master"\n[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\nref = "master"\n'))
+    (consumer / 'ziran.local.toml').write_text(kryon_only('[overrides]\n' + ''.join(
         name + ' = ' + json.dumps(str(path)) + '\n'
-        for name, path in [('kryon', ROOT), ('ziran', ZIRAN_ROOT), ('audio', audio)]))
+        for name, path in [('kryon', ROOT), ('ziran', ZIRAN_ROOT), ('audio', audio)])))
     run([ZIRAN, 'lock', '--offline'], cwd=consumer)
     host = ROOT / 'tests/media_audio_host_test.zi'
     for fake in (False, True):

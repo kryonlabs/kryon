@@ -14,7 +14,7 @@ import tempfile
 from image_test_tools import run
 
 
-from toolchain import ZIRAN_ROOT
+from toolchain import ZIRAN_ROOT, pinned, kryon_only
 
 ROOT = Path(__file__).resolve().parents[1]
 ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
@@ -128,7 +128,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="kryon-window-") as directory:
         project = Path(directory)
         (project / "src").mkdir()
-        (project / "ziran.toml").write_text(
+        (project / "ziran.toml").write_text(pinned(
             '[package]\nname = "window_probe"\nentry = "src/app.zi"\n'
             'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
             '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
@@ -138,11 +138,11 @@ def main():
             '[tool.kryon]\ndefault_profile = "desktop"\n\n'
             '[tool.kryon.profiles.desktop]\nbackend = "desktop"\n\n'
             '[tool.kryon.profiles.tui]\nbackend = "terminal"\n'
-        )
-        (project / "ziran.local.toml").write_text(
+        ))
+        (project / "ziran.local.toml").write_text(kryon_only(
             f'[overrides]\nKryon = "{ROOT}"\n'
             f'ziran = "{ZIRAN_ROOT}"\n'
-        )
+        ))
         (project / "src/app.zi").write_text(APP)
         (project / "driver.py").write_text(DRIVER)
         env = private_environment()

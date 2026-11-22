@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
-from toolchain import ROOT,ZIRAN,ZIRAN_ROOT
+from toolchain import ROOT, ZIRAN, ZIRAN_ROOT, pinned, kryon_only
 from image_packages import image_module_args
 spec=importlib.util.spec_from_file_location('renderer_artifact',ROOT/'scripts/renderer_artifact.py')
 renderer=importlib.util.module_from_spec(spec);spec.loader.exec_module(renderer)
@@ -21,7 +21,7 @@ def run(command,cwd=None,extra=None):
 
 def main():
     WORK.mkdir(parents=True,exist_ok=True)
-    (WORK/'ziran.toml').write_text('''[package]
+    (WORK/'ziran.toml').write_text(pinned('''[package]
 name = "avif_artifact_consumer"
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
@@ -29,11 +29,11 @@ ref = "master"
 [dependencies.kryon]
 git = "https://github.com/kryonlabs/kryon.git"
 ref = "master"
-''')
+'''))
     packages=[('kryon',ROOT),('ziran',ZIRAN_ROOT)]
     packages.extend((name,run([ZIRAN,'pkg','path',name],cwd=ROOT))
                     for name in ('avif','webp','image_codec'))
-    (WORK/'ziran.local.toml').write_text('[overrides]\n'+''.join(f'{name} = {json.dumps(str(path))}\n' for name,path in packages))
+    (WORK/'ziran.local.toml').write_text(kryon_only('[overrides]\n'+''.join(f'{name} = {json.dumps(str(path))}\n' for name,path in packages)))
     run([ZIRAN,'lock','--offline'])
     helper=ZIRAN_ROOT/'scripts/ziran_artifacts.py'
     spec=importlib.util.spec_from_file_location('ziran_artifacts',helper)

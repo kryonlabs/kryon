@@ -17,7 +17,7 @@ import subprocess
 import sys
 import tempfile
 
-from toolchain import JS_RUNTIME, ZIRAN, ZIRAN_ROOT
+from toolchain import JS_RUNTIME, ZIRAN, ZIRAN_ROOT, pinned, kryon_only
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV = dict(os.environ)
@@ -91,10 +91,10 @@ def manifest(name, entry):
 
 def project_from(directory, name, example):
     (directory / "src").mkdir(parents=True)
-    (directory / "ziran.toml").write_text(manifest(name, example))
-    (directory / "ziran.local.toml").write_text(
+    (directory / "ziran.toml").write_text(pinned(manifest(name, example)))
+    (directory / "ziran.local.toml").write_text(kryon_only(
         f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n'
-    )
+    ))
     shutil.copyfile(ROOT / "examples" / example, directory / "src" / example)
     run([ZIRAN, "lock"], directory)
 

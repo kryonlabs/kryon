@@ -17,7 +17,7 @@ import shutil
 import subprocess
 import time
 
-from toolchain import ZIRAN, ZIRAN_ROOT
+from toolchain import ZIRAN, ZIRAN_ROOT, pinned, kryon_only
 import avif_firefox_test as harness
 from cursor_browser import Browser
 
@@ -105,15 +105,15 @@ def build():
     project = WORK / 'project'
     shutil.rmtree(project, ignore_errors=True)
     (project / 'src').mkdir(parents=True)
-    (project / 'ziran.toml').write_text(
+    (project / 'ziran.toml').write_text(pinned(
         '[package]\nname = "simd_probe"\nentry = "src/app.zi"\n'
         'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
         '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\nref = "master"\n\n'
         '[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\nref = "master"\n\n'
         '[tool.kryon]\ndefault_profile = "web"\n\n'
-        '[tool.kryon.profiles.web]\nbackend = "canvas"\n')
-    (project / 'ziran.local.toml').write_text(
-        f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
+        '[tool.kryon.profiles.web]\nbackend = "canvas"\n'))
+    (project / 'ziran.local.toml').write_text(kryon_only(
+        f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n'))
     (project / 'src/app.zi').write_text(APP)
     for command in ([ZIRAN, 'lock'], [ZIRAN, 'tool', 'kryon', 'build', '--profile', 'web']):
         subprocess.run(list(map(str, command)), cwd=project, env=ENV, check=True, timeout=1200)

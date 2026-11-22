@@ -18,7 +18,7 @@ import time
 import zlib
 
 from image_test_tools import png_pixels, run
-from toolchain import ZIRAN_ROOT
+from toolchain import ZIRAN_ROOT, pinned, kryon_only
 
 ROOT = Path(__file__).resolve().parents[1]
 ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
@@ -277,18 +277,18 @@ def main():
     with tempfile.TemporaryDirectory(prefix="kryon-clipboard-image-") as directory:
         project = Path(directory)
         (project / "src").mkdir()
-        (project / "ziran.toml").write_text(
+        (project / "ziran.toml").write_text(pinned(
             '[package]\nname = "clipboard_probe"\nentry = "src/app.zi"\n'
             'module_roots = ["src"]\n\n'
             '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
             'ref = "master"\n\n'
             '[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
             'ref = "master"\n'
-        )
+        ))
         overrides = {"kryon": str(ROOT), "ziran": str(ZIRAN_ROOT)}
-        (project / "ziran.local.toml").write_text(
+        (project / "ziran.local.toml").write_text(kryon_only(
             "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
-        )
+        ))
         (project / "src/app.zi").write_text(APP)
         env = private_environment()
         run([ZIRAN, "lock"], project, env)

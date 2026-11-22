@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
+from toolchain import ROOT, ZIRAN, ZIRAN_ROOT, pinned, kryon_only
 
 sys.path.insert(0, str(ZIRAN_ROOT / 'scripts'))
 sys.path.insert(0, str(ROOT / 'scripts'))
@@ -21,7 +21,7 @@ def main():
     for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
         env.pop(key, None)
     env['YUE_DESKTOP_RECOVERY'] = '0'
-    (project / 'ziran.toml').write_text('''[package]
+    (project / 'ziran.toml').write_text(pinned('''[package]
 name = "desktop_codec_consumer"
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
@@ -29,13 +29,13 @@ ref = "master"
 [dependencies.kryon]
 git = "https://github.com/kryonlabs/kryon.git"
 ref = "master"
-''')
+'''))
     overrides = {'kryon': str(ROOT), 'ziran': str(ZIRAN_ROOT)}
     for package in ('audio', 'avif', 'webp', 'image_codec'):
         overrides[package] = subprocess.check_output(
             [str(ZIRAN), 'pkg', 'path', package, '--offline'], cwd=ROOT, env=env, text=True).strip()
-    (project / 'ziran.local.toml').write_text('[overrides]\n' + ''.join(
-        f'{name} = {json.dumps(path)}\n' for name, path in overrides.items()))
+    (project / 'ziran.local.toml').write_text(kryon_only('[overrides]\n' + ''.join(
+        f'{name} = {json.dumps(path)}\n' for name, path in overrides.items())))
     subprocess.run([str(ZIRAN), 'lock', '--offline'], cwd=project, env=env, check=True)
     descriptor = Path(subprocess.check_output([str(ZIRAN), 'pkg', 'artifact',
         'kryon:renderer-desktop', '--platform', 'linux-x86_64-gnu', '--offline'],

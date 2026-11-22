@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-from toolchain import ZIRAN, ZIRAN_ROOT
+from toolchain import ZIRAN, ZIRAN_ROOT, pinned, kryon_only
 
 ROOT=Path(__file__).resolve().parents[1]
 env=dict(os.environ)
@@ -20,12 +20,12 @@ for backend in ('canvas',):
     (project/'src').mkdir(parents=True,exist_ok=True)
     (project/'assets').mkdir(exist_ok=True)
     (project/'src/app.zi').write_bytes((ROOT/'tests/fixtures/rotated_text.zi').read_bytes())
-    (project/'ziran.toml').write_text(
+    (project/'ziran.toml').write_text(pinned(
         '[package]\nname="text_rotation"\nentry="src/app.zi"\nmodule_roots=["src"]\nbridge_modules=["app"]\n'
         '[toolchain]\ngit="https://github.com/ziranlang/ziran.git"\nref="master"\n'
         '[dependencies.kryon]\ngit="https://github.com/kryonlabs/kryon.git"\nref="master"\n'
-        '[tool.kryon.profiles.web]\nbackend="'+backend+'"\nassets="assets"\n')
-    (project/'ziran.local.toml').write_text('[overrides]\nkryon="'+str(ROOT)+'"\nziran="'+str(ZIRAN_ROOT)+'"\n')
+        '[tool.kryon.profiles.web]\nbackend="'+backend+'"\nassets="assets"\n'))
+    (project/'ziran.local.toml').write_text(kryon_only('[overrides]\nkryon="'+str(ROOT)+'"\nziran="'+str(ZIRAN_ROOT)+'"\n'))
     def run(args):
         subprocess.run(list(map(str,args)),cwd=project,env=env,check=True,timeout=600)
     run([ZIRAN,'lock'])

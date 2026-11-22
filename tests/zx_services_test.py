@@ -1,6 +1,6 @@
 """Run one service-bearing ZX on native and browser players, with local HTTP."""
 
-from toolchain import JS_RUNTIME
+from toolchain import JS_RUNTIME, pinned, kryon_only
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import argparse
 import json
@@ -57,7 +57,7 @@ base = f'http://127.0.0.1:{server.server_port}'
 (project / 'src/service_urls.zi').write_text('ServiceKeepOpen :: () -> bool { return ' + str(bool(args.android_serial)).lower() + ' }\n' + ''.join(
     f'{name} :: {json.dumps(base + suffix)};\n'
     for name, suffix in [('TEXT_URL', '/text'), ('AUDIO_URL', '/tone.wav'), ('MISSING_URL', '/missing')]))
-(project / 'ziran.toml').write_text('''[package]
+(project / 'ziran.toml').write_text(pinned('''[package]
 name = "service_probe"
 entry = "src/app.zi"
 module_roots = ["src"]
@@ -72,10 +72,10 @@ ref = "master"
 backend = "desktop"
 codegen = "zx"
 assets = "assets"
-''')
-(project / 'ziran.local.toml').write_text(
+'''))
+(project / 'ziran.local.toml').write_text(kryon_only(
     '[overrides]\n' + ''.join(f'{name} = {json.dumps(str(path))}\n'
-                             for name, path in [('kryon', ROOT), ('ziran', ZIRAN_ROOT)]))
+                             for name, path in [('kryon', ROOT), ('ziran', ZIRAN_ROOT)])))
 env = os.environ.copy()
 for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
     env.pop(key, None)

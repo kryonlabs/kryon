@@ -1,6 +1,6 @@
 """Build standalone AppContext ZXs and exercise browser app persistence."""
 
-from toolchain import JS_RUNTIME
+from toolchain import JS_RUNTIME, pinned, kryon_only
 import json
 import os
 import subprocess
@@ -15,7 +15,7 @@ project = output / 'project'
 (project / 'assets').mkdir(exist_ok=True)
 (project / 'src/app.zi').write_text((ROOT / 'tests/zx/hosted.zi').read_text())
 solid_png(project / 'assets/red.png', 32, 32, (230, 30, 40, 255))
-(project / 'ziran.toml').write_text('''[package]
+(project / 'ziran.toml').write_text(pinned('''[package]
 name = "hosted_probe"
 module_roots = ["src"]
 [toolchain]
@@ -24,9 +24,9 @@ ref = "master"
 [dependencies.kryon]
 git = "https://github.com/kryonlabs/kryon.git"
 ref = "master"
-''')
-(project / 'ziran.local.toml').write_text('[overrides]\n' + ''.join(
-    f'{name} = {json.dumps(str(path))}\n' for name, path in [('kryon', ROOT), ('ziran', ZIRAN_ROOT)]))
+'''))
+(project / 'ziran.local.toml').write_text(kryon_only('[overrides]\n' + ''.join(
+    f'{name} = {json.dumps(str(path))}\n' for name, path in [('kryon', ROOT), ('ziran', ZIRAN_ROOT)])))
 env = os.environ.copy()
 for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
     env.pop(key, None)
