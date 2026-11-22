@@ -581,7 +581,7 @@ PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string)
     return 0
 }
 
-KryonTemplates :: "https://github.com/kryonlabs/kryon.git";
+KryonTemplates :: "https://git.waozi.xyz/kryonlabs/kryon.git";
 
 // A bare template name is one of Kryon's; anything else names its own
 // package, as ziran new does.
@@ -660,33 +660,64 @@ FrontDoor :: (command_line: string, verb: string) -> s32 {
             index += 1
         }
     }
-    Execute(args[0:used])
-    return Error("cannot run ziran; install it with make install-user in the Ziran repository")
+    if verb != "init" {
+        Execute(args[0:used])
+        return Error("cannot run ziran; install it with make install-user in the Ziran repository")
+    }
+    // init keeps an existing [toolchain]; Kryon's checked packages lock
+    // only against the exact toolchain its templates pin.
+    status := RunChild(args[0:used])
+    if status == 127 { return Error("cannot run ziran; install it with make install-user in the Ziran repository") }
+    if status != 0 {
+        unused Error("if ziran lock refused checked package metadata, set [toolchain] ref in ziran.toml to the exact commit the template has (printed above), then run ziran lock")
+    }
+    return status
 }
 
 #program_export
-main :: () -> s32 {
+main :: (argc: s32, argv: **u8) -> s32 {
+    // Rebuild the NUL-separated command line from argv: restricted
+    // sandboxes deny /proc, and the kernel already provides the arguments.
     command_bytes: [8192]u8
-    command_line: FileContents = ReadFile("/proc/self/cmdline", command_bytes[:])
-    if !command_line.ok { return Error("cannot read command arguments") }
-    verb: string = ArgumentAt(command_line.text, 1)
-    if verb == "artifact" { return RendererArtifact(command_line.text) }
+    used: s32 = 0
+    index: s32 = 0
+    while index < argc {
+        argument: *u8 = argv[index]
+        at: s32 = 0
+        while argument[at] != cast(u8)0 {
+            if used >= cast(s32)command_bytes.count {
+                return Error("command line too long")
+            }
+            command_bytes[used] = argument[at]
+            used += 1
+            at += 1
+        }
+        if used >= cast(s32)command_bytes.count {
+            return Error("command line too long")
+        }
+        command_bytes[used] = cast(u8)0
+        used += 1
+        index += 1
+    }
+    command_line: string = TextFromBuffer(command_bytes[:], used)
+    verb: string = ArgumentAt(command_line, 1)
+    if verb == "artifact" { return RendererArtifact(command_line) }
     if verb == "help" || verb == "--help" || verb == "-h" || verb == "" {
         return Usage()
     }
     preview: PreviewOptions
     if verb == "preview" {
-        if ArgumentCount(command_line.text) == 3 &&
-        (ArgumentAt(command_line.text, 2) == "--help" || ArgumentAt(command_line.text, 2) == "-h") {
+        if ArgumentCount(command_line) == 3 &&
+        (ArgumentAt(command_line, 2) == "--help" || ArgumentAt(command_line, 2) == "-h") {
             return PreviewUsage()
         }
-        preview = ParsePreview(command_line.text)
+        preview = ParsePreview(command_line)
         if preview.error != "" { return Error(preview.error) }
     }
-    bundle_path := ArgumentAt(command_line.text, 2)
+    bundle_path := ArgumentAt(command_line, 2)
     if verb == "run" && bundle_path.count >= 3 &&
     bundle_path[bundle_path.count - 3:bundle_path.count] == ".zx" {
-        if ArgumentCount(command_line.text) != 3 { return Error("usage: kryon run FILE.zx") }
+        if ArgumentCount(command_line) != 3 { return Error("usage: kryon run FILE.zx") }
         args: [3]string = .{"ziran", "run", bundle_path}
         return Execute(args[:])
     }
@@ -696,28 +727,28 @@ main :: () -> s32 {
     }
     options_path_bytes: [4096]u8
     options_path: string = Environment("ZIRAN_TOOL_OPTIONS", options_path_bytes[:])
-    if options_path == "" { return FrontDoor(command_line.text, verb) }
+    if options_path == "" { return FrontDoor(command_line, verb) }
     if verb == "new" || verb == "init" {
         return Error("kryon new and init start projects; run them outside ziran tool")
     }
     profile_name: string = ""
-    option: string = ArgumentAt(command_line.text, 2)
+    option: string = ArgumentAt(command_line, 2)
     if verb == "preview" {
         profile_name = preview.profile
     } else if option == "--profile" {
-        profile_name = ArgumentAt(command_line.text, 3)
-        if profile_name == "" || ArgumentAt(command_line.text, 4) != "" {
+        profile_name = ArgumentAt(command_line, 3)
+        if profile_name == "" || ArgumentAt(command_line, 4) != "" {
             return Error("expected exactly one profile name")
         }
     } else if ProjectStarts(option, "--profile=") {
         profile_name = option[10:cast(s32)option.count]
-        if profile_name == "" || ArgumentAt(command_line.text, 3) != "" {
+        if profile_name == "" || ArgumentAt(command_line, 3) != "" {
             return Error("expected exactly one profile name")
         }
     } else if option != "" && option[0] != cast(u8)45 && verb != "profiles" {
         // kryon run desktop
         profile_name = option
-        if ArgumentAt(command_line.text, 3) != "" {
+        if ArgumentAt(command_line, 3) != "" {
             return Error("expected exactly one profile name")
         }
     } else if option != "" {

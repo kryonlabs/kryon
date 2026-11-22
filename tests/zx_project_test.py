@@ -7,6 +7,7 @@ import shlex
 import subprocess
 import sys
 import time
+import tomllib
 
 from toolchain import ROOT, ZIRAN_ROOT, ZIRAN
 from image_test_tools import png_pixels, rgb, solid_png
@@ -97,7 +98,13 @@ def main():
     project.mkdir(exist_ok=True)
     (project / "src").mkdir(exist_ok=True)
     shutil.copyfile(ROOT / "tests/zx/app.zi", project / "src/app.zi")
-    (project / "ziran.toml").write_text('''[package]
+    # Resolve checked dependencies against the toolchain Kryon pins. The
+    # current Kryon checkout still supplies the source under test.
+    toolchain = tomllib.loads((ROOT / "ziran.toml").read_text())["toolchain"]
+    revision = subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"],
+                                       cwd=ROOT, text=True).strip()
+    local_overrides = f'[overrides]\nkryon = {json.dumps(str(ROOT))}\n'
+    (project / "ziran.toml").write_text(f'''[package]
 name = "zx_probe"
 tool = "kryon"
 entry = "src/app.zi"
@@ -106,11 +113,11 @@ bridge_modules = ["app"]
 [install]
 bin = "zx_probe"
 [toolchain]
-git = "https://github.com/ziranlang/ziran.git"
-ref = "master"
+git = {json.dumps(toolchain["git"])}
+ref = {json.dumps(toolchain["ref"])}
 [dependencies.kryon]
-git = "https://github.com/kryonlabs/kryon.git"
-ref = "master"
+git = "https://git.waozi.xyz/kryonlabs/kryon.git"
+ref = {json.dumps(revision)}
 [tool.kryon]
 default_profile = "portable"
 [tool.kryon.profiles.portable]
@@ -120,8 +127,7 @@ assets = "assets"
 [tool.kryon.profiles.desktop]
 backend = "desktop"
 ''')
-    (project / "ziran.local.toml").write_text(
-        f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
+    (project / "ziran.local.toml").write_text(local_overrides)
     (project / "assets").mkdir(exist_ok=True)
     solid_png(project / "assets/red.png", 32, 32, (230, 30, 40, 255))
     run([ZIRAN, "lock"], project, env)
@@ -229,7 +235,7 @@ backend = "desktop"
     templates = OUTPUT / "templates"
     templates.mkdir(exist_ok=True)
     overrides = OUTPUT / "overrides.toml"
-    overrides.write_text(f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
+    overrides.write_text(local_overrides)
     for template in ("app", "tui", "pages", "web"):
         name = "demo-" + template
         app = templates / name

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `kryon new` and `kryon init` take templates from the Gitea origin, and every starter pins exact Gitea Ziran and Kryon revisions, so a new app locks and builds with checked packages. `kryon init` explains a kept floating toolchain when the lock refuses it.
+
+- The kryon project tool reads its command line from argv directly, so restricted sandboxes without procfs can run Kryon builds.
+
 - Add miniature workspace tiles with real window geometry and symmetric centered panel bands.
 
 - Share Sweet dark window chrome and compact dark panel style tokens across native and ZX applications.

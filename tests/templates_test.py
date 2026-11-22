@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import tomllib
 
 
 from toolchain import ZIRAN_ROOT
@@ -29,8 +30,7 @@ def environment(work):
     # The projects and their build outputs are temporary. Reuse the prepared
     # package cache so their first lock can reuse the same dependency sources.
     # Install local checkout overrides before any template is locked.
-    overrides = (f'[overrides]\nziran = "{ZIRAN_ROOT}"\n'
-                 f'Kryon = "{ROOT}"\n')
+    overrides = f'[overrides]\nKryon = "{ROOT}"\n'
     (work / "overrides.toml").write_text(overrides)
     return env
 
@@ -94,6 +94,12 @@ def main():
         # the package keeps its own entry and gains the window's.
         run(["ziran", "new", "tool", "--overrides", work / "overrides.toml"], work, env)
         tool = work / "tool"
+        # init keeps the package's toolchain, and Kryon's checked packages
+        # lock only against the exact one the templates pin.
+        pinned = tomllib.loads((ROOT / "templates/tui/ziran.toml").read_text())["toolchain"]["ref"]
+        manifest = (tool / "ziran.toml").read_text()
+        assert 'ref = "master"' in manifest, manifest
+        (tool / "ziran.toml").write_text(manifest.replace('ref = "master"', f'ref = "{pinned}"'))
         merged = run([KRYON, "init", "--template", "tui"], tool, env)
         assert 'kept entry = "src/main.zi" in [package]' in merged, merged
         manifest = (tool / "ziran.toml").read_text()
