@@ -132,6 +132,53 @@ FlexAnswer :: () -> s32 {
     return 42
 }
 
+Leaf :: (session: Session, key: s32, width: float32, height: float32) -> Rectangle {
+    node := TreeSubmitCurrent(session, cast(u64)key, WidgetKindText, Rectangle.{0.0, 0.0, width, height})
+    return TreeSubmittedBounds(session, node)
+}
+
+// Containers without a height size to the children they place.
+ContentAnswer :: () -> s32 {
+    session := TestSession()
+    root: Rectangle = .{0.0, 0.0, 200.0, 300.0}
+    TreeStart(session, cast(u64)401, root)
+    outer := Layout.Draw(session, Layout.Props.{.key = 402, .bounds = root, .gap = 4, .gap_override = true,
+        .padding_override = true})
+    column := Layout.Draw(session, Layout.Props.{.key = 403, .gap = 2, .gap_override = true,
+        .padding = 3, .padding_override = true})
+    if !outer.opened || !column.opened || column.bounds.height != 0.0 { return -30 }
+    unused Leaf(session, 404, 10.0, 12.0)
+    unused Leaf(session, 405, 10.0, 8.0)
+    row := Layout.Row(session, Layout.Props.{.key = 406, .gap = 5, .gap_override = true,
+        .padding_override = true})
+    unused Leaf(session, 407, 20.0, 10.0)
+    right := Leaf(session, 408, 20.0, 16.0)
+    if !row.opened || right.x != 28.0 || right.y != 27.0 || !End(session) ||
+        TreeSubmittedBounds(session, row.node).height != 16.0 { return -31 }
+    if Leaf(session, 409, 10.0, 6.0).y != 45.0 || !End(session) ||
+        TreeSubmittedBounds(session, column.node).height != 54.0 { return -32 }
+    if Leaf(session, 410, 10.0, 10.0).y != 58.0 { return -33 }
+    grid := Layout.Grid(session, GridProps.{.key = 411, .columns = 2, .gap = 6, .padding_override = true})
+    unused Leaf(session, 412, 0.0, 20.0)
+    cell := Layout.Draw(session, Layout.Props.{.key = 413, .padding_override = true})
+    if !grid.container.opened || !cell.opened || cell.bounds.x != 103.0 || cell.bounds.width != 97.0 { return -34 }
+    unused Leaf(session, 414, 10.0, 30.0)
+    if !End(session) { return -35 }
+    Layout.GridSpan(session, grid.container, -1)
+    wide := Leaf(session, 415, 0.0, 10.0)
+    if wide.y != 108.0 || wide.width != 200.0 || !End(session) ||
+        TreeSubmittedBounds(session, grid.container.node).height != 46.0 { return -36 }
+    flow := Layout.Flow(session, Layout.Props.{.key = 416, .gap = 4, .gap_override = true,
+        .padding_override = true})
+    unused Leaf(session, 417, 120.0, 10.0)
+    second := Leaf(session, 418, 70.0, 14.0)
+    third := Leaf(session, 419, 90.0, 8.0)
+    if !flow.opened || second.x != 124.0 || second.y != 122.0 || third.x != 0.0 || third.y != 140.0 ||
+        !End(session) || TreeSubmittedBounds(session, flow.node).height != 26.0 { return -37 }
+    if !End(session) || !TreeFinish(session) { return -38 }
+    return 42
+}
+
 #program_export
 Answer :: () -> s32 {
     root: Rectangle = Rectangle.{0.0, 0.0, 300.0, 200.0}
@@ -149,18 +196,10 @@ Answer :: () -> s32 {
     column: Layout.LayoutContainer = Layout.Draw(TestSession(), props)
     if !column.opened || column.node != 2 ||
         column.content.width != 290.0 { return -2 }
-    empty: Rectangle
-    first: Rectangle = Layout.ColumnChildBounds(column, empty,
-        Rectangle.{0.0, 0.0, 0.0, 12.0}, 0, 0.0)
-    second: Rectangle = Layout.ColumnChildBounds(column, empty,
-        Rectangle.{0.0, 0.0, 20.0, 20.0}, 1, 12.0)
-    if first.x != 5.0 || first.y != 5.0 ||
-        first.width != 290.0 || first.height != 12.0 ||
-        second.x != 5.0 || second.y != 21.0 ||
-        second.width != 20.0 { return -3 }
-    if TreeSubmitCurrent(TestSession(), cast(u64)12, WidgetKindText, first) != 3 {
-        return -4
-    }
+    first := TreeSubmitCurrent(TestSession(), cast(u64)12, WidgetKindText, Rectangle.{0.0, 0.0, 0.0, 12.0})
+    placed := TreeSubmittedBounds(TestSession(), first)
+    if first != 3 || placed.x != 5.0 || placed.y != 5.0 ||
+        placed.width != 290.0 || placed.height != 12.0 { return -3 }
     props.key = cast(u64)13
     props.bounds = Rectangle.{5.0, 21.0, 200.0, 40.0}
     props.gap = 0
@@ -168,12 +207,12 @@ Answer :: () -> s32 {
     row: Layout.LayoutContainer = Layout.Row(TestSession(), props)
     if !row.opened || row.node != 4 ||
         row.kind != WidgetKindRow { return -5 }
-    item: Rectangle = Layout.RowChildBounds(row, empty,
-        Rectangle.{0.0, 0.0, 20.0, 0.0}, 0, 0.0)
-    if item.x != 5.0 || item.y != 21.0 ||
-        item.height != 40.0 ||
-        TreeSubmitCurrent(TestSession(), cast(u64)14, WidgetKindImage, item) != 5 ||
+    image := TreeSubmitCurrent(TestSession(), cast(u64)14, WidgetKindImage, Rectangle.{0.0, 0.0, 20.0, 0.0})
+    placed = TreeSubmittedBounds(TestSession(), image)
+    if image != 5 || placed.x != 5.0 || placed.y != 21.0 || placed.height != 40.0 ||
         !End(TestSession()) || !End(TestSession()) { return -6 }
+    // Children at explicit coordinates stay out of the content size.
+    if TreeSubmittedBounds(TestSession(), column.node).height != 22.0 { return -4 }
 
     grid_props: GridProps
     grid_props.key = cast(u64)15
@@ -200,11 +239,11 @@ Answer :: () -> s32 {
     props.gap = 0
     props.padding = 3
     stack: Layout.LayoutContainer = Layout.Stack(TestSession(), props)
-    item = Layout.StackChildBoundsFor(stack, empty, empty)
-    if !stack.opened || stack.node != 9 ||
+    fill := TreeSubmitCurrent(TestSession(), cast(u64)19, WidgetKindBox, Rectangle.{})
+    item := TreeSubmittedBounds(TestSession(), fill)
+    if !stack.opened || stack.node != 9 || fill != 10 ||
         item.x != 3.0 || item.y != 3.0 ||
         item.width != 74.0 || item.height != 54.0 ||
-        TreeSubmitCurrent(TestSession(), cast(u64)19, WidgetKindBox, item) != 10 ||
         !End(TestSession()) { return -11 }
     props.key = cast(u64)20
     group: Layout.LayoutContainer = Layout.Group(TestSession(), props)
@@ -216,7 +255,9 @@ Answer :: () -> s32 {
     if auto != 42 { return auto }
     measured := MeasuredAnswer()
     if measured != 42 { return measured }
-    return FlexAnswer()
+    flex := FlexAnswer()
+    if flex != 42 { return flex }
+    return ContentAnswer()
 }
 ZI
 

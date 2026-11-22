@@ -136,6 +136,18 @@ NodeGeometry :: struct {
     TreePlacement :: #type (session: Session, parent_index: s32,
         bounds: Rectangle) -> Rectangle;
 
+    // A content-sized container settles its height when its scope closes.
+    TreeClose :: #type (session: Session, index: s32) -> void;
+
+    // What a content-sized container keeps for its close: its min and max
+    // height (a negative max is none) and the block margins of its slot.
+    TreeContentSize :: struct {
+        min: float32
+        max: float32
+        margin_top: float32
+        margin_bottom: float32
+    }
+
     TreeEntry :: struct {
         style_class: s32
         key: u64
@@ -261,6 +273,12 @@ NodeGeometry :: struct {
     LayoutProgress :: struct {
         count: s32
         extent: float32
+        // The tallest slot of the current row or flow line, and that line's
+        // offset below the content top.
+        cross: float32
+        line: float32
+        // The column span of the next child a grid places; 0 is one track.
+        span: s32
         grid_y: s32
         grid_col: s32
         grid_row_height: s32
@@ -279,6 +297,9 @@ NodeGeometry :: struct {
         max_columns: s32
         progress: LayoutProgress
         places_children: bool
+        close: TreeClose
+        closes: bool
+        content_size: TreeContentSize
     }
 
     NodeInput :: struct {
@@ -897,7 +918,14 @@ NodeGeometry :: struct {
             }
             return false
         }
-        trees[SessionIndex(session)].scope_depth -= 1
+        slot: s32 = SessionIndex(session)
+        index: s32 = trees[slot].scope[trees[slot].scope_depth - 1]
+        layout: s32 = trees[slot].submitted[index].layout_index
+        if layout >= 0 && trees[slot].layouts[layout].closes {
+            close: TreeClose = trees[slot].layouts[layout].close
+            close(session, index)
+        }
+        trees[slot].scope_depth -= 1
         return true
     }
 
@@ -1095,6 +1123,29 @@ NodeGeometry :: struct {
         if layout < 0 { return }
         trees[slot].layouts[layout].placement = placement
         trees[slot].layouts[layout].places_children = true
+    }
+
+    // A content-sized container: `close` runs when its scope ends.
+    #program_export
+    TreeSetClose :: (session: Session, index: s32, close: TreeClose, size: TreeContentSize) {
+        slot: s32 = SessionIndex(session)
+        if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+        layout: s32 = TreeEnsureLayout(session, index)
+        if layout < 0 { return }
+        trees[slot].layouts[layout].close = close
+        trees[slot].layouts[layout].closes = true
+        trees[slot].layouts[layout].content_size = size
+    }
+
+    #program_export
+    TreeContentSizeAt :: (session: Session, index: s32) -> TreeContentSize {
+        empty: TreeContentSize
+        slot: s32 = SessionIndex(session)
+        if index < 0 || index >= trees[slot].submitted_count { return empty }
+        layout: s32 = trees[slot].submitted[index].layout_index
+        if layout < 0 { return empty }
+        return trees[slot].layouts[layout].content_size
     }
 
     // A container moves its own box inside the slot its parent placed, for

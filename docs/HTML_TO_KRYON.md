@@ -79,17 +79,16 @@ TextField :: #import "kryon/text_field";
 Theme :: #import "kryon/theme";
 
 // display: flex; flex-direction: column; gap: 12px; padding: 16px;
+// No height: the column grows to its children when End closes it.
 gap := Layout.Gap(.ThemeMetricSpace3)
-card_size := TextField.Measure(TextField.Props.{.placeholder = "Search..."})
-items: [2]Rectangle = .{card_size, card_size}
 col := Layout.Draw(session, Layout.Props.{
     .key = 10,
-    .bounds = Layout.LayoutContentBounds(viewport, .FlexColumn, items[:], gap, 16),
     .gap = gap, .gap_override = true,
     .padding = 16, .padding_override = true
 })
 if col.opened {
-    // Children with unset width/x/y (or .bounds.width = Layout.ColumnWidth(session)) auto-stack cleanly
+    // Children with unset x/y stack; an unset width fills the column.
+    unused TextField.Bind(session, *search, TextField.Props.{.key = 11, .placeholder = "Search..."})
     End(session)
 }
 
@@ -105,11 +104,12 @@ if sc.opened {
 ```
 
 > [!TIP]
-> `Layout.Props.gap` and `Layout.Props.padding` only override the theme/CSS values `0` or nonzero when `.gap_override = true` / `.padding_override = true` (useful when forcing zero gap/padding against a non-zero theme default). Use `Layout.ColumnWidth(session)` inside a container to size children to the current content width, and `Layout.LayoutContentBounds(bounds, direction, child_rects, gap, padding)` to size a container around its children.
+> `Layout.Props.gap` and `Layout.Props.padding` only override the theme/CSS values `0` or nonzero when `.gap_override = true` / `.padding_override = true` (useful when forcing zero gap/padding against a non-zero theme default). A `Row`, `Column`, `Grid` (without items) or `Flow` with no height from props or CSS is content-sized: it opens with zero height, places each child that has no `x`/`y`, and at `End` takes the height its children used plus block padding (within `min-height` and `max-height`); its parent then moves the next sibling down. Children at explicit coordinates stay out of that size, like absolutely positioned elements. `Layout.GridSpan(session, grid.container, -1)` makes the next placed grid child span the row. A composite widget that paints its own box (Card, TitleBar) still needs its height before it draws: give its `Layout.Stack` slot a height.
 
 ### B. Measured flex and grid containers
 
-- **CSS Flexbox** uses `Layout.Row(session, props, items[:], placements[:])` or the same arguments to `Layout.Draw` for a column. Pass a `[]Layout.FlexItem` with measured sizes and each styled child's `kind`, `id` and `class_name`. The container resolves CSS direction, wrapping, gaps, padding, justification and alignment. Children can set basis, grow, shrink and self-alignment in CSS. Draw in `placements[i].bounds` and close the layout scope once. The low-level `BeginFlexCursor` and `FlexStep` functions place premeasured children in a single line.
+- **Block flow** (`div` stacks, `display: flex` rows without justification or growth, `flex-wrap: wrap` chip rows) needs no measuring: use a content-sized `Layout.Draw`, `Layout.Row`, `Layout.Flow` or item-less `Layout.Grid` and draw the children.
+- **CSS Flexbox** with justification, growth or cross-axis alignment uses `Layout.Row(session, props, items[:], placements[:])` or the same arguments to `Layout.Draw` for a column. Pass a `[]Layout.FlexItem` with measured sizes and each styled child's `kind`, `id` and `class_name`. The container resolves CSS direction, wrapping, gaps, padding, justification and alignment. Children can set basis, grow, shrink and self-alignment in CSS. Draw in `placements[i].bounds` and close the layout scope once. The low-level `BeginFlexCursor` and `FlexStep` functions place premeasured children in a single line.
 - **CSS Grid** uses `Layout.Grid(session, Grid.GridProps.{.key, .class_name}, items[:])`.
   Give each item a height or a `measure_height(width, key)` callback. A zero height calls the measurement with the item's allocated width after tracks and spans are resolved. The tallest item sets each row's height. Pass an output `[]Rectangle` as the fourth argument to measure and place all items in one pass, then draw children using those bounds. Two-argument calls place unpositioned single-track children using their submitted sizes.
 - **CSS `grid-column: 1/-1`** maps to `Grid.GridItem.{.column_span = -1}`. Positive spans occupy that many tracks. To walk the grid manually, call `Grid.GridItemStep(cursor, item)` and read the returned `cursor.item`. Fixed-height callers can continue using `Grid.GridStep`.

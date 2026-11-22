@@ -18,7 +18,8 @@ No display needed; `build/shot.json` lists each node's kind, role, label and bou
 
 - Declare every widget every frame; keep state at file scope (`x: s32;`) in a Kryon-free module.
 - Containers (Layout, Grid, Flow, Modal) place children: never compute `x` or `y`;
-  a child declares its size, and zero width fills a column. If `opened`, draw the
+  a child declares its size, and zero width fills a column. A Row, Column, Grid
+  or Flow without a height sizes to its children when it closes with `End`. If `opened`, draw the
   children, then `End(session)`: a missing `End` fails the whole frame. Composite
   widgets (Card, TitleBar) draw into a `Layout.Stack` slot: pass `slot.bounds`.
 - Size and space come from theme tokens. Act on a result in the same frame.
@@ -221,29 +222,28 @@ Layout :: #import "kryon/layout";
 #import "kryon/tree"
 Layouts :: (session: Session) {
     gap := Layout.Gap(.ThemeMetricSpace2)
-    size := Button.ButtonMeasure(Button.Props.{.label = "OK"})   // a child's natural size
-    row := Layout.Row(session, Layout.Props.{.bounds = .{height = size.height}, .gap = gap, .gap_override = true})
-    if row.opened {                            // row children: width set, height fills
-        unused Button.Draw(session, Button.Props.{.label = "OK", .bounds = .{width = size.width}})
-        unused Button.Draw(session, Button.Props.{.label = "Cancel", .bounds = .{width = size.width}})
+    // No sizes up front: a container without a height grows to its children.
+    row := Layout.Row(session, Layout.Props.{.gap = gap, .gap_override = true})
+    if row.opened {                            // children keep their natural size
+        unused Button.Draw(session, Button.Props.{.label = "OK"})
+        unused Button.Draw(session, Button.Props.{.label = "Cancel"})
         unused End(session)
     }
-    sizes: [2]Rectangle = .[size, size]; measured := Layout.LayoutContentBounds(Rectangle.{}, .FlexColumn, sizes[:], gap)
-    column := Layout.Draw(session, Layout.Props.{.bounds = .{height = measured.height}, .gap = gap, .gap_override = true})
-    if column.opened {
-        for i: 0..1 { unused Button.Draw(session, Button.Props.{.label = "Item", .bounds = .{height = size.height}}) }
+    column := Layout.Draw(session, Layout.Props.{.gap = gap, .gap_override = true})
+    if column.opened {                         // children stack top to bottom
+        for i: 0..1 { unused Button.Draw(session, Button.Props.{.label = "Item"}) }
         unused End(session)
     }
-    items: [4]GridItem = .[.{height = 40}, .{height = 40}, .{height = 40}, .{height = 40}]
-    grid := Layout.Grid(session, GridProps.{.columns = 2, .gap = gap}, items[:])
-    if grid.container.opened {                 // GridStep hands out each cell; spans via .column_span
-        cursor := grid.cursor
-        for i: 0..3 { cursor = Grid.GridStep(cursor, items[i].height, items[i].column_span); unused Button.Draw(session, Button.Props.{.label = "Cell", .bounds = cursor.item}) }
+    grid := Layout.Grid(session, GridProps.{.columns = 2, .gap = gap})
+    if grid.container.opened {                 // each child takes the next cell
+        for i: 0..1 { unused Button.Draw(session, Button.Props.{.label = "Cell"}) }
+        Layout.GridSpan(session, grid.container, -1)   // the next child spans the row
+        unused Button.Draw(session, Button.Props.{.label = "Wide"})
         unused End(session)
     }
-    flow := Flow.Draw(session, Flow.Props.{.bounds = .{height = 2.0 * size.height}, .gap = gap})
-    if flow.opened {                           // wraps measured children into rows
-        for i: 0..5 { unused Button.Draw(session, Button.Props.{.label = "Chip", .bounds = size}) }
+    flow := Flow.Draw(session, Flow.Props.{.gap = gap})
+    if flow.opened {                           // wraps onto new lines
+        for i: 0..5 { unused Button.Draw(session, Button.Props.{.label = "Chip"}) }
         unused End(session)
     }
 }

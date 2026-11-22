@@ -1,7 +1,8 @@
+// A wrapping row: children keep their widths, wrap onto new lines and the
+// flow sizes to its lines. Draw children with no x or y; it places them.
 Layout :: #import "layout";
 #import "session"
 #import "geometry"
-#import "layout_behavior"
 
 Props :: struct {
     bounds: Rectangle
@@ -19,21 +20,10 @@ FlowResult :: struct {
     padding: s32
 }
 
-// Flow places its children along a row. The caller uses FlowChildBounds before
-// submitting each child, then closes the retained scope with End(session).
 Draw :: (session: Session, props: Props) -> FlowResult {
-    container: Layout.LayoutContainer = Layout.Row(session, Layout.Props.{.bounds = props.bounds,
+    container: Layout.LayoutContainer = Layout.Flow(session, Layout.Props.{.bounds = props.bounds,
         .gap = props.gap, .padding = props.padding, .key = props.key})
     return FlowResult.{.node = container.node, .opened = container.opened,
         .bounds = container.bounds, .content = container.content, .gap = container.gap,
         .padding = container.padding}
-}
-
-#program_export
-FlowChildBounds :: (flow: FlowResult, declared: Rectangle,
-    measured: Rectangle, child_index: s32,
-    previous_width_sum: float32) -> Rectangle {
-    container: Layout.LayoutContainer = .{.content = flow.content, .gap = flow.gap}
-    return Layout.RowChildBounds(container, declared, measured,
-        child_index, previous_width_sum)
 }
