@@ -201,7 +201,8 @@ The Web host returns an invalid surface, so callers skip the fade there.
 
 Import `kryon/scene_skin` for `SceneIndexedMesh`, `SceneSkinCreate`,
 `SceneSkinDeform` and `SceneSkinRelease`. Indexed surfaces copy positions,
-normals, UVs and triangle indices into their owning `Scene`. A `SceneSkin`
+normals, UVs and triangle indices into their owning `Scene`. Triangle indices
+address the mesh's own vertices, not the scene's vertex list. A `SceneSkin`
 retains bind positions and four normalized joint weights per vertex. Supply
 final bind-to-pose `SkinAffine` transforms; deformation always starts from
 bind data and uses inverse-transpose normal transforms, including nonuniform
