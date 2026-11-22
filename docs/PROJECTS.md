@@ -181,7 +181,7 @@ terminal; otherwise it uses the default.
 | `terminal` | 80 × 24 terminal cells | TTY for interactive input; redirected output renders once |
 | `desktop` | SDL2 window with Cairo raster | SDL2, Cairo, and FreeType development libraries |
 | `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
-| `pixmap` | headless 960 × 600 frame printed as a PPM image; `--png` draws any size instead | nothing; `kryon run shot > frame.ppm` |
+| `pixmap` | headless 960 × 600 PPM frame for cross-target parity tests; for a picture of the app use `kryon run --png` | nothing |
 | `android` | installable APK through a generated `droid/` Gradle project and direct NativeActivity host | a JDK, the Android SDK with NDK `28.2.13676358` and CMake `3.22.1`, the locked codec source packages, and `[tool.kryon.android] package`; see [Android host](BACKENDS.md#android-host) |
 
 The SDL desktop host presents its already rasterized pixels through the

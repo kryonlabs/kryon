@@ -253,14 +253,14 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
         'gridmulti': 'Grid multi', 'holdbutton': 'Hold button', 'dpad': 'Direction pad',
         'joystick': 'Joystick', 'swipearea': 'Swipe area', 'loading': 'Loading indicator',
         'loadingscreen': 'Loading screen', 'checklist': 'Onboarding checklist',
-        'progressring': 'Progress ring', 'timeline': 'Timeline', 'swiperow': 'Swipe row',
+        'progressring': 'Progress ring', 'timeline': 'Timeline',
         'carousel': 'Carousel', 'tilemap': 'Tile map',
     }
     component_categories = {
         'Actions': ['buttongroup', 'confirmbutton', 'copybutton', 'holdbutton'],
         'Feedback': ['alert', 'badge', 'banner', 'countdown', 'emptystate', 'loading', 'loadingscreen', 'skeleton', 'checklist', 'progressring', 'timeline'],
         'Navigation': ['breadcrumb'],
-        'Inputs': ['chip', 'dpad', 'joystick', 'swipearea', 'swiperow'],
+        'Inputs': ['chip', 'dpad', 'joystick', 'swipearea'],
         'Layout': ['gridmulti'],
         'Media & graphics': ['avatar', 'svgicon', 'carousel', 'tilemap'],
         'Content': ['keycap', 'listitem'],

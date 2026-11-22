@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Removed legacy and duplicate code with no users left: the BSD and GNU make shims and go.mod beside the one Makefile, the SwipeRow widget and its example, the images_pending stub, the host/android and host/terminal re-exports, the unused canvas and DOM HTML shells, the system_typeface_linux and typeface_collection modules, the tree_label_cost scripts, and the release-notes, update_version, subset-fonts and update-showcase scripts (Harmony keeps its own copies).
+
 - Layout containers read CSS margins (with `auto` centering), min/max width, max height and overflow clipping; Text reads text-align.
 
 - Place measured row and column children with wrapping, flex sizing and indexed layout rules.

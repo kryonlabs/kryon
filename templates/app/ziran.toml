@@ -38,9 +38,8 @@ codegen = "zx"
 [tool.kryon.profiles.web]
 backend = "canvas"
 
-# `kryon run shot > screen.ppm` renders one frame without a display;
 # `kryon run shot --png shot.png --width 390 --height 844 --theme dark`
-# draws any size as a PNG.
+# draws the app offscreen, at any size, without a display.
 [tool.kryon.profiles.shot]
 backend = "pixmap"
 
