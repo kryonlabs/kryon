@@ -211,7 +211,7 @@ test: desktop-codec-artifact-test
 renderer-artifact-test: build/bin/kryon
 	env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/renderer_artifact_test.py
 
-.PHONY: zx-test zx-reload-test
+.PHONY: zx-test zx-linked-test zx-reload-test
 include mk/zx-canvas.mk
 include mk/codecs.mk
 
@@ -222,9 +222,23 @@ zx-reload-test: zx-player
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zx_reload_test.py
 
-zx-test: build/bin/kryon zx-player
+zx-test: build/bin/kryon zx-player zx-linked-test
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zx_project_test.py
+
+ZX_LINKED_TEST := build/test/zx-linked
+zx-linked-test: zx-player
+	mkdir -p $(ZX_LINKED_TEST)
+	$(ZIRAN_BIN) bundle --root tests --entry zx_linked_guest:main \
+		-o $(ZX_LINKED_TEST)/guest.zx tests/zx_linked_guest.zi
+	$(ZIRAN_BIN) build --project --target=c --prune-stale $(PLAYER_TARGET) --root tests \
+		-o $(ZX_LINKED_TEST)/c tests/zx_linked_test.zi
+	$(CC) -std=c99 -pedantic-errors -O2 -ffunction-sections -fdata-sections \
+		-I$(ZIRAN_INCLUDE) -I$(ZX_LINKED_TEST)/c $(ZX_LINKED_TEST)/c/*.c \
+		$(PLAYER_LIBS) -o $(ZX_LINKED_TEST)/launcher
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER \
+		-u KRYON_CAPTURE_PATH YUE_DESKTOP_RECOVERY=0 xvfb-run -a \
+		$(ZX_LINKED_TEST)/launcher $(ZX_LINKED_TEST)/guest.zx
 
 test: zx-reload-test
 

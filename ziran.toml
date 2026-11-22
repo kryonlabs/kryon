@@ -70,6 +70,7 @@ dom = "src/backend/dom.zi"
 "host/android" = "src/backend/app_host_android.zi"
 "host/terminal" = "src/backend/app_host_terminal.zi"
 desktop_runtime = "src/backend/desktop_runtime.zi"
+desktop_zx = "src/backend/desktop_zx.zi"
 desktop_loop = "src/backend/desktop_loop.zi"
 # The desktop host's optional parts, each carried only by programs that
 # import it.

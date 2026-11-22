@@ -1,5 +1,6 @@
-// Loaded into each player so its Player type, public helpers and mesh
+// Loaded into each player so its Player type, helpers and mesh
 // buffer retain their original module ownership.
+#scope_export
 TextValue :: (value: HostValue) -> string {
     if value.length == 0 { return "" }
     return TextFromBytes(BytesFromPointer(cast(*u8)value.data, cast(u64)value.length))
@@ -56,6 +57,7 @@ MeshPointsFrom :: (value: HostValue) -> s64 {
     return at
 }
 
+#scope_module
 InputField :: (player: *Player, index: s32, name: string,
     type_name: string, kind: s32) -> bool {
     if !CopyCString(name, player.names[index * 2].bytes[:]) ||

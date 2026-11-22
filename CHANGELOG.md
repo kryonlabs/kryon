@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Linked desktop ZX launchers can supply per-instance typed host bindings
+  alongside Kryon's frame, drawing, window and input capabilities.
+
 - Android applications can opt in to GLES composition and EGL presentation for
   Pixmap frames, with retained damage and a software fallback.
 

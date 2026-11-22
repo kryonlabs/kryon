@@ -15,6 +15,8 @@ ZIRAN := $(ZIRAN_DIR)/build/bin/ziran
 # caller of this file (this makefile or another project's) resolves them.
 include $(KRYON_DIR)/mk/codecs.mk
 PLAYER_HTTP_LIBS := $(or $(shell pkg-config --libs libcurl 2>/dev/null),$(if $(filter Linux,$(shell uname -s)),-l:libcurl.so.4,-lcurl))
+PLAYER_LIBS = $(ZIRAN_DIR)/build/libziran.a $(OPUS_A) $(PLAYER_LDFLAGS) \
+	$$(pkg-config --libs $(PLAYER_PACKAGES)) $(PLAYER_HTTP_LIBS) -lm -lpthread
 PLAYER_DIR := $(KRYON_DIR)/build/zx-player
 PLAYER := $(KRYON_DIR)/build/bin/zx
 PLAYER_SOURCES := $(KRYON_DIR)/tools/zx.zi $(wildcard $(KRYON_DIR)/src/backend/*.zi) $(shell find $(KRYON_DIR)/src/ui -name '*.zi') $(wildcard $(ZIRAN_DIR)/std/*.zi)
@@ -30,8 +32,7 @@ $(PLAYER): $(PLAYER_SOURCES) $(KRYON_DIR)/mk/zx-player.mk $(KRYON_DIR)/ziran.tom
 		trap 'rm -f "$$temporary"' EXIT; \
 		$(CC) -std=c99 -pedantic-errors -Wno-main -O2 -ffunction-sections -fdata-sections \
 		-I$(ZIRAN_DIR)/include -I$(PLAYER_DIR) $(PLAYER_DIR)/*.c \
-		$(ZIRAN_DIR)/build/libziran.a $(OPUS_A) $(PLAYER_LDFLAGS) \
-		$$(pkg-config --libs $(PLAYER_PACKAGES)) $(PLAYER_HTTP_LIBS) -lm -lpthread -o "$$temporary" && \
+		$(PLAYER_LIBS) -o "$$temporary" && \
 		chmod 755 "$$temporary" && mv "$$temporary" $@
 
 # The desktop host library: zx_window's capabilities, which a ZX program's

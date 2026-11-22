@@ -1455,6 +1455,26 @@ that draws from `CurrentPalette()` follows too.
 theme `Palette` (surfaces, text levels, borders, accent, controls) for an app
 that draws from one.
 
+## Linked desktop ZX player
+
+Native launchers import `kryon/desktop_zx` and call
+`RunWithBindings(path: string, options: PlayerOptions, bindings: []HostBinding) -> s32`
+to play a desktop frame bundle. Supply the exact bundle module and function
+name in each `std/bundle_host.HostBinding`. Kryon binds its window, frame,
+drawing and input capabilities first. The player rejects missing or ambiguous
+capabilities before initializing the guest.
+
+`PlayerOptions.{.check = true}` checks bindings without starting the guest or
+opening a window. The launcher owns its callback contexts and binding storage
+until the call returns. Callbacks receive typed `HostValue` values and their
+own context. Use typed values or opaque application handles as the guest
+interface. Run on the desktop thread, one instance at a time.
+
+Build the launcher for C with `PLATFORM_DESKTOP` defined. Link the runtime
+archives and desktop libraries specified in [`mk/zx-player.mk`](../mk/zx-player.mk)
+along with the launcher's own native libraries. Grant each application's
+native capabilities only to the bundle the launcher was designed to run.
+
 ## Cover carousels
 
 `kryon/carousel` provides `Carousel.Draw(session, props, items, state)` for a

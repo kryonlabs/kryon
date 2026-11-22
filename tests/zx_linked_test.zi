@@ -1,0 +1,63 @@
+Desktop :: #import "kryon/desktop_zx";
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+
+using HostValueKind;
+libc :: #system_library "libc";
+ReadDirectory :: (buffer: *u8, capacity: usize) -> *u8 #foreign libc "getcwd";
+
+AppContext :: struct {
+    calls: s32
+    fail: bool
+}
+
+Scale :: (context: *void, module: *u8, function: *u8, args: *HostValue,
+    count: s32, result: *HostValue) -> s32 {
+    state := cast(*AppContext)context
+    if state == null || TextFromCString(module) != "zx_linked_guest" ||
+        TextFromCString(function) != "ScaleHost" || count != 2 ||
+        args[0].kind != HostString || args[1].kind != HostInteger { return 0 }
+    label := TextFromBytes(BytesFromPointer(args[0].data, cast(u64)args[0].length))
+    state.calls += 1
+    if state.calls == 1 {
+        if label != "initialize" || args[1].integer != 20 { return 0 }
+    } else {
+        if label != "frame" || args[1].integer != 42 || state.fail { return 0 }
+    }
+    result.kind = HostInteger
+    result.integer = args[1].integer * 2
+    return 1
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 1 }
+    path := TextFromCString(argv[1])
+    before: [4096]u8
+    directory := ReadDirectory(*before[0], cast(usize)before.count)
+    if directory == null { return 1 }
+    first: AppContext
+    second := AppContext.{.fail = true}
+    empty: []HostBinding
+    grants: [2]HostBinding
+    if Desktop.RunWithBindings(path, .{.check = true}, empty) == 0 { return 2 }
+    module: [32]u8
+    function: [16]u8
+    if !CopyCString("other_zx_linked_guest", module[:]) || !CopyCString("ScaleHost", function[:]) { return 1 }
+    grants[0] = .{*module[0], *function[0], Scale, cast(*void)*first}
+    if Desktop.RunWithBindings(path, .{}, grants[:1]) == 0 || first.calls != 0 { return 3 }
+    if !CopyCString("zx_linked_guest", module[:]) { return 1 }
+    grants[1] = grants[0]
+    if Desktop.RunWithBindings(path, .{.check = true}, grants[:]) == 0 || first.calls != 0 { return 4 }
+    if Desktop.RunWithBindings(path, .{.check = true}, grants[:1]) != 0 || first.calls != 0 { return 5 }
+    grants[0].context = cast(*void)*second
+    if Desktop.RunWithBindings(path, .{}, grants[:1]) == 0 || second.calls != 2 { return 6 }
+    grants[0].context = cast(*void)*first
+    if Desktop.RunWithBindings(path, .{}, grants[:1]) != 0 || first.calls != 2 || second.calls != 2 { return 7 }
+    after: [4096]u8
+    if ReadDirectory(*after[0], cast(usize)after.count) == null ||
+        TextFromCString(*after[0]) != TextFromCString(directory) { return 8 }
+    print("Linked desktop ZX typed bindings, check isolation and instance cleanup passed\n")
+    return 0
+}

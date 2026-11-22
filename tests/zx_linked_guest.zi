@@ -1,0 +1,11 @@
+host_api :: #system_library "host_api";
+ScaleHost :: (label: string, value: s32) -> s32 #foreign host_api;
+
+initialized: s32 = ScaleHost("initialize", 20);
+
+#program_export
+main :: () -> s32 {
+    value := ScaleHost("frame", initialized + 2)
+    if value == 84 { return 1 }
+    return ScaleHost("bad result", value)
+}
