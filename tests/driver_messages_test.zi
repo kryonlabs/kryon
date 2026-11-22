@@ -1,0 +1,28 @@
+// When no app answers, the test driver says why and names the fix, and a
+// wait with no app returns after its timeout instead of hanging.
+// Run from the Kryon root: make driver-messages-test
+#import "test_driver_client"
+#import "std/file_tree_linux"
+#import "std/text_tools"
+
+failures: s32;
+
+Expect :: (ok: bool, what: string) {
+    if ok { return }
+    failures += 1
+    print("driver messages: FAIL %\n", what)
+}
+
+main :: () -> s32 {
+    unwatched := DriverSilence(false)
+    Expect(TextFind(unwatched, "StartOnDisplay") >= 0 && TextFind(unwatched, "DriverWatch") >= 0,
+        "an unwatched test is told to start and watch the app itself")
+    Expect(TextFind(DriverSilence(true), "KRYON_TEST_DRIVER=1") >= 0,
+        "a silent running app is traced to a build without the driver")
+    Expect(CreateDirectories("build/test/driver-messages"), "make the driver directory")
+    driver := DriverOpen("build/test/driver-messages")
+    Expect(!DriverWait(*driver, .{label = "Nothing"}, 300), "a wait with no app fails after its timeout")
+    if failures > 0 { return 1 }
+    print("driver messages: silent and unwatched apps name their fixes\n")
+    return 0
+}

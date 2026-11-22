@@ -58,8 +58,11 @@ place. Secure field values are redacted as in test-driver inspection.
 
 `EndFrameCapture(session)` commits a frame and records its retained nodes and
 resolved paint commands before emitting raster effects. It replaces
-`EndFrame(session)` in a capture-enabled application. Bind the capture
-capabilities declared in `frame_capture.zi`, including `RecordFrameFailure`.
+`EndFrame(session)` in a capture-enabled application. Bind all five capture
+capabilities declared in `frame_capture.zi`: `RecordFrameStart`, `RecordNode`,
+`RecordPaint`, `RecordFrameEnd` and `RecordFrameFailure`. A host that binds
+only some fails with `missing host capability: frame_capture:RecordFrameFailure`;
+`tools/frame-replay.sh` builds `tools/frame_replay_cli.zi`, which binds all five.
 A rejected frame reports its status, message, widget key and kind and emits no
 raster effects. Ordinary `EndFrame()` needs no capture bindings.
 

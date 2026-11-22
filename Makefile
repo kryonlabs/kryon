@@ -426,6 +426,12 @@ watch-test:
 		"$(ZIRAN_BIN)" run --target=c tests/watch_test.zi
 test: watch-test
 
+# The test driver names the fix when no app answers.
+.PHONY: driver-messages-test
+driver-messages-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY "$(ZIRAN_BIN)" run --target=c tests/driver_messages_test.zi
+test: driver-messages-test
+
 # Every supported target -- C, Go, and the portable runner --
 # renders each template and example on the headless pixmap host, and every
 # image must equal C's byte for byte. It needs go and python3, and

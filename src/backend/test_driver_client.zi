@@ -305,7 +305,7 @@ DriverSend :: (driver: *TestDriverClient, verb: string, fields: string, timeout_
     while MonotonicMilliseconds() < deadline {
         if !DriverAppRunning(driver.pid) {
             driver.reply = ""
-            return DriverFail(driver, Joined(verb, ": the app stopped", ""))
+            return DriverFail(driver, Joined(verb, ": the app stopped; its log follows", ""))
         }
         text, found := ReadEntireFile(reply_path)
         if !found || text.count == 0 { DriverIdle(driver); continue }
@@ -316,7 +316,16 @@ DriverSend :: (driver: *TestDriverClient, verb: string, fields: string, timeout_
         return true
     }
     driver.reply = ""
-    return DriverFail(driver, Joined(verb, ": no reply in time", ""))
+    return DriverFail(driver, Joined(verb, DriverSilence(driver.pid > 0), ""))
+}
+
+// Why no app answered, and the fix: a test must start and watch the app
+// itself, and the app must be built with the driver.
+DriverSilence :: (watching: bool) -> string {
+    if !watching {
+        return ": no app answered; start it from the test with StartOnDisplay(OpenPrivateDisplay(...)) and DriverEnvironment(), then DriverWatch it (an Xvfb or app started by hand is not watched)"
+    }
+    return ": the app runs but never answered; an app built without the test driver ignores it, so build with env KRYON_TEST_DRIVER=1"
 }
 
 // Every widget matching SELECTOR, in tree order, in driver.nodes.

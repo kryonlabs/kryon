@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- When no app answers, the test driver names the fix: start and watch the app from the test (`StartOnDisplay`, `DriverEnvironment`, `DriverWatch`) instead of a hand-started Xvfb or app, or build it with `KRYON_TEST_DRIVER=1`. docs/FRAME_REPLAY.md lists all five frame capture bindings a replay host needs.
+
 - Project builds create stamp files by truncation instead of touch timestamps and set published page and executable modes through fchmod, so restricted builds that deny path chmod and timestamp syscalls still produce readable pages and runnable programs.
 
 - `kryon run [PROFILE] --watch` builds a desktop or terminal app, runs it, and after every saved change stops it, rebuilds and runs it again; a failed build waits for the next change.
