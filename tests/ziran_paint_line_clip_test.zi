@@ -1,0 +1,72 @@
+#import "kryon/drawing_props"
+#import "kryon/geometry"
+#import "kryon/paint_queue"
+#import "kryon/session"
+#import "kryon/tree"
+#import "kryon/widget_kind"
+
+using WidgetKind;
+
+raster_calls: s32;
+raster_line: Rectangle;
+raster_ink: Color;
+
+#program_export
+RecordLine :: (line: Rectangle, ink: Color) {
+    raster_calls += 1
+    raster_line = line
+    raster_ink = ink
+}
+
+Near :: (actual: float32, expected: float32) -> bool {
+    delta := actual - expected
+    return delta >= -0.001 && delta <= 0.001
+}
+
+LineCase :: struct {
+    name: string
+    input: Rectangle
+    expected: Rectangle
+    drawn: bool
+}
+
+#program_export
+Main :: () -> s32 {
+    session := SessionOpen()
+    defer { unused SessionClose(session) }
+    ink := Color.{17, 34, 51, 255}
+    cases: [13]LineCase = .[
+        LineCase.{"ascending line crosses header", .{30, 45, 30, -50}, .{30, 45, 15, -25}, true},
+        LineCase.{"falling line crosses bottom", .{30, 35, 30, 50}, .{30, 35, 15, 25}, true},
+        LineCase.{"reverse diagonal crosses top and right", .{70, 50, -40, -40}, .{60, 40, -20, -20}, true},
+        LineCase.{"both endpoints outside", .{10, 30, 60, 30}, .{20, 35, 40, 20}, true},
+        LineCase.{"contained diagonal", .{40, 40, -10, -10}, .{40, 40, -10, -10}, true},
+        LineCase.{"horizontal", .{10, 37, 60, 0}, .{20, 37, 40, 0}, true},
+        LineCase.{"reverse horizontal", .{70, 37, -60, 0}, .{60, 37, -40, 0}, true},
+        LineCase.{"vertical", .{37, 10, 0, 60}, .{37, 20, 0, 40}, true},
+        LineCase.{"reverse vertical", .{37, 70, 0, -60}, .{37, 60, 0, -40}, true},
+        LineCase.{"parallel outside", .{10, 13, 60, 0}, .{}, false},
+        LineCase.{"diagonal outside though its bounds overlap", .{10, 26, 16, -16}, .{}, false},
+        LineCase.{"touches only a corner", .{10, 30, 20, -20}, .{}, false},
+        LineCase.{"zero-length input", .{30, 30, 0, 0}, .{}, false},
+    ]
+    for test: cases {
+        raster_calls = 0
+        TreeStart(session, cast(u64)1, Rectangle.{0, 0, 100, 100})
+        viewport := TreeSubmit(session, cast(u64)2, 0, WidgetKindCard, Rectangle.{0, 0, 90, 90})
+        TreeSetChildClip(session, viewport, Rectangle.{20, 20, 40, 40})
+        child := TreeSubmit(session, cast(u64)3, viewport, WidgetKindText, Rectangle.{5, 5, 85, 85})
+        PaintLine(session, child, test.input, ink)
+        if !TreeFinish(session) { return 1 }
+        PaintFlush(session)
+        if raster_calls != (ifx test.drawn then 1 else 0) || (test.drawn &&
+            (!Near(raster_line.x, test.expected.x) || !Near(raster_line.y, test.expected.y) ||
+            !Near(raster_line.width, test.expected.width) || !Near(raster_line.height, test.expected.height) ||
+            raster_ink.r != ink.r || raster_ink.g != ink.g || raster_ink.b != ink.b || raster_ink.a != ink.a)) {
+            print("line clip failed for %, calls %, raster %, %, %, %\n", test.name, raster_calls,
+                raster_line.x, raster_line.y, raster_line.width, raster_line.height)
+            return 2
+        }
+    }
+    return 0
+}

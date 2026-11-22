@@ -554,38 +554,42 @@ FillShapeClipped :: (bounds: Rectangle, radius: float32, width: float32,
         bounds.y + bounds.height, visible, color)
 }
 
+// Intersect the segment's parameter interval with the clip on this axis.
+ClipLineAxis :: (origin: float64, delta: float64, lower: float64, upper: float64,
+    start: *float64, end: *float64) -> bool {
+    if delta == 0.0 { return origin >= lower && origin <= upper }
+    first := (lower - origin) / delta
+    last := (upper - origin) / delta
+    enter := ifx delta > 0.0 then first else last
+    leave := ifx delta > 0.0 then last else first
+    if enter > start.* { start.* = enter }
+    if leave < end.* { end.* = leave }
+    return start.* < end.*
+}
+
 EmitLine :: (command: PaintCommand) {
+    line := command.bounds
     if command.clip_set {
-        clip: Rectangle = command.clip
-        line: Rectangle = command.bounds
-        if line.width != 0.0 && line.height != 0.0 {
-            // A diagonal line is drawn whole or not at all.
-            if line.x < clip.x || line.y < clip.y ||
-            line.x + line.width > clip.x + clip.width ||
-            line.y + line.height > clip.y + clip.height { return }
-        } else if line.height == 0.0 {
-            if line.y < clip.y || line.y > clip.y + clip.height { return }
-            x0: float32 = line.x
-            x1: float32 = line.x + line.width
-            if x0 < clip.x { x0 = clip.x }
-            if x1 > clip.x + clip.width { x1 = clip.x + clip.width }
-            if x1 <= x0 { return }
-            line.x = x0
-            line.width = x1 - x0
-        } else {
-            if line.x < clip.x || line.x > clip.x + clip.width { return }
-            y0: float32 = line.y
-            y1: float32 = line.y + line.height
-            if y0 < clip.y { y0 = clip.y }
-            if y1 > clip.y + clip.height { y1 = clip.y + clip.height }
-            if y1 <= y0 { return }
-            line.y = y0
-            line.height = y1 - y0
+        clip := command.clip
+        if clip.width <= 0.0 || clip.height <= 0.0 ||
+            (line.width == 0.0 && line.height == 0.0) { return }
+        x := cast(float64)line.x
+        y := cast(float64)line.y
+        dx := cast(float64)line.width
+        dy := cast(float64)line.height
+        left := cast(float64)clip.x
+        top := cast(float64)clip.y
+        start: float64 = 0.0
+        end: float64 = 1.0
+        if !ClipLineAxis(x, dx, left, left + cast(float64)clip.width, *start, *end) ||
+            !ClipLineAxis(y, dy, top, top + cast(float64)clip.height, *start, *end) { return }
+        if start > 0.0 || end < 1.0 {
+            length := end - start
+            line = Rectangle.{cast(float32)(x + start * dx), cast(float32)(y + start * dy),
+                cast(float32)(length * dx), cast(float32)(length * dy)}
         }
-        StrokeLine(line, command.color)
-        return
     }
-    StrokeLine(command.bounds, command.color)
+    StrokeLine(line, command.color)
 }
 
 EmitRoundedFill :: (command: PaintCommand) {

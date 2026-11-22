@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Clip native line segments at scroll and viewport edges in either direction.
+
 - docs/CHEATSHEET.md is one page for a model that has never seen Kryon: the project, an app shell to copy, one line per widget, the layout recipe, theme tokens, rules for state and events, the screenshot command and a driver test. `make cheatsheet-test` builds every block as a project, shoots it and runs its driver test. README.md and AGENTS.md link it.
 
 - `kryon init` with a Kryon template pins a `[toolchain]` that floats on a branch, as `ziran new` writes it, to the Ziran Kryon's packages are checked with, keeps an exact pin the project chose, and names the fix when the lock still refuses.

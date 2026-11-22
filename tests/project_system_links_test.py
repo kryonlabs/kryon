@@ -1,13 +1,12 @@
 """Manifest system libraries reach the real native project linker, without a display."""
+import json
 import os
 from pathlib import Path
 import subprocess
 import tempfile
+import tomllib
 
-from toolchain import ZIRAN_ROOT
-
-ROOT = Path(__file__).resolve().parents[1]
-ZIRAN = ZIRAN_ROOT / 'build/bin/ziran'
+from toolchain import ROOT, ZIRAN
 
 
 def main():
@@ -20,10 +19,15 @@ def main():
     subprocess.run(['git', 'check-ignore', str(scratch)], cwd=ROOT, check=True,
                    stdout=subprocess.DEVNULL)
     scratch.mkdir(parents=True, exist_ok=True)
+    # Checked dependencies use Kryon's pinned toolchain identity. The fixture
+    # still resolves Kryon itself from the current checkout below.
+    toolchain = tomllib.loads((ROOT / 'ziran.toml').read_text())['toolchain']
+    revision = subprocess.check_output(['git', 'rev-parse', '--verify', 'HEAD'],
+                                       cwd=ROOT, text=True).strip()
     with tempfile.TemporaryDirectory(dir=scratch) as temporary:
         project = Path(temporary)
         (project / 'src').mkdir()
-        (project / 'ziran.toml').write_text('''[package]
+        (project / 'ziran.toml').write_text(f'''[package]
 name = "system_links_probe"
 tool = "kryon"
 entry = "src/app.zi"
@@ -31,11 +35,11 @@ module_roots = ["src"]
 bridge_modules = ["app"]
 links = ["gtk-3", "gdk-3", "gio-2.0", "gobject-2.0", "glib-2.0", "pango-1.0", "cairo", "gdk_pixbuf-2.0"]
 [toolchain]
-git = "https://github.com/ziranlang/ziran.git"
-ref = "master"
+git = {json.dumps(toolchain['git'])}
+ref = {json.dumps(toolchain['ref'])}
 [dependencies.kryon]
-git = "https://github.com/kryonlabs/kryon.git"
-ref = "master"
+git = "https://git.waozi.xyz/kryonlabs/kryon.git"
+ref = {json.dumps(revision)}
 [tool.kryon]
 default_profile = "native"
 [tool.kryon.profiles.native]
@@ -43,7 +47,7 @@ backend = "terminal"
 host = "src/runner.zi"
 ''')
         (project / 'ziran.local.toml').write_text(
-            f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
+            f'[overrides]\nkryon = {json.dumps(str(ROOT))}\n')
         (project / 'src/app.zi').write_text('Value :: 42;\n')
         # Type registration and version queries require linkage but open no windows.
         (project / 'src/runner.zi').write_text('''native :: #system_library "native";

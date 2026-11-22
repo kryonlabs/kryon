@@ -66,11 +66,6 @@ TextFingerprint :: () -> u64 {
     return result
 }
 
-NoPlatform :: (context: *void, module: *u8, function: *u8,
-    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
-    return 0
-}
-
 #program_export
 main :: (argc: s32, argv: **u8) -> s32 {
     if argc < 2 { return 1 }
@@ -83,7 +78,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
         Player.PlayerClose(*player)
         CloseImages()
     }
-    if !Player.PlayerLoad(*player, BytesFromPointer(descriptor.data, cast(u64)data.count), NoPlatform, null) ||
+    // Use the empty callback from the zero-initialized player on a headless surface.
+    if !Player.PlayerLoad(*player, BytesFromPointer(descriptor.data, cast(u64)data.count), player.platform, null) ||
     !LoadImages(player.bundle) || !Player.PlayerStart(*player) { return 3 }
     input := Player.Input.{.width = 960, .height = 600}
     if !Player.PlayerFrame(*player, input, 960, 600, pixels[:]) { return 4 }

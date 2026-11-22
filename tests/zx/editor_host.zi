@@ -29,8 +29,6 @@ Take :: (context: *void, identity: u64, output: []u8) -> TextRequest {
     probe.pending = false; probe.requests += 1
     return result
 }
-NoPlatform :: (context: *void, module: *u8, function: *u8,
-    args: *HostValue, count: s32, result: *HostValue) -> s32 { return 0 }
 Render :: (player: *Player.Player, input: Player.Input) -> bool {
     return Player.PlayerFrame(player, input, 320, 600, pixels[:])
 }
@@ -43,8 +41,9 @@ main :: (argc: s32, argv: **u8) -> s32 {
     source := BytesFromPointer(descriptor.data, cast(u64)data.count)
     first: Player.Player; second: Player.Player
     defer { Player.PlayerClose(*first); Player.PlayerClose(*second) }
-    if !Player.PlayerOpen(*first, source, NoPlatform, null) ||
-    !Player.PlayerOpen(*second, source, NoPlatform, null) { return 3 }
+    // Use the empty callback from the zero-initialized player on a headless surface.
+    if !Player.PlayerOpen(*first, source, first.platform, null) ||
+    !Player.PlayerOpen(*second, source, second.platform, null) { return 3 }
     a: Probe; b: Probe
     Player.PlayerUseTextEditor(*first, Present, Take, cast(*void)(*a))
     Player.PlayerUseTextEditor(*second, Present, Take, cast(*void)(*b))
