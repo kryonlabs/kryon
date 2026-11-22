@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Hosted ZX surfaces can lend packed RGB strips directly to a presenter,
+  avoiding per-pixel RGBA conversion and a second guest strip buffer.
+
+- Hosted ZX surfaces can schedule state checks separately from composition,
+  avoiding widget-tree rebuilds on unchanged idle timeouts.
+
 - Linked desktop ZX launchers can supply per-instance typed host bindings
   alongside Kryon's frame, drawing, window and input capabilities.
 

@@ -49,6 +49,8 @@ Host :: struct {
     sequence_hash: u64
     row_end: s32
     row_pending: bool
+    row_limit: s32
+    largest_strip: s32
     row_frame: [280 * 160 * 4]u8
     event_type: *u8
     fields: [9]HostField
@@ -113,11 +115,12 @@ CollectRows :: (host: *Host, args: *HostValue) -> bool {
         rgba.length % cast(usize)(width * 4) != 0 { return false }
     rows := cast(s64)rgba.length / (width * 4)
     full := host.cursor == 0 || host.cursor == 10 || host.cursor == 11
-    if rows > 32 || first + rows > height || (host.row_pending && first != host.row_end) ||
+    if rows > host.row_limit || first + rows > height || (host.row_pending && first != host.row_end) ||
         (full && !host.row_pending && first != 0) { return false }
     at := first * width * 4
     for index: cast(s64)0..cast(s64)rgba.length - 1 { host.row_frame[at + index] = rgba.data[index] }
     host.row_end = cast(s32)(first + rows)
+    if rows > host.largest_strip { host.largest_strip = cast(s32)rows }
     host.row_pending = true
     return true
 }
@@ -186,10 +189,16 @@ main :: (argc: s32, argv: **u8) -> s32 {
     defer CloseBundle(bundle)
     if BundleCapabilities(bundle) != 4 { return 3 }
     host: Host
+    host.row_limit = 32
+    pixels := argc == 3 && (TextFromCString(argv[2]) == "pixels" || TextFromCString(argv[2]) == "wake-pixels")
+    if pixels { host.row_limit = 32 }
+    wake := argc == 3 && (TextFromCString(argv[2]) == "wake" || TextFromCString(argv[2]) == "wake-rows" ||
+        TextFromCString(argv[2]) == "wake-pixels")
     full := argc == 3 && TextFromCString(argv[2]) == "timed-full"
-    rows := argc == 3 && TextFromCString(argv[2]) == "rows"
+    rows := pixels || (argc == 3 && (TextFromCString(argv[2]) == "rows" || TextFromCString(argv[2]) == "wake-rows"))
     timed := full || rows || (argc == 3 && TextFromCString(argv[2]) == "timed")
     host.wait_ms = ifx timed then 250 else 1000
+    if wake { host.wait_ms = 2000 }
     bindings: [4]HostBinding
     for index: 0..3 {
         abi: BundleCapabilityAbi
@@ -214,7 +223,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if RunBundleInstance(instance, *answer, *has_answer) == 0 || has_answer == 0 || answer != 0 { return 8 }
     print("Hosted surface Engine: % presents, event mask %\n", host.presents, host.presented_at)
     print("Visible RGBA sequence: %\n", host.sequence_hash)
-    if !host.closed || host.cursor != cast(s32)events.count + IdleSamples + MotionSamples + 1 { return 9 }
+    if !host.closed || host.cursor != cast(s32)events.count + IdleSamples + MotionSamples + 1 ||
+        (pixels && host.largest_strip != 32) { return 9 }
     if full { return ifx host.presents == host.cursor then 0 else 9 }
     if !timed {
         // The three-argument default paints every non-idle host event.
@@ -226,6 +236,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
                 count += 1
             }
         }
+        if wake { expected |= 1 << 1; count += 2 }
         return ifx host.presents == count && host.presented_at == expected then 0 else 9
     }
     // An unchanged idle frame never presents. A host expose still requests

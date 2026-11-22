@@ -295,6 +295,11 @@ zx-surface-test: project-toolchain
 		-o build/scratch/zx-surface/rows.zx examples/hosted_surface.zi
 	build/scratch/zx-surface/test build/scratch/zx-surface/rows.zx rows > build/scratch/zx-surface/rows-result
 	cmp build/scratch/zx-surface/timed-result build/scratch/zx-surface/rows-result
+	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_PIXELS \
+		--define KRYON_PIXMAP_EXTERNAL_BUFFER --entry hosted_surface:main \
+		-o build/scratch/zx-surface/pixels.zx examples/hosted_surface.zi
+	build/scratch/zx-surface/test build/scratch/zx-surface/pixels.zx pixels > build/scratch/zx-surface/pixels-result
+	cmp build/scratch/zx-surface/timed-result build/scratch/zx-surface/pixels-result
 	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_TIMED \
 		--define KRYON_PIXMAP_EXTERNAL_BUFFER --entry hosted_surface:main \
 		-o build/scratch/zx-surface/external.zx examples/hosted_surface.zi
@@ -302,6 +307,17 @@ zx-surface-test: project-toolchain
 	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_CLOCK --entry hosted_surface:main \
 		-o build/scratch/zx-surface/clocked.zx examples/hosted_surface.zi
 	build/scratch/zx-surface/test build/scratch/zx-surface/clocked.zx timed
+	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_WAKE --entry hosted_surface:main \
+		-o build/scratch/zx-surface/wake.zx examples/hosted_surface.zi
+	build/scratch/zx-surface/test build/scratch/zx-surface/wake.zx wake
+	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_WAKE --define SURFACE_SMOKE_ROWS \
+		--define KRYON_PIXMAP_EXTERNAL_BUFFER --entry hosted_surface:main \
+		-o build/scratch/zx-surface/wake-rows.zx examples/hosted_surface.zi
+	build/scratch/zx-surface/test build/scratch/zx-surface/wake-rows.zx wake-rows
+	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_WAKE --define SURFACE_SMOKE_PIXELS \
+		--define KRYON_PIXMAP_EXTERNAL_BUFFER --entry hosted_surface:main \
+		-o build/scratch/zx-surface/wake-pixels.zx examples/hosted_surface.zi
+	build/scratch/zx-surface/test build/scratch/zx-surface/wake-pixels.zx wake-pixels
 
 .PHONY: surface-render-test
 surface-render-test: project-toolchain

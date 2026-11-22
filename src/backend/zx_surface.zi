@@ -55,6 +55,18 @@ Close :: () #foreign host_api;
 // Consume full-width, tightly packed opaque RGBA8 rows synchronously. The
 // buffer is borrowed for the call. first is the zero-based row in the surface.
 SurfaceRowsPresenter :: #type (width: s32, height: s32, first: s32, rgba: string) -> bool;
+// Borrow packed 0xRRGGBB words synchronously, one full-width strip at a time.
+// The high byte is ignored. A host can upload these without an interpreted
+// RGBA conversion or a second strip buffer; it must finish before returning.
+SurfacePixelsPresenter :: #type (width: s32, height: s32, first: s32, pixels: []u32) -> bool;
+SurfacePixelsOutput :: struct { present: SurfacePixelsPresenter }
+
+SurfaceSchedule :: struct {
+    wait_ms: s32
+    redraw: bool
+}
+SurfaceWake :: #type (now_ms: s64) -> SurfaceSchedule;
+SurfaceWakeNone :: (now_ms: s64) -> SurfaceSchedule { unused now_ms; return .{} }
 
 // Bound the two full-frame buffers of the full raster path to 32 MiB.
 SURFACE_PIXEL_LIMIT :: 4194304
@@ -118,7 +130,8 @@ SurfaceSnapshotFits :: (slot: s32) -> bool {
 }
 
 SurfaceCommit :: (session: Session, width: s32, height: s32, pixels: []u32,
-    rgba: []u8, paint: *SurfacePaint, present: SurfaceRowsPresenter, refresh: bool) -> bool {
+    rgba: []u8, paint: *SurfacePaint, present: SurfaceRowsPresenter, refresh: bool,
+    output: SurfacePixelsOutput = .{}) -> bool {
     slot := SessionIndex(session)
     retained := SessionFlagGet(frame_retained, slot)
     if CommitFrame(session) != cast(FrameStatus)FrameOk { return false }
@@ -167,10 +180,10 @@ SurfaceCommit :: (session: Session, width: s32, height: s32, pixels: []u32,
     if !whole {
         area = RectangleIntersection(change.area, viewport)
     }
-    if present != null && !tiled { return false }
+    if (present != null || output.present != null) && !tiled { return false }
     if area.width <= 0.0 || area.height <= 0.0 { PaintClear(session); return true }
     if !tiled { return SurfaceReplayFull(session, width, height, retained, rgba, paint) }
-    return SurfaceReplayStrips(session, width, height, area, retained, pixels, rgba, paint, present, whole)
+    return SurfaceReplayStrips(session, width, height, area, retained, pixels, rgba, paint, present, whole, output)
 }
 
 SurfaceReplayArea :: (session: Session, clip: Rectangle) {
@@ -194,20 +207,21 @@ SurfaceReplayArea :: (session: Session, clip: Rectangle) {
 // into the retained host buffer. All device operations see full coordinates.
 SurfaceReplayStrips :: (session: Session, width: s32, height: s32, area: Rectangle,
     retained: bool, pixels: []u32, rgba: []u8, paint: *SurfacePaint,
-    present: SurfaceRowsPresenter, whole: bool) -> bool {
+    present: SurfaceRowsPresenter, whole: bool, output: SurfacePixelsOutput = .{}) -> bool {
+    row_presenter := present != null || output.present != null
     region := Pixels.PixmapDeviceBounds(area)
     top := FloorInteger(region.y)
     bottom := CeilInteger(region.y + region.height)
     if top < 0 { top = 0 }
     if bottom > height { bottom = height }
-    if present != null && whole { top = 0; bottom = height }
+    if row_presenter && whole { top = 0; bottom = height }
     first := top
     while first < bottom {
         rows := bottom - first
         if rows > SURFACE_STRIP_ROWS { rows = SURFACE_STRIP_ROWS }
         if !Pixels.PixmapBindRows(width, height, first, rows, pixels) { return false }
         clipped: Rectangle
-        if present == null {
+        if !row_presenter {
             Pixels.PixmapDamageBegin(area, cast(u32)Pixels.PixmapBackground)
             clipped = Pixels.PixmapDamageBounds()
         } else {
@@ -225,7 +239,9 @@ SurfaceReplayStrips :: (session: Session, width: s32, height: s32, area: Rectang
                 (clipped.y - Pixels.pixmap_offset_y) / scale_y, clipped.width / scale_x, clipped.height / scale_y})
         }
         Pixels.PixmapDamageEnd()
-        if present == null {
+        if output.present != null {
+            if !output.present(width, height, first, pixels[:width * rows]) { return false }
+        } else if present == null {
             SurfaceConvert(width, pixels, rgba, clipped, first)
         } else {
             bytes := rgba[:width * rows * 4]
@@ -275,17 +291,19 @@ SurfaceFrameInto :: (session: Session, draw: Draw, width: s32, height: s32,
 
 SurfaceFrameRetained :: (session: Session, draw: Draw, width: s32, height: s32,
     input: FrameInputSnapshot, pixels: []u32, rgba: []u8, paint: *SurfacePaint,
-    present: SurfaceRowsPresenter, refresh: bool = false) -> bool {
+    present: SurfaceRowsPresenter, refresh: bool = false,
+    output: SurfacePixelsOutput = .{}) -> bool {
     rows := ifx height < SURFACE_STRIP_ROWS then height else SURFACE_STRIP_ROWS
     rgba_rows := ifx present == null then height else rows
-    if paint == null || (present != null && !SurfaceSizeValid(width, height)) ||
-        rgba.count < cast(s64)width * cast(s64)rgba_rows * 4 ||
+    if paint == null || ((present != null || output.present != null) && !SurfaceSizeValid(width, height)) ||
+        (present != null && output.present != null) ||
+        (output.present == null && rgba.count < cast(s64)width * cast(s64)rgba_rows * 4) ||
         !Pixels.PixmapResumeRowsInto(width, height, 0, rows, pixels) { return false }
     defer Pixels.PixmapEndInto()
     if !SurfaceBeginInput(session, input) { return false }
     defer FrameInputEnd(session)
     if !SurfaceCompose(session, draw, width, height) { return false }
-    if SurfaceCommit(session, width, height, pixels, rgba, paint, present, refresh) { return true }
+    if SurfaceCommit(session, width, height, pixels, rgba, paint, present, refresh, output) { return true }
     // A rejected strip can leave the host with a partially updated surface.
     // Force complete reconstruction if a direct caller tries another frame.
     paint.width = 0
@@ -340,6 +358,7 @@ SurfaceComposition :: struct {
     session: Session
     draw: Draw
     present_rows: SurfaceRowsPresenter
+    pixel_output: SurfacePixelsOutput
 }
 
 SurfaceRenderer :: #type (composition: *SurfaceComposition, width: s32, height: s32,
@@ -363,43 +382,55 @@ SurfaceRenderRetained :: (composition: *SurfaceComposition, width: s32, height: 
 SurfaceRenderRows :: (composition: *SurfaceComposition, width: s32, height: s32,
     input: FrameInputSnapshot, pixels: []u32, rgba: []u8, paint: *SurfacePaint, refresh: bool) -> bool {
     return SurfaceFrameRetained(composition.session, composition.draw, width, height, input, pixels, rgba, paint,
-        composition.present_rows, refresh)
+        composition.present_rows, refresh, composition.pixel_output)
 }
 
 // A positive idle interval composes on timeout, in addition to input frames.
 SurfaceClock :: #type () -> s64;
 SurfaceClockNone :: () -> s64 { return -1 }
 
-Run :: (window: Window, draw: Draw, idle_ms: s32 = 0, clock: SurfaceClock = SurfaceClockNone) -> s32 {
+Run :: (window: Window, draw: Draw, idle_ms: s32 = 0, clock: SurfaceClock = SurfaceClockNone,
+    wake: SurfaceWake = SurfaceWakeNone) -> s32 {
     renderer: SurfaceRenderer = SurfaceRenderFull
-    return SurfaceRun(window, draw, idle_ms, renderer, 0, clock)
+    return SurfaceRun(window, draw, idle_ms, renderer, 0, clock, wake)
 }
 
 // Opt in for apps that use queued widgets and drawing. Keep the default
 // entry independent so it does not link retention into full-raster bundles.
-RunRetained :: (window: Window, draw: Draw, idle_ms: s32 = 0, clock: SurfaceClock = SurfaceClockNone) -> s32 {
+RunRetained :: (window: Window, draw: Draw, idle_ms: s32 = 0, clock: SurfaceClock = SurfaceClockNone,
+    wake: SurfaceWake = SurfaceWakeNone) -> s32 {
     renderer: SurfaceRenderer = SurfaceRenderRetained
-    return SurfaceRun(window, draw, idle_ms, renderer, SURFACE_STRIP_ROWS, clock)
+    return SurfaceRun(window, draw, idle_ms, renderer, SURFACE_STRIP_ROWS, clock, wake)
 }
 
 // The host retains the pixels already sent. Redraw and resize rebuild every
 // row, while ordinary frames emit only the affected rows. Queued paint must
 // use built-in emitters because a command can be replayed in multiple strips.
 RunRetainedRows :: (window: Window, draw: Draw, present: SurfaceRowsPresenter,
-    idle_ms: s32 = 0, clock: SurfaceClock = SurfaceClockNone) -> s32 {
+    idle_ms: s32 = 0, clock: SurfaceClock = SurfaceClockNone, wake: SurfaceWake = SurfaceWakeNone) -> s32 {
     if present == null { return 1 }
     renderer: SurfaceRenderer = SurfaceRenderRows
-    return SurfaceLoop(window, draw, idle_ms, renderer, SURFACE_STRIP_ROWS, clock, present)
+    return SurfaceLoop(window, draw, idle_ms, renderer, SURFACE_STRIP_ROWS, clock, present, wake)
+}
+
+// The same retained strip renderer with packed RGB words instead of RGBA8.
+RunRetainedPixels :: (window: Window, draw: Draw, present: SurfacePixelsPresenter,
+    idle_ms: s32 = 0, clock: SurfaceClock = SurfaceClockNone, wake: SurfaceWake = SurfaceWakeNone) -> s32 {
+    if present == null { return 1 }
+    renderer: SurfaceRenderer = SurfaceRenderRows
+    empty: SurfaceComposition
+    return SurfaceLoop(window, draw, idle_ms, renderer, SURFACE_STRIP_ROWS, clock, empty.present_rows, wake, .{present})
 }
 
 SurfaceRun :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRenderer, strip_rows: s32,
-    clock: SurfaceClock = SurfaceClockNone) -> s32 {
+    clock: SurfaceClock = SurfaceClockNone, wake: SurfaceWake = SurfaceWakeNone) -> s32 {
     composition: SurfaceComposition
-    return SurfaceLoop(window, draw, idle_ms, renderer, strip_rows, clock, composition.present_rows)
+    return SurfaceLoop(window, draw, idle_ms, renderer, strip_rows, clock, composition.present_rows, wake)
 }
 
 SurfaceLoop :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRenderer, strip_rows: s32,
-    clock: SurfaceClock, present: SurfaceRowsPresenter) -> s32 {
+    clock: SurfaceClock, present: SurfaceRowsPresenter, wake: SurfaceWake = SurfaceWakeNone,
+    output: SurfacePixelsOutput = .{}) -> s32 {
     width := ifx window.width > 0 then window.width else 960
     height := ifx window.height > 0 then window.height else 600
     if !SurfaceSizeValid(width, height) || !Open(window.title, width, height) { return 1 }
@@ -408,7 +439,7 @@ SurfaceLoop :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRende
     if !SessionValid(session) { return 1 }
     defer { unused CloseSession(session) }
 
-    composition: SurfaceComposition = .{session, draw, present}
+    composition: SurfaceComposition = .{session, draw, present, output}
     pixels: Vec(u32)
     rgba: Vec(u8)
     defer { VecFree(pixels); VecFree(rgba) }
@@ -420,6 +451,17 @@ SurfaceLoop :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRende
     text_at: s32 = 0
     wait_ms := ifx idle_ms > 0 && idle_ms < 1000 then idle_ms else 1000
     while event.kind != Closed {
+        wait_ms = ifx idle_ms > 0 && idle_ms < 1000 then idle_ms else 1000
+        sampled: s64 = -1
+        if clock != null { sampled = clock() }
+        schedule := wake(sampled)
+        if schedule.wait_ms != 0 {
+            wait_ms = schedule.wait_ms
+            if wait_ms < 1 { wait_ms = 1 }
+            if wait_ms > 60000 { wait_ms = 60000 }
+            if idle_ms > 0 && wait_ms > idle_ms { wait_ms = idle_ms }
+            if idle_ms > 0 && wait_ms > 1000 { wait_ms = 1000 }
+        }
         if event.kind == Resized {
             if !SurfaceSizeValid(event.width, event.height) { return 1 }
             width = event.width
@@ -433,19 +475,19 @@ SurfaceLoop :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRende
                 text_at = unit.after
             }
         }
-        if event.kind != Idle || queue.count > 0 || idle_ms > 0 {
+        if event.kind != Idle || queue.count > 0 || idle_ms > 0 || schedule.redraw {
             count := cast(s64)width * cast(s64)height
             pixel_count := count
             if strip_rows > 0 && height > strip_rows { pixel_count = cast(s64)width * strip_rows }
             pixel_limit := ifx pixel_count > pixels.capacity then pixel_count else pixels.capacity
             if pixels.count != pixel_count && !VecResizeBounded(pixels, pixel_count, pixel_limit) { return 1 }
-            rgba_count := (ifx present == null then count else pixel_count) * 4
+            rgba_count := ifx output.present != null then 0 else (ifx present == null then count else pixel_count) * 4
             rgba_limit := ifx rgba_count > rgba.capacity then rgba_count else rgba.capacity
             if rgba.count != rgba_count && !VecResizeBounded(rgba, rgba_count, rgba_limit) { return 1 }
             SurfaceInput(*input, *queue, event)
             input.delta_ms = 0
             if clock != null {
-                now := clock()
+                now := sampled
                 if now >= 0 {
                     if clock_origin < 0 { clock_origin = now }
                     elapsed := now - clock_origin

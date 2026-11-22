@@ -16,12 +16,44 @@ value_bytes: [128]u8;
 last_width: s32;
 last_height: s32;
 
-#if #defined(SURFACE_SMOKE_ROWS) {
+#if #defined(SURFACE_SMOKE_WAKE) {
+    wake_calls: s32;
+    wake_draws: s32;
+    wake_clock_valid: bool = true;
+
+    WakeClock :: () -> s64 { return 5000 + cast(s64)wake_calls * 2000 }
+
+    Wake :: (now: s64) -> Surface.SurfaceSchedule {
+        wake_clock_valid = wake_clock_valid && now == 5000 + cast(s64)wake_calls * 2000
+        wake_calls += 1
+        return .{wait_ms = 2000, redraw = wake_calls == 2 || wake_calls == 14}
+    }
+}
+
+#if #defined(SURFACE_SMOKE_ROWS) || #defined(SURFACE_SMOKE_PIXELS) {
     row_host :: #system_library "host_api";
     PresentRows :: (width: s32, height: s32, first: s32, rgba: string) -> bool #reads #foreign row_host;
 
     SendRows :: (width: s32, height: s32, first: s32, rgba: string) -> bool {
         return PresentRows(width, height, first, rgba)
+    }
+}
+
+#if #defined(SURFACE_SMOKE_PIXELS) {
+    #import "std/vec"
+    packed_bytes: Vec(u8);
+
+    SendPixels :: (width: s32, height: s32, first: s32, words: []u32) -> bool {
+        count := words.count * 4
+        if !VecResizeBounded(packed_bytes, count, cast(s64)16384 * 32 * 4) { return false }
+        for at: cast(s64)0..words.count - 1 {
+            pixel := words[at]
+            packed_bytes[at * 4] = cast(u8)(pixel >> 16)
+            packed_bytes[at * 4 + 1] = cast(u8)(pixel >> 8)
+            packed_bytes[at * 4 + 2] = cast(u8)pixel
+            packed_bytes[at * 4 + 3] = 255
+        }
+        return PresentRows(width, height, first, TextView(packed_bytes[:]))
     }
 }
 
@@ -38,6 +70,9 @@ last_height: s32;
 }
 
 Draw :: (frame: Surface.Frame) {
+    #if #defined(SURFACE_SMOKE_WAKE) {
+        wake_draws += 1
+    }
     session: Session = .{frame.slot, frame.epoch}
     #if #defined(SURFACE_SMOKE_CLOCK) {
         timing := CaptureFrameInput(session)
@@ -72,9 +107,27 @@ Draw :: (frame: Surface.Frame) {
 
 #program_export
 main :: () -> s32 {
+    defer {
+        #if #defined(SURFACE_SMOKE_PIXELS) {
+            VecFree(packed_bytes)
+        }
+    }
     value.bytes = value_bytes[:]
     window: Surface.Window = .{.title = "Kryon hosted surface", .width = 240, .height = 144}
-    #if #defined(SURFACE_SMOKE_ROWS) {
+    #if #defined(SURFACE_SMOKE_WAKE) {
+        result: s32
+        #if #defined(SURFACE_SMOKE_PIXELS) {
+            result = Surface.RunRetainedPixels(window, Draw, SendPixels,
+                clock = WakeClock, wake = Wake)
+        } else #if #defined(SURFACE_SMOKE_ROWS) {
+            result = Surface.RunRetainedRows(window, Draw, SendRows, clock = WakeClock, wake = Wake)
+        } else {
+            result = Surface.Run(window, Draw, clock = WakeClock, wake = Wake)
+        }
+        return ifx wake_clock_valid && wake_calls == 60 && wake_draws == 37 then result else 2
+    } else #if #defined(SURFACE_SMOKE_PIXELS) {
+        return Surface.RunRetainedPixels(window, Draw, SendPixels, 250)
+    } else #if #defined(SURFACE_SMOKE_ROWS) {
         return Surface.RunRetainedRows(window, Draw, SendRows, 250)
     } else #if #defined(SURFACE_SMOKE_CLOCK) {
         result := Surface.RunRetained(window, Draw, 250, clock = SmokeClock)

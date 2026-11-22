@@ -1283,6 +1283,13 @@ when idle. Apps that draw through Kryon's paint queue can call
 It keeps the last RGBA frame, repaints damage in bounded strips, and presents
 on damage or a host redraw request. Custom paint emitters use a full replay.
 
+Use `wake = Wake` with `idle_ms = 0` to schedule state checks independently
+of composition. `Wake(now_ms: s64) -> Surface.SurfaceSchedule` returns the
+next `wait_ms` and whether an idle event needs a `redraw`. Pass a clock to
+receive its sample; otherwise `now_ms` is -1. Nonzero waits are bounded to
+1–60000 ms; zero uses the default wait.
+Unchanged timeout checks skip composition; input and host redraws still draw.
+
 Surface wheel events reach Kryon scroll widgets and `CaptureFrameInput` for
 the current callback. Pass `clock = Clock.Milliseconds` to either entry point
 to sample the monotonic `kryon/clock` service on each callback. This fills

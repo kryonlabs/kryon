@@ -148,6 +148,26 @@ and expose deliver every row in order. Ordinary updates deliver affected rows
 and unchanged frames deliver none. Use built-in queued paint with this entry
 point. A presenter that returns `false` ends the loop with an error.
 
+`RunRetainedPixels(window, draw, present, idle_ms, clock)` uses the same strip
+renderer and damage tracking, but its `SurfacePixelsPresenter` receives
+`(width: s32, height: s32, first: s32, pixels: []u32) -> bool`. Each pixel is
+packed `0xRRGGBB`; ignore its high byte. Consume these borrowed words before
+returning. This avoids the RGBA conversion loop and output buffer when a host
+can upload the raster's packed pixels directly. Input, resize, expose and
+failure behavior match `RunRetainedRows`.
+
+The `hosted_surface` example's packed and scheduled packed smoke variants
+match the full renderer's frame hashes and input results with 32-row batches.
+
+All surface loops accept an optional `wake: SurfaceWake` callback.
+It receives the host clock sample (or -1 without a clock) before each event
+is handled and returns `SurfaceSchedule { wait_ms, redraw }`. An idle timeout
+only composes when `redraw` is true or `idle_ms` is positive. This allows a
+cheap state poll to run without rebuilding the widget tree. The next wait is
+bounded to 1–60000 ms; zero uses the default wait, and a positive `idle_ms`
+also bounds that wait to its existing interval of at most one second. Input,
+expose, resize and queued text continue to compose immediately.
+
 Define `KRYON_PIXMAP_EXTERNAL_BUFFER` when the portable app always uses
 caller-supplied pixmap storage. This also omits the static fallback framebuffer.
 
