@@ -1,4 +1,5 @@
 #import "options"
+#import "toolchain_pin"
 
 // Linux command-line host for Kryon projects. Configuration and command
 // selection are Ziran; libc supplies only file, stdout, and process effects.
@@ -149,6 +150,35 @@ ReadFile :: (path: string, output: []u8) -> FileContents {
     RawClose(fd)
     if result.ok { result.text = TextFromBuffer(output, length) }
     return result
+}
+
+// Replaces the file at PATH, which must exist, with TEXT.
+ReplaceFileText :: (path: string, text: string) -> bool {
+    name: [4096]u8
+    if !CString(path, name[:]) { return false }
+    fd: s32 = RawOpen(*name[0], 513) // O_WRONLY | O_TRUNC
+    if fd < 0 { return false }
+    written := PrintFd(fd, text)
+    return RawClose(fd) == 0 && written
+}
+
+// kryon init with one of Kryon's templates: a project whose [toolchain]
+// floats on a branch gets the Ziran Kryon pins, so its checked packages lock.
+PinProjectToolchain :: () -> bool {
+    manifest_bytes: [32768]u8
+    manifest: FileContents = ReadFile("ziran.toml", manifest_bytes[:])
+    if !manifest.ok { return true }
+    pinned_bytes: [32768]u8
+    previous := ToolchainRef(manifest.text)
+    pinned := PinToolchain(manifest.text, pinned_bytes[:])
+    if pinned == "" { return true }
+    if !ReplaceFileText("ziran.toml", pinned) { return false }
+    PrintFd(1, "pinned [toolchain] to Ziran ")
+    PrintFd(1, KryonZiranRef)
+    PrintFd(1, ", which Kryon's packages are checked with; it was ")
+    PrintFd(1, previous)
+    PrintFd(1, "\n")
+    return true
 }
 
 SetEnvironment :: (name: string, value: string) -> bool {
@@ -660,6 +690,8 @@ FrontDoor :: (command_line: string, verb: string) -> s32 {
     base: string = Environment("KRYON_TEMPLATES", base_bytes[:])
     if base == "" { base = KryonTemplates }
     spec_bytes: [4096]u8
+    // Kryon's own templates, rather than another package's.
+    kryon_template: bool = true
     if verb == "new" || verb == "init" {
         args[used] = verb
         used += 1
@@ -671,9 +703,10 @@ FrontDoor :: (command_line: string, verb: string) -> s32 {
             used += 1
             if part == "--template" && index + 1 < count {
                 templated = true
-                args[used] = TemplateSpec(ArgumentAt(command_line, index + 1),
-                    base, spec_bytes[:])
+                name := ArgumentAt(command_line, index + 1)
+                args[used] = TemplateSpec(name, base, spec_bytes[:])
                 if args[used] == "" { return Error("template name is too long") }
+                kryon_template = args[used] != name
                 used += 1
                 index += 1
             }
@@ -706,12 +739,17 @@ FrontDoor :: (command_line: string, verb: string) -> s32 {
         Execute(args[0:used])
         return Error("cannot run ziran; install it with make install-user in the Ziran repository")
     }
-    // init keeps an existing [toolchain]; Kryon's checked packages lock
-    // only against the exact toolchain its templates pin.
+    // init keeps an exact [toolchain] the project chose; Kryon's checked
+    // packages lock only against the one its templates pin.
+    if kryon_template && !PinProjectToolchain() { return Error("cannot pin [toolchain] in ziran.toml") }
     status := RunChild(args[0:used])
     if status == 127 { return Error("cannot run ziran; install it with make install-user in the Ziran repository") }
-    if status != 0 {
-        unused Error("if ziran lock refused checked package metadata, set [toolchain] ref in ziran.toml to the exact commit the template has (printed above), then run ziran lock")
+    if status != 0 && kryon_template {
+        start_bytes: [256]u8
+        hint_bytes: [512]u8
+        hint := Join(Join("if ziran lock refused checked package metadata, set [toolchain] ref = \"",
+            KryonZiranRef, start_bytes[:]), "\" in ziran.toml, the Ziran Kryon's packages are checked with, then run ziran lock", hint_bytes[:])
+        unused Error(hint)
     }
     return status
 }

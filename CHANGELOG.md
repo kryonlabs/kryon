@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `kryon init` with a Kryon template pins a `[toolchain]` that floats on a branch, as `ziran new` writes it, to the Ziran Kryon's packages are checked with, keeps an exact pin the project chose, and names the fix when the lock still refuses.
+
 - The app starter is a modern screen with no extra work: an app bar with a dark mode switch, a card list and a filled primary button, placed by Layout containers and sized by theme tokens, with its state in a module free of Kryon imports. Its first build needs no `ziran lock`, and the templates test checks its light and dark pixels.
 
 - `kryon run [PROFILE] --png FILE.png [--width PX] [--height PX] [--theme light|dark]` renders any app entry offscreen at any size up to 4096 pixels, with its widget tree beside the PNG and no preview fixture. The dashboard example's stylesheet parses again and reports a rejected sheet once.

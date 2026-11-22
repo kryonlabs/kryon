@@ -1,0 +1,86 @@
+// The Ziran that Kryon's templates pin. Kryon's packages are checked
+// against an exact toolchain, so `kryon init` gives a project whose
+// [toolchain] floats on a branch (`ziran new` writes "master") this pin,
+// and keeps a project's own exact commit.
+KryonZiranGit :: "https://git.waozi.xyz/ziranlang/ziran.git";
+KryonZiranRef :: "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0";
+
+// A 40-digit lowercase hexadecimal commit.
+ExactCommit :: (ref: string) -> bool {
+    if ref.count != 40 { return false }
+    for byte: ref {
+        digit := byte >= #char "0" && byte <= #char "9"
+        letter := byte >= #char "a" && byte <= #char "f"
+        if !digit && !letter { return false }
+    }
+    return true
+}
+
+// The quoted value of a `KEY = "VALUE"` line, or "" for another line.
+PinValue :: (line: string, key: string) -> string {
+    at: s64 = 0
+    while at < line.count && (line[at] == #char " " || line[at] == #char "\t") { at += 1 }
+    if line.count - at < key.count || line[at:at + key.count] != key { return "" }
+    at += key.count
+    while at < line.count && (line[at] == #char " " || line[at] == #char "=") { at += 1 }
+    if at >= line.count || line[at] != #char "\"" { return "" }
+    finish := at + 1
+    while finish < line.count && line[finish] != #char "\"" { finish += 1 }
+    return line[at + 1:finish]
+}
+
+// The [toolchain] ref MANIFEST declares, or "" without one.
+ToolchainRef :: (manifest: string) -> string {
+    table := ""
+    start: s64 = 0
+    while start < manifest.count {
+        finish := start
+        while finish < manifest.count && manifest[finish] != #char "\n" { finish += 1 }
+        line := manifest[start:finish]
+        if line.count > 0 && line[0] == #char "[" { table = line }
+        else if table == "[toolchain]" && PinValue(line, "ref") != "" { return PinValue(line, "ref") }
+        start = finish + 1
+    }
+    return ""
+}
+
+// MANIFEST with a floating [toolchain] git and ref replaced by Kryon's
+// pinned Ziran, written into OUTPUT. "" when the toolchain is already an
+// exact commit, when there is none, or when OUTPUT is too small.
+PinToolchain :: (manifest: string, output: []u8) -> string {
+    current := ToolchainRef(manifest)
+    if current == "" || ExactCommit(current) { return "" }
+    table := ""
+    length: s64 = 0
+    start: s64 = 0
+    while start < manifest.count {
+        finish := start
+        while finish < manifest.count && manifest[finish] != #char "\n" { finish += 1 }
+        line := manifest[start:finish]
+        if line.count > 0 && line[0] == #char "[" { table = line }
+        if table == "[toolchain]" && PinValue(line, "git") != "" {
+            length = PinAppend(output, length, "git = \"")
+            length = PinAppend(output, length, KryonZiranGit)
+            length = PinAppend(output, length, "\"")
+        } else if table == "[toolchain]" && PinValue(line, "ref") != "" {
+            length = PinAppend(output, length, "ref = \"")
+            length = PinAppend(output, length, KryonZiranRef)
+            length = PinAppend(output, length, "\"")
+        } else {
+            length = PinAppend(output, length, line)
+        }
+        if finish < manifest.count { length = PinAppend(output, length, "\n") }
+        if length < 0 { return "" }
+        start = finish + 1
+    }
+    return TextView(output[0:length])
+}
+
+PinAppend :: (output: []u8, length: s64, text: string) -> s64 {
+    if length < 0 || length + text.count > output.count { return -1 }
+    for byte: text {
+        output[length] = byte
+        length += 1
+    }
+    return length
+}

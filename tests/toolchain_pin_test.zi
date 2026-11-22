@@ -1,0 +1,40 @@
+// kryon init pins a floating [toolchain] to the Ziran Kryon's templates
+// pin and keeps an exact one; every template pins that same Ziran.
+// Run from the Kryon root: make toolchain-pin-test
+#import "toolchain_pin"
+#import "std/file"
+
+failures: s32;
+
+Expect :: (ok: bool, what: string) {
+    if ok { return }
+    failures += 1
+    print("toolchain pin: FAIL %\n", what)
+}
+
+main :: () -> s32 {
+    floating := "[package]\nname = \"tool\"\n\n[toolchain]\ngit = \"https://github.com/ziranlang/ziran.git\"\nref = \"master\"\n\n[dependencies.x]\nref = \"main\"\n"
+    output: [1024]u8
+    pinned := PinToolchain(floating, output[:])
+    Expect(ToolchainRef(pinned) == KryonZiranRef, "a floating ref becomes Kryon's Ziran")
+    Expect(pinned == "[package]\nname = \"tool\"\n\n[toolchain]\ngit = \"https://git.waozi.xyz/ziranlang/ziran.git\"\nref = \"5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0\"\n\n[dependencies.x]\nref = \"main\"\n",
+        "only the [toolchain] git and ref lines change")
+
+    exact := "[toolchain]\ngit = \"https://git.waozi.xyz/ziranlang/ziran.git\"\nref = \"2684af8d22b623c52bfd19ce785523b50ad83c5e\"\n"
+    other: [1024]u8
+    Expect(PinToolchain(exact, other[:]) == "", "an exact user pin is kept")
+    Expect(PinToolchain("[package]\nname = \"tool\"\n", other[:]) == "", "no [toolchain], nothing to pin")
+    small: [8]u8
+    Expect(PinToolchain(floating, small[:]) == "", "too small an output pins nothing")
+    Expect(ExactCommit(KryonZiranRef) && !ExactCommit("master") && !ExactCommit("5DB3D3C3"), "exact commits")
+
+    templates: [4]string = .["templates/app/ziran.toml", "templates/tui/ziran.toml",
+        "templates/pages/ziran.toml", "templates/web/ziran.toml"]
+    for path: templates {
+        text, ok := ReadEntireFile(path)
+        Expect(ok && ToolchainRef(text) == KryonZiranRef, path)
+    }
+    if failures > 0 { return 1 }
+    print("toolchain pin: floating, exact and missing toolchains; four templates agree\n")
+    return 0
+}

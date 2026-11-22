@@ -117,14 +117,14 @@ def main():
         # the package keeps its own entry and gains the window's.
         run(["ziran", "new", "tool", "--overrides", work / "overrides.toml"], work, env)
         tool = work / "tool"
-        # init keeps the package's toolchain, and Kryon's checked packages
-        # lock only against the exact one the templates pin.
+        # The new package floats on Ziran master; init pins the Ziran that
+        # Kryon's checked packages need, so the merged project locks.
         pinned = tomllib.loads((ROOT / "templates/tui/ziran.toml").read_text())["toolchain"]["ref"]
-        manifest = (tool / "ziran.toml").read_text()
-        assert 'ref = "master"' in manifest, manifest
-        (tool / "ziran.toml").write_text(manifest.replace('ref = "master"', f'ref = "{pinned}"'))
+        assert 'ref = "master"' in (tool / "ziran.toml").read_text()
         merged = run([KRYON, "init", "--template", "tui"], tool, env)
+        assert f"pinned [toolchain] to Ziran {pinned}" in merged, merged
         assert 'kept entry = "src/main.zi" in [package]' in merged, merged
+        assert (tool / "ziran.lock").is_file()
         manifest = (tool / "ziran.toml").read_text()
         assert 'entry = "src/main.zi"' in manifest and 'tool = "kryon"' in manifest
         assert "[tool.kryon]" in manifest and 'entry = "src/app.zi"' in manifest

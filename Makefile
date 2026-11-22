@@ -400,6 +400,13 @@ shot-test:
 		"$(ZIRAN_BIN)" run --target=c --root tests tests/shot_test.zi
 test: shot-test
 
+# kryon init pins a floating [toolchain] to the Ziran Kryon's templates pin.
+.PHONY: toolchain-pin-test
+toolchain-pin-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY "$(ZIRAN_BIN)" run --target=c --root tests \
+		--module-path src/project tests/toolchain_pin_test.zi
+test: toolchain-pin-test
+
 # Every supported target -- C, Go, and the portable runner --
 # renders each template and example on the headless pixmap host, and every
 # image must equal C's byte for byte. It needs go and python3, and
