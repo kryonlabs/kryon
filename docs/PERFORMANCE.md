@@ -130,3 +130,44 @@ headless Weston has no seat, so the report records the exact client unwrap
 limitation instead of presenting an unsupported CPU-to-GPU comparison. Generated
 Cargo inputs remain under `build/scratch/gpui-render-benchmark`, while reports and
 logs remain under ignored `work/backend-render-benchmark/`.
+
+# Renderer performance benchmark
+
+
+Run `build-queue -- python3 tests/scene_render_benchmark.py --output PATH`
+on Linux. The benchmark enables `POSIX_THREADS`; `ZIRAN_PAR_THREADS=1` selects
+the same renderer serially. `CC` can select a compiler wrapper. The benchmark
+retains four MSAA samples per pixel and the complete 960x600 and 420x900 output. It measures
+clear/resolve, unlit meshes, textured meshes, a 12-instruction programmable
+material, and standard lit meshes. The texture is 1024x1024; the scene has a
+wall and four rounded boxes. Each workload warms once, then measures three
+camera positions. Geometry construction and full-frame hashing are outside
+the timed region. Rows contain width, height, workload, frame, wall nanoseconds,
+process CPU nanoseconds and an RGBA pixel hash. CPU time separates rendering
+work from scheduling delays; it does not predict an application's frame rate.
+Use `--compare PATH` with an earlier output to require all 30 pixel hashes to
+match and report median speed ratios. Add `--motion` for 120 changing-camera
+frames per workload at 960x600, 420x900 and 1280x800. It reports p50/p95/p99,
+the count within the 16.67 ms budget, cold render time, retained scratch and
+sampled process peak RSS/HWM; it also checks all 1,800 motion hashes when the
+comparison contains them. Every sample is retained, including slow frames.
+`--shadows` instead adds 120 motion frames at each resolution for a lit
+programmable material, a 1024-square shadow map and the unchanged five-tap
+soft-shadow disk. Compare against an earlier `--shadows` output to check all
+360 shadow hashes. The original 30 reference frames still run in this mode.
+`--overdraw` instead adds 16 opaque lit programmable planes, with 12 changing
+camera frames at each resolution after warming that camera path's clipping
+capacity. Compare against an earlier `--overdraw` output to check all 36 motion
+hashes. Statistics rows record the final frame's projected layers, visibility
+pass choice and material evaluation counts.
+The benchmark checks fixed scratch capacity during these camera motions and
+zero scratch after release. It measures rendering only: presentation, image
+uploads and application geometry/state updates require application profiling.
+These are local tests, not GPU timings or application frame-rate claims.
+
+The renderer reuses sized scratch buffers, converts fragment output once for
+its covered samples, and caches the exact byte-to-linear transfer. The output
+lookup searches thresholds generated from the original transfer and rounding;
+it does not reduce color precision. Shader vector arithmetic dispatches once
+per instruction. These changes retain clipping, blending, depth and sampling
+behavior; the shader regression renders both sides of every output-byte edge.

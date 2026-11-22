@@ -434,6 +434,34 @@ resolves real native artifacts and tests source and saved IR under ASan, UBSan
 and leak detection, including adapter failure cleanup. With development-only
 package overrides, set `ZIRAN_ROOT` and `ZIRAN_BIN` to the rebuilt toolchain.
 
+## AVIF compression and RGBA previews
+
+The native `image_preview` module provides
+`ImageCompressAVIF(data: string, file_type: string, orientation: s32,
+quality: s32 = 35) -> ImageAVIFResult`. On success, `data` owns actual AVIF
+bytes and `source_bytes`/`encoded_bytes` support a real size comparison.
+`width`/`height` are the full stored dimensions. Call `ImageAVIFFree(*result)`
+when finished. Encoding does not resize or discard a larger result.
+`ImageAVIFEncodingAvailable()` reports whether this host supports encoding.
+Browser hosts return false, and compression returns `UnsupportedCapability`
+without linking native codec archives. Browser RGBA previews remain available.
+
+Accepted still 8-bit JPEG, PNG and WebP sources retain ICC, Exif and XMP when
+the container metadata is supported; AVIF uses the headless package's direct
+re-encode path. Alpha stays lossless. Animated, high-depth, gain-map and
+unsupported color/metadata cases return an explicit shared `DecodeError`.
+PNG compressed ICC and compressed text profiles currently return
+`UnsupportedCapability`. A host that already baked a nonidentity orientation
+must provide raw pixels before compression can preserve the stored orientation.
+
+`ImagePreviewRGBA(data, file_type, max_edge, orientation)` returns owned upright
+straight RGBA8 with `pixels`, `width`, `height` and `stride`. It uses Lanczos-3
+and retains transparency. `ImagePreviewRGBAPixels` accepts already decoded
+pixels with 1..4 channels. Call `ImagePreviewRGBAFree(*result)` to release the
+output. These RGBA previews avoid temporary JPEG files and preserve transparent
+edges for before/after comparison. Existing JPEG preview callers retain their
+existing API.
+
 ## WebP images
 
 Images, image previews and app media files accept WebP wherever they accept
@@ -647,7 +675,7 @@ presentation. Cairo and Android's
 ANativeWindow/Pixmap host consume the resulting managed bitmap through the
 standard Image surface. These hosts do not need a shader-language bridge.
 This interface does not claim GPU execution, GLSL compilation, vertex-shader
-execution or GPU performance. See [programmable scene materials](API.md#programmable-scene-materials)
+execution or GPU performance. See [programmable scene materials](SCENE_RENDERING.md#programmable-scene-materials)
 for binding ownership, colour space, clipping, alpha and explicit scratch release.
 Programs and pictures contain no context-bound handles. Recreate the host
 presentation context as usual; keep or re-upload the owned bitmap and render
@@ -692,7 +720,7 @@ Probe/render/resource counters must establish acceleration and retained upload
 behavior before reporting GPU timing. A module export or successful link alone
 does not establish application integration or deployment.
 
-See [GPU scene APIs](API.md#portable-glsl-translation-and-optional-native-gpu-rendering)
+See [GPU scene APIs](SCENE_RENDERING.md#portable-glsl-translation-and-optional-native-gpu-rendering)
 for ownership, lifecycle, capability requirements and local test targets.
 
 ## Custom application entry
