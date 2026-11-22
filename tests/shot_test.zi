@@ -1,0 +1,131 @@
+// `kryon run shot --png`: a whole app rendered offscreen at any size, with
+// no preview fixture and no display. The test shoots a scratch copy of
+// examples/dashboard at two sizes and checks each PNG's dimensions, then
+// edits the copy's stylesheet and checks that the picture changes.
+//
+// Run from the Kryon root: make shot-test (ZIRAN_BIN names the ziran
+// command; default ziran).
+#import "std/process_run_linux"
+#import "std/file_tree_linux"
+#import "std/file"
+#import "std/text_tools"
+#import "std/environment_linux"
+using Vectors :: #import "vec";
+
+failures: s32;
+
+Expect :: (ok: bool, what: string) {
+    if ok { return }
+    failures += 1
+    print("shot: FAIL %\n", what)
+}
+
+// Runs ARGUMENTS in DIRECTORY with their output in LOG.
+Run :: (arguments: []string, directory: string, log: string) -> bool {
+    options: ProcessOptions = .{.arguments = arguments, .directory = directory,
+        .output_path = log, .merge_error = true}
+    run: ProcessRun
+    return RunProcess(options, *run) && run.code == 0
+}
+
+// The example's own lock pins a published Kryon; the copy's
+// ziran.local.toml points kryon at this checkout (and ziran at the running
+// toolchain) instead.
+PrepareCopy :: (ziran: string, source: string, copy: string) -> bool {
+    if !CreateDirectories(copy) { return false }
+    entries: Vec(string)
+    if !ListDirectory(source, *entries) { return false }
+    copied := true
+    for entry: entries {
+        if entry == "build" || entry == "ziran.local.toml" { continue }
+        from := JoinPath(source, entry)
+        to := JoinPath(copy, entry)
+        copied = copied && (ifx IsDirectory(from) then CopyTree(from, to) else CopyFile(from, to))
+    }
+    FreeDirectoryNames(*entries)
+    overrides: Vec(u8)
+    BuilderPrint(*overrides, "[overrides]\nkryon = \"%\"\n", WorkingDirectory())
+    tool_suffix := "/build/bin/ziran"
+    if TextHasSuffix(ziran, tool_suffix) {
+        BuilderPrint(*overrides, "ziran = \"%\"\n", ziran[:ziran.count - tool_suffix.count])
+    }
+    return copied && WriteEntireFile(JoinPath(copy, "ziran.local.toml"), BuilderFinish(overrides))
+}
+
+// One `kryon run shot --png` of the app in DIRECTORY, through the same
+// `ziran tool kryon` the kryon front door runs.
+Shoot :: (ziran: string, directory: string, png: string, width: string, height: string,
+    theme: string, log: string) -> bool {
+    arguments: [13]string = .[ziran, "tool", "kryon", "run", "shot", "--png", png,
+        "--width", width, "--height", height, "--theme", theme]
+    return Run(arguments[:], directory, log)
+}
+
+// A `kryon run` that must fail and name its fix: its log holds EXPECTED.
+Refused :: (ziran: string, directory: string, arguments: []string, log: string, expected: string) -> bool {
+    command: [8]string = .[ziran, "tool", "kryon", "", "", "", "", ""]
+    if arguments.count > 5 { return false }
+    for i: 0..arguments.count - 1 { command[3 + i] = arguments[i] }
+    if Run(command[0:3 + arguments.count], directory, log) { return false }
+    text, ok := ReadEntireFile(log)
+    return ok && TextFind(text, expected) >= 0
+}
+
+// The width and height a PNG's header declares, or 0, 0.
+PngSize :: (path: string) -> (width: u32, height: u32) {
+    bytes, ok := ReadEntireFile(path)
+    signature: [8]u8 = .[137, 80, 78, 71, 13, 10, 26, 10]
+    if !ok || bytes.count < 24 || bytes[12:16] != "IHDR" { return 0, 0 }
+    for i: 0..7 { if bytes[i] != signature[i] { return 0, 0 } }
+    width: u32 = 0
+    height: u32 = 0
+    for i: 0..3 {
+        width = (width << 8) | cast(u32)bytes[16 + i]
+        height = (height << 8) | cast(u32)bytes[20 + i]
+    }
+    return width, height
+}
+
+main :: () -> s32 {
+    ziran := EnvironmentText("ZIRAN_BIN")
+    if ziran == "" { ziran = "ziran" }
+    root := JoinPath(WorkingDirectory(), "build/test/shot")
+    copy := JoinPath(root, "dashboard")
+    log := JoinPath(root, "shot.log")
+    if !PrepareCopy(ziran, "examples/dashboard", copy) {
+        print("shot: FAIL cannot copy examples/dashboard into %\n", copy)
+        return 1
+    }
+
+    wide := JoinPath(root, "wide.png")
+    narrow := JoinPath(root, "narrow.png")
+    Expect(Shoot(ziran, copy, wide, "1280", "720", "light", log), "shoot 1280x720; see build/test/shot/shot.log")
+    wide_width, wide_height := PngSize(wide)
+    Expect(wide_width == 1280 && wide_height == 720, "the wide shot is 1280x720")
+    Expect(IsFile(JoinPath(root, "wide.json")), "the wide shot writes its widget tree beside the PNG")
+    Expect(Shoot(ziran, copy, narrow, "390", "844", "dark", log), "shoot 390x844 dark; see build/test/shot/shot.log")
+    narrow_width, narrow_height := PngSize(narrow)
+    Expect(narrow_width == 390 && narrow_height == 844, "the narrow shot is 390x844")
+
+    no_png: [4]string = .["run", "shot", "--width", "800"]
+    Expect(Refused(ziran, copy, no_png[:], log, "need --png FILE.png"), "sizes without --png are refused")
+    web: [4]string = .["run", "web", "--png", "web.png"]
+    Expect(Refused(ziran, copy, web[:], log, "needs a desktop or pixmap C99 profile"), "a canvas profile is refused")
+
+    styles := JoinPath(copy, "src/styles.zi")
+    text, read := ReadEntireFile(styles)
+    card := "--surface-card: #ffffff;"
+    Expect(read && TextFind(text, card) >= 0, "the dashboard stylesheet sets --surface-card")
+    edited := TextReplace(text, card, "--surface-card: #ffd8d0;")
+    Expect(WriteEntireFile(styles, edited), "edit the copy's stylesheet")
+    restyled := JoinPath(root, "restyled.png")
+    Expect(Shoot(ziran, copy, restyled, "1280", "720", "light", log), "shoot after the style edit")
+    before, before_ok := ReadEntireFile(wide)
+    after, after_ok := ReadEntireFile(restyled)
+    Expect(before_ok && after_ok && before.count > 0 && after.count > 0, "both shots were written")
+    Expect(before != after, "the style edit changes the shot")
+
+    if failures > 0 { return 1 }
+    print("shot: dashboard at 1280x720 and 390x844, light and dark, restyled; all checks passed\n")
+    return 0
+}

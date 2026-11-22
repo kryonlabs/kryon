@@ -23,7 +23,7 @@ def run(arguments, project, expected=0):
 
 def check_ui_map(project):
     catalog = json.loads((ROOT / 'docs/ui-map.json').read_text())
-    assert (catalog['version'], catalog['backend']) == (1, 'native')
+    assert (catalog['version'], catalog['backend']) == (2, 'native')
     selectors = [selector for entry in catalog['elements'] for selector in entry['html']]
     assert len(selectors) == len(set(selectors)), 'duplicate HTML selector in UI map'
     exports = tomllib.loads((ROOT / 'ziran.toml').read_text())['exports']
@@ -185,8 +185,12 @@ def main():
     scratch.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='project-entry-', dir=scratch) as temporary:
         project = Path(temporary)
-        (project / 'ziran.local.toml').write_text(
-            f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
+        # Checked packages lock only against the exact toolchain Kryon pins;
+        # this checkout still supplies the Kryon source under test.
+        (project / 'ziran.local.toml').write_text(f'[overrides]\nkryon = "{ROOT}"\n')
+        toolchain = tomllib.loads((ROOT / 'ziran.toml').read_text())['toolchain']
+        revision = subprocess.check_output(['git', 'rev-parse', '--verify', 'HEAD'],
+                                           cwd=ROOT, text=True).strip()
         for entry, package_entry in [('app.zi', 'app.zi'), ('button.zi', 'button.zi'),
                                      ('button.zi', 'main.zi')]:
             manifest = f'''[package]
@@ -195,11 +199,11 @@ entry = "{package_entry}"
 module_roots = ["."]
 tool = "kryon"
 [toolchain]
-git = "https://github.com/ziranlang/ziran.git"
-ref = "master"
+git = "{toolchain['git']}"
+ref = "{toolchain['ref']}"
 [dependencies.kryon]
-git = "https://github.com/kryonlabs/kryon.git"
-ref = "master"
+git = "https://git.waozi.xyz/kryonlabs/kryon.git"
+ref = "{revision}"
 [tool.kryon]
 entry = "{entry}"
 default_profile = "native"

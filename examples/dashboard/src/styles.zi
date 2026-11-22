@@ -6,6 +6,7 @@ sheet: CSS.CssSheet;
 sheet_parsed: bool;
 applied_dark: s32 = -1;
 applied_compact: s32 = -1;
+css_reported: bool;
 
 dashboard_css :: #string CSS
 :root {
@@ -52,20 +53,23 @@ dashboard_css :: #string CSS
 Card {
   background: var(--surface-card);
   color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid;
+  border-color: var(--border-subtle);
   border-radius: 10px;
   -kryon-elevation: rest;
 }
 
 Card.kpi-card {
   background: var(--surface-card);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid;
+  border-color: var(--border-subtle);
   border-radius: 10px;
 }
 
 Card.inspector-card {
   background: var(--surface-card);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid;
+  border-color: var(--border-subtle);
   border-radius: 10px;
 }
 
@@ -94,7 +98,8 @@ Button.nav-item:selected {
 Button.chip {
   background: var(--surface-sunken);
   color: var(--text-muted);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid;
+  border-color: var(--border-subtle);
   border-radius: 8px;
   min-height: 30px;
   padding: 4px 10px;
@@ -115,7 +120,8 @@ Button.chip:selected {
 Button.result-row {
   background: var(--surface-card);
   color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid;
+  border-color: var(--border-subtle);
   border-radius: 8px;
   padding: 8px 12px;
   outline-color: var(--focus-ring);
@@ -142,7 +148,8 @@ Button.primary-btn {
 TextField.search-field {
   background: var(--surface-sunken);
   color: var(--text-primary);
-  border: 1px solid var(--border-strong);
+  border: 1px solid;
+  border-color: var(--border-strong);
   border-radius: 8px;
   padding: 0px 12px;
   outline-color: var(--focus-ring);
@@ -155,7 +162,8 @@ TextField.search-field:focus {
 Modal {
   background: var(--surface-card);
   color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid;
+  border-color: var(--border-subtle);
   border-radius: 12px;
   -kryon-elevation: floating;
 }
@@ -169,6 +177,16 @@ ElementId :: (name: string) -> s32 {
     return CSS.StyleId(name)
 }
 
+// A rejected stylesheet leaves the default theme; say why, once.
+ReportCss :: () -> bool {
+    if !css_reported {
+        diagnostic: [512]u8
+        print("dashboard.css: %\n", CSS.CssSheetDiagnostic(*sheet, diagnostic[:]))
+        css_reported = true
+    }
+    return false
+}
+
 EnsureDashboardTheme :: (dark: bool, compact: bool, reduced_motion: bool) -> bool {
     want_dark: s32 = ifx dark then 1 else 0
     want_compact: s32 = ifx compact then 1 else 0
@@ -179,7 +197,7 @@ EnsureDashboardTheme :: (dark: bool, compact: bool, reduced_motion: bool) -> boo
     if !sheet_parsed {
         CSS.CssSheetReset(*sheet)
         if !CSS.CssSheetParse(*sheet, dashboard_css, "dashboard.css", CSS.CssNoImports) {
-            return false
+            return ReportCss()
         }
         sheet_parsed = true
     }
@@ -191,7 +209,7 @@ EnsureDashboardTheme :: (dark: bool, compact: bool, reduced_motion: bool) -> boo
         "mouse",
         "desktop")
     if !CSS.CssSheetInstall(*sheet, env, null) {
-        return false
+        return ReportCss()
     }
     applied_dark = want_dark
     applied_compact = want_compact

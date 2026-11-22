@@ -105,7 +105,18 @@ kryon check
 kryon build
 kryon run desktop            # or: kryon run --profile desktop, ziran run desktop
 kryon profiles               # the profiles, their hosts, and the default
+kryon run shot --png build/shot.png --width 390 --height 844 --theme dark
 ```
+
+`kryon run [PROFILE] --png FILE.png` renders the app's own entry offscreen,
+with no display and no preview fixture, and writes `FILE.png` and its widget
+tree `FILE.json` (the [preview JSON](FRAME_REPLAY.md#native-fixture-preview)).
+`--width` and `--height` take 1–4096 pixels (960 × 600 by default); a comma
+list of widths writes `FILE-PX.png` per width. `--theme light|dark` picks the
+palette (light by default). The named profile must be a desktop or pixmap C99
+profile, and the entry must export `Frame`; the desktop renderer draws the
+picture in either case, so it matches the window. The capture build lives in
+`build/shot/PROFILE`.
 
 Commit `ziran.lock` to pin exact package and toolchain revisions. `ziran
 fetch` fills the shared cache. For local development, `ziran.local.toml` can
@@ -163,7 +174,7 @@ terminal; otherwise it uses the default.
 | `terminal` | 80 × 24 terminal cells | TTY for interactive input; redirected output renders once |
 | `desktop` | SDL2 window with Cairo raster | SDL2, Cairo, and FreeType development libraries |
 | `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
-| `pixmap` | headless 960 × 600 frame printed as a PPM image | nothing; `kryon run shot > frame.ppm` |
+| `pixmap` | headless 960 × 600 frame printed as a PPM image; `--png` draws any size instead | nothing; `kryon run shot > frame.ppm` |
 | `android` | installable APK through a generated `droid/` Gradle project and direct NativeActivity host | a JDK, the Android SDK with NDK `28.2.13676358` and CMake `3.22.1`, the locked codec source packages, and `[tool.kryon.android] package`; see [Android host](BACKENDS.md#android-host) |
 
 The SDL desktop host presents its already rasterized pixels through the

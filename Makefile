@@ -391,6 +391,15 @@ templates-test: build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) \
 		python3 tests/templates_test.py
 
+# `kryon run shot --png` renders a whole app offscreen at any size: the
+# dashboard example at two sizes, then restyled.
+.PHONY: shot-test
+shot-test:
+	@rm -rf build/test/shot
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS ZIRAN_BIN="$(ZIRAN_BIN)" \
+		"$(ZIRAN_BIN)" run --target=c --root tests tests/shot_test.zi
+test: shot-test
+
 # Every supported target -- C, Go, and the portable runner --
 # renders each template and example on the headless pixmap host, and every
 # image must equal C's byte for byte. It needs go and python3, and

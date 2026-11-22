@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `kryon run [PROFILE] --png FILE.png [--width PX] [--height PX] [--theme light|dark]` renders any app entry offscreen at any size up to 4096 pixels, with its widget tree beside the PNG and no preview fixture. The dashboard example's stylesheet parses again and reports a rejected sheet once.
+
 - `kryon new` and `kryon init` take templates from the Gitea origin, and every starter pins exact Gitea Ziran and Kryon revisions, so a new app locks and builds with checked packages. `kryon init` explains a kept floating toolchain when the lock refuses it.
 
 - The kryon project tool reads its command line from argv directly, so restricted sandboxes without procfs can run Kryon builds.

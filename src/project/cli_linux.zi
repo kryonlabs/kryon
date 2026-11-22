@@ -322,6 +322,7 @@ Usage :: () -> s32 {
     PrintFd(1, "usage: kryon new DIR [--template NAME|SOURCE[:NAME]] [--name NAME] [--overrides FILE]\n")
     PrintFd(1, "       kryon init [--template NAME|SOURCE[:NAME]] [--overrides FILE]\n")
     PrintFd(1, "       kryon run|build|check [PROFILE | --profile NAME]\n")
+    PrintFd(1, "       kryon run [PROFILE] --png FILE.png [--width PX] [--height PX] [--theme light|dark]\n")
     PrintFd(1, "       kryon run FILE.zx\n")
     PrintFd(1, "       kryon install [--prefix DIR]\n")
     PrintFd(1, "       kryon profiles\n")
@@ -379,6 +380,41 @@ PreviewWidthError :: (widths: string) -> string {
     return ""
 }
 
+// Reads FLAG VALUE pairs from argument FIRST on: --theme, --width,
+// --height, OUTPUT_FLAG and, for previews, --profile; each at most once.
+ParseCaptureFlags :: (command_line: string, first: s32, output_flag: string, options: *PreviewOptions) -> bool {
+    count := ArgumentCount(command_line)
+    index := first
+    while index < count {
+        flag := ArgumentAt(command_line, index)
+        value := ArgumentAt(command_line, index + 1)
+        if value == "" || ProjectStarts(value, "--") { return false }
+        if flag == "--theme" && options.theme == "" { options.theme = value }
+        else if flag == "--width" && options.width == "" { options.width = value }
+        else if flag == "--height" && options.height == "" { options.height = value }
+        else if flag == output_flag && options.output == "" { options.output = value }
+        else if flag == "--profile" && output_flag == "--output" && options.profile == "" { options.profile = value }
+        else { return false }
+        index += 2
+    }
+    return true
+}
+
+// Theme, height and width errors shared by previews and shots, or "".
+CaptureSizeError :: (options: PreviewOptions, verb: string) -> string {
+    if options.theme != "light" && options.theme != "dark" {
+        return ifx verb == "preview" then "preview --theme must be light or dark" else "run --theme must be light or dark"
+    }
+    if PreviewDimension(options.height) == 0 {
+        return ifx verb == "preview" then "preview --height must be an integer from 1 through 4096" else "run --height must be an integer from 1 through 4096"
+    }
+    width_error := PreviewWidthError(options.width)
+    if width_error != "" && verb != "preview" {
+        return "run --width must list integers from 1 through 4096 separated by commas"
+    }
+    return width_error
+}
+
 ParsePreview :: (command_line: string) -> PreviewOptions {
     options: PreviewOptions
     options.fixture = ArgumentAt(command_line, 2)
@@ -386,37 +422,36 @@ ParsePreview :: (command_line: string) -> PreviewOptions {
         options.error = "preview requires a fixture name (letters, digits, _ or -); see kryon preview --help"
         return options
     }
-    count := ArgumentCount(command_line)
-    index: s32 = 3
-    while index < count {
-        flag := ArgumentAt(command_line, index)
-        value := ArgumentAt(command_line, index + 1)
-        if value == "" || ProjectStarts(value, "--") {
-            options.error = "preview options need values; see kryon preview --help"
-            return options
-        }
-        if flag == "--theme" && options.theme == "" { options.theme = value }
-        else if flag == "--width" && options.width == "" { options.width = value }
-        else if flag == "--height" && options.height == "" { options.height = value }
-        else if flag == "--output" && options.output == "" { options.output = value }
-        else if flag == "--profile" && options.profile == "" { options.profile = value }
-        else {
-            options.error = "unknown or repeated preview option; see kryon preview --help"
-            return options
-        }
-        index += 2
-    }
-    if options.theme != "light" && options.theme != "dark" {
-        options.error = "preview --theme must be light or dark"
-    } else if PreviewDimension(options.height) == 0 {
-        options.error = "preview --height must be an integer from 1 through 4096"
+    if !ParseCaptureFlags(command_line, 3, "--output", *options) {
+        options.error = "unknown, repeated or empty preview option; see kryon preview --help"
     } else if options.output == "" {
-        options.error = "preview needs --output FILE.png or PREFIX"
+        options.error = CaptureSizeError(options, "preview")
+        if options.error == "" { options.error = "preview needs --output FILE.png or PREFIX" }
     } else if options.profile != "" && !ProjectNameValid(options.profile) {
         options.error = "invalid preview profile name; use kryon profiles to list profiles"
     } else {
-        options.error = PreviewWidthError(options.width)
+        options.error = CaptureSizeError(options, "preview")
     }
+    return options
+}
+
+// kryon run [PROFILE] --png FILE.png [--width PX] [--height PX] [--theme
+// light|dark]: the app's own entry, rendered offscreen. 960x600 light by
+// default.
+ParseShot :: (command_line: string, first: s32) -> PreviewOptions {
+    options: PreviewOptions
+    if !ParseCaptureFlags(command_line, first, "--png", *options) {
+        options.error = "unknown, repeated or empty run option; use kryon run [PROFILE] --png FILE.png [--width PX] [--height PX] [--theme light|dark]"
+        return options
+    }
+    if options.output == "" {
+        options.error = "kryon run --width, --height and --theme need --png FILE.png"
+        return options
+    }
+    if options.width == "" { options.width = "960" }
+    if options.height == "" { options.height = "600" }
+    if options.theme == "" { options.theme = "light" }
+    options.error = CaptureSizeError(options, "run")
     return options
 }
 
@@ -447,7 +482,8 @@ PreviewLockDirectory :: (path: *u8) -> *void {
     return directory
 }
 
-PreviewCapture :: (prefix: string, width: string, height: string, args: []string) -> s32 {
+// FAILURE reports a failed build or render.
+PreviewCapture :: (prefix: string, width: string, height: string, args: []string, failure: string) -> s32 {
     png_bytes: [4096]u8
     tree_bytes: [4096]u8
     parent_bytes: [4096]u8
@@ -491,17 +527,13 @@ PreviewCapture :: (prefix: string, width: string, height: string, args: []string
     }
     // Build under the preview lock on the first capture only.
     if args[5] == "build" {
-        if RunChild(args) != 0 {
-            return Error("preview build or render failed; see diagnostics above, add previews to [package] module_roots and export Frame from the fixture")
-        }
+        if RunChild(args) != 0 { return Error(failure) }
         args[5] = "run-built"
     }
-    if RunChild(args) != 0 {
-        return Error("preview build or render failed; see diagnostics above, add previews to [package] module_roots and export Frame from the fixture")
-    }
+    if RunChild(args) != 0 { return Error(failure) }
     if !Exists(staged_tree) || !PreviewPngSizeMatches(*staged_png_bytes[0],
         PreviewDimension(width), PreviewDimension(height)) {
-        return Error("preview did not produce a widget tree and PNG of the requested size; export Frame from the fixture")
+        return Error("no widget tree and PNG of the requested size were drawn; export Frame from the entry")
     }
     if !CString(parent, parent_bytes[:]) { return Error("preview output directory is too long") }
     publish_lock := PreviewLockDirectory(*parent_bytes[0])
@@ -518,32 +550,42 @@ PreviewCapture :: (prefix: string, width: string, height: string, args: []string
     return 0
 }
 
+// A preview builds previews/FIXTURE.zi into build/preview/PROFILE/FIXTURE;
+// a shot (no fixture) builds the entry into build/shot/PROFILE.
 PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string) -> s32 {
     prefix := options.output
     if prefix.count >= 4 && prefix[prefix.count - 4:prefix.count] == ".png" {
         prefix = prefix[0:prefix.count - 4]
     }
     if prefix == "" || prefix[prefix.count - 1] == #char "/" {
-        return Error("preview --output must name a file or prefix")
+        return Error("the capture output must name a file or prefix")
+    }
+    area := ifx options.fixture == "" then "build/shot" else "build/preview"
+    failure := "preview build or render failed; see diagnostics above, add previews to [package] module_roots and export Frame from the fixture"
+    if options.fixture == "" {
+        failure = "run --png build or render failed; see diagnostics above and export Frame from the project entry"
     }
 
     build_root_bytes: [4096]u8
     build_path_bytes: [4096]u8
     build_option_bytes: [4096]u8
-    build_root := Join("build/preview/", profile.name, build_root_bytes[:])
-    build_path := Join(build_root, "/", build_path_bytes[:])
-    if build_root == "" || build_path == "" { return Error("preview build directory is too long") }
-    build_root = Join(build_path, options.fixture, build_root_bytes[:])
-    if build_root == "" { return Error("preview build directory is too long") }
+    build_root := Join(Join(area, "/", build_path_bytes[:]), profile.name, build_root_bytes[:])
+    if build_root == "" { return Error("capture build directory is too long") }
+    if options.fixture != "" {
+        build_path := Join(build_root, "/", build_path_bytes[:])
+        if build_path == "" { return Error("capture build directory is too long") }
+        build_root = Join(build_path, options.fixture, build_root_bytes[:])
+        if build_root == "" { return Error("capture build directory is too long") }
+    }
     args[5] = "build"
     args[22] = Join("PROJECT_BUILD_DIR=", build_root, build_option_bytes[:])
     args[23] = "PROJECT_PROGRAM=" // Bind Frame even if the fixture declares a main.
-    if args[22] == "" { return Error("preview build directory is too long") }
+    if args[22] == "" { return Error("capture build directory is too long") }
     mkdir: [4]string = .["mkdir", "-p", "--", build_root]
-    if RunChild(mkdir[:]) != 0 { return Error("cannot create the preview build directory") }
-    unused CString("build/preview", build_path_bytes[:])
+    if RunChild(mkdir[:]) != 0 { return Error("cannot create the capture build directory") }
+    unused CString(area, build_path_bytes[:])
     lock := PreviewLockDirectory(*build_path_bytes[0])
-    if lock == null { return Error("cannot lock the preview build directory") }
+    if lock == null { return Error("cannot lock the capture build directory") }
     defer { RawCloseDirectory(lock) }
 
     display_env: [11]string = .["DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "GDK_DISPLAY",
@@ -552,7 +594,7 @@ PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string)
     for name: display_env {
         key: [64]u8
         if !CString(name, key[:]) || RawUnsetenv(*key[0]) != 0 {
-            return Error("cannot isolate preview from the desktop session")
+            return Error("cannot isolate the capture from the desktop session")
         }
     }
     if !SetEnvironment("HARMONY_DESKTOP_RECOVERY", "0") ||
@@ -565,7 +607,7 @@ PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string)
     }
     position: s32 = 0
     width := NextPreviewWidth(options.width, *position)
-    if position > options.width.count { return PreviewCapture(prefix, width, options.height, args) }
+    if position > options.width.count { return PreviewCapture(prefix, width, options.height, args, failure) }
     stem_bytes: [4096]u8
     stem := Join(prefix, "-", stem_bytes[:])
     if stem == "" { return Error("preview output path is too long") }
@@ -573,7 +615,7 @@ PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string)
         sized_bytes: [4096]u8
         sized_prefix := Join(stem, width, sized_bytes[:])
         if sized_prefix == "" { return Error("preview output path is too long") }
-        status := PreviewCapture(sized_prefix, width, options.height, args)
+        status := PreviewCapture(sized_prefix, width, options.height, args, failure)
         if status != 0 { return status }
         if position > options.width.count { break }
         width = NextPreviewWidth(options.width, *position)
@@ -733,26 +775,30 @@ main :: (argc: s32, argv: **u8) -> s32 {
     }
     profile_name: string = ""
     option: string = ArgumentAt(command_line, 2)
+    // The first argument after the profile; only run takes more (--png ...).
+    rest: s32 = 2
     if verb == "preview" {
         profile_name = preview.profile
+        rest = ArgumentCount(command_line)
     } else if option == "--profile" {
         profile_name = ArgumentAt(command_line, 3)
-        if profile_name == "" || ArgumentAt(command_line, 4) != "" {
-            return Error("expected exactly one profile name")
-        }
+        if profile_name == "" { return Error("expected exactly one profile name") }
+        rest = 4
     } else if ProjectStarts(option, "--profile=") {
         profile_name = option[10:cast(s32)option.count]
-        if profile_name == "" || ArgumentAt(command_line, 3) != "" {
-            return Error("expected exactly one profile name")
-        }
+        if profile_name == "" { return Error("expected exactly one profile name") }
+        rest = 3
     } else if option != "" && option[0] != cast(u8)45 && verb != "profiles" {
         // kryon run desktop
         profile_name = option
-        if ArgumentAt(command_line, 3) != "" {
-            return Error("expected exactly one profile name")
-        }
-    } else if option != "" {
-        return Error("unknown option")
+        rest = 3
+    }
+    shot: PreviewOptions
+    if verb == "run" && ArgumentAt(command_line, rest) != "" {
+        shot = ParseShot(command_line, rest)
+        if shot.error != "" { return Error(shot.error) }
+    } else if ArgumentAt(command_line, rest) != "" {
+        return Error(ifx rest == 2 then "unknown option" else "expected exactly one profile name")
     }
 
     name_env_bytes: [128]u8
@@ -778,7 +824,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
         profile_name = config.install.profile
     }
     if profile_name == "" {
-        if verb == "run" && config.profile_count > 1 && RawIsTty(0) != 0 {
+        if verb == "run" && shot.output == "" && config.profile_count > 1 && RawIsTty(0) != 0 {
             chosen_profile: s32 = ChooseProfile(config)
             if chosen_profile < 0 { return Error("invalid profile selection") }
             profile_name = config.profiles[chosen_profile].name
@@ -828,6 +874,14 @@ main :: (argc: s32, argv: **u8) -> s32 {
             return 2
         }
         // A preview uses the standard frame host even if the app owns its window.
+        profile.host = ""
+    }
+    if shot.output != "" {
+        // The desktop renderer draws the PNG offscreen, for pixmap profiles too.
+        if profile.codegen != "c99" || (profile.backend != "desktop" && profile.backend != "pixmap") {
+            return Error("run --png needs a desktop or pixmap C99 profile; name one, as in kryon run shot --png FILE.png")
+        }
+        profile.backend = "desktop"
         profile.host = ""
     }
     if profile.backend == "android" {
@@ -917,6 +971,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
         at += 1
     }
     if verb == "preview" { return PreviewRun(preview, profile, args[:]) }
+    if shot.output != "" { return PreviewRun(shot, profile, args[:]) }
     return Execute(args[0:22])
 }
 
