@@ -16,18 +16,14 @@ No display needed; `build/shot.json` lists each node's kind, role, label and bou
 
 ## Rules
 
-- Declare every visible widget in every frame. File-scope state lives across
-  frames (end each declaration with `;`); keep it in a Kryon-free module.
+- Declare every widget every frame; keep state at file scope (`x: s32;`) in a Kryon-free module.
 - Containers (Layout, Grid, Flow, Modal) place children: never compute `x` or `y`;
   a child declares its size, and zero width fills a column. If `opened`, draw the
   children, then `End(session)`: a missing `End` fails the whole frame. Composite
   widgets (Card, TitleBar) draw into a `Layout.Stack` slot: pass `slot.bounds`.
-- Size and space come from theme tokens. Act on a result in the same frame:
-  `if Button.Draw(...) == 1 { count += 1 }`.
-- Typed text lives in the `TextField.State` bytes; clear it by zeroing `length`,
-  `cursor`, `anchor`, `scroll_x`. After a button press, press the field again to type.
-- A returned `string` must view storage that outlives the call (file-scope
-  bytes, as in `notes.zi`), never a local buffer.
+- Size and space come from theme tokens. Act on a result in the same frame.
+- Typed text lives in `TextField.State` bytes; zero `length cursor anchor scroll_x` to clear.
+- A returned `string` must view file-scope bytes (as `NoteAt` does), never a local buffer.
 - `ziran lock` refused "checked package metadata": `[toolchain]` must be the
   exact Ziran that Kryon pins (`kryon init` sets it). No window under the
   driver: build with `KRYON_TEST_DRIVER=1`. Never start Xvfb yourself.
@@ -117,8 +113,7 @@ AppBar :: (session: Session) {
     height := Theme.CurrentThemeMetric(.ThemeMetricControlHeightLarge) + Theme.CurrentThemeMetric(.ThemeMetricSpace3)
     slot := Layout.Stack(session, Layout.Props.{.bounds = .{height = height}})
     if !slot.opened { return }
-    bar := TitleBar.Draw(session, TitleBar.Props.{.bounds = slot.bounds, .title = "Notes",
-        .strong_title = true, .trailing_width = 120}, no_menu)
+    bar := TitleBar.Draw(session, TitleBar.Props.{.bounds = slot.bounds, .title = "Notes", .strong_title = true, .trailing_width = 120}, no_menu)
     switch := Toggle.Draw(session, Toggle.Props.{.bounds = bar.trailing_bounds, .label = "Dark", .value = dark})
     if switch.changed { dark = switch.value; unused Theme.SetThemeMode(dark) }
     unused End(session)
@@ -159,9 +154,9 @@ NotesScreen :: (session: Session) {
 ```zi
 // file: src/widgets.zi
 Avatar :: #import "kryon/avatar";        // .name .size; initials when no .image
-Badge :: #import "kryon/badge";          // .text .tone .dot
 Button :: #import "kryon/button";        // .label .tone .emphasis .size .disabled
 Checkbox :: #import "kryon/checkbox";    // .label .checked -> .changed .checked
+Layout :: #import "kryon/layout";
 Progress :: #import "kryon/progress";    // .min .max .value .label
 Radio :: #import "kryon/radio";          // .label .checked -> 1 when picked
 Slider :: #import "kryon/slider";        // DiscreteSlider: .value .min .max -> .changed .value
@@ -177,22 +172,30 @@ checked: bool;
 choice: s32;
 level: s32 = 3;
 on: bool = true;
+Slot :: (session: Session, height: float32) -> Layout.LayoutContainer {
+    return Layout.Stack(session, Layout.Props.{.bounds = .{height = height}})   // draw into it, then End
+}
 Widgets :: (session: Session) {
     h := Theme.CurrentThemeMetric(.ThemeMetricControlHeightMedium)
-    unused Button.Draw(session, Button.Props.{.label = "Save", .bounds = .{height = h},
-        .tone = .ButtonToneAccent, .emphasis = .ButtonEmphasisFilled})
+    unused Button.Draw(session, Button.Props.{.label = "Save", .bounds = .{height = h}, .tone = .ButtonToneAccent, .emphasis = .ButtonEmphasisFilled})
     box := Checkbox.Draw(session, Checkbox.Props.{.label = "Remember me", .checked = checked, .bounds = .{height = h}})
     if box.changed { checked = box.checked }
     switch := Toggle.Draw(session, Toggle.Props.{.label = "Sync", .value = on, .bounds = .{height = h}})
     if switch.changed { on = switch.value }
-    if Radio.Draw(session, Radio.Props.{.label = "Daily", .checked = choice == 0, .bounds = .{height = h}}) == 1 { choice = 0 }
     if Radio.Draw(session, Radio.Props.{.label = "Weekly", .checked = choice == 1, .bounds = .{height = h}}) == 1 { choice = 1 }
-    moved := Slider.DiscreteSlider(session, Slider.DiscreteSliderProps.{.semantic_label = "Level",
-        .value = level, .min = 1, .max = 5, .bounds = .{height = h}})
-    if moved.changed { level = moved.value }
-    Progress.Draw(session, Progress.Props.{.min = 0, .max = 5, .value = level, .label = "Level", .bounds = .{height = 8}})
-    unused Badge.Draw(session, Badge.Props.{.text = "New", .bounds = .{width = 64, height = 24}})
-    unused Avatar.Draw(session, Avatar.Props.{.name = "Ada Lovelace", .bounds = .{width = 40, height = 40}})
+    slider := Slot(session, h)
+    if slider.opened {
+        moved := Slider.DiscreteSlider(session, Slider.DiscreteSliderProps.{.semantic_label = "Level", .value = level, .min = 1, .max = 5, .bounds = slider.bounds})
+        if moved.changed { level = moved.value }
+        unused End(session)
+    }
+    bar := Slot(session, 8)
+    if bar.opened { Progress.Draw(session, Progress.Props.{.max = 5, .value = level, .bounds = bar.bounds}); unused End(session) }
+    tag := Slot(session, 40)
+    if tag.opened {
+        unused Avatar.Draw(session, Avatar.Props.{.name = "Ada Lovelace", .bounds = .{tag.bounds.x, tag.bounds.y, 40, 40}})
+        unused End(session)
+    }
     Layouts(session)
 }
 ```
@@ -202,7 +205,7 @@ Also: `kryon/text_field` (`Bind(session, *state, props)`), `kryon/card`
 `.trailing_bounds`), `kryon/box` (`.fill .border .radius`), `kryon/dropdown`
 (`Draw(session, props, options)`), `kryon/modal` (`opened` -> `End`,
 `.dismissed`), `kryon/toast`, `kryon/image` (`.asset_path .fit`),
-`kryon/scroll`. `ziran api kryon/<path>` prints a module's API.
+`kryon/badge` (`.text .tone`), `kryon/scroll`. `ziran api kryon/<path>` prints an API.
 
 ## Layout recipe
 
@@ -218,8 +221,7 @@ Layout :: #import "kryon/layout";
 #import "kryon/tree"
 Layouts :: (session: Session) {
     gap := Layout.Gap(.ThemeMetricSpace2)
-    ok := Button.Props.{.label = "OK"}
-    size := Button.ButtonMeasure(ok)           // a child's natural size
+    size := Button.ButtonMeasure(Button.Props.{.label = "OK"})   // a child's natural size
     row := Layout.Row(session, Layout.Props.{.bounds = .{height = size.height}, .gap = gap, .gap_override = true})
     if row.opened {                            // row children: width set, height fills
         unused Button.Draw(session, Button.Props.{.label = "OK", .bounds = .{width = size.width}})
@@ -229,14 +231,14 @@ Layouts :: (session: Session) {
     sizes: [2]Rectangle = .[size, size]; measured := Layout.LayoutContentBounds(Rectangle.{}, .FlexColumn, sizes[:], gap)
     column := Layout.Draw(session, Layout.Props.{.bounds = .{height = measured.height}, .gap = gap, .gap_override = true})
     if column.opened {
-        unused Button.Draw(session, Button.Props.{.label = "First", .bounds = .{height = size.height}})
-        unused Button.Draw(session, Button.Props.{.label = "Second", .bounds = .{height = size.height}})
+        for i: 0..1 { unused Button.Draw(session, Button.Props.{.label = "Item", .bounds = .{height = size.height}}) }
         unused End(session)
     }
     items: [4]GridItem = .[.{height = 40}, .{height = 40}, .{height = 40}, .{height = 40}]
     grid := Layout.Grid(session, GridProps.{.columns = 2, .gap = gap}, items[:])
-    if grid.container.opened {                 // a two-column grid; spans via .column_span
-        for i: 0..3 { unused Button.Draw(session, Button.Props.{.label = "Cell"}) }
+    if grid.container.opened {                 // GridStep hands out each cell; spans via .column_span
+        cursor := grid.cursor
+        for i: 0..3 { cursor = Grid.GridStep(cursor, items[i].height, items[i].column_span); unused Button.Draw(session, Button.Props.{.label = "Cell", .bounds = cursor.item}) }
         unused End(session)
     }
     flow := Flow.Draw(session, Flow.Props.{.bounds = .{height = 2.0 * size.height}, .gap = gap})
@@ -255,12 +257,10 @@ Layouts :: (session: Session) {
 | `Theme.CurrentThemeMetric(.ThemeMetricControlHeightMedium)` | control height; also `Small`, `Large` |
 | `.ThemeMetricTextXS` `TextSM` `TextBody` `TextLG` `Heading1`…`Heading4` | font sizes for `Text.Props.size` |
 | `StyleTokenColor("canvas" \| "surface" \| "border" \| "text")` | palette colors (`kryon/drawing_props`) |
-| `.tone = .ButtonToneAccent`, `.emphasis = .ButtonEmphasisFilled` | the primary action |
 
 ## Drive it in a test
 
-Build with `env KRYON_TEST_DRIVER=1 ziran build`, then run
-`ziran run --project --target=c tests/notes_test.zi`; it starts its own display.
+`env KRYON_TEST_DRIVER=1 ziran build && ziran run --project --target=c tests/notes_test.zi`:
 
 ```zi
 // file: tests/notes_test.zi
