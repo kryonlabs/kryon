@@ -597,7 +597,8 @@ PixmapResumeRowsInto :: (width: s32, height: s32, first_row: s32, rows: s32,
 PixmapBindRows :: (width: s32, height: s32, first_row: s32, rows: s32, pixels: []u32) -> bool {
     if width <= 0 || height <= 0 || width > 16384 || height > 16384 ||
         first_row < 0 || rows <= 0 || first_row > height - rows ||
-        (pixmap_gpu_active && rows != height) || cast(s64)width * cast(s64)rows > pixels.count { return false }
+        (pixmap_gpu_active && rows != height) ||
+        (!pixmap_gpu_active && cast(s64)width * cast(s64)rows > pixels.count) { return false }
     pixmap_surface = pixels; pixmap_width = width; pixmap_height = height
     pixmap_storage_top = first_row; pixmap_storage_bottom = first_row + rows
     pixmap_damage_active = false
@@ -972,6 +973,7 @@ PixmapSolidSpan :: (left: s32, right: s32, y: s32, color: Color) {
     if y < pixmap_clip_top || y >= pixmap_clip_bottom { return }
     if left < pixmap_clip_left { left = pixmap_clip_left }
     if right > pixmap_clip_right { right = pixmap_clip_right }
+    if pixmap_gpu_active { PixmapGpuRect(left, y, right, y + 1, color); return }
     row := (y - pixmap_storage_top) * pixmap_width
     if left < right { PixmapFillSpan(pixmap_surface[row + left:row + right], color) }
 }
@@ -1616,13 +1618,13 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32, source: Rectangle,
             // An image may borrow the destination surface. Preserve ordered
             // serial behavior for every overlapping view of that storage.
             image := pixmap_image_pixels[slot].value
-            if slot < PixmapAssetImageLimit && image.count > 0 {
+            if !pixmap_gpu_active && slot < PixmapAssetImageLimit && image.count > 0 {
                 source_start := cast(usize)*image[0]; source_end := source_start + cast(usize)image.count * 4
                 target_start := cast(usize)*pixmap_surface[0]
                 target_end := target_start + cast(usize)(pixmap_width * (pixmap_storage_bottom - pixmap_storage_top)) * 4
                 independent = source_end <= target_start || target_end <= source_start
             }
-            PixmapRows(FloorInteger(top), CeilInteger(bottom), CeilInteger(right) - FloorInteger(left), procedure, cast(*void)*rows, independent)
+            PixmapRows(FloorInteger(top), CeilInteger(bottom), CeilInteger(right) - FloorInteger(left), procedure, cast(*void)*rows, independent && !pixmap_gpu_active)
         } else {
             PixmapImageRange(FloorInteger(top), CeilInteger(bottom), rows)
         }
@@ -1906,6 +1908,7 @@ PixmapPresent :: () {
         if pixmap_width == 0 { return }
     }
     rows := pixmap_storage_bottom - pixmap_storage_top
+    if pixmap_surface.count < cast(s64)pixmap_width * rows { return }
     print("P3\n% %\n255\n", pixmap_width, rows)
     row: [11520]u8
     y: s32 = 0

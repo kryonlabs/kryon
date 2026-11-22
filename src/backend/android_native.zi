@@ -1,6 +1,7 @@
 // Kryon owns Android's NativeActivity application thread. The NDK glue keeps
 // only the tiny process/looper bridge; lifecycle, input, window, and pixels
 // stay in Ziran and the current Pixmap runtime.
+#if OS == .ANDROID || #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
 #import "android_jni"
 #import "android_host_cleanup"
 #import "android_touch"
@@ -69,6 +70,8 @@ android_native_buffer: NativeWindowBuffer;
 android_native_dirty: NativeDirtyRectangle;
 android_native_geometry_width: s32;
 android_native_geometry_height: s32;
+AndroidWindowRelease :: #type () -> ();
+android_native_window_release: AndroidWindowRelease;
 android_pixels: []u32;
 android_pixel_width: s32;
 android_pixel_height: s32;
@@ -153,6 +156,10 @@ AndroidNativeSurfaceSize :: (width: *s32, height: *s32) -> bool {
 }
 
 
+AndroidNativeSetWindowFormat :: (window: *void, format: s32) -> bool {
+    return NativeWindowGeometry(window, 0, 0, format) == 0
+}
+
 AndroidNativePixels :: () -> []u32 { return android_pixels }
 
 AndroidNativeWindowReady :: () -> bool { return android_native_window_ready }
@@ -174,6 +181,7 @@ AndroidNativeOnCommand :: (app: *NativeAndroidApp, command: s32) {
         android_native_resized = true
         android_native_redraw = true
     } else if command == AndroidNativeCommandTermWindow {
+        if android_native_window_release != null { android_native_window_release() }
         android_native_window_ready = false
         android_native_window = null
         android_native_resized = true
@@ -194,6 +202,7 @@ AndroidNativeOnCommand :: (app: *NativeAndroidApp, command: s32) {
     } else if command == AndroidNativeCommandPause {
         android_native_paused = true
     } else if command == AndroidNativeCommandDestroy {
+        if android_native_window_release != null { android_native_window_release() }
         android_native_destroy = true
         android_native_window_ready = false
     }
@@ -339,6 +348,7 @@ AndroidNativeUnlock :: () -> bool {
 }
 
 AndroidNativeClose :: () {
+    if android_native_window_release != null { android_native_window_release() }
     #if #defined(ANDROID_BUILD) {
         Lanczos.LanczosClose()
     }
@@ -372,4 +382,12 @@ AndroidNativeLog :: (text: string) {
     if CopyCString("Kryon", tag[:]) && CopyCString(text, message[:]) {
         unused NativeLogWrite(4, *tag[0], *message[0])
     }
+}
+
+AndroidNativeLogRenderer :: (renderer: *u8) {
+    tag: [18]u8
+    if renderer != null && CopyCString("Kryon GL_RENDERER", tag[:]) {
+        unused NativeLogWrite(4, *tag[0], renderer)
+    }
+}
 }

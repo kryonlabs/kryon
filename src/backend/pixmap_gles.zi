@@ -1,0 +1,255 @@
+// GLES 3 sink for the same clipped paint recording used by the SDL hosts.
+// The caller owns a current context and presents the retained framebuffer.
+G :: #import "scene_gpu_gl";
+P :: #import "pixmap";
+#import "pixmap_gpu"
+#import "std/vec"
+
+#if OS == .ANDROID {
+    gles :: #system_library "GLESv3";
+} else {
+    gles :: #system_library "GLESv2";
+}
+UploadRectangle :: (target: u32, level: s32, x: s32, y: s32, width: s32, height: s32,
+    format: u32, kind: u32, pixels: *void) #foreign gles "glTexSubImage2D";
+BlendEquation :: (mode: u32) #foreign gles "glBlendEquation";
+
+Texture2DTarget :: 0x0de1
+FrameBufferTarget :: 0x8d40
+ByteType :: 0x1401
+Rgba :: 0x1908
+ColorBuffer :: 0x4000
+
+PaintVertex :: #string GLSL
+#version 300 es
+layout(location=0) in vec2 position;
+layout(location=1) in vec4 color;
+layout(location=2) in vec2 coordinate;
+uniform vec2 extent;
+out vec4 ink;
+out vec2 uv;
+void main() {
+    gl_Position = vec4(position / extent * vec2(2., -2.) + vec2(-1., 1.), 0., 1.);
+    ink = color;
+    uv = coordinate;
+}
+GLSL
+PaintFragment :: #string GLSL
+#version 300 es
+precision highp float;
+in vec4 ink;
+in vec2 uv;
+uniform sampler2D source;
+uniform int atlas;
+out vec4 pixel;
+void main() {
+    vec4 color = texture(source, uv).bgra * ink;
+    if (atlas != 0) color.rgb *= color.a;
+    pixel = color;
+}
+GLSL
+
+program: u32;
+extent_location: s32;
+atlas_location: s32;
+vertices: u32;
+atlas: u32;
+framebuffer: u32;
+target: u32;
+width: s32;
+height: s32;
+failed: bool;
+seen_revision: u64;
+images: [P.PixmapImageLimit]u32;
+image_revisions: [P.PixmapImageLimit]u64;
+staging: Vec(u32);
+no_flush: PixmapGpuFlushCall;
+
+#scope_module
+NewTexture :: (width: s32, height: s32, pixels: *void = null) -> u32 {
+    id: u32
+    G.GenTextures(1, *id)
+    if id == 0 { return 0 }
+    G.BindTexture(Texture2DTarget, id)
+    G.TexParameter(Texture2DTarget, 0x2801, 0x2600)
+    G.TexParameter(Texture2DTarget, 0x2800, 0x2600)
+    G.TexParameter(Texture2DTarget, 0x2802, 0x812f)
+    G.TexParameter(Texture2DTarget, 0x2803, 0x812f)
+    G.TexImage(Texture2DTarget, 0, 0x8058, width, height, 0, Rgba, ByteType, pixels)
+    if G.GetError() == 0 { return id }
+    G.DeleteTextures(1, *id)
+    return 0
+}
+
+DropImage :: (slot: s64) {
+    if images[slot] != 0 { G.DeleteTextures(1, *images[slot]); images[slot] = 0 }
+    image_revisions[slot] = 0
+}
+
+ImageTexture :: (slot: s32) -> u32 {
+    if slot < 0 || slot >= P.PixmapImageLimit { return 0 }
+    if images[slot] != 0 { return images[slot] }
+    image_width := P.pixmap_image_widths[slot]; image_height := P.pixmap_image_heights[slot]
+    count := cast(s64)image_width * image_height
+    if image_width <= 0 || image_height <= 0 || count > P.PixmapSourceCount(slot) ||
+        !VecResizeBounded(staging, count, count) { return 0 }
+    for index: 0..count - 1 {
+        pixel := P.PixmapSourcePixel(slot, index); alpha := pixel >> 24
+        red := ((pixel >> 16) & cast(u32)255) * alpha / cast(u32)255
+        green := ((pixel >> 8) & cast(u32)255) * alpha / cast(u32)255
+        blue := (pixel & cast(u32)255) * alpha / cast(u32)255
+        staging[index] = (alpha << 24) | (red << 16) | (green << 8) | blue
+    }
+    id := NewTexture(image_width, image_height, cast(*void)*staging[0])
+    if id != 0 { images[slot] = id; image_revisions[slot] = P.pixmap_image_revisions[slot] }
+    return id
+}
+
+Flush :: () { unused Draw() }
+
+Fail :: () -> bool {
+    failed = true
+    PixmapGpuRecordClear()
+    return false
+}
+
+#scope_export
+Open :: (diagnostic: []u8) -> bool {
+    if program != 0 || pixmap_gpu_active { return false }
+    maximum: s32
+    G.GetInteger(0x0d33, *maximum)
+    if maximum < PixmapGpuAtlasSide { return false }
+    empty: PixmapGpuEntry
+    while pixmap_gpu_entries.count < PixmapGpuEntryLimit {
+        if !VecPush(pixmap_gpu_entries, empty) { return false }
+    }
+    program = G.Program(PaintVertex, PaintFragment, diagnostic)
+    if program == 0 { return false }
+    G.UseProgram(program)
+    extent_name: [7]u8 = .[101, 120, 116, 101, 110, 116, 0]
+    atlas_name: [6]u8 = .[97, 116, 108, 97, 115, 0]
+    extent_location = G.UniformLocation(program, *extent_name[0])
+    atlas_location = G.UniformLocation(program, *atlas_name[0])
+    G.GenBuffers(1, *vertices)
+    G.GenFramebuffers(1, *framebuffer)
+    atlas = NewTexture(PixmapGpuAtlasSide, PixmapGpuAtlasSide)
+    white: [PixmapGpuWhiteSide * PixmapGpuWhiteSide]u32
+    for index: 0..white.count - 1 { white[index] = cast(u32)0xffffffff }
+    if atlas != 0 {
+        UploadRectangle(Texture2DTarget, 0, 0, 0, PixmapGpuWhiteSide, PixmapGpuWhiteSide, Rgba, ByteType, cast(*void)*white[0])
+    }
+    if vertices == 0 || framebuffer == 0 || atlas == 0 || G.GetError() != 0 {
+        Close(true); return false
+    }
+    PixmapGpuRecordClear(); PixmapGpuAtlasClear()
+    pixmap_gpu_max_image = maximum
+    pixmap_gpu_flush = Flush; pixmap_gpu_active = true
+    return true
+}
+
+Resize :: (columns: s32, rows: s32) -> bool {
+    if !pixmap_gpu_active || failed || columns <= 0 || rows <= 0 ||
+        columns > pixmap_gpu_max_image || rows > pixmap_gpu_max_image { return false }
+    if columns == width && rows == height { return true }
+    next := NewTexture(columns, rows)
+    if next == 0 { return Fail() }
+    G.BindFramebuffer(FrameBufferTarget, framebuffer)
+    G.FramebufferTexture(FrameBufferTarget, 0x8ce0, Texture2DTarget, next, 0)
+    if G.CheckFramebuffer(FrameBufferTarget) != 0x8cd5 {
+        G.DeleteTextures(1, *next)
+        return Fail()
+    }
+    if target != 0 { G.DeleteTextures(1, *target) }
+    target = next; width = columns; height = rows
+    G.ClearColor(0.0, 0.0, 0.0, 1.0)
+    G.Clear(ColorBuffer)
+    return G.GetError() == 0
+}
+
+Record :: (active: bool) { pixmap_gpu_active = active }
+
+Draw :: () -> bool {
+    if failed || target == 0 { return false }
+    G.ActiveTexture(0x84c0)
+    G.BindTexture(Texture2DTarget, atlas)
+    for index: 0..pixmap_gpu_uploads.count - 1 {
+        upload := pixmap_gpu_uploads[index]
+        UploadRectangle(Texture2DTarget, 0, upload.x, upload.y, upload.width, upload.height,
+            Rgba, ByteType, cast(*void)*pixmap_gpu_staged[upload.start])
+    }
+    if pixmap_gpu_batches.count > 0 {
+        revision := P.PixmapImageRevision()
+        if revision != seen_revision {
+            seen_revision = revision
+            for slot: 0..images.count - 1 {
+                if images[slot] != 0 && image_revisions[slot] != P.pixmap_image_revisions[slot] { DropImage(slot) }
+            }
+        }
+        G.BindFramebuffer(FrameBufferTarget, framebuffer)
+        G.Viewport(0, 0, width, height)
+        G.UseProgram(program); G.Uniform2f(extent_location, cast(float32)width, cast(float32)height)
+        G.Disable(0x0b71); G.Disable(0x0b44); G.Disable(0x0c11)
+        G.Enable(0x0be2); BlendEquation(0x8006)
+        G.BlendFuncSeparate(1, 0x0303, 1, 0x0303)
+        G.BindBuffer(0x8892, vertices)
+        stride := cast(s32)size_of(PixmapGpuVertex)
+        G.BufferData(0x8892, pixmap_gpu_vertices.count * cast(s64)stride,
+            cast(*void)*pixmap_gpu_vertices[0], 0x88e0)
+        G.EnableAttribute(0); G.EnableAttribute(1); G.EnableAttribute(2)
+        G.AttributePointer(0, 2, 0x1406, 0, stride, null)
+        G.AttributePointer(1, 4, ByteType, 1, stride, cast(*void)8)
+        G.AttributePointer(2, 2, 0x1406, 0, stride, cast(*void)12)
+        for index: 0..pixmap_gpu_batches.count - 1 {
+            batch := pixmap_gpu_batches[index]
+            id := ifx batch.slot < 0 then atlas else ImageTexture(batch.slot)
+            if id == 0 { return Fail() }
+            G.BindTexture(Texture2DTarget, id)
+            if batch.slot >= 0 {
+                filter: s32 = ifx batch.smooth then 0x2601 else 0x2600
+                G.TexParameter(Texture2DTarget, 0x2801, filter)
+                G.TexParameter(Texture2DTarget, 0x2800, filter)
+            }
+            G.Uniform1i(atlas_location, ifx batch.slot < 0 then 1 else 0)
+            G.DrawArrays(4, batch.first, batch.count)
+        }
+    }
+    PixmapGpuRecordClear()
+    if G.GetError() != 0 { return Fail() }
+    return true
+}
+
+BlitToWindow :: (window_width: s32, window_height: s32) -> bool {
+    if !Draw() { return false }
+    G.BindFramebuffer(0x8ca8, framebuffer)
+    G.BindFramebuffer(0x8ca9, 0)
+    G.BlitFramebuffer(0, 0, width, height, 0, 0, window_width, window_height, ColorBuffer, 0x2600)
+    return G.GetError() == 0
+}
+
+// Explicit snapshots alone read pixels back. The caller flips GL's rows when
+// publishing the CPU image. Deferred paint stays queued for the next frame.
+Read :: (left: s32, top: s32, columns: s32, rows: s32, pixels: []u8) -> bool {
+    if failed || target == 0 || left < 0 || top < 0 || columns <= 0 || rows <= 0 ||
+        columns > width - left || rows > height - top ||
+        pixels.count < cast(s64)columns * rows * 4 { return false }
+    G.BindFramebuffer(0x8ca8, framebuffer)
+    G.ReadPixels(left, height - top - rows, columns, rows, Rgba, ByteType, cast(*void)*pixels[0])
+    return G.GetError() == 0
+}
+
+Close :: (current: bool) {
+    if program == 0 { return }
+    pixmap_gpu_active = false; pixmap_gpu_flush = no_flush; pixmap_gpu_max_image = 0
+    PixmapGpuRecordClear()
+    if current {
+        for slot: 0..images.count - 1 { DropImage(slot) }
+        G.DeleteTextures(1, *atlas); G.DeleteTextures(1, *target)
+        G.DeleteFramebuffers(1, *framebuffer); G.DeleteBuffers(1, *vertices)
+        G.DeleteProgram(program)
+    } else {
+        for slot: 0..images.count - 1 { images[slot] = 0; image_revisions[slot] = 0 }
+    }
+    VecFree(staging)
+    program = 0; vertices = 0; atlas = 0; framebuffer = 0; target = 0
+    width = 0; height = 0; seen_revision = 0; failed = false
+}

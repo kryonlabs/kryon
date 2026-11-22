@@ -1015,6 +1015,11 @@ android-surface-platform-test: project-toolchain
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS python3 tests/android_surface_platform_test.py
 test: android-surface-platform-test
 
+.PHONY: android-egl-composition-test
+android-egl-composition-test: project-toolchain
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/android_egl_composition_test.sh
+test: android-egl-composition-test
+
 .PHONY: android-source-generation-test
 android-source-generation-test: project-toolchain
 	@python3 tests/android_source_generation_test.py

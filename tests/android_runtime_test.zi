@@ -4,6 +4,8 @@
 Runtime :: #import "android_runtime";
 Raster :: #import "pixmap";
 Device :: #import "android_device";
+Composition :: #import "android_frame_composition";
+Gpu :: #import "pixmap_gpu";
 Surface :: #import "android_surface";
 Native :: #import "android_native";
 Jni :: #import "android_jni";
@@ -22,6 +24,25 @@ polls: s32;
 finishes: s32;
 fail_lock: bool;
 source: Native.AndroidPollSource;
+composition_failures: s32;
+composition_releases: s32;
+
+BeginComposition :: (columns: s32, rows: s32) -> bool {
+    if columns != width || rows != height || composition_failures != 0 { return false }
+    Composition.android_composition_active = true
+    Gpu.pixmap_gpu_active = true
+    return true
+}
+
+LoseComposition :: () -> bool {
+    composition_failures += 1
+    Gpu.PixmapGpuRecordClear()
+    Gpu.pixmap_gpu_active = false
+    Composition.android_composition_active = false
+    return false
+}
+
+ReleaseComposition :: () { composition_releases += 1 }
 
 #program_export
 ANativeWindow_getWidth :: (window: *void) -> s32 { unused window; return width }
@@ -179,6 +200,20 @@ main :: (argc: s32, argv: **u8) -> s32 {
     fail_lock = true
     if Runtime.EndAndroidFrame() || Runtime.AndroidFrameReusable() || posts != 4 { return 16 }
     fail_lock = false
+
+    Composition.android_composition_begin = BeginComposition
+    Composition.android_composition_present = LoseComposition
+    Native.android_native_window_release = ReleaseComposition
+    Runtime.BeginAndroidFrame()
+    Raster.RasterRoundedRectangle(.{0.0, 0.0, 6.0, 5.0}, 0.0, 0, .{80, 90, 100, 255})
+    if !Runtime.EndAndroidFrame() || Runtime.AndroidFrameReusable() ||
+        composition_failures != 1 || posts != 4 { return 23 }
+    Runtime.BeginAndroidFrame()
+    Raster.RasterRoundedRectangle(.{0.0, 0.0, 6.0, 5.0}, 0.0, 0, .{80, 90, 100, 255})
+    if !Runtime.EndAndroidFrame() || !Runtime.AndroidFrameReusable() ||
+        posts != 5 || buffer[0] != cast(u32)0xff645a50 { return 24 }
+    Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandTermWindow)
+    if composition_releases != 1 || Runtime.AndroidFrameReusable() { return 25 }
     queued_destroy = true
     if Runtime.PollAndroidHost(0) || Runtime.EndAndroidFrame() { return 17 }
     Native.AndroidNativeClose()

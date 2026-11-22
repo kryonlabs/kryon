@@ -97,6 +97,7 @@ function(kryon_android_app target)
         -fno-omit-frame-pointer $<$<NOT:$<CONFIG:Debug>>:-g1>)
     target_link_options(${target} PRIVATE
         -Wl,--gc-sections
+        -Wl,--as-needed
         -Wl,-z,max-page-size=16384
         -Wl,-z,common-page-size=16384
         # Kryon serves fopen() from APK assets through __wrap_fopen.

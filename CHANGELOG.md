@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Android applications can opt in to GLES composition and EGL presentation for
+  Pixmap frames, with retained damage and a software fallback.
+
 - Native PDF exports can draw caller-owned RGBA pixels and measure complete
   wrapped text before pagination, preserving image proportions and searchable text.
 

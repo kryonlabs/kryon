@@ -1,6 +1,7 @@
 // NativeActivity route captures use the same managed pixels the Pixmap host
 // draws for Image, with a host owner outside the UI session slot range.
 #import "android_native"
+#import "android_frame_composition"
 #import "drawing_props"
 Surface :: #import "frame_surface";
 Bitmaps :: #import "bitmap_store";
@@ -40,6 +41,26 @@ AndroidFrameTextureCopy :: (width: s32, height: s32, pixels: []u32, stride: s32 
 }
 
 AndroidFrameSnapshotPixels :: (left: s32, top: s32, width: s32, height: s32) -> Surface.FrameSurface {
+    if android_composition_active {
+        count := Bitmaps.BitmapPixelCount(width, height)
+        if !android_composition_presented || count <= 0 || left < 0 || top < 0 || width > android_composition_width - left ||
+            height > android_composition_height - top || android_frame_epoch == cast(u64)18446744073709551615 { return .{} }
+        rgba: Vec(u8)
+        if !VecResizeBounded(rgba, count * 4, count * 4) { return .{} }
+        defer VecFree(rgba)
+        if !android_composition_read(left, top, width, height, rgba[:]) { return .{} }
+        stride := cast(s64)width * 4
+        for row: cast(s64)0..height / 2 - 1 {
+            first := row * stride; last := (cast(s64)height - 1 - row) * stride
+            for column: cast(s64)0..stride - 1 {
+                saved := rgba[first + column]
+                rgba[first + column] = rgba[last + column]; rgba[last + column] = saved
+            }
+        }
+        android_frame_epoch += cast(u64)1
+        texture := Bitmaps.BitmapCreateOwned(ANDROID_FRAME_OWNER, android_frame_epoch, width, height, rgba[:])
+        return Surface.FrameSurface.{texture, true}
+    }
     if left < 0 || top < 0 || width <= 0 || height <= 0 || left >= android_pixel_width ||
         top >= android_pixel_height || width > android_pixel_width - left ||
         height > android_pixel_height - top { return .{} }
@@ -52,6 +73,9 @@ AndroidFrameSnapshotPixels :: (left: s32, top: s32, width: s32, height: s32) -> 
 
 #program_export
 FramePreviousSnapshotHost :: () -> Surface.FrameSurface {
+    if android_composition_active {
+        return AndroidFrameSnapshotPixels(0, 0, android_composition_width, android_composition_height)
+    }
     return AndroidFrameSnapshotPixels(0, 0, android_pixel_width, android_pixel_height)
 }
 

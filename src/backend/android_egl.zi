@@ -1,0 +1,178 @@
+// NativeActivity window ownership for the GLES Pixmap renderer. All calls run
+// on the activity's native thread, including release before TERM_WINDOW returns.
+#if OS == .ANDROID {
+G :: #import "scene_gpu_gl";
+Paint :: #import "pixmap_gles";
+Native :: #import "android_native";
+Surface :: #import "android_surface";
+P :: #import "pixmap";
+#import "pixmap_gpu"
+#import "android_frame_composition"
+#import "std/byte_text_linux"
+
+egl :: #system_library "EGL";
+CreateWindowSurface :: (display: *void, config: *void, window: *void,
+    attributes: *s32) -> *void #foreign egl "eglCreateWindowSurface";
+DestroySurface :: (display: *void, surface: *void) -> u32 #foreign egl "eglDestroySurface";
+ConfigAttribute :: (display: *void, config: *void, attribute: s32, value: *s32) -> u32 #foreign egl "eglGetConfigAttrib";
+QuerySurface :: (display: *void, surface: *void, attribute: s32, value: *s32) -> u32 #foreign egl "eglQuerySurface";
+SwapBuffers :: (display: *void, surface: *void) -> u32 #foreign egl "eglSwapBuffers";
+SwapInterval :: (display: *void, interval: s32) -> u32 #foreign egl "eglSwapInterval";
+
+display: *void;
+context: *void;
+surface: *void;
+attempted_window: *void;
+previous: G.SavedContext;
+frame_open: bool;
+window_width: s32;
+window_height: s32;
+
+#scope_module
+Contains :: (value: string, pattern: string) -> bool {
+    for index: 0..value.count - pattern.count {
+        if value[index:index + pattern.count] == pattern { return true }
+    }
+    return false
+}
+
+Clear :: (viewport: Surface.AndroidViewport, canvas: u32, zoom: float32) -> bool {
+    if !frame_open { return false }
+    if zoom < 0.1 || zoom > 8.0 { zoom = 1.0 }
+    PixmapGpuRect(0, 0, android_composition_width, android_composition_height, P.PixmapOpaqueColor(cast(u32)0xff000000))
+    left := cast(s32)(cast(float32)viewport.x * zoom)
+    top := cast(s32)(cast(float32)viewport.y * zoom)
+    right := cast(s32)(cast(float32)(viewport.x + viewport.width) * zoom)
+    bottom := cast(s32)(cast(float32)(viewport.y + viewport.height) * zoom)
+    if left < 0 { left = 0 }; if top < 0 { top = 0 }
+    if right > android_composition_width { right = android_composition_width }
+    if bottom > android_composition_height { bottom = android_composition_height }
+    PixmapGpuRect(left, top, right, bottom, P.PixmapOpaqueColor(canvas))
+    return true
+}
+
+Drop :: () {
+    if display == null { frame_open = false; return }
+    saved := G.SaveContext()
+    if frame_open { saved = previous }
+    current := context != null && surface != null && G.EMakeCurrent(display, surface, surface, context) != 0
+    Paint.Close(current)
+    // Restore another EGL user before destroying our resources. Android's
+    // process-shared display also serves offscreen SceneGpu contexts.
+    G.RestoreContext(saved, display)
+    if surface != null { unused DestroySurface(display, surface) }
+    if context != null { unused G.EDestroyContext(display, context) }
+    display = null; context = null; surface = null
+    android_composition_width = 0; android_composition_height = 0
+    frame_open = false; android_composition_presented = false; android_composition_active = false
+}
+
+Open :: (window: *void) -> bool {
+    display = G.ESceneDisplay()
+    if display == null { return false }
+    if G.EInitialize(display, null, null) == 0 || G.EBindAPI(0x30a0) == 0 { return false }
+    attributes: [13]s32 = .[0x3033, 4, 0x3040, 0x40, 0x3024, 8, 0x3023, 8, 0x3022, 8, 0x3021, 8, 0x3038]
+    config: *void; count: s32
+    if G.EChooseConfig(display, *attributes[0], *config, 1, *count) == 0 || count == 0 { return false }
+    format: s32
+    if ConfigAttribute(display, config, 0x302e, *format) == 0 ||
+        !Native.AndroidNativeSetWindowFormat(window, format) { return false }
+    options: [3]s32 = .[0x3098, 3, 0x3038]
+    context = G.ECreateContext(display, config, null, *options[0])
+    if context == null { return false }
+    surface = CreateWindowSurface(display, config, window, null)
+    if surface == null || G.EMakeCurrent(display, surface, surface, context) == 0 { return false }
+    renderer := G.GetString(0x1f01)
+    name := TextFromCString(renderer)
+    Native.AndroidNativeLogRenderer(renderer)
+    if name.count == 0 || Contains(name, "llvmpipe") || Contains(name, "softpipe") ||
+        Contains(name, "SwiftShader") || Contains(name, "Software") { return false }
+    diagnostic: [512]u8
+    if !Paint.Open(diagnostic[:]) {
+        if diagnostic[0] != 0 { Native.AndroidNativeLog(TextFromCString(*diagnostic[0])) }
+        return false
+    }
+    // The host already schedules frames. A swap may run at the device's chosen
+    // minimum interval on drivers that disallow zero.
+    unused SwapInterval(display, 0)
+    return true
+}
+
+ReleaseWindow :: () {
+    Drop()
+    attempted_window = null
+}
+
+Begin :: (columns: s32, rows: s32) -> bool {
+    window := Native.AndroidNativeSurface()
+    if window == null || frame_open { return false }
+    if window != attempted_window { ReleaseWindow() }
+    if attempted_window != null && surface == null { return false }
+    previous = G.SaveContext()
+    frame_open = true
+    if surface == null {
+        attempted_window = window
+        if !Open(window) { Disable(); return false }
+    } else if G.EMakeCurrent(display, surface, surface, context) == 0 {
+        Disable(); return false
+    }
+    Paint.Record(true)
+    if QuerySurface(display, surface, 0x3057, *window_width) == 0 ||
+        QuerySurface(display, surface, 0x3056, *window_height) == 0 ||
+        window_width <= 0 || window_height <= 0 || !Paint.Resize(columns, rows) {
+        Disable(); return false
+    }
+    if android_composition_width != columns || android_composition_height != rows { android_composition_presented = false }
+    android_composition_width = columns; android_composition_height = rows
+    android_composition_active = true
+    return true
+}
+
+Disable :: () {
+    Drop()
+    // A resize or a failed swap can follow successful GLES presentation. The
+    // software presenter must request its own geometry and a full buffer.
+    Native.android_native_window = null
+    Native.android_native_redraw = true
+    Native.AndroidNativeLog("Android frame presentation: software Pixmap fallback")
+}
+
+Present :: () -> bool {
+    if !frame_open { return false }
+    first := !android_composition_presented
+    if !Paint.BlitToWindow(window_width, window_height) || SwapBuffers(display, surface) == 0 { Disable(); return false }
+    android_composition_presented = true
+    if first { Native.AndroidNativeLog("Android frame presentation: GLES 3 / EGL window swap") }
+    Cancel()
+    return true
+}
+
+Cancel :: () {
+    if !frame_open { return }
+    PixmapGpuRecordClear()
+    Paint.Record(false)
+    G.RestoreContext(previous, display)
+    frame_open = false
+}
+
+Read :: (left: s32, top: s32, columns: s32, rows: s32, rgba: []u8) -> bool {
+    if !android_composition_presented { return false }
+    if frame_open { return Paint.Read(left, top, columns, rows, rgba) }
+    saved := G.SaveContext()
+    if G.EMakeCurrent(display, surface, surface, context) == 0 { return false }
+    defer G.RestoreContext(saved, display)
+    return Paint.Read(left, top, columns, rows, rgba)
+}
+
+#scope_export
+// Call once before the first frame. When used from a managed Frame entry,
+// the host begins accelerated composition on the following frame.
+EnableAndroidGlesComposition :: () {
+    Native.android_native_window_release = ReleaseWindow
+    Surface.android_surface_clear = Clear
+    android_composition_begin = Begin
+    android_composition_present = Present
+    android_composition_cancel = Cancel
+    android_composition_read = Read
+}
+}

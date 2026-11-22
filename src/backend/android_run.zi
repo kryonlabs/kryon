@@ -2,11 +2,12 @@
     #import "android_bundle_run"
     #program_export
     AndroidRunMain :: () -> s32 { return AndroidBundleRunMain() }
-} else {
+} else #if OS == .ANDROID || #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
 // Kryon owns Android's NativeActivity application thread. The NDK glue only
 // bridges lifecycle/input events to a looper; this host owns the window,
 // pixels, input, IME, density, damage presentation and frame pacing.
 #import "android_device"
+#import "android_frame_composition"
 #import "android_clipboard"
 #import "android_jni"
 #import "android_native"
@@ -99,13 +100,22 @@ AndroidPresentPixmap :: (damage: Rectangle, width: s32, height: s32,
 }
 
 DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
-    bounds: Rectangle, zoom: float32, reuse: bool, paint_unchanged: *bool = null) -> bool {
+    bounds: Rectangle, zoom: float32, reuse: bool, paint_unchanged: *bool = null,
+    surface_presented: *bool = null) -> bool {
     width := viewport.x + viewport.width
     height := viewport.y + viewport.height
-    if !AndroidNativeSurfaceSize(*width, *height) ||
-    !AndroidNativeEnsurePixels(width, height) { return false }
+    if !AndroidNativeSurfaceSize(*width, *height) { return false }
+    composition_enabled := android_composition_begin != null
+    previous_gles := android_composition_active
+    gles := BeginAndroidComposition(width, height)
+    if gles != previous_gles || (gles && !android_composition_presented) { reuse = false }
+    defer CancelAndroidComposition()
 
-    pixels := AndroidNativePixels()
+    pixels: []u32
+    if !gles {
+        if !AndroidNativeEnsurePixels(width, height) { return false }
+        pixels = AndroidNativePixels()
+    }
     if !PixmapScale(zoom, zoom) ||
     !PixmapResumeInto(width, height, pixels, true) { return false }
 
@@ -143,10 +153,10 @@ DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
             TreeCancel(session)
             ok = false
         } else {
-            // Compose against the last presented pixels; route changes may
-            // capture them before the queued paint replaces them.
+            // Compose against the last presented pixels; route changes
+            // may capture them before the queued paint replaces them.
             if !reuse {
-                AndroidNativeFill(cast(u32)0xff000000)
+                if !gles { AndroidNativeFill(cast(u32)0xff000000) }
                 ClearAndroidFrame(viewport, AndroidCanvas())
             }
             finished = EndPixmapFrame(session, reuse, AndroidCanvas())
@@ -161,7 +171,22 @@ DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
     }
     AndroidTouchFrameEnd()
     PixmapEndInto()
-    if ok && !finished.paint_unchanged { ok = AndroidPresentPixmap(finished.damage, width, height, zoom) }
+    if ok && (!reuse || !finished.paint_unchanged) {
+        if !composition_enabled && android_composition_begin != null {
+            // The app enabled GLES in its first Frame call. The CPU
+            // producer must leave this window available for EGL.
+            android_native_redraw = true
+            return true
+        }
+        if gles && !android_composition_present() {
+            // The next frame repaints on the software path. The recorded
+            // frame has no CPU pixels to post here.
+            if paint_unchanged != null { paint_unchanged[0] = false }
+            return true
+        }
+        if !gles { ok = AndroidPresentPixmap(finished.damage, width, height, zoom) }
+        if surface_presented != null { surface_presented[0] = ok }
+    }
     if ok { TestDriverFrame(session) }
     if paint_unchanged != null { paint_unchanged[0] = ok && reuse && finished.paint_unchanged }
     return ok
@@ -254,10 +279,11 @@ android_main :: (app: *NativeAndroidApp) {
 
         AndroidTextInputBeginFrame(session)
         paint_unchanged: bool
-        ok = DrawAndroidFrame(session, viewport, bounds, zoom, reuse, *paint_unchanged)
+        surface_presented: bool
+        ok = DrawAndroidFrame(session, viewport, bounds, zoom, reuse, *paint_unchanged, *surface_presented)
         AndroidTextInputFrame(session, TreeTextInputActive(session))
         if !ok { break }
-        if first_frame {
+        if first_frame && surface_presented {
             first_frame = false
             AndroidNotifyFirstFrame()
         }

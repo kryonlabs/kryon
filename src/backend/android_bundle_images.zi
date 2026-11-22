@@ -175,9 +175,11 @@ AndroidImageDecodeBitmap :: (data: string, width: *s32, height: *s32) -> *u32 {
     defer { AndroidJniDetachCurrent(*session) }
     method := AndroidJniMethod(*session, "decodeBundleImage", "([B)[I")
     if method == null {
-        if !android_bitmap_bridge_reported {
-            android_bitmap_bridge_reported = true
-            AndroidNativeLog("The activity has no decodeBundleImage(byte[]); Android Bitmap fallback is unavailable")
+        #if OS == .ANDROID || #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
+            if !android_bitmap_bridge_reported {
+                android_bitmap_bridge_reported = true
+                AndroidNativeLog("The activity has no decodeBundleImage(byte[]); Android Bitmap fallback is unavailable")
+            }
         }
         return null
     }

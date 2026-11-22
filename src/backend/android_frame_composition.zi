@@ -1,0 +1,23 @@
+// Optional presenter installed by an application that uses Android GLES
+// composition. Plain Frame and ZX hosts only retain their CPU renderer.
+AndroidCompositionBegin :: #type (width: s32, height: s32) -> bool;
+AndroidCompositionPresent :: #type () -> bool;
+AndroidCompositionCancel :: #type () -> ();
+AndroidCompositionRead :: #type (left: s32, top: s32, width: s32, height: s32, rgba: []u8) -> bool;
+
+android_composition_begin: AndroidCompositionBegin;
+android_composition_present: AndroidCompositionPresent;
+android_composition_cancel: AndroidCompositionCancel;
+android_composition_read: AndroidCompositionRead;
+android_composition_active: bool;
+android_composition_presented: bool;
+android_composition_width: s32;
+android_composition_height: s32;
+
+BeginAndroidComposition :: (width: s32, height: s32) -> bool {
+    return android_composition_begin != null && android_composition_begin(width, height)
+}
+
+CancelAndroidComposition :: () {
+    if android_composition_cancel != null { android_composition_cancel() }
+}

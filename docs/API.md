@@ -2450,6 +2450,16 @@ composing. `BeginAndroidFrame()` borrows the NativeActivity surface for Pixmap;
 `EndAndroidFrame()` presents its device-pixel damage. The app owns its widgets,
 state and pacing. Resizing, density, insets, redraw and surface replacement
 invalidate retained pixels; an unchanged frame skips presentation.
+
+Android applications can import `kryon/android_egl` and call
+`EnableAndroidGlesComposition()` before starting the first frame. A managed
+`Frame` entry can call it on its first invocation. Kryon composes Pixmap paint
+into a retained GLES 3 framebuffer and swaps the EGL window surface. It
+falls back to CPU Pixmap if GLES setup or presentation fails. Explicit frame
+snapshots still return ordinary owned textures and may read back GPU pixels.
+The `Kryon GL_RENDERER` log names the driver. The `Kryon` log records the
+first successful EGL swap and any software fallback.
+
 After polling, call `SetAndroidPausedSurfaceVisible(visible)` if the operating
 system reports that a floating window such as picture-in-picture is visible.
 This permits drawing on a live surface during an activity pause while

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate Android host graphs and verify their NDK-linked JNI exports."""
+import argparse
 import os
 from pathlib import Path
 import subprocess
@@ -27,7 +28,10 @@ RECEIVER_EXPORTS = {
     "Java_org_kryonlabs_notifications_NotificationReceiver_requestPermission",
 }
 
-def link_contract(kind, project, manifest, ndk):
+GLES_MODES = {"native-gles", "runtime-gles", "runtime-gles-armv7"}
+KINDS = ("native", "native-gles", "custom", "runtime", "runtime-gles", "runtime-gles-armv7", "zx")
+
+def link_contract(kind, project, manifest, ndk, abi):
     """Link the graph as an app's libmain.so through kryon_android_app and
     kryon_android_host, whose version script names JNI_OnLoad exactly and
     rejects an undefined name with --no-undefined-version."""
@@ -38,7 +42,7 @@ def link_contract(kind, project, manifest, ndk):
     # The native Frame host decodes the pictures an app ships, so it links the
     # app's codecs and zlib as the droid template does.
     codecs = ""
-    if kind == "native":
+    if kind in ("native", "native-gles"):
         environment = codec_environment()
         _, _, flags = codec_artifact(codec_consumer(environment), "aarch64", environment)
         codecs = "target_link_libraries(main PRIVATE z " + " ".join(f'"{flag}"' for flag in flags) + ")"
@@ -58,8 +62,14 @@ kryon_android_host(main ${{APP_ZIRAN_GENERATED_SOURCES}})
     shutil.rmtree(build, ignore_errors=True)
     run(["cmake", "-S", project, "-B", build, "-G", "Ninja",
          f"-DCMAKE_TOOLCHAIN_FILE={ndk_root}/build/cmake/android.toolchain.cmake",
-         "-DANDROID_ABI=arm64-v8a", "-DANDROID_PLATFORM=android-24"])
+         f"-DANDROID_ABI={abi}", "-DANDROID_PLATFORM=android-24"])
     run(["cmake", "--build", build, "--parallel", "2"])
+    if kind in ("native", "runtime") or kind in GLES_MODES:
+        dynamic = subprocess.check_output([ndk / "bin/llvm-readelf", "-d", build / "libmain.so"],
+                                          env=ENV, text=True)
+        for library in ("libEGL.so", "libGLESv3.so"):
+            if (library in dynamic) != (kind in GLES_MODES):
+                raise AssertionError(f"{kind} has the wrong dynamic dependency on {library}")
     symbols = subprocess.run(
         [ndk / "bin/llvm-nm", "-D", "--defined-only", build / "libmain.so"],
         env=ENV, check=True, capture_output=True, text=True).stdout
@@ -75,17 +85,25 @@ kryon_android_host(main ${{APP_ZIRAN_GENERATED_SOURCES}})
     print(kind + " libmain.so exports Android loader and notification JNI entries", flush=True)
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--kind", choices=KINDS, action="append")
+    args = parser.parse_args()
     sdk = Path(os.environ.get("ANDROID_HOME", Path.home() / "Android/Sdk"))
     ndks = sorted((sdk / "ndk").glob("*/toolchains/llvm/prebuilt/linux-x86_64"))
     if not ndks:
         raise RuntimeError("Android source generation tests require the NDK")
     ndk = ndks[-1]
     clang = ndk / "bin/clang"
-    for kind in ("native", "custom", "runtime", "zx"):
+    for kind in args.kind or KINDS:
+        armv7 = kind == "runtime-gles-armv7"
+        abi = "armeabi-v7a" if armv7 else "arm64-v8a"
+        target = "armv7a-linux-androideabi24" if armv7 else "aarch64-linux-android24"
+        cpu_define = "__arm__" if armv7 else "__aarch64__"
         project = WORK / kind
         identity = kryon_test_project(project)
         source = project / "src"
-        entry = source / ("selected.zi" if kind == "native" else "main.zi")
+        native_frame = kind in ("native", "native-gles")
+        entry = source / ("selected.zi" if native_frame else "main.zi")
         # Like the scaffold's glue, nothing in the graph calls this entry:
         # only Android's loader does, so generation must keep it explicitly.
         (source / "android_glue.zi").write_text('\n'.join([
@@ -103,12 +121,24 @@ def main():
                 'Frame :: (session: Session, viewport: Rectangle) -> s32 {',
                 '    unused session; unused viewport',
                 '    return ifx ThreadFinished(null) then 1 else 0', '}\n']))
-        if kind == "runtime":
+        elif kind == "native-gles":
+            entry.write_text('\n'.join([
+                '#import "kryon/session"', '#import "kryon/geometry"',
+                '#import "kryon/android_egl"', '#program_export',
+                'Frame :: (session: Session, viewport: Rectangle) -> s32 {',
+                '    unused session; unused viewport',
+                '    EnableAndroidGlesComposition()',
+                '    return 0', '}\n']))
+        if kind in ("runtime", "runtime-gles", "runtime-gles-armv7"):
+            enable_gles = kind in GLES_MODES
             (source / "main.zi").write_text(
-                '#import "kryon/android_runtime"\n#program_export\n'
+                '#import "kryon/android_runtime"\n'
+                + ('#import "kryon/android_egl"\n' if enable_gles else '')
+                + '#program_export\n'
                 'main :: (argc: s32, argv: **u8) -> s32 {\n'
                 '    unused argc; unused argv\n'
-                '    while PollAndroidHost(16) {\n'
+                + ('    EnableAndroidGlesComposition()\n' if enable_gles else '')
+                + '    while PollAndroidHost(16) {\n'
                 '        unused AndroidHostViewport(); BeginAndroidFrame()\n'
                 '        if !EndAndroidFrame() { return 1 }\n'
                 '    }\n    return 0\n}\n')
@@ -133,12 +163,12 @@ def main():
              "--root", project, "--kryon", ROOT, "--entry", entry,
              "--package-id", identity, "--ir", ir, "--output", generated,
              "--manifest", manifest, "--define", "ANDROID_BUILD",
-             "--define", "__aarch64__",
+             "--define", cpu_define,
              "--codegen", "zx" if kind == "zx" else "c99", *custom])
         adapter = ir / (identity + "_frame_entry.zir")
-        if adapter.is_file() != (kind == "native"):
+        if adapter.is_file() != native_frame:
             raise AssertionError(kind + " has the wrong native Frame adapter graph")
-        if kind == "native" and not (ir / "selected.zir").is_file():
+        if native_frame and not (ir / "selected.zir").is_file():
             raise AssertionError("selected native Frame provider was omitted")
         if kind == "native":
             thread_headers = [path for path in generated.rglob("*.h")
@@ -168,7 +198,7 @@ def main():
         objects = project / "build/objects"
         shutil.rmtree(objects, ignore_errors=True)
         objects.mkdir(parents=True)
-        run([clang, "--target=aarch64-linux-android24", "-std=c11",
+        run([clang, f"--target={target}", "-std=c11",
              "-c", "-fPIC", "-Werror=implicit-function-declaration",
              *["-I" + str(path) for path in sorted(includes)], *outputs], cwd=objects)
         if len(list(objects.glob("*.o"))) != len(outputs):
@@ -187,7 +217,7 @@ def main():
                  "-o", project / "build/custom-host"])
         print(kind + " Android graph generated and all C compiled by NDK", flush=True)
         if kind != "custom":
-            link_contract(kind, project, manifest, ndk)
+            link_contract(kind, project, manifest, ndk, abi)
 
 if __name__ == "__main__":
     main()
