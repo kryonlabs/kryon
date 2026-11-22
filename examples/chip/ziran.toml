@@ -23,4 +23,4 @@ codegen = "zx"
 
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
-ref = "c579fd1780eae1653ff8ad737be924d0df6b8d83"
+ref = "fd3bc9982b45bd02e076445262cda93e7398ad9d"

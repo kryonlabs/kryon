@@ -8,7 +8,7 @@ declares every widget from the app's state; widgets report what the user did.
 
 ```sh
 kryon new notes && cd notes   # app starter: app bar, cards, dark mode; locks itself
-kryon run                     # the window
+kryon run --watch             # the window; rebuilds and relaunches on every save
 kryon run shot --png build/shot.png --width 390 --height 844 --theme dark
 ```
 
@@ -44,7 +44,7 @@ git = "https://git.waozi.xyz/ziranlang/ziran.git"
 ref = "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0"
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
-ref = "cdf23986a0434cfb01513ecca4763b0477d01a7e"
+ref = "fd3bc9982b45bd02e076445262cda93e7398ad9d"
 [tool.kryon]
 default_profile = "desktop"
 entry = "src/app.zi"
