@@ -2,7 +2,7 @@
 
 ## Widget gallery
 
-The maintained gallery is the ordinary Ziran package in `gallery/`. Its
+The maintained gallery is the ordinary Ziran package in `examples/gallery/`. Its
 `src/scenes.zi` supplies the same core scenes to the native application,
 Canvas/Wasm build, and widget review tool. Each optional package has its own
 integration (`src/plot_examples.zi`, `src/data_views_examples.zi`). The module
@@ -30,7 +30,7 @@ make site                           # package the website, gallery and editor
 Run `./build/gallery-desktop` from `examples/gallery/`. The web output is
 `examples/gallery/build/gallery-web.html`; the website entry is
 `docs/site/widgets.html`. Emscripten is required for the web profile. Package
-and toolchain commits are pinned in `gallery/ziran.lock`. Canonical local
+and toolchain commits are pinned in `examples/gallery/ziran.lock`. Canonical local
 sources can be selected in its ignored `ziran.local.toml`.
 
 `build/gallery-zx/index.json` lists the exported bundles. Each includes the
