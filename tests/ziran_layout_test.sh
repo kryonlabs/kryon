@@ -21,6 +21,38 @@ LayoutProps :: #import "layout_props";
 using FlexDirection;
 using JustifyContent;
 using AlignItems;
+
+CheckBatch :: () -> bool {
+    props: FlexProps = .{.bounds = .{10.0, 20.0, 110.0, 0.0}, .gap = 10,
+        .cross_gap = 5, .wrap = true, .align_items = .AlignEnd}
+    items: [3]FlexItem = .[.{.width = 40.0, .height = 20.0, .grow = 1.0},
+        .{.width = 40.0, .height = 30.0, .grow = 1.0}, .{.width = 60.0, .height = 12.0}]
+    boxes: [3]FlexPlacement
+    cross := PlaceFlexItems(props, items[:], boxes[:])
+    if cross != 47.0 || boxes[0].bounds.x != 10.0 || boxes[0].bounds.y != 30.0 || boxes[0].bounds.width != 50.0 ||
+        boxes[1].bounds.x != 70.0 || boxes[1].bounds.y != 20.0 || boxes[2].bounds.x != 10.0 || boxes[2].bounds.y != 55.0 { return false }
+    if PlaceFlexItems(props, items[:], boxes[:2]) != -1.0 || boxes[2].bounds.y != 55.0 { return false }
+
+    props.wrap = false
+    props.bounds.width = 70.0
+    items[0] = .{.basis = 40.0, .has_basis = true, .height = 15.0, .shrink = 1.0}
+    items[1] = .{.width = 80.0, .height = 20.0, .shrink = 1.0}
+    cross = PlaceFlexItems(props, items[:2], boxes[:])
+    if cross != 20.0 || boxes[0].bounds.width != 20.0 || boxes[1].bounds.width != 40.0 || boxes[1].bounds.x != 40.0 { return false }
+    items[0].shrink = 10.0
+    props.bounds.width = 50.0
+    cross = PlaceFlexItems(props, items[:2], boxes[:])
+    if cross != 20.0 || boxes[0].bounds.width != 0.0 || boxes[1].bounds.width != 40.0 { return false }
+
+    props = .{.bounds = .{10.0, 20.0, 70.0, 100.0}, .direction = .FlexColumn, .reverse = true,
+        .padding = 5, .gap = 4, .align_items = .AlignStretch, .justify_content = .JustifyEnd}
+    items[0] = .{.height = 20.0}
+    items[1] = .{.width = 10.0, .height = 12.0, .align_self = .AlignCenter, .has_align_self = true}
+    cross = PlaceFlexItems(props, items[:2], boxes[:])
+    return cross == 20.0 && boxes[0].bounds.x == 15.0 && boxes[0].bounds.y == 41.0 && boxes[0].bounds.width == 60.0 &&
+        boxes[1].bounds.x == 40.0 && boxes[1].bounds.y == 25.0
+}
+
 #program_export
 Answer :: () -> s32 {
     if KeyHash("") != cast(u64)1469598103934665603 { return 0 }
@@ -118,6 +150,7 @@ Answer :: () -> s32 {
     cursor = BeginFlexCursor(props, 0, 0.0)
     cursor = FlexStep(cursor, 20.0, 20.0)
     if cursor.item.width != 0.0 || cursor.remaining != 0 { return 0 }
+    if !CheckBatch() { return 0 }
     policy: GroupPolicy = GroupPolicyFor(bounds, 7, 5)
     if policy.bounds.x != 10.0 || policy.content.x != 15.0 { return 0 }
     if policy.content.width != 90.0 || policy.gap != 7 { return 0 }

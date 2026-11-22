@@ -38,8 +38,8 @@
     {"html": ["svg"], "import": "kryon/svg_icon", "call": "Draw"}
   ],
   "layouts": [
-    {"pattern": "display: flex; flex-direction: row", "import": "kryon/layout", "call": "Row", "scope": "opened"},
-    {"pattern": "display: flex; flex-direction: column", "import": "kryon/layout", "call": "Draw", "scope": "opened"},
+    {"pattern": "display: flex; flex-direction: row", "import": "kryon/layout", "call": "Row", "scope": "opened", "items": "[]Layout.FlexItem", "placements": "[]Layout.FlexPlacement", "child_bounds": "placements[i].bounds", "css": "Row"},
+    {"pattern": "display: flex; flex-direction: column", "import": "kryon/layout", "call": "Draw", "scope": "opened", "items": "[]Layout.FlexItem", "placements": "[]Layout.FlexPlacement", "child_bounds": "placements[i].bounds", "css": "Column"},
     {"pattern": "display: grid", "import": "kryon/layout", "call": "Grid", "css": "Grid", "scope": "container.opened", "items": "kryon/grid.GridItem", "placement": "item_bounds", "cursor_step": "kryon/grid.GridItemStep", "auto_height": "GridItem.measure_height"},
     {"pattern": "overflow-y: auto", "import": "kryon/scroll", "call": "Draw", "scope": "opened"}
   ],

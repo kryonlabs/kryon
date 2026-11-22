@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Place measured row and column children with wrapping, flex sizing and indexed layout rules.
+
 - Test fixtures lock against the exact Gitea Ziran the starter templates pin and this checkout's Kryon revision through one helper in tests/toolchain.py, overriding only Kryon, so checked packages lock in every fixture.
 
 - Measure native grid rows from each item’s available track width.

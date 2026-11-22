@@ -82,6 +82,14 @@ A single-line row uses `column_gap` between children and a column uses `row_gap`
 Set the corresponding `_override` flag to supply explicit zero. Negative
 spacing is clamped to zero.
 
+Pass `[]Layout.FlexItem` and `[]Layout.FlexPlacement` as the third and fourth
+arguments to `Layout.Row` or `Layout.Draw` to distribute space across a batch.
+Supply each child's measured `width` and `height`. The resolved layout uses
+the item's `kind`, `id`, and `class_name` for matching typed flex style rules.
+Draw children using `placements[i].bounds` after the container opens. A row
+with unset height fits the tallest child in each line plus spacing and
+padding. The caller supplies one placement slot per item.
+
 `Layout.Grid(session, Grid.GridProps, items, item_bounds)` uses CSS `Grid`
 width, height, padding, row/column gaps, and equal `grid-template-columns`
 tracks. Give each `Grid.GridItem` a height or a `measure_height` function and

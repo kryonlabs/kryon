@@ -107,12 +107,9 @@ if sc.opened {
 > [!TIP]
 > `Layout.Props.gap` and `Layout.Props.padding` only override the theme/CSS values `0` or nonzero when `.gap_override = true` / `.padding_override = true` (useful when forcing zero gap/padding against a non-zero theme default). Use `Layout.ColumnWidth(session)` inside a container to size children to the current content width, and `Layout.LayoutContentBounds(bounds, direction, child_rects, gap, padding)` to size a container around its children.
 
-### B. Flex & Grid Geometry Cursors (Zero-Allocation `Rectangle` Math)
+### B. Measured flex and grid containers
 
-- **CSS Flexbox (`justify-content`, `align-items`, `gap`, `padding`)** -> `BeginFlexCursor` + `FlexStep` (in `kryon/layout_behavior` / `kryon/layout`):
-  - `FlexDirection`: `.FlexRow`, `.FlexColumn`
-  - `JustifyContent`: `.JustifyStart`, `.JustifyCenter`, `.JustifyEnd`, `.JustifySpaceBetween`, `.JustifySpaceAround`, `.JustifySpaceEvenly`
-  - `AlignItems`: `.AlignStart`, `.AlignCenter`, `.AlignEnd`, `.AlignStretch`
+- **CSS Flexbox** uses `Layout.Row(session, props, items[:], placements[:])` or the same arguments to `Layout.Draw` for a column. Pass a `[]Layout.FlexItem` with measured sizes and each styled child's `kind`, `id` and `class_name`. The container resolves CSS direction, wrapping, gaps, padding, justification and alignment. Children can set basis, grow, shrink and self-alignment in CSS. Draw in `placements[i].bounds` and close the layout scope once. The low-level `BeginFlexCursor` and `FlexStep` functions place premeasured children in a single line.
 - **CSS Grid** uses `Layout.Grid(session, Grid.GridProps.{.key, .class_name}, items[:])`.
   Give each item a height or a `measure_height(width, key)` callback. A zero height calls the measurement with the item's allocated width after tracks and spans are resolved. The tallest item sets each row's height. Pass an output `[]Rectangle` as the fourth argument to measure and place all items in one pass, then draw children using those bounds. Two-argument calls place unpositioned single-track children using their submitted sizes.
 - **CSS `grid-column: 1/-1`** maps to `Grid.GridItem.{.column_span = -1}`. Positive spans occupy that many tracks. To walk the grid manually, call `Grid.GridItemStep(cursor, item)` and read the returned `cursor.item`. Fixed-height callers can continue using `Grid.GridStep`.
@@ -168,7 +165,7 @@ if charts.container.opened {
 | `font-size: clamp(...)`, `padding: clamp(...)` | Use literal sizes in width media rules, or calculate the clamp from the viewport in `.zi` and pass an explicit size or padding prop. `vw`, `em`, `calc()` and `clamp()` do not resolve as native lengths. |
 | `font-weight`, `line-height`, `letter-spacing` | Keep native-supported literal properties on `Heading` and `Text`. Use a typeface with fixed-width digits or a mono face for numeric columns. CSS `font-variant-numeric` and `text-transform` do not apply to native text. |
 | `background: radial-gradient(...)` | Use the base `background-color`, or a supported two-stop `linear-gradient` on a surface that draws gradients. The native CSS parser does not accept radial gradients. |
-| Wrapped navigation, `a[href="#section"]` | Use native `Link`/`Button` controls and a `Row` or measured grid. Handle navigation and scrolling in the frame. The native runtime has no DOM fragment links or CSS flex wrap. |
+| Wrapped navigation, `a[href="#section"]` | Use native `Link`/`Button` controls in a measured `Row` with `flex-wrap: wrap` or in a grid. Handle navigation and scrolling in the frame. |
 | `.table-scroll`, `white-space: nowrap`, border-collapse | Use `Scroll.Draw` with `.horizontal = true` and a shared `Grid` for row/cell slots. Use `.wrap = .TextWrapNone` and separators for row lines. Browser table layout and border collapse have no native counterpart. |
 | `details > summary`, `pre`, `code` | `Collapsible.Draw` with caller-owned open state, and `Text.Draw` with a code typeface and explicit wrap or scroll policy. |
 | Plotly line/step, bars, heatmaps, waterfalls and candles | Import `plot/Plot`. Use `XYChart` for named shared-axis line, point or step series, `BarChart` for signed categories, `HeatmapChart` for a row-major matrix, `WaterfallChart` for deltas and totals, and `TimeCandleChart` for OHLC. Give `ChartProps.bounds` the native panel content rectangle and pass typed data. |
@@ -224,7 +221,7 @@ Parse once per stylesheet in a running app. The example reparses to show the com
   - Kryon extensions: `-kryon-material` (`lightfield` | `flat` | `glass`), `-kryon-icon-size`, `-kryon-font-role` (`inherit` | `control` | `body` | `heading` | `code`), `-kryon-elevation` (`none` | `rest` | `raised` | `floating`), `-kryon-motion-duration`, `-kryon-motion-multiplier`, `-kryon-motion-easing` (`inherit` | `standard` | `linear` | `instant`), `-kryon-motion-reduced` (`reduce` | `no-preference`).
 - **Units & values**: hex (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`), CSS named colors, `rgb()`, `rgba()`, `hsl()`, `hsla()`, `hwb(hue white% black% [/ alpha])`, hue angle units (`deg`, `rad`, `grad`, `turn`), `px`, `rem` (`16px`), `s`, `ms`, `:root` custom properties (`--token: ...;`) with `var(--token, fallback)`. `em` and `%` lengths are rejected (use `px` or `rem`).
 - **At-rules**: `@import` (before rules), `@layer`, `@keyframes`, `@media` (`prefers-color-scheme`, `prefers-contrast`, `prefers-reduced-motion`, `pointer`, `width`, `min-width`, `max-width`, `-kryon-theme`, `-kryon-density`, `-kryon-pointer`, `-kryon-platform`).
-- **Web-only pass-through properties** (accepted by parser for `kryon/Dom`, ignored by native widgets): `min-width`, `max-width`, `max-height`, `margin*`, `display`, `flex*`, `justify-content`, `align-items`, `align-self`, grid declarations outside the native track subset, `text-align`, `text-decoration`, `text-transform`, `white-space`, `cursor`, `box-shadow`, `overflow`, `z-index`, `visibility`.
+- **Browser-only layout and paint** includes `min-width`, `max-width`, `max-height`, `margin*`, grid declarations outside the native track subset, `text-align`, `text-decoration`, `text-transform`, `white-space`, `cursor`, `box-shadow`, `overflow`, `z-index` and `visibility`. CSS `display` maps to an authored native flex or grid container. `wrap-reverse`, percentage or intrinsic flex bases, baseline alignment, and cross-line distribution remain browser-only.
 
 Use `color-mix(in srgb, #2076c0 35%, transparent)` in a native color
 declaration or custom property to derive a tint from two literal colors.

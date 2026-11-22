@@ -385,7 +385,37 @@ StyleRule :: struct {
     layer: s32
     order: s32
     style: StyleData
+    flex: StyleFlexData
 }
+
+StyleFlexField :: enum {
+    StyleFlexDirection :: 1
+    StyleFlexWrap :: 2
+    StyleFlexJustify :: 4
+    StyleFlexAlign :: 8
+    StyleFlexBasis :: 16
+    StyleFlexGrow :: 32
+    StyleFlexShrink :: 64
+    StyleFlexSelf :: 128
+}
+using StyleFlexField;
+
+StyleFlexData :: struct {
+    fields: u32
+    // 0/1 select row/column, 2/3 reverse their main direction.
+    direction: s32
+    wrap: bool
+    justify_content: s32
+    align_items: s32
+    // Negative basis and self-alignment represent auto.
+    basis: float32
+    grow: float32
+    shrink: float32
+    align_self: s32
+}
+
+StyleFlexContainerFields :: 15
+StyleFlexItemFields :: 240
 
 // Leave room for app and user rules after a complete shared style pack.
 StyleRuleCapacity :: 512
@@ -411,6 +441,9 @@ installed_any_kind: [StyleIndexWords]u64;
 installed_any_class: [StyleIndexWords]u64;
 installed_any_state: [StyleIndexWords]u64;
 installed_fields: u32;
+installed_flex_fields: u32;
+installed_face_bits: [StyleIndexWords]u64;
+installed_flex_bits: [StyleIndexWords]u64;
 
 StyleBucket :: (value: s32) -> s32 {
     return cast(s32)(cast(u32)value & cast(u32)63)
@@ -422,8 +455,10 @@ StyleIndexInstall :: () {
     }
     for i: 0..cast(s32)(StyleIndexWords - 1) {
         installed_any_kind[i] = 0; installed_any_class[i] = 0; installed_any_state[i] = 0
+        installed_face_bits[i] = 0; installed_flex_bits[i] = 0
     }
     installed_fields = 0
+    installed_flex_fields = 0
     priorities: [StyleRuleCapacity]StylePriority
     scratch: [StyleRuleCapacity]s32
     for i: 0..installed_rules.count - 1 {
@@ -462,9 +497,14 @@ StyleIndexInstall :: () {
         state := installed_rules.items[source].state
         installed_selectors[i] = selector
         installed_states[i] = state
-        installed_fields |= installed_rules.items[source].style.fields
         word := i / 64
         bit := cast(u64)1 << cast(u32)(i % 64)
+        face_fields := installed_rules.items[source].style.fields
+        flex_fields := installed_rules.items[source].flex.fields
+        installed_fields |= face_fields
+        installed_flex_fields |= flex_fields
+        if face_fields != 0 { installed_face_bits[word] |= bit }
+        if flex_fields != 0 { installed_flex_bits[word] |= bit }
         if selector.kind == 0 { installed_any_kind[word] |= bit }
         else { installed_kind_bits[StyleBucket(selector.kind) * StyleIndexWords + word] |= bit }
         if selector.class_name == 0 { installed_any_class[word] |= bit }
@@ -531,6 +571,7 @@ InstallStyleRules :: (rules: StyleRules) -> bool {
         snapshot.items[index].state = rules.items[index].state
         snapshot.items[index].layer = rules.items[index].layer
         snapshot.items[index].order = rules.items[index].order
+        snapshot.items[index].flex = rules.items[index].flex
         snapshot.items[index].style =
         StyleWithoutTypeface(rules.items[index].style)
         snapshot.items[index].style.typeface = BuilderFinish(builder)
@@ -1062,9 +1103,40 @@ ResolveStyleRules :: (rules: StyleRules, base: StyleData,
 #program_export
 ResolveInstalledStyleRules :: (base: StyleData, facts: StyleFacts,
     active_state: s32) -> StyleData {
-    remaining := installed_fields
+    return ResolveIndexedStyle(base, facts, active_state, true, null, cast(u32)0)
+}
+
+#program_export
+ResolveInstalledLayoutStyle :: (facts: StyleFacts, flex: *StyleFlexData) -> StyleData {
+    defaults: StyleData
+    return ResolveIndexedStyle(defaults, facts, StyleStateAny(), true, flex, cast(u32)StyleFlexContainerFields)
+}
+
+#program_export
+ResolveInstalledFlexItem :: (facts: StyleFacts) -> StyleFlexData {
+    defaults: StyleData
+    flex: StyleFlexData
+    ResolveIndexedStyle(defaults, facts, StyleStateAny(), false, *flex, cast(u32)StyleFlexItemFields)
+    return flex
+}
+
+ApplyFlexFields :: (target: *StyleFlexData, value: *StyleFlexData, fields: u32) {
+    if (fields & cast(u32)StyleFlexDirection) != 0 { target.direction = value.direction }
+    if (fields & cast(u32)StyleFlexWrap) != 0 { target.wrap = value.wrap }
+    if (fields & cast(u32)StyleFlexJustify) != 0 { target.justify_content = value.justify_content }
+    if (fields & cast(u32)StyleFlexAlign) != 0 { target.align_items = value.align_items }
+    if (fields & cast(u32)StyleFlexBasis) != 0 { target.basis = value.basis }
+    if (fields & cast(u32)StyleFlexGrow) != 0 { target.grow = value.grow }
+    if (fields & cast(u32)StyleFlexShrink) != 0 { target.shrink = value.shrink }
+    if (fields & cast(u32)StyleFlexSelf) != 0 { target.align_self = value.align_self }
+    target.fields |= fields
+}
+
+ResolveIndexedStyle :: (base: StyleData, facts: StyleFacts, active_state: s32,
+    resolve_face: bool, flex: *StyleFlexData, flex_fields: u32) -> StyleData {
+    remaining := ifx resolve_face then installed_fields else cast(u32)0
+    remaining_flex := ifx flex != null then installed_flex_fields & flex_fields else cast(u32)0
     if facts.kind != StyleKindGrid() { remaining &= ~cast(u32)StyleGridTracks }
-    if remaining == 0 { return base }
     container_layout := StyleIsContainerLayout(facts.kind)
     if container_layout {
         if (remaining & cast(u32)StyleGap) != 0 {
@@ -1073,8 +1145,8 @@ ResolveInstalledStyleRules :: (base: StyleData, facts: StyleFacts,
     } else {
         // Ignore container size bits so they cannot prolong another widget's search.
         remaining &= ~(cast(u32)StyleWidth | cast(u32)StyleHeight)
-        if remaining == 0 { return base }
     }
+    if remaining == 0 && remaining_flex == 0 { return base }
     kind := StyleBucket(facts.kind) * StyleIndexWords
     variant := StyleBucket(StyleTextVariant(facts)) * StyleIndexWords
     class_name := StyleBucket(facts.class_name) * StyleIndexWords
@@ -1084,21 +1156,33 @@ ResolveInstalledStyleRules :: (base: StyleData, facts: StyleFacts,
             installed_kind_bits[variant + word]) &
             (installed_any_class[word] | installed_class_bits[class_name + word]) &
             (installed_any_state[word] | installed_state_bits[state + word])
+        relevant: u64 = 0
+        if remaining != 0 { relevant |= installed_face_bits[word] }
+        if remaining_flex != 0 { relevant |= installed_flex_bits[word] }
+        candidates &= relevant
         while candidates != 0 {
             index := word * 64 + StyleFirstBit(candidates)
             candidates &= candidates - cast(u64)1
             if StyleRuleMatchesState(installed_states[index], active_state) &&
             StyleSelectorMatches(installed_selectors[index], facts) {
-                value := installed_rules.items[installed_rule_indices[index]].style
-                if container_layout && StyleHasField(value, cast(u32)StyleGap) {
-                    if !StyleHasField(value, cast(u32)StyleRowGap) { value.row_gap = value.gap }
-                    if !StyleHasField(value, cast(u32)StyleColumnGap) { value.column_gap = value.gap }
-                    value.fields |= cast(u32)StyleRowGap | cast(u32)StyleColumnGap
+                rule := *installed_rules.items[installed_rule_indices[index]]
+                if remaining != 0 {
+                    value := rule.style
+                    if container_layout && StyleHasField(value, cast(u32)StyleGap) {
+                        if !StyleHasField(value, cast(u32)StyleRowGap) { value.row_gap = value.gap }
+                        if !StyleHasField(value, cast(u32)StyleColumnGap) { value.column_gap = value.gap }
+                        value.fields |= cast(u32)StyleRowGap | cast(u32)StyleColumnGap
+                    }
+                    value.fields &= remaining
+                    base = MergeValues(base, value)
+                    remaining &= ~value.fields
                 }
-                value.fields &= remaining
-                base = MergeValues(base, value)
-                remaining &= ~value.fields
-                if remaining == 0 { return base }
+                if remaining_flex != 0 {
+                    fields := remaining_flex & rule.flex.fields
+                    if fields != 0 { ApplyFlexFields(flex, *rule.flex, fields) }
+                    remaining_flex &= ~fields
+                }
+                if remaining == 0 && remaining_flex == 0 { return base }
             }
         }
     }

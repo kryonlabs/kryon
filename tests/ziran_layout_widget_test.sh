@@ -12,10 +12,14 @@ cat > "$work/app.zi" <<'ZI'
 #import "grid_props"
 #import "layout_behavior"
 Layout :: #import "kryon/layout";
+#import "style_sheet"
+#import "control_props"
 #import "tree"
 #import "widget_kind"
 
 using WidgetKind;
+using StyleField;
+using StyleFlexField;
 
 AutoAnswer :: () -> s32 {
     root: Rectangle = Rectangle.{0.0, 0.0, 100.0, 80.0}
@@ -95,6 +99,36 @@ MeasuredAnswer :: () -> s32 {
     child := TreeSubmitCurrent(session, cast(u64)204, WidgetKindText, item_bounds[1])
     if !End(session) || !End(session) || !TreeFinish(session) || TreeNodeAt(session, child).bounds.y != 48.0 ||
         TreeNodeAt(session, inner.container.node).parent != outer.container.node { return -25 }
+    return 42
+}
+
+FlexAnswer :: () -> s32 {
+    rules: StyleRules
+    rules.count = 2
+    selector := StyleDefaultSelector()
+    selector.kind = StyleKindRow()
+    selector.class_name = 11
+    rules.items[0] = .{.selector = selector,
+        .style = .{.fields = cast(u32)StyleGap | cast(u32)StyleRowGap, .gap = 7.0, .row_gap = 5.0},
+        .flex = .{.fields = cast(u32)StyleFlexWrap | cast(u32)StyleFlexAlign, .wrap = true, .align_items = 1}}
+    selector.kind = StyleKindText()
+    selector.class_name = 12
+    rules.items[1] = .{.selector = selector, .flex = .{.fields = cast(u32)StyleFlexGrow |
+        cast(u32)StyleFlexBasis | cast(u32)StyleFlexSelf, .grow = 1.0, .basis = 20.0, .align_self = 2}}
+    if !InstallStyleRules(rules) { return -26 }
+    session := TestSession()
+    TreeStart(session, cast(u64)301, Rectangle.{0.0, 0.0, 200.0, 140.0})
+    items: [3]Layout.FlexItem = .[.{.kind = StyleKindText(), .class_name = 12, .width = 40.0, .height = 12.0},
+        .{.width = 30.0, .height = 24.0}, .{.width = 80.0, .height = 20.0}]
+    boxes: [3]Layout.FlexPlacement
+    row := Layout.Row(session, Layout.Props.{.key = 302, .class_name = 11, .bounds = .{10.0, 20.0, 100.0, 0.0}},
+        items[:], boxes[:])
+    if !row.opened || row.bounds.height != 49.0 || boxes[0].bounds.x != 10.0 || boxes[0].bounds.y != 32.0 ||
+        boxes[0].bounds.width != 63.0 || boxes[1].bounds.x != 80.0 || boxes[2].bounds.y != 49.0 { return -27 }
+    child := TreeSubmitCurrent(session, cast(u64)303, WidgetKindText, boxes[2].bounds)
+    rules.count = 0
+    if !End(session) || !TreeFinish(session) || TreeNodeAt(session, child).bounds.y != 49.0 ||
+        !InstallStyleRules(rules) { return -28 }
     return 42
 }
 
@@ -180,7 +214,9 @@ Answer :: () -> s32 {
         TreeNodeAt(TestSession(), 11).parent != 1 { return -12 }
     auto := AutoAnswer()
     if auto != 42 { return auto }
-    return MeasuredAnswer()
+    measured := MeasuredAnswer()
+    if measured != 42 { return measured }
+    return FlexAnswer()
 }
 ZI
 

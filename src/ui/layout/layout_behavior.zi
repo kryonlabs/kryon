@@ -59,6 +59,34 @@ FlexProps :: struct {
     align_items: AlignItems
     gap: s32
     padding: s32
+    cross_gap: s32
+    wrap: bool
+    reverse: bool
+}
+
+FlexItem :: struct {
+    width: float32
+    height: float32
+    basis: float32
+    has_basis: bool
+    grow: float32
+    shrink: float32
+    align_self: AlignItems
+    has_align_self: bool
+    kind: s32
+    id: s32
+    class_name: s32
+    grow_override: bool
+    shrink_override: bool
+}
+
+FlexItemResolver :: #type (item: FlexItem) -> FlexItem;
+
+FlexPlacement :: struct {
+    bounds: Rectangle
+    grow: float32
+    shrink: float32
+    align: AlignItems
 }
 
 FlexCursor :: struct {
@@ -267,6 +295,137 @@ FlexStep :: (cursor: FlexCursor, width: float32, height: float32) -> FlexCursor 
     }
     cursor.remaining -= 1
     return cursor
+}
+
+FlexNonnegative :: (value: float32) -> float32 {
+    return ifx value > 0.0 then value else 0.0
+}
+
+FlexBasis :: (item: FlexItem, horizontal: bool) -> float32 {
+    if item.has_basis { return FlexNonnegative(item.basis) }
+    return FlexNonnegative(ifx horizontal then item.width else item.height)
+}
+
+// During distribution, each box's width holds its main extent even in a column.
+// Freeze items at zero, then redistribute the space to items that can shrink.
+FlexDistribute :: (boxes: []FlexPlacement, free: float32,
+    total: float32, grow: float32, shrink: float32, weight: float32) -> float32 {
+    if free > 0.0 && grow > 0.0 {
+        unit := free / (ifx grow > 1.0 then grow else 1.0)
+        for i: cast(s32)0..cast(s32)boxes.count - 1 {
+            boxes[i].bounds.width += boxes[i].grow * unit
+        }
+        return total + unit * grow
+    }
+    if free >= 0.0 || weight <= 0.0 { return total }
+
+    initial_free := free
+    while free < 0.0 && weight > 0.0 {
+        deficit := ifx shrink < 1.0 && initial_free * shrink > free then initial_free * shrink else free
+        unit := deficit / weight
+        frozen := false
+        for i: cast(s32)0..cast(s32)boxes.count - 1 {
+            basis := boxes[i].bounds.width
+            factor := boxes[i].shrink
+            if basis > 0.0 && factor > 0.0 && 1.0 + factor * unit <= 0.0 {
+                weight -= basis * factor
+                shrink -= factor
+                free += basis
+                total -= basis
+                boxes[i].bounds.width = 0.0
+                frozen = true
+            }
+        }
+        if !frozen {
+            for i: cast(s32)0..cast(s32)boxes.count - 1 {
+                boxes[i].bounds.width *= FlexNonnegative(1.0 + boxes[i].shrink * unit)
+            }
+            total += deficit
+            break
+        }
+    }
+    return total
+}
+
+KeepFlexItem :: (item: FlexItem) -> FlexItem { return item }
+
+// Place a measured batch using caller-owned storage. The result is the natural
+// cross extent including padding, or -1 when there is insufficient storage.
+#program_export
+PlaceFlexItems :: (props: FlexProps, items: []FlexItem, boxes: []FlexPlacement,
+    resolve: FlexItemResolver = KeepFlexItem) -> float32 {
+    if boxes.count < items.count { return -1.0 }
+    metrics := LayoutMetricsFor(props.bounds, props.gap, props.padding)
+    horizontal := props.direction != cast(FlexDirection)FlexColumn
+    available := ifx horizontal then metrics.content.width else metrics.content.height
+    available_cross := ifx horizontal then metrics.content.height else metrics.content.width
+    main_gap := cast(float32)metrics.gap
+    cross_gap := FlexNonnegative(cast(float32)props.cross_gap)
+    cross_used: float32 = 0.0
+    start: s32 = 0
+    count := cast(s32)items.count
+    natural_main: float32 = 0.0
+    for i: cast(s32)0..count - 1 {
+        item := items[i]
+        if resolve != null { item = resolve(item) }
+        basis := FlexBasis(item, horizontal)
+        extent := FlexNonnegative(ifx horizontal then item.height else item.width)
+        boxes[i] = .{.bounds = .{0.0, 0.0, basis, extent},
+            .grow = FlexNonnegative(item.grow), .shrink = FlexNonnegative(item.shrink),
+            .align = ifx item.has_align_self then item.align_self else props.align_items}
+        natural_main += basis
+    }
+    if !horizontal && props.bounds.height <= 0.0 && count > 0 {
+        available = natural_main + main_gap * cast(float32)(count - 1)
+        metrics.content.height = available
+    }
+    while start < count {
+        end := start
+        total: float32 = 0.0
+        cross: float32 = 0.0
+        grow: float32 = 0.0
+        shrink: float32 = 0.0
+        weight: float32 = 0.0
+        while end < count {
+            item := boxes[end]
+            basis := item.bounds.width
+            if props.wrap && end > start && total + basis + main_gap * cast(float32)(end - start) > available { break }
+            total += basis
+            grow += item.grow
+            shrink += item.shrink
+            weight += item.shrink * basis
+            extent := item.bounds.height
+            if extent > cross { cross = extent }
+            end += 1
+        }
+        if start > 0 { cross_used += cross_gap }
+        line_cross := cross
+        if !props.wrap && available_cross > 0.0 { line_cross = available_cross }
+        line := metrics.content
+        if horizontal { line.y += cross_used; line.height = line_cross }
+        else { line.x += cross_used; line.width = line_cross }
+        free := available - main_gap * cast(float32)(end - start - 1) - total
+        adjusted := FlexDistribute(boxes[start:end], free, total, grow, shrink, weight)
+        cursor := BeginFlexCursor(FlexProps.{.bounds = line, .direction = props.direction,
+            .justify_content = props.justify_content, .gap = metrics.gap}, end - start, adjusted)
+        for i: start..end - 1 {
+            cursor.align_items = boxes[i].align
+            main := boxes[i].bounds.width
+            extent := boxes[i].bounds.height
+            width := ifx horizontal then main else extent
+            height := ifx horizontal then extent else main
+            cursor = FlexStep(cursor, width, height)
+            box := cursor.item
+            if props.reverse {
+                if horizontal { box.x = line.x + line.width - (box.x - line.x) - box.width }
+                else { box.y = line.y + line.height - (box.y - line.y) - box.height }
+            }
+            boxes[i].bounds = box
+        }
+        cross_used += cross
+        start = end
+    }
+    return cross_used + cast(float32)metrics.padding * 2.0
 }
 
 CenteredBands :: struct {

@@ -48,6 +48,7 @@ Group :: (session: Session, props: PropsModule.Props) -> LayoutContainer {
 
 using WidgetKind;
 using StyleField;
+using StyleFlexField;
 
 // The space a column child may fill, or -1 outside a column.
 #program_export
@@ -128,7 +129,7 @@ TreePlaceGrid :: (session: Session, parent_index: s32, bounds: Rectangle) -> Rec
     return grid.item
 }
 
-LayoutFace :: (props: PropsModule.Props, kind: s32) -> StyleData {
+LayoutFace :: (props: PropsModule.Props, kind: s32, flex: *StyleFlexData = null) -> StyleData {
     style_kind: s32 = 0
     if kind == WidgetKindRow { style_kind = StyleKindRow() }
     if kind == WidgetKindColumn { style_kind = StyleKindColumn() }
@@ -138,7 +139,7 @@ LayoutFace :: (props: PropsModule.Props, kind: s32) -> StyleData {
     facts := StyleDefaultFacts(style_kind)
     facts.id = props.id
     facts.class_name = props.class_name
-    return ResolveInstalledStyleRules(defaults, facts, StyleStateAny())
+    return ResolveInstalledLayoutStyle(facts, flex)
 }
 
 LayoutSpacingFor :: (axis: s32, axis_override: bool, uniform: s32,
@@ -157,12 +158,12 @@ LayoutExtentFor :: (declared: float32, inherited: float32, styled: float32,
     return inherited
 }
 
-LayoutParentBounds :: (session: Session, kind: s32) -> Rectangle {
+LayoutParentBounds :: (session: Session, inset_sections: bool = false) -> Rectangle {
     parent_index := TreeCurrentParent(session)
     parent_kind := TreeSubmittedNodeAt(session, parent_index).kind
     parent := TreeCurrentParentBounds(session)
     if parent_kind == WidgetKindRow || parent_kind == WidgetKindColumn || parent_kind == WidgetKindStack ||
-        (kind == WidgetKindGrid && (parent_kind == WidgetKindPage || parent_kind == WidgetKindSection)) {
+        (inset_sections && (parent_kind == WidgetKindPage || parent_kind == WidgetKindSection)) {
         outer := TreeLayoutAt(session, parent_index)
         parent = LayoutMetricsFor(outer.bounds, outer.gap, outer.padding, outer.padding_y).content
     }
@@ -173,7 +174,7 @@ LayoutParentBounds :: (session: Session, kind: s32) -> Rectangle {
 ContainerFor :: (session: Session, props: PropsModule.Props,
     kind: s32) -> LayoutContainer {
     result: LayoutContainer = .{.node = -1, .kind = kind, .bounds = props.bounds}
-    parent := LayoutParentBounds(session, kind)
+    parent := LayoutParentBounds(session)
     face := LayoutFace(props, kind)
     result.bounds.width = LayoutExtentFor(props.bounds.width, parent.width,
         face.width, StyleHasField(face, cast(u32)StyleWidth))
@@ -215,16 +216,106 @@ OpenContainer :: (session: Session, props: PropsModule.Props,
     return result
 }
 
-Draw :: (session: Session, props: PropsModule.Props) -> LayoutContainer {
+EmptyFlexItems :: () -> []FlexItem {
+    items: []FlexItem
+    return items
+}
+
+EmptyFlexBoxes :: () -> []FlexPlacement {
+    boxes: []FlexPlacement
+    return boxes
+}
+
+Draw :: (session: Session, props: PropsModule.Props, items: []FlexItem = EmptyFlexItems(),
+    boxes: []FlexPlacement = EmptyFlexBoxes()) -> LayoutContainer {
+    if items.count > 0 { return MeasuredFlex(session, props, WidgetKindColumn, items, boxes) }
     result: LayoutContainer = ContainerFor(session, props, WidgetKindColumn)
     TreeSetPlacement(session, result.node, TreePlaceColumn)
     return result
 }
 
 #program_export
-Row :: (session: Session, props: PropsModule.Props) -> LayoutContainer {
+Row :: (session: Session, props: PropsModule.Props, items: []FlexItem = EmptyFlexItems(),
+    boxes: []FlexPlacement = EmptyFlexBoxes()) -> LayoutContainer {
+    if items.count > 0 { return MeasuredFlex(session, props, WidgetKindRow, items, boxes) }
     result: LayoutContainer = ContainerFor(session, props, WidgetKindRow)
     TreeSetPlacement(session, result.node, TreePlaceRow)
+    return result
+}
+
+ResolveLayoutFlexItem :: (item: FlexItem) -> FlexItem {
+    facts := StyleDefaultFacts(item.kind)
+    facts.id = item.id
+    facts.class_name = item.class_name
+    flex := ResolveInstalledFlexItem(facts)
+    if !item.has_basis && (flex.fields & cast(u32)StyleFlexBasis) != 0 && flex.basis >= 0.0 {
+        item.basis = flex.basis
+        item.has_basis = true
+    }
+    if item.grow == 0.0 && !item.grow_override && (flex.fields & cast(u32)StyleFlexGrow) != 0 {
+        item.grow = flex.grow
+    }
+    if item.shrink == 0.0 && !item.shrink_override {
+        item.shrink = ifx (flex.fields & cast(u32)StyleFlexShrink) != 0 then flex.shrink else 1.0
+    }
+    if !item.has_align_self && (flex.fields & cast(u32)StyleFlexSelf) != 0 && flex.align_self >= 0 {
+        item.align_self = cast(AlignItems)flex.align_self
+        item.has_align_self = true
+    }
+    return item
+}
+
+MeasuredFlex :: (session: Session, props: PropsModule.Props, kind: s32,
+    items: []FlexItem, boxes: []FlexPlacement) -> LayoutContainer {
+    result: LayoutContainer = .{.node = -1, .kind = kind, .bounds = props.bounds}
+    if boxes.count < items.count { return result }
+    style: StyleFlexData
+    face := LayoutFace(props, kind, *style)
+    parent := LayoutParentBounds(session, true)
+    direction := ifx kind == WidgetKindColumn then 1 else 0
+    if (style.fields & cast(u32)StyleFlexDirection) != 0 { direction = style.direction }
+    horizontal := (direction & 1) == 0
+    align: AlignItems = .AlignStretch
+    if (style.fields & cast(u32)StyleFlexAlign) != 0 { align = cast(AlignItems)style.align_items }
+
+    result.bounds.width = LayoutExtentFor(props.bounds.width, parent.width,
+        face.width, StyleHasField(face, cast(u32)StyleWidth))
+    result.bounds.width = AutoGridChildWidth(session, result.bounds)
+    height_limit := ifx !horizontal && style.wrap then parent.height else 0.0
+    result.bounds.height = LayoutExtentFor(props.bounds.height, height_limit,
+        face.height, StyleHasField(face, cast(u32)StyleHeight))
+    row_gap := LayoutSpacingFor(props.row_gap, props.row_gap_override, props.gap, props.gap_override, face.row_gap)
+    column_gap := LayoutSpacingFor(props.column_gap, props.column_gap_override,
+        props.gap, props.gap_override, face.column_gap)
+    result.gap = ifx horizontal then column_gap else row_gap
+    result.padding = LayoutSpacingFor(props.padding_x, props.padding_x_override,
+        props.padding, props.padding_override, face.padding_x)
+    result.padding_y = LayoutSpacingFor(props.padding_y, props.padding_y_override,
+        props.padding, props.padding_override, face.padding_y)
+    metrics := LayoutMetricsFor(result.bounds, result.gap, result.padding, result.padding_y)
+    content := metrics.content
+    cross := PlaceFlexItems(FlexProps.{.bounds = content, .direction = cast(FlexDirection)(direction & 1),
+        .reverse = direction >= 2, .justify_content = cast(JustifyContent)style.justify_content,
+        .align_items = align, .wrap = style.wrap, .gap = result.gap,
+        .cross_gap = ifx horizontal then row_gap else column_gap}, items, boxes, ResolveLayoutFlexItem)
+    if result.bounds.height <= 0.0 {
+        height := cross
+        if !horizontal {
+            height = 0.0
+            for i: cast(s32)0..cast(s32)items.count - 1 {
+                bottom := boxes[i].bounds.y + boxes[i].bounds.height - content.y
+                if bottom > height { height = bottom }
+            }
+        }
+        result.bounds.height = height + cast(float32)result.padding_y * 2.0
+    }
+    result.content = LayoutMetricsFor(result.bounds, result.gap, result.padding, result.padding_y).content
+    before := result.bounds
+    result = OpenContainer(session, props, result)
+    for i: cast(s32)0..cast(s32)items.count - 1 {
+        boxes[i].bounds.x += result.bounds.x - before.x
+        boxes[i].bounds.y += result.bounds.y - before.y
+    }
     return result
 }
 
@@ -258,22 +349,24 @@ EmptyGridBounds :: () -> []Rectangle {
     return bounds
 }
 
+AutoGridChildWidth :: (session: Session, bounds: Rectangle) -> float32 {
+    if bounds.x != 0.0 || bounds.y != 0.0 { return bounds.width }
+    parent_index := TreeCurrentParent(session)
+    node := TreeSubmittedNodeAt(session, parent_index)
+    if node.kind != WidgetKindGrid || !node.places_children { return bounds.width }
+    track := GridStep(LayoutGridCursor(TreeLayoutAt(session, parent_index)), 0, 1)
+    return track.item.width
+}
+
 #program_export
 Grid :: (session: Session, props: GridProps, items: []GridItem = EmptyGridItems(),
     item_bounds: []Rectangle = EmptyGridBounds()) -> GridResult {
     scope: PropsModule.Props = .{.key = props.key, .id = props.id, .class_name = props.class_name}
     face := LayoutFace(scope, WidgetKindGrid)
-    parent := LayoutParentBounds(session, WidgetKindGrid)
+    parent := LayoutParentBounds(session, true)
     props.bounds.width = LayoutExtentFor(props.bounds.width, parent.width,
         face.width, StyleHasField(face, cast(u32)StyleWidth))
-    if props.bounds.x == 0.0 && props.bounds.y == 0.0 {
-        parent_index := TreeCurrentParent(session)
-        node := TreeSubmittedNodeAt(session, parent_index)
-        if node.kind == WidgetKindGrid && node.places_children {
-            track := GridStep(LayoutGridCursor(TreeLayoutAt(session, parent_index)), 0, 1)
-            props.bounds.width = track.item.width
-        }
-    }
+    props.bounds.width = AutoGridChildWidth(session, props.bounds)
     props.row_gap = LayoutSpacingFor(props.row_gap, props.row_gap_override,
         props.gap, props.gap_override, face.row_gap)
     props.row_gap_override = true
