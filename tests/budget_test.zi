@@ -1,0 +1,97 @@
+// Speed and size budget in counts that are the same on every machine: a
+// frame of 1,000 ListItem rows stays within its recorded tree nodes and
+// paint commands, and the app starter's portable bundle within its bytes.
+// When a change grows a count on purpose, put the printed value (plus a
+// little room) in the budget below.
+// Run from the Kryon root: make budget-test (ZIRAN_BIN names ziran).
+Layout :: #import "kryon/layout";
+ListItem :: #import "kryon/list_item";
+Theme :: #import "kryon/theme";
+#import "kryon/geometry"
+#import "kryon/paint_queue"
+#import "kryon/session"
+#import "kryon/tree"
+#import "widget_test_session"
+#import "ziran_widget_noop_host"
+#import "ziran_mesh_noop_host"
+#import "std/environment_linux"
+#import "std/file"
+#import "std/file_tree_linux"
+#import "std/process_run_linux"
+using Vectors :: #import "std/vec";
+
+ListRows :: 1000;
+NodeBudget :: 3100;
+PaintBudget :: 6200;
+StarterBundleBudget :: 3850000;
+
+failures: s32;
+
+Expect :: (ok: bool, what: string) {
+    if ok { return }
+    failures += 1
+    print("budget: FAIL %\n", what)
+}
+
+// Tree nodes and paint commands of one frame of LIST_ROWS rows.
+ListFrame :: () -> (nodes: s32, paint: s32) {
+    session := TestSession()
+    TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 390.0, 844.0})
+    list := Layout.Draw(session, Layout.Props.{.bounds = .{0.0, 0.0, 390.0, 844.0}})
+    if list.opened {
+        for 0..ListRows - 1 {
+            unused ListItem.Draw(session, ListItem.Props.{.title = "Row", .subtitle = "Detail",
+                .trailing = .ListTrailingChevron})
+        }
+        unused End(session)
+    }
+    nodes := TreeCount(session)
+    paint := PendingPaintCount(session)
+    unused TreeFinish(session)
+    return nodes, paint
+}
+
+// The size of the app starter's portable bundle, or -1 when it does not build.
+StarterBundleBytes :: (ziran: string) -> s64 {
+    root := WorkingDirectory()
+    work := JoinPath(root, "build/test/budget")
+    unused RemoveTree(work)
+    if !CreateDirectories(work) { return -1 }
+    overrides: Vec(u8)
+    BuilderPrint(*overrides, "[overrides]\nkryon = \"%\"\n", root)
+    if !WriteEntireFile(JoinPath(work, "overrides.toml"), BuilderFinish(overrides)) { return -1 }
+    templates: Vec(u8)
+    BuilderPrint(*templates, "KRYON_TEMPLATES=%", root)
+    environment: [1]string = .[BuilderFinish(templates)]
+    kryon := JoinPath(root, "build/bin/kryon")
+    create: [7]string = .[kryon, "new", "starter", "--template", "app", "--overrides", JoinPath(work, "overrides.toml")]
+    made: ProcessRun
+    if !RunProcess(.{arguments = create[:], directory = work, environment = environment[:],
+        output_path = JoinPath(work, "new.log"), merge_error = true}, *made) || made.code != 0 { return -1 }
+    project := JoinPath(work, "starter")
+    build: [5]string = .[ziran, "tool", "kryon", "build", "portable"]
+    built: ProcessRun
+    if !RunProcess(.{arguments = build[:], directory = project,
+        output_path = JoinPath(work, "build.log"), merge_error = true}, *built) || built.code != 0 { return -1 }
+    info := PathStatus(JoinPath(project, "build/starter-portable.zx"))
+    if info.kind != .File { return -1 }
+    return info.size
+}
+
+#program_export
+Main :: () -> s32 {
+    unused Theme.InstallDefaultTheme(false)
+    unused ListFrame()
+    nodes, paint := ListFrame()
+    print("budget: % rows, % tree nodes, % paint commands\n", ListRows, nodes, paint)
+    Expect(nodes > 0 && nodes <= NodeBudget, "tree nodes over budget")
+    Expect(paint > 0 && paint <= PaintBudget, "paint commands over budget")
+
+    ziran := EnvironmentText("ZIRAN_BIN")
+    if ziran == "" { ziran = "ziran" }
+    bytes := StarterBundleBytes(ziran)
+    print("budget: starter portable bundle % bytes\n", bytes)
+    Expect(bytes > 0, "the starter bundle builds; see build/test/budget/*.log")
+    Expect(bytes <= StarterBundleBudget, "starter bundle over budget")
+    return ifx failures == 0 then 0 else 1
+}

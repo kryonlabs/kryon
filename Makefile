@@ -116,7 +116,8 @@ ziran-test: project-toolchain
 test: markdown-editor-test
 
 .PHONY: markdown-editor-test
-MARKDOWN_TEST_BINDINGS = \
+# Widget behavior without a raster: text measures and draws through the no-op host.
+WIDGET_NOOP_BINDINGS = \
 	--bind kryon/font_metrics:MeasureGlyphWidth=ziran_widget_noop_host:MeasureGlyphWidth \
 	--bind kryon/font_metrics:MeasureGlyphLineHeight=ziran_widget_noop_host:MeasureGlyphLineHeight \
 	--bind kryon/raster_text:RasterText=ziran_widget_noop_host:RasterText \
@@ -127,7 +128,10 @@ MARKDOWN_TEST_BINDINGS = \
 	--bind kryon/raster:RasterLine=ziran_widget_noop_host:RasterLine \
 	--bind kryon/paint_queue:RasterImage=ziran_widget_noop_host:RasterImage \
 	--bind kryon/image_raster:ImageWidth=ziran_widget_noop_host:ImageWidth \
-	--bind kryon/image_raster:ImageHeight=ziran_widget_noop_host:ImageHeight \
+	--bind kryon/image_raster:ImageHeight=ziran_widget_noop_host:ImageHeight
+BUDGET_TEST_BINDINGS = $(WIDGET_NOOP_BINDINGS) \
+	--bind kryon/raster_triangles:RasterTriangles=ziran_mesh_noop_host:NoopRasterTriangles
+MARKDOWN_TEST_BINDINGS = $(WIDGET_NOOP_BINDINGS) \
 	--bind kryon/system_clipboard:SystemClipboardOpenHost=system_clipboard_host:SystemClipboardOpenHost \
 	--bind kryon/system_clipboard:SystemClipboardByteHost=system_clipboard_host:SystemClipboardByteHost \
 	--bind kryon/system_clipboard:SystemClipboardWriteHost=system_clipboard_host:SystemClipboardWriteHost
@@ -440,6 +444,16 @@ new-widgets-test:
 		HARMONY_DESKTOP_RECOVERY=0 YUE_DESKTOP_RECOVERY=0 ZIRAN_BIN="$(ZIRAN_BIN)" \
 		"$(ZIRAN_BIN)" run --target=c tests/new_widgets_test.zi
 test: new-widgets-test
+
+# The starter's portable bundle and the work of a 1,000-row list stay within
+# their recorded budgets: counts, never timings.
+.PHONY: budget-test
+budget-test: build/bin/kryon
+	@rm -rf build/test/budget build/test/budget-c
+	$(ZIRAN_BIN) build --project --module-path $(CURDIR)/tests $(BUDGET_TEST_BINDINGS) --target=c \
+		--root $(CURDIR)/tests --entry budget_test:Main --exe -o build/test/budget-c $(CURDIR)/tests/budget_test.zi
+	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_BIN="$(ZIRAN_BIN)" build/test/budget-c/budget_test
+test: budget-test
 
 # Every supported target -- C, Go, and the portable runner --
 # renders each template and example on the headless pixmap host, and every
