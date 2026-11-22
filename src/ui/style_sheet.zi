@@ -641,7 +641,8 @@ ResolveInstalledTextStyle :: (request: TextStyleRequest,
     box: StyleBoxData
     result := ResolveIndexedStyle(base, facts, state, true, null, cast(u32)0,
         *box, cast(u32)StyleBoxTextAlign)
-    if (box.fields & cast(u32)StyleBoxTextAlign) != 0 { request.align[0] = box.text_align }
+    align := request.align
+    if (box.fields & cast(u32)StyleBoxTextAlign) != 0 { <<align = box.text_align }
     return result
 }
 
