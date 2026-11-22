@@ -277,7 +277,9 @@ main :: () -> s32 {
     if !Frame() || !pointer_seen.down || pointer_seen.pressed { return 52 }
     if Run("12\tpointer\tx=60\ty=35\tdown=0") != 2 { return 53 }
     if !pointer_seen.released || pointer_seen.x != 60.0 { return 54 }
-    if Run("13\tpointer\treal=1") != 1 || clicks != 2 { return 55 }
+    // Pressing on Save and releasing 30 units away is a drag, which never
+    // activates a control, so the count stays at the earlier click.
+    if Run("13\tpointer\treal=1") != 1 || clicks != 1 { return 55 }
     if !Frame() || pointer_seen.x != 0.0 { return 56 }
 
     // Stable frames count frames that end with the same tree.
