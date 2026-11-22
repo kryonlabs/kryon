@@ -7,6 +7,7 @@ TextStyleRequest :: struct {
     id: s32
     class_name: s32
     disabled: bool
+    align: *s32
 }
 
 TextStyleResolver :: #type (request: TextStyleRequest,

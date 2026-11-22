@@ -1097,6 +1097,16 @@ NodeGeometry :: struct {
         trees[slot].layouts[layout].places_children = true
     }
 
+    // A container moves its own box inside the slot its parent placed, for
+    // margins and min/max sizes, before it submits any child.
+    #program_export
+    TreeSetSubmittedBounds :: (session: Session, index: s32, bounds: Rectangle) {
+        slot: s32 = SessionIndex(session)
+        if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+        trees[slot].submitted[index].bounds = bounds
+    }
+
     // A container sets this before submitting children. Its own input is not
     // clipped by the child viewport; descendants inherit the intersection.
     #program_export

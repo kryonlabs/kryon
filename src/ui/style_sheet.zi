@@ -386,7 +386,40 @@ StyleRule :: struct {
     order: s32
     style: StyleData
     flex: StyleFlexData
+    box: StyleBoxData
 }
+
+StyleBoxField :: enum {
+    StyleBoxMinWidth :: 1
+    StyleBoxMaxWidth :: 2
+    StyleBoxMaxHeight :: 4
+    StyleBoxClipChildren :: 8
+    StyleBoxTextAlign :: 16
+    StyleBoxMarginTop :: 32
+    StyleBoxMarginRight :: 64
+    StyleBoxMarginBottom :: 128
+    StyleBoxMarginLeft :: 256
+}
+using StyleBoxField;
+
+// The CSS box of a Row, Column or Grid container (and text-align for Text):
+// min/max sizes, margins and overflow clipping. A negative maximum is CSS
+// `none`; a negative margin is `auto`, which takes the free inline space.
+StyleBoxData :: struct {
+    fields: u32
+    min_width: float32
+    max_width: float32
+    max_height: float32
+    clip_children: bool
+    text_align: s32
+    margin_top: float32
+    margin_right: float32
+    margin_bottom: float32
+    margin_left: float32
+}
+
+// Every box field but text-align, which only Text reads.
+StyleBoxContainerFields :: 495
 
 StyleFlexField :: enum {
     StyleFlexDirection :: 1
@@ -444,6 +477,8 @@ installed_fields: u32;
 installed_flex_fields: u32;
 installed_face_bits: [StyleIndexWords]u64;
 installed_flex_bits: [StyleIndexWords]u64;
+installed_box_fields: u32;
+installed_box_bits: [StyleIndexWords]u64;
 
 StyleBucket :: (value: s32) -> s32 {
     return cast(s32)(cast(u32)value & cast(u32)63)
@@ -456,9 +491,11 @@ StyleIndexInstall :: () {
     for i: 0..cast(s32)(StyleIndexWords - 1) {
         installed_any_kind[i] = 0; installed_any_class[i] = 0; installed_any_state[i] = 0
         installed_face_bits[i] = 0; installed_flex_bits[i] = 0
+        installed_box_bits[i] = 0
     }
     installed_fields = 0
     installed_flex_fields = 0
+    installed_box_fields = 0
     priorities: [StyleRuleCapacity]StylePriority
     scratch: [StyleRuleCapacity]s32
     for i: 0..installed_rules.count - 1 {
@@ -503,6 +540,9 @@ StyleIndexInstall :: () {
         flex_fields := installed_rules.items[source].flex.fields
         installed_fields |= face_fields
         installed_flex_fields |= flex_fields
+        box_fields := installed_rules.items[source].box.fields
+        installed_box_fields |= box_fields
+        if box_fields != 0 { installed_box_bits[word] |= bit }
         if face_fields != 0 { installed_face_bits[word] |= bit }
         if flex_fields != 0 { installed_flex_bits[word] |= bit }
         if selector.kind == 0 { installed_any_kind[word] |= bit }
@@ -572,6 +612,7 @@ InstallStyleRules :: (rules: StyleRules) -> bool {
         snapshot.items[index].layer = rules.items[index].layer
         snapshot.items[index].order = rules.items[index].order
         snapshot.items[index].flex = rules.items[index].flex
+        snapshot.items[index].box = rules.items[index].box
         snapshot.items[index].style =
         StyleWithoutTypeface(rules.items[index].style)
         snapshot.items[index].style.typeface = BuilderFinish(builder)
@@ -595,8 +636,13 @@ ResolveInstalledTextStyle :: (request: TextStyleRequest,
     if request.disabled { state = cast(s32)ButtonStateDisabled }
     kind: s32 = request.kind
     if kind <= 0 { kind = StyleKindText() }
-    return ResolveInstalledStyleRules(base,
-        StyleTextFacts(request.id, request.class_name, kind, state), state)
+    facts := StyleTextFacts(request.id, request.class_name, kind, state)
+    if request.align == null { return ResolveInstalledStyleRules(base, facts, state) }
+    box: StyleBoxData
+    result := ResolveIndexedStyle(base, facts, state, true, null, cast(u32)0,
+        *box, cast(u32)StyleBoxTextAlign)
+    if (box.fields & cast(u32)StyleBoxTextAlign) != 0 { request.align[0] = box.text_align }
+    return result
 }
 
 StylePriority :: struct {
@@ -1107,9 +1153,11 @@ ResolveInstalledStyleRules :: (base: StyleData, facts: StyleFacts,
 }
 
 #program_export
-ResolveInstalledLayoutStyle :: (facts: StyleFacts, flex: *StyleFlexData) -> StyleData {
+ResolveInstalledLayoutStyle :: (facts: StyleFacts, flex: *StyleFlexData,
+    box: *StyleBoxData = null) -> StyleData {
     defaults: StyleData
-    return ResolveIndexedStyle(defaults, facts, StyleStateAny(), true, flex, cast(u32)StyleFlexContainerFields)
+    return ResolveIndexedStyle(defaults, facts, StyleStateAny(), true, flex,
+        cast(u32)StyleFlexContainerFields, box, cast(u32)StyleBoxContainerFields)
 }
 
 #program_export
@@ -1132,10 +1180,25 @@ ApplyFlexFields :: (target: *StyleFlexData, value: *StyleFlexData, fields: u32) 
     target.fields |= fields
 }
 
+ApplyBoxFields :: (target: *StyleBoxData, value: *StyleBoxData, fields: u32) {
+    if (fields & cast(u32)StyleBoxMinWidth) != 0 { target.min_width = value.min_width }
+    if (fields & cast(u32)StyleBoxMaxWidth) != 0 { target.max_width = value.max_width }
+    if (fields & cast(u32)StyleBoxMaxHeight) != 0 { target.max_height = value.max_height }
+    if (fields & cast(u32)StyleBoxClipChildren) != 0 { target.clip_children = value.clip_children }
+    if (fields & cast(u32)StyleBoxTextAlign) != 0 { target.text_align = value.text_align }
+    if (fields & cast(u32)StyleBoxMarginTop) != 0 { target.margin_top = value.margin_top }
+    if (fields & cast(u32)StyleBoxMarginRight) != 0 { target.margin_right = value.margin_right }
+    if (fields & cast(u32)StyleBoxMarginBottom) != 0 { target.margin_bottom = value.margin_bottom }
+    if (fields & cast(u32)StyleBoxMarginLeft) != 0 { target.margin_left = value.margin_left }
+    target.fields |= fields
+}
+
 ResolveIndexedStyle :: (base: StyleData, facts: StyleFacts, active_state: s32,
-    resolve_face: bool, flex: *StyleFlexData, flex_fields: u32) -> StyleData {
+    resolve_face: bool, flex: *StyleFlexData, flex_fields: u32,
+    box: *StyleBoxData = null, box_fields: u32 = 0) -> StyleData {
     remaining := ifx resolve_face then installed_fields else cast(u32)0
     remaining_flex := ifx flex != null then installed_flex_fields & flex_fields else cast(u32)0
+    remaining_box := ifx box != null then installed_box_fields & box_fields else cast(u32)0
     if facts.kind != StyleKindGrid() { remaining &= ~cast(u32)StyleGridTracks }
     container_layout := StyleIsContainerLayout(facts.kind)
     if container_layout {
@@ -1146,7 +1209,7 @@ ResolveIndexedStyle :: (base: StyleData, facts: StyleFacts, active_state: s32,
         // Ignore container size bits so they cannot prolong another widget's search.
         remaining &= ~(cast(u32)StyleWidth | cast(u32)StyleHeight)
     }
-    if remaining == 0 && remaining_flex == 0 { return base }
+    if remaining == 0 && remaining_flex == 0 && remaining_box == 0 { return base }
     kind := StyleBucket(facts.kind) * StyleIndexWords
     variant := StyleBucket(StyleTextVariant(facts)) * StyleIndexWords
     class_name := StyleBucket(facts.class_name) * StyleIndexWords
@@ -1159,6 +1222,7 @@ ResolveIndexedStyle :: (base: StyleData, facts: StyleFacts, active_state: s32,
         relevant: u64 = 0
         if remaining != 0 { relevant |= installed_face_bits[word] }
         if remaining_flex != 0 { relevant |= installed_flex_bits[word] }
+        if remaining_box != 0 { relevant |= installed_box_bits[word] }
         candidates &= relevant
         while candidates != 0 {
             index := word * 64 + StyleFirstBit(candidates)
@@ -1182,7 +1246,12 @@ ResolveIndexedStyle :: (base: StyleData, facts: StyleFacts, active_state: s32,
                     if fields != 0 { ApplyFlexFields(flex, *rule.flex, fields) }
                     remaining_flex &= ~fields
                 }
-                if remaining == 0 && remaining_flex == 0 { return base }
+                if remaining_box != 0 {
+                    fields := remaining_box & rule.box.fields
+                    if fields != 0 { ApplyBoxFields(box, *rule.box, fields) }
+                    remaining_box &= ~fields
+                }
+                if remaining == 0 && remaining_flex == 0 && remaining_box == 0 { return base }
             }
         }
     }

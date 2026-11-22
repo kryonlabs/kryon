@@ -81,4 +81,5 @@ PreparedText :: struct {
     line_gap: s32
     line_count: s32
     wrap: Wrap
+    align: s32
 }

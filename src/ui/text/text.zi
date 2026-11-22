@@ -51,6 +51,7 @@ using Text :: #import "text_props";
     TextFace :: struct {
         value: StyleData
         fallback_font: s32
+        align: s32
     }
 
     #program_export
@@ -69,6 +70,8 @@ using Text :: #import "text_props";
         request: TextStyleRequest = .{.kind = props.style_kind, .id = props.id,
             .class_name = props.class_name,
             .disabled = props.disabled}
+        face.align = cast(s32)props.align
+        if face.align == 0 { request.align = *face.align }
         face.value = TextStyleFor(request, defaults.value)
         return face
     }
@@ -258,6 +261,7 @@ using Text :: #import "text_props";
         lines: []TextLinePlan) -> PreparedText {
         prepared: PreparedText
         prepared.bounds = props.bounds
+        prepared.align = ifx props.align != .TextAlignStart then cast(s32)props.align else face.align
         prepared.typeface = ifx props.typeface != "" then props.typeface else face.value.typeface
         appearance := TextAppearanceFor(props, face)
         prepared.font = appearance.font
@@ -385,7 +389,7 @@ using Text :: #import "text_props";
                 line.end = line.start + cast(s32)value.count
             }
             x: s32 = TextLineXFor(cast(s32)prepared.bounds.x,
-                cast(s32)prepared.bounds.width, line.width, cast(s32)props.align)
+                cast(s32)prepared.bounds.width, line.width, prepared.align)
             // A line typed partway keeps its place and shows its typed start;
             // an ellipsis appears once its line is typed to the end.
             if line.end > typed_end {
@@ -523,7 +527,7 @@ using Text :: #import "text_props";
             bottom := top + prepared.line_height + prepared.line_gap
             if y >= cast(float32)top && y < cast(float32)bottom {
                 left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
-                    line.width, cast(s32)props.align)
+                    line.width, prepared.align)
                 previous_end: s32 = 0
                 for range, index: props.links {
                     if !TextRangeValid(props.text, range, previous_end) {
@@ -572,7 +576,7 @@ using Text :: #import "text_props";
                 prepared.wrap, prepared.font, prepared.typeface, prepared.glyph_style)
             if y < cast(float32)(top + prepared.line_height + prepared.line_gap) || line.next > props.text.count {
                 left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
-                    line.width, cast(s32)props.align)
+                    line.width, prepared.align)
                 at := line.start
                 nearest := at
                 distance := x - cast(float32)(left + TextLineCaret(props, prepared, line, at))
@@ -602,7 +606,7 @@ using Text :: #import "text_props";
                 prepared.wrap, prepared.font, prepared.typeface, prepared.glyph_style)
             if at <= line.end || line.next > props.text.count {
                 left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
-                    line.width, cast(s32)props.align)
+                    line.width, prepared.align)
                 width := TextLineCaret(props, prepared, line, at)
                 return Rectangle.{cast(float32)(left + width), cast(float32)top,
                     1.0, cast(float32)prepared.line_height}
@@ -626,7 +630,7 @@ using Text :: #import "text_props";
             to := ifx last < line.end then last else line.end
             if from < to {
                 left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
-                    line.width, cast(s32)props.align)
+                    line.width, prepared.align)
                 row := RectangleIntersection(prepared.bounds, Rectangle.{prepared.bounds.x,
                     cast(float32)top, prepared.bounds.width, cast(float32)prepared.line_height})
                 spans := TextLineSpans(props, prepared, line, from, to)

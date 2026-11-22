@@ -49,6 +49,7 @@ Group :: (session: Session, props: PropsModule.Props) -> LayoutContainer {
 using WidgetKind;
 using StyleField;
 using StyleFlexField;
+using StyleBoxField;
 
 // The space a column child may fill, or -1 outside a column.
 #program_export
@@ -129,7 +130,8 @@ TreePlaceGrid :: (session: Session, parent_index: s32, bounds: Rectangle) -> Rec
     return grid.item
 }
 
-LayoutFace :: (props: PropsModule.Props, kind: s32, flex: *StyleFlexData = null) -> StyleData {
+LayoutFace :: (props: PropsModule.Props, kind: s32, flex: *StyleFlexData,
+    box: *StyleBoxData) -> StyleData {
     style_kind: s32 = 0
     if kind == WidgetKindRow { style_kind = StyleKindRow() }
     if kind == WidgetKindColumn { style_kind = StyleKindColumn() }
@@ -139,7 +141,7 @@ LayoutFace :: (props: PropsModule.Props, kind: s32, flex: *StyleFlexData = null)
     facts := StyleDefaultFacts(style_kind)
     facts.id = props.id
     facts.class_name = props.class_name
-    return ResolveInstalledLayoutStyle(facts, flex)
+    return ResolveInstalledLayoutStyle(facts, flex, box)
 }
 
 LayoutSpacingFor :: (axis: s32, axis_override: bool, uniform: s32,
@@ -156,6 +158,46 @@ LayoutExtentFor :: (declared: float32, inherited: float32, styled: float32,
     if !(declared <= 0.0) { return declared }
     if has_style && styled > 0.0 && Finite32(styled) { return styled }
     return inherited
+}
+
+// CSS box fields that change a container's width (min, max, inline margins)
+// or move it in its slot (also max-height and block margins).
+LayoutBoxWidthFields :: 323
+LayoutBoxSlotFields :: 487
+
+// A fixed margin in logical pixels; unset and `auto` sides are zero here.
+LayoutMargin :: (box: StyleBoxData, field: StyleBoxField, value: float32) -> float32 {
+    if (box.fields & cast(u32)field) == 0 || !(value > 0.0) { return 0.0 }
+    return value
+}
+
+LayoutAutoMargin :: (box: StyleBoxData, field: StyleBoxField, value: float32) -> bool {
+    return (box.fields & cast(u32)field) != 0 && value < 0.0
+}
+
+// The border-box width: an auto width gives up its fixed inline margins,
+// then min-width and max-width clamp it.
+LayoutBoxWidth :: (width: float32, auto_width: bool, box: StyleBoxData) -> float32 {
+    if auto_width {
+        width -= LayoutMargin(box, .StyleBoxMarginLeft, box.margin_left) +
+            LayoutMargin(box, .StyleBoxMarginRight, box.margin_right)
+        if width < 0.0 { width = 0.0 }
+    }
+    if (box.fields & cast(u32)StyleBoxMaxWidth) != 0 && box.max_width >= 0.0 &&
+        width > box.max_width { width = box.max_width }
+    if (box.fields & cast(u32)StyleBoxMinWidth) != 0 && width < box.min_width { width = box.min_width }
+    return width
+}
+
+LayoutAutoWidth :: (declared: float32, face: StyleData) -> bool {
+    return declared <= 0.0 && !(StyleHasField(face, cast(u32)StyleWidth) && face.width > 0.0)
+}
+
+LayoutBoxHeight :: (height: float32, face: StyleData, box: StyleBoxData) -> float32 {
+    if (box.fields & cast(u32)StyleBoxMaxHeight) != 0 && box.max_height >= 0.0 &&
+        height > box.max_height { height = box.max_height }
+    if StyleHasField(face, cast(u32)StyleMinHeight) && height < face.min_height { height = face.min_height }
+    return height
 }
 
 LayoutParentBounds :: (session: Session, inset_sections: bool = false) -> Rectangle {
@@ -175,11 +217,17 @@ ContainerFor :: (session: Session, props: PropsModule.Props,
     kind: s32) -> LayoutContainer {
     result: LayoutContainer = .{.node = -1, .kind = kind, .bounds = props.bounds}
     parent := LayoutParentBounds(session)
-    face := LayoutFace(props, kind)
+    box: StyleBoxData
+    face := LayoutFace(props, kind, null, *box)
+    auto_width := LayoutAutoWidth(props.bounds.width, face)
     result.bounds.width = LayoutExtentFor(props.bounds.width, parent.width,
         face.width, StyleHasField(face, cast(u32)StyleWidth))
     result.bounds.height = LayoutExtentFor(props.bounds.height, parent.height,
         face.height, StyleHasField(face, cast(u32)StyleHeight))
+    if (box.fields & cast(u32)LayoutBoxWidthFields) != 0 {
+        result.bounds.width = LayoutBoxWidth(AutoGridChildWidth(session, result.bounds), auto_width, box)
+    }
+    result.bounds.height = LayoutBoxHeight(result.bounds.height, face, box)
     gap := props.gap
     if kind == WidgetKindRow {
         gap = LayoutSpacingFor(props.column_gap, props.column_gap_override,
@@ -197,19 +245,67 @@ ContainerFor :: (session: Session, props: PropsModule.Props,
     result.gap = metrics.gap
     result.padding = metrics.padding
     result.padding_y = metrics.padding_y
-    return OpenContainer(session, props, result)
+    return OpenContainer(session, props, result, box, parent.width)
+}
+
+// The slot a parent places: the border box plus its margins. An `auto`
+// inline margin asks for the parent's whole inner width.
+LayoutMarginSlot :: (bounds: Rectangle, box: StyleBoxData, available: float32) -> Rectangle {
+    slot := bounds
+    slot.width += LayoutMargin(box, .StyleBoxMarginLeft, box.margin_left) +
+        LayoutMargin(box, .StyleBoxMarginRight, box.margin_right)
+    slot.height += LayoutMargin(box, .StyleBoxMarginTop, box.margin_top) +
+        LayoutMargin(box, .StyleBoxMarginBottom, box.margin_bottom)
+    if (LayoutAutoMargin(box, .StyleBoxMarginLeft, box.margin_left) ||
+        LayoutAutoMargin(box, .StyleBoxMarginRight, box.margin_right)) && available > slot.width {
+        slot.width = available
+    }
+    return slot
+}
+
+// The border box inside its placed slot: fixed margins inset it, auto
+// margins share the free inline space, and the computed size is kept.
+LayoutBoxInSlot :: (placed: Rectangle, bounds: Rectangle, box: StyleBoxData) -> Rectangle {
+    left := LayoutMargin(box, .StyleBoxMarginLeft, box.margin_left)
+    right := LayoutMargin(box, .StyleBoxMarginRight, box.margin_right)
+    top := LayoutMargin(box, .StyleBoxMarginTop, box.margin_top)
+    bottom := LayoutMargin(box, .StyleBoxMarginBottom, box.margin_bottom)
+    inner: Rectangle = .{placed.x + left, placed.y + top, bounds.width, bounds.height}
+    if !(inner.width > 0.0) { inner.width = placed.width - left - right }
+    if !(inner.height > 0.0) { inner.height = placed.height - top - bottom }
+    if inner.width < 0.0 { inner.width = 0.0 }
+    if inner.height < 0.0 { inner.height = 0.0 }
+    free := placed.width - left - right - inner.width
+    if free > 0.0 {
+        auto_left := LayoutAutoMargin(box, .StyleBoxMarginLeft, box.margin_left)
+        auto_right := LayoutAutoMargin(box, .StyleBoxMarginRight, box.margin_right)
+        if auto_left && auto_right { inner.x += free / 2.0 }
+        else if auto_left { inner.x += free }
+    }
+    return inner
 }
 
 OpenContainer :: (session: Session, props: PropsModule.Props,
-    result: LayoutContainer) -> LayoutContainer {
+    result: LayoutContainer, box: StyleBoxData, available: float32) -> LayoutContainer {
     if !TreeIsBuilding(session) { return result }
     key: u64 = props.key
     if key == cast(u64)0 { key = TreeNextKey(session) }
-    result.node = TreeSubmitCurrent(session, key, result.kind, result.bounds)
+    parent := TreeSubmittedNodeAt(session, TreeCurrentParent(session))
+    boxed := (box.fields & cast(u32)LayoutBoxSlotFields) != 0 && parent.places_children &&
+        result.bounds.x == 0.0 && result.bounds.y == 0.0
+    slot := ifx boxed then LayoutMarginSlot(result.bounds, box, available) else result.bounds
+    result.node = TreeSubmitCurrent(session, key, result.kind, slot)
     if result.node < 0 { return result }
-    result.bounds = TreeSubmittedBounds(session, result.node)
+    placed := TreeSubmittedBounds(session, result.node)
+    if boxed {
+        inner := LayoutBoxInSlot(placed, result.bounds, box)
+        TreeSetSubmittedBounds(session, result.node, inner)
+        placed = inner
+    }
+    result.bounds = placed
     result.content = LayoutMetricsFor(result.bounds, result.gap, result.padding, result.padding_y).content
     TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0, result.padding_y)
+    if box.clip_children { TreeSetChildClip(session, result.node, result.bounds) }
     if props.id != 0 { TreeSetStyleId(session, result.node, props.id) }
     if props.class_name != 0 { TreeSetStyleClass(session, result.node, props.class_name) }
     result.opened = TreePushScope(session, result.node)
@@ -270,7 +366,8 @@ MeasuredFlex :: (session: Session, props: PropsModule.Props, kind: s32,
     result: LayoutContainer = .{.node = -1, .kind = kind, .bounds = props.bounds}
     if boxes.count < items.count { return result }
     style: StyleFlexData
-    face := LayoutFace(props, kind, *style)
+    box: StyleBoxData
+    face := LayoutFace(props, kind, *style, *box)
     parent := LayoutParentBounds(session, true)
     direction := ifx kind == WidgetKindColumn then 1 else 0
     if (style.fields & cast(u32)StyleFlexDirection) != 0 { direction = style.direction }
@@ -278,12 +375,14 @@ MeasuredFlex :: (session: Session, props: PropsModule.Props, kind: s32,
     align: AlignItems = .AlignStretch
     if (style.fields & cast(u32)StyleFlexAlign) != 0 { align = cast(AlignItems)style.align_items }
 
+    auto_width := LayoutAutoWidth(props.bounds.width, face)
     result.bounds.width = LayoutExtentFor(props.bounds.width, parent.width,
         face.width, StyleHasField(face, cast(u32)StyleWidth))
-    result.bounds.width = AutoGridChildWidth(session, result.bounds)
+    result.bounds.width = LayoutBoxWidth(AutoGridChildWidth(session, result.bounds), auto_width, box)
     height_limit := ifx !horizontal && style.wrap then parent.height else 0.0
     result.bounds.height = LayoutExtentFor(props.bounds.height, height_limit,
         face.height, StyleHasField(face, cast(u32)StyleHeight))
+    if result.bounds.height > 0.0 { result.bounds.height = LayoutBoxHeight(result.bounds.height, face, box) }
     row_gap := LayoutSpacingFor(props.row_gap, props.row_gap_override, props.gap, props.gap_override, face.row_gap)
     column_gap := LayoutSpacingFor(props.column_gap, props.column_gap_override,
         props.gap, props.gap_override, face.column_gap)
@@ -307,11 +406,11 @@ MeasuredFlex :: (session: Session, props: PropsModule.Props, kind: s32,
                 if bottom > height { height = bottom }
             }
         }
-        result.bounds.height = height + cast(float32)result.padding_y * 2.0
+        result.bounds.height = LayoutBoxHeight(height + cast(float32)result.padding_y * 2.0, face, box)
     }
     result.content = LayoutMetricsFor(result.bounds, result.gap, result.padding, result.padding_y).content
     before := result.bounds
-    result = OpenContainer(session, props, result)
+    result = OpenContainer(session, props, result, box, parent.width)
     for i: cast(s32)0..cast(s32)items.count - 1 {
         boxes[i].bounds.x += result.bounds.x - before.x
         boxes[i].bounds.y += result.bounds.y - before.y
@@ -362,11 +461,13 @@ AutoGridChildWidth :: (session: Session, bounds: Rectangle) -> float32 {
 Grid :: (session: Session, props: GridProps, items: []GridItem = EmptyGridItems(),
     item_bounds: []Rectangle = EmptyGridBounds()) -> GridResult {
     scope: PropsModule.Props = .{.key = props.key, .id = props.id, .class_name = props.class_name}
-    face := LayoutFace(scope, WidgetKindGrid)
+    box: StyleBoxData
+    face := LayoutFace(scope, WidgetKindGrid, null, *box)
     parent := LayoutParentBounds(session, true)
+    auto_width := LayoutAutoWidth(props.bounds.width, face)
     props.bounds.width = LayoutExtentFor(props.bounds.width, parent.width,
         face.width, StyleHasField(face, cast(u32)StyleWidth))
-    props.bounds.width = AutoGridChildWidth(session, props.bounds)
+    props.bounds.width = LayoutBoxWidth(AutoGridChildWidth(session, props.bounds), auto_width, box)
     props.row_gap = LayoutSpacingFor(props.row_gap, props.row_gap_override,
         props.gap, props.gap_override, face.row_gap)
     props.row_gap_override = true
@@ -398,12 +499,13 @@ Grid :: (session: Session, props: GridProps, items: []GridItem = EmptyGridItems(
     }
     props.bounds.height = LayoutExtentFor(props.bounds.height, content_height,
         face.height, StyleHasField(face, cast(u32)StyleHeight))
+    props.bounds.height = LayoutBoxHeight(props.bounds.height, face, box)
 
     metrics := MeasureGrid(props)
     container: LayoutContainer = .{.node = -1, .kind = WidgetKindGrid, .bounds = props.bounds,
         .content = metrics.content, .gap = props.gap, .padding = props.padding,
         .padding_y = props.padding_y}
-    container = OpenContainer(session, scope, container)
+    container = OpenContainer(session, scope, container, box, parent.width)
     TreeSetLayout(session, container.node, props.gap, props.padding, metrics.columns,
         0, 0, props.padding_y, props.row_gap)
     if items.count == 0 { TreeSetPlacement(session, container.node, TreePlaceGrid) }
