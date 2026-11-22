@@ -1,0 +1,22 @@
+// The app's look: Kryon's default light theme, and in dark mode the
+// Material preset from the pinned CSS package ([dependencies.css] in
+// ziran.toml). Swap style_pack_material for style_pack_lightfield or
+// style_pack_classic to try another preset.
+CSS :: #import "css/Css";
+Material :: #import "css/style_pack_material";
+Theme :: #import "kryon/theme";
+
+look_sheet: CSS.CssSheet;
+look_dark: s32 = -1;
+
+// Installs the look for DARK when it changes; false when the preset fails.
+ApplyLook :: (dark: bool) -> bool {
+    want: s32 = ifx dark then 1 else 0
+    if look_dark == want { return true }
+    look_dark = want
+    unused Theme.InstallDefaultTheme(dark)
+    // An empty sheet clears the preset's rules in light mode.
+    CSS.CssSheetReset(*look_sheet)
+    if dark && !CSS.CssSheetLoad(*look_sheet, Material.StylePackMaterial()) { return false }
+    return CSS.CssSheetInstall(*look_sheet, CSS.CssDefaultEnvironment(), null)
+}

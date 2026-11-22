@@ -22,6 +22,7 @@ Toggle :: #import "kryon/toggle";
 #import "kryon/session"
 #import "kryon/tree"
 using Model :: #import "tasks";
+#import "look"
 
 started: bool;
 dark: bool;
@@ -31,6 +32,7 @@ no_menu: []Dropdown.Option;
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     // Start in the mode the host chose: the system's, or kryon run --theme.
     if !started { dark = Theme.CurrentTheme().dark; StartTasks(); started = true }
+    unused ApplyLook(dark)
     screen := Layout.Draw(session, Layout.Props.{.bounds = viewport})
     if !screen.opened { return 0 }
     AppBar(session)
@@ -60,10 +62,7 @@ AppBar :: (session: Session) {
         .title = "{{name}}", .strong_title = true, .trailing_width = 120}, no_menu)
     switch := Toggle.Draw(session, Toggle.Props.{.bounds = bar.trailing_bounds,
         .label = "Dark", .value = dark})
-    if switch.changed {
-        dark = switch.value
-        unused Theme.SetThemeMode(dark)
-    }
+    if switch.changed { dark = switch.value }
     unused End(session)
 }
 

@@ -23,7 +23,7 @@ KRYON = ROOT / "build/bin/kryon"
 # put the digests the failure prints here.
 STARTER_DIGESTS = {
     "light": "d5e65fc5a5c39e0a09221d04cdfa17f2dead82530dbdba26e5b22bd088278d21",
-    "dark": "5c217da2bafc43d647c1b48c3548214257d564ac814681b09183fd1a550862a6",
+    "dark": "5763f2a2bc575e18f75ab41a546d02e368c68d1416eb0624cfa9ce4e07f71043",
 }
 
 

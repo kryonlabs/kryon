@@ -20,6 +20,10 @@ slot to a composite widget) and theme tokens size them, so no code computes
 a position. `src/tasks.zi` holds the state and imports no Kryon module, so
 tests can call it directly.
 
+`src/look.zi` keeps Kryon's default theme in light mode and opts into the
+Material preset from the pinned CSS package (`[dependencies.css]`) in dark
+mode; `style_pack_lightfield` and `style_pack_classic` are the other presets.
+
 `kryon build portable` exports `build/{{name}}-portable.zx`. Open it with
 `ziran run {{name}}-portable.zx` using the shared Zx player; no app source is
 needed. `ziran run`, `ziran build`, and `ziran install` do the same as the

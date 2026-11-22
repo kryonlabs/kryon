@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The app starter opts into the Material look preset in dark mode through a pinned CSS package revision that shares its Kryon, so its lock holds one Kryon; light mode keeps Kryon's default theme.
+
 - New widgets: `kryon/chip` (selectable and dismissible pills), `kryon/list_item` (leading icon or avatar, title, subtitle, trailing text, badge, chevron or switch) and `kryon/skeleton` (block, line and circle placeholders that pulse unless motion is reduced). Each takes its size from the theme, draws where its container places it, and has a gallery example and a ui-map entry.
 
 - When no app answers, the test driver names the fix: start and watch the app from the test (`StartOnDisplay`, `DriverEnvironment`, `DriverWatch`) instead of a hand-started Xvfb or app, or build it with `KRYON_TEST_DRIVER=1`. docs/FRAME_REPLAY.md lists all five frame capture bindings a replay host needs.

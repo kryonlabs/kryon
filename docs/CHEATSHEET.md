@@ -257,7 +257,7 @@ Layouts :: (session: Session) {
 | `Theme.CurrentThemeMetric(.ThemeMetricControlHeightMedium)` | control height; also `Small`, `Large` |
 | `.ThemeMetricTextXS` `TextSM` `TextBody` `TextLG` `Heading1`…`Heading4` | font sizes for `Text.Props.size` |
 | `StyleTokenColor("canvas" \| "surface" \| "border" \| "text")` | palette colors (`kryon/drawing_props`) |
-
+| `CssSheetLoad(*sheet, StylePackMaterial())`, `CssSheetInstall` | a look preset from `css/style_pack_material` (also `classic`, `lightfield`); see the starter's `src/look.zi` |
 ## Drive it in a test
 
 `env KRYON_TEST_DRIVER=1 ziran build && ziran run --project --target=c tests/notes_test.zi`:
