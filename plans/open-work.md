@@ -10,3 +10,9 @@ listed here is finished behavior documented in docs/.
 - `tests/opus_audio_test.py` fails its pause-position check (exit 8); reproduce with `python3 tests/opus_audio_test.py`.
 - Native macOS execution of the desktop ZX player is unverified: CI builds it and runs only the headless bundle check; run `make zx-test` on macOS hardware.
 - Downstream raylib migrations (Breeze Android/Windows hosts, neon, kasaival, kryonlabs/terminal) remain in their own repositories; Kryon itself contains no raylib code.
+- The five text-area widget checks (`tests/ziran_text_area_widget_test.sh`, `_scroll_selection_test`, `_touch_scroll_test`, `_wheel_test`, `_word_selection_test`) have different host bindings; build one shared host, then merge them into one table-driven module and compare behavior output and wall time before/after.
+- Breeze's native figures move to the current Kryon `scene_skin`/`watercolor` painters only after Breeze's shared Kryon repin (downstream, tracked in Breeze's `plans/2026-11-15-breeze-desktop-without-raylib.md`); check by building Breeze's Tai Chi and Workout figures.
+- Watercolor materials and the finishing pass are measured only on llvmpipe and the CPU renderer; run `make watercolor-test practice-material-gpu-test` on real phone hardware and record frame time, memory and thermals.
+- Verify Breeze's figure preview holds 60 fps after its Kryon pin update (Kryon side landed: sparse glTF accessor sharing, Cairo GOOD mesh filter); measure the full preview on the VRoid model.
+- Update CSS and Harmony to the exact single Kryon identity through package commands and verify the native stylesheet milestone (downstream repos; the Kryon side, the hosted StyleData codec with width/height, landed in c7286549).
+
