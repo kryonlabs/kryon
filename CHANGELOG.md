@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Project builds create stamp files by truncation instead of touch timestamps and set published page and executable modes through fchmod, so restricted builds that deny path chmod and timestamp syscalls still produce readable pages and runnable programs.
+
 - `kryon run [PROFILE] --watch` builds a desktop or terminal app, runs it, and after every saved change stops it, rebuilds and runs it again; a failed build waits for the next change.
 
 - Clip native line segments at scroll and viewport edges in either direction.

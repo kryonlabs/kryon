@@ -355,14 +355,14 @@ endif
 $(GEN_DIR)/test-driver.$(TEST_DRIVER_STATE):
 	@mkdir -p $(GEN_DIR)
 	@rm -f $(GEN_DIR)/test-driver.on $(GEN_DIR)/test-driver.off
-	@touch $@
+	@: > $@
 
 $(IR_STAMP): $(GEN_DIR)/test-driver.$(TEST_DRIVER_STATE) $(PROJECT_SOURCE_DEPS) $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
 	mkdir -p $(IR_DIR)
 	rm -f $(IR_DIR)/*.zir $(IR_STAMP)
 	$(IR_COMMAND)
 	test -f $(IR_DIR)/$(HOST_ID).zir
-	touch $(IR_STAMP)
+	: > $(IR_STAMP)
 
 ifeq ($(PROJECT_CODEGEN),c99)
 
@@ -371,7 +371,7 @@ $(C_STAMP): $(IR_STAMP) $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN) $(KRYON_DIR)/mk/zir
 	rm -f $(C_DIR)/*.c $(C_DIR)/*.h $(C_STAMP) $(GEN_DIR)/*.c $(GEN_DIR)/*.h $(GEN_DIR)/.complete
 	$(C_COMMAND)
 	test -f $(C_DIR)/$(HOST_ID).c
-	touch $(C_STAMP)
+	: > $(C_STAMP)
 
 # Editors read how the generated C is compiled from compile_commands.json.
 $(GEN_DIR)/compile_commands.json: $(C_STAMP) $(ZIRAN)
@@ -389,6 +389,9 @@ WEB_LINK = EM_CACHE=$(EM_CACHE) $(EMCC) -O2 -I$(ZIRAN_DIR)/include -iquote $(C_D
 	-sASYNCIFY -sASYNCIFY_STACK_SIZE=1048576 -sSINGLE_FILE=1 -sEXIT_RUNTIME=1 -sENVIRONMENT=web -sSTACK_SIZE=8388608 \
 	-sALLOW_MEMORY_GROWTH=1
 
+# Normalize output modes on the open descriptor: restricted builds may
+# deny path chmod and timestamp syscalls, and a restrictive umask must not
+# leave published pages and executables unreadable or unrunnable.
 $(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json $(HOST_DEPS) $(PAGE_SHELL) $(if $(PAGE_SHELL),$(KRYON_DIR)/mk/web-page.sh) $(CANVAS_RUNTIME_SOURCES) $(KRYON_DIR)/mk/ziran-project.mk
 ifneq ($(BROWSER_BACKEND),)
 	@runtime=; \
@@ -402,7 +405,8 @@ ifneq ($(BROWSER_BACKEND),)
 		$(WEB_LINK) $$runtime -o "$$modules/baseline.js" && \
 		sh $(KRYON_DIR)/mk/web-page.sh $(PAGE_SHELL) "$$modules/simd128.js" "$$modules/baseline.js" \
 				$(WEB_PAGE_EMBED_ARGS) > "$$modules/page.html" && \
-		chmod 644 "$$modules/page.html" && mv "$$modules/page.html" $@
+		python3 -c 'import os, sys; descriptor = os.open(sys.argv[1], os.O_RDONLY | os.O_NOFOLLOW); os.fchmod(descriptor, 0o644)' "$$modules/page.html" && \
+		mv "$$modules/page.html" $@
 
 else
 	@temporary=$$(mktemp $(PROJECT_BUILD_DIR)/$(PROJECT_NAME).XXXXXX.html); \
@@ -410,7 +414,8 @@ else
 		$(PROJECT_ARTIFACT_LINK) $(CC) -std=c99 -pedantic-errors $(HOST_CFLAGS) -O2 -ffunction-sections -fdata-sections \
 		-I$(ZIRAN_DIR)/include -I$(C_DIR) $(C_DIR)/*.c \
 		-Wl,--gc-sections $(PROJECT_ARTIFACT_LIBS) $(HOST_LIBS) $(LDLIBS) -lm -o "$$temporary" && \
-		chmod 755 "$$temporary" && mv "$$temporary" $@
+		python3 -c 'import os, sys; descriptor = os.open(sys.argv[1], os.O_RDONLY | os.O_NOFOLLOW); os.fchmod(descriptor, 0o755)' "$$temporary" && \
+		mv "$$temporary" $@
 endif
 endif
 
