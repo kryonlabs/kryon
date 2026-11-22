@@ -30,7 +30,7 @@ Props :: struct {
 }
 
 #program_export
-Rows :: (props: Props) -> s32 {
+WorkspacePagerRows :: (props: Props) -> s32 {
     if props.count < 1 { return 0 }
     rows := props.rows
     if rows < 1 { rows = 2 }
@@ -40,7 +40,7 @@ Rows :: (props: Props) -> s32 {
 
 #program_export
 Width :: (props: Props) -> float32 {
-    rows := Rows(props)
+    rows := WorkspacePagerRows(props)
     if rows == 0 { return 0.0 }
     columns := (props.count + rows - 1) / rows
     height := (props.bounds.height - 2.0) / cast(float32)rows
@@ -54,7 +54,7 @@ Width :: (props: Props) -> float32 {
 
 #program_export
 Cell :: (props: Props, index: s32) -> Rectangle {
-    rows := Rows(props)
+    rows := WorkspacePagerRows(props)
     if rows == 0 || index < 0 || index >= props.count { return .{} }
     columns := (props.count + rows - 1) / rows
     width := (props.bounds.width - 2.0) / cast(float32)columns
