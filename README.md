@@ -55,7 +55,7 @@ Charts, tables, trees, source coloring and style sheets are separate packages:
 `https://github.com/ziranlang/syntax.git`, imported as `plot/Plot`,
 `data_views/TableView`, `data_views/TreeView`, `css/Css` or `syntax/Syntax`.
 Kryon exports the building blocks they draw with; see
-[docs/API.md](docs/API.md#widget-packages). Ziran language and runtime gaps
+[widget packages](docs/WIDGET_PACKAGES.md#widget-packages). Ziran language and runtime gaps
 are listed in Ziran's [implementation
 status](https://github.com/ziranlang/ziran/blob/master/docs/IMPLEMENTATION_STATUS.md).
 
