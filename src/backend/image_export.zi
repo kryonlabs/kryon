@@ -1,3 +1,4 @@
+#if OS != .WEB && !#defined(ANDROID_BUILD) {
 // Decode upright straight RGBA and export through the native image codecs.
 #import "ziran_image_decode"
 #import "c_string"
@@ -59,4 +60,5 @@ EncodedImageExport :: (data: string, file_type: string, path: string) -> bool {
     if pixbuf == null { return false }
     defer { Desktop.CloseImage(pixbuf) }
     return save_pixels(pixbuf, *path_bytes[0], *kind[0], null, null, null) != 0
+}
 }

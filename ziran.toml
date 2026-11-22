@@ -4,9 +4,8 @@ links = ["SDL2", "pangocairo-1.0", "pango-1.0", "cairo", "fontconfig", "freetype
 module_roots = ["src/ui", "src/backend", "src/ui/alert", "src/ui/avatar", "src/ui/badge", "src/ui/banner", "src/ui/box", "src/ui/breadcrumb", "src/ui/button", "src/ui/buttongroup", "src/ui/card", "src/ui/carousel", "src/ui/checkbox", "src/ui/checklist", "src/ui/collapsible", "src/ui/colorpicker", "src/ui/commandpalette", "src/ui/confirmbutton", "src/ui/confirmpopover", "src/ui/contextmenu", "src/ui/copybutton", "src/ui/countdown", "src/ui/dpad", "src/ui/dropdown", "src/ui/emptystate", "src/ui/fieldset", "src/ui/flow", "src/ui/gridmulti", "src/ui/guidedtour", "src/ui/holdbutton", "src/ui/hovercard", "src/ui/image", "src/ui/inlineedit", "src/ui/joystick", "src/ui/keycap", "src/ui/layout", "src/ui/link", "src/ui/listbox", "src/ui/loading", "src/ui/loadingscreen", "src/ui/menu", "src/ui/modal", "src/ui/moneyfield", "src/ui/navigation", "src/ui/onetimecode", "src/ui/overlay", "src/ui/page", "src/ui/panedview", "src/ui/press", "src/ui/progress", "src/ui/progressring", "src/ui/radio", "src/ui/reorder", "src/ui/scroll", "src/ui/scrubfield", "src/ui/segmented", "src/ui/selectable", "src/ui/separator", "src/ui/shape", "src/ui/sheet", "src/ui/shortcutrecorder", "src/ui/slider", "src/ui/spinbox", "src/ui/svgicon", "src/ui/swiperow", "src/ui/tabs", "src/ui/taginput", "src/ui/terminallist", "src/ui/text", "src/ui/textarea", "src/ui/markdown", "src/ui/textfield", "src/ui/tilemap", "src/ui/timeline", "src/ui/timepicker", "src/ui/titlebar", "src/ui/window_chrome", "src/ui/toast", "src/ui/toggle", "src/ui/toolbar", "src/ui/tooltip", "tools"]
 
 [toolchain]
-git = "https://github.com/ziranlang/ziran.git"
-# Ziran 0.7.0 with streamed asset digests and ARM fixes.
-ref = "036cb7b5d2630302e0b73a2336ccbfb6d0250be5"
+git = "https://git.waozi.xyz/ziranlang/ziran.git"
+ref = "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0"
 
 [dependencies.libwebp]
 git = "https://github.com/webmproject/libwebp.git"
@@ -439,19 +438,19 @@ ref = "b141d9c45db236335351c8a4b2a14b3ade27c937"
 source = true
 
 [dependencies.image_codec]
-git = "https://github.com/ziranlang/image-codec.git"
-ref = "360553150917f352e49e1beb78917370792ccaef"
+git = "https://git.waozi.xyz/ziranlang/image-codec.git"
+ref = "3017f0d1cc56975aa29c600a1f55a62e1193cf7b"
 
 [dependencies.avif]
-git = "https://github.com/ziranlang/avif.git"
-ref = "f5f186bb13569ef13338f81366ff63fb9b9282f6"
+git = "https://git.waozi.xyz/ziranlang/avif.git"
+ref = "786871ec1d54fde303611a428ef31735bbdcc71d"
 
 [dependencies.webp]
-git = "https://github.com/ziranlang/webp.git"
-ref = "ec6ed304767e10c125ab2820f3b01d6fd773e147"
+git = "https://git.waozi.xyz/ziranlang/webp.git"
+ref = "6581dfa03711a96d219becd964860543b24b1f4f"
 
 [dependencies.audio]
-git = "https://github.com/ziranlang/audio.git"
+git = "https://git.waozi.xyz/ziranlang/audio.git"
 ref = "1b2f35b7b39df6fb9af7a52324b4b7cf18e98df2"
 
 # MinGW import libraries; runtime.tar holds the matching DLLs and licenses.

@@ -1,3 +1,4 @@
+#if OS == .WEB && !#defined(KRYON_HOSTED_UI) {
 #import "gamepad_navigation"
 #import "c_string"
 #import "geometry"
@@ -531,3 +532,4 @@ SystemPrimaryByteHost :: (index: s32) -> s32 { unused index; return -1 }
 
 #program_export
 SystemPrimaryWriteHost :: (text: string) -> bool { unused text; return false }
+}

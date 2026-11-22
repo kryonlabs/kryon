@@ -1,3 +1,4 @@
+#if OS == .WEB && !#defined(KRYON_HOSTED_UI) {
 #import "c_string"
 #import "byte_text_linux"
 #import "drawing_props"
@@ -401,4 +402,5 @@ CanvasAssetsFitPixels :: (keep: s32) {
         pixels -= CanvasAssetPixels(oldest)
         CanvasForgetAsset(oldest)
     }
+}
 }

@@ -1,5 +1,6 @@
 // Retain the browser host's existing back buffer. The checked paint plan
 // decides damage; this module only clears and rasterises the affected pixels.
+#if OS == .WEB && !#defined(KRYON_HOSTED_UI) {
 #import "session"
 #import "geometry"
 #import "drawing_props"
@@ -188,4 +189,5 @@ EndCanvasUiFrame :: (session: Session) -> FrameStatus {
     canvas_frame_color = color
     WebEnd(scope)
     return status
+}
 }

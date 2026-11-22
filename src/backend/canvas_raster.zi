@@ -1,3 +1,4 @@
+#if OS == .WEB && !#defined(KRYON_HOSTED_UI) {
 #import "c_string"
 #import "drawing_props"
 #import "control_props"
@@ -462,4 +463,5 @@ CursorPictureHost :: (asset_path: string, width: s32, height: s32,
     unused pixels
     unused premultiplied
     return false
+}
 }

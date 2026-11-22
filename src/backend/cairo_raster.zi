@@ -1081,23 +1081,25 @@ DisposeFrameTexture :: (texture: Texture2D) {
         texture.mipmaps == 1 && texture.format == 7 { CairoFrameDrop(index) }
 }
 
-// Image previews share the desktop's bounded, oriented memory decoder.
-PreviewDecode :: #import "ziran_image_decode";
+#if OS != .WEB && !#defined(ANDROID_BUILD) {
+    // Image previews share the desktop's bounded, oriented memory decoder.
+    PreviewDecode :: #import "ziran_image_decode";
 
-#program_export
-ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s32,
-    channels: *s32, upright: *bool) -> *u8 {
-    width.* = 0; height.* = 0; channels.* = 0
-    upright.* = true
-    image := PreviewDecode.ImageDecodeEncoded(data, file_type)
-    if image.pixels == null { return null }
-    width.* = image.width; height.* = image.height; channels.* = 4
-    return image.pixels
-}
+    #program_export
+    ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s32,
+        channels: *s32, upright: *bool) -> *u8 {
+        width.* = 0; height.* = 0; channels.* = 0
+        upright.* = true
+        image := PreviewDecode.ImageDecodeEncoded(data, file_type)
+        if image.pixels == null { return null }
+        width.* = image.width; height.* = image.height; channels.* = 4
+        return image.pixels
+    }
 
-#program_export
-ImagePreviewRelease :: (pixels: *u8) {
-    PreviewDecode.ImagePixelsFree(pixels)
+    #program_export
+    ImagePreviewRelease :: (pixels: *u8) {
+        PreviewDecode.ImagePixelsFree(pixels)
+    }
 }
 
 // File and folder invalidation release both the original and any in-flight

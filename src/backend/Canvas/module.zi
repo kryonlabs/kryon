@@ -1,7 +1,7 @@
 #if #defined(KRYON_HOSTED_UI) {
     #program_export
     CanvasSetExitKey :: (key: s32) { unused key }
-} else {
+} else #if OS == .WEB {
     // Browser applications can compose their own lifecycle with this host.
     using Runtime :: #import "canvas_host";
     using Raster :: #import "canvas_raster";

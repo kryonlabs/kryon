@@ -1,3 +1,4 @@
+#if OS == .WEB && !#defined(KRYON_HOSTED_UI) {
 #import "secondary_pointer"
 #import "frame_snapshot"
 #import "frame_entry"
@@ -76,4 +77,5 @@ main :: () -> s32 {
     CloseCanvas()
     if ok { return 0 }
     return CanvasError("kryon: browser frame rendering failed")
+}
 }

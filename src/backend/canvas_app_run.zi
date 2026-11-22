@@ -5,6 +5,7 @@
 // runner answers the app's context calls itself. Its private documents live
 // where a ZX player keeps them, /kryon-apps/<app id> on IndexedDB, so
 // saves carry over between the two.
+#if OS == .WEB && !#defined(KRYON_HOSTED_UI) {
 #import "secondary_pointer"
 #import "frame_snapshot"
 using Host :: #import "Canvas";
@@ -313,3 +314,4 @@ CanvasAppMainLoop :: () -> s32 {
 
 #program_export
 main :: () -> s32 { return CanvasAppMainLoop() }
+}
