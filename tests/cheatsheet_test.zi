@@ -1,0 +1,121 @@
+// docs/CHEATSHEET.md cannot rot: every fenced block that names a file
+// (`// file: PATH` or `# file: PATH` on its first line) is written into a
+// scratch project, which is locked against this checkout, built with the
+// test driver, shot offscreen and driven by the sheet's own test on a
+// private display. A Ziran block without a file line fails the test.
+//
+// Run from the Kryon root: make cheatsheet-test (ZIRAN_BIN names ziran).
+#import "std/process_run_linux"
+#import "std/file_tree_linux"
+#import "std/file"
+#import "std/text_tools"
+#import "std/environment_linux"
+using Vectors :: #import "vec";
+
+Sheet :: "docs/CHEATSHEET.md";
+SheetLineLimit :: 300;
+
+failures: s32;
+
+Expect :: (ok: bool, what: string) {
+    if ok { return }
+    failures += 1
+    print("cheatsheet: FAIL %\n", what)
+}
+
+Run :: (arguments: []string, directory: string, environment: []string, log: string) -> bool {
+    options: ProcessOptions = .{.arguments = arguments, .directory = directory,
+        .environment = environment, .output_path = log, .append_output = true, .merge_error = true}
+    run: ProcessRun
+    return RunProcess(options, *run) && run.code == 0
+}
+
+// The path a block's first line names, or "".
+FileLine :: (line: string) -> string {
+    if TextHasPrefix(line, "// file: ") { return TextTrim(line[9:]) }
+    if TextHasPrefix(line, "# file: ") { return TextTrim(line[8:]) }
+    return ""
+}
+
+// Writes each named block under PROJECT; returns how many it wrote.
+WriteBlocks :: (sheet: string, project: string) -> s32 {
+    lines := TextLines(sheet)
+    Expect(lines.count <= SheetLineLimit, "the sheet is at most 300 lines")
+    written: s32 = 0
+    index: s64 = 0
+    while index < lines.count {
+        line := lines[index]
+        index += 1
+        if !TextHasPrefix(line, "```zi") && !TextHasPrefix(line, "```toml") { continue }
+        path := ifx index < lines.count then FileLine(lines[index]) else ""
+        if path == "" {
+            Expect(!TextHasPrefix(line, "```zi"), "every Ziran block names its file")
+            continue
+        }
+        body: Vec(u8)
+        while index < lines.count && !TextHasPrefix(lines[index], "```") {
+            BuilderAppend(body, lines[index])
+            BuilderAppend(body, "\n")
+            index += 1
+        }
+        target := JoinPath(project, path)
+        Expect(CreateDirectories(PathParent(target)) && WriteEntireFile(target, BuilderFinish(body)), path)
+        written += 1
+    }
+    return written
+}
+
+// The width and height a PNG's header declares, or 0, 0.
+PngSize :: (path: string) -> (width: u32, height: u32) {
+    bytes, ok := ReadEntireFile(path)
+    if !ok || bytes.count < 24 || bytes[12:16] != "IHDR" { return 0, 0 }
+    width: u32 = 0
+    height: u32 = 0
+    for i: 0..3 {
+        width = (width << 8) | cast(u32)bytes[16 + i]
+        height = (height << 8) | cast(u32)bytes[20 + i]
+    }
+    return width, height
+}
+
+main :: () -> s32 {
+    ziran := EnvironmentText("ZIRAN_BIN")
+    if ziran == "" { ziran = "ziran" }
+    root := WorkingDirectory()
+    project := JoinPath(root, "build/test/cheatsheet")
+    log := JoinPath(root, "build/test/cheatsheet.log")
+    sheet, read := ReadEntireFile(Sheet)
+    if !read { print("cheatsheet: FAIL cannot read %\n", Sheet); return 1 }
+    Expect(WriteBlocks(sheet, project) >= 6, "the sheet holds the manifest, app, model, widgets, layouts and test")
+    documents: [2]string = .["README.md", "AGENTS.md"]
+    for document: documents {
+        text, ok := ReadEntireFile(document)
+        Expect(ok && TextFind(text, "docs/CHEATSHEET.md") >= 0, document)
+    }
+
+    // Only Kryon is local: checked packages lock against the pinned Ziran.
+    overrides: Vec(u8)
+    BuilderPrint(*overrides, "[overrides]\nkryon = \"%\"\n", root)
+    Expect(WriteEntireFile(JoinPath(project, "ziran.local.toml"), BuilderFinish(overrides)), "write overrides")
+    plain: [0]string
+    lock: [2]string = .[ziran, "lock"]
+    Expect(Run(lock[:], project, plain[:], log), "ziran lock; see build/test/cheatsheet.log")
+    driver: [1]string = .["KRYON_TEST_DRIVER=1"]
+    build: [5]string = .[ziran, "tool", "kryon", "build", "desktop"]
+    Expect(Run(build[:], project, driver[:], log), "the sheet's app builds; see build/test/cheatsheet.log")
+
+    png := JoinPath(root, "build/test/cheatsheet-shot.png")
+    shot: [10]string = .[ziran, "tool", "kryon", "run", "--png", png, "--width", "390", "--height", "844"]
+    Expect(Run(shot[:], project, plain[:], log), "the sheet's shot command works")
+    width, height := PngSize(png)
+    Expect(width == 390 && height == 844, "the shot is 390x844")
+
+    isolated: [5]string = .["DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS",
+        "HARMONY_DESKTOP_RECOVERY=0"]
+    drive: [6]string = .[ziran, "run", "--project", "--target=c", "tests/notes_test.zi", ""]
+    Expect(Run(drive[0:5], project, isolated[:], log), "the sheet's driver test passes; see build/test/cheatsheet.log")
+
+    if failures > 0 { return 1 }
+    print("cheatsheet: every block builds, shoots and passes its driver test\n")
+    return 0
+}

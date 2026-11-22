@@ -14,8 +14,12 @@ the `kryon` command (`make install-user` here), then:
 ```sh
 kryon new hello        # desktop app; --template tui|pages|web picks another
 cd hello
-kryon run              # default profile; kryon run tui|web selects another
+kryon run              # default profile; kryon run web selects another
+kryon run shot --png build/shot.png --width 390 --height 844   # offscreen, any size
 ```
+
+New to Kryon? [docs/CHEATSHEET.md](docs/CHEATSHEET.md) is one page with the app
+shell, every widget, the layout recipe, theme tokens and a driver test.
 
 `kryon build portable` exports one `build/<name>-portable.zx` that opens with
 `ziran run` on any supported platform. Manifests, profiles and every `kryon`
@@ -38,6 +42,7 @@ and gallery into `docs/site/`.
 
 | Question | File |
 | --- | --- |
+| First app: shell, widgets, layout, tokens, screenshot, driver test | docs/CHEATSHEET.md |
 | Widget APIs and drawing | docs/API.md |
 | Architecture and boundaries | docs/ARCHITECTURE.md, docs/BOUNDARIES.md |
 | Projects, hosts, web canvas | docs/PROJECTS.md, docs/BACKENDS.md, docs/canvas.md |

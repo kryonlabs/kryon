@@ -55,6 +55,7 @@ Xvfb/Xephyr display, as the test targets above do.
 
 | Question | File |
 | --- | --- |
+| Writing an app: one-page cheat sheet (start here) | docs/CHEATSHEET.md |
 | Widget APIs, drawing, packages | docs/API.md |
 | Architecture; Ziran/Kryon/app boundaries | docs/ARCHITECTURE.md, docs/BOUNDARIES.md |
 | `kryon` CLI, manifests, profiles, ZX apps | docs/PROJECTS.md |

@@ -407,6 +407,15 @@ toolchain-pin-test:
 		--module-path src/project tests/toolchain_pin_test.zi
 test: toolchain-pin-test
 
+# Every file block in docs/CHEATSHEET.md builds, shoots and passes its own
+# driver test on a private display.
+.PHONY: cheatsheet-test
+cheatsheet-test:
+	@rm -rf build/test/cheatsheet
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS ZIRAN_BIN="$(ZIRAN_BIN)" \
+		"$(ZIRAN_BIN)" run --target=c --root tests tests/cheatsheet_test.zi
+test: cheatsheet-test
+
 # Every supported target -- C, Go, and the portable runner --
 # renders each template and example on the headless pixmap host, and every
 # image must equal C's byte for byte. It needs go and python3, and
