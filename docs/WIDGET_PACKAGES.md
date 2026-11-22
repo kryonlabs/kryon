@@ -82,14 +82,18 @@ A single-line row uses `column_gap` between children and a column uses `row_gap`
 Set the corresponding `_override` flag to supply explicit zero. Negative
 spacing is clamped to zero.
 
-`Layout.Grid(session, Grid.GridProps, items)` uses CSS `Grid` width, height,
-padding, row/column gaps, and equal `grid-template-columns` tracks. Pass
-`[]Grid.GridItem` for a measured grid. Each item supplies its height and span.
-With unset height, the grid reserves the tallest item's height per row plus
-inter-row spacing and block padding. Call `Grid.GridStep` on the returned
-cursor for each item and draw using `cursor.item`. A negative span fills a row.
-Close `result.container.opened` with `End(session)`. A two-argument `Layout.Grid`
-places unpositioned children one track at a time. See the
+`Layout.Grid(session, Grid.GridProps, items, item_bounds)` uses CSS `Grid`
+width, height, padding, row/column gaps, and equal `grid-template-columns`
+tracks. Give each `Grid.GridItem` a height or a `measure_height` function and
+an optional `measure_key`. A zero item height calls the function with the
+item's allocated width and the key for looking up its data. The tallest item
+sets the row height. An unset grid height fits its rows unless the stylesheet
+sets an explicit height. A negative span fills a row. Pass an optional output
+`[]Rectangle` as `item_bounds` to
+draw with the boxes already measured by the grid. To walk items using the
+returned cursor, call `Grid.GridItemStep`. Close `result.container.opened` with
+`End(session)`. A two-argument `Layout.Grid` places unpositioned children one
+track at a time using their submitted sizes. See the
 [HTML/CSS mapping](HTML_TO_KRYON.md#author-a-responsive-dashboard).
 
 For a native bound field, initialize `state.bytes` once from application-owned

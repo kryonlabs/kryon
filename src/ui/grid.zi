@@ -59,12 +59,17 @@ BeginGridCursor :: (props: GridProps) -> GridCursor {
 
 #program_export
 GridStep :: (cursor: GridCursor, height: s32, column_span: s32) -> GridCursor {
+    return GridItemStep(cursor, GridItem.{.height = height, .column_span = column_span})
+}
+
+// Uses the assigned track width, including any width gained by a span.
+#program_export
+GridItemStep :: (cursor: GridCursor, item: GridItem) -> GridCursor {
     columns: s32 = ifx cursor.metrics.columns > 0 then cursor.metrics.columns else 1
     span: s32
     width: s32
 
-    if height < 0 { height = 0 }
-    span = column_span
+    span = item.column_span
     if span < 0 { span = columns }
     if span == 0 { span = 1 }
     if span > columns { span = columns }
@@ -77,6 +82,11 @@ GridStep :: (cursor: GridCursor, height: s32, column_span: s32) -> GridCursor {
 
     width = cursor.metrics.cell_width * span + cursor.metrics.gap * (span - 1)
     if span == columns { width = cast(s32)cursor.metrics.content.width }
+    height: s32 = item.height
+    if height == 0 && item.measure_height != null {
+        height = item.measure_height(cast(float32)width, item.measure_key)
+    }
+    if height < 0 { height = 0 }
     cursor.item = Rectangle.{
         cast(float32)(cursor.x + cursor.col * (cursor.metrics.cell_width + cursor.metrics.gap)),
         cast(float32)cursor.y,
@@ -96,8 +106,19 @@ GridStep :: (cursor: GridCursor, height: s32, column_span: s32) -> GridCursor {
 // Content height includes intervening row gaps, with neither a leading nor trailing gap.
 #program_export
 GridItemsHeight :: (cursor: GridCursor, items: []GridItem) -> s32 {
+    empty: []Rectangle
+    return PlaceGridItems(cursor, items, empty)
+}
+
+// Place and measure once. The caller can pass a shorter output slice if it
+// only needs some of the boxes. Every item still contributes to the height.
+#program_export
+PlaceGridItems :: (cursor: GridCursor, items: []GridItem, bounds: []Rectangle) -> s32 {
     if items.count == 0 { return 0 }
-    for item: items { cursor = GridStep(cursor, item.height, item.column_span) }
+    for index: 0..cast(s32)items.count - 1 {
+        cursor = GridItemStep(cursor, items[index])
+        if index < cast(s32)bounds.count { bounds[index] = cursor.item }
+    }
     if cursor.col == 0 { return cursor.used_height - cursor.metrics.row_gap }
     return cursor.used_height + cursor.row_height
 }

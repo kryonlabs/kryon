@@ -18,10 +18,15 @@ GridProps :: struct {
     padding_y_override: bool
 }
 
+GridMeasureHeight :: #type (width: float32, key: u64) -> s32;
+
 GridItem :: struct {
+    // Zero uses the optional measurement at the allocated track width.
     height: s32
     // Zero or one uses one column. Negative spans the full grid.
     column_span: s32
+    measure_height: GridMeasureHeight
+    measure_key: u64
 }
 
 GridMetrics :: struct {

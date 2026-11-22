@@ -40,7 +40,7 @@
   "layouts": [
     {"pattern": "display: flex; flex-direction: row", "import": "kryon/layout", "call": "Row", "scope": "opened"},
     {"pattern": "display: flex; flex-direction: column", "import": "kryon/layout", "call": "Draw", "scope": "opened"},
-    {"pattern": "display: grid", "import": "kryon/layout", "call": "Grid", "css": "Grid", "scope": "container.opened", "items": "kryon/grid.GridItem", "placement": "kryon/grid.GridStep"},
+    {"pattern": "display: grid", "import": "kryon/layout", "call": "Grid", "css": "Grid", "scope": "container.opened", "items": "kryon/grid.GridItem", "placement": "item_bounds", "cursor_step": "kryon/grid.GridItemStep", "auto_height": "GridItem.measure_height"},
     {"pattern": "overflow-y: auto", "import": "kryon/scroll", "call": "Draw", "scope": "opened"}
   ],
   "viewport": {"import": "css/Css", "environment": "CssEnvironmentWithViewportWidth", "install": "CssSheetInstall", "same_media": "CssSheetSameMedia", "features": ["width", "min-width", "max-width"], "units": ["px", "rem", "unitless zero"]},

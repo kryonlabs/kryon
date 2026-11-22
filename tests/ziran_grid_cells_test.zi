@@ -7,6 +7,13 @@ Near :: (a: Rectangle, x: float32, y: float32, width: float32, height: float32) 
     return a.x == x && a.y == y && a.width == width && a.height == height
 }
 
+measure_calls: s32;
+
+MeasureWrapped :: (width: float32, key: u64) -> s32 {
+    measure_calls += cast(s32)key
+    return ifx width < 200.0 then 48 else 24
+}
+
 #program_export
 Answer :: () -> s32 {
     narrow := MeasureGrid(GridProps.{.bounds = Rectangle.{10.0, 20.0, 330.0, 0.0},
@@ -33,6 +40,20 @@ Answer :: () -> s32 {
     if GridIndexAt(narrow, 15.0, -40.0, 80, 5) != 0 { return 12 }
     if GridIndexAt(narrow, 300.0, 500.0, 80, 5) != 5 { return 13 }
     if GridIndexAt(wide, 860.0, 30.0, 80, 6) != 5 { return 14 }
+    measure_calls = 0
+    automatic: GridItem = .{.measure_height = MeasureWrapped, .measure_key = 1}
+    items: [3]GridItem = .[automatic, automatic, automatic]
+    items[1].height = 20
+    items[2].column_span = -1
+    placed: [3]Rectangle
+    narrow_cursor := BeginGridCursor(GridProps.{.bounds = narrow.bounds, .columns = 2, .gap = 10})
+    height := PlaceGridItems(narrow_cursor, items[:], placed[:])
+    if height != 82 || measure_calls != 2 || !Near(placed[0], 10.0, 20.0, 160.0, 48.0) ||
+        !Near(placed[1], 180.0, 20.0, 160.0, 20.0) || !Near(placed[2], 10.0, 78.0, 330.0, 24.0) { return 15 }
+    wide_cursor := BeginGridCursor(GridProps.{.bounds = wide.bounds, .columns = 2, .gap = 10})
+    height = PlaceGridItems(wide_cursor, items[:], placed[:1])
+    if height != 58 || measure_calls != 4 || !Near(placed[0], 10.0, 20.0, 495.0, 24.0) ||
+        !Near(placed[1], 180.0, 20.0, 160.0, 20.0) { return 16 }
     return 42
 }
 

@@ -114,8 +114,8 @@ if sc.opened {
   - `JustifyContent`: `.JustifyStart`, `.JustifyCenter`, `.JustifyEnd`, `.JustifySpaceBetween`, `.JustifySpaceAround`, `.JustifySpaceEvenly`
   - `AlignItems`: `.AlignStart`, `.AlignCenter`, `.AlignEnd`, `.AlignStretch`
 - **CSS Grid** uses `Layout.Grid(session, Grid.GridProps.{.key, .class_name}, items[:])`.
-  Provide each item's height and optional span. The grid measures the rows, fills its parent column or section's inner width by default, and gives back a `GridCursor` for drawing. Two-argument calls retain automatic placement for unpositioned single-track children.
-- **CSS `grid-column: 1/-1`** maps to `Grid.GridItem.{.column_span = -1}`. Positive spans occupy that many tracks. Use `Grid.GridStep(cursor, item.height, item.column_span)` for the returned `cursor.item` bounds.
+  Give each item a height or a `measure_height(width, key)` callback. A zero height calls the measurement with the item's allocated width after tracks and spans are resolved. The tallest item sets each row's height. Pass an output `[]Rectangle` as the fourth argument to measure and place all items in one pass, then draw children using those bounds. Two-argument calls place unpositioned single-track children using their submitted sizes.
+- **CSS `grid-column: 1/-1`** maps to `Grid.GridItem.{.column_span = -1}`. Positive spans occupy that many tracks. To walk the grid manually, call `Grid.GridItemStep(cursor, item)` and read the returned `cursor.item`. Fixed-height callers can continue using `Grid.GridStep`.
 - **Breakpoint layout** uses the same stylesheet and frame code at every width. Set the viewport in the CSS environment before submitting widgets. `PageLayout.PageFor` remains available for manually centered or capped page geometry.
 - **Split Pane** -> `PanedView.Draw(session, PanedView.Props.{.bounds, .split, .has_split = true, .vertical = true})` -> read `panes.first`, `panes.second`, `panes.split`.
 

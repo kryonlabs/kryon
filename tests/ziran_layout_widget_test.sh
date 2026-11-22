@@ -72,6 +72,32 @@ AutoAnswer :: () -> s32 {
     return 42
 }
 
+grid_measure_calls: s32;
+
+MeasuredHeight :: (width: float32, key: u64) -> s32 {
+    grid_measure_calls += cast(s32)key
+    return cast(s32)(width / 2.0)
+}
+
+MeasuredAnswer :: () -> s32 {
+    session := TestSession()
+    root: Rectangle = .{0.0, 0.0, 200.0, 140.0}
+    TreeStart(session, cast(u64)201, root)
+    outer := Layout.Grid(session, GridProps.{.key = 202, .columns = 2, .padding = 2, .gap = 4,
+        .bounds = .{10.0, 20.0, 100.0, 100.0}})
+    grid_measure_calls = 0
+    items: [2]GridItem = .[.{.measure_height = MeasuredHeight, .measure_key = 1}, .{.height = 12}]
+    item_bounds: [2]Rectangle
+    inner := Layout.Grid(session, GridProps.{.key = 203, .padding = 1, .gap = 3, .columns = 1}, items[:], item_bounds[:])
+    if !inner.container.opened || inner.container.bounds.width != 46.0 || inner.container.bounds.height != 39.0 ||
+        grid_measure_calls != 1 || item_bounds[0].x != 13.0 || item_bounds[0].y != 23.0 || item_bounds[0].width != 44.0 ||
+        item_bounds[0].height != 22.0 || item_bounds[1].y != 48.0 { return -24 }
+    child := TreeSubmitCurrent(session, cast(u64)204, WidgetKindText, item_bounds[1])
+    if !End(session) || !End(session) || !TreeFinish(session) || TreeNodeAt(session, child).bounds.y != 48.0 ||
+        TreeNodeAt(session, inner.container.node).parent != outer.container.node { return -25 }
+    return 42
+}
+
 #program_export
 Answer :: () -> s32 {
     root: Rectangle = Rectangle.{0.0, 0.0, 300.0, 200.0}
@@ -152,7 +178,9 @@ Answer :: () -> s32 {
         !End(TestSession()) || !TreeFinish(TestSession()) || TreeCount(TestSession()) != 12 ||
         TreeNodeAt(TestSession(), 5).parent != 4 || TreeNodeAt(TestSession(), 8).parent != 6 ||
         TreeNodeAt(TestSession(), 11).parent != 1 { return -12 }
-    return AutoAnswer()
+    auto := AutoAnswer()
+    if auto != 42 { return auto }
+    return MeasuredAnswer()
 }
 ZI
 
