@@ -40,6 +40,7 @@ Group :: (session: Session, props: PropsModule.Props) -> LayoutContainer {
 #import "control_props"
 #import "grid"
 #import "grid_props"
+#import "layout_paint_slot"
 #import "math"
 #import "style"
 #import "style_sheet"
@@ -224,7 +225,7 @@ LayoutAutoHeight :: (declared: float32, face: StyleData) -> bool {
 
 // What a content-sized container settles at its close.
 LayoutContentSizeFor :: (face: StyleData, box: StyleBoxData) -> TreeContentSize {
-    size: TreeContentSize = .{.max = -1.0}
+    size: TreeContentSize = .{.max = -1.0, .paint_mark = -1}
     if StyleHasField(face, cast(u32)StyleMinHeight) { size.min = face.min_height }
     if (box.fields & cast(u32)StyleBoxMaxHeight) != 0 { size.max = box.max_height }
     size.margin_top = LayoutMargin(box, .StyleBoxMarginTop, box.margin_top)
@@ -280,13 +281,30 @@ LayoutGrowParent :: (session: Session, parent_index: s32, bounds: Rectangle, siz
     TreeSetLayoutProgress(session, parent_index, progress)
 }
 
+// A container with a CSS background or border paints its box, like a
+// styled div, beneath its children.
+LayoutPaintsBox :: (face: StyleData) -> bool {
+    if layout_box_paint == null { return false }
+    fill := StyleHasField(face, cast(u32)StyleBackground) && (face.background & cast(u32)255) != 0
+    line := StyleHasField(face, cast(u32)StyleBorderWidth) && face.border_width > 0.0 &&
+        (face.border & cast(u32)255) != 0
+    return fill || line
+}
+
+
 #program_export
 LayoutCloseContent :: (session: Session, index: s32) {
     node := TreeSubmittedNodeAt(session, index)
     bounds := node.bounds
     bounds.height = LayoutContentHeight(session, index, node.kind)
     TreeSetSubmittedBounds(session, index, bounds)
-    if node.auto_placed { LayoutGrowParent(session, node.parent, bounds, TreeContentSizeAt(session, index)) }
+    size := TreeContentSizeAt(session, index)
+    if size.paint_mark >= 0 {
+        face := LayoutFace(PropsModule.Props.{.id = node.style_id, .class_name = node.style_class},
+            node.kind, null, null)
+        layout_box_paint(session, bounds, face, size.paint_mark)
+    }
+    if node.auto_placed { LayoutGrowParent(session, node.parent, bounds, size) }
 }
 
 LayoutBoxHeight :: (height: float32, face: StyleData, box: StyleBoxData) -> float32 {
@@ -406,6 +424,10 @@ OpenContainer :: (session: Session, props: PropsModule.Props,
     result.content = LayoutMetricsFor(result.bounds, result.gap, result.padding, result.padding_y).content
     TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0, result.padding_y)
     size := LayoutContentSizeFor(face, box)
+    if LayoutPaintsBox(face) {
+        if content_sized { size.paint_mark = layout_paint_mark(session) }
+        else { layout_box_paint(session, result.bounds, face, -1) }
+    }
     if content_sized { TreeSetClose(session, result.node, LayoutCloseContent, size) }
     if box.clip_children {
         // A content-sized box clips its sides now and its bottom at max-height.
@@ -517,7 +539,7 @@ MeasuredFlex :: (session: Session, props: PropsModule.Props, kind: s32,
     }
     result.content = LayoutMetricsFor(result.bounds, result.gap, result.padding, result.padding_y).content
     before := result.bounds
-    result = OpenContainer(session, props, result, box, parent.width)
+    result = OpenContainer(session, props, result, box, parent.width, false, face)
     for i: cast(s32)0..cast(s32)items.count - 1 {
         boxes[i].bounds.x += result.bounds.x - before.x
         boxes[i].bounds.y += result.bounds.y - before.y

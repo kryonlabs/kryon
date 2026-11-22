@@ -140,12 +140,14 @@ NodeGeometry :: struct {
     TreeClose :: #type (session: Session, index: s32) -> void;
 
     // What a content-sized container keeps for its close: its min and max
-    // height (a negative max is none) and the block margins of its slot.
+    // height (a negative max is none), the block margins of its slot, and
+    // where its own box goes in the paint queue (-1 when it paints none).
     TreeContentSize :: struct {
         min: float32
         max: float32
         margin_top: float32
         margin_bottom: float32
+        paint_mark: s64
     }
 
     TreeEntry :: struct {

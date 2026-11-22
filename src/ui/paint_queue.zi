@@ -1139,6 +1139,37 @@ PaintOrder :: (session: Session) -> bool {
     return true
 }
 
+// The queue position a content-sized container records when it opens.
+#program_export
+PaintMark :: (session: Session) -> s64 {
+    return pending_paint[SessionIndex(session)].items.count
+}
+
+// Puts the commands queued since `from` at `mark`, under the ones queued
+// in between: a box painted when its container closes stays beneath its
+// children. Three in-place reversals; nothing is allocated.
+#program_export
+PaintMoveBelow :: (session: Session, mark: s64, from: s64) {
+    slot := SessionIndex(session)
+    count := pending_paint[slot].items.count
+    if mark < 0 || mark >= from || from >= count { return }
+    PaintReverse(slot, mark, from - 1)
+    PaintReverse(slot, from, count - 1)
+    PaintReverse(slot, mark, count - 1)
+}
+
+PaintReverse :: (slot: s32, first: s64, last: s64) {
+    low := first
+    high := last
+    while low < high {
+        held := pending_paint[slot].items[low]
+        pending_paint[slot].items[low] = pending_paint[slot].items[high]
+        pending_paint[slot].items[high] = held
+        low += 1
+        high -= 1
+    }
+}
+
 #program_export
 PaintOverflow :: (session: Session) -> bool {
     return pending_paint[SessionIndex(session)].overflow

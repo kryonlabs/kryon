@@ -1,0 +1,38 @@
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "layout_paint_slot"
+#import "paint_queue"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "surface"
+
+using StyleField;
+
+// A container's CSS box, like a styled div: background (a color or two-stop
+// gradient), border and radius at the container's bounds.
+LayoutPaintBox :: (session: Session, bounds: Rectangle, face: StyleData, mark: s64) {
+    from := PaintMark(session)
+    opacity := StyleOpacityValue(face.fields, face.opacity)
+    radius := ifx StyleHasField(face, cast(u32)StyleRadius) && face.radius > 0.0 then face.radius else 0.0
+    if StyleHasField(face, cast(u32)StyleBackground) {
+        top := ColorFromPacked(Opacity(face.background, opacity))
+        if StyleHasField(face, cast(u32)StyleBackgroundEnd) {
+            PaintVerticalGradient(session, -1, bounds, top,
+                ColorFromPacked(Opacity(face.background_end, opacity)))
+        } else if top.a != cast(u8)0 {
+            PaintRoundedFill(session, -1, bounds, radius, 8, top)
+        }
+    }
+    border := ColorFromPacked(Opacity(face.border, opacity))
+    if StyleHasField(face, cast(u32)StyleBorderWidth) && face.border_width > 0.0 && border.a != cast(u8)0 {
+        PaintRoundedOutline(session, -1, bounds, radius, 8, face.border_width, border)
+    }
+    if mark >= 0 { PaintMoveBelow(session, mark, from) }
+}
+
+LayoutPaintInstall :: () {
+    layout_box_paint = LayoutPaintBox
+    layout_paint_mark = PaintMark
+}

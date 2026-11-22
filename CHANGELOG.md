@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Row, Column and Grid paint their CSS background, border and border radius beneath their children, like a styled div; a content-sized one paints its box at `End` and moves it under the children in place. The frame fills the painting slot, so a program that never paints carries no paint queue.
+
 - `make budget-test` fails when a 1,000-row ListItem frame grows past its recorded tree nodes or paint commands, or the app starter's portable bundle past its recorded bytes: counts that are the same on every machine.
 
 - Row, Column, Grid and Flow without a height size to the children they place when `End` closes them, and move the next sibling down; Flow wraps; `Layout.GridSpan` spans the next grid child. The manual `ColumnChildBounds`, `RowChildBounds`, `StackChildBoundsFor` and `FlowChildBounds` helpers are gone.

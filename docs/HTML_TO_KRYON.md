@@ -35,7 +35,8 @@ are built-in Ziran types.
 | `<html>`, `<body>` | `Page :: #import "kryon/page";` -> `Page.Draw(session, Page.Props.{...})` or `Layout.Screen` | Call `End(session)` if `result.opened`. Also fill root background with `Box.Draw`. |
 | `<main>`, `<section>` | `Page.Section(session, Page.SectionProps.{.bounds, .label, .key})` | Sets `SemanticSection`; close with `End(session)` when `opened`. |
 | `<article>`, `.card` | `Card :: #import "kryon/card";` -> `Card.Draw(session, Card.Props.{.bounds, .variant})` | Variants: `.CardFilled`, `.CardElevated`, `.CardOutlined`. CSS padding sets `result.content`. Draw children inside that rectangle. |
-| `<div>` (styled box) | `Box :: #import "kryon/box";` -> `Box.Draw(session, Box.Props.{.bounds, .fill, .border, .radius})` | Decorative only; captures no input. |
+| `<div class="card">` (a box around content) | `Layout.Draw(session, .{.class_name = CSS.StyleClass("card")})`, or `Layout.Row` / `Layout.Grid` | A container whose CSS sets `background` (color or two-stop gradient), `border` or `border-radius` paints that box beneath its children, sized to them when it has no height. |
+| `<div>` (decorative box only) | `Box :: #import "kryon/box";` -> `Box.Draw(session, Box.Props.{.bounds, .fill, .border, .radius})` | Decorative only; captures no input. |
 | `<header>` / toolbar | `Toolbar :: #import "kryon/toolbar";` or `TitleBar :: #import "kryon/title_bar";` | Or `Layout.Row` + `Button` / `Text`. |
 | `<nav>` (rail / bar) | `Navigation :: #import "kryon/navigation";` -> `Navigation.Draw(session, props, items)` | Use `.compact = true, .fit_items = true` for embedded panels/rails, or vertical `Button` list. |
 | `[role="tablist"]` | `TabBar :: #import "kryon/tab_bar";` -> `TabBar.Draw(session, props, tabs)` | Supports `.TabBarTop`, `.TabBarBottom`, `.TabBarLeft`, `.TabBarRight`. |
