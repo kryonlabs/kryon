@@ -1,0 +1,58 @@
+// The app's state and its text, apart from any widget, so tests can use it.
+#import "std/number_text"
+
+Task :: struct {
+    title: string
+    detail: string
+    done: bool
+}
+
+tasks: [12]Task;
+task_count: s32;
+summary_text: [48]u8;
+
+// The first tasks, once.
+StartTasks :: () {
+    if task_count > 0 { return }
+    unused AddTask("Sketch the home screen", "Cards, an app bar and one clear action")
+    unused AddTask("Connect real data", "Keep state in src/tasks.zi; widgets only draw it")
+    unused AddTask("Check it in dark mode", "kryon run shot --png build/dark.png --theme dark")
+    tasks[0].done = true
+}
+
+TaskCount :: () -> s32 { return task_count }
+
+TaskAt :: (index: s32) -> Task { return tasks[index] }
+
+SetTaskDone :: (index: s32, done: bool) { tasks[index].done = done }
+
+// Adds a task while there is room; false when the list is full.
+AddTask :: (title: string, detail: string) -> bool {
+    if task_count >= cast(s32)tasks.count { return false }
+    tasks[task_count] = .{title = title, detail = detail}
+    task_count += 1
+    return true
+}
+
+// "N of M done", in storage that lives as long as the app.
+Summary :: () -> string {
+    done: s64 = 0
+    for index: 0..task_count - 1 { if tasks[index].done { done += 1 } }
+    length := 0
+    digits: [24]u8
+    length = Append(summary_text[:], length, FormatInteger(done, digits[:]))
+    length = Append(summary_text[:], length, " of ")
+    length = Append(summary_text[:], length, FormatInteger(cast(s64)task_count, digits[:]))
+    length = Append(summary_text[:], length, " done")
+    return TextView(summary_text[0:length])
+}
+
+Append :: (output: []u8, length: s64, text: string) -> s64 {
+    at := length
+    for byte: text {
+        if at >= output.count { return at }
+        output[at] = byte
+        at += 1
+    }
+    return at
+}

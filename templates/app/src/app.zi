@@ -1,96 +1,101 @@
+// {{name}}: a Kryon application. Frame runs every frame and declares the
+// whole interface from the state in src/tasks.zi; Kryon keeps the widgets
+// between frames and reports what the user did. Layout containers place
+// their children and theme tokens size them, so no code here computes a
+// position.
+//
+//   kryon run                     the desktop window (ziran run does the same)
+//   kryon run shot --png build/shot.png --width 390 --height 844 --theme dark
+//   kryon run tui                 the same interface in a terminal
+//   kryon run web                 a Canvas2D browser page (needs Emscripten)
 Button :: #import "kryon/button";
-Progress :: #import "kryon/progress";
-Slider :: #import "kryon/slider";
-using Layout :: #import "layout";
+Card :: #import "kryon/card";
+Checkbox :: #import "kryon/checkbox";
+Dropdown :: #import "kryon/dropdown";
+Layout :: #import "kryon/layout";
+Text :: #import "kryon/text";
+Theme :: #import "kryon/theme";
+TitleBar :: #import "kryon/title_bar";
+Toggle :: #import "kryon/toggle";
 #import "kryon/control_props"
 #import "kryon/geometry"
 #import "kryon/session"
-#import "std/number_text"
-// {{name}}: a Kryon application. Frame runs every frame and declares the
-// whole interface from the app's state; Kryon keeps the widgets between
-// frames and reports what the user did.
-//
-//   kryon run          the desktop window (ziran run does the same)
-//   kryon run tui      the same interface in a terminal
-//   kryon run web      a Canvas2D browser page (needs Emscripten)
+#import "kryon/tree"
+using Model :: #import "tasks";
 
-Goal :: 100;
-
-count: s32;
-step: s32 = 1;
-count_text: [32]u8;
-step_text: [48]u8;
-
-Action :: (session: Session, id: s32, label: string, bounds: Rectangle, accent: bool) -> bool {
-    props: Button.Props
-    props.key = cast(u64)id
-    props.id = id
-    props.bounds = bounds
-    props.label = label
-    if accent {
-        props.tone = ButtonTone.ButtonToneAccent
-        props.emphasis = ButtonEmphasis.ButtonEmphasisFilled
-    }
-    return Button.Draw(session, props) == 1
-}
+started: bool;
+dark: bool;
+no_menu: []Dropdown.Option;
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    page: PageLayout = PageFor(viewport, 520.0)
-    Label(session, 1, "{{name}}", NextRow(*page, 40.0), FontSize(*page, 32))
-    Label(session, 2, "Count up to the goal, one step at a time.", NextRow(*page, 24.0),
-        FontSize(*page, 16))
-    Label(session, 3, FormatInteger(cast(s64)count, count_text[:]), NextRow(*page, 64.0),
-        FontSize(*page, 56))
-
-    buttons: Rectangle = NextRow(*page, 40.0)
-    if Action(session, 10, "-", RowPart(*page, buttons, 0, 3), false) {
-        count -= step
-        if count < 0 { count = 0 }
+    // Start in the mode the host chose: the system's, or kryon run --theme.
+    if !started { dark = Theme.CurrentTheme().dark; StartTasks(); started = true }
+    screen := Layout.Draw(session, Layout.Props.{.bounds = viewport})
+    if !screen.opened { return 0 }
+    AppBar(session)
+    body := Layout.Draw(session, Layout.Props.{
+        .gap = Layout.Gap(.ThemeMetricSpace3), .gap_override = true,
+        .padding = Layout.Gap(.ThemeMetricSpace4), .padding_override = true})
+    if body.opened {
+        Line(session, Summary(), .ThemeMetricHeading3)
+        for index: 0..TaskCount() - 1 { TaskCard(session, index) }
+        add := Button.Props.{.label = "Add task", .size = .ControlSizeLarge,
+            .tone = .ButtonToneAccent, .emphasis = .ButtonEmphasisFilled}
+        add.bounds = .{width = body.content.width, height = Button.ButtonMeasure(add).height}
+        if Button.Draw(session, add) == 1 { unused AddTask("A new task", "Rename it in src/tasks.zi") }
+        unused End(session)
     }
-    if Action(session, 11, "+", RowPart(*page, buttons, 1, 3), true) {
-        count += step
-        if count > Goal { count = Goal }
-    }
-    if Action(session, 12, "Reset", RowPart(*page, buttons, 2, 3), false) {
-        count = 0
-    }
-
-    digits: [16]u8
-    Label(session, 20, Joined("Step: ", FormatInteger(cast(s64)step, digits[:]), step_text[:]),
-        NextRow(*page, 24.0), FontSize(*page, 16))
-    if page.cells {
-        // A terminal has no room for a slider's knob; two buttons step.
-        steps: Rectangle = NextRow(*page, 0.0)
-        if Action(session, 22, "Smaller step", RowPart(*page, steps, 0, 2), false) && step > 1 {
-            step -= 1
-        }
-        if Action(session, 23, "Bigger step", RowPart(*page, steps, 1, 2), false) && step < 10 {
-            step += 1
-        }
-    } else {
-        slider: Slider.DiscreteSliderProps
-        slider.key = cast(u64)21
-        slider.id = 21
-        slider.bounds = NextRow(*page, 28.0)
-        slider.semantic_label = "Step size"
-        slider.value = step
-        slider.min = 1
-        slider.max = 10
-        moved: Slider.SliderDiscreteStep = Slider.DiscreteSlider(session, slider)
-        if moved.changed { step = moved.value }
-    }
-
-    progress: Progress.Props
-    progress.key = cast(u64)30
-    progress.bounds = NextRow(*page, 20.0)
-    progress.min = 0
-    progress.max = Goal
-    progress.value = count
-    progress.label = "Progress to the goal"
-    Progress.Draw(session, progress)
-    if count == Goal {
-        Label(session, 31, "Goal reached!", NextRow(*page, 24.0), FontSize(*page, 18))
-    }
+    unused End(session)
     return 0
+}
+
+// The app bar: the title, and a dark mode switch at its right.
+AppBar :: (session: Session) {
+    height := Theme.CurrentThemeMetric(.ThemeMetricControlHeightLarge) +
+        Theme.CurrentThemeMetric(.ThemeMetricSpace3)
+    slot := Layout.Stack(session, Layout.Props.{.bounds = .{.height = height}})
+    if !slot.opened { return }
+    bar := TitleBar.Draw(session, TitleBar.Props.{.bounds = slot.bounds,
+        .title = "{{name}}", .strong_title = true, .trailing_width = 120}, no_menu)
+    switch := Toggle.Draw(session, Toggle.Props.{.bounds = bar.trailing_bounds,
+        .label = "Dark", .value = dark})
+    if switch.changed {
+        dark = switch.value
+        unused Theme.SetThemeMode(dark)
+    }
+    unused End(session)
+}
+
+// One task as a card: a checkbox with its title, and a detail line.
+TaskCard :: (session: Session, index: s32) {
+    task := TaskAt(index)
+    lines: [2]Rectangle = .[.{height = Theme.CurrentThemeMetric(.ThemeMetricControlHeightMedium)},
+        .{height = LineHeight(.ThemeMetricTextSM)}]
+    gap := Layout.Gap(.ThemeMetricSpace1)
+    padding := Layout.Gap(.ThemeMetricSpace4)
+    measured := Layout.LayoutContentBounds(Rectangle.{}, .FlexColumn, lines[:], gap, padding)
+    slot := Layout.Stack(session, Layout.Props.{.bounds = .{.height = measured.height}})
+    if !slot.opened { return }
+    card := Card.Draw(session, Card.Props.{.bounds = slot.bounds, .variant = .CardOutlined})
+    column := Layout.Draw(session, Layout.Props.{.bounds = card.content, .gap = gap, .gap_override = true})
+    if column.opened {
+        check := Checkbox.Draw(session, Checkbox.Props.{.bounds = lines[0],
+            .label = task.title, .checked = task.done})
+        if check.changed { SetTaskDone(index, check.checked) }
+        Text.Draw(session, Text.Props.{.bounds = lines[1], .text = task.detail,
+            .size = cast(s32)Theme.CurrentThemeMetric(.ThemeMetricTextSM)})
+        unused End(session)
+    }
+    unused End(session)
+}
+
+// One line of text in the open column, sized by a type-scale token.
+Line :: (session: Session, text: string, role: Theme.ThemeMetricRole) {
+    Text.Draw(session, Text.Props.{.bounds = .{height = LineHeight(role)}, .text = text,
+        .size = cast(s32)Theme.CurrentThemeMetric(role)})
+}
+
+LineHeight :: (role: Theme.ThemeMetricRole) -> float32 {
+    return Theme.CurrentThemeMetric(role) * 1.4
 }

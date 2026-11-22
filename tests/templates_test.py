@@ -5,6 +5,7 @@ desktop profile is checked and its shot profile renders without a display.
 The web template is checked without building its browser profiles.
 """
 
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -12,10 +13,18 @@ import tempfile
 import tomllib
 
 
+from image_test_tools import png_pixels
 from toolchain import ZIRAN_ROOT
 
 ROOT = Path(__file__).resolve().parents[1]
 KRYON = ROOT / "build/bin/kryon"
+# The app starter's decoded pixels at phone size, light and dark. When the
+# starter's look changes on purpose, check build/test/templates/*.png and
+# put the digests the failure prints here.
+STARTER_DIGESTS = {
+    "light": "d5e65fc5a5c39e0a09221d04cdfa17f2dead82530dbdba26e5b22bd088278d21",
+    "dark": "5c217da2bafc43d647c1b48c3548214257d564ac814681b09183fd1a550862a6",
+}
 
 
 def environment(work):
@@ -70,16 +79,30 @@ def main():
             assert f"created {name} from kryon:{template}" in created, created
             manifest = (work / name / "ziran.toml").read_text()
             assert 'tool = "kryon"' in manifest and "{{" not in manifest, manifest
+            # new locks the project, so its first build needs no ziran lock.
+            assert (work / name / "ziran.lock").is_file(), name
 
         run([KRYON, "check", "desktop"], work / "demo-app", env)
         profiles = run([KRYON, "profiles"], work / "demo-app", env)
-        assert profiles.splitlines() == ["* desktop  SDL2/Cairo window", "  portable  SDL2/Cairo window", "  tui  terminal",
+        assert profiles.splitlines() == ["* desktop  SDL2/Cairo window", "  portable  SDL2/Cairo window",
                                          "  web  Canvas2D browser page",
                                          "  shot  headless image, PPM on standard output"], profiles
         # The shot profile draws a frame without any display.
         shot = run([KRYON, "run", "shot"], work / "demo-app", env, separate=True)
         assert shot.startswith("P3\n960 600\n255\n"), shot[:40]
         assert len(shot.splitlines()) == 603, len(shot.splitlines())
+
+        # The starter's screen, offscreen at phone size in both themes.
+        shots = ROOT / "build/test/templates"
+        shots.mkdir(parents=True, exist_ok=True)
+        for theme, expected in STARTER_DIGESTS.items():
+            png = shots / f"starter-{theme}.png"
+            run([KRYON, "run", "--png", png, "--width", "390", "--height", "844",
+                 "--theme", theme], work / "demo-app", env, separate=True)
+            pixels = png_pixels(png)
+            assert pixels[:2] == (390, 844), pixels[:2]
+            digest = hashlib.sha256(b"".join(bytes(row) for row in pixels[3])).hexdigest()
+            assert digest == expected, f"the {theme} starter changed: see {png}; digest {digest}"
 
         run([KRYON, "new", "demo-web", "--template", "web", "--overrides",
              work / "overrides.toml"], work, env)

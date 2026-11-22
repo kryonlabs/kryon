@@ -11,12 +11,13 @@ ref = "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0"
 
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
-ref = "39f7540d193ccaa2096e1115df608da8116b32b7"
+ref = "cdf23986a0434cfb01513ecca4763b0477d01a7e"
 
 [install]
 bin = "{{name}}"
 
-# `kryon run` opens the default profile; `kryon run tui` picks another.
+# `kryon run` opens the default profile; `kryon run web` picks another.
+# The tui template is the starting point for terminal programs.
 [tool.kryon]
 default_profile = "desktop"
 entry = "src/app.zi"
@@ -29,13 +30,12 @@ backend = "desktop"
 backend = "desktop"
 codegen = "zx"
 
-[tool.kryon.profiles.tui]
-backend = "terminal"
-
 [tool.kryon.profiles.web]
 backend = "canvas"
 
-# `kryon run shot > screen.ppm` renders one frame without a display.
+# `kryon run shot > screen.ppm` renders one frame without a display;
+# `kryon run shot --png shot.png --width 390 --height 844 --theme dark`
+# draws any size as a PNG.
 [tool.kryon.profiles.shot]
 backend = "pixmap"
 
