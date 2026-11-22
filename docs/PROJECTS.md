@@ -416,7 +416,7 @@ Werkzeug's `werk --bundle diary.zx`, or `ziran run diary.zx`; it does not
 load `inbe.zx`. Werkzeug's Calculator uses the same interface. Apps that
 need device secrets or timed clipboard ownership still require a harness
 that supplies those capabilities. The common player currently has a Linux
-desktop provider; hosted app release watching is not supported yet.
+desktop provider.
 
 ## Installing
 

@@ -58,7 +58,7 @@ Replacement versions, status guests, and deliberate failures live under
 `tests/fixtures/component_*`. They are test inputs, separate from the public
 component usage examples.
 
-Run `build-queue -- env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_component_host_test.sh`.
+Run `env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_component_host_test.sh`.
 The test builds each selective guest from both source and saved IR and compares
 ZX bytes. A native Ziran host runs two live components into the retained tree
 and CPU pixmap renderer. It checks interaction, nested-state migration,
@@ -71,7 +71,7 @@ results; they do not establish Android device integration.
 
 ## Browser integration test
 
-Run `build-queue -- env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 PYTHONDONTWRITEBYTECODE=1 python3 tests/component_browser_test.py`.
+Run `env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 PYTHONDONTWRITEBYTECODE=1 python3 tests/component_browser_test.py`.
 The dedicated Zi/Wasm host uses the production `ComponentHost`, `WidgetHost`,
 Canvas2D renderer and canonical Ziran browser runtime. A disposable headless
 Chromium profile receives actual pointer and key events. WebGL is disabled and
@@ -102,4 +102,4 @@ reject a clipboard-producing candidate and migrate those records to a second
 ZX version. The native CPU renderer and actual Canvas2D browser host both use
 this fixture. State storage bounds are validated before composition; hosted
 TagInput currently permits 32 tags, matching its 2048-byte storage at 64 bytes
-per tag. Android device coverage for this fixture remains pending.
+per tag.

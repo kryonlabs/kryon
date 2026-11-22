@@ -38,15 +38,15 @@ compositions. Each interactive scene captures resting, disabled, hover, keyboard
 focus and held-press states, using the same 480 × 320 viewport.
 
 ```sh
-build-queue -- taskset -c 2 python3 tools/widget-review.py before --backend pixmap
-build-queue -- taskset -c 2 python3 tools/widget-review.py before --backend desktop
+taskset -c 2 python3 tools/widget-review.py before --backend pixmap
+taskset -c 2 python3 tools/widget-review.py before --backend desktop
 # Change the shared library only after both baselines finish.
-build-queue -- taskset -c 2 python3 tools/widget-review.py after --backend pixmap
-build-queue -- taskset -c 2 python3 tools/widget-review.py after --backend desktop
-build-queue -- taskset -c 2 python3 tools/widget-review.py compare --backend pixmap
-build-queue -- taskset -c 2 python3 tools/widget-review.py compare --backend desktop
-build-queue -- taskset -c 2 python3 tools/widget-review.py recheck --backend pixmap --trials 7
-build-queue -- taskset -c 2 python3 tools/widget-review.py recheck --backend desktop --trials 7
+taskset -c 2 python3 tools/widget-review.py after --backend pixmap
+taskset -c 2 python3 tools/widget-review.py after --backend desktop
+taskset -c 2 python3 tools/widget-review.py compare --backend pixmap
+taskset -c 2 python3 tools/widget-review.py compare --backend desktop
+taskset -c 2 python3 tools/widget-review.py recheck --backend pixmap --trials 7
+taskset -c 2 python3 tools/widget-review.py recheck --backend desktop --trials 7
 ```
 
 The stable executables and disposable generated C live under
@@ -54,7 +54,7 @@ The stable executables and disposable generated C live under
 comparison PNGs live under ignored `backup/material-widgets/`. Each backend has
 its own `comparison-BACKEND/grid-overview.png` and full-size state comparisons.
 A second baseline replaces the previous baseline, so preserve any earlier study
-before starting another. Builds must run through the shared build queue.
+before starting another.
 
 Use `--output-dir backup/material-widgets/navbar` or
 `--output-dir backup/material-widgets/perf` for an independent study; this also
@@ -116,10 +116,10 @@ execute GPU work, present a frame or include compositor wall time, and therefore
 is not interchangeable with Kryon's compose-only or hardware presentation phases.
 
 ```sh
-build-queue -- python3 tests/gpui_render_benchmark.py \
+python3 tests/gpui_render_benchmark.py \
   --trials 3 --warmup 120 --frames 120 \
   --output work/backend-render-benchmark/gpui-render-benchmark.json
-build-queue -- python3 tests/gpui_render_benchmark.py --gpu-probe \
+python3 tests/gpui_render_benchmark.py --gpu-probe \
   --device /dev/dri/renderD129 --trials 3 --warmup 120 --frames 120 \
   --output work/backend-render-benchmark/gpui-render-benchmark-gpu.json
 ```

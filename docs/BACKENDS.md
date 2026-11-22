@@ -236,9 +236,7 @@ keys in their current state and clears before the next callback.
 `make zx-surface-test` builds and runs the example in the Ziran instruction
 engine with a typed host. It verifies the RGBA bytes, rendered count changing
 after a click, UTF-8 editing, resize, close and opt-in timeout redraw. An
-emulator can launch the same bundle by registering the four capabilities. In
-a TaijiOS window-manager context with the surface provider installed, run
-`zxrun -w /path/to/hosted_surface.zx` with the bundle under the guest root.
+emulator can launch the same bundle by registering the four capabilities.
 
 ## Experimental SDL3 GPU renderer
 
@@ -257,7 +255,7 @@ are `libvulkan-dev mesa-vulkan-drivers libx11-dev libxext-dev libxtst-dev xvfb x
 From the Kryon checkout, with Ziran available:
 
 ```sh
-build-queue -- env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY \
+env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY \
   -u DBUS_SESSION_BUS_ADDRESS make sdl3-test
 ```
 
@@ -288,9 +286,7 @@ null on failure, without trying another renderer. Inspect
 `PixmapSdl3DescribeRenderer(renderer)` for the renderer name, API, device name
 and driver information; its strings are borrowed until renderer destruction.
 A `gpu` renderer using `vulkan` does not establish hardware acceleration.
-The verified local device was **llvmpipe LLVM 19.1.7 / Mesa 25.0.7**, a software
-Vulkan implementation. These tests establish rendering behavior, not hardware
-performance.
+These tests establish rendering behavior, not hardware performance.
 
 The sink shares `pixmap_gpu`'s clipped geometry, glyph atlas, paint order and
 single active recorder. Image publications and sink calls must use the renderer
@@ -312,7 +308,7 @@ For SDL2 versus SDL3 on a physical AMD GPU under Linux, use the explicit
 hardware mode (choose the render node from `/sys/class/drm/renderD*/device`):
 
 ```sh
-build-queue -- env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY \
+env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY \
   -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER YUE_DESKTOP_RECOVERY=0 \
   python3 tests/backend_render_benchmark.py --mode hardware \
   --device /dev/dri/renderD129 --trials 5 --frames 1200 --warmup 240 \
@@ -373,9 +369,7 @@ no OS AVIF support. libaom is linked as the explicit comparison oracle, never
 as a fallback. The still-image API shows the first complete frame of a
 sequence. The ARMv7 oracle keeps libaom's portable kernels, because the locked
 AOM/NDK combination emits unaligned NEON loads which fault on real Android
-hardware; dav1d's own NEON runs there. The ARMv7 device suite covers both Debug
-and Release, including the original large YUV420 crash input and background
-image loading.
+hardware; dav1d's own NEON runs there.
 
 Desktop hosts load the AVIF bridge (`libkryonavif.so`, `kryonavif.dll`) on
 first use, from `KRYON_AVIF_LIBRARY`, the library search path or beside the
@@ -394,8 +388,8 @@ count to 67,108,864 (a 256 MiB RGBA buffer). These are independent axis/count
 limits, permitting wide images below the pixel budget. Invalid/truncated
 containers, invalid crops and oversized images return no image. 4:2:0 frames
 of at least 8 MiP and other frames of at least 2 MiP decode on the process's
-usable cores, capped at 4 threads; smaller frames use one, because threading
-slowed them by up to 2.7x on the Moto. Thread count never changes output
+usable cores, capped at 4 threads; smaller frames use one, because extra
+threads slowed them in measurements. Thread count never changes output
 bytes. Only the first decoded frame is retained.
 
 | target | engine | proof |
@@ -435,7 +429,7 @@ it as a browser without AVIF. `make avif-benchmark [ANDROID_SERIAL=ZE2223BQZT]
 [AVIF_BENCHMARK_BROWSER=1]` records ms/image, MP/s and peak RSS for libaom,
 dav1d threads and SIMD tiers, and Firefox, in `build/scratch/avif-benchmark`.
 
-The headless package suite, `build-queue -- sh tests/image_integration.sh`,
+The headless package suite, `sh tests/image_integration.sh`,
 resolves real native artifacts and tests source and saved IR under ASan, UBSan
 and leak detection, including adapter failure cleanup. With development-only
 package overrides, set `ZIRAN_ROOT` and `ZIRAN_BIN` to the rebuilt toolchain.
