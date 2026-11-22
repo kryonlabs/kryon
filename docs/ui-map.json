@@ -31,6 +31,9 @@
     {"html": ["details"], "import": "kryon/collapsible", "call": "Draw", "css": "Collapsible", "lists": [["headers", "CollapsibleHeader"]], "content": "result.content"},
     {"html": ["dialog"], "import": "kryon/modal", "call": "Draw", "css": "Modal", "scope": "opened"},
     {"html": ["hr"], "import": "kryon/separator", "call": "Draw", "css": "Separator"},
+    {"html": ["li", "[role=listitem]"], "import": "kryon/list_item", "call": "Draw", "css": "Button", "event": "clicked"},
+    {"html": [".chip", "[role=option]"], "import": "kryon/chip", "call": "Draw", "css": "Button", "event": "changed"},
+    {"html": [".skeleton", "[aria-busy=true]"], "import": "kryon/skeleton", "call": "Draw", "css": "Box"},
     {"html": ["img"], "import": "kryon/image", "call": "Draw", "css": "Image"},
     {"html": ["svg"], "import": "kryon/svg_icon", "call": "Draw"}
   ],

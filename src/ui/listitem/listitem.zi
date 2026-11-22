@@ -1,0 +1,114 @@
+// A list row: a leading icon or avatar, a title with an optional subtitle,
+// and an optional trailing text, badge, chevron or switch. The row is one
+// pressable surface with hover, pressed, selected and disabled states from
+// Button's faces; Measure gives its height from the theme, so a column of
+// rows needs no arithmetic.
+Avatar :: #import "avatar";
+Badge :: #import "badge";
+Button :: #import "button";
+Layout :: #import "layout";
+Text :: #import "text";
+Toggle :: #import "toggle";
+#import "control_props"
+#import "geometry"
+#import "icon"
+#import "session"
+#import "text_align"
+#import "theme"
+#import "tree"
+
+ListTrailing :: enum {
+    ListTrailingNone :: 0
+    ListTrailingText :: 1
+    ListTrailingBadge :: 2
+    ListTrailingChevron :: 3
+    ListTrailingSwitch :: 4
+}
+
+Props :: struct {
+    key: u64
+    // Zero width fills the column; zero height takes the measured height.
+    bounds: Rectangle
+    id: s32
+    class_name: s32
+    title: string
+    subtitle: string
+    // A leading icon, or an avatar of leading_name's initials.
+    leading_icon: s32
+    leading_name: string
+    trailing: ListTrailing
+    // The trailing text or badge text.
+    trailing_text: string
+    // The trailing switch's value.
+    switch_on: bool
+    selected: bool
+    disabled: bool
+}
+
+ListItemResult :: struct {
+    // The row was pressed.
+    clicked: bool
+    // The trailing switch changed, to switch_on.
+    switch_changed: bool
+    switch_on: bool
+}
+
+// One line rows are a large control tall; a subtitle adds a small line.
+Measure :: (props: Props) -> Rectangle {
+    height := CurrentThemeMetric(.ThemeMetricControlHeightLarge)
+    if props.subtitle != "" { height += CurrentThemeMetric(.ThemeMetricTextSM) * 1.4 }
+    return Rectangle.{0.0, 0.0, 0.0, height}
+}
+
+// The width the trailing part needs at the row's right.
+TrailingWidth :: (props: Props, height: float32) -> float32 {
+    if props.trailing == .ListTrailingNone { return 0.0 }
+    if props.trailing == .ListTrailingChevron { return height * 0.5 }
+    if props.trailing == .ListTrailingSwitch { return height * 1.25 }
+    return cast(float32)props.trailing_text.count * CurrentThemeMetric(.ThemeMetricTextSM) * 0.6 +
+        CurrentThemeMetric(.ThemeMetricSpace4)
+}
+
+Draw :: (session: Session, props: Props) -> ListItemResult {
+    result := ListItemResult.{switch_on = props.switch_on}
+    bounds := props.bounds
+    if bounds.height <= 0.0 { bounds.height = Measure(props).height }
+    slot := Layout.Stack(session, Layout.Props.{.key = props.key, .bounds = bounds,
+        .padding_override = true})
+    if !slot.opened { return result }
+    area := slot.bounds
+    space := CurrentThemeMetric(.ThemeMetricSpace3)
+    trailing := TrailingWidth(props, area.height)
+    leading: float32 = 0.0
+    if props.leading_name != "" { leading = CurrentThemeMetric(.ThemeMetricControlHeightMedium) + space }
+    row := Button.Props.{.label = props.title, .detail = props.subtitle, .icon_type = props.leading_icon,
+        .id = props.id, .class_name = props.class_name, .emphasis = .ButtonEmphasisGhost,
+        .content_alignment = .ContentAlignmentStart, .selected = props.selected,
+        .disabled = props.disabled,
+        .bounds = Rectangle.{area.x + leading, area.y, area.width - leading, area.height}}
+    result.clicked = Button.Draw(session, row) == 1
+    if props.leading_name != "" {
+        avatar := leading - space
+        unused Avatar.Draw(session, Avatar.Props.{.name = props.leading_name, .disabled = props.disabled,
+            .bounds = Rectangle.{area.x + space, area.y + (area.height - avatar) * 0.5, avatar, avatar}})
+    }
+    end := Rectangle.{area.x + area.width - trailing - space, area.y, trailing, area.height}
+    if props.trailing == .ListTrailingText {
+        Text.Draw(session, Text.Props.{.bounds = end, .text = props.trailing_text, .align = .TextAlignEnd,
+            .vertical_align = .TextAlignCenter, .size = cast(s32)CurrentThemeMetric(.ThemeMetricTextSM)})
+    } else if props.trailing == .ListTrailingBadge {
+        badge_height := CurrentThemeMetric(.ThemeMetricTextSM) * 1.6
+        unused Badge.Draw(session, Badge.Props.{.text = props.trailing_text, .tone = .BadgeToneAccent,
+            .bounds = Rectangle.{end.x, end.y + (end.height - badge_height) * 0.5, 0.0, badge_height}})
+    } else if props.trailing == .ListTrailingChevron {
+        Text.Draw(session, Text.Props.{.bounds = end, .text = "›", .align = .TextAlignEnd,
+            .vertical_align = .TextAlignCenter, .size = cast(s32)CurrentThemeMetric(.ThemeMetricTextLG)})
+    } else if props.trailing == .ListTrailingSwitch {
+        switch := Toggle.Draw(session, Toggle.Props.{.bounds = end, .label = props.title,
+            .value = props.switch_on, .disabled = props.disabled})
+        result.switch_changed = switch.changed
+        if switch.changed { result.switch_on = switch.value }
+    }
+    unused End(session)
+    return result
+}

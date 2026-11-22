@@ -1,0 +1,26 @@
+[package]
+name = "skeleton"
+entry = "skeleton.zi"
+module_roots = ["."]
+tool = "kryon"
+
+[toolchain]
+git = "https://git.waozi.xyz/ziranlang/ziran.git"
+ref = "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0"
+
+[tool.kryon]
+default_profile = "desktop"
+
+[tool.kryon.profiles.desktop]
+backend = "desktop"
+
+[tool.kryon.profiles.web]
+backend = "canvas"
+
+[tool.kryon.profiles.portable]
+backend = "desktop"
+codegen = "zx"
+
+[dependencies.kryon]
+git = "https://git.waozi.xyz/kryonlabs/kryon.git"
+ref = "c579fd1780eae1653ff8ad737be924d0df6b8d83"

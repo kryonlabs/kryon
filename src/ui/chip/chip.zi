@@ -1,0 +1,91 @@
+// A chip: a short pill label with an optional leading icon. A selectable
+// chip turns its selection on and off when pressed; a dismissible chip ends
+// in a "Remove" press target drawn as ×. Tone, states and look come from
+// the theme through Button's faces, and Measure gives the natural size, so
+// a Flow or Row places chips without arithmetic.
+Button :: #import "button";
+Layout :: #import "layout";
+Text :: #import "text";
+#import "control_props"
+#import "geometry"
+#import "icon"
+#import "session"
+#import "text_align"
+#import "theme"
+#import "tree"
+
+Props :: struct {
+    key: u64
+    // Zero width or height takes the measured size.
+    bounds: Rectangle
+    id: s32
+    class_name: s32
+    label: string
+    icon_type: s32
+    tone: ButtonTone
+    selectable: bool
+    selected: bool
+    dismissible: bool
+    disabled: bool
+}
+
+ChipResult :: struct {
+    // The selection after this frame, and whether a press changed it.
+    selected: bool
+    changed: bool
+    // The close control was pressed.
+    dismissed: bool
+}
+
+// The pill itself: a small outlined button, soft when selected.
+PillProps :: (props: Props) -> Button.Props {
+    emphasis := ButtonEmphasis.ButtonEmphasisOutline
+    if props.selected { emphasis = .ButtonEmphasisSoft }
+    return Button.Props.{.key = props.key, .id = props.id, .class_name = props.class_name,
+        .label = props.label, .icon_type = props.icon_type, .tone = props.tone,
+        .emphasis = emphasis, .size = .ControlSizeSmall, .pill = true,
+        .selected = props.selected, .disabled = props.disabled}
+}
+
+// The chip's natural size, its close control included.
+Measure :: (props: Props) -> Rectangle {
+    size := Button.ButtonMeasure(PillProps(props))
+    width := size.width
+    if props.dismissible { width += size.height }
+    return Rectangle.{0.0, 0.0, width, size.height}
+}
+
+Draw :: (session: Session, props: Props) -> ChipResult {
+    result := ChipResult.{selected = props.selected}
+    size := Measure(props)
+    bounds := props.bounds
+    if bounds.width <= 0.0 { bounds.width = size.width }
+    if bounds.height <= 0.0 { bounds.height = size.height }
+    pill := PillProps(props)
+    pressed := false
+    if !props.dismissible {
+        pill.bounds = bounds
+        pressed = Button.Draw(session, pill) == 1
+    } else {
+        slot := Layout.Stack(session, Layout.Props.{.key = props.key, .bounds = bounds,
+            .padding_override = true})
+        if !slot.opened { return result }
+        area := slot.bounds
+        pill.key = 0
+        pill.bounds = area
+        pill.content_alignment = .ContentAlignmentStart
+        pressed = Button.Draw(session, pill) == 1
+        close := Rectangle.{area.x + area.width - area.height, area.y, area.height, area.height}
+        result.dismissed = Button.Draw(session, Button.Props.{.label = "Remove", .invisible = true,
+            .bounds = close, .disabled = props.disabled}) == 1
+        Text.Draw(session, Text.Props.{.bounds = close, .text = "×", .align = .TextAlignCenter,
+            .vertical_align = .TextAlignCenter, .size = cast(s32)CurrentThemeMetric(.ThemeMetricTextBody),
+            .disabled = props.disabled})
+        unused End(session)
+    }
+    if pressed && props.selectable && !props.disabled {
+        result.selected = !props.selected
+        result.changed = true
+    }
+    return result
+}

@@ -246,6 +246,7 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
     # Standalone public components are maintained directly in examples/.
     additional = {
         'alert': 'Alert', 'avatar': 'Avatar', 'badge': 'Badge', 'banner': 'Banner',
+        'chip': 'Chip', 'listitem': 'List item', 'skeleton': 'Skeleton',
         'buttongroup': 'Button group', 'confirmbutton': 'Confirm button',
         'copybutton': 'Copy button', 'countdown': 'Countdown', 'emptystate': 'Empty state',
         'keycap': 'Keycap', 'breadcrumb': 'Breadcrumb', 'svgicon': 'SVG icon',
@@ -257,12 +258,12 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
     }
     component_categories = {
         'Actions': ['buttongroup', 'confirmbutton', 'copybutton', 'holdbutton'],
-        'Feedback': ['alert', 'badge', 'banner', 'countdown', 'emptystate', 'loading', 'loadingscreen', 'checklist', 'progressring', 'timeline'],
+        'Feedback': ['alert', 'badge', 'banner', 'countdown', 'emptystate', 'loading', 'loadingscreen', 'skeleton', 'checklist', 'progressring', 'timeline'],
         'Navigation': ['breadcrumb'],
-        'Inputs': ['dpad', 'joystick', 'swipearea', 'swiperow'],
+        'Inputs': ['chip', 'dpad', 'joystick', 'swipearea', 'swiperow'],
         'Layout': ['gridmulti'],
         'Media & graphics': ['avatar', 'svgicon', 'carousel', 'tilemap'],
-        'Content': ['keycap'],
+        'Content': ['keycap', 'listitem'],
     }
     core_count = sum(entry["moduleId"] == "kryon" for entry in entries)
     for extra, (slug, name) in enumerate(additional.items()):

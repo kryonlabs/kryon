@@ -1,0 +1,162 @@
+// Chip, ListItem and Skeleton in a real app: shot light and dark (each
+// widget's labelled node is in the tree), then driven on a private display:
+// a chip toggles, a dismissible chip closes, a row opens and its switch flips.
+// Run from the Kryon root: make new-widgets-test (ZIRAN_BIN names ziran).
+#import "private_display_linux"
+#import "test_driver_client"
+#import "std/file"
+#import "std/file_tree_linux"
+#import "std/environment_linux"
+#import "std/process_run_linux"
+#import "std/text_tools"
+using Vectors :: #import "vec";
+
+failures: s32;
+
+Expect :: (ok: bool, what: string) {
+    if ok { return }
+    failures += 1
+    print("new widgets: FAIL %\n", what)
+}
+
+Manifest :: #string TOML
+[package]
+name = "widgets"
+entry = "src/app.zi"
+module_roots = ["src"]
+bridge_modules = ["app"]
+links = ["X11"]
+tool = "kryon"
+
+[toolchain]
+git = "https://git.waozi.xyz/ziranlang/ziran.git"
+ref = "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0"
+
+[dependencies.kryon]
+git = "https://git.waozi.xyz/kryonlabs/kryon.git"
+ref = "cdf23986a0434cfb01513ecca4763b0477d01a7e"
+
+[tool.kryon]
+default_profile = "desktop"
+
+[tool.kryon.profiles.desktop]
+backend = "desktop"
+TOML;
+
+App :: #string ZI
+Chip :: #import "kryon/chip";
+Layout :: #import "kryon/layout";
+ListItem :: #import "kryon/list_item";
+Skeleton :: #import "kryon/skeleton";
+Text :: #import "kryon/text";
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/tree"
+
+design: bool;
+dismissed: bool;
+opened: bool;
+wifi: bool;
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    column := Layout.Draw(session, Layout.Props.{.bounds = viewport, .gap = 8, .gap_override = true,
+        .padding = 16, .padding_override = true})
+    if !column.opened { return 0 }
+    chip := Chip.Draw(session, Chip.Props.{.label = "Design", .selectable = true, .selected = design})
+    if chip.changed { design = chip.selected }
+    if !dismissed {
+        if Chip.Draw(session, Chip.Props.{.label = "Draft", .dismissible = true}).dismissed { dismissed = true }
+    }
+    row := ListItem.Draw(session, ListItem.Props.{.title = "Profile", .subtitle = "Edit your details",
+        .leading_name = "Ada Lovelace", .trailing = .ListTrailingChevron})
+    if row.clicked { opened = true }
+    wifi_row := ListItem.Draw(session, ListItem.Props.{.title = "Wi-Fi", .trailing = .ListTrailingSwitch, .switch_on = wifi})
+    if wifi_row.switch_changed { wifi = wifi_row.switch_on }
+    unused ListItem.Draw(session, ListItem.Props.{.title = "Inbox", .trailing = .ListTrailingBadge, .trailing_text = "3"})
+    Skeleton.Draw(session, Skeleton.Props.{.shape = .SkeletonLine})
+    Skeleton.Draw(session, Skeleton.Props.{.shape = .SkeletonCircle})
+    Skeleton.Draw(session, Skeleton.Props.{.shape = .SkeletonBlock, .now = 0.75})
+    state := ifx design then "Design on" else "Design off"
+    Text.Draw(session, Text.Props.{.bounds = .{height = 24}, .text = state})
+    Text.Draw(session, Text.Props.{.bounds = .{height = 24}, .text = ifx dismissed then "Dismissed" else "Kept"})
+    Text.Draw(session, Text.Props.{.bounds = .{height = 24}, .text = ifx opened then "Profile opened" else "Closed"})
+    Text.Draw(session, Text.Props.{.bounds = .{height = 24}, .text = ifx wifi then "Wi-Fi on" else "Wi-Fi off"})
+    unused End(session)
+    return 0
+}
+ZI;
+
+Run :: (arguments: []string, directory: string, environment: []string, log: string) -> bool {
+    options: ProcessOptions = .{.arguments = arguments, .directory = directory,
+        .environment = environment, .output_path = log, .append_output = true, .merge_error = true}
+    run: ProcessRun
+    return RunProcess(options, *run) && run.code == 0
+}
+
+// The shot's tree has a node labelled LABEL.
+Listed :: (tree: string, label: string) -> bool {
+    needle: Vec(u8)
+    BuilderPrint(*needle, "\"label\":\"%\"", label)
+    at := TextFind(tree, BuilderFinish(needle))
+    return at >= 0
+}
+
+main :: () -> s32 {
+    ziran := EnvironmentText("ZIRAN_BIN")
+    if ziran == "" { ziran = "ziran" }
+    root := WorkingDirectory()
+    project := JoinPath(root, "build/test/new-widgets")
+    log := JoinPath(root, "build/test/new-widgets.log")
+    overrides: Vec(u8)
+    BuilderPrint(*overrides, "[overrides]\nkryon = \"%\"\n", root)
+    if !CreateDirectories(JoinPath(project, "src")) ||
+        !WriteEntireFile(JoinPath(project, "ziran.toml"), Manifest) ||
+        !WriteEntireFile(JoinPath(project, "ziran.local.toml"), BuilderFinish(overrides)) ||
+        !WriteEntireFile(JoinPath(project, "src/app.zi"), App) {
+        print("new widgets: FAIL cannot write the project\n")
+        return 1
+    }
+    plain: [0]string
+    lock: [2]string = .[ziran, "lock"]
+    Expect(Run(lock[:], project, plain[:], log), "ziran lock; see build/test/new-widgets.log")
+    themes: [2]string = .["light", "dark"]
+    for theme: themes {
+        png: Vec(u8)
+        BuilderPrint(*png, "%/build/test/new-widgets-%.png", root, theme)
+        path := BuilderFinish(png)
+        shot: [12]string = .[ziran, "tool", "kryon", "run", "--png", path, "--width", "390", "--height", "844", "--theme", theme]
+        Expect(Run(shot[:], project, plain[:], log), "shoot the widgets; see build/test/new-widgets.log")
+        tree_path := TextReplace(path, ".png", ".json")
+        tree, read := ReadEntireFile(tree_path)
+        Expect(read, "the shot writes its tree")
+        labels: [6]string = .["Design", "Draft", "Remove", "Profile", "Wi-Fi", "Inbox"]
+        for label: labels { Expect(Listed(tree, label), label) }
+    }
+
+    driver_env: [1]string = .["KRYON_TEST_DRIVER=1"]
+    build: [5]string = .[ziran, "tool", "kryon", "build", "desktop"]
+    Expect(Run(build[:], project, driver_env[:], log), "build with the test driver; see build/test/new-widgets.log")
+    display := OpenPrivateDisplay(390, 844, "build/test/new-widgets-xvfb.log")
+    if !display.valid { print("new widgets: FAIL %\n", display.error); return 1 }
+    defer ClosePrivateDisplay(*display)
+    driver := DriverOpen(JoinPath(project, "driver"))
+    program: [1]string = .["./build/widgets-desktop"]
+    extra: [1]string = .[DriverEnvironment(*driver)]
+    app := StartOnDisplay(*display, program[:], extra[:], project, "build/test/new-widgets-app.log")
+    if !app.started { print("new widgets: FAIL the app did not start\n"); return 1 }
+    defer { unused StopOwnedProcess(*app, 5000) }
+    DriverWatch(*driver, app.pid, "build/test/new-widgets-app.log")
+    Expect(DriverWait(*driver, .{label = "Design off"}, 15000), "the app starts")
+    Expect(DriverPress(*driver, .{label = "Design", role = "button"}), "press the chip")
+    Expect(DriverWait(*driver, .{label = "Design on"}, 5000), "the chip toggles on")
+    Expect(DriverPress(*driver, .{label = "Remove", role = "button"}), "press the close control")
+    Expect(DriverWait(*driver, .{label = "Dismissed"}, 5000), "the chip is dismissed")
+    Expect(DriverPress(*driver, .{label = "Profile", role = "button"}), "press the row")
+    Expect(DriverWait(*driver, .{label = "Profile opened"}, 5000), "the row opens")
+    Expect(DriverPress(*driver, .{label = "Wi-Fi", index = 1}), "press the switch")
+    Expect(DriverWait(*driver, .{label = "Wi-Fi on"}, 5000), "the switch turns on")
+    if failures > 0 { return 1 }
+    print("new widgets: chip, list item and skeleton shot light and dark, and driven\n")
+    return 0
+}

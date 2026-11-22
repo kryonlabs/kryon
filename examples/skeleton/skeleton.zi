@@ -1,0 +1,32 @@
+Layout :: #import "kryon/layout";
+Skeleton :: #import "kryon/skeleton";
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/tree"
+
+// A card's shape while its content loads: an avatar, two lines and a block.
+seconds: float64;
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    if !example_reduced_motion { seconds += 1.0 / 60.0 }
+    column := Layout.Draw(session, Layout.Props.{.bounds = .{viewport.x + 20.0, viewport.y + 20.0, viewport.width - 40.0, viewport.height - 40.0},
+        .gap = 10, .gap_override = true})
+    if !column.opened { return 0 }
+    Skeleton.Draw(session, Skeleton.Props.{.shape = .SkeletonCircle, .now = seconds})
+    Skeleton.Draw(session, Skeleton.Props.{.shape = .SkeletonLine, .now = seconds})
+    Skeleton.Draw(session, Skeleton.Props.{.shape = .SkeletonLine, .now = seconds, .bounds = .{width = column.content.width * 0.6}})
+    Skeleton.Draw(session, Skeleton.Props.{.shape = .SkeletonBlock, .now = seconds})
+    unused End(session)
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

@@ -1,0 +1,45 @@
+Chip :: #import "kryon/chip";
+Flow :: #import "kryon/flow";
+Text :: #import "kryon/text";
+#import "kryon/control_props"
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/tree"
+
+// Selectable filters and dismissible tags wrapped by a Flow.
+filters: [4]bool = .[true, false, false, false];
+tags: [3]bool = .[true, true, true];
+filter_names: [4]string = .["All", "Design", "Code", "Docs"];
+tag_names: [3]string = .["Draft", "Shared", "Pinned"];
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Chip", .size = 28})
+    filter_row := Flow.Draw(session, Flow.Props.{.bounds = .{viewport.x + 20.0, viewport.y + 72.0, viewport.width - 40.0, 40.0}, .gap = 8})
+    if filter_row.opened {
+        for i: 0..3 {
+            chip := Chip.Draw(session, Chip.Props.{.label = filter_names[i], .selectable = true,
+                .selected = filters[i], .tone = .ButtonToneAccent, .disabled = example_disabled})
+            if chip.changed { filters[i] = chip.selected }
+        }
+        unused End(session)
+    }
+    tag_row := Flow.Draw(session, Flow.Props.{.bounds = .{viewport.x + 20.0, viewport.y + 124.0, viewport.width - 40.0, 40.0}, .gap = 8})
+    if tag_row.opened {
+        for i: 0..2 {
+            if tags[i] && Chip.Draw(session, Chip.Props.{.label = tag_names[i], .dismissible = true, .disabled = example_disabled}).dismissed { tags[i] = false }
+        }
+        unused End(session)
+    }
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

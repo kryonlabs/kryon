@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- New widgets: `kryon/chip` (selectable and dismissible pills), `kryon/list_item` (leading icon or avatar, title, subtitle, trailing text, badge, chevron or switch) and `kryon/skeleton` (block, line and circle placeholders that pulse unless motion is reduced). Each takes its size from the theme, draws where its container places it, and has a gallery example and a ui-map entry.
+
 - When no app answers, the test driver names the fix: start and watch the app from the test (`StartOnDisplay`, `DriverEnvironment`, `DriverWatch`) instead of a hand-started Xvfb or app, or build it with `KRYON_TEST_DRIVER=1`. docs/FRAME_REPLAY.md lists all five frame capture bindings a replay host needs.
 
 - Project builds create stamp files by truncation instead of touch timestamps and set published page and executable modes through fchmod, so restricted builds that deny path chmod and timestamp syscalls still produce readable pages and runnable programs.

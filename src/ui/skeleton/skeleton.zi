@@ -1,0 +1,65 @@
+// Skeleton placeholders hold the place of content that is still loading:
+// a block, a line of text or a circle in a muted tone of the surface. They
+// pulse gently with the caller's clock and hold still when the theme asks
+// for reduced motion. Unlike Loading's dots, a skeleton keeps the layout's
+// shape. Measure gives a line or circle its height from the theme.
+Box :: #import "box";
+#import "drawing_props"
+#import "geometry"
+#import "session"
+#import "theme"
+
+SkeletonShape :: enum {
+    SkeletonBlock :: 0
+    SkeletonLine :: 1
+    SkeletonCircle :: 2
+}
+
+Props :: struct {
+    key: u64
+    // Zero width fills the column; zero height takes the measured height.
+    bounds: Rectangle
+    shape: SkeletonShape
+    // Seconds on any steady clock; the pulse follows it.
+    now: float64
+    id: s32
+    class_name: s32
+}
+
+// A block is as tall as a large control; a line as its text; a circle as
+// an avatar.
+Measure :: (props: Props) -> Rectangle {
+    height := CurrentThemeMetric(.ThemeMetricControlHeightLarge) * 2.0
+    if props.shape == .SkeletonLine { height = CurrentThemeMetric(.ThemeMetricTextBody) * 1.4 }
+    if props.shape == .SkeletonCircle { height = CurrentThemeMetric(.ThemeMetricControlHeightLarge) }
+    width := ifx props.shape == .SkeletonCircle then height else 0.0
+    return Rectangle.{0.0, 0.0, width, height}
+}
+
+// How strongly the placeholder tints the surface, in percent: it breathes
+// between two levels once a second and a half, or rests at the lower one.
+SkeletonLevel :: (now: float64, dark: bool, reduced_motion: bool) -> u32 {
+    low: u32 = ifx dark then 18 else 12
+    if reduced_motion { return low }
+    turns := now / 1.5
+    phase := turns - cast(float64)cast(s64)turns
+    if phase < 0.0 { phase += 1.0 }
+    rise := ifx phase < 0.5 then phase * 2.0 else (1.0 - phase) * 2.0
+    return low + cast(u32)(rise * 10.0)
+}
+
+Draw :: (session: Session, props: Props) {
+    size := Measure(props)
+    bounds := props.bounds
+    if bounds.width <= 0.0 { bounds.width = size.width }
+    if bounds.height <= 0.0 { bounds.height = size.height }
+    theme := CurrentTheme()
+    palette := CurrentPalette()
+    level := SkeletonLevel(props.now, theme.dark, theme.motion.reduced_motion)
+    radius := CurrentThemeMetric(.ThemeMetricRadiusSmall)
+    if props.shape == .SkeletonBlock { radius = CurrentThemeMetric(.ThemeMetricRadiusPanel) }
+    if props.shape == .SkeletonCircle { radius = bounds.height * 0.5 }
+    unused Box.Draw(session, Box.Props.{.key = props.key, .id = props.id, .class_name = props.class_name,
+        .bounds = bounds, .radius = radius,
+        .fill = ColorFromPacked(StateLayer(palette.surface, palette.foreground, level))})
+}

@@ -1,0 +1,36 @@
+Layout :: #import "kryon/layout";
+ListItem :: #import "kryon/list_item";
+Text :: #import "kryon/text";
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/tree"
+
+// A settings list: an avatar row, a switch row, a badge row and a chevron row.
+notifications: bool = true;
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    list := Layout.Draw(session, Layout.Props.{.bounds = .{viewport.x + 12.0, viewport.y + 12.0, viewport.width - 24.0, viewport.height - 24.0}})
+    if !list.opened { return 0 }
+    unused ListItem.Draw(session, ListItem.Props.{.title = "Ada Lovelace", .subtitle = "Account and profile",
+        .leading_name = "Ada Lovelace", .trailing = .ListTrailingChevron, .disabled = example_disabled})
+    row := ListItem.Draw(session, ListItem.Props.{.title = "Notifications", .trailing = .ListTrailingSwitch,
+        .switch_on = notifications, .disabled = example_disabled})
+    if row.switch_changed { notifications = row.switch_on }
+    unused ListItem.Draw(session, ListItem.Props.{.title = "Inbox", .trailing = .ListTrailingBadge,
+        .trailing_text = "12", .disabled = example_disabled})
+    unused ListItem.Draw(session, ListItem.Props.{.title = "Storage", .subtitle = "4.2 GB of 15 GB",
+        .trailing = .ListTrailingText, .trailing_text = "28%", .disabled = example_disabled})
+    unused End(session)
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

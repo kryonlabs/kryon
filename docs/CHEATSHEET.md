@@ -153,12 +153,14 @@ NotesScreen :: (session: Session) {
 
 ```zi
 // file: src/widgets.zi
-Avatar :: #import "kryon/avatar";        // .name .size; initials when no .image
 Button :: #import "kryon/button";        // .label .tone .emphasis .size .disabled
 Checkbox :: #import "kryon/checkbox";    // .label .checked -> .changed .checked
+Chip :: #import "kryon/chip";            // .label .selectable .dismissible -> .changed .dismissed
 Layout :: #import "kryon/layout";
+ListItem :: #import "kryon/list_item";   // .title .subtitle .leading_name .trailing -> .clicked
 Progress :: #import "kryon/progress";    // .min .max .value .label
 Radio :: #import "kryon/radio";          // .label .checked -> 1 when picked
+Skeleton :: #import "kryon/skeleton";    // .shape .now: a pulsing placeholder
 Slider :: #import "kryon/slider";        // DiscreteSlider: .value .min .max -> .changed .value
 Text :: #import "kryon/text";            // .text .size .wrap .align .strong
 Theme :: #import "kryon/theme";
@@ -191,11 +193,9 @@ Widgets :: (session: Session) {
     }
     bar := Slot(session, 8)
     if bar.opened { Progress.Draw(session, Progress.Props.{.max = 5, .value = level, .bounds = bar.bounds}); unused End(session) }
-    tag := Slot(session, 40)
-    if tag.opened {
-        unused Avatar.Draw(session, Avatar.Props.{.name = "Ada Lovelace", .bounds = .{tag.bounds.x, tag.bounds.y, 40, 40}})
-        unused End(session)
-    }
+    unused Chip.Draw(session, Chip.Props.{.label = "Design", .selectable = true, .selected = on})
+    unused ListItem.Draw(session, ListItem.Props.{.title = "Ada", .subtitle = "Profile", .leading_name = "Ada Lovelace", .trailing = .ListTrailingChevron})
+    Skeleton.Draw(session, Skeleton.Props.{.shape = .SkeletonLine})
     Layouts(session)
 }
 ```
@@ -204,8 +204,8 @@ Also: `kryon/text_field` (`Bind(session, *state, props)`), `kryon/card`
 (`.variant` -> `.content`), `kryon/title_bar` (`.trailing_width` ->
 `.trailing_bounds`), `kryon/box` (`.fill .border .radius`), `kryon/dropdown`
 (`Draw(session, props, options)`), `kryon/modal` (`opened` -> `End`,
-`.dismissed`), `kryon/toast`, `kryon/image` (`.asset_path .fit`),
-`kryon/badge` (`.text .tone`), `kryon/scroll`. `ziran api kryon/<path>` prints an API.
+`.dismissed`), `kryon/avatar` (`.name`), `kryon/image` (`.asset_path .fit`),
+`kryon/badge`, `kryon/toast`, `kryon/scroll`; `ziran api kryon/<path>` prints an API.
 
 ## Layout recipe
 
