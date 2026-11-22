@@ -1,0 +1,58 @@
+#import "kryon/app_context"
+#import "kryon/app_protocol"
+#import "kryon/geometry"
+#import "kryon/frame_snapshot"
+#import "kryon/tree"
+Layout :: #import "kryon/layout";
+Child :: #import "kryon/nested_app";
+Bundle :: #import "std/bundle_guest";
+
+host_api :: #system_library "host_api";
+FixtureBytesHost :: (query: s32) -> string #foreign host_api;
+
+left: u64;
+right: u64;
+stale_returned: bool;
+
+#program_export
+main :: () -> s32 {
+    mode := AppMode()
+    if mode == APP_IDENTIFY {
+        AppIdentity("nested.shell.fixture")
+        AppDescribe("Nested shell fixture", "")
+        return APP_PROTOCOL
+    }
+    if mode != APP_FRAME || stale_returned { return 0 }
+    if left == cast(u64)0 {
+        bytes := FixtureBytesHost(0)
+        if Bundle.Open(bytes, "denied") != cast(u64)0 { return 1 }
+        left = Bundle.Open(bytes, "nested.fixture")
+        right = Bundle.Open(bytes, "nested.fixture")
+        if left == cast(u64)0 || right == cast(u64)0 || left == right { return 2 }
+        if Bundle.AssetCount(left) != cast(u64)1 || Bundle.AssetName(left, 0) != "assets/probe" ||
+            Bundle.AssetData(left, 0) != "nested fixture\n" { return 3 }
+        if FixtureBytesHost(1) == "trap" {
+            if !Bundle.Close(left) { return 10 }
+            // A stale handle traps while the other child is still live.
+            unused Child.Command(left, "increment")
+            stale_returned = true
+            return 0
+        }
+    }
+    if !Child.Command(left, "increment") || Child.Reply(left) != "first" ||
+        !Child.Command(left, "increment") || Child.Reply(left) != "again" ||
+        !Child.Command(right, "increment") || Child.Reply(right) != "first" { return 4 }
+    if !Bundle.Restart(left) || !Child.Command(left, "increment") || Child.Reply(left) != "first" { return 5 }
+    bounds := Rectangle.{0.0, 0.0, 100.0, 80.0}
+    session := AppSession()
+    if !CaptureFrameInput(session).available { return 12 }
+    if !Layout.Group(session, .{.bounds = bounds}).opened { return 6 }
+    if !Child.Frame(left, bounds, false, 17, 0, .{}, .{}) || !Child.Keyboard(left) { return 7 }
+    End(session)
+    if !Layout.Group(session, .{.bounds = bounds}).opened { return 8 }
+    End(session)
+    if !Child.Save(left) || !Bundle.Close(left) || !Bundle.Close(right) { return 9 }
+    left = cast(u64)0
+    right = cast(u64)0
+    return 0
+}

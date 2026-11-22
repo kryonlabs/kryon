@@ -154,7 +154,7 @@ BundleAppClose :: (host: *BundleApp) {
 
 // Takes ownership of a bundle that its caller has already validated.
 BundleAppPrepareBundle :: (host: *BundleApp, bundle: *void, root: string,
-    locale: string = "en") -> bool {
+    locale: string = "en", bindings: []HostBinding = EmptyAppBindings()) -> bool {
     BundleAppClose(host)
     host.app.app.bundle = bundle
     if root == "" {
@@ -167,6 +167,7 @@ BundleAppPrepareBundle :: (host: *BundleApp, bundle: *void, root: string,
     host.app.widgets = BundleAppWidgets
     host.app.allows = BundleAppAllows
     host.app.context = cast(*void)host
+    host.app.bindings = bindings
     if !HostedAppStart(*host.app.app, AppContextAllows, AppContextCall, cast(*void)(*host.app)) ||
     !AppContextIdentify(cast(*void)(*host.app)) {
         HostedAppClose(*host.app.app)
@@ -198,8 +199,9 @@ BundleAppOpen :: (host: *BundleApp, bytes: string, root: string,
 }
 
 BundleAppOpenBundle :: (host: *BundleApp, bundle: *void, root: string,
-    previous: *BundleApp = null, locale: string = "en") -> bool {
-    if !BundleAppPrepareBundle(host, bundle, root, locale) { return false }
+    previous: *BundleApp = null, locale: string = "en",
+    bindings: []HostBinding = EmptyAppBindings()) -> bool {
+    if !BundleAppPrepareBundle(host, bundle, root, locale, bindings) { return false }
     if previous != null && previous.ready && host.directory == previous.directory {
         // Prepare and identify the replacement before changing the current
         // app. Move its already-owned lock only after a successful save.
@@ -224,10 +226,11 @@ BundleAppOpenBundle :: (host: *BundleApp, bundle: *void, root: string,
     return true
 }
 
-BundleAppCheck :: (bundle: *void) -> bool {
+BundleAppCheck :: (bundle: *void, bindings: []HostBinding = EmptyAppBindings()) -> bool {
     host: BundleApp
     host.app.allows = BundleAppAllows
     host.app.context = cast(*void)(*host)
+    host.app.bindings = bindings
     for index: 0..cast(s64)BundleCapabilities(bundle) - 1 {
         if !AppContextAllows(cast(*void)(*host.app),
             TextFromCString(BundleCapabilityModuleName(bundle, cast(u64)index)),

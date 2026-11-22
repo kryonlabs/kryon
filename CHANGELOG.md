@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Hosted desktop ZX shells can run approved child bundles in their own
+  widget scopes with separate state, assets and native service grants.
+
 - Hosted ZX surfaces can lend packed RGB strips directly to a presenter,
   avoiding per-pixel RGBA conversion and a second guest strip buffer.
 

@@ -1,0 +1,30 @@
+#import "kryon/app_context"
+#import "kryon/app_protocol"
+#import "kryon/frame_snapshot"
+Layout :: #import "kryon/layout";
+
+commands: s32;
+
+#program_export
+main :: () -> s32 {
+    mode := AppMode()
+    if mode == APP_IDENTIFY {
+        AppIdentity("nested.fixture")
+        AppDescribe("Nested fixture", "")
+        return APP_PROTOCOL
+    }
+    if mode == APP_COMMAND {
+        if AppCommand() != "increment" { return 1 }
+        commands += 1
+        AppReply(ifx commands == 1 then "first" else "again")
+    }
+    if mode == APP_FRAME {
+        if AppKey() != 17 || AppBounds().width != 100.0 { return 2 }
+        if !CaptureFrameInput(AppSession()).available { return 4 }
+        group := Layout.Group(AppSession(), .{.bounds = AppBounds(), .padding = 4})
+        if !group.opened || group.content.width != 92.0 { return 3 }
+        // The host closes this scope when the child returns.
+        AppKeyboard(true)
+    }
+    return 0
+}

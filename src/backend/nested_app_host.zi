@@ -1,0 +1,295 @@
+// Native adapter for a shell that was explicitly granted child execution.
+// The launcher owns the table and supplies policy for each child's bytes.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "app_context_host"
+#import "app_protocol"
+#import "bundle_names"
+#import "frame_snapshot"
+#import "geometry"
+#import "hosted_app"
+#import "hosted_values"
+#import "input_protocol"
+#import "session"
+#import "tree"
+#import "tree_input"
+#import "widget_codec"
+#import "widget_host"
+#import "widget_kind"
+
+using HostValueKind;
+using WidgetKind;
+
+ChildAppAssetAllowed :: #type (context: *void, path: string) -> bool;
+ChildAppAssetResolve :: #type (context: *void, path: string) -> string;
+
+ChildAppGrant :: struct {
+    services: HostCall
+    allows: AppServiceAllows
+    asset_allowed: ChildAppAssetAllowed
+    asset_resolve: ChildAppAssetResolve
+    context: *void
+}
+
+ChildAppPolicy :: #type (context: *void, identity: string, bytes: string,
+    grant: *ChildAppGrant) -> bool;
+
+NestedAppLimit :: 32
+NestedAppByteLimit :: 64 * 1024 * 1024
+
+NestedAppSlot :: struct {
+    app: AppContext
+    grant: ChildAppGrant
+    expected: [128]u8
+    handle: u64
+    size: s64
+    running: bool
+}
+
+NestedAppHost :: struct {
+    policy: ChildAppPolicy
+    context: *void
+    children: [NestedAppLimit]NestedAppSlot
+    current_handle: u64
+    bytes: s64
+}
+
+#scope_file
+active_child: *NestedAppSlot;
+child_snapshot_codec: WidgetFrameInputSnapshotCodec;
+child_pointer_codec: WidgetPointerFrameCodec;
+
+ChildAllowsAsset :: (path: string) -> bool {
+    return path == "" || (active_child != null && active_child.grant.asset_allowed != null &&
+        active_child.grant.asset_allowed(active_child.grant.context, path))
+}
+
+ChildResolveAsset :: (path: string) -> string {
+    if active_child == null || active_child.grant.asset_resolve == null { return "" }
+    return active_child.grant.asset_resolve(active_child.grant.context, path)
+}
+
+ChildWidgetAllows :: (context: *void, module: string, name: string) -> bool {
+    unused context
+    // An arbitrary tree index can point into the parent's open frame.
+    return !(ModuleName(module, "tree") && name == "TreePushScopeHostedHost")
+}
+
+ChildWidgets :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    if active_child == null { return 0 }
+    app := *active_child.app
+    owner := TextFromCString(module)
+    name := TextFromCString(function)
+    if ModuleName(owner, "pointer_input") && name == "PollPointer" && count == 0 {
+        pointer := PointerSample(app.session)
+        if !PointInBounds(pointer.x, pointer.y, app.bounds) { pointer = .{.x = -1.0, .y = -1.0} }
+        result.* = WidgetEncodePointerFrame(pointer, *child_pointer_codec)
+        return 1
+    }
+    if ModuleName(owner, "frame_snapshot") && name == "CaptureFrameInputHost" && count == 1 {
+        if !WidgetValidSession(arguments[0]) { return 0 }
+        session := WidgetDecodeSession(arguments[0], *app.session_codec)
+        if session.slot != app.session.slot || session.epoch != app.session.epoch { return 0 }
+        snapshot := CaptureFrameInput(session)
+        keys: [512]u8
+        if app.key > 0 && app.key < keys.count { keys[app.key] = snapshot.keys[app.key] }
+        snapshot.keys = keys
+        snapshot.modifiers = app.modifiers
+        if !PointInBounds(snapshot.pointer.x, snapshot.pointer.y, app.bounds) {
+            snapshot.pointer = .{.x = -1.0, .y = -1.0}
+            snapshot.secondary = .{}
+            snapshot.wheel = 0.0
+        }
+        result.* = WidgetEncodeFrameInputSnapshot(snapshot, *child_snapshot_codec)
+        return 1
+    }
+    return WidgetHostCall(context, module, function, arguments, count, result)
+}
+
+Destroy :: (slot: *NestedAppSlot) {
+    AppContextDropReply(*slot.app)
+    HostedAppClose(*slot.app.app)
+    slot.* = .{}
+}
+
+FindChild :: (owner: *NestedAppHost, handle: u64) -> s32 {
+    if handle == cast(u64)0 { return -1 }
+    for index: 0..NestedAppLimit - 1 {
+        slot := *owner.children[index]
+        if slot.handle == handle && !slot.running { return cast(s32)index }
+    }
+    return -1
+}
+
+OpenChild :: (owner: *NestedAppHost, identity: string, bytes: string) -> u64 {
+    if owner.policy == null || !AppIdValid(identity) || bytes.count <= 0 ||
+        bytes.count > NestedAppByteLimit - owner.bytes ||
+        owner.current_handle == cast(u64)9223372036854775807 { return cast(u64)0 }
+    index: s32 = 0
+    while index < NestedAppLimit && owner.children[index].handle != cast(u64)0 { index += 1 }
+    if index == NestedAppLimit { return cast(u64)0 }
+    grant: ChildAppGrant
+    if !owner.policy(owner.context, identity, bytes, *grant) { return cast(u64)0 }
+    slot := *owner.children[index]
+    slot.grant = grant
+    unused CopyCString(identity, slot.expected[:])
+    slot.app.expected_id = TextFromCString(*slot.expected[0])
+    slot.app.services = grant.services
+    slot.app.allows = grant.allows
+    slot.app.context = grant.context
+    slot.app.widgets = ChildWidgets
+    slot.app.widget_allows = ChildWidgetAllows
+    if !AppContextOpen(*slot.app, bytes) {
+        Destroy(slot)
+        return cast(u64)0
+    }
+    owner.current_handle += cast(u64)1
+    slot.handle = owner.current_handle
+    slot.size = bytes.count
+    owner.bytes += slot.size
+    return slot.handle
+}
+
+RemoveChild :: (owner: *NestedAppHost, index: s32) {
+    slot := *owner.children[index]
+    owner.bytes -= slot.size
+    Destroy(slot)
+}
+
+TextResult :: (text: string) -> HostValue {
+    return HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"),
+        .data = HostTextData(text), .length = cast(usize)text.count}
+}
+
+RunChildFrame :: (slot: *NestedAppSlot, arguments: *HostValue) -> bool {
+    session := WidgetHostFrameSession()
+    if !SessionValid(session) { return false }
+    app := *slot.app
+    bounds := RectangleIntersection(TreeCurrentParentBounds(session),
+        WidgetDecodeRectangle(arguments[1], *app.bounds_codec))
+    if !(bounds.width > 0.0 && bounds.height > 0.0) { return false }
+    scope := TreeSubmitCurrent(session, slot.handle, WidgetKindGroup, bounds)
+    if scope < 0 || !TreePushScope(session, scope) { return false }
+    TreeSetChildClip(session, scope, bounds)
+    app.session = session
+    app.bounds = bounds
+    app.dark = arguments[2].integer != 0
+    app.key = cast(s32)arguments[3].integer
+    app.modifiers = cast(s32)arguments[4].integer
+    app.input = WidgetDecodeTextFieldInput(arguments[5], *app.input_codec)
+    app.area_input = WidgetDecodeTextAreaInput(arguments[6], *app.area_codec)
+    previous := active_child
+    active_child = slot
+    parent := WidgetHostEnter(session, ChildAllowsAsset, ChildResolveAsset)
+    defer {
+        WidgetHostLeave(parent)
+        unused TreePopScope(session)
+        active_child = previous
+        app.session = .{}
+        app.input = .{}
+        app.area_input = .{}
+    }
+    return AppContextRun(app, APP_FRAME)
+}
+
+BooleanResult :: (value: bool) -> HostValue { return HostScalar("bool", ifx value then 1 else 0) }
+
+#scope_export
+// Call after the outer instance stops, including when it traps.
+CloseNestedApps :: (owner: *NestedAppHost) {
+    for index: 0..NestedAppLimit - 1 {
+        if owner.children[index].handle != cast(u64)0 { RemoveChild(owner, cast(s32)index) }
+    }
+}
+
+// The launcher owns the policy and keeps the inspected bundle and output
+// storage alive until playback returns. A negative count means insufficient
+// storage. The binding names are those of the actual checked bundle.
+CollectNestedAppBindings :: (owner: *NestedAppHost, bundle: *void,
+    output: []HostBinding) -> s32 {
+    count: s32
+    index: u64
+    while index < BundleCapabilities(bundle) {
+        module := BundleCapabilityModuleName(bundle, index)
+        name := BundleCapabilityFunctionName(bundle, index)
+        if NestedAppSupports(TextFromCString(module), TextFromCString(name)) {
+            if count >= output.count { return -1 }
+            output[count] = HostBinding.{.module = module, .function = name,
+                .call = NestedAppCall, .context = cast(*void)owner}
+            count += 1
+        }
+        index += cast(u64)1
+    }
+    return count
+}
+
+NestedAppSupports :: (module: string, name: string) -> bool {
+    if ModuleName(module, "std_bundle_guest") {
+        return name == "OpenChildBundleHost" || name == "RestartChildBundleHost" || name == "CloseChildBundleHost" ||
+            name == "ChildBundleAssetCountHost" || name == "ChildBundleAssetNameHost" || name == "ChildBundleAssetDataHost"
+    }
+    return ModuleName(module, "nested_app") && (name == "ChildAppFrameHost" || name == "ChildAppCommandHost" ||
+        name == "ChildAppSaveHost" || name == "ChildAppReplyHost" || name == "ChildAppKeyboardHost")
+}
+
+NestedAppCall :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    if context == null { return 0 }
+    owner := cast(*NestedAppHost)context
+    name := TextFromCString(function)
+    if !NestedAppSupports(TextFromCString(module), name) { return 0 }
+    if name == "OpenChildBundleHost" && count == 2 &&
+        HostScalarValid(arguments[0], "string", cast(s32)HostString) &&
+        HostScalarValid(arguments[1], "string", cast(s32)HostString) {
+        handle := OpenChild(owner, AppArgumentText(arguments[1]), AppArgumentText(arguments[0]))
+        result.* = HostScalar("u64", cast(s64)handle)
+        return 1
+    }
+    if count < 1 || !HostScalarValid(arguments[0], "u64", cast(s32)HostUnsigned) { return 0 }
+    index := FindChild(owner, arguments[0].bits)
+    if index < 0 { return 0 }
+    slot := *owner.children[index]
+    slot.running = true
+    defer { slot.running = false }
+    bundle := slot.app.app.bundle
+    if name == "CloseChildBundleHost" && count == 1 {
+        RemoveChild(owner, index)
+        result.* = BooleanResult(true)
+    } else if name == "RestartChildBundleHost" && count == 1 {
+        result.* = BooleanResult(AppContextRestart(*slot.app))
+    } else if name == "ChildBundleAssetCountHost" && count == 1 {
+        result.* = HostScalar("u64", cast(s64)BundleAssets(bundle))
+    } else if (name == "ChildBundleAssetNameHost" || name == "ChildBundleAssetDataHost") && count == 2 &&
+        HostScalarValid(arguments[1], "u64", cast(s32)HostUnsigned) {
+        asset := arguments[1].bits
+        if asset >= BundleAssets(bundle) { return 0 }
+        if name == "ChildBundleAssetNameHost" {
+            result.* = TextResult(TextFromCString(BundleAssetPath(bundle, asset)))
+        } else {
+            length := BundleAssetLength(bundle, asset)
+            data := BundleAssetBytes(bundle, asset)
+            if length > cast(u64)NestedAppByteLimit || (length != cast(u64)0 && data == null) { return 0 }
+            result.* = TextResult(ifx length == cast(u64)0 then "" else TextFromBytes(BytesFromPointer(data, length)))
+        }
+    } else if name == "ChildAppFrameHost" && count == 7 && WidgetValidRectangle(arguments[1]) &&
+        HostScalarValid(arguments[2], "bool", cast(s32)HostInteger) &&
+        HostScalarValid(arguments[3], "s32", cast(s32)HostInteger) &&
+        HostScalarValid(arguments[4], "s32", cast(s32)HostInteger) &&
+        WidgetValidTextFieldInput(arguments[5]) && WidgetValidTextAreaInput(arguments[6]) {
+        result.* = BooleanResult(RunChildFrame(slot, arguments))
+    } else if name == "ChildAppCommandHost" && count == 2 &&
+        HostScalarValid(arguments[1], "string", cast(s32)HostString) && arguments[1].length <= cast(usize)4096 {
+        slot.app.command = AppArgumentText(arguments[1])
+        result.* = BooleanResult(AppContextRun(*slot.app, APP_COMMAND))
+        slot.app.command = ""
+    } else if name == "ChildAppSaveHost" && count == 1 {
+        result.* = BooleanResult(AppContextRun(*slot.app, APP_SAVE))
+    } else if name == "ChildAppReplyHost" && count == 1 {
+        result.* = TextResult(slot.app.reply)
+    } else if name == "ChildAppKeyboardHost" && count == 1 {
+        result.* = BooleanResult(slot.app.keyboard)
+    } else { return 0 }
+    return 1
+}

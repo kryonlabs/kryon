@@ -578,13 +578,13 @@ RunPath :: (bundle_path: string, bundle_name: *u8, check: bool, grants: []HostBi
     if bundle == null { return 1 }
     hosted := BundleIsApp(bundle)
     window_only := WindowBundles.WindowBundle(bundle)
-    if grants.count != 0 && (hosted || window_only) {
+    if grants.count != 0 && window_only && !hosted {
         CloseBundle(bundle)
-        print("zx: app host bindings require a desktop frame bundle\n")
+        print("zx: app host bindings require a desktop frame or hosted app bundle\n")
         return 1
     }
     if hosted {
-        if check { return AppPlayer.Run(bundle, true) }
+        if check { return AppPlayer.Run(bundle, true, grants) }
         if watch {
             CloseBundle(bundle)
             print("zx: hosted app release watching is not available yet\n")
@@ -604,7 +604,7 @@ RunPath :: (bundle_path: string, bundle_name: *u8, check: bool, grants: []HostBi
                 return 1
             }
         }
-        status := AppPlayer.Run(bundle, false)
+        status := AppPlayer.Run(bundle, false, grants)
         if resource_root != "" && !RemoveAssetDirectory(resource_root) { return 1 }
         return status
     }

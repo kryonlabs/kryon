@@ -36,6 +36,7 @@ HostInputDesktop :: () -> bool {
 }
 
 AppServiceAllows :: #type (context: *void, function: string) -> bool;
+AppWidgetAllows :: #type (context: *void, module: string, function: string) -> bool;
 
 AppContext :: struct {
     app: HostedApp
@@ -65,7 +66,9 @@ AppContext :: struct {
     services: HostCall
     widgets: HostCall
     allows: AppServiceAllows
+    widget_allows: AppWidgetAllows
     context: *void
+    bindings: []HostBinding
     session_codec: WidgetSessionCodec
     bounds_codec: WidgetRectangleCodec
     input_codec: WidgetTextFieldInputCodec
@@ -110,6 +113,22 @@ AppThemeCall :: (module: string, name: string) -> bool {
     return ModuleName(module, "app_theme") && name == "AppThemeColorHost"
 }
 
+EmptyAppBindings :: () -> []HostBinding {
+    bindings: []HostBinding
+    return bindings
+}
+
+AppExtraBinding :: (app: *AppContext, module: string, name: string) -> HostBinding {
+    binding: HostBinding
+    for grant: app.bindings {
+        if grant.call == null || grant.module == null || grant.function == null ||
+            TextFromCString(grant.module) != module || TextFromCString(grant.function) != name { continue }
+        if binding.call != null { return HostBinding.{} }
+        binding = grant
+    }
+    return binding
+}
+
 AppContextAllows :: (context: *void, module: string, name: string) -> bool {
     app := cast(*AppContext)context
     // Bind optional reminder imports even on an unsupported/disabled host;
@@ -122,7 +141,10 @@ AppContextAllows :: (context: *void, module: string, name: string) -> bool {
         return AppCoreFunction(name) ||
         (app.allows != null && app.allows(app.context, name))
     }
-    return WidgetHostSupports(module, name)
+    if WidgetHostSupports(module, name) {
+        return app.widget_allows == null || app.widget_allows(app.context, module, name)
+    }
+    return AppExtraBinding(app, module, name).call != null
 }
 
 AppArgumentText :: (value: HostValue) -> string {
@@ -156,7 +178,8 @@ AppContextCall :: (context: *void, module: *u8, function: *u8,
     arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
     app := cast(*AppContext)context
     name := TextFromCString(function)
-    if NotificationScheduleHostSupports(TextFromCString(module), name) {
+    owner := TextFromCString(module)
+    if NotificationScheduleHostSupports(owner, name) {
         if !app.identified || !app.described || app.mode != APP_FRAME ||
             !AppIdValid(app.expected_id) || TextFromCString(*app.id[0]) != app.expected_id {
             result.* = HostScalar("bool", 0)
@@ -167,7 +190,7 @@ AppContextCall :: (context: *void, module: *u8, function: *u8,
         return NotificationScheduleHostCall(app.expected_id, enabled, name, arguments, count, result,
             input.available && input.focused)
     }
-    if AppThemeCall(TextFromCString(module), name) {
+    if AppThemeCall(owner, name) {
         if count != 1 || !HostScalarValid(arguments[0], "string", cast(s32)HostString) {
             return 0
         }
@@ -178,11 +201,18 @@ AppContextCall :: (context: *void, module: *u8, function: *u8,
         result.* = HostScalar("u32", cast(s64)packed)
         return 1
     }
-    if !AppModule(TextFromCString(module)) {
-        if app.mode != APP_FRAME || !app.identified || !app.described {
+    if !AppModule(owner) {
+        if app.mode == APP_IDENTIFY || !app.identified || !app.described {
             return 0
         }
-        if name == "MediaAudioHost" && ModuleName(TextFromCString(module), "media_audio") {
+        if !WidgetHostSupports(owner, name) {
+            binding := AppExtraBinding(app, owner, name)
+            if binding.call == null { return 0 }
+            return binding.call(binding.context, module, function, arguments, count, result)
+        }
+        if app.mode != APP_FRAME ||
+            (app.widget_allows != null && !app.widget_allows(app.context, owner, name)) { return 0 }
+        if name == "MediaAudioHost" && ModuleName(owner, "media_audio") {
             runtime := AppContextRuntime(app)
             return WidgetHostAudioCall(*runtime.audio, AppContextAudioRead, cast(*void)runtime,
                 arguments, count, result)

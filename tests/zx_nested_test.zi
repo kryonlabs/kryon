@@ -1,0 +1,72 @@
+Desktop :: #import "kryon/desktop_zx";
+Nested :: #import "kryon/nested_app_host";
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "kryon/hosted_values"
+
+owner: Nested.NestedAppHost;
+using HostValueKind;
+
+FixtureContext :: struct {
+    bundle: *void
+    trap: bool
+}
+
+FixtureAllows :: (context: *void, identity: string, bytes: string, grant: *Nested.ChildAppGrant) -> bool {
+    unused context
+    unused grant
+    return identity == "nested.fixture" && bytes.count > 0
+}
+
+FixtureBytes :: (context: *void, module: *u8, function: *u8,
+    args: *HostValue, count: s32, result: *HostValue) -> s32 {
+    unused module
+    state := cast(*FixtureContext)context
+    if state == null || TextFromCString(function) != "FixtureBytesHost" || count != 1 ||
+        !HostScalarValid(args[0], "s32", cast(s32)HostInteger) { return 0 }
+    if args[0].integer == 1 {
+        result.* = .{.kind = cast(s32)HostString, .type_name = HostTextData("string"),
+            .data = HostTextData("trap"), .length = cast(usize)(ifx state.trap then 4 else 0)}
+        return 1
+    }
+    if args[0].integer != 0 || BundleAssets(state.bundle) != cast(u64)1 { return 0 }
+    result.* = .{.kind = cast(s32)HostString, .type_name = HostTextData("string"),
+        .data = BundleAssetBytes(state.bundle, 0), .length = cast(usize)BundleAssetLength(state.bundle, 0)}
+    return 1
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 1 }
+    path := TextFromCString(argv[1])
+    bundle := OpenBundle(argv[1])
+    if bundle == null { return 2 }
+    defer { CloseBundle(bundle) }
+    fixture := FixtureContext.{.bundle = bundle}
+    owner.policy = FixtureAllows
+    defer { Nested.CloseNestedApps(*owner) }
+    grants: [16]HostBinding
+    count := Nested.CollectNestedAppBindings(*owner, bundle, grants[:])
+    if count != 11 { return 3 }
+    index: u64
+    while index < BundleCapabilities(bundle) {
+        function := BundleCapabilityFunctionName(bundle, index)
+        if TextFromCString(function) == "FixtureBytesHost" {
+            grants[count] = .{BundleCapabilityModuleName(bundle, index), function, FixtureBytes, cast(*void)*fixture}
+            break
+        }
+        index += cast(u64)1
+    }
+    if index == BundleCapabilities(bundle) { return 4 }
+    if Desktop.RunWithBindings(path, .{.check = true}, grants[:count]) == 0 || owner.current_handle != cast(u64)0 { return 5 }
+    if Desktop.RunWithBindings(path, .{.check = true}, grants[:count + 1]) != 0 || owner.current_handle != cast(u64)0 { return 6 }
+    if Desktop.RunWithBindings(path, .{}, grants[:count + 1]) != 0 { return 7 }
+    if owner.bytes != 0 || owner.current_handle != cast(u64)4 { return 8 }
+    fixture.trap = true
+    if Desktop.RunWithBindings(path, .{}, grants[:count + 1]) == 0 || owner.bytes == 0 ||
+        owner.current_handle != cast(u64)6 { return 9 }
+    Nested.CloseNestedApps(*owner)
+    if owner.bytes != 0 { return 10 }
+    print("Hosted nested ZX child isolation, scoped layout and cleanup passed\n")
+    return 0
+}

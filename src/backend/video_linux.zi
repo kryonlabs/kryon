@@ -54,7 +54,7 @@ caps_from: CapsFn; sink_caps: SinkCapsFn;
 initialized: bool; available: bool;
 pipeline: *void; sink: *void; bus: *void; audio_sink: *void;
 state: s32; position: s64; duration: s64; speed: s32 = 100; volume: s32 = 100;
-width: s32; height: s32; revision: u64;
+video_frame_width: s32; video_frame_height: s32; revision: u64;
 pixels: [921600]u32;
 message: string;
 lease: s64; opening_deadline: s64;
@@ -68,7 +68,7 @@ VideoAsset :: "kryon:video";
 // carry none of this.
 VideoPicture :: (path: string, picture: *Raster.RasterPicture) -> bool {
     if path != VideoAsset { return false }
-    picture.* = .{cast(*u8)*pixels[0], width, height, revision}
+    picture.* = .{cast(*u8)*pixels[0], video_frame_width, video_frame_height, revision}
     return true
 }
 VideoPlaying :: () -> bool { return pipeline != null }
@@ -122,7 +122,8 @@ VideoStopHost :: () {
     if bus != null { unref(bus) }; if pipeline != null { unref(pipeline) }
     if sink != null { unref(sink) }; if audio_sink != null { unref(audio_sink) }
     bus = null; pipeline = null; sink = null; audio_sink = null
-    state = 0; lease = 0; opening_deadline = 0; position = 0; duration = 0; width = 0; height = 0; revision += 1; waiting_preroll = false; frame_time = -1
+    state = 0; lease = 0; opening_deadline = 0; position = 0; duration = 0; revision += 1; waiting_preroll = false; frame_time = -1
+    video_frame_width = 0; video_frame_height = 0
     // Revoke the last decoded frame as well as the audio pipeline.
     for i: 0..921599 { pixels[i] = 0 }
 }
@@ -166,7 +167,8 @@ Frame :: (sample: *void) -> bool {
     if info.data != null && info.size >= cast(usize)(w * h * 4) {
         source := cast(*u32)info.data
         for i: 0..w * h - 1 { pixels[i] = source[i] | cast(u32)0xff000000 }
-        width = w; height = h; revision += 1; frame_time = time; accepted = true
+        video_frame_width = w; video_frame_height = h
+        revision += 1; frame_time = time; accepted = true
     }
     unmap(buffer, *info)
     return accepted
@@ -181,7 +183,7 @@ VideoTick :: () {
     sample: *void
     if state == 1 || state == 2 { sample = pull(sink, 0) }
     if sample == null && state == 3 && waiting_preroll { sample = preroll(sink, 0) }
-    if sample != null { accepted := Frame(sample); sample_unref(sample); if accepted { waiting_preroll = false }; if state == 1 && width > 0 { state = 2 } }
+    if sample != null { accepted := Frame(sample); sample_unref(sample); if accepted { waiting_preroll = false }; if state == 1 && video_frame_width > 0 { state = 2 } }
     value: s64; if position_for(pipeline, 3, *value) != 0 && value >= 0 { position = value / 1000000 }
     if duration_for(pipeline, 3, *value) != 0 && value >= 0 { duration = value / 1000000 }
     if state == 2 && is_eos(sink) != 0 { state = 4; position = duration; unused set_state(pipeline, 3) }
@@ -225,6 +227,6 @@ VideoPositionHost :: () -> s64 { return position }
 #program_export
 VideoDurationHost :: () -> s64 { return duration }
 #program_export
-VideoFrameHost :: () -> string { VideoTick(); return ifx width > 0 then VideoAsset else "" }
+VideoFrameHost :: () -> string { VideoTick(); return ifx video_frame_width > 0 then VideoAsset else "" }
 #program_export
 VideoMessageHost :: () -> string { return message }

@@ -211,7 +211,7 @@ test: desktop-codec-artifact-test
 renderer-artifact-test: build/bin/kryon
 	env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/renderer_artifact_test.py
 
-.PHONY: zx-test zx-linked-test zx-reload-test
+.PHONY: zx-test zx-linked-test zx-nested-test zx-reload-test
 include mk/zx-canvas.mk
 include mk/codecs.mk
 
@@ -222,7 +222,7 @@ zx-reload-test: zx-player
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zx_reload_test.py
 
-zx-test: build/bin/kryon zx-player zx-linked-test
+zx-test: build/bin/kryon zx-player zx-linked-test zx-nested-test
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zx_project_test.py
 
@@ -239,6 +239,26 @@ zx-linked-test: zx-player
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER \
 		-u KRYON_CAPTURE_PATH YUE_DESKTOP_RECOVERY=0 xvfb-run -a \
 		$(ZX_LINKED_TEST)/launcher $(ZX_LINKED_TEST)/guest.zx
+
+ZX_NESTED_TEST := build/test/zx-nested
+zx-nested-test: zx-player
+	mkdir -p $(ZX_NESTED_TEST)/child-assets $(ZX_NESTED_TEST)/shell-assets
+	printf 'nested fixture\n' > $(ZX_NESTED_TEST)/child-assets/probe
+	ZIRAN_STD=$(abspath $(ZIRAN_DIR))/std $(ZIRAN_BIN) bundle --project --define KRYON_HOSTED_UI \
+		--root tests --entry zx_nested_child:main --asset-dir assets=$(ZX_NESTED_TEST)/child-assets \
+		-o $(ZX_NESTED_TEST)/shell-assets/child.zx tests/zx_nested_child.zi
+	ZIRAN_STD=$(abspath $(ZIRAN_DIR))/std $(ZIRAN_BIN) bundle --project --define KRYON_HOSTED_UI \
+		--root tests --entry zx_nested_guest:main --asset-dir assets=$(ZX_NESTED_TEST)/shell-assets \
+		-o $(ZX_NESTED_TEST)/shell.zx tests/zx_nested_guest.zi
+	$(ZIRAN_BIN) build --project --target=c --prune-stale $(PLAYER_TARGET) --root tests \
+		-o $(ZX_NESTED_TEST)/c tests/zx_nested_test.zi
+	$(CC) -std=c99 -pedantic-errors -O2 -ffunction-sections -fdata-sections \
+		-I$(ZIRAN_INCLUDE) -I$(ZX_NESTED_TEST)/c $(ZX_NESTED_TEST)/c/*.c \
+		$(PLAYER_LIBS) -o $(ZX_NESTED_TEST)/launcher
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER \
+		HARMONY_DESKTOP_RECOVERY=0 YUE_DESKTOP_RECOVERY=0 \
+		KRYON_APP_DATA=$(abspath $(ZX_NESTED_TEST))/data KRYON_CAPTURE_PATH=$(abspath $(ZX_NESTED_TEST))/frame.png \
+		xvfb-run -a $(ZX_NESTED_TEST)/launcher $(abspath $(ZX_NESTED_TEST))/shell.zx
 
 test: zx-reload-test
 

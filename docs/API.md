@@ -1466,8 +1466,8 @@ that draws from one.
 
 Native launchers import `kryon/desktop_zx` and call
 `RunWithBindings(path: string, options: PlayerOptions, bindings: []HostBinding) -> s32`
-to play a desktop frame bundle. Supply the exact bundle module and function
-name in each `std/bundle_host.HostBinding`. Kryon binds its window, frame,
+to play a desktop frame bundle or hosted app. Supply the exact bundle module
+and function name in each `std/bundle_host.HostBinding`. Kryon binds its window, frame,
 drawing and input capabilities first. The player rejects missing or ambiguous
 capabilities before initializing the guest.
 
@@ -1481,6 +1481,18 @@ Build the launcher for C with `PLATFORM_DESKTOP` defined. Link the runtime
 archives and desktop libraries specified in [`mk/zx-player.mk`](../mk/zx-player.mk)
 along with the launcher's own native libraries. Grant each application's
 native capabilities only to the bundle the launcher was designed to run.
+
+For a hosted shell that runs other apps, `kryon/nested_app_host` provides a
+`NestedAppHost` table owned by the linked launcher. Set its `ChildAppPolicy`
+to approve child bytes and supply that child's services and asset resolver.
+Use `CollectNestedAppBindings` with the inspected outer bundle. Keep that bundle
+and the table alive until playback returns, then call `CloseNestedApps` even
+if the outer guest traps. The shell uses `std/bundle_guest` for lifecycle and
+packed asset reads and `kryon/nested_app` for frame, command, save and reply.
+`Frame` draws into a bounded child scope inside the shell's current widget
+frame. It receives the key and modifiers the shell passes, and its input
+snapshot exposes pointer data within those bounds. Each child has its own
+runtime state and the launcher grants its native services explicitly.
 
 ## Cover carousels
 

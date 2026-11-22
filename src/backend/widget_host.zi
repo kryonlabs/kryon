@@ -14,6 +14,8 @@ Image :: #import "image";
 // Guests' buttons carry built-in icons (see image_lookup).
 #import "icon"
 InlineEdit :: #import "inlineedit";
+Layout :: #import "layout";
+LayoutProps :: #import "layout_props";
 Modal :: #import "modal_frame";
 MoneyField :: #import "moneyfield";
 OneTimeCode :: #import "onetimecode";
@@ -87,6 +89,9 @@ widget_audio_result_codec: WidgetMediaAudioResultCodec;
 widget_host_session: Session;
 widget_host_active: bool;
 widget_host_staging: bool;
+widget_group_fields: [8]HostField;
+widget_group_bounds: WidgetRectangleCodec;
+widget_group_content: WidgetRectangleCodec;
 widget_tooltip_props_codec: WidgetTooltipPropsCodec;
 widget_tooltip_state_codec: WidgetTooltipStateCodec;
 widget_tooltip_state: Tooltip.TooltipState;
@@ -247,6 +252,7 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (ModuleName(module, "button") && function == "ButtonHostedHost") ||
     (ModuleName(module, "textarea") && function == "TextAreaHostedHost") ||
     (ModuleName(module, "scroll") && function == "ScrollHostedHost") ||
+    (ModuleName(module, "layout") && function == "GroupHostedHost") ||
     (ModuleName(module, "tree") && function == "EndHostedHost") ||
     (ModuleName(module, "tree") && function == "TreePushScopeHostedHost") ||
     (ModuleName(module, "textfield") && function == "TextFieldHostedHost") ||
@@ -276,6 +282,48 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (ModuleName(module, "contextmenu") && function == "ContextMenuHostedHost") ||
     (ModuleName(module, "widget_palette") && function == "WidgetPaletteHostedHost") ||
     (ModuleName(module, "widget_palette") && function == "WidgetPaletteRestoreHostedHost")
+}
+
+WidgetHostGroup :: (session: Session, value: HostValue, result: *HostValue) -> s32 {
+    if widget_host_depth >= WIDGET_HOST_SCOPE_DEPTH ||
+        !HostRecordValid(*value, "layout_props.Props") ||
+        !HostFieldRecordValid(*value, 0, "bounds", WidgetValidRectangle) { return 0 }
+    spacing := string.["gap", "padding", "row_gap", "column_gap", "padding_x", "padding_y"]
+    overrides := string.["gap_override", "padding_override", "row_gap_override",
+        "column_gap_override", "padding_x_override", "padding_y_override"]
+    values: [6]s32
+    flags: [6]bool
+    zero: HostValue
+    for index: 0..5 {
+        if !HostFieldScalarValid(*value, cast(s32)index + 1, spacing[index], "s32", cast(s32)HostInteger) ||
+            !HostFieldScalarValid(*value, cast(s32)index + 7, overrides[index], "bool", cast(s32)HostInteger) { return 0 }
+        values[index] = cast(s32)HostFieldValue(*value, cast(s32)index + 1, spacing[index], *zero).integer
+        flags[index] = HostFieldValue(*value, cast(s32)index + 7, overrides[index], *zero).integer != 0
+    }
+    if !HostFieldScalarValid(*value, 13, "key", "u64", cast(s32)HostUnsigned) ||
+        !HostFieldScalarValid(*value, 14, "id", "s32", cast(s32)HostInteger) ||
+        !HostFieldScalarValid(*value, 15, "class_name", "s32", cast(s32)HostInteger) { return 0 }
+    props := LayoutProps.Props.{
+        .bounds = WidgetDecodeRectangle(HostFieldValue(*value, 0, "bounds", *zero).*, *widget_group_bounds),
+        .gap = values[0], .padding = values[1], .row_gap = values[2], .column_gap = values[3],
+        .padding_x = values[4], .padding_y = values[5], .gap_override = flags[0],
+        .padding_override = flags[1], .row_gap_override = flags[2], .column_gap_override = flags[3],
+        .padding_x_override = flags[4], .padding_y_override = flags[5],
+        .key = HostFieldValue(*value, 13, "key", *zero).bits,
+        .id = cast(s32)HostFieldValue(*value, 14, "id", *zero).integer,
+        .class_name = cast(s32)HostFieldValue(*value, 15, "class_name", *zero).integer}
+    group := Layout.Group(session, props)
+    if group.opened { widget_host_depth += 1 }
+    widget_group_fields[0] = HostField.{.name = HostTextData("node"), .value = HostScalar("s32", cast(s64)group.node)}
+    widget_group_fields[1] = HostField.{.name = HostTextData("opened"), .value = HostScalar("bool", ifx group.opened then 1 else 0)}
+    widget_group_fields[2] = HostField.{.name = HostTextData("kind"), .value = HostScalar("s32", cast(s64)group.kind)}
+    widget_group_fields[3] = HostField.{.name = HostTextData("bounds"), .value = WidgetEncodeRectangle(group.bounds, *widget_group_bounds)}
+    widget_group_fields[4] = HostField.{.name = HostTextData("content"), .value = WidgetEncodeRectangle(group.content, *widget_group_content)}
+    widget_group_fields[5] = HostField.{.name = HostTextData("gap"), .value = HostScalar("s32", cast(s64)group.gap)}
+    widget_group_fields[6] = HostField.{.name = HostTextData("padding"), .value = HostScalar("s32", cast(s64)group.padding)}
+    widget_group_fields[7] = HostField.{.name = HostTextData("padding_y"), .value = HostScalar("s32", cast(s64)group.padding_y)}
+    result.* = HostRecordValue("layout.LayoutContainer", widget_group_fields[:])
+    return 1
 }
 
 WidgetHostPackedPath :: (path: string) -> string { return path }
@@ -353,6 +401,51 @@ WidgetHostEnd :: () {
     widget_host_staging = false
     widget_host_audio = null
     widget_host_audio_context = null
+}
+
+// A native harness may render a child synchronously inside its parent's
+// frame. Each child closes only its own tree and palette scopes.
+WidgetHostFrame :: struct {
+    session: Session
+    asset_allowed: WidgetAssetAllowed
+    asset_resolve: WidgetAssetResolve
+    audio: *MediaAudioOwner
+    audio_read: MediaAudioRead
+    audio_context: *void
+    depth: s32
+    palette_depth: s32
+    active: bool
+    staging: bool
+}
+
+WidgetHostEnter :: (session: Session, asset_allowed: WidgetAssetAllowed,
+    resolve: WidgetAssetResolve = WidgetHostPackedPath) -> WidgetHostFrame {
+    parent := WidgetHostFrame.{.session = widget_host_session,
+        .asset_allowed = widget_host_asset_allowed, .asset_resolve = widget_host_asset_resolve,
+        .audio = widget_host_audio, .audio_read = widget_host_audio_read,
+        .audio_context = widget_host_audio_context, .depth = widget_host_depth,
+        .palette_depth = widget_host_palette_depth, .active = widget_host_active,
+        .staging = widget_host_staging}
+    WidgetHostBegin(session, asset_allowed, resolve, staging = parent.staging)
+    return parent
+}
+
+WidgetHostLeave :: (parent: WidgetHostFrame) {
+    WidgetHostEnd()
+    widget_host_session = parent.session
+    widget_host_asset_allowed = parent.asset_allowed
+    widget_host_asset_resolve = parent.asset_resolve
+    widget_host_audio = parent.audio
+    widget_host_audio_read = parent.audio_read
+    widget_host_audio_context = parent.audio_context
+    widget_host_depth = parent.depth
+    widget_host_palette_depth = parent.palette_depth
+    widget_host_active = parent.active
+    widget_host_staging = parent.staging
+}
+
+WidgetHostFrameSession :: () -> Session {
+    return ifx widget_host_active then widget_host_session else Session.{}
 }
 
 WidgetHostAssetAllowed :: (path: string) -> bool {
@@ -540,6 +633,9 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         widget_host_depth -= 1
         result.* = HostScalar("bool", 1)
         return 1
+    }
+    if name == "GroupHostedHost" && ModuleName(owner, "layout") && count == 2 {
+        return WidgetHostGroup(session, arguments[1], result)
     }
     if name == "TreePushScopeHostedHost" && ModuleName(owner, "tree") && count == 2 {
         if widget_host_depth >= WIDGET_HOST_SCOPE_DEPTH ||

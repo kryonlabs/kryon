@@ -3,6 +3,7 @@
 #import "std/bundle_host"
 #import "std/timer_linux"
 #import "key_input"
+#import "frame_snapshot"
 #import "desktop_runtime"
 #import "cairo_raster"
 // Register decoding for picture cursors requested by hosted widgets.
@@ -14,6 +15,8 @@ SetTitle :: (window: *void, title: *u8) #foreign sdl "SDL_SetWindowTitle";
 
 Draw :: (host: *BundleApp) -> bool {
     BeginDesktopFrame()
+    unused DesktopFrameInputBegin(host.app.session)
+    defer { FrameInputEnd(host.app.session) }
     key, modifiers := DesktopInputTake(host.app.session)
     typed: [1024]u8
     text := TypedTextTake(host.app.session, typed[:])
@@ -25,9 +28,9 @@ Draw :: (host: *BundleApp) -> bool {
 }
 
 // Takes ownership of the opened bundle. Its caller retains extracted assets.
-Run :: (bundle: *void, check: bool) -> s32 {
+Run :: (bundle: *void, check: bool, bindings: []HostBinding) -> s32 {
     if check {
-        accepted := BundleAppCheck(bundle)
+        accepted := BundleAppCheck(bundle, bindings)
         CloseBundle(bundle)
         return ifx accepted then 0 else 1
     }
@@ -36,7 +39,7 @@ Run :: (bundle: *void, check: bool) -> s32 {
     locale := "en"
     language := BundleAppEnvironment("LANG")
     if language.count >= 2 { locale = language[:2] }
-    ready := BundleAppOpenBundle(*host, bundle, directory, null, locale)
+    ready := BundleAppOpenBundle(*host, bundle, directory, null, locale, bindings)
     AppFileFree(directory)
     if ready {
         ready = OpenDesktop()
@@ -47,7 +50,7 @@ Run :: (bundle: *void, check: bool) -> s32 {
     }
     if ready {
         if CaptureRequested() {
-            ready = Draw(*host) && Draw(*host) && CaptureConfigured()
+            ready = PollDesktop() && Draw(*host) && Draw(*host) && CaptureConfigured()
         } else {
             while ready && PollDesktop() {
                 ready = Draw(*host)

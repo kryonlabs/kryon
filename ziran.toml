@@ -5,7 +5,7 @@ module_roots = ["src/ui", "src/backend", "src/ui/alert", "src/ui/avatar", "src/u
 
 [toolchain]
 git = "https://git.waozi.xyz/ziranlang/ziran.git"
-ref = "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0"
+ref = "2684af8d22b623c52bfd19ce785523b50ad83c5e"
 
 [dependencies.libwebp]
 git = "https://github.com/webmproject/libwebp.git"
@@ -135,6 +135,8 @@ mini_embed = "src/backend/mini_embed.zi"
 app_context = "src/backend/app_context.zi"
 app_protocol = "src/backend/app_protocol.zi"
 app_context_host = "src/backend/app_context_host.zi"
+nested_app = "src/backend/nested_app.zi"
+nested_app_host = "src/backend/nested_app_host.zi"
 app_files = "src/backend/app_files.zi"
 app_local = "src/backend/app_local.zi"
 hosted_values = "src/backend/hosted_values.zi"

@@ -12,7 +12,6 @@
     },
     {
       "commit": "3017f0d1cc56975aa29c600a1f55a62e1193cf7b",
-      "checked": {"profile": "default", "sha256": "977dd8832c2c660bbc40ff20d704557939cccf6818c29b3d9402d737590d869d", "toolchain": "pb6607dd27b15499f"},
       "dependencies": {},
       "id": "p115fee450ee07367",
       "name": "image-codec",
@@ -39,7 +38,6 @@
     },
     {
       "commit": "6581dfa03711a96d219becd964860543b24b1f4f",
-      "checked": {"profile": "default", "sha256": "ddbbe75c178f6308beea50133c962a83b5424053e209d697b2aecc400e7545a6", "toolchain": "pb6607dd27b15499f"},
       "dependencies": {"image_codec": "p115fee450ee07367", "libwebp": "p3b3c785a0e17e605"},
       "dependency_refs": {"image_codec": "3017f0d1cc56975aa29c600a1f55a62e1193cf7b", "libwebp": "1844042d1ca751e62e61df7617dba19c98588339"},
       "id": "p4cdce4edaaf93e67",
@@ -117,8 +115,8 @@
     "name": "kryon"
   },
   "toolchain": {
-    "commit": "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0",
-    "ref": "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0",
+    "commit": "2684af8d22b623c52bfd19ce785523b50ad83c5e",
+    "ref": "2684af8d22b623c52bfd19ce785523b50ad83c5e",
     "url": "https://git.waozi.xyz/ziranlang/ziran.git"
   }
 }

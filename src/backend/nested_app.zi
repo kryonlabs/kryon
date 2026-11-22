@@ -1,0 +1,31 @@
+// Hosted shell controls. The desktop harness supplies the current native
+// widget scope, so no session or callback can be supplied by a bundle.
+#import "geometry"
+Field :: #import "textfield";
+Area :: #import "textarea";
+host_api :: #system_library "host_api";
+
+ChildAppFrameHost :: (child: u64, bounds: Rectangle, dark: bool, key: s32, modifiers: s32,
+    input: Field.Input, area_input: Area.Input) -> bool #foreign host_api;
+ChildAppCommandHost :: (child: u64, command: string) -> bool #foreign host_api;
+ChildAppSaveHost :: (child: u64) -> bool #foreign host_api;
+ChildAppReplyHost :: (child: u64) -> string #foreign host_api;
+ChildAppKeyboardHost :: (child: u64) -> bool #foreign host_api;
+
+#program_export
+Frame :: (child: u64, bounds: Rectangle, dark: bool, key: s32, modifiers: s32,
+    input: Field.Input, area_input: Area.Input) -> bool {
+    return ChildAppFrameHost(child, bounds, dark, key, modifiers, input, area_input)
+}
+
+#program_export
+Command :: (child: u64, command: string) -> bool { return ChildAppCommandHost(child, command) }
+
+#program_export
+Save :: (child: u64) -> bool { return ChildAppSaveHost(child) }
+
+#program_export
+Reply :: (child: u64) -> string { return ChildAppReplyHost(child) }
+
+#program_export
+Keyboard :: (child: u64) -> bool { return ChildAppKeyboardHost(child) }
