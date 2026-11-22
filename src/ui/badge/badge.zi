@@ -160,7 +160,12 @@ Draw :: (session: Session, props: Props) -> BadgeResult {
     TreeSetLabel(session, result.node, props.text)
     TreeSetStyleId(session, result.node, props.id)
     TreeSetStyleClass(session, result.node, props.class_name)
-    TreeSetChildClip(session, result.node, result.bounds)
+    // Paint on the node is in the measured rect and moves with it; the
+    // icon and label are child widgets, drawn where the parent placed it.
+    placed := TreeSubmittedBounds(session, result.node)
+    dx := placed.x - result.bounds.x
+    dy := placed.y - result.bounds.y
+    TreeSetChildClip(session, result.node, placed)
     opacity := StyleOpacityValue(face.fields, face.opacity)
     result.background = face.background
     result.foreground = face.foreground
@@ -185,7 +190,7 @@ Draw :: (session: Session, props: Props) -> BadgeResult {
         cursor += 6.0 + face.gap
     }
     if props.icon_type > 0 {
-        icon_bounds := Rectangle.{cursor, center_y - face.icon_size * 0.5, face.icon_size, face.icon_size}
+        icon_bounds := Rectangle.{cursor + dx, center_y + dy - face.icon_size * 0.5, face.icon_size, face.icon_size}
         icon := ImageForIcon(props.icon_type, icon_bounds, props.text)
         icon.key = WidgetPartKey(key, 1)
         icon.tint = Opacity(face.foreground, opacity)
@@ -194,7 +199,7 @@ Draw :: (session: Session, props: Props) -> BadgeResult {
     }
     if props.text != "" {
         text := Text.Props.{.key = WidgetPartKey(key, 2), .text = props.text,
-            .bounds = Rectangle.{cursor, result.bounds.y,
+            .bounds = Rectangle.{cursor + dx, placed.y,
                 result.bounds.x + result.bounds.width - face.padding_x - cursor,
                 result.bounds.height}, .size = font, .typeface = face.typeface,
             .vertical_align = .TextAlignCenter,
@@ -202,5 +207,6 @@ Draw :: (session: Session, props: Props) -> BadgeResult {
         Text.Draw(session, text)
     }
     unused TreePopScope(session)
+    result.bounds = placed
     return result
 }

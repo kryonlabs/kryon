@@ -39,6 +39,7 @@ using Text :: #import "text_props";
     #import "tree"
     #import "text_selection_host"
     #import "widget_kind"
+    Layout :: #import "layout";
     Grapheme :: #import "std/grapheme";
 
     using WidgetKind;
@@ -467,10 +468,29 @@ using Text :: #import "text_props";
 
     DrawSession :: (session: Session, props: Text.Props) {
         if !Finite32(props.rotation) || !Finite32(props.origin.x) || !Finite32(props.origin.y) { return }
-        if props.bounds.width == 0.0 && props.bounds.height == 0.0 {
+        face: TextFace = TextFaceOf(props)
+        if TreeIsBuilding(session) && props.bounds.x == 0.0 && props.bounds.y == 0.0 &&
+            (props.bounds.width <= 0.0 || props.bounds.height <= 0.0) &&
+            TreeSubmittedNodeAt(session, TreeCurrentParent(session)).places_children {
+            // Placed by its container: an unset width fills a column, stack or
+            // grid track (a row keeps the text's own width), an unset height
+            // takes the wrapped lines.
+            if props.bounds.width <= 0.0 {
+                props.bounds.width = Layout.LayoutChildWidth(session)
+                if props.bounds.width <= 0.0 {
+                    sized := PrepareText(props, face)
+                    props.bounds.width = cast(float32)GlyphWidth(props.text, sized.font, sized.typeface,
+                        sized.glyph_style)
+                }
+            }
+            if props.bounds.height <= 0.0 {
+                sized := PrepareText(props, face)
+                props.bounds.height = cast(float32)TextLayoutTotalHeight(sized.line_count,
+                    sized.line_height, sized.line_gap)
+            }
+        } else if props.bounds.width == 0.0 && props.bounds.height == 0.0 {
             props.bounds = TreeRootBounds(session)
         }
-        face: TextFace = TextFaceOf(props)
         lines: [8]TextLinePlan
         revision := GlyphMetricsRevision()
         prepared: PreparedText = PrepareTextWithLines(props, face, lines[:])

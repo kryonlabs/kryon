@@ -109,7 +109,9 @@ if sc.opened {
 
 ### B. Measured flex and grid containers
 
-- **Block flow** (`div` stacks, `display: flex` rows without justification or growth, `flex-wrap: wrap` chip rows) needs no measuring: use a content-sized `Layout.Draw`, `Layout.Row`, `Layout.Flow` or item-less `Layout.Grid` and draw the children.
+- **Block flow** (`div` stacks, `display: flex` rows without justification or growth, `flex-wrap: wrap` chip rows) needs no measuring: use a content-sized `Layout.Draw`, `Layout.Row`, `Layout.Flow` or item-less `Layout.Grid` and draw the children. Text placed with no size fills a column or grid track (a row keeps the text's own width) and takes its wrapped line height; Button and Badge measure themselves, and `.full_width = true` fills the placing column.
+- **Sidebar + main, header with actions at the end.** In a placing `Row` an auto-width container takes the width its earlier siblings left, and a container in a `Row` of fixed height stretches to it. CSS `flex: 1` on a container in a fixed-height `Column` takes the remaining height (`main { display: flex; flex-direction: column }` with a `flex: 1` body). `width: 246px; margin-left: auto` on a container in a row pushes it to the row's end.
+- **Composite widgets** that lay out their own children from their bounds (Alert, EmptyState, Card, TitleBar, the loading spinner) go in a `Layout.Stack(session, .{.bounds = .{height = h}})` slot; draw them with `slot.content`.
 - **CSS Flexbox** with justification, growth or cross-axis alignment uses `Layout.Row(session, props, items[:], placements[:])` or the same arguments to `Layout.Draw` for a column. Pass a `[]Layout.FlexItem` with measured sizes and each styled child's `kind`, `id` and `class_name`. The container resolves CSS direction, wrapping, gaps, padding, justification and alignment. Children can set basis, grow, shrink and self-alignment in CSS. Draw in `placements[i].bounds` and close the layout scope once. The low-level `BeginFlexCursor` and `FlexStep` functions place premeasured children in a single line.
 - **CSS Grid** uses `Layout.Grid(session, Grid.GridProps.{.key, .class_name}, items[:])`.
   Give each item a height or a `measure_height(width, key)` callback. A zero height calls the measurement with the item's allocated width after tracks and spans are resolved. The tallest item sets each row's height. Pass an output `[]Rectangle` as the fourth argument to measure and place all items in one pass, then draw children using those bounds. Two-argument calls place unpositioned single-track children using their submitted sizes.
@@ -130,33 +132,43 @@ Grid.charts {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
-Card.panel { background: #151f30; border: 1px solid #29384f; border-radius: 16px; padding: 20px; }
+Column.panel { background: #151f30; border: 1px solid #29384f; border-radius: 16px; padding: 20px; gap: 8px; }
 @media (max-width: 820px) {
   Grid.charts { grid-template-columns: minmax(0, 1fr); }
-  Card.panel { padding: 12px; }
+  Column.panel { padding: 12px; }
 }
 ```
 
 ```zi
 CSS :: #import "css/Css";
-Grid :: #import "kryon/grid";
 Layout :: #import "kryon/layout";
+Text :: #import "kryon/text";
 
-// Inside a Column or Section scope, after installing the viewport styles:
-items: [3]Grid.GridItem = .[.{.height = 340, .column_span = -1}, .{.height = 240}, .{.height = 240}]
-charts := Layout.Grid(session, Grid.GridProps.{.key = 30, .class_name = CSS.StyleClass("charts")}, items[:])
+// Inside a Column scope, after installing the viewport styles. The grid and
+// each card size to their children; the CSS above paints the cards.
+charts := Layout.Grid(session, GridProps.{.class_name = CSS.StyleClass("charts")})
 if charts.container.opened {
-    cursor := charts.cursor
+    Layout.GridSpan(session, charts.container, -1)          // grid-column: 1 / -1
     for i: 0..2 {
-        cursor = Grid.GridStep(cursor, items[i].height, items[i].column_span)
-        // Draw each keyed Card/Plot in cursor.item.
+        card := Layout.Draw(session, Layout.Props.{.class_name = CSS.StyleClass("panel")})
+        if card.opened {
+            Text.Draw(session, Text.Props.{.text = titles[i]})
+            // A chart or table goes here; give it a height, it fills the width.
+            unused End(session)
+        }
     }
     unused End(session)
 }
 ```
 
+`examples/dashboard` is a complete port: sidebar, header, KPI cards, search,
+filters, a scrolling result list and an inspector, all placed by containers
+from one stylesheet with 760 px media rules. Its frame code has no rectangle
+arithmetic and no computed keys.
+
 | Dashboard HTML/CSS | Native authoring |
 | --- | --- |
+| `.card { background; border; border-radius; padding }` | Same CSS on a `Column` (`Layout.Draw`) with that class: it paints the box under its children. |
 | `main { max-width: 1480px; margin: 0 auto }` | Use the same declarations on a `Column`, `Row` or `Grid`: the container caps its width and centers itself in its parent's inner width. |
 | `margin`, `min-width`, `max-height`, `overflow: hidden` | Same CSS on `Row`, `Column` and `Grid`. Margins move the box inside the slot its parent places, so siblings keep their gaps. `overflow: hidden` clips descendants to the box. |
 | `display: grid`, equal `1fr` tracks | Select `Layout.Grid` in `.zi`. Use `1fr`, `minmax(0, 1fr)`, or `repeat(N, ...)` in CSS. `N` is 1–1024. |

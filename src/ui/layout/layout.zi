@@ -219,6 +219,27 @@ LayoutAutoWidth :: (declared: float32, face: StyleData) -> bool {
     return declared <= 0.0 && !(StyleHasField(face, cast(u32)StyleWidth) && face.width > 0.0)
 }
 
+// What the placing parent row or column has left on its main axis after
+// the children it already placed; zero or less when nothing is left.
+LayoutRemaining :: (session: Session, horizontal: bool) -> float32 {
+    index := TreeCurrentParent(session)
+    info := TreeLayoutAt(session, index)
+    progress := TreeLayoutProgressAt(session, index)
+    content := LayoutMetricsFor(info.bounds, info.gap, info.padding, info.padding_y).content
+    used := progress.extent + cast(float32)(info.gap * progress.count)
+    return ifx horizontal then content.width - used else content.height - used
+}
+
+// CSS `flex-grow` above zero on the container itself, as a child.
+LayoutGrows :: (props: PropsModule.Props, kind: s32) -> bool {
+    style_kind := ifx kind == WidgetKindRow then StyleKindRow() else StyleKindColumn()
+    facts := StyleDefaultFacts(style_kind)
+    facts.id = props.id
+    facts.class_name = props.class_name
+    item := ResolveInstalledFlexItem(facts)
+    return (item.fields & cast(u32)StyleFlexGrow) != 0 && item.grow > 0.0
+}
+
 LayoutAutoHeight :: (declared: float32, face: StyleData) -> bool {
     return declared <= 0.0 && !(StyleHasField(face, cast(u32)StyleHeight) && face.height > 0.0)
 }
@@ -336,10 +357,29 @@ ContainerFor :: (session: Session, props: PropsModule.Props,
     auto_width := LayoutAutoWidth(props.bounds.width, face)
     result.bounds.width = LayoutExtentFor(props.bounds.width, parent.width,
         face.width, StyleHasField(face, cast(u32)StyleWidth))
-    content_sized := (kind == WidgetKindRow || kind == WidgetKindColumn) &&
-        LayoutAutoHeight(props.bounds.height, face)
+    // In a placing row an auto width takes what the earlier siblings left,
+    // and an auto height stretches to a row of definite height. In a column
+    // of definite height, CSS flex-grow takes the height that is left.
+    holder := TreeSubmittedNodeAt(session, TreeCurrentParent(session))
+    placed := holder.places_children && props.bounds.x == 0.0 && props.bounds.y == 0.0
+    in_row := placed && holder.kind == WidgetKindRow
+    if in_row && auto_width {
+        rest := LayoutRemaining(session, true)
+        result.bounds.width = ifx rest > 0.0 then rest else 0.0
+    }
+    auto_height := LayoutAutoHeight(props.bounds.height, face)
+    content_sized := (kind == WidgetKindRow || kind == WidgetKindColumn) && auto_height &&
+        !(in_row && parent.height > 0.0)
     result.bounds.height = LayoutExtentFor(props.bounds.height, parent.height,
         face.height, StyleHasField(face, cast(u32)StyleHeight))
+    if content_sized && placed && holder.kind == WidgetKindColumn && parent.height > 0.0 &&
+        LayoutGrows(props, kind) {
+        rest := LayoutRemaining(session, false)
+        if rest > 0.0 {
+            result.bounds.height = rest
+            content_sized = false
+        }
+    }
     if (box.fields & cast(u32)LayoutBoxWidthFields) != 0 {
         result.bounds.width = LayoutBoxWidth(AutoGridChildWidth(session, result.bounds), auto_width, box)
     }
@@ -362,7 +402,9 @@ ContainerFor :: (session: Session, props: PropsModule.Props,
     result.gap = metrics.gap
     result.padding = metrics.padding
     result.padding_y = metrics.padding_y
-    return OpenContainer(session, props, result, box, parent.width, content_sized, face)
+    available := parent.width
+    if in_row { available = LayoutRemaining(session, true) }
+    return OpenContainer(session, props, result, box, available, content_sized, face)
 }
 
 // The slot a parent places: the border box plus its margins. An `auto`
@@ -602,6 +644,19 @@ AutoGridChildWidth :: (session: Session, bounds: Rectangle) -> float32 {
     if node.kind != WidgetKindGrid || !node.places_children { return bounds.width }
     track := GridStep(LayoutGridCursor(TreeLayoutAt(session, parent_index)), 0, 1)
     return track.item.width
+}
+
+// The width the current container gives a child it places that has none:
+// a column's or stack's content width or a grid's track; zero in a row or
+// flow, where the child keeps its own width, and outside placing parents.
+#program_export
+LayoutChildWidth :: (session: Session) -> float32 {
+    index := TreeCurrentParent(session)
+    node := TreeSubmittedNodeAt(session, index)
+    if !node.places_children || node.kind == WidgetKindRow { return 0.0 }
+    if node.kind == WidgetKindGrid { return AutoGridChildWidth(session, Rectangle.{}) }
+    info := TreeLayoutAt(session, index)
+    return LayoutMetricsFor(info.bounds, info.gap, info.padding, info.padding_y).content.width
 }
 
 #program_export

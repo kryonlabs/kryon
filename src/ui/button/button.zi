@@ -29,6 +29,7 @@ Theme :: #import "theme";
     #import "tree"
     #import "tree_input"
     #import "widget_kind"
+    Layout :: #import "layout";
 
     using ArrowDirection;
     using WidgetKind;
@@ -486,8 +487,14 @@ Theme :: #import "theme";
         }
         available_width: float32 = 0.0
         if TreeIsBuilding(session) {
+            // A full-width button fills the column, stack or grid track that
+            // places it, or else the rest of the window.
             root: Rectangle = TreeRootBounds(session)
             available_width = root.x + root.width - props.bounds.x
+            if props.bounds.x == 0.0 && props.bounds.y == 0.0 {
+                fill := Layout.LayoutChildWidth(session)
+                if fill > 0.0 { available_width = fill }
+            }
         }
         bounds: Rectangle = MeasureBounds(props, face,
             StyleMinHeightValue(face.fields, face.min_height,
