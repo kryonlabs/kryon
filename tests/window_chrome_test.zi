@@ -1,5 +1,6 @@
 Chrome :: #import "kryon/window_chrome";
 Pixmap :: #import "kryon/pixmap";
+Theme :: #import "kryon/theme";
 #import "kryon/input_protocol"
 #import "kryon/session"
 #import "kryon/tree"
@@ -52,6 +53,25 @@ main :: () -> s32 {
     layout = Chrome.LayoutFor(props)
     if layout.close.width != 18.0 || layout.resize.width != 0.0 || Chrome.Hit(layout, .{17.0, 10.0}) != .Close { return 6 }
 
+    props.sweet_dark = true
+    props.bounds = .{0.0, 0.0, 240.0, 32.0}
+    props.controls = Chrome.ControlClose | Chrome.ControlResize | Chrome.ControlHide
+    sweet := Chrome.LayoutFor(props)
+    if sweet.close.x != 208.0 || sweet.resize.x != 176.0 || sweet.hide.x != 144.0 ||
+        sweet.caption.x != 28.0 || Chrome.Hit(sweet, .{150.0, 10.0}) != .Hide { return 20 }
+    if Chrome.CaptionBackground(props) != cast(u32)0x0c0e14ff ||
+        Chrome.CaptionForegroundFor(props) != cast(u32)0x929ba8ff ||
+        Chrome.ControlColor(props, .Close) != cast(u32)0xff4b4bff { return 21 }
+    props.focused = false
+    if Chrome.CaptionForegroundFor(props) != cast(u32)0x778085ff ||
+        Chrome.ControlColor(props, .Close) != cast(u32)0x252528ff { return 22 }
+    if Chrome.ControlSprite(props, .Close) != 3 ||
+        Chrome.ControlSprite(props, .Resize, true) != 7 ||
+        Chrome.ControlSprite(props, .Help) != -1 { return 23 }
+    props.sweet_dark = false
+    props.focused = true
+    props.controls = Chrome.ControlClose | Chrome.ControlResize
+    props.bounds = .{0.0, 0.0, 240.0, 24.0}
     props.bounds.width = 240.0
     session := SessionOpen()
     if !SessionValid(session) { return 7 }
@@ -68,6 +88,24 @@ main :: () -> s32 {
     props.focused = false
     _, inactive := Render(session, props)
     if !inactive || pixels[0] == active || Chrome.KeyPress(props, 293, KeyModifierAlt) != .None { return 10 }
+    palette := Theme.SweetDarkPalette()
+    if palette.background != cast(u32)0x161925ff || palette.accent != cast(u32)0xc50ed2ff ||
+        palette.foreground != cast(u32)0xc3c7d1ff { return 24 }
+    props.sweet_dark = true
+    props.focused = true
+    _, sweet_active := Render(session, props)
+    sweet_background := pixels[0]
+    sweet_control := pixels[12 * 240 + 228]
+    if !sweet_active || sweet_control == sweet_background { return 25 }
+    props.focused = false
+    _, sweet_inactive := Render(session, props)
+    if !sweet_inactive || pixels[0] != sweet_background ||
+        pixels[12 * 240 + 228] == sweet_control { return 26 }
+    panel := Theme.CompactDarkPanel()
+    if panel.height != 32 || panel.icon_size != 20 || panel.item_width != 32 ||
+        panel.palette.background != cast(u32)0x10121aff ||
+        panel.palette.surface != panel.palette.background || panel.radius != 2.0 ||
+        panel.font_size != 12.0 { return 27 }
     print("Window chrome layout, click thresholds, focus paint and keyboard: OK\n")
     return 0
 }

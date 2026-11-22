@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import time
 
 from image_test_tools import png_pixels, rgb, run, solid_png
@@ -83,19 +84,19 @@ def main():
     with tempfile.TemporaryDirectory(prefix="kryon-desktop-") as directory:
         project = Path(directory)
         (project / "src").mkdir()
+        toolchain = tomllib.loads((ROOT / "ziran.toml").read_text())["toolchain"]
         (project / "ziran.toml").write_text(
             '[package]\nname = "desktop_probe"\nentry = "src/app.zi"\n'
             'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
-            '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
-            'ref = "master"\n\n'
-            '[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
+            f'[toolchain]\ngit = {json.dumps(toolchain["git"])}\n'
+            f'ref = {json.dumps(toolchain["ref"])}\n\n'
+            '[dependencies.kryon]\ngit = "https://git.waozi.xyz/kryonlabs/kryon.git"\n'
             'ref = "master"\n\n'
             '[tool.kryon]\ndefault_profile = "desktop"\n\n'
             '[tool.kryon.profiles.desktop]\nbackend = "desktop"\n'
         )
         overrides = {
             "kryon": str(ROOT),
-            "ziran": str(ZIRAN_ROOT),
         }
         (project / "ziran.local.toml").write_text(
             "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())

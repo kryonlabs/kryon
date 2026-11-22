@@ -1462,6 +1462,12 @@ that draws from `CurrentPalette()` follows too.
 theme `Palette` (surfaces, text levels, borders, accent, controls) for an app
 that draws from one.
 
+`Theme.SweetDarkPalette()` provides the dark Sweet surfaces, text and accent
+colors. `Theme.CompactDarkPanel()` returns a `CompactPanelStyle` with a near-black
+palette, 32-pixel height and item width, 20-pixel icons, workspace and clock widths,
+and compact corner, padding and font sizes. Apply these tokens within the panel's
+palette scope; application compositions retain their own saved layout and state.
+
 ## Linked desktop ZX player
 
 Native launchers import `kryon/desktop_zx` and call

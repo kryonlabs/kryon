@@ -11,6 +11,7 @@ Theme :: #import "theme";
 #import "paint_queue"
 #import "text_align"
 #import "control_props"
+#import "widget_palette"
 
 ControlClose :: 1
 ControlResize :: 2
@@ -37,6 +38,7 @@ Props :: struct {
     title: string
     focused: bool
     controls: u32
+    sweet_dark: bool
 }
 
 State :: struct {
@@ -68,6 +70,16 @@ LayoutFor :: (props: Props) -> Layout {
     room := props.bounds
     if room.width <= 0.0 || room.height <= 0.0 { return result }
     result.close = TakeControl(*room, props.controls, ControlClose)
+    if props.sweet_dark {
+        result.resize = TakeControl(*room, props.controls, ControlResize)
+        result.hide = TakeControl(*room, props.controls, ControlHide)
+        result.task = TakeControl(*room, props.controls, ControlTask)
+        result.help = TakeControl(*room, props.controls, ControlHelp)
+        result.ok = TakeControl(*room, props.controls, ControlOK)
+        if room.width > 28.0 { room.x += 28.0; room.width -= 28.0 }
+        result.caption = room
+        return result
+    }
     result.ok = TakeControl(*room, props.controls, ControlOK)
     result.task = TakeControl(*room, props.controls, ControlTask)
     result.hide = TakeControl(*room, props.controls, ControlHide)
@@ -131,10 +143,44 @@ CaptionTextBounds :: (layout: Layout) -> Rectangle {
 }
 
 CaptionBackground :: (props: Props) -> u32 {
+    if props.sweet_dark { return Theme.SweetDarkPalette().surface_sunken }
     return ifx props.focused then Theme.CurrentRaised() else Theme.CurrentSunken()
 }
 
 CaptionForeground :: () -> u32 { return Theme.CurrentText() }
+
+CaptionForegroundFor :: (props: Props) -> u32 {
+    if props.sweet_dark {
+        palette := Theme.SweetDarkPalette()
+        return ifx props.focused then palette.text_secondary else palette.text_muted
+    }
+    return CaptionForeground()
+}
+
+ControlSprite :: (props: Props, action: Action, pressed: bool = false) -> s32 {
+    if !props.sweet_dark { return -1 }
+    column: s32 = -1
+    if action == .Close { column = 0 }
+    if action == .Resize { column = 1 }
+    if action == .Hide || action == .Task { column = 2 }
+    if column < 0 { return -1 }
+    row: s32 = 0
+    if !props.focused { row = 1 }
+    if pressed { row = 2 }
+    return row * 3 + column
+}
+
+ControlColor :: (props: Props, action: Action, pressed: bool = false) -> u32 {
+    if !props.sweet_dark { return Theme.CurrentRaised() }
+    palette := Theme.SweetDarkPalette()
+    color := cast(u32)0xb4b7baff
+    if action == .Close { color = palette.danger }
+    if action == .Resize { color = cast(u32)0xaa00efff }
+    if action == .Hide || action == .Task { color = palette.warning }
+    if !props.focused { color = cast(u32)0x252528ff }
+    if pressed { color = Theme.StateLayer(color, cast(u32)0x000000ff, 25) }
+    return color
+}
 
 CaptionFont :: (props: Props) -> s32 {
     size := Theme.TypeSmall()
@@ -163,9 +209,19 @@ ControlLabel :: (action: Action) -> string {
     return ""
 }
 
-DrawControl :: (session: Session, key: u64, bounds: Rectangle, action: Action) -> bool {
+DrawControl :: (session: Session, key: u64, bounds: Rectangle, action: Action, props: Props) -> bool {
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return false }
-    clicked := Button.Draw(session, .{.key = key, .bounds = bounds, .label = ControlGlyph(action),
+    label := ControlGlyph(action)
+    if props.sweet_dark {
+        dot := bounds
+        dot.x += (dot.width - 14.0) / 2.0; dot.y += (dot.height - 14.0) / 2.0
+        dot.width = 14.0; dot.height = 14.0
+        PaintRoundedFill(session, TreeCurrentParent(session), dot, 7.0, 0,
+            ColorFromPacked(ControlColor(props, action)))
+        label = ""
+    }
+    clicked := Button.Draw(session, .{.key = key, .bounds = bounds, .label = label,
+        .emphasis = ifx props.sweet_dark then .ButtonEmphasisGhost else .ButtonEmphasisFilled,
         .fit_content = true, .size = .ControlSizeSmall,
         .tone = ifx action == .Close then .ButtonToneDanger else .ButtonToneNeutral}) != 0
     if TreeIsBuilding(session) {
@@ -182,6 +238,14 @@ DrawControl :: (session: Session, key: u64, bounds: Rectangle, action: Action) -
 // Button activation, including focus traversal and keyboard activation.
 Draw :: (session: Session, props: Props) -> Action {
     if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return .None }
+    scoped: bool
+    if props.sweet_dark {
+        palette := Theme.SweetDarkPalette()
+        scoped = WidgetPaletteUse(session, .{background = palette.surface_sunken, base = palette.surface_sunken,
+            text = CaptionForegroundFor(props), selected = palette.accent, selected_text = palette.on_accent,
+            border = palette.border, danger = palette.danger, warning = palette.warning, success = palette.success})
+    }
+    defer { if scoped { unused WidgetPaletteRestore(session) } }
     key := props.key
     if key == 0 { key = TreeNextKey(session) }
     parent := TreeCurrentParent(session)
@@ -191,14 +255,15 @@ Draw :: (session: Session, props: Props) -> Action {
     base := key * cast(u64)65599
     if caption.width > 0.0 && props.title != "" {
         Text.Draw(session, .{.key = base, .bounds = caption, .text = props.title,
+            .align = ifx props.sweet_dark then .TextAlignCenter else .TextAlignStart,
             .size = CaptionFont(props), .wrap = .TextWrapEllipsis, .vertical_align = .TextAlignCenter})
     }
     action: Action
-    if DrawControl(session, base + 2, layout.help, .Help) { action = .Help }
-    if DrawControl(session, base + 6, layout.resize, .Resize) { action = .Resize }
-    if DrawControl(session, base + 5, layout.hide, .Hide) { action = .Hide }
-    if DrawControl(session, base + 4, layout.task, .Task) { action = .Task }
-    if DrawControl(session, base + 3, layout.ok, .OK) { action = .OK }
-    if DrawControl(session, base + 1, layout.close, .Close) { action = .Close }
+    if DrawControl(session, base + 2, layout.help, .Help, props) { action = .Help }
+    if DrawControl(session, base + 6, layout.resize, .Resize, props) { action = .Resize }
+    if DrawControl(session, base + 5, layout.hide, .Hide, props) { action = .Hide }
+    if DrawControl(session, base + 4, layout.task, .Task, props) { action = .Task }
+    if DrawControl(session, base + 3, layout.ok, .OK, props) { action = .OK }
+    if DrawControl(session, base + 1, layout.close, .Close, props) { action = .Close }
     return action
 }

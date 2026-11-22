@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Share Sweet dark window chrome and compact dark panel style tokens across native and ZX applications.
+
 - Hosted desktop ZX shells can run approved child bundles in their own
   widget scopes with separate state, assets and native service grants.
 

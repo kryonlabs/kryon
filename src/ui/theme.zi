@@ -216,6 +216,59 @@ DarkPalette :: () -> Palette {
 }
 
 #program_export
+SweetDarkPalette :: () -> Palette {
+    palette := DarkPalette()
+    palette.background = cast(u32)0x161925ff
+    palette.surface = cast(u32)0x181b28ff
+    palette.surface_raised = cast(u32)0x1e2233ff
+    palette.surface_muted = cast(u32)0x171a26ff
+    palette.surface_sunken = cast(u32)0x0c0e14ff
+    palette.foreground = cast(u32)0xc3c7d1ff
+    palette.text_secondary = cast(u32)0x929ba8ff
+    palette.text_muted = cast(u32)0x778085ff
+    palette.text_disabled = cast(u32)0x6d707bff
+    palette.icon = palette.foreground; palette.icon_muted = palette.text_muted
+    palette.border = cast(u32)0x090a0fff; palette.subtle_border = cast(u32)0x0a0c11ff
+    palette.accent = cast(u32)0xc50ed2ff; palette.accent_strong = cast(u32)0xda22e8ff
+    palette.accent_subtle = cast(u32)0xc50ed233; palette.on_accent = cast(u32)0xfefefeff
+    palette.selection = palette.accent; palette.selection_text = palette.on_accent
+    palette.focus = palette.accent; palette.control_on = palette.accent
+    palette.control_track = palette.surface_raised
+    palette.control_track_hover = cast(u32)0x292e42ff
+    palette.danger = cast(u32)0xff4b4bff; palette.warning = cast(u32)0xffbb24ff
+    palette.success = cast(u32)0x06c993ff
+    palette.link = palette.accent_strong
+    return palette
+}
+
+CompactPanelStyle :: struct {
+    height: s32
+    icon_size: s32
+    item_width: s32
+    workspace_width: s32
+    clock_width: s32
+    radius: float32
+    padding_x: float32
+    padding_y: float32
+    font_size: float32
+    palette: Palette
+}
+
+#program_export
+CompactDarkPanel :: () -> CompactPanelStyle {
+    palette := SweetDarkPalette()
+    palette.background = cast(u32)0x10121aff
+    palette.surface = palette.background
+    palette.surface_raised = cast(u32)0x222530ff
+    palette.surface_muted = cast(u32)0x181b24ff
+    palette.border = cast(u32)0x272a35ff
+    palette.foreground = cast(u32)0xbfc3ceff
+    return .{height = 32, icon_size = 20, item_width = 32,
+        workspace_width = 24, clock_width = 80, radius = 2.0,
+        padding_x = 3.0, padding_y = 1.0, font_size = 12.0, palette = palette}
+}
+
+#program_export
 DefaultFonts :: () -> FontTokens {
     fonts: FontTokens
     fonts.body = "Inter"
