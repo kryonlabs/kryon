@@ -40,6 +40,13 @@ catalog as one ZX. See [ZX applications](../docs/PROJECTS.md#zx-applications)
 for player and platform build commands. The website runs every example live
 on its Components page instead of publishing these bundles.
 
+The site's Apps page lists each Kryon Labs app from
+`examples/gallery/src/site_apps.zi`: a web app opens its published browser
+build, a desktop app carries a `desktop_reason`. When an app gains a browser
+build, add its `SiteWebApp` entry and card image in
+`examples/gallery/assets/apps/`, then move it from `DESKTOP_APPS` to
+`WEB_APPS` in `tests/site_browser_test.py`.
+
 The desktop host supports `KRYON_CATALOG_SCENE` and `KRYON_CAPTURE_PATH` for
 repeatable captures. Scrub the inherited display and session environment and
 use a private `xvfb-run -a` display for all captures and browser checks.
