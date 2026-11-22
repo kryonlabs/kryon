@@ -1,6 +1,11 @@
 # Dashboard Starter
 
-A reusable, editable native Kryon dashboard starter demonstrating:
+A reusable, editable native Kryon dashboard starter. The frame
+([`src/dashboard.zi`](src/dashboard.zi)) only says what goes where: layout
+containers place and size every child, and the stylesheet
+([`src/styles.zi`](src/styles.zi)) sets the sidebar width, the KPI and
+inspector cards, gaps, padding, fonts and the 760 px breakpoint. There is no
+rectangle arithmetic and no computed key in the frame. It demonstrates:
 
 - Responsive wide/narrow layout (sidebar rail on wide viewports, compact navigation strip on narrow viewports)
 - Live CSS styling via `kryonlabs/css` (`:root` custom properties, `hwb()` colors, `%` opacity, `min-block-size`, `@media (prefers-color-scheme: dark)`, `@media (-kryon-density: compact)`, `#id`, `.class`, `:hover`, `:selected`, `:focus`)
@@ -27,14 +32,12 @@ Create a `ziran.local.toml` in `examples/dashboard/` to exercise changes in the 
 ```toml
 [overrides]
 kryon = "../.."
-ziran = "../../../../ziranlang/ziran"
 css = "../../../packages/css"
-image_codec = "../../../../ziranlang/packages/image-codec"
-avif = "../../../../ziranlang/packages/avif"
-webp = "../../../../ziranlang/packages/webp"
 ```
 
-Run `ziran pkg paths kryon css ziran` to confirm the local sources. Use ordinary project commands during local development to leave the shared lockfile intact.
+Override Kryon and CSS only: the lock's checked packages belong to the pinned
+Ziran, so overriding Ziran too is refused. Run `ziran pkg paths kryon css` to
+confirm the local sources. Use ordinary project commands during local development to leave the shared lockfile intact.
 
 ## Typecheck, build, and test
 
@@ -49,6 +52,31 @@ KRYON_TEST_DRIVER=1 ../../build/bin/kryon build
 env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER \
   ziran run --project --target=c tests/dashboard_test.zi
 ```
+
+## How the layout is written
+
+| Part | Containers and CSS |
+| --- | --- |
+| Shell | `Row.shell` at the viewport; children stretch to its height |
+| Sidebar | `Column.sidebar { width: 216px }`; nav buttons with `.full_width = true` |
+| Main | `Column.main` takes the width the sidebar left |
+| Header | `Row.header` with `Row.header-actions { width: 246px; margin-left: auto }` |
+| KPI cards | `Grid.kpis` (3 tracks, 2 under 760 px) of `Column.kpi` cards that paint their background and border and size to their text |
+| Body | `Column.body { flex: 1 }` takes the remaining height; a measured `Row.split` gives the list `flex: 1 1 0` and the inspector `flex: 0 0 340px`, or stacks them under 760 px |
+| Alert, EmptyState, spinner | a `Layout.Stack` slot of fixed height, drawn with `slot.content` |
+
+## Screenshots
+
+```sh
+kryon run --png build/shots/light.png --width 1120 --height 720 --theme light
+kryon run --png build/shots/dark.png --width 1120 --height 720 --theme dark
+kryon run --png build/shots/narrow.png --width 550 --height 800 --theme light
+```
+
+At the pinned Kryon and CSS, the 1120x720 shots decode to these pixel
+digests (SHA-256 of the RGB rows, as `tests/templates_test.py` computes
+them): light `191ecc30bd190dd2fecb7ce400229563ab721d03ac1ab3ef5584964f7337aadc`,
+dark `a09af759c2f22f509f22fc69958ca8184116446e367ddc51fbd701e4c4b8ac08`.
 
 ## Named preview fixtures
 

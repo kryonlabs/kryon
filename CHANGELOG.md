@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- examples/dashboard is rewritten on self-sizing containers and its stylesheet: no rectangle arithmetic or computed keys, 760 px media rules for the narrow layout, painted cards, and a passing driver test on the pinned Kryon and CSS.
+
 - Containers lay out like CSS flex and block boxes without sizes from the app: in a placing Row an auto-width container takes the width its earlier siblings left and a container in a fixed-height Row stretches to it; CSS `flex: 1` on a container in a fixed-height Column takes the remaining height; `margin-left: auto` pushes a fixed-width container to the row's end. Text placed with no size fills a column or grid track (a row keeps its own width) and takes its wrapped line height. Badge draws its label where it was placed, and a full-width Button fills the column that places it.
 
 - Row, Column and Grid paint their CSS background, border and border radius beneath their children, like a styled div; a content-sized one paints its box at `End` and moves it under the children in place. The frame fills the painting slot, so a program that never paints carries no paint queue.

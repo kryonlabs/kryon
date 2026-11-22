@@ -1,15 +1,17 @@
-// Kryon CSS stylesheet and theme coordination for the dashboard starter.
+// The dashboard's stylesheet: tokens, the layout of every container and
+// the widget looks. Breakpoints are viewport-width media rules.
 CSS :: #import "css/Css";
 Theme :: #import "kryon/theme";
 
 sheet: CSS.CssSheet;
 sheet_parsed: bool;
-applied_dark: s32 = -1;
-applied_compact: s32 = -1;
+applied: bool;
+applied_env: CSS.CssEnvironment;
 css_reported: bool;
 
 dashboard_css :: #string CSS
 :root {
+  --surface-page: #f3f5f8;
   --surface-card: #ffffff;
   --surface-sunken: #f3f5f8;
   --surface-hover: #eef2f6;
@@ -28,6 +30,7 @@ dashboard_css :: #string CSS
 
 @media (prefers-color-scheme: dark) {
   :root {
+    --surface-page: #10141b;
     --surface-card: #181d25;
     --surface-sunken: #10141b;
     --surface-hover: #222936;
@@ -50,27 +53,68 @@ dashboard_css :: #string CSS
   }
 }
 
-Card {
+Row.shell { background: var(--surface-page); }
+
+Column.sidebar {
+  width: 216px;
+  padding: 18px 12px;
+  gap: 6px;
   background: var(--surface-card);
-  color: var(--text-primary);
-  border: 1px solid;
-  border-color: var(--border-subtle);
-  border-radius: 10px;
-  -kryon-elevation: rest;
 }
 
-Card.kpi-card {
+Column.main { padding: 18px; gap: 12px; }
+Row.header, Row.kpi-top, Row.inspector-top, Row.setting { gap: 8px; }
+Row.header-actions { width: 246px; margin-left: auto; gap: 6px; }
+Row.badge-slot { width: 90px; margin-left: auto; }
+Row.toggle-slot { width: 104px; margin-left: auto; }
+Row.filters { gap: 6px; }
+Row.actions { gap: 12px; }
+
+Grid.nav-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+Grid.kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+Grid.stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+Grid.modal-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+Column.kpi, Column.inspector, Column.state-card {
   background: var(--surface-card);
   border: 1px solid;
   border-color: var(--border-subtle);
   border-radius: 10px;
+  padding: var(--card-pad);
+  gap: 6px;
 }
 
-Card.inspector-card {
-  background: var(--surface-card);
-  border: 1px solid;
-  border-color: var(--border-subtle);
-  border-radius: 10px;
+Column.body, Column.scroll-area { flex: 1; }
+Column.state-card { flex: 1; padding: 24px; gap: 12px; }
+Row.split { gap: 14px; }
+Column.list { flex: 1 1 0; gap: 6px; }
+Column.inspector { flex: 0 0 340px; }
+Column.rows { gap: 8px; }
+Column.stat { gap: 2px; }
+Column.settings { gap: 10px; }
+Column.centered-action { width: 160px; margin: 0 auto; }
+
+.brand { font-size: 18px; }
+.title { font-size: 22px; }
+.muted { font-size: 12px; color: var(--text-muted); }
+.kpi-value { font-size: 22px; }
+.inspector-title { font-size: 18px; }
+.summary { font-size: 13px; }
+.stat-name { font-size: 11px; color: var(--text-muted); }
+.stat-value { font-size: 14px; }
+.state-text { font-size: 15px; text-align: center; }
+.setting-name { font-size: 14px; }
+
+@media (max-width: 759px) {
+  Row.header-actions { width: 176px; }
+  Grid.kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  Row.split { flex-direction: column; gap: 10px; }
+  Column.inspector { flex: 0 0 210px; }
+}
+
+@media (-kryon-density: compact) {
+  Column.main { padding: 12px; }
+  Button.result-row { min-height: 50px; }
 }
 
 Button.nav-item {
@@ -118,6 +162,7 @@ Button.chip:selected {
 }
 
 Button.result-row {
+  min-height: 56px;
   background: var(--surface-card);
   color: var(--text-primary);
   border: 1px solid;
@@ -173,10 +218,6 @@ ClassId :: (name: string) -> s32 {
     return CSS.StyleClass(name)
 }
 
-ElementId :: (name: string) -> s32 {
-    return CSS.StyleId(name)
-}
-
 // A rejected stylesheet leaves the default theme; say why, once.
 ReportCss :: () -> bool {
     if !css_reported {
@@ -187,31 +228,22 @@ ReportCss :: () -> bool {
     return false
 }
 
-EnsureDashboardTheme :: (dark: bool, compact: bool, reduced_motion: bool) -> bool {
-    want_dark: s32 = ifx dark then 1 else 0
-    want_compact: s32 = ifx compact then 1 else 0
-    if sheet_parsed && applied_dark == want_dark && applied_compact == want_compact {
+EnsureDashboardTheme :: (dark: bool, compact: bool, reduced_motion: bool, width: float32) -> bool {
+    env := CSS.CssEnvironmentWithViewportWidth(CSS.CssEnvironmentWithNames(CSS.CssDefaultEnvironment(),
+        ifx dark then "dark" else "light", "normal", ifx compact then "compact" else "comfortable",
+        "mouse", "desktop"), width)
+    if applied && applied_env.scheme == env.scheme && applied_env.density == env.density &&
+        CSS.CssSheetSameMedia(*sheet, applied_env, env) {
         return true
     }
     unused Theme.InstallDefaultTheme(dark, reduced_motion)
     if !sheet_parsed {
         CSS.CssSheetReset(*sheet)
-        if !CSS.CssSheetParse(*sheet, dashboard_css, "dashboard.css", CSS.CssNoImports) {
-            return ReportCss()
-        }
+        if !CSS.CssSheetParse(*sheet, dashboard_css, "dashboard.css", CSS.CssNoImports) { return ReportCss() }
         sheet_parsed = true
     }
-    env := CSS.CssEnvironmentWithNames(
-        CSS.CssDefaultEnvironment(),
-        ifx dark then "dark" else "light",
-        "normal",
-        ifx compact then "compact" else "comfortable",
-        "mouse",
-        "desktop")
-    if !CSS.CssSheetInstall(*sheet, env, null) {
-        return ReportCss()
-    }
-    applied_dark = want_dark
-    applied_compact = want_compact
+    if !CSS.CssSheetInstall(*sheet, env, null) { return ReportCss() }
+    applied_env = env
+    applied = true
     return true
 }
