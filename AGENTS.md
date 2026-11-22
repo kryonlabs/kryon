@@ -1,97 +1,80 @@
 # Kryon repository rules
 
-Kryon is a reusable UI library authored in Ziran. The Ziran language,
-compiler, `.zir` representation, `.zx` format, and portable runtime live in
-the separate Ziran repository (`~/Projects/ziranlang/ziran`). Kryon's reusable widgets
-live in `src/ui/<component>/`, shared UI infrastructure stays in `src/ui/`,
-its hosts live in `src/backend/*.zi`, and the
-`kryon` project tool in `src/project/*.zi`.
+Kryon is a reusable UI library written in Ziran. The Ziran language, compiler,
+`.zir`, `.zx` and portable runtime live in the separate Ziran repository
+(`~/Projects/ziranlang/ziran`); applications import Kryon as an ordinary
+package, and the compiler never recognizes Kryon widget names.
 
-## 100% Ziran rule
+## Layout
 
-- Kryon's handwritten implementation, platform integration, and maintained
-  examples must be written in current Ziran (`.zi`). Do not add or expand
-  handwritten C, C++, Go, or other language implementations inside Kryon.
-  Generated native output under `build/` is an output of Ziran, not source.
-- Use the latest Ziran syntax and APIs directly. Do not add compatibility
-  wrappers, aliases, fallback runtimes, or old-syntax paths for Ziran in Kryon.
-  When Ziran lacks a general capability, implement it in Ziran first and
-  import it as an ordinary language capability. Do not add UI special cases to
-  Ziran.
-- The library, hosts, project tool, and examples are all Ziran. Python and
-  shell scripts are build and test tooling, and `templates/droid/` is the
-  Android project scaffold an app build copies; keep widget and host behavior
-  out of them.
+| Path | Contents |
+| --- | --- |
+| `src/ui/<widget>/` | Widget packages: `Props`, `Draw`, behavior, `*_laws.zi` proofs |
+| `src/ui/*.zi` + `src/ui/modules.txt` | Shared core (tree, session, style, input, paint, theme); the list compiles into `libkryon.a` |
+| `src/backend/*.zi` | Hosts and platform integration: desktop, terminal, Canvas, Android, components |
+| `src/project/*.zi` | The `kryon` project tool |
+| `tests/`, `examples/`, `templates/` | Behavior tests, sample programs, `kryon new` scaffolds |
+| `docs/` | Reference documentation, indexed below |
 
-## Source and build
+## Rules
 
-- Make changes in this upstream repository on `master`. Commit and push here
-  before a downstream application updates its `ziran.lock` (or, for an app
-  that still vendors Kryon, its clean `vendor/kryon` pointer).
-- Never create or work in temporary Kryon or Ziran checkouts, clones, or
-  worktrees. Edit the root repositories on `master`; reserve temporary
-  directories for disposable test outputs only.
-- `src/ui/modules.txt` lists the core modules compiled into `libkryon.a`.
-  `*_laws.zi` files throughout `src/ui/` are proved by `make laws`, and optional modules such as
-  `Window`, `Media`, `Video`, `Clock`, and `Service` are package exports in
-  `ziran.toml`. A checker pass alone does not establish native or portable
-  readiness.
-- Run `make push-check` before pushing: it takes minutes and links the hosts a
-  shared backend change can break. CI runs it before its long jobs.
-- `make test` is the current Kryon gate. It builds the checked Ziran library
-  and runs Ziran source, saved-IR, and bundle behavior tests without a display.
-- Put one-off experiment builds in `build/scratch/<name>/`, never in new
-  top-level `build/` directories. `make clean-scratch` removes scratch output
-  that has been idle for a day; `BUILD_OUTPUTS` in the Makefile lists the
-  directories that targets and tests own.
-- Use direct domain names for APIs. Do not restore the removed KIR compiler,
-  `.kry` runtime, or `.krb` loader as compatibility paths.
+- Handwritten implementation, platform integration and examples are Ziran
+  (`.zi`); no new handwritten C, C++ or Go; `build/` output is not source.
+- Use current Ziran syntax and APIs directly. No compatibility wrappers,
+  aliases, fallback runtimes, or removed KIR, `.kry` or `.krb` paths; a missing
+  general capability is implemented in Ziran first, never as a Kryon compiler
+  special case.
+- One widget concept has one public implementation (`Text.Draw(Text.Props)`,
+  `Image.Draw(Image.Props)`); no parallel wrappers or raw texture draw APIs.
+  Nothing is imported by default: a program carries only what it imports,
+  and optional parts load at import or first use through small slot modules
+  (`frame_driver`, `image_lookup`, `text_editing`, `scroll_sampling`), never
+  runtime flags.
+- Hosts observe input, own windows and present pixels; focus, hit testing,
+  layout, semantics, styling and paint decisions stay in `src/ui/`. App
+  screens, assets, copy and state stay in the application repository.
 
-## UI ownership
+## Commands
 
-Author reusable widget behavior, composition, layout, interaction, styling,
-accessibility, and UI tree decisions in `.zi`. Platform hosts may gather OS
-input, manage windows, load fonts and images, rasterize, and store data. Host
-code must not independently choose widget behavior.
+```sh
+make                        # check modules, generate C/Go, build libkryon.a
+make test                   # source, saved-.zir and .zx behavior tests, headless
+make test-focus TEST=name   # one test script; skips the full rebuild
+make desktop-project-test   # graphical capture and input on private Xvfb
+make laws                   # prove every src/ui/**/*_laws.zi
+make sanitize-test          # ASan/UBSan behavior tests
+make docs-check             # docs/FEATURE_MATRIX.html is current
+make push-check             # minutes; links the hosts; run before pushing
+```
 
-An application imports Kryon as an ordinary Ziran library. The Ziran compiler
-and portable loader must never recognize Kryon widget names specially. An
-application that does not import Kryon needs no Kryon code or graphical host.
-Keep app-specific screens, assets, copy, workflows, and state in the app repo.
+Never run tests or binaries that can send X/Wayland requests against the live
+desktop. Scrub inherited display/auth/session variables and use a private
+Xvfb/Xephyr display, as the test targets above do.
 
-Nothing is imported by default. A program carries only the code for what it
-imports and uses. A bare window carries the window, its events and
-presenting; import a frame and you get a frame, import a rectangle and you get
-a rectangle. Optional features arrive through their import or first use, never
-through runtime flags. Shared code reaches an optional part through a small
-slot module (such as `frame_driver`, `image_lookup`, `text_editing` and
-`scroll_sampling`) that the part's own module fills from its initializer or
-first use; shared code never imports the part itself. Make generated code
-smaller by cutting what isn't
-needed, never by merging files (owner, 2026-11-15).
+## Documentation index
 
-One widget concept has one public implementation. `Text.Draw(Text.Props)` and
-`Image.Draw(Image.Props)` are the intended text and image widget surfaces. Do not
-add parallel wrappers or expose raw texture draw calls as app widget APIs.
+| Question | File |
+| --- | --- |
+| Widget APIs, drawing, packages | docs/API.md |
+| Architecture; Ziran/Kryon/app boundaries | docs/ARCHITECTURE.md, docs/BOUNDARIES.md |
+| `kryon` CLI, manifests, profiles, ZX apps | docs/PROJECTS.md |
+| Hosts, renderers, Android, web canvas, image codecs | docs/BACKENDS.md, docs/canvas.md |
+| Supported coverage; widget verification policy | docs/FEATURE_MATRIX.md, docs/WIDGET_CONFORMANCE.md |
+| Input components; overlays; navigation | docs/INPUT_COMPONENTS.md, docs/OVERLAYS.md, docs/navigation.md |
+| Portable ZX components; accessibility | docs/COMPONENTS.md, docs/ACCESSIBILITY.md |
+| Theming, zoom, cursor, clipboard, focus, IME | docs/THEMING.md, docs/ZOOM.md, docs/CURSOR.md, docs/CLIPBOARD.md, docs/window-focus.md, docs/COMPOSITION_INPUT.md |
+| Frame capture/replay; raster workers; benchmarks | docs/FRAME_REPLAY.md, docs/THREADING.md, docs/PERFORMANCE.md |
+| Examples and gallery | examples/README.md |
+| Open work | plans/open-work.md |
 
-For native dashboards, start with [HTML/CSS mapping](docs/HTML_TO_KRYON.md),
-[widget mappings](docs/ui-map.json), and the
-[responsive frame](examples/dashboard/previews/responsive.zi). Use the same
-`.zi` frame for native and `.zx` builds. Use `Layout.Grid` with CSS viewport
-conditions for responsive cards and chart panels.
+## Shared checkout
 
-## Testing and desktop safety
-
-Test changed modules through all relevant generated targets and portable
-bundles. Use focused behavior tests for decisions that could diverge across
-targets. Do not treat code generation alone as proof that a host or app works.
-
-Never run tests or binaries that can send X/Wayland requests against the
-developer's live desktop. Use a private Xvfb/Xephyr display for any visual or
-window-management test, and scope window effects to processes Kryon owns.
-Never touch the inherited display or `/tmp/.X11-unix/X0` during cleanup.
-
-## Bend
-
-When using Bend, run `bend guide`, keep important rules in `LAWS.bend`, run
-`bend PROOF.bend` before committing, and parallelize the code where possible.
+- Work on `master` in this checkout. Never create or use clones, worktrees or
+  temporary Kryon/Ziran checkouts; change dependencies upstream first.
+- The git index is shared and often stale, so `git status` lists hundreds of
+  false edits. Check `git diff HEAD -- <file>` before touching a file, skip
+  files another lane is editing, and stage only your own files through a
+  private `GIT_INDEX_FILE` built from HEAD; never `git add -A`.
+- Commit as Waozi <waozi@proton.me> with no AI attribution. Keep ordinary
+  changes in `Unreleased`; release only on explicit request.
+- Put one-off experiment builds in `build/scratch/<name>/`; `make clean-scratch` removes idle output.
