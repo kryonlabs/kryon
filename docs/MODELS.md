@@ -1,5 +1,9 @@
 # 3D models
 
+Reading glTF 2.0 documents and VRM 0.x avatars into Kryon scenes, with
+skins, morph targets, animations and spring-bone physics. Read this when
+loading a 3D model or avatar.
+
 ### glTF 2.0 models
 
 Import `kryon/scene_gltf` to load `.gltf` (JSON with `.bin` or `data:` URI

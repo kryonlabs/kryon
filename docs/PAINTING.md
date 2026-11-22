@@ -1,5 +1,7 @@
 # Painting and picture effects
 
+This file covers painting primitives outside the widget catalog: vector paths, text as pixels, scene textures, light cookies, grades, daylight, image loading, window frames and window icons.
+
 ## Vector path coverage
 
 `vector_path` rasterizes the portable `KVP1` filled-path format and round
@@ -65,7 +67,7 @@ linear-RGBA values; convert sRGB first when using those bindings.
 
 `LightCookie(scene, light, texture, scale, offset)` projects a scene texture
 through a light's beam, like a gobo: dappled sun through leaves, window bars or
-stained glass. `texture` is an existing scene texture index, usually
+stained glass. `texture` is a scene texture index, usually
 `ImageMaterial(...).texture`. The texel's linear RGB multiplies the light's
 direct irradiance on every lit surface, receiver or not; the hemisphere light,
 unlit and exact-colour materials are unaffected. The texture spans the light's
@@ -138,7 +140,7 @@ drawn and release it with `DaylightSkyFree`. `tests/daylight_test.zi` covers
 the hours, the sky and the grade on native and portable builds (`make
 daylight-test`).
 
-Linux uses the existing system image loader and packaged WebP/AVIF adapters,
+Linux uses the system image loader and packaged WebP/AVIF adapters,
 copying the original straight pixels before Cairo premultiplies them. Android reads relative APK asset paths
 through the current NativeActivity's asset manager, or absolute filesystem
 paths. It decodes PNG, WebP and AVIF in process with the linked codecs, on every
@@ -151,7 +153,7 @@ support.
 These are CPU images and survive presentation context teardown.
 
 `make image-pixels-test` verifies exact RGBA/alpha ownership and invalid inputs.
-`make shader-host-test`, `make shader-web-test` and the explicit hardware target
+`make shader-host-test` and the explicit hardware target
 `make shader-android-test` additionally execute the loader in their real hosts.
 The Android console test covers absolute PNG files and the real offscreen native
 window. `make android-pictures-device-test` decodes AVIF textures and checks the
@@ -160,7 +162,7 @@ missing bridge inside Android's VM on the USB Moto.
 Custom native and Canvas hosts can import `kryon/window_runtime` for
 `BeginWindowFrame`, `ClearWindowFrame(color)` and `EndWindowFrame`.
 `CloseNativeWindow`, `WindowHidden`, `WindowMinimized` and `WindowClosing`
-retain the backend's existing window semantics. These observations do not
+keep the backend's window semantics. These observations do not
 poll input, change focus, pause work, or decide whether closing hides or quits.
 Applications using retained frames keep their retained presentation lifecycle.
 `WindowWidth` and `WindowHeight` report the custom desktop host's drawing

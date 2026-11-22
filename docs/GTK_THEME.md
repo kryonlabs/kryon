@@ -1,5 +1,8 @@
 # GTK3 theme rendering on Linux
 
+Native GTK3 theming for a Linux application: query styles, raster CSS
+backgrounds, icons, text and native widgets, and manage providers and
+invalidation. Read this when your app should look like the desktop GTK theme.
 
 Import `kryon/GtkStyleLinux` only in a Linux native application that links GTK3.
 This module reads the current GTK settings, screen CSS providers, icon theme and
@@ -7,88 +10,35 @@ Pango fonts. It renders offscreen; the application supplies its selectors, layou
 input and accessibility. Call its functions on the GTK owning thread, and call
 `GtkStylePoll()` from a non-GTK event loop to deliver up to 32 pending GLib events.
 
-A `GtkStyleNode` contains `widget_type` (for example `"GtkButton"`), CSS `element`,
-CSS ID `name`, `classes: []string`, GTK `state: u32` and optional
-`providers: []GtkStyleProviderAttachment`. Each attachment contains a live
-`provider: u64` handle and native `priority: u32`; it applies only to that node's
-GTK context, including ancestor contexts. At equal priority, GTK gives context
-providers precedence over screen providers, using its own selector rules. Pass an ancestor-to-leaf
-slice of nodes. Optional `sibling_count` (1–64) and zero-based `sibling_index`
-describe a homogeneous sibling group for native child selectors. Zero count
-leaves position unspecified. Header measurement builds the same column group,
-so first/middle/last CSS borders affect its real child allocations. State constants are `GtkStyleNormal`, `GtkStyleActive`,
-`GtkStylePrelight`, `GtkStyleSelected`, `GtkStyleDisabled`, `GtkStyleFocused` and
-`GtkStyleChecked`; combine flags for compound states.
+Pass an ancestor-to-leaf slice of `GtkStyleNode` values.
+
+| `GtkStyleNode` field | Meaning |
+| --- | --- |
+| `widget_type` | For example `"GtkButton"` |
+| `element`, `name` | CSS element and CSS ID |
+| `classes: []string` | CSS classes |
+| `state: u32` | `GtkStyleNormal`, `GtkStyleActive`, `GtkStylePrelight`, `GtkStyleSelected`, `GtkStyleDisabled`, `GtkStyleFocused` or `GtkStyleChecked`; combine flags for compound states |
+| `providers: []GtkStyleProviderAttachment` | Optional. Each attachment carries a live `provider: u64` handle and native `priority: u32`, and applies only to that node's GTK context, including ancestor contexts. At equal priority, GTK gives context providers precedence over screen providers, using its own selector rules |
+| `sibling_count`, `sibling_index` | Optional homogeneous sibling group (1–64) and zero-based index for native child selectors; zero count leaves position unspecified. Header measurement builds the same column group, so first/middle/last CSS borders affect its real child allocations |
 
 ### Style query and raster calls
 
-- `GtkStyleQuery(nodes, scale)` returns `GtkStyleMetrics`: `available`,
-  `foreground` and `background` as RRGGBBAA, `border`, `padding` and CSS `margin` in logical
-  pixels, a copied NUL-terminated `font_family: [256]u8`, logical-pixel
-  `font_size: float64`, Pango `font_weight` and `font_style`, and screen `dpi`.
-  GtkTreeView selectors also expose native `vertical_separator` and
-  `horizontal_separator` style properties.
-- `GtkStyleRaster(nodes, width, height, scale)` paints the CSS background and frame.
-  Its bounds are the CSS border box; callers lay out CSS margins separately.
-- `GtkStyleIndicatorRaster(nodes, width, height, scale, indicator)` asks GTK to draw
-  the last node's check box (0), radio option (1) or submenu arrow (2, pointing
-  right, or left in a right-to-left context) with `gtk_render_check`,
-  `gtk_render_option` or `gtk_render_arrow`.
-- `GtkStyleRasterRegion(nodes, width, height, scale, x, y, crop_width, crop_height)`
-  renders a crop of the original logical CSS box, preserving gradients and borders.
-  Logical boxes can reach 8192 pixels per axis; the allocated crop retains the
-  ordinary 4096-axis and 4,194,304-pixel bitmap limits.
-- `GtkIconRaster(name, size, scale, nodes, force_size = true, styled = false)` resolves a named icon using the
-  current GTK icon search path and theme inheritance. PNG, SVG and symbolic
-  icons use GTK's loader; symbolic colors come from the supplied style context.
-  Clear `force_size` to retain the theme's natural artwork, as GtkImage does.
-  Set `styled` with the image's full CSS ancestry to render through GTK's icon
-  surface painter, including native transforms, shadows, direction and state.
-  `GtkIconSize(category)` resolves GTK's menu/toolbar/button size categories.
-  `GtkUserDirectory(index)` returns GLib's borrowed XDG user-directory path.
+| Call | Behavior |
+| --- | --- |
+| `GtkStyleQuery(nodes, scale)` | Returns `GtkStyleMetrics`: `available`, `foreground` and `background` as RRGGBBAA, `border`, `padding` and CSS `margin` in logical pixels, a copied NUL-terminated `font_family: [256]u8`, logical-pixel `font_size: float64`, Pango `font_weight` and `font_style`, and screen `dpi`. GtkTreeView selectors also expose native `vertical_separator` and `horizontal_separator` style properties. |
+| `GtkStyleRaster(nodes, width, height, scale)` | Paints the CSS background and frame. Its bounds are the CSS border box; callers lay out CSS margins separately. |
+| `GtkStyleIndicatorRaster(nodes, width, height, scale, indicator)` | Asks GTK to draw the last node's check box (0), radio option (1) or submenu arrow (2, pointing right, or left in a right-to-left context) with `gtk_render_check`, `gtk_render_option` or `gtk_render_arrow`. |
+| `GtkStyleRasterRegion(nodes, width, height, scale, x, y, crop_width, crop_height)` | Renders a crop of the original logical CSS box, preserving gradients and borders. Logical boxes can reach 8192 pixels per axis; the allocated crop retains the ordinary 4096-axis and 4,194,304-pixel bitmap limits. |
+| `GtkIconRaster(name, size, scale, nodes, force_size = true, styled = false)` | Resolves a named icon using the current GTK icon search path and theme inheritance. PNG, SVG and symbolic icons use GTK's loader; symbolic colors come from the supplied style context. Clear `force_size` to retain the theme's natural artwork, as GtkImage does. Set `styled` with the image's full CSS ancestry to render through GTK's icon surface painter, including native transforms, shadows, direction and state. `GtkIconSize(category)` resolves GTK's menu/toolbar/button size categories. `GtkUserDirectory(index)` returns GLib's borrowed XDG user-directory path. |
 
 ### Text, cells and native widgets
 
-- `GtkWidgetMeasure(nodes, text = "", sort_arrow = false, allocation_width = 0,
-  allocation_height = 0, options = .{})` returns `available`
-  and minimum/natural width and height for GtkButton, GtkEntry, GtkMenuBar,
-  GtkMenuItem, GtkToolbar, GtkToolButton, GtkStatusbar or a horizontal GtkPaned. It constructs
-  an offscreen hierarchy with the supplied classes, names and providers.
-  Tree-view header selectors use a real GtkTreeViewColumn, including its label
-  and native sort arrow. Menu bars include one item with the supplied label;
-  icon toolbars include one item with the supplied icon name at GTK's large
-  toolbar size. For these containers, `item_x/y/width/height` report GTK's
-  representative child allocation. Zero allocation dimensions use the natural
-  size. Header `item_*` fields describe its label, and `arrow_*` describe its
-  visible sort image. For entries, `text` optionally names the primary icon;
-  `item_x/y` are native layout offsets, `item_width` is the remaining text-area
-  width, `item_height` is the layout height, and `arrow_*` is the icon area.
-  Status bars use `text` as their message and return the label allocation. The
-  offscreen root is never shown. Entry allocation realizes an offscreen backing
-  surface so GTK can supply its text-area bounds; it creates no visible window.
-  `GtkWidgetMeasureOptions.margin` overrides the final widget's template margins
-  on edges selected by `margin_edges`; the default zero mask preserves all
-  native margins. Combine `GtkWidgetMarginLeft/Right/Top/Bottom`, or use
-  `GtkWidgetMarginVertical` or `GtkWidgetMarginAll`. Values use logical pixels.
-  Status-bar label allocation follows its actual supplied
-  message, native alignment and ellipsis, so cache it with the message text.
-  A paned widget includes two empty visible children, so its preferred width
-  measures the native separator without adding application content widths.
-- `GtkCellTextMeasure(nodes, text)` and `GtkCellTextMeasureMany(nodes, texts,
-  width_chars = -1, ellipsize = false)` measure actual GtkCellRendererText
-  requisitions in a native GtkTreeView hierarchy. The batch reuses one renderer
-  and reports component-wise maximum minimum/natural dimensions; renderer
-  padding, Pango metrics and optional end ellipsis are included.
-- `GtkTextMeasure(nodes, text, width, scale, font = "", markup = false)` returns `available`,
-  logical-pixel `width`, `height` and `baseline`. A zero width measures natural
-  size; a positive width wraps by word or character.
-- `GtkTextRaster(nodes, text, width, height, scale, align, font = "", markup = false, ellipsize = false, snap_y = false)` paints
-  Pango text and GTK text shadows onto transparency, vertically centered and
-  clipped to the box. Alignment is 0 left, 1 center or 2 right. An empty `font`
-  uses the computed CSS font; a Pango description overrides it for application
-  settings such as a clock font. Set `ellipsize` for a single line with native
-  Pango end ellipsis instead of wrapping. Set `snap_y` for integer vertical
-  positioning, matching GTK's widget and cell allocations.
+| Call | Behavior |
+| --- | --- |
+| `GtkWidgetMeasure(nodes, text = "", sort_arrow = false, allocation_width = 0, allocation_height = 0, options = .{})` | Returns `available` and minimum/natural width and height for GtkButton, GtkEntry, GtkMenuBar, GtkMenuItem, GtkToolbar, GtkToolButton, GtkStatusbar or a horizontal GtkPaned. It constructs an offscreen hierarchy with the supplied classes, names and providers. Tree-view header selectors use a real GtkTreeViewColumn, including its label and native sort arrow. Menu bars include one item with the supplied label; icon toolbars include one item with the supplied icon name at GTK's large toolbar size. For these containers, `item_x/y/width/height` report GTK's representative child allocation. Zero allocation dimensions use the natural size. Header `item_*` fields describe its label, and `arrow_*` describe its visible sort image. For entries, `text` optionally names the primary icon; `item_x/y` are native layout offsets, `item_width` is the remaining text-area width, `item_height` is the layout height, and `arrow_*` is the icon area. Status bars use `text` as their message and return the label allocation, which follows the actual supplied message, native alignment and ellipsis, so cache it with the message text. The offscreen root is never shown. Entry allocation realizes an offscreen backing surface so GTK can supply its text-area bounds; it creates no visible window. `GtkWidgetMeasureOptions.margin` overrides the final widget's template margins on edges selected by `margin_edges`; the default zero mask preserves all native margins. Combine `GtkWidgetMarginLeft/Right/Top/Bottom`, or use `GtkWidgetMarginVertical` or `GtkWidgetMarginAll`; values use logical pixels. A paned widget includes two empty visible children, so its preferred width measures the native separator without adding application content widths. |
+| `GtkCellTextMeasure(nodes, text)`, `GtkCellTextMeasureMany(nodes, texts, width_chars = -1, ellipsize = false)` | Measure actual GtkCellRendererText requisitions in a native GtkTreeView hierarchy. The batch reuses one renderer and reports component-wise maximum minimum/natural dimensions; renderer padding, Pango metrics and optional end ellipsis are included. |
+| `GtkTextMeasure(nodes, text, width, scale, font = "", markup = false)` | Returns `available`, logical-pixel `width`, `height` and `baseline`. A zero width measures natural size; a positive width wraps by word or character. |
+| `GtkTextRaster(nodes, text, width, height, scale, align, font = "", markup = false, ellipsize = false, snap_y = false)` | Paints Pango text and GTK text shadows onto transparency, vertically centered and clipped to the box. Alignment is 0 left, 1 center or 2 right. An empty `font` uses the computed CSS font; a Pango description overrides it for application settings such as a clock font. Set `ellipsize` for a single line with native Pango end ellipsis instead of wrapping. Set `snap_y` for integer vertical positioning, matching GTK's widget and cell allocations. |
 
 Text layouts use GTK's widget Pango context, including explicit GTK font
 settings. Unresolved Cairo font options inherit the native display backend's
@@ -142,7 +92,7 @@ wheel gliding while retaining drag behavior. The default retains wheel gliding.
 `ScrollWheelTake(session, key, bounds, scrolls, horizontal = false)` consumes
 the targeted wheel once; horizontal mode includes the sideways wheel.
 `GridMulti.Props.preserve_scroll_on_focus` retains a native view's manual offset
-when focus returns. Its default preserves the existing focus reveal; cursor,
+when focus returns. Its default keeps the focus reveal; cursor,
 navigation, initial-open, layout and viewport changes still reveal the item.
 An explicit valid `TreeSetCursor` shape also applies to disabled controls;
 loading controls retain their loading cursor policy. Without an override,
@@ -152,8 +102,8 @@ Desktop `PollPointer` and `PollSecondaryPointer` expose the gathered frame
 sample, including focus-loss release and cleared held state. Raw SDL collection
 stays separate from this published view. On X11, physical button sampling also
 recovers transitions missed while another window owns focus; queued event edges
-still preserve taps completed between polls. Other SDL drivers retain their
-existing event sampling.
+still preserve taps completed between polls. Other SDL drivers keep their
+event sampling.
 
 ### Composited raster regions
 
@@ -259,9 +209,9 @@ priority: u32) -> bool` installs that provider on this process's default GTK
 screen. Repeating the same installation is a no-op. A provider can also be
 attached to several node contexts at different priorities without screen
 installation. `GtkStyleProviderReplace(handle, css) -> bool` parses a fresh
-provider before replacing the existing one. Parser errors, invalid lengths,
+provider before replacing the active one. Parser errors, invalid lengths,
 embedded NUL, input above 1,048,576 bytes, and recoverable allocation failures
-leave the old provider and generation unchanged. Empty CSS is valid. GTK/GLib's
+leave the previous provider and generation unchanged. Empty CSS is valid. GTK/GLib's
 own fatal allocation policy remains in effect. CSS may reference resources;
 applications choose which CSS they trust.
 

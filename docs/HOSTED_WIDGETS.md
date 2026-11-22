@@ -1,5 +1,9 @@
 # Hosted widgets
 
+Running another `.zx` bundle inside your application's window, the widgets a
+bundle may draw, and the platform services a hosted or portable app can
+import. Read this when embedding a bundle or reaching a platform capability.
+
 An application runs another `.zx` inside its own window with
 [`hosted_app`](../src/backend/hosted_app.zi): `HostedAppOpen` takes the
 bundle's bytes, `HostedAppStart` asks the host about every capability the
@@ -45,9 +49,9 @@ A bundle draws a row of choices, such as a week or calendar view, with
 draws it as it draws its own, with up to 32 options. It frames a form's
 sections with `Fieldset.Draw(session, props)` from
 [`fieldset_widget`](../src/ui/fieldset/fieldset.zi), and places a toggle at a
-row's end with the size `ToggleSize(session, props)` from
-[`toggle_measure`](../src/ui/toggle/toggle_measure.zi) answers, which stays apart from
-the toggle widget as `text_measure` stays apart from Text. Lines, circles,
+row's end; `ToggleSize(session, props)` from
+[`toggle_measure`](../src/ui/toggle/toggle_measure.zi) measures it, kept apart
+from the toggle widget as `text_measure` is apart from Text. Lines, circles,
 rings and triangles from [`shape_widget`](../src/ui/shape/shape.zi) are
 hosted too, so a bundle can draw a chart's lines and dots; their host fills
 them with the renderer's `RasterTriangles`. `Slider` and `DiscreteSlider`
@@ -126,7 +130,7 @@ See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for package and host verification.
 
 Portable apps can import `kryon/input_protocol` for pointer observations,
 key codes, modifier bits and `PointInBounds` without loading the native tree
-implementation. Existing `tree_input` imports retain that surface.
+implementation. `tree_input` keeps that surface.
 `kryon/file_picker` exposes the native file chooser; `kryon/app_theme` reads
 optional host theme colours from a portable app.
 
@@ -136,7 +140,7 @@ window it embeds the app in (`HARMONY_APP_HOST_PID`, `HARMONY_APP_CONTAINER`)
 and keeps its palette on that window (`_HARMONY_APP_THEME`).
 `SystemThemeLinux.SystemPaletteRead()` returns that palette after checking
 that the host is the app's parent and owns the window; started on its own, an
-app gets the desktop's GTK palette as before. Each call reads the host's
+app gets the desktop's GTK palette. Each call reads the host's
 current palette, so an app that reads it again follows a theme change.
 `ParentThemeLinux.ParentThemeActive()` says whether a host supplies the theme,
 and `ParentPaletteRead(*palette)` reads only the host's palette. libX11 is

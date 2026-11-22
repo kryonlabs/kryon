@@ -1,8 +1,12 @@
 # Persistence and notifications
 
+Durable document storage with acknowledged flushes, and Android OS
+notification scheduling. Read this when app data must survive a restart or a
+game needs reminders.
+
 ## Document persistence
 
-The existing `kryon/app_context` export provides `DocumentStorageReady() -> bool`
+The `kryon/app_context` export provides `DocumentStorageReady() -> bool`
 and `DocumentFlush() -> bool`, bound to `app_context:DocumentStorageReadyHost`
 and `app_context:DocumentFlushHost` (both zero arguments, bool result).
 `AppLocal` and the direct Canvas app host implement them. Other hosts must
@@ -13,7 +17,7 @@ in a browser, successful initial IndexedDB hydration. Before readiness, reads
 report `DOCUMENT_ERROR`, writes and flush return false. The host opens storage
 with `AppFilesOpen` after hydration; the guest does not initialize host storage.
 
-`DocumentWrite`/`WriteStore` retain their queued browser semantics. A true write
+`DocumentWrite`/`WriteStore` use queued browser semantics. A true write
 result alone does not acknowledge persistence. After successful writes,
 `DocumentFlush` returns true only when the backing store has acknowledged a
 snapshot including those writes. It waits for any previous snapshot, then
@@ -33,7 +37,7 @@ uses mtimes to detect changes.
 
 Hosts use `AppFilesReady(files)` and `AppFilesFlush(files)` for their authorized
 `AppFiles`. The no-argument guest operation cannot name or read another node.
-The browser backing store is the existing shared `/kryon-apps` mount: the host's
+The browser backing store is the shared `/kryon-apps` mount: the host's
 physical sync can include other queued namespaces, without exposing their paths,
 bytes, handles, or authority to the guest. An AppFiles outside this mount can still stage packed assets, but reports
 false for durable readiness and flush. Initial hydration is never restarted by flush.
@@ -42,7 +46,7 @@ Call on the owning thread. Browser flush yields; keep the owner and its AppFiles
 alive until it returns and never reenter its running VM while suspended. Close
 with `AppFilesClose` before changing account/resource ownership or rebinding the
 namespace; close/open increments a generation, and an in-flight flush then
-returns false even if its old snapshot succeeds. Do not overwrite live AppFiles
+returns false even when its snapshot write succeeds. Do not overwrite live AppFiles
 or mutate its root/lock directly. Readiness is availability, not an account grant.
 
 `make -j1 document-storage-test` exercises native and actual disposable headless
@@ -55,22 +59,13 @@ push, network access, and the running app loop. `DailyNotificationsSupported()`
 reports scheduler support independently of permission. Other native platforms
 return false; portable apps use their authenticated host capability.
 
-- `ScheduleDailyNotification(props, hour, minute=0, suppress_on_open=false,
-  not_before_unix_ms=0, weekdays=127, skip_local_date=0)` persists one rule.
-  Weekday bits are Sunday=1 through Saturday=64. Times use the device's current
-  timezone; `not_before_unix_ms` is an absolute UTC lower bound.
-  `skip_local_date` excludes one YYYYMMDD date, for example today's completion.
-- `ScheduleNotificationAt(props, year, month, day, hour, minute=0)` schedules
-  one local date; an elapsed date/time is rejected.
-- `ScheduleNotificationDates(props, dates, hour, minute=0)` keeps one alarm for
-  a caller-evaluated, finite sequence of at most 3660 strictly increasing valid
-  YYYYMMDD dates. Apps own recurrence and refresh this explicit horizon.
-- `CancelDailyNotification(tag, id)` cancels any of those rule types and its
-  visible notification. Reusing `(tag,id)` replaces the rule.
-- `NotificationAppOpened(tag,id)` durably marks that particular rule's local
-  date and cancels its visible notice. Games call it on actual game entry,
-  resume and local date changes while playing. A collection host must never
-  mark its other games opened when the host foregrounds.
+| Call | Effect |
+| --- | --- |
+| `ScheduleDailyNotification(props, hour, minute=0, suppress_on_open=false, not_before_unix_ms=0, weekdays=127, skip_local_date=0)` | Persists one rule. Weekday bits are Sunday=1 through Saturday=64. Times use the device's current timezone; `not_before_unix_ms` is an absolute UTC lower bound. `skip_local_date` excludes one YYYYMMDD date, for example today's completion |
+| `ScheduleNotificationAt(props, year, month, day, hour, minute=0)` | Schedules one local date; an elapsed date/time is rejected |
+| `ScheduleNotificationDates(props, dates, hour, minute=0)` | Keeps one alarm for a caller-evaluated, finite sequence of at most 3660 strictly increasing valid YYYYMMDD dates. Apps own recurrence and refresh this explicit horizon |
+| `CancelDailyNotification(tag, id)` | Cancels any of those rule types and its visible notification. Reusing `(tag,id)` replaces the rule |
+| `NotificationAppOpened(tag,id)` | Durably marks that particular rule's local date and cancels its visible notice. Games call it on actual game entry, resume and local date changes while playing. A collection host must never mark its other games opened when the host foregrounds |
 
 Scheduling persists even before permission is granted and never prompts.
 Applications request permission through `notification.RequestNotifications`;

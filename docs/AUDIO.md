@@ -1,22 +1,23 @@
 # Asset audio
 
+Sound effects, music and PCM streams through one hosted-capable call.
+Read this when an application plays audio.
+
 `kryon/Media` retains `MediaOpen`, pause/stop/state/message and text fetching.
 It also exports `MediaAudio(session, command: MediaAudioCommand) ->
 MediaAudioResult`. A hosted bundle uses `KRYON_HOSTED_UI` and requests only
 `media_audio.MediaAudioHost` for this function. The same types/function are
 available directly from `kryon/media_audio`.
 
-`MediaAudioCommand` has `operation: MediaAudioOperation`, `voice: s32`,
-`asset: string`, `music: bool`, `looping: bool`, and `gain: float32`, plus the PCM fields below.
-`MediaAudioOperation` is `Capabilities`, `Load`, `Play`, `Gain`, `Stop`,
-`Unload`, `Status`, `CreateStream`, `SubmitStream`, `Pause`, or `Resume`. Voice IDs are caller-selected `1..16`, local to one
-actual app instance. Each loaded voice has an independent decoder and gain;
-several effects and music voices can play together. `Load` uses `asset`,
-`music`, and `gain`; unload an occupied ID before reloading it. `Play` starts
-from the beginning and uses `looping`, which is accepted only on a voice
-loaded with `music = true`. `Gain` changes only that voice. Gain must be
-finite and in `0..1`; out-of-range, NaN and infinite values are rejected,
-without clamping or changing playback. Zero-initialized gain means silence.
+| `MediaAudioCommand` field | Meaning |
+| --- | --- |
+| `operation: MediaAudioOperation` | `Capabilities`, `Load`, `Play`, `Gain`, `Stop`, `Unload`, `Status`, `CreateStream`, `SubmitStream`, `Pause` or `Resume` |
+| `voice: s32` | Caller-selected `1..16`, local to one actual app instance. Each loaded voice has an independent decoder and gain, so several effects and music voices play together |
+| `asset: string`, `music: bool`, `gain: float32` | `Load` uses these; unload an occupied ID before reloading it |
+| `looping: bool` | `Play` starts from the beginning; `looping` is accepted only on a voice loaded with `music = true` |
+| `gain: float32` | `Gain` changes only that voice. Gain must be finite and in `0..1`; out-of-range, NaN and infinite values are rejected, without clamping or changing playback. Zero-initialized gain means silence |
+| PCM fields | `format`, `sample_rate`, `channels`, `frames_per_block` and `pcm` for streams (below) |
+
 `Stop` retains a decoded voice for replay; `Unload` stops and frees it.
 `Status` updates the stream and reports actual completion. `Capabilities`
 does not need a voice ID. There is no queued playback or automatic transition.
@@ -24,20 +25,29 @@ does not need a voice ID. There is no queued playback or automatic transition.
 `MediaAudioResult` owns `message: string` across the hosted boundary, with
 `code: MediaAudioCode`, `state: MediaAudioState`, `capabilities: u32`, and
 `writable: bool` for PCM streams, `has_position: bool`, and `position_seconds: float64`.
-Codes are `Ok`, `Unsupported` (no provider), `Unavailable` (no device/reader
-or an operation already in flight), `Suspended` (browser context cannot play,
-including before an autoplay-unlocking gesture), `Invalid`, `Denied`,
-`Missing`, `Limit`, `Failed` (provider/decode failure), and `Backpressure`
-(a full PCM stream). States are `Unloaded`,
-`Ready`, `Playing`, `Stopped`, `Finished`, and `Paused`. A failed command does not
-imply playing; inspect `code` first. Capability bits 1, 2 and 4 mean asset
-effects, asset music and gain. Providers retain those capability bits when
-the device is unavailable or suspended. Bit 8 advertises bounded PCM streams.
 
-Bits 16, 32 and 64 advertise asset pause/resume, asset-music position, and
-PCM pause/resume respectively. A partial provider need not implement
-these features; check its bits and result code. Existing operation/state wire
-values are unchanged; Pause, Resume and Paused are appended.
+| `MediaAudioCode` | Meaning |
+| --- | --- |
+| `Ok` | Success |
+| `Unsupported` | No provider |
+| `Unavailable` | No device/reader or an operation already in flight |
+| `Suspended` | Browser context cannot play, including before an autoplay-unlocking gesture |
+| `Invalid`, `Denied`, `Missing`, `Limit` | Bad request, refused, unknown voice/resource, or a limit reached |
+| `Failed` | Provider/decode failure |
+| `Backpressure` | A full PCM stream |
+
+States are `Unloaded`, `Ready`, `Playing`, `Stopped`, `Finished`, and `Paused`.
+A failed command does not imply playing; inspect `code` first.
+
+| Capability bit | Meaning |
+| --- | --- |
+| 1, 2, 4 | Asset effects, asset music and gain; providers keep these bits when the device is unavailable or suspended |
+| 8 | Bounded PCM streams |
+| 16, 32, 64 | Asset pause/resume, asset-music position, PCM pause/resume |
+
+A partial provider need not implement these features; check its bits and
+result code. Operation and state wire values stay stable; `Pause`, `Resume`
+and `Paused` extend the lists.
 
 `Pause` changes Playing to Paused, preserving the individual voice's offset,
 loop, gain and queued PCM copies. Repeating Pause on Paused succeeds. `Resume`
@@ -83,34 +93,33 @@ fixed until `Unload`; submission uses the voice's creation settings.
 `Status` returns `writable: bool`, true only for a running stream with room
 for a complete block. `SubmitStream` returns `Backpressure` without accepting
 any bytes when full; retry the same block later. `Ok` means the entire block
-was copied. The provider holds at most two blocks in its existing stream
+was copied. The provider holds at most two blocks in its own stream
 buffers; no application command queue is added. `Stop` clears queued samples,
 `Gain` changes only that voice, and `Unload` frees the stream. Streams remain
 `Playing` across frames and underruns, emitting silence while empty: they are
 open-ended and do not claim `Finished` or a precise drained count. Asset voices
-retain their existing completion semantics. Suspended/unavailable providers
+keep their completion semantics. Suspended/unavailable providers
 reject creation, play and submission without queuing them for later autoplay;
 after a trusted browser gesture the app must retry explicitly. Owner reset,
 revocation, close and successful restart dispose streams with asset voices.
 Wurm's synthesis, phrase scheduling, crossfades and game policy stay in Wurm;
-its existing mono 22050 Hz / 2048-frame transport fits these bounds.
+its mono 22050 Hz / 2048-frame transport fits these bounds.
 
 Only packed paths under `assets/` pass: absolute paths, empty path components,
-traversal, backslashes and schemes are refused before the host's existing
+traversal, backslashes and schemes are refused before the host's
 allowed-asset callback and packed reader. An asset is at most 8 MiB; there
 are at most 16 loaded voices per owner and no command queue. Resource bytes
 are copied/decoded into provider-owned storage; no native pointer or decoder
 handle crosses the VM. The host reply codec uses named fields, and the VM
 copies its strings before the host reuses the reply buffers.
 
-`HostedApp.audio` stores the owner for the actual VM instance. The existing
-`AppContextCall` dispatches audio only in an identified app's active widget
-frame, validates its session and existing widget asset policy, and reads
+`HostedApp.audio` stores the owner for the actual VM instance. `AppContextCall` dispatches audio only in an identified app's active widget
+frame, validates its session and the widget asset policy, and reads
 only that runtime's packed resources. `AppContextRun` / `AppContextRunFrame`
 service streams; audio commands disable quiet-frame replay so effects cannot
 repeat as cached UI. `HostedAppClose` and successful `HostedAppRestart`
 release all voices. Failed restart preserves the previous instance's audio.
-Before changing an existing context's account/resource ownership, the host
+Before changing a context's account/resource ownership, the host
 must call `AppContextAudioReset(app)`; it revokes in-flight decoding too.
 Never use the outer Session alone as the resource owner.
 
@@ -132,7 +141,7 @@ close explicitly before replacing a reader or changing its policy in place.
 closing an invalid session is also detected by the next tick. Owner close
 is explicit and idempotent. Closing one owner never closes the shared device
 or another owner's voices. Hosts can register a different actual provider
-with `MediaAudioUseProvider`; existing owners retain their provider until
+with `MediaAudioUseProvider`; current owners keep their provider until
 closed. The caller retains cue selection, score/synthesis, volume UI, mute,
 phrase scheduling and any single-in-flight music transition policy.
 

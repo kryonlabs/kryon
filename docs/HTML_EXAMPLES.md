@@ -136,5 +136,3 @@ Draw :: (frame: App.Frame) {
 ```
 
 For a complete multi-view example with sidebar navigation, KPI cards, scrollable results, loading/empty/error states, responsive wide/narrow breakpoints, and a keyboard-operable settings modal, see [`examples/dashboard/`](../examples/dashboard/README.md).
-
----

@@ -1,10 +1,12 @@
 # Widget packages
 
+This file covers widgets and input surfaces outside the core catalog: optional widget packages, bound text fields, intrinsic layouts, frame input snapshots and overlay dismissal.
+
 `EmptyState.Props.disabled` and `Banner.Props.disabled` keep configured action and dismiss buttons visible with disabled styling and semantics. They reject pointer and keyboard activation, including input queued before disabling, and become usable again when enabled.
 
 `Carousel.Props.disabled` disables swipe, wheel, keyboard navigation, arrows,
 and the selected action together. It defaults to false; item-level `disabled`
-continues to disable only that item's action. Disabled controls use their normal
+disables only that item's action. Disabled controls use their normal
 disabled styling and become interactive again when reenabled.
 
 `Carousel.Props.logo_max_width` optionally caps the cover logo's logical width;
@@ -87,7 +89,7 @@ With unset height, the grid reserves the tallest item's height per row plus
 inter-row spacing and block padding. Call `Grid.GridStep` on the returned
 cursor for each item and draw using `cursor.item`. A negative span fills a row.
 Close `result.container.opened` with `End(session)`. A two-argument `Layout.Grid`
-continues to place unpositioned children one track at a time. See the
+places unpositioned children one track at a time. See the
 [HTML/CSS mapping](HTML_TO_KRYON.md#author-a-responsive-dashboard).
 
 For a native bound field, initialize `state.bytes` once from application-owned
@@ -142,7 +144,7 @@ The value borrows the buffer; consume borrowed result text before mutating it.
 An invalid length or UTF-8 value disables the field; zero capacity is read-only.
 
 `TextField.StateApplyEdit(state: *TextField.State, edit: TextField.Edit) -> bool`
-accepts only ordered ranges within the existing value, with both ends at
+accepts only ordered ranges within the current value, with both ends at
 UTF-8 scalar boundaries, valid UTF-8 replacement text, and a result that fits
 the slice. The current value must also be valid UTF-8. Replacement can borrow
 any part of the destination: a temporary owned join is freed after the call.
@@ -158,7 +160,7 @@ to scalar boundaries in the resulting text and scroll to zero or greater;
 the widget still owns grapheme navigation. `true` means accepted, including
 navigation with no edit; it does not mean committed. Enter, Escape, clipboard
 and IME composition remain available on the original result for the application
-to handle, with their existing borrowed-text lifetime requirements.
+to handle, with the borrowed-text lifetime rules above.
 
 Native TextArea and TextField snapshots retain the supplied cursor and anchor
 and return only the changed grapheme-aligned span as their edit. An unchanged
@@ -180,7 +182,7 @@ the plain area's. During an IME composition, lines and
 boxes after it move with the preedit.
 
 `MarkdownEditor :: #import "kryon/markdown_editor";` shares the inline
-Markdown editor extracted from Inner Breeze Diary. Call
+Markdown editor used by Inner Breeze Diary. Call
 `MarkdownEditor.Draw(session, MarkdownEditor.Props.{.area = area, ...})`
 with ordinary `TextArea.Props` and retain its result's edit, cursor, anchor,
 scroll and focus. `muted_color` and `link_color` color list/quote markers and
@@ -209,7 +211,7 @@ pointer values: retained copies survive subsequent polls and hosted calls.
 Test `snapshot.keys[KeyLeft] & cast(u8)FrameKeyHeld` for sustained movement.
 Each entry combines `FrameKeyHeld` (1), `FrameKeyPressed` (2),
 `FrameKeyReleased` (4), and `FrameKeyRepeated` (8). A repeat is distinct from
-a fresh press; holding a key does not invent repeats. Indices use the existing
+a fresh press; holding a key does not invent repeats. Indices use the
 uppercase ASCII and named `Key` codes; index zero is unused.
 
 The snapshot also carries `pointer`, `secondary`, `focused`, `modifiers`,
@@ -228,7 +230,7 @@ Hosts publish on the session's owning thread with `FrameInputBegin(session, snap
 `FrameInputEnd(session)` after the callback, including failure paths. Publishing
 copies the value and rejects replacement while that session's frame is open.
 Kryon's standard Desktop and Canvas app loops do this automatically.
-Desktop freezes raw SDL key events for its own window; Canvas freezes existing
+Desktop freezes raw SDL key events for its own window; Canvas freezes the page's
 DOM held state and edge queues before widget reads. Both clear publication on
 callback cancellation, terminal polls and host teardown. Custom Desktop or
 Canvas loops call `DesktopFrameInputBegin(session)` or
@@ -242,8 +244,8 @@ validates the session against the active `WidgetHostBegin` before returning
 that session's published snapshot. No input is queried outside that frame.
 
 Capturing never consumes `KeyboardTake`, `TypedTextTake`, IME, clipboard, or Escape routing. Applications retain movement,
-simulation, repeat cadence, and navigation policy. The existing `FrameInput`
-replay record and its apply/field helpers retain their contract.
+simulation, repeat cadence, and navigation policy. The `FrameInput`
+replay record and its apply/field helpers keep their contract.
 
 `Scroll` reveals a newly focused text input and adjusts when the viewport
 resizes, such as when a phone keyboard opens. It retains that focus transition

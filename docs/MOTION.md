@@ -1,5 +1,9 @@
 # Motion
 
+Timed scalar tracks, stylesheet transitions, layout reflow motion, per-widget
+springs and page view transforms. Read the section for the kind of movement you
+want.
+
 ## Timed motion and keyframes
 
 Import `kryon/motion` for a timed scalar transition or keyframe track.
@@ -111,18 +115,20 @@ backend uses CSS motion through the browser.
 ## Widget motion
 
 `Menu.Props`, `TabBar.Props`, `Navigation.Props`, and `Collapsible.Props`
-accept `motion: *TransitionMotionState`, `now: float64` in monotonic seconds,
-and `reduced_motion: bool`. Import each widget from its named package.
+accept the following motion props. Import each widget from its named package.
 Retain one zero-initialized motion state per widget, with a stable widget key.
 
+| Motion prop | Meaning |
+| --- | --- |
+| `motion: *TransitionMotionState` | Caller-owned spring state; the state must outlive every call and must not be shared between widgets. A null pointer keeps the widget immediate |
+| `now: float64` | Monotonic seconds; time zero is valid, equal or backward timestamps do not advance the spring, and a long pause advances at most 0.1 seconds per submission |
+| `reduced_motion: bool` | Snaps to the target and clears `animating` |
+
 Motion runs in native widgets and VM-rendered widgets. The portable
-`KRYON_HOSTED_UI` TabBar bridge currently supports immediate rendering with
+`KRYON_HOSTED_UI` TabBar bridge supports immediate rendering with
 `motion = null` only. A nonnull pointer payload is rejected before dispatch;
 hosted motion needs an explicit state-value and write-back protocol. Guest
 addresses are never accepted as native host state pointers.
-The state must outlive every call and must not be shared between widgets. A
-null pointer keeps the widget immediate.
-
 Each result adds `animating: bool`. Request another application frame while
 any submitted widget returns true, supplying the real clock on that frame.
 Once every result is false, motion needs no further frames. The first
@@ -132,20 +138,22 @@ or backward timestamps do not advance the spring; a long pause advances at
 most 0.1 seconds per submission. Retained session and tree identities reset
 state when the widget moves to another parent, remounts, or changes kind.
 
-Menus fade, grow from 96 percent, and translate six units into place, with
-0.28-second opening and 0.16-second closing springs. Continue submitting the
+Spring parameters per widget:
+
+| Widget | Springs |
+| --- | --- |
+| Menu | Fades, grows from 96 percent and translates six units into place; 0.28-second opening and 0.16-second closing |
+| TabBar | Tab indicators stretch toward the selected tab: leading edge 0.26 seconds with no bounce, trailing edge 0.42 seconds with 0.14 bounce |
+| Navigation | Selection bounds 0.42 seconds with 0.16 bounce in full and compact layouts |
+| Collapsible | 0.40-second spring for the reveal and quarter-turn chevron | Continue submitting the
 menu and its current groups during closing. Closing panels keep visual paint
 but immediately release their scrim, rows, focus, and activation ownership.
 The menu retains indices and a content signature, never borrowed item slices.
 
-Tab indicators stretch toward the selected tab using separate edge springs:
-the leading edge uses 0.26 seconds with no bounce, and the trailing edge uses
-0.42 seconds with 0.14 bounce. Navigation selection bounds use 0.42 seconds
-with 0.16 bounce in both full and compact layouts. Hit targets and returned
-selection geometry follow the actual controls independently of the paint.
+Hit targets and returned selection geometry follow the actual controls
+independently of the paint.
 
-Collapsible uses a 0.40-second spring for its reveal and quarter-turn chevron.
-`content` is the animated reveal rectangle; the application draws and clips
+For Collapsible, `content` is the animated reveal rectangle; the application draws and clips
 its body inside that rectangle and owns body interaction while closing.
 `open`, focus, keyboard navigation, and close results keep their logical
 meaning throughout the transition.

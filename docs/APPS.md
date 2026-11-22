@@ -1,5 +1,9 @@
 # Applications and window hosts
 
+How a Kryon application starts, which host draws it on each platform, and how
+input reaches the session. Read this when creating an app entry, embedding a
+bundle, or wiring custom input.
+
 The smallest executable application imports `kryon/app` and the widgets it
 draws:
 
@@ -81,7 +85,7 @@ text remains unread, then call its take once before composition. The take
 transfers one editing action or a printable-key/text run into that session and
 returns `(key, modifiers)` using portable key and modifier codes. Unread text
 delays later editing actions; Return can commit a text run delivered in the
-same call. Focus loss cancels queued keys so an old shortcut cannot fire after
+same call. Focus loss cancels queued keys so a queued shortcut cannot fire after
 focus returns, while text already committed by the platform remains ordered.
 
 Desktop's bounded 256-record delivery queue backpressures SDL key and text
@@ -93,9 +97,9 @@ gamepad navigation across drawing frames. Pressed/released snapshot flags still
 expire at the frame boundary; delivery does not replay them. Each queued press
 or repeat retains its browser event's Shift, Control/Meta and Alt modifiers.
 Custom loops call `CanvasInputTake(session)`; an empty take reports current held
-modifiers. `CanvasModifiers()` and `CaptureFrameInput(session).modifiers` still
-report held state at their own sampling time, so consuming a shortcut never
-changes held keys or snapshot flags.
+modifiers. `CanvasModifiers()` and `CaptureFrameInput(session).modifiers` report held
+state at their own sampling time, so consuming a shortcut never changes held
+keys or snapshot flags.
 
 Application code owns its product state and calls widgets within `Frame`.
 The complete manifest and build commands are in [PROJECTS.md](PROJECTS.md).

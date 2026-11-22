@@ -10,8 +10,8 @@ Positive X moves the scene right; positive Y moves it up. An offset of 1 moves
 it by half the viewport width or height. Position, target, field of view and
 aspect stay fixed, so this pans a bounded crop without rotating or translating
 the camera. The CPU and GPU apply the offset before homogeneous frustum
-clipping; render only the requested viewport. Orthographic bounds retain their
-existing meaning and do not use these perspective offsets. Async GPU completion
+clipping; render only the requested viewport. Orthographic bounds keep their
+meaning and do not use these perspective offsets. Async GPU completion
 metadata retains the exact submitted offsets with its camera.
 The shader implementation is portable Ziran on CPU, including on Android and
 WebAssembly. It does not compile GLSL or require a GPU shader context.
@@ -110,7 +110,7 @@ For expensive opaque materials with more than two projected surface layers,
 the renderer first tests depth and material discard without lighting. It then
 shades only candidates near the final opaque depth, preserving the original
 draw order, float32 depth comparisons and four coverage samples. Conservative
-depth ceilings temporarily reuse the existing sample color bytes; this adds
+depth ceilings temporarily reuse the target's sample color bytes; this adds
 no frame-sized buffer. Empty samples regain the scene background before the
 original sorted transparent pass. Low-overlap scenes retain the single pass.
 Programs and alpha textures still run during visibility testing, so savings
@@ -164,7 +164,7 @@ so GPU comparisons use documented pixel tolerances rather than exact hashes.
 Native desktop applications can explicitly import `kryon/scene_gpu` and link
 `-lEGL -lGLESv2 -lGLX -lm`. This optional host is separate from the core UI, portable
 CPU renderer and WebAssembly path. It owns a surfaceless EGL/GLES3 context and
-renders the existing `Scene`, materials and `SceneCamera` into a reusable
+renders a `Scene`, materials and `SceneCamera` into a reusable
 `std/image.Image` for ordinary Kryon Image presentation. A web build (`OS ==
 .WEB`) links none of EGL or GL: `SceneGpuProbe` reports the GPU unavailable,
 and `SceneGpuRenderOrCPU` draws with `RenderScene`.

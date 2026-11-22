@@ -1,6 +1,9 @@
 # Style rules
 
-## Style rules
+Installable style rules plus the image, bitmap, clipboard and
+Linux drag/clipboard integrations that stylesheets and widgets draw with.
+Read this when styling widgets, showing pictures or moving data through
+system clipboards and drags.
 
 `InstallStyleRules` copies typeface text into Kryon-owned storage and returns
 `false` without replacing the active rules when the rule count is outside
@@ -22,13 +25,14 @@ that measures them. Code that only needs the image placement rules, such as
 which needs no host or picture.
 
 Import `kryon/bitmap_image` to create a runtime RGBA image for the same
-`Image.Draw(session, Image.Props.{.texture = image, .smooth = true, ...})`:
-`BitmapImageCreate(session: Session, width: s32, height: s32, rgba: []u8) -> Texture2D`,
-`BitmapImageUpdate(session: Session, image: Texture2D, rgba: []u8) -> bool`, and
-`BitmapImageRelease(session: Session, image: Texture2D)`. Bytes are tightly packed,
-row-major straight RGBA8 and copied/consumed synchronously; reuse the input buffer
-after the call. Create failure returns a zero texture. Update returns true for
-accepted unchanged data, and false preserves the old pixels. Only successful
+`Image.Draw(session, Image.Props.{.texture = image, .smooth = true, ...})`.
+Bytes are tightly packed, row-major straight RGBA8 and copied/consumed
+synchronously; reuse the input buffer after the call.
+
+| Call | Behavior |
+| --- | --- |
+| `BitmapImageCreate(session, width: s32, height: s32, rgba: []u8) -> Texture2D` | Failure returns a zero texture |
+| `BitmapImageUpdate(session, image: Texture2D, rgba: []u8) -> bool` | True for accepted unchanged data; false keeps the current pixels. Only successful
 changed data invalidates retained paint. Smooth sampling and alpha use the
 ordinary Image renderer on Desktop/Cairo, pixmap and Canvas. Explicit `Image.Props.tint`, including white for original colors,
 applies to straight RGBA pixels. GPU reset and native window close/reopen
@@ -46,10 +50,10 @@ copies. Provider copies have the same bounded dimensions/count. Bad, modified,
 stale and cross-session handles are rejected; releasing them is harmless.
 Closing a Session releases its images. Closing/replacing the Canvas provider
 also releases its images. Call on the session/provider's frame thread, outside
-an active raster emission. Native renderer texture handles keep their existing
-contract. Standard hosted widget policy continues to reject all guest runtime
-texture IDs and does not advertise bitmap lifecycle capabilities; an embedding
-must provide a separate authenticated ownership policy to grant those effects.
+an active raster emission. Native renderer texture handles are unchanged.
+Standard hosted widget policy rejects all guest runtime texture IDs and does
+not advertise bitmap lifecycle capabilities; an embedding must provide a
+separate authenticated ownership policy to grant those effects.
 In a zx bundle the player owns these pictures: `kryon build` defines
 `KRYON_ZX` for zx profiles, and the same three calls become the host calls
 `BitmapImageCreateHost`, `BitmapImageUpdateHost` and `BitmapImageReleaseHost`
@@ -59,15 +63,24 @@ them refuses the bundle.
 
 ### System text clipboard and PRIMARY
 
-Import `kryon/system_clipboard` for the ordinary UTF-8 text clipboard. The
-existing `SystemClipboardText(buffer)`, `SystemClipboardAvailable()`,
-`SystemClipboardHasText()`, and `SystemClipboardSet(text)` calls keep their
-ordinary CLIPBOARD semantics.
+Import `kryon/system_clipboard` for the ordinary UTF-8 text clipboard:
 
-On hosts with a distinct selection clipboard, use
-`SystemPrimaryText(buffer) -> string`, `SystemPrimaryAvailable() -> bool`, and
-`SystemPrimarySet(text) -> bool`. `SystemPrimaryText` returns a caller-owned,
-whole-UTF-8 prefix borrowed from `buffer`; an empty result can mean either an
+| Call | Purpose |
+| --- | --- |
+| `SystemClipboardText(buffer) -> string` | Whole-UTF-8 prefix borrowed from `buffer` |
+| `SystemClipboardAvailable() -> bool` | Whether the clipboard holds text |
+| `SystemClipboardHasText() -> bool` | Same question, no buffer |
+| `SystemClipboardSet(text) -> bool` | Publish text to CLIPBOARD |
+
+On hosts with a distinct selection clipboard:
+
+| Call | Purpose |
+| --- | --- |
+| `SystemPrimaryText(buffer) -> string` | Caller-owned whole-UTF-8 prefix |
+| `SystemPrimaryAvailable() -> bool` | Distinguishes an empty selection from an unsupported host (an empty `SystemPrimaryText` result can mean either) |
+| `SystemPrimarySet(text) -> bool` | Publish text to PRIMARY |
+
+`SystemPrimaryText` returns a borrowed prefix borrowed from `buffer`; an empty result can mean either an
 empty selection or an unsupported host, so use `SystemPrimaryAvailable` when
 that distinction matters. Linux SDL desktop hosts connect these
 calls to the platform PRIMARY selection. Android, Canvas, terminal, pixmap,
@@ -83,7 +96,7 @@ remains valid until the next open call; write copies the text during the call.
 ### Optional native MIME clipboard on Linux
 
 Import `kryon/MimeClipboardLinux` in an X11/XWayland native app and link
-`-lxcb` (for example in `LDLIBS`). Existing text and PNG modules retain their
+`-lxcb` (for example in `LDLIBS`). The text and PNG modules keep their
 interfaces. This module owns one dedicated connection and unmapped selection
 window, without toolkit callbacks or changes to the toolkit's connection.
 It does not implement a Wayland-only data source or clipboard persistence.
@@ -95,32 +108,13 @@ Close is idempotent and destroys only the transport's own connection/windows,
 freeing its copied publications and outgoing transfer snapshots. No callbacks
 or caller buffers remain registered after any call returns.
 
-- `MimeClipboardPublish(payloads: []MimeClipboardPayload) -> MimeClipboardPublishResult`
-  copies every `{mime: string, bytes: []u8}` before publishing the complete
-  target set in one selection ownership change. Reuse/free input storage after
-  return. Result fields are `status` and `owner: u64`. Duplicate/empty/NUL names,
-  reserved selection protocol targets and invalid counts fail without replacing
-  the prior publication. Empty byte payloads are supported.
-- `MimeClipboardRead(mime: string, buffer: []u8, timeout_ms: s32) -> MimeClipboardReadResult`
-  requests exactly that target, including incoming INCR. It returns `status`,
-  `bytes: []u8`, `size: s64` and `owner: u64`. Only `Ok` exposes bytes, borrowed
-  from the supplied buffer. The buffer may contain partial data on failure;
-  ignore it unless status is `Ok`. Empty success differs from `Absent`.
-  `size` is the bytes observed, the direct property's exact size, or an INCR
-  lower bound/hint when rejected as too large. INCR hints are untrusted.
-- `MimeClipboardPump(max_events: s32) -> s32` serves at most 256 events per
-  call (zero for nonpositive budgets). Call regularly from the app frame loop
-  while publishing. Reads also serve queued requests; self-reads copy directly
-  without waiting for a toolkit loop. Pump retires abandoned/expired transfers.
-- `MimeClipboardOwner() -> u64` returns zero for no owner/unavailable transport.
-  Local ownership returns the local generation token. Foreign ownership returns
-  an observational XID; it cannot identify content changes within that window.
-- `MimeClipboardRelease(owner: u64) -> bool` clears only the still-current
-  publication created by this transport, comparing server ownership atomically.
-  Every successful local publish has a fresh window and generation token;
-  stale tokens, including across close/reopen, cannot clear newer local data.
-  Foreign tokens always fail, even if a read returned that token: a foreign
-  application may republish different data from the same window.
+| Call | Behavior |
+| --- | --- |
+| `MimeClipboardPublish(payloads: []MimeClipboardPayload) -> MimeClipboardPublishResult` | Copies every `{mime: string, bytes: []u8}` and publishes the complete target set in one selection ownership change. Reuse/free input storage after return; result fields are `status` and `owner: u64`. Duplicate/empty/NUL names, reserved selection protocol targets and invalid counts fail without replacing the prior publication. Empty byte payloads are supported |
+| `MimeClipboardRead(mime: string, buffer: []u8, timeout_ms: s32) -> MimeClipboardReadResult` | Requests exactly that target, including incoming INCR. Returns `status`, `bytes: []u8`, `size: s64`, `owner: u64`. Only `Ok` exposes bytes, borrowed from the supplied buffer; partial buffer data on failure must be ignored. Empty success differs from `Absent`. `size` is the bytes observed, the direct property's exact size, or an INCR lower bound/hint when rejected as too large; INCR hints are untrusted |
+| `MimeClipboardPump(max_events: s32) -> s32` | Serves at most 256 events per call (zero for nonpositive budgets). Call regularly from the app frame loop while publishing. Reads also serve queued requests; self-reads copy directly without waiting for a toolkit loop. Retires abandoned/expired transfers |
+| `MimeClipboardOwner() -> u64` | Zero for no owner/unavailable transport. Local ownership returns the local generation token; foreign ownership returns an observational XID that cannot identify content changes within that window |
+| `MimeClipboardRelease(owner: u64) -> bool` | Clears only the still-current publication created by this transport, comparing server ownership atomically. Every successful local publish has a fresh window and generation token; stale tokens, including across close/reopen, cannot clear newer local data. Foreign tokens always fail, even if a read returned that token: a foreign application may republish different data from the same window |
 
 `MimeClipboardStatus` is `Ok`, `Absent`, `Error`, `TooLarge`, or `Timeout`.
 `Absent` means no owner or a refused target. Invalid arguments, malformed
@@ -168,13 +162,16 @@ moves, Alt asks, otherwise the first offered of copy, move and link. The state
 reports `status`, the root pointer position, `modifiers` (1 Shift, 2 Control,
 4 Alt), the current `action`, whether a foreign target `accepted` it, and
 `local` when the pointer is over a window of this process (identified by
-`_NET_WM_PID`). Over its own windows the module sends no XDND messages, so the
-app performs internal drops itself.
+`_NET_WM_PID`).
 
-`status` is `Dragging` until the button is released. A release over this
-process gives `Local`; over an accepting target the drop is sent and the status
-is `Dropped` until the target's `XdndFinished` (or a 15 second timeout) gives
-`Finished` with `performed` and `success`; anywhere else gives `Cancelled`.
+| `DragSourceState.status` | Meaning |
+| --- | --- |
+| `Dragging` | Button still held |
+| `Local` | Release over this process; the module sends no XDND messages over its own windows, so the app performs internal drops itself |
+| `Dropped` | Drop sent to an accepting target; lasts until the target's `XdndFinished` (or a 15 second timeout) |
+| `Finished` | `performed` and `success` report the target's answer |
+| `Cancelled` | Release anywhere else |
+
 `DragSourceCancel()` abandons a drag, for example on Escape. After reading a
 final status, call `DragSourceEnd()` to release the selection, icon and copied
 data. The application performs no file operation for a foreign drop: the

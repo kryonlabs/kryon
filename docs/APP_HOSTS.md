@@ -1,5 +1,9 @@
 # Application hosts and embedding
 
+The desktop ZX player launcher API, the SDL2/Cairo desktop host's optional
+parts, Canvas host extensions and Android frame ownership. Read this when you
+embed or launch Kryon bundles, or need host-level window and platform control.
+
 ## Linked desktop ZX player
 
 Native launchers import `kryon/desktop_zx` and call
@@ -38,68 +42,16 @@ The SDL2/Cairo desktop host (`desktop_runtime`) carries optional parts that
 only programs importing them link. Key codes are Kryon's: letters as
 uppercase ASCII, named keys from 256 (Escape), as `desktop_keys` maps SDL's.
 
-- `desktop_runtime` itself routes each SDL event to the window it names, and
-  `DesktopWheelMoveX()` gives the poll's sideways wheel steps (positive to
-  the right) beside `DesktopWheelMove()`. Over another window of the program
-  the main window's pointer is at -1, -1 and presses nothing.
-  On X11 a button held by another client's grab, such as a window-manager
-  move, produces no application press or release.
-  `OpenDesktopWindow(width, height, title, options)` opens the window with
-  any of `DesktopWindowResizable`, `DesktopWindowUndecorated`,
-  `DesktopWindowTopmost` and `DesktopWindowAlwaysRun` (keep the frame cadence
-  while hidden or minimized); `OpenDesktopTitled` is the resizable window.
-  `DesktopFrameRate(fps)` caps drawing at `fps` frames a second, or draws
-  without waiting with 0 (the default is 60, settling to 15 while nothing
-  changes). `DesktopExitKey(key)` makes a key end the loop as closing the
-  window does (0 turns that off). `PollMiddlePointer()` reports the middle
-  button like `PollSecondaryPointer()` the right one, and
-  `DesktopPrepareGlyphs(text)` loads the fallback faces non-ASCII text needs
-  before a frame draws it.
-- `kryon/desktop_activity`: `DesktopWaitForActivity(descriptors, milliseconds)`
-  sleeps until one of the program's own descriptors (such as a terminal's
-  PTY) is readable, window input is queued, or the time ends, and returns
-  `DesktopActivityDescriptor`, `DesktopActivityInput` or
-  `DesktopActivityNone`. Queued input stays for the next `PollDesktop`.
-  Windows and Android return `DesktopActivityUnsupported`; keep drawing there.
-- `kryon/desktop_keyboard`: `DesktopKeyDown(key)`, `DesktopKeyPressed(key)`
-  (the first press), `DesktopKeyRepeated(key)` (keyboard auto-repeat) and
-  `DesktopKeyReleased(key)`, for the last `PollDesktop`.
-- `kryon/desktop_window_state`: `DesktopMinimize`, `DesktopMaximize`,
-  `DesktopRestore`, `DesktopRaise` and `DesktopSetAlwaysOnTop(enabled)` ask
-  the window manager; `DesktopMinimized`, `DesktopMaximized` and
-  `DesktopAlwaysOnTop` report what it did. `DesktopSetFullscreen(enabled)`
-  and `DesktopToggleFullscreen()` fill the monitor at the desktop's own
-  resolution and `DesktopFullscreen()` reports it. `DesktopMonitorBounds()` and
-  `DesktopMonitorUsable()` give the window's monitor in desktop pixels, and
-  `DesktopDisplayScale()` its density over 96 dpi (X11's `Xft.dpi` when set).
-- `kryon/desktop_secondary_window`: up to three more windows, each with its
-  own Cairo surface, presenter and events: `OpenSecondaryWindow(title, x, y, width,
-  height, flags, background, scale)`, `CloseSecondaryWindow`,
-  `BeginSecondaryWindow`/`EndSecondaryWindow` around
-  `BeginSecondaryFrame`/`EndSecondaryFrame`, `SecondaryWindowInput`,
-  `PumpSecondaryWindows`, `IsSecondaryWindowClicked`, `RightClicked`,
-  `Dragged`, `TakeSecondaryWindowClose`, `GetSecondaryWindowSize`,
-  `Position`, `ClickPosition`, `SetSecondaryWindowKeyboardGrab` and
-  `CloseSecondarySession`, plus each window's own keys
-  (`IsSecondaryWindowKeyDown`, `KeyPressed`, `KeyRepeated`, `KeyReleased`),
-  `IsSecondaryWindowFocused` and `SecondaryDesktopWindow` (its SDL window).
-- `kryon/cairo_assets`: `RasterUseAssets(read)` gives the raster the
-  program's own assets, such as files embedded in its executable: a picture
-  whose bytes `read(path)` returns decodes from memory in any format the
-  raster decodes. `RasterAssetsClose()` forgets them. Each asset the
-  decoders read, and each face `kryon/cairo_typefaces` is given as bytes,
-  is a file of its own: an in-memory file on Linux, and on Windows a file
-  in the user's temporary folder, removed when it is closed or when the
-  program exits.
-- `kryon/cairo_typefaces`: `kryon/typeface_source`'s `RegisterTypefaceData`,
-  `RegisterTypefaceFile`, `RegisterSystemTypeface`, `UseTypeface` and
-  `ClearTypefaces` on Pango and fontconfig. Registered faces also serve
-  scripts the selected face lacks.
-- `kryon/cairo_render_scale`: `RasterSetTransform(scale, offset_x, offset_y)`
-  maps layout points to pixels as `point * scale + offset`. It rejects scales
-  outside `(0, 16]` and nonfinite offsets. The transform survives window resize;
-  `RasterScale()` reads its scale. Custom hosts map their raw pointer with
-  `RasterPointFromPixels(point)` before routing input to the widget tree.
+| Module | Surface |
+| --- | --- |
+| `desktop_runtime` | Routes each SDL event to the window it names; `DesktopWheelMoveX()` gives the poll's sideways wheel steps (positive to the right) beside `DesktopWheelMove()`. Over another window of the program the main window's pointer is at -1, -1 and presses nothing. On X11 a button held by another client's grab, such as a window-manager move, produces no application press or release. `OpenDesktopWindow(width, height, title, options)` opens the window with any of `DesktopWindowResizable`, `DesktopWindowUndecorated`, `DesktopWindowTopmost` and `DesktopWindowAlwaysRun` (keep the frame cadence while hidden or minimized); `OpenDesktopTitled` is the resizable window. `DesktopFrameRate(fps)` caps drawing at `fps` frames a second, or draws without waiting with 0 (the default is 60, settling to 15 while nothing changes). `DesktopExitKey(key)` makes a key end the loop as closing the window does (0 turns that off). `PollMiddlePointer()` reports the middle button like `PollSecondaryPointer()` the right one. `DesktopPrepareGlyphs(text)` loads the fallback faces non-ASCII text needs before a frame draws it |
+| `kryon/desktop_activity` | `DesktopWaitForActivity(descriptors, milliseconds)` sleeps until one of the program's own descriptors (such as a terminal's PTY) is readable, window input is queued, or the time ends, and returns `DesktopActivityDescriptor`, `DesktopActivityInput` or `DesktopActivityNone`. Queued input stays for the next `PollDesktop`. Windows and Android return `DesktopActivityUnsupported`; keep drawing there |
+| `kryon/desktop_keyboard` | `DesktopKeyDown(key)`, `DesktopKeyPressed(key)` (the first press), `DesktopKeyRepeated(key)` (keyboard auto-repeat) and `DesktopKeyReleased(key)`, for the last `PollDesktop` |
+| `kryon/desktop_window_state` | `DesktopMinimize`, `DesktopMaximize`, `DesktopRestore`, `DesktopRaise` and `DesktopSetAlwaysOnTop(enabled)` ask the window manager; `DesktopMinimized`, `DesktopMaximized` and `DesktopAlwaysOnTop` report what it did. `DesktopSetFullscreen(enabled)` and `DesktopToggleFullscreen()` fill the monitor at the desktop's own resolution and `DesktopFullscreen()` reports it. `DesktopMonitorBounds()` and `DesktopMonitorUsable()` give the window's monitor in desktop pixels, and `DesktopDisplayScale()` its density over 96 dpi (X11's `Xft.dpi` when set) |
+| `kryon/desktop_secondary_window` | Up to three more windows, each with its own Cairo surface, presenter and events: `OpenSecondaryWindow(title, x, y, width, height, flags, background, scale)`, `CloseSecondaryWindow`, `BeginSecondaryWindow`/`EndSecondaryWindow` around `BeginSecondaryFrame`/`EndSecondaryFrame`, `SecondaryWindowInput`, `PumpSecondaryWindows`, `IsSecondaryWindowClicked`, `RightClicked`, `Dragged`, `TakeSecondaryWindowClose`, `GetSecondaryWindowSize`, `Position`, `ClickPosition`, `SetSecondaryWindowKeyboardGrab` and `CloseSecondarySession`, plus each window's own keys (`IsSecondaryWindowKeyDown`, `KeyPressed`, `KeyRepeated`, `KeyReleased`), `IsSecondaryWindowFocused` and `SecondaryDesktopWindow` (its SDL window) |
+| `kryon/cairo_assets` | `RasterUseAssets(read)` gives the raster the program's own assets, such as files embedded in its executable: a picture whose bytes `read(path)` returns decodes from memory in any format the raster decodes. `RasterAssetsClose()` forgets them. Each asset the decoders read, and each face `kryon/cairo_typefaces` is given as bytes, is a file of its own: an in-memory file on Linux, and on Windows a file in the user's temporary folder, removed when it is closed or when the program exits |
+| `kryon/cairo_typefaces` | `kryon/typeface_source`'s `RegisterTypefaceData`, `RegisterTypefaceFile`, `RegisterSystemTypeface`, `UseTypeface` and `ClearTypefaces` on Pango and fontconfig. Registered faces also serve scripts the selected face lacks |
+| `kryon/cairo_render_scale` | `RasterSetTransform(scale, offset_x, offset_y)` maps layout points to pixels as `point * scale + offset`. It rejects scales outside `(0, 16]` and nonfinite offsets. The transform survives window resize; `RasterScale()` reads its scale. Custom hosts map their raw pointer with `RasterPointFromPixels(point)` before routing input to the widget tree |
 
 `make desktop-windows-test` checks these on a private Xvfb with XTest input.
 

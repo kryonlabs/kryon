@@ -1,26 +1,14 @@
 # Image, tile and shape rendering
 
-`Image.Props.clip_polygon` clips an image without stretching its content.
-Supply 3–4096 points in normalized destination coordinates (0–1); the path
-closes automatically. Empty leaves the image unchanged. Invalid coordinates,
-too few points, or combining a polygon with a mesh draw nothing. Native,
-hosted and browser images retain their own copy of the supplied points.
+Advanced `Image` rendering options, tile maps, palettes and decorative shapes.
+Read this when an image needs clipping, warping or a loading preview, or when
+you draw shapes directly.
 
-`Image.Props.mesh` warps the same image over a grid of `columns` × `rows`
-screen points, row by row from the source's top left, each cell drawn as two
-textured triangles: a cut-out puppet's painted arm can bend at its elbow, or
-a picture can follow a curve. The bounds still clip it; fit, origin,
-rotation and the style radius do not apply, and a grid with too few points
-draws nothing. Points are copied when the image is queued, at most 4096 per
-image (256 through a portable bundle's hosted `Image`).
-
-`Image.Props.preview_path` names a small copy of the same picture that draws in
-its place, with the image's own bounds, fit, mesh and clip, while the picture
-loads or when it is unavailable, so something shows at once and the picture
-replaces it when ready. A preview of part of a picture (a nonempty `source`,
-such as a jigsaw piece) needs `Image.Props.full_size`, the picture's size in
-pixels, to map that rectangle onto the preview; without it the image waits for
-the picture. Hosted previews pass the same asset policy as their picture.
+| `Image.Props` option | Meaning |
+| --- | --- |
+| `clip_polygon` | Clips the image without stretching it. Supply 3–4096 points in normalized destination coordinates (0–1); the path closes automatically. Empty leaves the image unchanged. Invalid coordinates, too few points, or combining a polygon with a mesh draw nothing. Native, hosted and browser images each keep their own copy of the supplied points. |
+| `mesh` | Warps the image over a grid of `columns` × `rows` screen points, row by row from the source's top left, each cell drawn as two textured triangles — a cut-out puppet's painted arm can bend at its elbow, or a picture can follow a curve. The bounds still clip it; fit, origin, rotation and the style radius do not apply, and a grid with too few points draws nothing. Points are copied when the image is queued, at most 4096 per image (256 through a portable bundle's hosted `Image`). |
+| `preview_path` | Names a small copy of the same picture that draws in its place, with the image's own bounds, fit, mesh and clip, while the picture loads or when it is unavailable, so something shows at once and the picture replaces it when ready. A preview of part of a picture (a nonempty `source`, such as a jigsaw piece) needs `Image.Props.full_size`, the picture's size in pixels, to map that rectangle onto the preview; without it the image waits for the picture. Hosted previews pass the same asset policy as their picture. |
 `image_showing.ImageShowingOf(session, image)` reports `ImageShowingNone`
 (loading), `ImageShowingPreview`, `ImageShowingFull` or
 `ImageShowingUnavailable`, natively and through a portable bundle's host, so

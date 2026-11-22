@@ -1,17 +1,22 @@
 # Game touch controls
 
-Import `kryon/cursor` for `CursorSet(session, CursorProps) -> bool`,
-`CursorSetDefault(CursorProps) -> bool`, `CursorSetPointing(CursorProps) -> bool`
-and `CursorHover(session, shape) -> bool`. A request persists until the next
-deliberate change: repeating it every frame changes nothing, frames never clear
-it, and the empty request `.{}` withdraws it. `CursorSetDefault` sets the
-application cursor that every session inherits; it replaces the default, arrow,
-clickable and disabled widget shapes, while text, crosshair and resize shapes
-still show through. `CursorSetPointing` sets the application's pointing cursor,
-shown instead only where a click does something: over clickable widgets and
-over targets the app marks with `CursorHover`. Without one, clickable shows the
-application cursor. A session's own request wins over all of them. Requests
-copy their asset path; disposing or closing a session drops its request.
+Picture cursors, the test driver, on-screen joystick, direction pad and swipe
+feedback for touch-first applications. Read this when building a game UI or a
+driven test.
+
+Import `kryon/cursor`:
+
+| Call | Effect |
+| --- | --- |
+| `CursorSet(session, CursorProps) -> bool` | A session's own request; it wins over the application cursors |
+| `CursorSetDefault(CursorProps) -> bool` | The application cursor every session inherits; replaces the default, arrow, clickable and disabled widget shapes, while text, crosshair and resize shapes still show through |
+| `CursorSetPointing(CursorProps) -> bool` | The application's pointing cursor, shown only where a click does something: over clickable widgets and over targets the app marks with `CursorHover`. Without one, clickable shows the application cursor |
+| `CursorHover(session, shape) -> bool` | Marks the shape under the pointer for a target the app hit-tests itself |
+
+A request persists until the next deliberate change: repeating it every frame
+changes nothing, frames never clear it, and the empty request `.{}` withdraws
+it. Requests copy their asset path; disposing or closing a session drops its
+request.
 
 A target the app draws and hit-tests itself (a painted hotspot, a field)
 reports the shape under the pointer with `CursorHover(session, shape)` while it
@@ -94,8 +99,8 @@ Portable hosted apps use `CursorSet` and `CursorHover` with `KRYON_HOSTED_UI`
 `cursor.CursorSetHostedHost` and `cursor.CursorHoverHostedHost`, which marks
 only the active session's building frame; `WidgetHostCall` requires the active
 `WidgetHostBegin` session. Asset requests must name a normalized packed path
-under `assets/`, pass that instance's existing asset policy, and resolve through
-its existing asset resolver. The host copies the resolved path before returning;
+under `assets/`, pass that instance's asset policy and resolve through
+its asset resolver. The host copies the resolved path before returning;
 no guest image bytes, pointer or native cursor handle crosses this boundary.
 An unavailable resolution returns false. Hosts apply the resolved cursor after
 committing the frame with `DesktopCursor(session)` or `CanvasCursor(session)`;
@@ -107,7 +112,7 @@ that host's window icon. Dimensions must be 1–512 and the slice must contain
 exactly `width * height * 4` bytes. The caller retains its pixels; theme-aware
 applications can pass `GtkIconRaster` output and release it immediately.
 The generic desktop player extracts packed assets into a private directory under
-`TMPDIR` (an existing absolute directory), or the system default when unset,
+`TMPDIR` (an absolute directory that already exists), or the system default when unset,
 and removes that directory on normal exit.
 
 `kryon/joystick` provides `SwipeArea` (swipes and taps over a board) and
