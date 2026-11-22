@@ -224,8 +224,7 @@ kryon-start pitfalls (skills/kryon-start/SKILL.md:174-188) and classification:
 An edit reaches pixels in 1 command once a preview fixture exists, but the
 fixture must be a separate `previews/<name>.zi` module (docs/FRAME_REPLAY.md:17-21);
 a whole-app screenshot without a fixture is the fixed-size pixmap profile
-(docs/PROJECTS.md:166). There is no hot reload or live preview outside the
-browser gallery (only a historical Krait IDE note, kryon/CHANGELOG.md:515-518).
+(docs/PROJECTS.md:166). `kryon run --watch` now rebuilds and relaunches a native app after each saved change.
 No timing numbers are recorded in these docs to cite.
 
 ## 7. Open work already planned
@@ -251,5 +250,4 @@ No timing numbers are recorded in these docs to cite.
 7. Grid items require up-front heights/spans - evidence docs/HTML_TO_KRYON.md:117-118,148, responsive.zi:97 - fix: auto row heights from measured items when `.height` is unset - files: kryon/src/ui/layout (grid), examples/dashboard/previews - test: a responsive.zi variant with heightless items renders equal bounds.
 8. The CSS supported-property matrix lives only in packages/css/README.md:49-178 (the one-page app cheat sheet landed as docs/CHEATSHEET.md, built by `make cheatsheet-test`) - fix: a generated property matrix linked from docs/CHEATSHEET.md - files: packages/css/README.md, kryon/docs/CHEATSHEET.md - test: the matrix matches the parser property list.
 9. Theme tokens and CSS do not share a vocabulary - evidence theme.zi:285-298 vs the properties.zi list, themes/catalog_light.css:12-23 - fix: expose `--space-2`, `--radius-medium`, `--accent` etc. as CSS custom properties at install - files: packages/css/src/css_sheet.zi, kryon/src/ui/theme.zi - test: dashboard styles.zi uses var(--space-3); conformance digest unchanged.
-11. No hot reload / live native preview - evidence README.md:95-103 (browser only), no watch in docs - fix: `kryon run --watch` rebuild+relaunch on source change - files: kryon/src/project/cli_linux.zi, ziran run - test: edit a label with the window open; text updates within one rebuild.
 12. font-family fallback lists silently truncate to the first family - evidence properties.zi:372-395 - fix: keep the list, resolve the first installed family, warn when none match - files: packages/css/src/parser/properties.zi, kryon/src/ui/text_typeface.zi - test: a sheet with `"Geist", Inter` uses Inter when Geist is absent and reports the unresolved family.

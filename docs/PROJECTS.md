@@ -106,7 +106,14 @@ kryon build
 kryon run desktop            # or: kryon run --profile desktop, ziran run desktop
 kryon profiles               # the profiles, their hosts, and the default
 kryon run shot --png build/shot.png --width 390 --height 844 --theme dark
+kryon run --watch            # rebuild and relaunch after every saved change
 ```
+
+`kryon run [PROFILE] --watch` builds a desktop or terminal C99 profile into
+`build/watch/PROFILE`, runs it, and polls the project's files (all but
+`build/` and hidden entries) four times a second. A change stops the app,
+rebuilds and runs it again; a failed build waits for the next change. The
+app shares kryon's process group, so Ctrl-C stops both.
 
 `kryon run [PROFILE] --png FILE.png` renders the app's own entry offscreen,
 with no display and no preview fixture, and writes `FILE.png` and its widget

@@ -416,6 +416,16 @@ cheatsheet-test:
 		"$(ZIRAN_BIN)" run --target=c --root tests tests/cheatsheet_test.zi
 test: cheatsheet-test
 
+# kryon run --watch rebuilds and relaunches the app after an edit, on a
+# private display.
+.PHONY: watch-test
+watch-test:
+	@rm -rf build/test/watch
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		HARMONY_DESKTOP_RECOVERY=0 YUE_DESKTOP_RECOVERY=0 ZIRAN_BIN="$(ZIRAN_BIN)" \
+		"$(ZIRAN_BIN)" run --target=c tests/watch_test.zi
+test: watch-test
+
 # Every supported target -- C, Go, and the portable runner --
 # renders each template and example on the headless pixmap host, and every
 # image must equal C's byte for byte. It needs go and python3, and

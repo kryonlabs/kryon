@@ -1,0 +1,109 @@
+// kryon run --watch on a private display: the app shows its first label,
+// a source edit rebuilds and relaunches it, and it shows the new label.
+// Run from the Kryon root: make watch-test (ZIRAN_BIN names ziran).
+#import "private_display_linux"
+#import "test_driver_client"
+#import "std/file"
+#import "std/file_tree_linux"
+#import "std/environment_linux"
+#import "std/process_run_linux"
+#import "std/timer_linux"
+using Vectors :: #import "vec";
+
+failures: s32;
+
+Expect :: (ok: bool, what: string) {
+    if ok { return }
+    failures += 1
+    print("watch: FAIL %\n", what)
+}
+
+Manifest :: #string TOML
+[package]
+name = "watched"
+entry = "src/app.zi"
+module_roots = ["src"]
+bridge_modules = ["app"]
+tool = "kryon"
+
+[toolchain]
+git = "https://git.waozi.xyz/ziranlang/ziran.git"
+ref = "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0"
+
+[dependencies.kryon]
+git = "https://git.waozi.xyz/kryonlabs/kryon.git"
+ref = "cdf23986a0434cfb01513ecca4763b0477d01a7e"
+
+[tool.kryon]
+default_profile = "desktop"
+
+[tool.kryon.profiles.desktop]
+backend = "desktop"
+TOML;
+
+// An app whose one label is LABEL.
+WriteApp :: (project: string, label: string) -> bool {
+    source: Vec(u8)
+    BuilderPrint(*source, "Text :: #import \"kryon/text\";\n#import \"kryon/geometry\"\n#import \"kryon/session\"\n\n#program_export\nFrame :: (session: Session, viewport: Rectangle) -> s32 {\n    Text.Draw(session, Text.Props.{.bounds = .{16.0, 16.0, 400.0, 32.0}, .text = \"%\"})\n    return 0\n}\n", label)
+    return WriteEntireFile(JoinPath(project, "src/app.zi"), BuilderFinish(source))
+}
+
+// The watch build's program time, or 0 before it exists.
+BuiltAt :: (program: string) -> s64 {
+    info := PathStatus(program)
+    if info.kind != .File { return 0 }
+    return info.modified * 1000000000 + cast(s64)info.modified_nanoseconds
+}
+
+// Waits up to five minutes for a build newer than PREVIOUS; the driver
+// only answers once the app runs, and a first build compiles the codecs.
+NextBuild :: (program: string, previous: s64) -> bool {
+    for 0..1199 {
+        if BuiltAt(program) > previous { return true }
+        unused SleepMilliseconds(250)
+    }
+    return false
+}
+
+main :: () -> s32 {
+    ziran := EnvironmentText("ZIRAN_BIN")
+    if ziran == "" { ziran = "ziran" }
+    root := WorkingDirectory()
+    project := JoinPath(root, "build/test/watch")
+    overrides: Vec(u8)
+    BuilderPrint(*overrides, "[overrides]\nkryon = \"%\"\n", root)
+    if !CreateDirectories(JoinPath(project, "src")) ||
+        !WriteEntireFile(JoinPath(project, "ziran.toml"), Manifest) ||
+        !WriteEntireFile(JoinPath(project, "ziran.local.toml"), BuilderFinish(overrides)) ||
+        !WriteApp(project, "Version one") {
+        print("watch: FAIL cannot write the project\n")
+        return 1
+    }
+    lock: [2]string = .[ziran, "lock"]
+    locked: ProcessRun
+    if !RunProcess(.{arguments = lock[:], directory = project}, *locked) || locked.code != 0 {
+        print("watch: FAIL ziran lock\n")
+        return 1
+    }
+
+    display := OpenPrivateDisplay(640, 360, "build/test/watch-xvfb.log")
+    if !display.valid { print("watch: FAIL %\n", display.error); return 1 }
+    defer ClosePrivateDisplay(*display)
+    driver := DriverOpen(JoinPath(project, "driver"))
+    arguments: [5]string = .[ziran, "tool", "kryon", "run", "--watch"]
+    extra: [1]string = .[DriverEnvironment(*driver)]
+    watcher := StartOnDisplay(*display, arguments[:], extra[:], project, "build/test/watch.log")
+    if !watcher.started { print("watch: FAIL kryon run --watch did not start\n"); return 1 }
+    defer { unused StopOwnedProcess(*watcher, 5000) }
+
+    program := JoinPath(project, "build/watch/desktop/watched-desktop")
+    Expect(NextBuild(program, 0), "the first watch build; see build/test/watch.log")
+    first := BuiltAt(program)
+    Expect(DriverWait(*driver, .{label = "Version one"}, 30000), "the app shows its first label")
+    Expect(WriteApp(project, "Version two"), "edit the label")
+    Expect(NextBuild(program, first), "the edit rebuilds the app; see build/test/watch.log")
+    Expect(DriverWait(*driver, .{label = "Version two"}, 30000), "the relaunched app shows the new label")
+    if failures > 0 { return 1 }
+    print("watch: an edit rebuilt and relaunched the app on a private display\n")
+    return 0
+}

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `kryon run [PROFILE] --watch` builds a desktop or terminal app, runs it, and after every saved change stops it, rebuilds and runs it again; a failed build waits for the next change.
+
 - Clip native line segments at scroll and viewport edges in either direction.
 
 - docs/CHEATSHEET.md is one page for a model that has never seen Kryon: the project, an app shell to copy, one line per widget, the layout recipe, theme tokens, rules for state and events, the screenshot command and a driver test. `make cheatsheet-test` builds every block as a project, shoots it and runs its driver test. README.md and AGENTS.md link it.

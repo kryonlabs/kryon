@@ -1,5 +1,6 @@
 #import "options"
 #import "toolchain_pin"
+#import "watch"
 
 // Linux command-line host for Kryon projects. Configuration and command
 // selection are Ziran; libc supplies only file, stdout, and process effects.
@@ -353,6 +354,7 @@ Usage :: () -> s32 {
     PrintFd(1, "       kryon init [--template NAME|SOURCE[:NAME]] [--overrides FILE]\n")
     PrintFd(1, "       kryon run|build|check [PROFILE | --profile NAME]\n")
     PrintFd(1, "       kryon run [PROFILE] --png FILE.png [--width PX] [--height PX] [--theme light|dark]\n")
+    PrintFd(1, "       kryon run [PROFILE] --watch\n")
     PrintFd(1, "       kryon run FILE.zx\n")
     PrintFd(1, "       kryon install [--prefix DIR]\n")
     PrintFd(1, "       kryon profiles\n")
@@ -832,7 +834,10 @@ main :: (argc: s32, argv: **u8) -> s32 {
         rest = 3
     }
     shot: PreviewOptions
-    if verb == "run" && ArgumentAt(command_line, rest) != "" {
+    watch := verb == "run" && ArgumentAt(command_line, rest) == "--watch"
+    if watch {
+        if ArgumentAt(command_line, rest + 1) != "" { return Error("kryon run --watch takes no other options") }
+    } else if verb == "run" && ArgumentAt(command_line, rest) != "" {
         shot = ParseShot(command_line, rest)
         if shot.error != "" { return Error(shot.error) }
     } else if ArgumentAt(command_line, rest) != "" {
@@ -862,7 +867,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
         profile_name = config.install.profile
     }
     if profile_name == "" {
-        if verb == "run" && shot.output == "" && config.profile_count > 1 && RawIsTty(0) != 0 {
+        if verb == "run" && shot.output == "" && !watch && config.profile_count > 1 && RawIsTty(0) != 0 {
             chosen_profile: s32 = ChooseProfile(config)
             if chosen_profile < 0 { return Error("invalid profile selection") }
             profile_name = config.profiles[chosen_profile].name
@@ -1010,7 +1015,33 @@ main :: (argc: s32, argv: **u8) -> s32 {
     }
     if verb == "preview" { return PreviewRun(preview, profile, args[:]) }
     if shot.output != "" { return PreviewRun(shot, profile, args[:]) }
+    if watch { return RunWatch(config.name, profile, installed_kryon, args[:]) }
     return Execute(args[0:22])
+}
+
+// kryon run --watch: the profile's program, built into build/watch/PROFILE
+// and run again after every source change.
+RunWatch :: (name: string, profile: ProjectProfile, kryon_root: string, args: []string) -> s32 {
+    if profile.codegen != "c99" || (profile.backend != "desktop" && profile.backend != "terminal") {
+        return Error("run --watch needs a desktop or terminal C99 profile; name one, as in kryon run desktop --watch")
+    }
+    directory_bytes: [4096]u8
+    option_bytes: [4096]u8
+    stem_bytes: [4096]u8
+    named_bytes: [4096]u8
+    program_bytes: [4096]u8
+    font_root_bytes: [4096]u8
+    font_bytes: [4096]u8
+    directory := Join("build/watch/", profile.name, directory_bytes[:])
+    args[5] = "build"
+    args[22] = Join("PROJECT_BUILD_DIR=", directory, option_bytes[:])
+    program := Join(Join(Join(directory, "/", stem_bytes[:]), name, named_bytes[:]), "-", program_bytes[:])
+    program = Join(program, profile.name, stem_bytes[:])
+    font := Join("KRYON_FONT_PATH=", Join(kryon_root, "/assets/fonts/LiberationSans-Regular.ttf", font_root_bytes[:]), font_bytes[:])
+    if directory == "" || args[22] == "" || program == "" || font == "" { return Error("project path is too long") }
+    programs: [1]string = .[program]
+    environment: [1]string = .[font]
+    return WatchRun(args[0:23], programs[:], environment[:])
 }
 
 // The package driver owns staging, hashing and publication. This command only

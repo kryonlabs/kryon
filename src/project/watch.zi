@@ -1,0 +1,82 @@
+// kryon run --watch: build, run, and when a source file changes stop the
+// app, rebuild and run it again. A failed build waits for the next change.
+// The app stays in kryon's process group, so Ctrl-C stops both.
+#import "std/process_run_linux"
+#import "std/file_tree_linux"
+#import "std/timer_linux"
+using Vectors :: #import "std/vec";
+
+WatchPollMilliseconds :: 250;
+
+// FNV-1a over one more value.
+WatchMix :: (hash: u64, value: u64) -> u64 {
+    mixed := hash
+    for shift: 0..7 {
+        mixed = (mixed ^ ((value >> cast(u64)(shift * 8)) & 255)) * 1099511628211
+    }
+    return mixed
+}
+
+// A fingerprint of the names, sizes and modification times of every file
+// under DIRECTORY, leaving out hidden entries and the top-level build/.
+SourceFingerprint :: (directory: string, depth: s32 = 0) -> u64 {
+    hash: u64 = 14695981039346656037
+    entries: Vec(string)
+    if depth > 12 || !ListDirectory(directory, *entries) { return hash }
+    for name: entries {
+        if name.count == 0 || name[0] == #char "." || (depth == 0 && name == "build") { continue }
+        path := JoinPath(directory, name)
+        info := PathStatus(path, false)
+        for byte: name { hash = WatchMix(hash, cast(u64)byte) }
+        if info.kind == .Directory {
+            hash = WatchMix(hash, SourceFingerprint(path, depth + 1))
+        } else {
+            hash = WatchMix(hash, cast(u64)info.size)
+            hash = WatchMix(hash, cast(u64)info.modified)
+            hash = WatchMix(hash, cast(u64)info.modified_nanoseconds)
+        }
+    }
+    FreeDirectoryNames(*entries)
+    return hash
+}
+
+// Runs BUILD (a make command line) and then PROGRAM with ENVIRONMENT,
+// again after each change under the current directory; it returns only
+// when the build cannot start.
+WatchRun :: (build: []string, program: []string, environment: []string) -> s32 {
+    seen := SourceFingerprint(".")
+    while true {
+        made: ProcessRun
+        if !RunProcess(.{arguments = build}, *made) {
+            print("kryon: cannot run make for --watch\n")
+            return 2
+        }
+        app: ProcessRun
+        if made.code != 0 {
+            print("kryon: the build failed; save a fix to try again\n")
+        } else if !StartProcess(.{arguments = program, environment = environment}, *app) {
+            print("kryon: the app did not start; save a change to try again\n")
+        } else {
+            print("kryon: watching; save a source file to rebuild\n")
+        }
+        exited := false
+        while true {
+            unused SleepMilliseconds(WatchPollMilliseconds)
+            if app.started && !exited && PollProcess(*app) {
+                exited = true
+                print("kryon: the app exited; save a change to run it again\n")
+            }
+            now := SourceFingerprint(".")
+            if now != seen {
+                seen = now
+                break
+            }
+        }
+        if app.started && !PollProcess(*app) {
+            unused SignalProcess(*app, 15)
+            unused WaitProcess(*app)
+        }
+        print("kryon: a source changed; rebuilding\n")
+    }
+    return 0
+}
