@@ -185,6 +185,14 @@ float compareDepth(KRYON_SHADOW_MAP map,vec2 uv,float z){
  return texture(map,vec3(uv,z));
 #endif
 }
+// Five golden-angle taps at radius sqrt((i+0.5)/5). Rotate the fixed disk
+// once per fragment instead of evaluating sine and cosine at each tap.
+const vec2 shadowDisk[5]=vec2[5](
+ vec2(0.316227766017,0.000000000000),
+ vec2(-0.403873567726,0.369981271543),
+ vec2(0.061819322798,-0.704399298217),
+ vec2(0.509056473571,0.663974025633),
+ vec2(-0.934181236884,-0.165243507147));
 float shadowAt(KRYON_SHADOW_MAP map,int i){
  if(shadowSettings[i].x<0.5||flags.w<0.5)return 1.0;
  vec3 p=(shadowMatrix[i]*vec4(world+worldNormal*shadowSettings[i].z,1.0)).xyz;
@@ -192,10 +200,10 @@ float shadowAt(KRYON_SHADOW_MAP map,int i){
  if(p.x<0.0||p.x>1.0||p.y<0.0||p.y>1.0||z>1.0)return 1.0;
  vec2 pixel=floor(gl_FragCoord.xy)+0.5;
  float noise=fract(52.9829189*fract(dot(pixel,vec2(0.06711056,0.00583715))));
- float phi=noise*6.283185307179586,total=0.0;
- for(int s=0;s<5;s++){
-  float theta=float(s)*2.399963229728653+phi;
-  vec2 off=vec2(cos(theta),sin(theta))*sqrt((float(s)+0.5)/5.0);
+ float phi=noise*6.283185307179586,c=cos(phi),s=sin(phi),total=0.0;
+ mat2 rotation=mat2(c,s,-s,c);
+ for(int tap=0;tap<5;tap++){
+  vec2 off=rotation*shadowDisk[tap];
   total+=compareDepth(map,p.xy+off*shadowSettings[i].w,z);
  }
  return total*0.2;

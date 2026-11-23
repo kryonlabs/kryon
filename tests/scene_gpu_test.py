@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Retained EGL/GLES Scene tests. Invoke with build-queue --."""
 import os
-import shlex
 import argparse
 import json
+import struct
 import threading
 import time
 from pathlib import Path
@@ -13,7 +13,8 @@ from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
 OUT = ROOT / "build/scratch/scene-gpu"
 
 
-def build(source=ROOT / "tests/scene_gpu_test.zi", entry="scene_gpu_test:main", module_paths=(),saved=False):
+def build(source=ROOT / "tests/scene_gpu_test.zi", entry="scene_gpu_test:main", module_paths=(),saved=False,
+          extra_libraries=""):
     ir = OUT / "ir"
     generated = OUT / "c"
     OUT.mkdir(parents=True, exist_ok=True)
@@ -21,7 +22,8 @@ def build(source=ROOT / "tests/scene_gpu_test.zi", entry="scene_gpu_test:main", 
     for directory, suffix in ((ir, "*.zir"), (generated, "*.c"), (generated, "*.h")):
         for old in directory.glob(suffix):
             old.unlink()
-    subprocess.run([str(ZIRAN), "ir", "--project", "--root", str(source.parent),
+    # Resolve target guards for native execution before saving IR.
+    subprocess.run([str(ZIRAN), "ir", "--target=c", "--project", "--root", str(source.parent),
                     *[arg for path in module_paths for arg in ("--module-path", str(path))],
                     "--entry", entry, "-o", str(ir), str(source)], cwd=ROOT, check=True)
     if saved:
@@ -31,16 +33,13 @@ def build(source=ROOT / "tests/scene_gpu_test.zi", entry="scene_gpu_test:main", 
         subprocess.run([str(ZIRAN),"ir","--root",str(initial),"--module-path",str(initial),
                         "--entry",entry,"-o",str(ir),str(initial/(source.stem+".zir"))],
                        cwd=ROOT,check=True)
-    subprocess.run([str(ZIRAN.with_name("zi2c")), "--entry", entry, "--root", str(ir),
+    # zi2c --exe emits the entry's main and links the native fixture.
+    compiler=os.environ.get("KRYON_TEST_CC",os.environ.get("CC","cc"))
+    subprocess.run([str(ZIRAN.with_name("zi2c")), "--entry", entry, "--exe", "--root", str(ir),
                     "-o", str(generated), *map(str, sorted(ir.glob("*.zir")))],
-                   cwd=ROOT, check=True)
-    executable = OUT / "scene_gpu_test"
-    compiler=shlex.split(os.environ.get("KRYON_TEST_CC",os.environ.get("CC","cc")))
-    subprocess.run([*compiler,
-                    "-std=c11", "-O2", "-ffunction-sections", "-fdata-sections",
-                    "-I" + str(ZIRAN_ROOT / "include"), "-iquote", str(generated),
-                    *map(str, sorted(generated.glob("*.c"))), "-Wl,--gc-sections",
-                    "-lEGL", "-lGLESv2", "-lGLX", "-lX11", "-lm", "-o", str(executable)], cwd=ROOT, check=True)
+                   cwd=ROOT, check=True,
+                    env=os.environ | {"CC": compiler, "LDLIBS": f"-lEGL -lGLESv2 -lGLX -lX11 -lm {extra_libraries}"})
+    executable = generated / source.stem
     return executable
 
 
@@ -55,17 +54,78 @@ def private_env():
     return env
 
 
-def room(jungle, padding_variant=False):
+def room_resolution(executable, assets, env):
+    import numpy as np
+
+    prefix = OUT / "resolution"
+    frames = {}
+    with subprocess.Popen([str(executable), str(prefix), "resolution"], cwd=assets, env=env,
+                          stdout=subprocess.PIPE, text=True) as process:
+        for line in process.stdout:
+            if line.startswith("resolution ") and len(line.split()) == 11:
+                _, width, _, _, *timings = line.split()
+                frames.setdefault(int(width), []).append(list(map(float, timings)))
+            else:
+                print(line, end="", flush=True)
+        if process.wait():
+            raise RuntimeError(f"Room resolution test failed: {process.returncode}")
+
+    assert set(frames) == {2527, 2401, 2274}, frames.keys()
+    for width, rows in frames.items():
+        assert len(rows) == 12, (width, len(rows))
+        values = np.array(rows[1:10])
+        render, resize, legacy = values[:, :3].T
+        print(f"{width}px first render={rows[0][0]:.1f} ms resize={rows[0][1]:.1f} ms "
+              f"shader={rows[0][3]:.1f} ms upload={rows[0][4]:.1f} ms")
+        print(f"{width}px cache-fill p50={np.median(render + resize):.1f} ms "
+              f"render={np.median(render):.1f} ms resize={np.median(resize):.1f} ms "
+              f"legacy cache-fill={np.median(render + legacy):.1f} ms resize={np.median(legacy):.1f} ms "
+              f"GPU completion={np.median(values[:, 5]):.1f} ms transfer={np.median(values[:, 6]):.1f} ms")
+    for state in (9, 10, 11):
+        native = np.memmap(f"{prefix}-2527-{state}.rgba", dtype=np.uint8, mode="r", shape=(1423, 2527, 4))
+        for width in (2401, 2274):
+            scaled = np.memmap(f"{prefix}-{width}-{state}.rgba", dtype=np.uint8, mode="r", shape=native.shape)
+            errors = []
+            for x, y in ((0, 0), (463, 351), (927, 703)):
+                crop = np.s_[y:y + 720, x:x + 1600]
+                assert np.all(native[crop][..., 3] == 255) and np.all(scaled[crop][..., 3] == 255)
+                delta = np.abs(native[crop][..., :3].astype(np.int16) - scaled[crop][..., :3])
+                errors.append((delta.mean(), (delta > 16).mean()))
+            mae = max(row[0] for row in errors)
+            fraction = max(row[1] for row in errors)
+            print(f"{width}px viewport state {state}: max RGB MAE {mae:.3f}, "
+                  f"max RGB channels beyond 16: {fraction:.3%}")
+            if width == 2401:
+                assert mae < 4.0 and fraction < 0.04, (state, mae, fraction)
+
+
+def room(jungle, padding_variant=False, resolution=False):
     import numpy as np
     from PIL import Image
+    libraries = subprocess.check_output(["pkg-config", "--libs", "pangocairo", "freetype2", "fontconfig"],
+                                        text=True).strip()
     executable = build(ROOT / "tests/scene_gpu_room_test.zi", "scene_gpu_room_test:main",
-                       (jungle / "host",))
+                       (jungle, jungle / "host"), extra_libraries=libraries)
+    env = private_env()
+    paths = subprocess.check_output([str(executable)], cwd=jungle, env=env, text=True).splitlines()
+    assets = OUT / "room-assets"
+    # Stage decoded pixels separately so room profiling excludes image codecs.
+    decode_start = time.perf_counter()
+    for path in dict.fromkeys(paths):
+        destination = assets / path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with Image.open(jungle / path) as image, destination.open("wb") as stream:
+            rgba = image.convert("RGBA")
+            stream.write(struct.pack("<II", *rgba.size))
+            stream.write(rgba.tobytes())
+    print(f"room asset decode and fixture staging {(time.perf_counter() - decode_start) * 1000:.1f} ms", flush=True)
+    if resolution:
+        return room_resolution(executable, assets, env)
     prefix = OUT / "room"
-    command = [str(executable), str(jungle / "backup/treehouse-scene-preview/window.rgba"),
-               str(jungle / "backup/treehouse-scene-preview/wood.rgba"), str(prefix)]
+    command = [str(executable), str(prefix)]
     if padding_variant:
         command.append("padding")
-    process = subprocess.Popen(command, cwd=ROOT, env=private_env(), stdout=subprocess.PIPE,
+    process = subprocess.Popen(command, cwd=assets, env=env, stdout=subprocess.PIPE,
                                text=True)
     stop = threading.Event()
     memory = {"rss_kib": 0, "pss_kib": 0}
@@ -85,6 +145,7 @@ def room(jungle, padding_variant=False):
     worker.start()
     frames = {}
     stages = {}
+    profiles = {}
     counters = {}
     resources = []
     with (OUT / "room.log").open("w") as log:
@@ -95,6 +156,9 @@ def room(jungle, padding_variant=False):
                 frames.setdefault((int(row[2]), int(row[3])), []).append(list(map(float, row[5:9])))
                 stages.setdefault((int(row[2]), int(row[3])), []).append(list(map(float, row[10:13])))
                 counters.setdefault(row[2], []).append(list(map(int, row[13:15])))
+            elif line.startswith("room profile warm "):
+                row = line.split()
+                profiles.setdefault((int(row[3]), int(row[4])), []).append(list(map(float, row[6:11])))
             else:
                 print(line, end="", flush=True)
                 if line.startswith("room resources "):
@@ -109,10 +173,11 @@ def room(jungle, padding_variant=False):
     for (width, height), rows in frames.items():
         assert len(rows) >= 120
         timings = np.array(rows)
-        timings = np.column_stack([timings, timings[:, :3].sum(axis=1), np.array(stages[(width, height)])])
+        timings = np.column_stack([timings, timings[:, :3].sum(axis=1), stages[(width, height)], profiles[(width, height)]])
         result["timings_ms"][str(width)] = {
             name: dict(zip(("p50", "p95", "p99"), np.percentile(timings[:, col], (50, 95, 99)).tolist()))
-            for col, name in enumerate(("submit", "readback", "conversion", "total", "components", "prepare", "shadow", "draw"))}
+            for col, name in enumerate(("submit", "readback", "conversion", "total", "components", "prepare", "shadow", "draw",
+                                       "shader_setup", "texture_upload", "gpu_completion", "pixel_transfer", "image_copy"))}
         result["frame_counters"][str(width)] = {"draw_calls_min": min(r[0] for r in counters[str(width)]),
             "draw_calls_max": max(r[0] for r in counters[str(width)]),
             "shadow_passes_total": sum(r[1] for r in counters[str(width)])}
@@ -151,11 +216,12 @@ if __name__ == "__main__":
     parser.add_argument("--async-test", action="store_true", help="Two-slot async identity, mutation and lifecycle")
     parser.add_argument("--readback-profile", action="store_true", help="2527x1423 opaque resolve vs straight RGBA timing")
     parser.add_argument("--saved",action="store_true",help="Reparse saved IR before async native execution")
+    parser.add_argument("--resolution-profile", action="store_true", help="Balcony panorama render scale and viewport quality")
     parser.add_argument("--padding-variant", action="store_true",
                         help="Vary only native SceneMaterial padding in the actual room")
     args = parser.parse_args()
     if args.room:
-        room(args.room, args.padding_variant)
+        room(args.room, args.padding_variant, args.resolution_profile)
     elif args.readback_profile:
         executable = build(ROOT / "tests/scene_gpu_async_test.zi", "scene_gpu_async_test:main")
         subprocess.run([str(executable), "profile"], cwd=ROOT, env=private_env(), check=True)

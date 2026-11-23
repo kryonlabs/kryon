@@ -105,7 +105,26 @@ Clipping :: () -> s32 {
     for at: 0..image.pixels.count-1 { if image.pixels[at]!=cast(u8)0 { fail+=1; break } }
     return fail
 }
-main :: () -> s32 { return Diagnostics()+InputUse()+Math()+Render()+PreparedDraws()+Clipping()+CameraShift()+DiscardDepth()+ColorTransfer()+ParallelRows()+VisibilityDepth() }
+OpaqueResize :: () -> s32 {
+    source := NewImage(5, 3, 0, 0, 0, 255)
+    for pixel: 0..14 { source.pixels[pixel * 4] = cast(u8)(pixel * 17) }
+    output := NewImage(2, 2, 1, 2, 3, 4)
+    reference := ResizeLanczos(*source, 9, 7)
+    if Check(SceneResizeOpaqueInto(*source, 9, 7, *output), "opaque resize succeeds") != 0 { return 1 }
+    if Check(output.width == 9 && output.height == 7 && ImageValid(*output) && ImageValid(*reference), "opaque resize extent") != 0 { return 1 }
+    fail: s32
+    for at: 0..output.pixels.count - 1 {
+        if Check(output.pixels[at] == reference.pixels[at], "opaque resize matches Lanczos") != 0 { return 1 }
+    }
+    fail += Check(source.pixels[3] == 255 && source.pixels[56] == 238, "opaque resize preserves source")
+    fail += Check(!SceneResizeOpaqueInto(*source, 65536, 65536, *output), "opaque resize rejects oversized output")
+    fail += Check(!SceneResizeOpaqueInto(*source, 5, 3, *source), "opaque resize rejects alias")
+    source.pixels[3] = 128
+    fail += Check(!SceneResizeOpaqueInto(*source, 2, 2, *output), "opaque resize rejects translucent input")
+    fail += Check(output.width == 9 && output.height == 7 && output.pixels[3] == 255, "resize failure preserves cache")
+    return fail
+}
+main :: () -> s32 { return Diagnostics()+InputUse()+Math()+Render()+PreparedDraws()+Clipping()+CameraShift()+DiscardDepth()+ColorTransfer()+ParallelRows()+VisibilityDepth()+OpaqueResize() }
 
 // Portable off-axis projection: the camera stays fixed while the viewport
 // exposes geometry that the symmetric frustum clipped away.

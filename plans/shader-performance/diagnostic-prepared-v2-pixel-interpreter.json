@@ -1,0 +1,217 @@
+{
+  "schema": 1,
+  "purpose": "diagnostic probe",
+  "provenance": {
+    "wasm_sha256": null,
+    "generated_c_sha256": "522e01cd0c14f8ca976c1b3b4cad29b057312273d16481054792a07f6df4d5ba",
+    "binary_sha256": "5cc1991696ddebf3b2599308f3bd988fb9c157b092178b9a1b200e72c19c48ef",
+    "optimization": "-O2",
+    "source_revision": "03016057afa1c695f6e24f32e5be5df761475220",
+    "device": "pixel",
+    "prepared": true,
+    "compiler": [
+      "/home/wao/Android/Sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang"
+    ],
+    "libraries": [
+      "-lm"
+    ]
+  },
+  "warmup_frames": 2,
+  "identities": [],
+  "timing": "completed frame wall time; construction, compile, warmup and hash excluded",
+  "p95": "nearest rank",
+  "results": [
+    {
+      "mode": "interpreter",
+      "resolution": "640x360",
+      "shader": "uv",
+      "samples": 8,
+      "mean_ms": 22.01924025,
+      "p95_ms": 23.218024,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        11537478900342174741,
+        11537478900342174741,
+        11537478900342174741,
+        11537478900342174741,
+        11537478900342174741,
+        11537478900342174741,
+        11537478900342174741,
+        11537478900342174741
+      ]
+    },
+    {
+      "mode": "interpreter",
+      "resolution": "640x360",
+      "shader": "plasma",
+      "samples": 8,
+      "mean_ms": 115.5462355,
+      "p95_ms": 115.969699,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        5049257669233144962,
+        7171311003385321020,
+        1726425206026294315,
+        4501587664869825717,
+        9600441618999950177,
+        11001646795332916597,
+        2231841818989840638,
+        17199392495450537227
+      ]
+    },
+    {
+      "mode": "interpreter",
+      "resolution": "640x360",
+      "shader": "value-noise-fbm",
+      "samples": 8,
+      "mean_ms": 540.3721242500001,
+      "p95_ms": 543.191408,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        12088932670761268611,
+        12088932670761268611,
+        12088932670761268611,
+        12088932670761268611,
+        12088932670761268611,
+        12088932670761268611,
+        12088932670761268611,
+        12088932670761268611
+      ]
+    },
+    {
+      "mode": "interpreter",
+      "resolution": "640x360",
+      "shader": "sdf-raymarch",
+      "samples": 8,
+      "mean_ms": 306.748949875,
+      "p95_ms": 308.486958,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        8512908654475377445,
+        8512908654475377445,
+        8512908654475377445,
+        8512908654475377445,
+        8512908654475377445,
+        8512908654475377445,
+        8512908654475377445,
+        8512908654475377445
+      ]
+    },
+    {
+      "mode": "interpreter",
+      "resolution": "640x360",
+      "shader": "gaussian-blur",
+      "samples": 8,
+      "mean_ms": 347.07099825,
+      "p95_ms": 350.968525,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        15297439426273790521,
+        15297439426273790521,
+        15297439426273790521,
+        15297439426273790521,
+        15297439426273790521,
+        15297439426273790521,
+        15297439426273790521,
+        15297439426273790521
+      ]
+    },
+    {
+      "mode": "interpreter",
+      "resolution": "640x360",
+      "shader": "crt",
+      "samples": 8,
+      "mean_ms": 114.65176925,
+      "p95_ms": 115.723606,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        15662705827730022136,
+        15662705827730022136,
+        15662705827730022136,
+        15662705827730022136,
+        15662705827730022136,
+        15662705827730022136,
+        15662705827730022136,
+        15662705827730022136
+      ]
+    },
+    {
+      "mode": "interpreter",
+      "resolution": "640x360",
+      "shader": "ripple",
+      "samples": 8,
+      "mean_ms": 123.767792125,
+      "p95_ms": 124.245116,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        619719208312676977,
+        10118138315819396814,
+        8290792720519809554,
+        11068080259578567845,
+        18120314777816368541,
+        11645817471195431802,
+        16911442808535840911,
+        13486251556362147203
+      ]
+    },
+    {
+      "mode": "interpreter",
+      "resolution": "640x360",
+      "shader": "particles",
+      "samples": 8,
+      "mean_ms": 250.02744675,
+      "p95_ms": 251.867525,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        8139625391760335965,
+        9477327309093860349,
+        13711488396626004112,
+        4097035416805567300,
+        2034942336832786337,
+        1903102405270001165,
+        737494816646825779,
+        8408104013496525391
+      ]
+    }
+  ]
+}

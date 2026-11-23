@@ -1,0 +1,184 @@
+{
+  "schema": 1,
+  "purpose": "correctness",
+  "provenance": {
+    "ziran_sha256": "d75a3fcacebc73643acf7da26277d5927fa33aafe4316c3138e4b2acc0e382d2",
+    "lock_sha256": "2407dff4eb3b94d473c949d35f568e40d25c2cb61d092ff733d9ba36e9963f49",
+    "compiler_version": "Android (13624864, +pgo, +bolt, +lto, +mlgo, based on r530567e) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project 97a699bf4812a18fb657c2779f5296a4ab2694d2)\nTarget: aarch64-unknown-linux-android21\nThread model: posix\nInstalledDir: /home/wao/Android/Sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin\n",
+    "wasm_sha256": null,
+    "generated_c_sha256": "bc5fdcf11c51d07415ac730d65a7858a609c16c54439a33c5ee32fced9dc0f68",
+    "binary_sha256": "9c5cdf51a655e29aec6106d54cb8baf7e530dd2d044da3917ede96c91857ca42",
+    "optimization": "-O2",
+    "source_revision": "03016057afa1c695f6e24f32e5be5df761475220",
+    "device": "pixel",
+    "prepared": true,
+    "compiler": [
+      "/home/wao/Android/Sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
+    ],
+    "libraries": [
+      "-lEGL",
+      "-lGLESv3",
+      "-lm",
+      "-pthread"
+    ]
+  },
+  "warmup_frames": 1,
+  "identities": [
+    "identity true Adreno (TM) 618 OpenGL ES 3.2 V@0490.0 (GIT@85da404, I46ff5fc46f, 1606801434) (Date:11/30/20)",
+    "identity true Adreno (TM) 618 OpenGL ES 3.2 V@0490.0 (GIT@85da404, I46ff5fc46f, 1606801434) (Date:11/30/20)",
+    "identity true Adreno (TM) 618 OpenGL ES 3.2 V@0490.0 (GIT@85da404, I46ff5fc46f, 1606801434) (Date:11/30/20)",
+    "identity true Adreno (TM) 618 OpenGL ES 3.2 V@0490.0 (GIT@85da404, I46ff5fc46f, 1606801434) (Date:11/30/20)",
+    "identity true Adreno (TM) 618 OpenGL ES 3.2 V@0490.0 (GIT@85da404, I46ff5fc46f, 1606801434) (Date:11/30/20)",
+    "identity true Adreno (TM) 618 OpenGL ES 3.2 V@0490.0 (GIT@85da404, I46ff5fc46f, 1606801434) (Date:11/30/20)",
+    "identity true Adreno (TM) 618 OpenGL ES 3.2 V@0490.0 (GIT@85da404, I46ff5fc46f, 1606801434) (Date:11/30/20)",
+    "identity true Adreno (TM) 618 OpenGL ES 3.2 V@0490.0 (GIT@85da404, I46ff5fc46f, 1606801434) (Date:11/30/20)"
+  ],
+  "timing": "completed frame wall time; construction, compile, warmup and hash excluded",
+  "p95": "nearest rank",
+  "results": [
+    {
+      "mode": "scene-gpu",
+      "resolution": "8x8",
+      "shader": "uv",
+      "samples": 2,
+      "mean_ms": 1.204167,
+      "p95_ms": 1.460365,
+      "stages_mean_ms": {
+        "prepare": 0.020000040531158447,
+        "draw": 0.2520829439163208,
+        "readback": 0.6203904747962952,
+        "conversion": 0.06968754529953003
+      },
+      "hashes": [
+        5907929916985244777,
+        5907929916985244777
+      ]
+    },
+    {
+      "mode": "scene-gpu",
+      "resolution": "8x8",
+      "shader": "plasma",
+      "samples": 2,
+      "mean_ms": 2.368516,
+      "p95_ms": 3.9275,
+      "stages_mean_ms": {
+        "prepare": 0.019973456859588623,
+        "draw": 0.18552052974700928,
+        "readback": 1.8650525212287903,
+        "conversion": 0.05059844255447388
+      },
+      "hashes": [
+        18026690387489504544,
+        496337880040634290
+      ]
+    },
+    {
+      "mode": "scene-gpu",
+      "resolution": "8x8",
+      "shader": "value-noise-fbm",
+      "samples": 2,
+      "mean_ms": 0.911953,
+      "p95_ms": 1.006875,
+      "stages_mean_ms": {
+        "prepare": 0.024167001247406006,
+        "draw": 0.27742207050323486,
+        "readback": 0.4257815480232239,
+        "conversion": 0.05281192064285278
+      },
+      "hashes": [
+        5072330742640741846,
+        5072330742640741846
+      ]
+    },
+    {
+      "mode": "scene-gpu",
+      "resolution": "8x8",
+      "shader": "sdf-raymarch",
+      "samples": 2,
+      "mean_ms": 0.744375,
+      "p95_ms": 0.811094,
+      "stages_mean_ms": {
+        "prepare": 0.015182554721832275,
+        "draw": 0.1712239384651184,
+        "readback": 0.39773452281951904,
+        "conversion": 0.03841102123260498
+      },
+      "hashes": [
+        14691744313363649621,
+        14691744313363649621
+      ]
+    },
+    {
+      "mode": "scene-gpu",
+      "resolution": "8x8",
+      "shader": "gaussian-blur",
+      "samples": 2,
+      "mean_ms": 2.2609635,
+      "p95_ms": 3.709063,
+      "stages_mean_ms": {
+        "prepare": 0.020651042461395264,
+        "draw": 0.2549480199813843,
+        "readback": 1.5737510919570923,
+        "conversion": 0.04312491416931152
+      },
+      "hashes": [
+        9879822029612703217,
+        9879822029612703217
+      ]
+    },
+    {
+      "mode": "scene-gpu",
+      "resolution": "8x8",
+      "shader": "crt",
+      "samples": 2,
+      "mean_ms": 1.0681509999999999,
+      "p95_ms": 1.193698,
+      "stages_mean_ms": {
+        "prepare": 0.022161483764648438,
+        "draw": 0.28841155767440796,
+        "readback": 0.5220569968223572,
+        "conversion": 0.051849544048309326
+      },
+      "hashes": [
+        8386614023308847375,
+        8386614023308847375
+      ]
+    },
+    {
+      "mode": "scene-gpu",
+      "resolution": "8x8",
+      "shader": "ripple",
+      "samples": 2,
+      "mean_ms": 3.0168749999999998,
+      "p95_ms": 4.935052,
+      "stages_mean_ms": {
+        "prepare": 0.017525970935821533,
+        "draw": 0.3288019895553589,
+        "readback": 2.4638285040855408,
+        "conversion": 0.06536495685577393
+      },
+      "hashes": [
+        10464427363388272977,
+        1877326300251319531
+      ]
+    },
+    {
+      "mode": "scene-gpu",
+      "resolution": "8x8",
+      "shader": "particles",
+      "samples": 2,
+      "mean_ms": 3.1492715000000002,
+      "p95_ms": 4.938282,
+      "stages_mean_ms": {
+        "prepare": 0.02156245708465576,
+        "draw": 0.2332029938697815,
+        "readback": 2.6754429936408997,
+        "conversion": 0.07010453939437866
+      },
+      "hashes": [
+        10886337384002703752,
+        10617284944663875699
+      ]
+    }
+  ]
+}

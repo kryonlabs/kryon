@@ -1,0 +1,20 @@
+{
+  "wasm_sha256": null,
+  "generated_c_sha256": "f62fe5de7adcfc3adedd32881874309817070f602360ec02a6928dfabba59384",
+  "binary_sha256": "2a9d6b7375c794419e94f4b65d5e07ba3cb97c760f60fa06efb0974e9d9b8d0f",
+  "optimization": "-O2",
+  "source_revision": "03016057afa1c695f6e24f32e5be5df761475220",
+  "device": "desktop",
+  "prepared": true,
+  "compiler": [
+    "cc"
+  ],
+  "libraries": [
+    "-lEGL",
+    "-lGLESv2",
+    "-lGLX",
+    "-lX11",
+    "-lm",
+    "-pthread"
+  ]
+}

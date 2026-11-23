@@ -24,6 +24,7 @@ MaterialFillPadding :: (material: *SceneMaterial,pattern: u8) {
  material.texture_offset=saved.texture_offset
  material.alpha_test=saved.alpha_test
  material.exact_color=saved.exact_color
+ material.ungraded=saved.ungraded
  material.shader=saved.shader
  material.shader_uniforms=saved.shader_uniforms
  material.shader_samplers=saved.shader_samplers

@@ -12,6 +12,16 @@
 #import "drawing_props"
 #import "scene"
 #import "shader"
+#scope_file
+// The Android C99 host saves IR before lowering it to C. The Android bundle
+// host also generates native glue, but its app runs in the interpreter.
+#if TARGET != .ZX || OS == .ANDROID && #defined(KRYON_ANDROID_HOST) && !#defined(KRYON_ZX_APP) {
+    SceneResample :: #import "std/resample";
+    SCENE_NATIVE_RESAMPLE :: true
+} else {
+    SCENE_NATIVE_RESAMPLE :: false
+}
+#scope_export
 #if #defined(POSIX_THREADS) {
     SceneEnvironment :: #import "std/environment_linux";
     SceneWorkers :: #import "std/parallel_linux";
@@ -44,6 +54,34 @@ OrthographicCamera :: (left: float64, right: float64, top: float64, bottom: floa
 PerspectiveCamera :: (fov: float64, aspect: float64, near: float64, far: float64) -> SceneCamera {
     return .{perspective = true, fov = fov, aspect = aspect, near = near, far = far,
         target = .{0.0, 0.0, -1.0}, up = .{0.0, 1.0, 0.0}}
+}
+
+// Resize an opaque scene image to the display cache's dimensions. The
+// straight RGBA pixels already equal their premultiplied representation.
+// OUTPUT owns its storage and may be reused. Failure leaves both images intact.
+SceneResizeOpaqueInto :: (image: *Image, width: s32, height: s32, output: *Image) -> bool {
+    if output == null || image == output || !ImageValid(image) || width <= 0 || height <= 0 { return false }
+    max_pixels: s64 = 1073741824 // Same extent limit as ResamplePlanInto.
+    if cast(s64)width * height > max_pixels || cast(s64)image.width * image.height > max_pixels { return false }
+    for at: cast(s64)0..image.pixels.count / 4 - 1 {
+        if image.pixels[at * 4 + 3] != 255 { return false }
+    }
+    #if SCENE_NATIVE_RESAMPLE {
+        plan: SceneResample.ResamplePlan
+        if !SceneResample.ResamplePlanInto(*plan, image.width, image.height, 0.0, 0.0,
+            cast(float64)image.width, cast(float64)image.height, width, height, SceneResample.RESAMPLE_LANCZOS) { return false }
+        bytes := cast(s64)width * height * 4
+        capacity := ifx output.pixels.capacity > bytes then output.pixels.capacity else bytes
+        if !VecResizeBounded(output.pixels, bytes, capacity) { return false }
+        SceneResample.ResamplePlanRun(*plan, *image.pixels[0], cast(s64)image.width * 4,
+            *output.pixels[0], cast(s64)width * 4)
+    } else {
+        resized := ResizeLanczos(image, width, height)
+        if !ImageValid(*resized) { return false }
+        VecSwap(output.pixels, resized.pixels)
+    }
+    output.width = width; output.height = height
+    return true
 }
 
 // Draws SCENE as CAMERA sees it into IMAGE, whose width and height are

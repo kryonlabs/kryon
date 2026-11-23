@@ -1,0 +1,169 @@
+{
+  "schema": 1,
+  "purpose": "correctness",
+  "provenance": {
+    "wasm_sha256": null,
+    "generated_c_sha256": "dc5c9be26fb79216f5b72e3e3f066222b6d5a1eb7d1541cf42f9601a56396faa",
+    "binary_sha256": "98a58f9f7c9fc2de560a778f518e324fce29a42554ac52009d9d976f1615e4a1",
+    "optimization": "-O2",
+    "source_revision": "03016057afa1c695f6e24f32e5be5df761475220",
+    "device": "pixel",
+    "prepared": true,
+    "compiler": [
+      "/home/wao/Android/Sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang"
+    ],
+    "libraries": [
+      "-lm"
+    ]
+  },
+  "warmup_frames": 1,
+  "identities": [],
+  "timing": "completed frame wall time; construction, compile, warmup and hash excluded",
+  "p95": "nearest rank",
+  "results": [
+    {
+      "mode": "interpreter",
+      "resolution": "8x8",
+      "shader": "uv",
+      "samples": 2,
+      "mean_ms": 0.007448,
+      "p95_ms": 0.0075,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        16796717173864489861,
+        16796717173864489861
+      ]
+    },
+    {
+      "mode": "interpreter",
+      "resolution": "8x8",
+      "shader": "plasma",
+      "samples": 2,
+      "mean_ms": 0.026771,
+      "p95_ms": 0.02724,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        15275669440775375427,
+        6707039894087664434
+      ]
+    },
+    {
+      "mode": "interpreter",
+      "resolution": "8x8",
+      "shader": "value-noise-fbm",
+      "samples": 2,
+      "mean_ms": 0.102917,
+      "p95_ms": 0.103125,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        9321499362795267382,
+        9321499362795267382
+      ]
+    },
+    {
+      "mode": "interpreter",
+      "resolution": "8x8",
+      "shader": "sdf-raymarch",
+      "samples": 2,
+      "mean_ms": 0.048489500000000005,
+      "p95_ms": 0.04875,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        14661294879862455317,
+        14661294879862455317
+      ]
+    },
+    {
+      "mode": "interpreter",
+      "resolution": "8x8",
+      "shader": "gaussian-blur",
+      "samples": 2,
+      "mean_ms": 0.07486999999999999,
+      "p95_ms": 0.080677,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        2864336610045123101,
+        2864336610045123101
+      ]
+    },
+    {
+      "mode": "interpreter",
+      "resolution": "8x8",
+      "shader": "crt",
+      "samples": 2,
+      "mean_ms": 0.028776000000000003,
+      "p95_ms": 0.029843,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        6450687479206393625,
+        6450687479206393625
+      ]
+    },
+    {
+      "mode": "interpreter",
+      "resolution": "8x8",
+      "shader": "ripple",
+      "samples": 2,
+      "mean_ms": 0.0305205,
+      "p95_ms": 0.032135,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        9563892248862595676,
+        9114877488675716631
+      ]
+    },
+    {
+      "mode": "interpreter",
+      "resolution": "8x8",
+      "shader": "particles",
+      "samples": 2,
+      "mean_ms": 0.040781,
+      "p95_ms": 0.042291,
+      "stages_mean_ms": {
+        "prepare": 0.0,
+        "draw": 0.0,
+        "readback": 0.0,
+        "conversion": 0.0
+      },
+      "hashes": [
+        301868495559009961,
+        3945548453696583022
+      ]
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+// Fixed native avatar workload: moving frame, expressions, springs, skinning
+// and a complete GPU render/readback on every frame. Keep the raw samples.
+#import, file "../src/ui/scene_vrm.zi";
+#import "scene"
+#import "scene_gltf"
+#import "kryon/scene_gpu"
+#import "kryon/scene_render"
+#import "std/byte_text"
+#import "std/image"
+#import "std/math"
+#import "std/text"
+#import "std/timer_linux"
+#import "std/vec"
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 {
+        print("Pass one VRM model path\n")
+        return 1
+    }
+    path := TextFromCString(argv[1])
+    model := GltfReadFile(path)
+    defer GltfModelRelease(*model)
+    if !model.valid {
+        print("VRM benchmark load failed: %\n", GltfError(*model))
+        return 2
+    }
+    avatar: VrmAvatar
+    defer VrmAvatarRelease(*avatar)
+    if !VrmReadFile(*avatar, path) || !avatar.ready {
+        print("VRM metadata is unavailable\n")
+        return 3
+    }
+    scene: Scene
+    SceneInit(*scene)
+    defer SceneFree(*scene)
+    scene.background = .{0, 0, 0, 0}
+    AddHemisphereLight(*scene, .{255, 245, 225, 255}, .{90, 95, 110, 255}, 1.0)
+    instance: GltfSceneInstance
+    defer GltfInstanceRelease(*instance)
+    if !GltfSceneCreate(*scene, *model, *instance) {
+        return 4
+    }
+    if !VrmSpringsReset(*avatar, *model, *instance) || avatar.joints.count == 0 {
+        print("VRM benchmark requires an avatar with spring joints\n")
+        return 5
+    }
+    gpu: SceneGpuContext
+    defer SceneGpuRelease(*gpu)
+    caps := SceneGpuProbe(*gpu)
+    print("model=% nodes=% vertices=% spring_joints=% renderer=%\n", path,
+        model.nodes.count, scene.positions.count, avatar.joints.count,
+        TextFromCString(*caps.renderer[0]))
+    image := NewImage(600, 800)
+    defer VecFree(image.pixels)
+    camera := OrthographicCamera(-0.9, 0.9, 2.1, -0.3, 0.05, 30.0)
+    camera.position = .{0.0, 0.9, 8.0}
+    camera.target = .{0.0, 0.9, 0.0}
+    spine := VrmBoneNode(*avatar, "spine")
+    for mode: 0..1 {
+        GltfSetDualQuaternion(*instance, mode == 1)
+        if !VrmSpringsReset(*avatar, *model, *instance) {
+            return 5
+        }
+        for frame: 0..131 {
+            seconds := cast(float64)frame / 60.0
+            started := MonotonicNanoseconds()
+            angle := Sin(seconds * 3.0) * 0.2
+            VrmSetFrame(*avatar, .{0.0, Sin(angle * 0.5), 0.0, Cos(angle * 0.5)},
+                .{Sin(seconds * 2.0) * 0.1, 0.0, 0.0}, 1.0)
+            if spine >= 0 {
+                instance.rotations[spine] = .{0.0, 0.0, Sin(angle * 0.5), Cos(angle * 0.5)}
+            }
+            unused VrmSetExpression(*avatar, *model, *instance, "blink",
+                (Sin(seconds * 4.0) + 1.0) * 0.5)
+            spring_start := MonotonicNanoseconds()
+            VrmSpringsUpdate(*avatar, *model, *instance, 1.0 / 60.0)
+            skin_start := MonotonicNanoseconds()
+            if !GltfUpdateScene(*model, *instance, *scene) {
+                return 6
+            }
+            render_start := MonotonicNanoseconds()
+            result := SceneGpuRender(*gpu, *scene, camera, *image)
+            finished := MonotonicNanoseconds()
+            if !result.ok {
+                print("VRM render failed: %\n", result.diagnostic)
+                return 7
+            }
+            covered: s64
+            for pixel: 0..image.pixels.count / 4 - 1 {
+                if image.pixels[pixel * 4 + 3] > 0 {
+                    covered += 1
+                }
+            }
+            if covered == 0 {
+                print("VRM render is empty\n")
+                return 8
+            }
+            if frame >= 12 {
+                print("sample mode=% frame=% spring_ns=% skin_ns=% render_ns=% total_ns=% covered=%\n",
+                    mode, frame, skin_start - spring_start, render_start - skin_start,
+                    finished - render_start, finished - started, covered)
+            }
+        }
+    }
+    return 0
+}

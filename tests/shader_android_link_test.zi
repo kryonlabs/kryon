@@ -12,4 +12,6 @@ android_main :: (application: *void) {
     image:=NewImage(8,8); defer VecFree(image.pixels)
     camera:=OrthographicCamera(-1.0,1.0,1.0,-1.0,0.1,10.0)
     unused SceneGpuRender(*gpu,*scene,camera,*image)
+    cache: Image
+    unused SceneResizeOpaqueInto(*image,9,9,*cache)
 }

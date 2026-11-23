@@ -1,0 +1,236 @@
+Android pixel prepared interpreter, 640x360
+Separate diagnostic runs, 200 Hz userspace CPU clock, 1 warmup + 6 iterations per shader.
+Binary SHA256: e2c8a23a2f3895a69c3060673d385bf41993c23d9ba2693015aa5c6bb9f493f2
+
+uv
+workload 0 640 360 0 6 11146 1 6
+sample 0 640 360 0 0 26464534 0 0 0 0 11537478900342174741
+sample 0 640 360 0 1 20331772 0 0 0 0 11537478900342174741
+sample 0 640 360 0 2 15169011 0 0 0 0 11537478900342174741
+sample 0 640 360 0 3 13004428 0 0 0 0 11537478900342174741
+sample 0 640 360 0 4 12795314 0 0 0 0 11537478900342174741
+sample 0 640 360 0 5 12831563 0 0 0 0 11537478900342174741
+simpleperf I cmd_record.cpp:729] Recorded for 0.296236 seconds. Start post processing.
+simpleperf I cmd_record.cpp:809] Samples recorded: 40. Samples lost: 0.
+Cmdline: /system/bin/simpleperf record -e cpu-clock:u -f 200 --no-dump-kernel-symbols -o /data/local/tmp/kryon-shader-dispatch.perf /data/local/tmp/kryon-shader-benchmark 0 640 360 1 6 0 0
+Arch: arm64
+Event: cpu-clock:u (type 1, config 0)
+Samples: 40
+Event count: 200000000
+
+Overhead  Shared Object                           Symbol
+35.00%    /data/local/tmp/kryon-shader-benchmark  shader_ShaderRunBatch
+25.00%    /data/local/tmp/kryon-shader-benchmark  shader_benchmark_Kernel
+15.00%    /data/local/tmp/kryon-shader-benchmark  shader_benchmark_Run
+5.00%     /apex/com.android.runtime/bin/linker64  [linker]bool walk_dependencies_tree<dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11>(soinfo*, dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11) (.__uniq.250007671217850615957365636956552013758)
+5.00%     /data/local/tmp/kryon-shader-benchmark  std_image_NewImage
+2.50%     /apex/com.android.runtime/bin/linker64  [linker]ParseProperty(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&) (.__uniq.281908747986894654352698949476742515425)
+2.50%     /apex/com.android.runtime/bin/linker64  [linker]SymbolLookupList::SymbolLookupList(LinkedList<soinfo, SoinfoListAllocator> const&, LinkedList<soinfo, SoinfoListAllocator> const&)::$_1::operator()(soinfo*) const (.__uniq.331521225453620004837736674378903349473)
+2.50%     /apex/com.android.runtime/bin/linker64  [linker]calculate_gnu_hash_neon(char const*)
+2.50%     /apex/com.android.runtime/bin/linker64  [linker]elf64_sym const* soinfo_do_lookup_impl<false>(char const*, version_info const*, soinfo**, SymbolLookupList const&) (.__uniq.331521225453620004837736674378903349473)
+2.50%     /apex/com.android.runtime/bin/linker64  [linker]memcmp
+2.50%     /apex/com.android.runtime/bin/linker64  [linker]strlcpy
+
+plasma
+workload 0 640 360 1 19 6979 1 6
+sample 0 640 360 1 0 50950109 0 0 0 0 5049257669233144962
+sample 0 640 360 1 1 50786516 0 0 0 0 7171311003385321020
+sample 0 640 360 1 2 50566411 0 0 0 0 1726425206026294315
+sample 0 640 360 1 3 50801099 0 0 0 0 4501587664869825717
+sample 0 640 360 1 4 51233339 0 0 0 0 9600441618999950177
+sample 0 640 360 1 5 50850838 0 0 0 0 11001646795332916597
+simpleperf I cmd_record.cpp:729] Recorded for 0.456066 seconds. Start post processing.
+simpleperf I cmd_record.cpp:809] Samples recorded: 84. Samples lost: 0.
+Cmdline: /system/bin/simpleperf record -e cpu-clock:u -f 200 --no-dump-kernel-symbols -o /data/local/tmp/kryon-shader-dispatch.perf /data/local/tmp/kryon-shader-benchmark 0 640 360 1 6 1 1
+Arch: arm64
+Event: cpu-clock:u (type 1, config 0)
+Samples: 84
+Event count: 420000000
+
+Overhead  Shared Object                           Symbol
+48.81%    /data/local/tmp/kryon-shader-benchmark  Sin
+22.62%    /data/local/tmp/kryon-shader-benchmark  shader_ShaderRunBatch
+14.29%    /data/local/tmp/kryon-shader-benchmark  shader_benchmark_Kernel
+5.95%     /data/local/tmp/kryon-shader-benchmark  shader_benchmark_Run
+2.38%     /apex/com.android.runtime/bin/linker64  [linker]bool walk_dependencies_tree<dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11>(soinfo*, dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11) (.__uniq.250007671217850615957365636956552013758)
+1.19%     /apex/com.android.runtime/bin/linker64  [linker]android::properties::PropertyInfoArea::GetPropertyInfoIndexes(char const*, unsigned int*, unsigned int*) const
+1.19%     /apex/com.android.runtime/bin/linker64  [linker]bool LinkedList<soinfo, SoinfoListAllocator>::visit<void LinkedList<soinfo, SoinfoListAllocator>::for_each<bool walk_dependencies_tree<dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11>(soinfo*, dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11)::'lambda'(soinfo*)>(dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11) const::'lambda'(soinfo*)>(dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11) const (.__uniq.250007671217850615957365636956552013758)
+1.19%     /apex/com.android.runtime/bin/linker64  [linker]bool packed_relocate_impl<(RelocMode)1>(Relocator&, sleb128_decoder)::'lambda'(elf64_rela const&)::operator()(elf64_rela const&) const (.__uniq.153370809355997480299804515629147722701)
+1.19%     /apex/com.android.runtime/bin/linker64  [linker]elf64_sym const* soinfo_do_lookup_impl<false>(char const*, version_info const*, soinfo**, SymbolLookupList const&) (.__uniq.331521225453620004837736674378903349473)
+1.19%     /data/local/tmp/kryon-shader-benchmark  std_image_NewImage
+
+value-noise-fbm
+workload 0 640 360 2 105 14375 1 6
+sample 0 640 360 2 0 170650902 0 0 0 0 12088932670761268611
+sample 0 640 360 2 1 170867048 0 0 0 0 12088932670761268611
+sample 0 640 360 2 2 170443976 0 0 0 0 12088932670761268611
+sample 0 640 360 2 3 170822517 0 0 0 0 12088932670761268611
+sample 0 640 360 2 4 170938715 0 0 0 0 12088932670761268611
+sample 0 640 360 2 5 170574444 0 0 0 0 12088932670761268611
+simpleperf I cmd_record.cpp:729] Recorded for 1.30131 seconds. Start post processing.
+simpleperf I cmd_record.cpp:809] Samples recorded: 254. Samples lost: 0.
+Cmdline: /system/bin/simpleperf record -e cpu-clock:u -f 200 --no-dump-kernel-symbols -o /data/local/tmp/kryon-shader-dispatch.perf /data/local/tmp/kryon-shader-benchmark 0 640 360 1 6 2 2
+Arch: arm64
+Event: cpu-clock:u (type 1, config 0)
+Samples: 254
+Event count: 1270000000
+
+Overhead  Shared Object                                   Symbol
+89.76%    /data/local/tmp/kryon-shader-benchmark          shader_ShaderRunBatch
+3.54%     /data/local/tmp/kryon-shader-benchmark          shader_benchmark_Kernel
+2.36%     /data/local/tmp/kryon-shader-benchmark          shader_benchmark_Run
+0.79%     /data/local/tmp/kryon-shader-benchmark          std_image_NewImage
+0.39%     /apex/com.android.runtime/bin/linker64          [linker]LinkerBlockAllocator::find_page(void*)
+0.39%     /apex/com.android.runtime/bin/linker64          [linker]LinkerBlockAllocator::free(void*)
+0.39%     /apex/com.android.runtime/bin/linker64          [linker]android::properties::PropertyInfoArea::GetPropertyInfoIndexes(char const*, unsigned int*, unsigned int*) const
+0.39%     /apex/com.android.runtime/bin/linker64          [linker]find_verdef_version_index(soinfo const*, version_info const*)::$_8::operator()(unsigned long, Elf64_Verdef const*, Elf64_Verdaux const*) const (.__uniq.250007671217850615957365636956552013758)
+0.39%     /apex/com.android.runtime/bin/linker64          [linker]soinfo::get_primary_namespace()
+0.39%     /apex/com.android.runtime/bin/linker64          [linker]std::__1::__next_prime(unsigned long)
+0.39%     /apex/com.android.runtime/bin/linker64          [linker]void out_vformat<BufferOutputStream>(BufferOutputStream&, char const*, std::__va_list)
+0.39%     /apex/com.android.runtime/lib64/bionic/libc.so  pthread_mutex_destroy
+0.39%     /vendor/lib64/libllvm-glnext.so                 !!!0000!d2eb89fb1fda56140e2b5509b156e1!85da404!
+
+sdf-raymarch
+workload 0 640 360 3 68 13438 1 6
+sample 0 640 360 3 0 139153816 0 0 0 0 8512908654475377445
+sample 0 640 360 3 1 138821107 0 0 0 0 8512908654475377445
+sample 0 640 360 3 2 139045535 0 0 0 0 8512908654475377445
+sample 0 640 360 3 3 138979910 0 0 0 0 8512908654475377445
+sample 0 640 360 3 4 138890483 0 0 0 0 8512908654475377445
+sample 0 640 360 3 5 139077149 0 0 0 0 8512908654475377445
+simpleperf I cmd_record.cpp:729] Recorded for 1.07838 seconds. Start post processing.
+simpleperf I cmd_record.cpp:809] Samples recorded: 209. Samples lost: 0.
+Cmdline: /system/bin/simpleperf record -e cpu-clock:u -f 200 --no-dump-kernel-symbols -o /data/local/tmp/kryon-shader-dispatch.perf /data/local/tmp/kryon-shader-benchmark 0 640 360 1 6 3 3
+Arch: arm64
+Event: cpu-clock:u (type 1, config 0)
+Samples: 209
+Event count: 1045000000
+
+Overhead  Shared Object                                   Symbol
+86.12%    /data/local/tmp/kryon-shader-benchmark          shader_ShaderRunBatch
+6.70%     /data/local/tmp/kryon-shader-benchmark          shader_benchmark_Kernel
+2.39%     /data/local/tmp/kryon-shader-benchmark          shader_benchmark_Run
+0.96%     /apex/com.android.runtime/bin/linker64          [linker]LinkedList<soinfo, TypeBasedAllocator<LinkedListEntry<soinfo> > >::push_back(soinfo*)
+0.48%     /apex/com.android.runtime/bin/linker64          [linker]elf64_sym const* soinfo_do_lookup_impl<false>(char const*, version_info const*, soinfo**, SymbolLookupList const&) (.__uniq.331521225453620004837736674378903349473)
+0.48%     /apex/com.android.runtime/bin/linker64          [linker]soinfo::get_primary_namespace()
+0.48%     /apex/com.android.runtime/bin/linker64          [linker]soinfo::prelink_image()
+0.48%     /apex/com.android.runtime/bin/linker64          [linker]std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >::__init(char const*, unsigned long)
+0.48%     /apex/com.android.runtime/bin/linker64          [linker]void out_vformat<BufferOutputStream>(BufferOutputStream&, char const*, std::__va_list)
+0.48%     /apex/com.android.runtime/lib64/bionic/libc.so  __sfvwrite
+0.48%     /apex/com.android.runtime/lib64/bionic/libc.so  __strcmp_aarch64
+0.48%     /data/local/tmp/kryon-shader-benchmark          std_image_NewImage
+
+gaussian-blur
+workload 0 640 360 4 61 19948 1 6
+sample 0 640 360 4 0 102304125 0 0 0 0 15297439426273790521
+sample 0 640 360 4 1 102279698 0 0 0 0 15297439426273790521
+sample 0 640 360 4 2 102421781 0 0 0 0 15297439426273790521
+sample 0 640 360 4 3 102394593 0 0 0 0 15297439426273790521
+sample 0 640 360 4 4 102095166 0 0 0 0 15297439426273790521
+sample 0 640 360 4 5 101805999 0 0 0 0 15297439426273790521
+simpleperf I cmd_record.cpp:729] Recorded for 0.817032 seconds. Start post processing.
+simpleperf I cmd_record.cpp:809] Samples recorded: 158. Samples lost: 0.
+Cmdline: /system/bin/simpleperf record -e cpu-clock:u -f 200 --no-dump-kernel-symbols -o /data/local/tmp/kryon-shader-dispatch.perf /data/local/tmp/kryon-shader-benchmark 0 640 360 1 6 4 4
+Arch: arm64
+Event: cpu-clock:u (type 1, config 0)
+Samples: 158
+Event count: 790000000
+
+Overhead  Shared Object                           Symbol
+81.01%    /data/local/tmp/kryon-shader-benchmark  shader_ShaderRunBatch
+9.49%     /data/local/tmp/kryon-shader-benchmark  shader_benchmark_Kernel
+3.80%     /data/local/tmp/kryon-shader-benchmark  shader_benchmark_Run
+1.27%     /apex/com.android.runtime/bin/linker64  [linker]bool walk_dependencies_tree<dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11>(soinfo*, dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11) (.__uniq.250007671217850615957365636956552013758)
+0.63%     /apex/com.android.runtime/bin/linker64  [linker]__memcpy
+0.63%     /apex/com.android.runtime/bin/linker64  [linker]android::properties::PropertyInfoArea::GetPropertyInfoIndexes(char const*, unsigned int*, unsigned int*) const
+0.63%     /apex/com.android.runtime/bin/linker64  [linker]elf64_sym const* soinfo_do_lookup_impl<false>(char const*, version_info const*, soinfo**, SymbolLookupList const&) (.__uniq.331521225453620004837736674378903349473)
+0.63%     /apex/com.android.runtime/bin/linker64  [linker]find_libraries(android_namespace_t*, soinfo*, char const* const*, unsigned long, soinfo**, std::__1::vector<soinfo*, std::__1::allocator<soinfo*> >*, unsigned long, int, android_dlextinfo const*, bool, std::__1::vector<android_namespace_t*, std::__1::allocator<android_namespace_t*> >*)
+0.63%     /apex/com.android.runtime/bin/linker64  [linker]free
+0.63%     /apex/com.android.runtime/bin/linker64  linker64[+11892c]
+0.63%     /data/local/tmp/kryon-shader-benchmark  std_image_NewImage
+
+crt
+workload 0 640 360 5 21 9792 1 6
+sample 0 640 360 5 0 37440108 0 0 0 0 15662705827730022136
+sample 0 640 360 5 1 37413858 0 0 0 0 15662705827730022136
+sample 0 640 360 5 2 37687660 0 0 0 0 15662705827730022136
+sample 0 640 360 5 3 37081722 0 0 0 0 15662705827730022136
+sample 0 640 360 5 4 37743598 0 0 0 0 15662705827730022136
+sample 0 640 360 5 5 37381879 0 0 0 0 15662705827730022136
+simpleperf I cmd_record.cpp:729] Recorded for 0.36563 seconds. Start post processing.
+simpleperf I cmd_record.cpp:809] Samples recorded: 65. Samples lost: 0.
+Cmdline: /system/bin/simpleperf record -e cpu-clock:u -f 200 --no-dump-kernel-symbols -o /data/local/tmp/kryon-shader-dispatch.perf /data/local/tmp/kryon-shader-benchmark 0 640 360 1 6 5 5
+Arch: arm64
+Event: cpu-clock:u (type 1, config 0)
+Samples: 65
+Event count: 325000000
+
+Overhead  Shared Object                           Symbol
+46.15%    /data/local/tmp/kryon-shader-benchmark  shader_ShaderRunBatch
+21.54%    /data/local/tmp/kryon-shader-benchmark  shader_benchmark_Kernel
+13.85%    /data/local/tmp/kryon-shader-benchmark  Sin
+7.69%     /data/local/tmp/kryon-shader-benchmark  shader_benchmark_Run
+1.54%     /apex/com.android.runtime/bin/linker64  [linker]LinkedList<soinfo, TypeBasedAllocator<LinkedListEntry<soinfo> > >::pop_front()
+1.54%     /apex/com.android.runtime/bin/linker64  [linker]SymbolLookupList::SymbolLookupList(LinkedList<soinfo, SoinfoListAllocator> const&, LinkedList<soinfo, SoinfoListAllocator> const&)::$_1::operator()(soinfo*) const (.__uniq.331521225453620004837736674378903349473)
+1.54%     /apex/com.android.runtime/bin/linker64  [linker]__aarch64_swp2_rel
+1.54%     /apex/com.android.runtime/bin/linker64  [linker]bool plain_relocate_impl<(RelocMode)0>(Relocator&, elf64_rela*, unsigned long) (.__uniq.153370809355997480299804515629147722701)
+1.54%     /apex/com.android.runtime/bin/linker64  [linker]bool walk_dependencies_tree<dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11>(soinfo*, dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11) (.__uniq.250007671217850615957365636956552013758)
+1.54%     /apex/com.android.runtime/bin/linker64  [linker]soinfo::get_primary_namespace()
+1.54%     /data/local/tmp/kryon-shader-benchmark  std_image_NewImage
+
+ripple
+workload 0 640 360 6 19 9479 1 6
+sample 0 640 360 6 0 47093442 0 0 0 0 619719208312676977
+sample 0 640 360 6 1 46902297 0 0 0 0 10118138315819396814
+sample 0 640 360 6 2 46754797 0 0 0 0 8290792720519809554
+sample 0 640 360 6 3 46682348 0 0 0 0 11068080259578567845
+sample 0 640 360 6 4 46923078 0 0 0 0 18120314777816368541
+sample 0 640 360 6 5 46624120 0 0 0 0 11645817471195431802
+simpleperf I cmd_record.cpp:729] Recorded for 0.431136 seconds. Start post processing.
+simpleperf I cmd_record.cpp:809] Samples recorded: 80. Samples lost: 0.
+Cmdline: /system/bin/simpleperf record -e cpu-clock:u -f 200 --no-dump-kernel-symbols -o /data/local/tmp/kryon-shader-dispatch.perf /data/local/tmp/kryon-shader-benchmark 0 640 360 1 6 6 6
+Arch: arm64
+Event: cpu-clock:u (type 1, config 0)
+Samples: 80
+Event count: 400000000
+
+Overhead  Shared Object                           Symbol
+50.00%    /data/local/tmp/kryon-shader-benchmark  shader_ShaderRunBatch
+18.75%    /data/local/tmp/kryon-shader-benchmark  shader_benchmark_Kernel
+15.00%    /data/local/tmp/kryon-shader-benchmark  Sin
+6.25%     /data/local/tmp/kryon-shader-benchmark  shader_benchmark_Run
+3.75%     /apex/com.android.runtime/bin/linker64  [linker]bool walk_dependencies_tree<dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11>(soinfo*, dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11) (.__uniq.250007671217850615957365636956552013758)
+1.25%     /apex/com.android.runtime/bin/linker64  [linker]LinkedList<soinfo, TypeBasedAllocator<LinkedListEntry<soinfo> > >::push_back(soinfo*)
+1.25%     /apex/com.android.runtime/bin/linker64  [linker]ScopedTrace::ScopedTrace(char const*)
+1.25%     /apex/com.android.runtime/bin/linker64  [linker]__strcmp_aarch64
+1.25%     /apex/com.android.runtime/bin/linker64  [linker]bool std::__1::operator==<std::__1::allocator<char> >(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&)
+1.25%     /system/lib64/libbinder_ndk.so          AIBinder_Class_define
+
+particles
+workload 0 640 360 7 114 14531 1 6
+sample 0 640 360 7 0 99656729 0 0 0 0 8139625391760335965
+sample 0 640 360 7 1 99548499 0 0 0 0 9477327309093860349
+sample 0 640 360 7 2 99798395 0 0 0 0 13711488396626004112
+sample 0 640 360 7 3 99597146 0 0 0 0 4097035416805567300
+sample 0 640 360 7 4 99697458 0 0 0 0 2034942336832786337
+sample 0 640 360 7 5 99752093 0 0 0 0 1903102405270001165
+simpleperf I cmd_record.cpp:729] Recorded for 0.800695 seconds. Start post processing.
+simpleperf I cmd_record.cpp:809] Samples recorded: 153. Samples lost: 0.
+Cmdline: /system/bin/simpleperf record -e cpu-clock:u -f 200 --no-dump-kernel-symbols -o /data/local/tmp/kryon-shader-dispatch.perf /data/local/tmp/kryon-shader-benchmark 0 640 360 1 6 7 7
+Arch: arm64
+Event: cpu-clock:u (type 1, config 0)
+Samples: 153
+Event count: 765000000
+
+Overhead  Shared Object                                   Symbol
+83.01%    /data/local/tmp/kryon-shader-benchmark          shader_ShaderRunBatch
+7.84%     /data/local/tmp/kryon-shader-benchmark          shader_benchmark_Kernel
+3.92%     /data/local/tmp/kryon-shader-benchmark          shader_benchmark_Run
+0.65%     /apex/com.android.runtime/bin/linker64          [linker]LinkerBlockAllocator::alloc()
+0.65%     /apex/com.android.runtime/bin/linker64          [linker]bool LinkedList<soinfo, SoinfoListAllocator>::visit<android_namespace_t::is_accessible(soinfo*)::$_1>(android_namespace_t::is_accessible(soinfo*)::$_1) const (.__uniq.142209231914904512691240020443922661686)
+0.65%     /apex/com.android.runtime/bin/linker64          [linker]bool walk_dependencies_tree<dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11>(soinfo*, dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11) (.__uniq.250007671217850615957365636956552013758)
+0.65%     /apex/com.android.runtime/bin/linker64          [linker]bool walk_dependencies_tree<find_libraries(android_namespace_t*, soinfo*, char const* const*, unsigned long, soinfo**, std::__1::vector<soinfo*, std::__1::allocator<soinfo*> >*, unsigned long, int, android_dlextinfo const*, bool, std::__1::vector<android_namespace_t*, std::__1::allocator<android_namespace_t*> >*)::$_2>(soinfo*, find_libraries(android_namespace_t*, soinfo*, char const* const*, unsigned long, soinfo**, std::__1::vector<soinfo*, std::__1::allocator<soinfo*> >*, unsigned long, int, android_dlextinfo const*, bool, std::__1::vector<android_namespace_t*, std::__1::allocator<android_namespace_t*> >*)::$_2) (.__uniq.250007671217850615957365636956552013758)
+0.65%     /apex/com.android.runtime/bin/linker64          [linker]calculate_gnu_hash_neon(char const*)
+0.65%     /apex/com.android.runtime/bin/linker64          [linker]dlsym_handle_lookup_impl(android_namespace_t*, soinfo*, soinfo*, soinfo**, SymbolName&, version_info const*)::$_11::operator()(soinfo*) const (.__uniq.250007671217850615957365636956552013758)
+0.65%     /apex/com.android.runtime/bin/linker64          [linker]memset
+0.65%     /apex/com.android.runtime/lib64/bionic/libc.so  __memcpy
