@@ -28,8 +28,7 @@ DrawSeries :: (session: Session, bounds: Rectangle, phase: float32, palette: The
     bottom := bounds.y + bounds.height
     for index: 0..4 {
         y := bounds.y + bounds.height * cast(float32)index / 4.0
-        unused Shape.Draw(session, Shape.Props.{.key = cast(u64)(20 + index),
-            .start = .{bounds.x, y}, .end = .{bounds.x + bounds.width, y}, .color = grid})
+        unused Shape.Draw(session, Shape.Props.{.start = .{bounds.x, y}, .end = .{bounds.x + bounds.width, y}, .color = grid})
     }
     for index: 0..5 {
         value := previous[index] + (current[index] - previous[index]) * phase
@@ -41,16 +40,14 @@ DrawSeries :: (session: Session, bounds: Rectangle, phase: float32, palette: The
         to := points[index + 1]
         left := Vector2.{from.x, bottom}
         right := Vector2.{to.x, bottom}
-        key := cast(u64)(30 + index * 3)
-        unused Shape.Triangle(session, Shape.TriangleProps.{.key = key,
+        unused Shape.Triangle(session, Shape.TriangleProps.{
             .first = from, .second = to, .third = right, .color = shade})
-        unused Shape.Triangle(session, Shape.TriangleProps.{.key = key + 1,
+        unused Shape.Triangle(session, Shape.TriangleProps.{
             .first = from, .second = right, .third = left, .color = shade})
-        unused Shape.Draw(session, Shape.Props.{.key = key + 2,
+        unused Shape.Draw(session, Shape.Props.{
             .start = from, .end = to, .thickness = 2.5, .color = line})
     }
-    unused Shape.Circle(session, Shape.CircleProps.{.key = 50,
-        .center = points[5], .radius = 4.5, .fill = line})
+    unused Shape.Circle(session, Shape.CircleProps.{.center = points[5], .radius = 4.5, .fill = line})
 }
 
 Draw :: (frame: App.Frame) {
@@ -60,17 +57,17 @@ Draw :: (frame: App.Frame) {
     theme := Theme.CurrentTheme()
     x := bounds.x + 48.0
     y := bounds.y + 46.0
-    unused Box.Draw(session, Box.Props.{.key = 1, .bounds = bounds,
+    unused Box.Draw(session, Box.Props.{.bounds = bounds,
         .fill = ColorFromPacked(theme.colors.background)})
-    unused Box.Draw(session, Box.Props.{.key = 2, .radius = 18.0,
+    unused Box.Draw(session, Box.Props.{.radius = 18.0,
         .bounds = .{x - 24.0, y - 22.0, bounds.width - 48.0, bounds.height - 48.0},
         .fill = ColorFromPacked(theme.colors.surface_raised), .border = ColorFromPacked(theme.colors.border)})
-    Text.Draw(session, Text.Props.{.key = 3, .bounds = .{x, y, 104.0, 36.0}, .text = "Revenue", .size = 25})
-    if Button.Draw(session, Button.Props.{.key = 4, .label = "Switch week",
+    Text.Draw(session, Text.Props.{.bounds = .{x, y, 104.0, 36.0}, .text = "Revenue", .size = 25})
+    if Button.Draw(session, Button.Props.{.label = "Switch week",
         .bounds = .{bounds.x + bounds.width - 158.0, y, 110.0, 36.0}}) != 0 {
         current_week = !current_week
     }
-    Text.Draw(session, Text.Props.{.key = 5, .bounds = .{x, y + 42.0, 165.0, 24.0},
+    Text.Draw(session, Text.Props.{.bounds = .{x, y + 42.0, 165.0, 24.0},
         .text = ifx current_week then "Current week" else "Previous week", .size = 14})
     now := cast(float64)CaptureFrameInput(session).elapsed_ms / 1000.0
     target: float32 = ifx current_week then 1.0 else 0.0

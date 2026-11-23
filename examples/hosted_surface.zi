@@ -87,17 +87,17 @@ Draw :: (frame: Surface.Frame) {
         last_height = cast(s32)viewport.height
         print("surface % x %\n", last_width, last_height)
     }
-    if Button.Draw(session, .{.key = 2, .bounds = .{12.0, 36.0, width, 38.0},
+    if Button.Draw(session, .{.bounds = .{12.0, 36.0, width, 38.0},
         .label = "Count click"}) != 0 {
         clicks += 1
         print("click %\n", clicks)
     }
     digits: [24]u8
-    Text.Draw(session, .{.key = 1, .bounds = .{12.0, 8.0, width, 24.0},
+    Text.Draw(session, .{.bounds = .{12.0, 8.0, width, 24.0},
         .text = FormatInteger(cast(s64)clicks, digits[:]), .size = 18})
     typed: [128]u8
     input := TextFieldInputFor(KeyboardTake(session), KeyboardModifiers(session), TypedTextTake(session, typed[:]))
-    field := TextField.StateProps(value, .{.key = 3, .bounds = .{12.0, 82.0, width, 38.0},
+    field := TextField.StateProps(value, .{.bounds = .{12.0, 82.0, width, 38.0},
         .placeholder = "Type here", .input = input})
     changed := TextField.Draw(session, field)
     if TextField.StateApplyResult(*value, changed) && changed.edit.changed {
