@@ -22,20 +22,27 @@ same Kryon as the app, or the build names the export both define. Then:
 - **Widget keys are optional.** Before: `.key = cast(u64)(100 + index)`. After: no key; a
   widget is known by its calling line and parent, and a loop's repeats count in order. Keep
   `.key = item.id` only where rows reorder.
-- **Stricter CSS.** A plain `CssSheetParse` refuses browser-only declarations (`transform`,
-  `transform-origin`, `scale`, `rotate`) with the reason; `CssSheetParseWithDiagnostics`
-  reports them. A style pack in an older layout is refused as stale: rebuild it with the
-  pinned CSS package.
+- **Stricter CSS.** A plain `CssSheetParse` refuses browser-only declarations with the
+  reason; `CssSheetParseWithDiagnostics` reports them. A style pack in an older layout is
+  refused as stale: rebuild it with the pinned CSS package.
+- **Transforms are native and opt-in.** `transform`, `translate`, `rotate`, `scale` and
+  `transform-origin` paint on every host once the app calls `PaintTransformInstall()` from
+  `kryon/paint_transform`; `CssSheetInstall` refuses a sheet that sets one until then.
+- **`translate` moves the whole box.** Before: `NavigationBar[role=Panel] { translate: 340px 0; }`
+  set a widget part's offset or metric. After: `NavigationBar[role=Panel] { -kryon-content-offset: 340px 0; }`
+  keeps that metric, and `Button:hover { translate: 0 -2px; }` lifts the whole button at paint
+  time, as on the web. The old meaning has no alias: rename every `translate:` that set a part
+  metric (the CSS presets already use `-kryon-content-offset`).
 - **Import `kryon/Frame`.** The old `kryon/tree_draw` name still works but is on its way out.
 - `kryon/swipe_row` stays: Breeze Lists uses it.
 
 ## Unreleased
 
-- CSS transforms paint natively on every host: `kryon/paint_transform` gives Row, Column, Grid, Button, Card, Text, Link and Image nodes the `transform`, `rotate` and `scale` of their style rules (with `:hover` and `:active` from the pointer) about their `transform-origin`, to the node and everything in it, and eases changes over a transform transition. Whole-pixel moves, text and images are rewritten in place and keep the host's rasterizer; other shapes draw as triangles through a new `PaintKindTransformed`. It is opt-in: an app calls `PaintTransformInstall()` once, and apps that do not link none of it. `StyleBoxData` carries the transform fields and `PaintCommand` an owner node and a matrix.
-
-- `kryon/sortable` reorders rows by dragging, also into, out of and between nested groups: `Sortable.Item` lifts a row on a mouse drag or a touch hold (a swipe still scrolls), `Sortable.Target` says where it lands (between rows, at a group's end, or into a group dropped on its start row) and `Sortable.Indicator` shows it. Built from Press and Box, so hosted packages use it too. `ziran_sortable_test` covers drops, presses and the hosted build.
+- CSS transforms paint natively on every host: `kryon/paint_transform` gives Row, Column, Grid, Button, Card, Text, Link and Image nodes the `transform`, `translate`, `rotate` and `scale` of their style rules (with `:hover` and `:active` from the pointer) about their `transform-origin`, to the node and everything in it, and eases changes over a transform transition. Whole-pixel moves, text and images are rewritten in place and keep the host's rasterizer; other shapes draw as triangles through a new `PaintKindTransformed`. It is opt-in: an app calls `PaintTransformInstall()` once, and apps that do not link none of it. `StyleBoxData` carries the transform fields and `PaintCommand` an owner node and a matrix.
 
 - `TabBar.Props.fit` keeps a horizontal tab row on one line: tabs that would scroll first lose padding, down to half the style's, then label size, down to four fifths of it (`TabBarFitFor`); only a row still too wide at that floor scrolls. The bar's height and tap area stay. The widget test checks a four-tab row at 320, 360 and 412 dp widths and two scales.
+
+- `kryon/sortable` reorders rows by dragging, also into, out of and between nested groups: `Sortable.Item` lifts a row on a mouse drag or a touch hold (a swipe still scrolls), `Sortable.Target` says where it lands (between rows, at a group's end, or into a group dropped on its start row) and `Sortable.Indicator` shows it. Built from Press and Box, so hosted packages use it too. `ziran_sortable_test` covers drops, presses and the hosted build.
 
 - Android GLES presentation stays on GLES when a smaller picture uploads after a larger one: the presenter's staging buffer keeps its capacity instead of refusing the smaller image and dropping the window to software Pixmap. A GPU image quad whose source passes the image edge by float rounding alone (within 1/256 texel) snaps to the edge instead of taking the per-pixel path. `android_egl_composition_test` covers both.
 
@@ -130,8 +137,16 @@ same Kryon as the app, or the build names the export both define. Then:
 
 - Pointer drags no longer activate controls on release, including after moving
   away and back. X11 window-manager grabs no longer become application clicks.
-- Portable ZX players forward each frame-resolved cursor to the host so
+- Portable ZX players forward each frame's resolved cursor to the host so
   bundled apps get pointer feedback without app-specific host code.
+- Browser ZX players accept and apply bundled frame cursor requests, including
+  system shapes, hidden cursors and bitmap cursors.
+- Android links native image codecs from the app's checked Ziran graph.
+  Native AVIF and WebP decoding are opt-in. AVIF decoding uses dav1d and
+  includes libaom when the app uses its engine or encodes AVIF.
+- Android uses system text and emoji by default. New app templates use an
+  event-driven frame loop that sleeps at idle and paces active frames with
+  the display.
 
 
 - Keep Android codec builds reproducible and exclude build-machine paths from library loading.
