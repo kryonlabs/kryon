@@ -35,7 +35,10 @@ def main():
         originals = {path: path.read_bytes() for path in examples.glob('*/*.zi')}
         site, catalog = fixture / 'site', fixture / 'catalog'
         _, entries = prepare(catalog=catalog, site=site, examples=examples)
-        assert len(entries) == 101
+        # Every maintained example is packaged: as many entries as the real
+        # catalog built from this checkout's examples.
+        _, maintained = prepare(catalog=fixture / 'real-catalog', site=fixture / 'real-site')
+        assert len(entries) == len(maintained), (len(entries), len(maintained))
         assert all(path.read_bytes() == source for path, source in originals.items()), 'Packaging overwrote maintained source'
         for entry in entries:
             assert (site / entry['code']).read_bytes() == (ROOT / entry['sourcePath']).read_bytes(), entry['id']

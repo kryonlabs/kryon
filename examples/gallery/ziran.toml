@@ -32,13 +32,13 @@ codegen = "zx"
 assets = "assets"
 
 [dependencies.kryon]
-git = "https://github.com/kryonlabs/kryon.git"
+git = "https://git.waozi.xyz/kryonlabs/kryon.git"
 ref = "master"
 
 [dependencies.plot]
-git = "https://github.com/kryonlabs/plot.git"
+git = "https://git.waozi.xyz/kryonlabs/plot.git"
 ref = "master"
 
 [dependencies.data_views]
-git = "https://github.com/kryonlabs/data-views.git"
+git = "https://git.waozi.xyz/kryonlabs/data-views.git"
 ref = "master"

@@ -397,16 +397,16 @@ SiteOverview :: (session: Session, view: Rectangle) {
         ifx large then "Native interfaces.\nOne expressive language." else "Native interfaces.\nWritten in Ziran.", ifx large then 56 else 36)
     y += ifx large then 160.0 else 126.0
     SiteCenter(session, 10032, .{x, y, width, 64.0},
-        "101 real components for desktop and the web.\nCompose, explore, and make them your own.", ifx large then 18 else 16)
+        "Ziran UI modules for desktop and the web.\nUsed in Terminal, Explorer, and Workbook.", ifx large then 18 else 16)
     y += 88.0
     actions: float32 = ifx width > 360.0 then 360.0 else width
     ax: float32 = (view.width - actions) * 0.5
     if Button.Draw(session, Button.Props.{.key = 10033, .bounds = .{ax, y, actions * 0.5 - 6.0, 42.0},
-        .label = "Browse components", .class_name = 11011}) != 0 { SiteNavigate(2) }
+        .label = "Explore modules", .class_name = 11011}) != 0 { SiteNavigate(6) }
     if Button.Draw(session, Button.Props.{.key = 10034, .bounds = .{ax + actions * 0.5 + 6.0, y, actions * 0.5 - 6.0, 42.0},
-        .label = "Get started", .class_name = 11012}) != 0 { SiteNavigate(1) }
+        .label = "See the apps", .class_name = 11012}) != 0 { SiteNavigate(3) }
     y += 64.0
-    SiteCenter(session, 10202, .{x, y, width, 24.0}, "$ ziran add https://github.com/kryonlabs/kryon", ifx large then 13 else 10)
+    SiteCenter(session, 10202, .{x, y, width, 24.0}, "$ ziran add https://git.waozi.xyz/kryonlabs/kryon", ifx large then 13 else 10)
     y += 76.0
     SiteMuted(session, 10035, .{x, y, width, 24.0}, "A SMALL TASTE OF KRYON", 12)
     y += 38.0
@@ -482,7 +482,8 @@ SiteReading :: (session: Session, view: Rectangle) {
         .content_height = 1080, .scroll_offset = site_scroll})
     site_scroll = scroll.scroll_offset
     y := scroll.content.y + 44.0
-    SiteMuted(session, 10401, .{x, y, width, 24.0}, "KRYON  /  DOCUMENTATION", 12)
+    SiteMuted(session, 10401, .{x, y, width, 24.0},
+        ifx site_page == 6 then "KRYON  /  MODULES" else "KRYON  /  DOCUMENTATION", 12)
     SiteText(session, 10050, .{x, y + 48.0, width, 92.0}, title, 36)
     Box.Draw(session, Box.Props.{.key = 10402, .bounds = .{x, y + 162.0, width, 1.0}, .fill = SiteBorder()})
     Text.Draw(session, Text.Props.{.key = 10051, .bounds = .{x, y + 198.0, width, 640.0},
@@ -628,7 +629,7 @@ SiteAppCard :: (session: Session, key: u64, bounds: Rectangle, app: SiteApp, ima
         return
     }
     SiteMuted(session, key + 7, .{bounds.x + inset, text_y + 80.0, inner, 40.0}, app.desktop_reason, 13)
-    if Button.Draw(session, Button.Props.{.key = key + 4, .bounds = footer, .label = "View on GitHub  ↗",
+    if Button.Draw(session, Button.Props.{.key = key + 4, .bounds = footer, .label = "View source  ↗",
         .class_name = 11010, .emphasis = .ButtonEmphasisGhost}) != 0 { unused OpenUri(app.source) }
 }
 
@@ -656,8 +657,17 @@ SiteApps :: (session: Session, view: Rectangle) {
     SiteText(session, 10702, .{x, y, width, 52.0}, "Apps built with Kryon", ifx wide then 42 else 32)
     y += 62.0
     SiteMuted(session, 10703, .{x, y, width, 52.0},
-        "Every app here is written in Ziran with Kryon.\nPlay the web builds right here in your browser.", 16)
+        "Explore the desktop apps built with Kryon modules.\nTry the browser builds below.", 16)
     y += 92.0
+    SiteText(session, 10708, .{x, y, width, 36.0}, "Desktop apps from Kryon Labs", 26)
+    y += 56.0
+    for index: cast(s32)0..SiteDesktopAppCount - 1 {
+        cx := x + cast(float32)(index % columns) * (card_width + gap)
+        cy := y + cast(float32)(index / columns) * (desktop_height + gap)
+        SiteAppCard(session, cast(u64)(10800 + index * 10), .{cx, cy, card_width, desktop_height},
+            SiteDesktopApp(index), image_height)
+    }
+    y += cast(float32)desktop_rows * (desktop_height + gap) + 28.0
     SiteText(session, 10704, .{x, y, width, 36.0}, "Play in your browser", 26)
     y += 56.0
     for index: cast(s32)0..SiteWebAppCount - 1 {
@@ -672,19 +682,10 @@ SiteApps :: (session: Session, view: Rectangle) {
         "Each of the 101 component examples runs live on the Components page,\nwith its Ziran source ready to edit and run again.", 15)
     if Button.Draw(session, Button.Props.{.key = 10707, .bounds = .{x, y + 118.0, 260.0, 40.0},
         .label = "Open the 101 examples  →", .class_name = 11012}) != 0 { SiteNavigate(2) }
-    y += 218.0
-    SiteText(session, 10708, .{x, y, width, 36.0}, "Desktop apps from Kryon Labs", 26)
-    y += 56.0
-    for index: cast(s32)0..SiteDesktopAppCount - 1 {
-        cx := x + cast(float32)(index % columns) * (card_width + gap)
-        cy := y + cast(float32)(index / columns) * (desktop_height + gap)
-        SiteAppCard(session, cast(u64)(10800 + index * 10), .{cx, cy, card_width, desktop_height},
-            SiteDesktopApp(index), image_height)
-    }
-    y += cast(float32)desktop_rows * (desktop_height + gap) + 16.0
+    y += 198.0
     if Button.Draw(session, Button.Props.{.key = 10790, .bounds = .{x, y, 232.0, 40.0},
-        .label = "Kryon Labs on GitHub  ↗", .class_name = 11012}) != 0 {
-        unused OpenUri("https://github.com/kryonlabs")
+        .label = "Kryon Labs repositories  ↗", .class_name = 11012}) != 0 {
+        unused OpenUri("https://git.waozi.xyz/kryonlabs")
     }
     if scroll.opened { End(session) }
 }
@@ -706,25 +707,38 @@ SiteFrame :: (session: Session, viewport: Rectangle) -> s32 {
     site_modal_active = false
     Box.Draw(session, Box.Props.{.key = 10001, .bounds = .{0.0, 0.0, viewport.width, header}, .fill = SiteBackground()})
     Box.Draw(session, Box.Props.{.key = 10320, .bounds = .{0.0, header - 1.0, viewport.width, 1.0}, .fill = SiteBorder()})
-    if Button.Draw(session, Button.Props.{.key = 10002, .bounds = .{16.0, 8.0, 94.0, 38.0},
+    Image.Draw(session, Image.Props.{.key = 10004, .asset_path = "assets/brand/mascot-dragon.png",
+        .alt_text = "Kryon dragon", .bounds = .{16.0, 10.0, 34.0, 34.0},
+        .fit = .ImageFitContain, .smooth = true})
+    if Button.Draw(session, Button.Props.{.key = 10002, .bounds = .{50.0, 8.0, 68.0, 38.0},
         .label = "Kryon", .class_name = 11010, .emphasis = .ButtonEmphasisGhost, .disabled = site_modal_active}) != 0 { SiteNavigate(0) }
     dark = Toggle.Draw(session, Toggle.Props.{.key = 10003, .bounds = .{viewport.width - 108.0, 10.0, 92.0, 36.0},
         .label = "Dark", .value = dark, .disabled = site_modal_active}).value
     tab_width: float32 = ifx wide then 96.0 else (viewport.width - 32.0) / 3.0
     nav_x: float32 = ifx wide then 124.0 else 16.0
     nav_y: float32 = ifx wide then 10.0 else 56.0
-    for index: cast(s32)0..2 {
-        label := "Overview"
-        if index == 1 { label = "Guide" } else if index == 2 { label = "Components" }
-        SiteAction(session, cast(u64)(10010 + index), .{nav_x + cast(float32)index * tab_width, nav_y, tab_width, 36.0}, label, index)
+    if wide {
+        SiteAction(session, 10010, .{nav_x, nav_y, tab_width, 36.0}, "Overview", 0)
+        SiteAction(session, 10011, .{nav_x + tab_width, nav_y, tab_width, 36.0}, "Guide", 1)
+        SiteAction(session, 10012, .{nav_x + tab_width * 2.0, nav_y, tab_width, 36.0}, "Components", 2)
+        SiteAction(session, 10014, .{nav_x + tab_width * 3.0, nav_y, tab_width, 36.0}, "Modules", 6)
+    } else {
+        SiteAction(session, 10014, .{nav_x, nav_y, tab_width, 36.0}, "Modules", 6)
+        SiteAction(session, 10012, .{nav_x + tab_width, nav_y, tab_width, 36.0}, "Components", 2)
+        SiteAction(session, 10020, .{nav_x + tab_width * 2.0, nav_y, tab_width, 36.0}, "Apps", 3)
     }
     if viewport.width >= 1000.0 {
         SiteAction(session, 10020, .{508.0, 10.0, 72.0, 36.0}, "Apps", 3)
         SiteAction(session, 10021, .{588.0, 10.0, 72.0, 36.0}, "Docs", 4)
         if Button.Draw(session, Button.Props.{.key = 10322, .bounds = .{viewport.width - 208.0, 10.0, 88.0, 36.0},
-            .label = "GitHub  ↗", .class_name = 11010, .emphasis = .ButtonEmphasisGhost}) != 0 { unused OpenUri("https://github.com/kryonlabs/kryon") }
+            .label = "Source  ↗", .class_name = 11010, .emphasis = .ButtonEmphasisGhost}) != 0 { unused OpenUri("https://git.waozi.xyz/kryonlabs/kryon") }
     }
-    target := cast(float32)(ifx site_page < 3 then site_page else 1)
+    active_tab: s32 = -1
+    if wide && site_page < 3 { active_tab = site_page }
+    if site_page == 6 { active_tab = ifx wide then 3 else 0 }
+    if !wide && site_page == 2 { active_tab = 1 }
+    if !wide && site_page == 3 { active_tab = 2 }
+    target := cast(float32)(ifx active_tab >= 0 then active_tab else 0)
     if !site_marker_ready {
         site_marker = target; site_marker_from = target; site_marker_target = target; site_marker_ready = true
     }
@@ -732,17 +746,20 @@ SiteFrame :: (session: Session, viewport: Rectangle) -> s32 {
     progress := TransitionSmoothProgress((site_now - site_marker_started) / 0.22)
     if site_reduced_motion { progress = 1.0 }
     site_marker = site_marker_from + (site_marker_target - site_marker_from) * progress
-    Box.Draw(session, Box.Props.{.key = 10013, .bounds = .{nav_x + site_marker * tab_width + 18.0, header - 2.0, tab_width - 36.0, 2.0},
-        .fill = ColorFromPacked(ifx dark then 0xf2f2f2ff else 0x171717ff)})
+    if active_tab >= 0 {
+        Box.Draw(session, Box.Props.{.key = 10013, .bounds = .{nav_x + site_marker * tab_width + 18.0, header - 2.0, tab_width - 36.0, 2.0},
+            .fill = ColorFromPacked(ifx dark then 0xf2f2f2ff else 0x171717ff)})
+    }
     resources_x: float32 = ifx viewport.width >= 1000.0 then 678.0 else viewport.width - 190.0
     if Button.Draw(session, Button.Props.{.key = 10520, .bounds = .{resources_x, 10.0, 78.0, 36.0},
         .label = "More", .class_name = 11010, .emphasis = .ButtonEmphasisGhost, .disabled = site_modal_active}) != 0 { site_resources_open = !site_resources_open }
     if site_resources_open {
         mx := viewport.width - 230.0
         SitePanel(session, 10521, .{mx, 54.0, 214.0, 202.0})
-        labels: [4]string = .{"Apps & showcase", "Documentation", "Platforms", "Modules"}
+        labels: [4]string = .{"Apps", "Documentation", "Platforms", "Guide"}
         for index: 0..3 {
-            SiteAction(session, cast(u64)(10522 + index), .{mx + 10.0, 66.0 + cast(float32)index * 44.0, 194.0, 38.0}, labels[index], cast(s32)index + 3)
+            page := ifx index == 3 then 1 else cast(s32)index + 3
+            SiteAction(session, cast(u64)(10522 + index), .{mx + 10.0, 66.0 + cast(float32)index * 44.0, 194.0, 38.0}, labels[index], page)
         }
     }
     return 0

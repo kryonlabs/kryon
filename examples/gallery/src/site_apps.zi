@@ -39,23 +39,23 @@ SiteWebApp :: (index: s32) -> SiteApp {
 
 SiteDesktopApp :: (index: s32) -> SiteApp {
     if index == 0 { return SiteApp.{.name = "Terminal", .image = "assets/apps/terminal.webp",
-        .summary = "Tabs, sessions and desktop integration.",
-        .source = "https://github.com/kryonlabs/terminal",
+        .summary = "A native terminal with tabs, sessions and desktop integration.",
+        .source = "https://git.waozi.xyz/kryonlabs/terminal",
         .desktop_reason = "Runs your shell through a local pseudo-terminal, which browsers do not offer."} }
-    if index == 1 { return SiteApp.{.name = "Browser", .image = "assets/apps/browser.webp",
-        .summary = "A reading surface with its own document engine.",
-        .source = "https://github.com/kryonlabs/browser",
-        .desktop_reason = "Fetches any site directly; a web page may only read sites that allow it."} }
-    if index == 2 { return SiteApp.{.name = "GitHub", .image = "assets/apps/github.webp",
-        .summary = "Repository, issue and pull request workflows.",
-        .source = "https://github.com/kryonlabs/github",
-        .desktop_reason = "Signs in and talks to GitHub through the local gh command."} }
-    if index == 3 { return SiteApp.{.name = "Explorer", .image = "assets/apps/explorer.webp",
+    if index == 1 { return SiteApp.{.name = "Explorer", .image = "assets/apps/explorer.webp",
         .summary = "A native file manager with grid, list and split views.",
-        .source = "https://github.com/kryonlabs/explorer",
+        .source = "https://git.waozi.xyz/kryonlabs/explorer",
         .desktop_reason = "Manages the folders on your computer, which a web page cannot open."} }
+    if index == 2 { return SiteApp.{.name = "Workbook", .image = "assets/apps/workbook.webp",
+        .summary = "A native spreadsheet editor for formulas, tables and linked charts.",
+        .source = "https://git.waozi.xyz/kryonlabs/workbook",
+        .desktop_reason = "Open and save local Gnumeric and CSV documents."} }
+    if index == 3 { return SiteApp.{.name = "Browser", .image = "assets/apps/browser.webp",
+        .summary = "A reading surface with its own document engine.",
+        .source = "https://git.waozi.xyz/kryonlabs/browser",
+        .desktop_reason = "Fetches any site directly; a web page may only read sites that allow it."} }
     return SiteApp.{.name = "Task Manager", .image = "assets/apps/taskmgr.webp",
         .summary = "Processes, memory, GPU use and open windows at a glance.",
-        .source = "https://github.com/kryonlabs/taskmgr",
+        .source = "https://git.waozi.xyz/kryonlabs/taskmgr",
         .desktop_reason = "Reads your computer's running processes, which a web page cannot see."}
 }

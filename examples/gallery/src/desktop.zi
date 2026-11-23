@@ -14,8 +14,7 @@ using Shot :: #import "catalog_shot";
 #import "kryon/ScrollDevice"
 #import "kryon/TestDriver"
 
-#import "std/c_string"
-#import "std/byte_text_linux"
+Environment :: #import "std/environment_linux";
 Timer :: #import "std/timer_linux";
 
 
@@ -61,20 +60,11 @@ main :: () -> s32 {
     session := SessionOpen()
     ok := SessionValid(session)
     if ok && capture {
-        name: [32]u8
-        if CopyCString("KRYON_CATALOG_SCENE", name[:]) {
-            text := TextFromCString(RasterGetEnvironment(*name[0]))
-            for byte: text {
-                if byte >= 48 && byte <= 57 { scene = scene * 10 + cast(s32)byte - 48 }
-            }
-            if scene < 0 || scene >= GallerySceneCount { scene = 0 }
-        }
-        theme: [32]u8
-        dark := false
-        if CopyCString("KRYON_CATALOG_THEME", theme[:]) {
-            theme_text := TextFromCString(RasterGetEnvironment(*theme[0]))
-            if theme_text.count > 0 && theme_text[0] == 100 { dark = true }
-        }
+        option: [32]u8
+        requested := Environment.EnvironmentRange("KRYON_CATALOG_SCENE", 0, GallerySceneCount - 1, option[:])
+        if requested.is_ok { scene = cast(s32)requested.value }
+        theme := Environment.EnvironmentRead("KRYON_CATALOG_THEME", option[:])
+        dark := theme.is_ok && theme.value == "dark"
         Shot.CatalogShotConfigure(scene, dark)
         for frame: 0..2 {
             if ok { ok = Draw(session, .{980.0, 680.0, false, false, false}, 0.0) }

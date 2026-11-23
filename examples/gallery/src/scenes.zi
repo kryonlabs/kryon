@@ -91,19 +91,14 @@ split: s32 = 210;
 dismissed: bool;
 discrete: s32 = 4;
 field_bytes: [1024]u8;
-field_next: [1024]u8;
-field_length: s32;
+field: TextField.State;
 empty_bytes: [1024]u8;
-empty_next: [1024]u8;
-empty_length: s32;
+empty_field: TextField.State;
 area_bytes: [4096]u8;
 area_next: [4096]u8;
 area_length: s32;
 initialized: bool;
 scene_image: string = "assets/pfp.webp";
-demo_field_cursor: [2]s32;
-demo_field_anchor: [2]s32;
-demo_field_scroll: [2]s32;
 demo_area_cursor: s32;
 demo_area_anchor: s32;
 demo_area_scroll: s32;
@@ -129,17 +124,6 @@ Apply :: (target: []u8, length: s32, edit: TextField.Edit) -> s32 {
     return new_length
 }
 
-EditField :: (session: Session, key: u64, bounds: Rectangle, disabled: bool, empty: bool, input: TextField.Input) {
-    index: s32 = ifx empty then 1 else 0
-    value := TextView(field_bytes[0:field_length])
-    if empty { value = TextView(empty_bytes[0:empty_length]) }
-    result := TextField.Draw(session, TextField.Props.{.key = key, .bounds = bounds, .value = value, .placeholder = "Write something...", .max_bytes = 1024, .disabled = disabled, .cursor = demo_field_cursor[index], .anchor = demo_field_anchor[index], .scroll_x = demo_field_scroll[index], .input = input})
-    if result.clipboard_write { unused SystemClipboardSet(result.clipboard_text) }
-    demo_field_cursor[index] = result.cursor; demo_field_anchor[index] = result.anchor; demo_field_scroll[index] = result.scroll_x
-    if empty { empty_length = Apply(empty_next[:], empty_length, result.edit) }
-    else { field_length = Apply(field_next[:], field_length, result.edit) }
-}
-
 EditArea :: (session: Session, bounds: Rectangle, disabled: bool, input: TextArea.Input) {
     result := TextArea.Draw(session, TextArea.Props.{.bounds = bounds, .value = TextView(area_bytes[0:area_length]), .max_bytes = 4096, .wrap = true, .disabled = disabled, .cursor = demo_area_cursor, .anchor = demo_area_anchor, .scroll_y = demo_area_scroll, .input = input})
     if result.clipboard_write { unused SystemClipboardSet(result.clipboard_text) }
@@ -152,7 +136,7 @@ Label :: (session: Session, value: string, y: float32 = 76.0) {
     Text.Draw(session, Text.Props.{.bounds = GalleryBounds(Rectangle.{28.0, y, 420.0, 38.0}), .text = value})
 }
 
-SceneInput :: struct { field: TextField.Input; area: TextArea.Input }
+SceneInput :: struct { area: TextArea.Input }
 no_headers: []Collapsible.CollapsibleHeader;
 no_options: []Dropdown.Option;
 b: Rectangle;
@@ -160,65 +144,71 @@ typed: [128]u8;
 
 Prepare :: (session: Session, scene: s32) -> SceneInput {
     if !initialized {
-        field_length = Copy(field_bytes[:], "A quiet place to think")
+        field.bytes = field_bytes[:]
+        field.length = Copy(field.bytes, "A quiet place to think")
+        empty_field.bytes = empty_bytes[:]
         area_length = Copy(area_bytes[:], "A small note\n\nClear typography and careful spacing make everyday work feel calm. Café, Ω and é.")
         multi[0] = true; multi[2] = true
-        unused Copy(field_next[:], TextView(field_bytes[0:field_length]))
         unused Copy(area_next[:], TextView(area_bytes[0:area_length]))
         initialized = true
     }
-    for index: 0..field_length - 1 { field_bytes[index] = field_next[index] }
-    for index: 0..empty_length - 1 { empty_bytes[index] = empty_next[index] }
-    for index: 0..area_length - 1 { area_bytes[index] = area_next[index] }
-    input_key: s32 = 0
-    if scene == 1 || scene == 2 { input_key = KeyboardTake(session) }
-    input_text := TypedTextTake(session, typed[:])
     b = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 44.0})
-    return SceneInputFor(input_key, KeyboardModifiers(session), input_text)
+    if scene != 2 { return SceneInput.{} }
+    for index: 0..area_length - 1 { area_bytes[index] = area_next[index] }
+    return SceneInputFor(KeyboardTake(session), KeyboardModifiers(session), TypedTextTake(session, typed[:]))
 }
 
 SceneInputFor :: (input_key: s32, modifiers: s32, input_text: string) -> SceneInput {
-    field_input := TextFieldInputFor(input_key, modifiers, input_text)
-    area_input: TextArea.Input
-    area_input.text = field_input.text
-    area_input.left = field_input.left; area_input.right = field_input.right
-    area_input.home = field_input.home; area_input.end = field_input.end
-    area_input.shift = field_input.shift
-    area_input.backspace = field_input.backspace
-    area_input.delete_forward = field_input.delete_forward
-    area_input.select_all = field_input.select_all
-    area_input.copy = field_input.copy; area_input.cut = field_input.cut
-    area_input.paste = field_input.paste
-    area_input.escape = field_input.escape
-    area_input.enter = input_key == KeyEnter
-    area_input.up = input_key == KeyUp; area_input.down = input_key == KeyDown
-    area_input.page_up = input_key == KeyPageUp; area_input.page_down = input_key == KeyPageDown
-    return SceneInput.{field_input, area_input}
+    return SceneInput.{.area = TextAreaInputFor(input_key, modifiers, input_text)}
 }
 
 Compose :: (session: Session, scene: s32, disabled: bool) {
     input := Prepare(session, scene)
-    field_input := input.field
     area_input := input.area
     if scene == 0 {
-        for index: 0..3 {
-            props: Button.Props
-            props.key = cast(u64)(10 + index)
-            props.bounds = GalleryBounds(Rectangle.{24.0 + cast(float32)(index % 2) * 220.0, 64.0 + cast(float32)(index / 2) * 64.0, 208.0, 44.0})
-            props.label = "Continue"
-            props.tone = cast(ButtonTone)index
-            props.disabled = disabled
-            if Button.Draw(session, props) == 1 { clicks += 1 }
+        gap := Layout.Gap(.ThemeMetricSpace2)
+        button := Button.Props.{.label = "Continue", .disabled = disabled}
+        button_size := Button.ButtonMeasure(button)
+        sizes: [2]Rectangle = .{button_size, button_size}
+        b.height = 0.0
+        form := Layout.Draw(session, Layout.Props.{.key = 1, .gap = gap,
+            .bounds = Layout.LayoutContentBounds(b, .FlexColumn, sizes[:], gap)})
+        if form.opened {
+            row := Layout.Row(session, Layout.Props.{.key = 2, .gap = gap,
+                .bounds = Rectangle.{.width = form.content.width, .height = button_size.height}})
+            if row.opened {
+                for index: 0..3 {
+                    button.key = cast(u64)(10 + index)
+                    button.tone = cast(ButtonTone)index
+                    if Button.Draw(session, button) == 1 { clicks += 1 }
+                }
+                unused End(session)
+            }
+            digits: [16]u8
+            counter: [48]u8
+            length := Copy(counter[:], "Clicks: ")
+            length += Copy(counter[length:], FormatInteger(cast(s64)clicks, digits[:]))
+            Text.Draw(session, Text.Props.{.bounds = Rectangle.{.width = form.content.width, .height = button_size.height},
+                .text = TextView(counter[0:length])})
+            unused End(session)
         }
-        digits: [16]u8
-        counter: [48]u8
-        length := Copy(counter[:], "Clicks: ")
-        length += Copy(counter[length:], FormatInteger(cast(s64)clicks, digits[:]))
-        Label(session, TextView(counter[0:length]), 224.0)
     } else if scene == 1 {
-        EditField(session, 10, b, disabled, false, field_input)
-        b.y += 64.0
-        EditField(session, 11, b, disabled, true, field_input)
+        gap := Layout.Gap(.ThemeMetricSpace3)
+        props := TextField.Props.{.placeholder = "Write something...", .disabled = disabled}
+        size := TextField.Measure(props)
+        sizes: [2]Rectangle = .{size, size}
+        b.height = 0.0
+        form := Layout.Draw(session, Layout.Props.{.key = 1, .gap = gap,
+            .bounds = Layout.LayoutContentBounds(b, .FlexColumn, sizes[:], gap)})
+        if form.opened {
+            props.key = 10
+            props.label = "Filled field"
+            unused TextField.Bind(session, *field, props)
+            props.key = 11
+            props.label = "Empty field"
+            unused TextField.Bind(session, *empty_field, props)
+            unused End(session)
+        }
     } else if scene == 2 {
         b.height = 188.0
         EditArea(session, b, disabled, area_input)
@@ -373,18 +363,20 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
         if Press.Draw(session, Press.Props.{.bounds = b, .label = "Press and hold", .disabled = disabled}).clicked { clicks += 1 }
         Label(session, "Press is an invisible interaction area", 128.0)
     } else if scene >= 36 && scene <= 40 || scene == 48 {
-        props: Layout.Props = .{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .gap = 12, .padding = 8}
+        props: Layout.Props = .{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .gap = Layout.Gap(.ThemeMetricSpace3), .padding = Layout.Gap(.ThemeMetricSpace2)}
         container: Layout.LayoutContainer
         if scene == 36 { container = Layout.Draw(session, props) }
         else if scene == 37 { container = Layout.Row(session, props) }
         else if scene == 38 { container = Layout.Stack(session, props) }
         else if scene == 39 { container = Layout.Group(session, props) }
         else if scene == 48 { container = Layout.Screen(session, props) }
-        else { grid := Layout.Grid(session, GridProps.{.bounds = props.bounds, .columns = 2, .gap = 12, .padding = 8}); container = grid.container }
+        else { grid := Layout.Grid(session, GridProps.{.bounds = props.bounds, .columns = 2, .gap = props.gap, .padding = props.padding}); container = grid.container }
         if container.opened {
             first: Rectangle = .{0.0, 0.0, ifx gallery_live then 164.0 * gallery_view.width / 480.0 else 164.0, 44.0}
             second: Rectangle = first
-            if scene == 39 || scene == 48 {
+            if scene == 36 || scene == 37 {
+                first = .{}; second = .{}
+            } else if scene == 39 || scene == 48 {
                 first.x = container.content.x; first.y = container.content.y
                 second.x = first.x; second.y = first.y + 60.0
             } else if scene == 38 { second = GalleryBounds(Rectangle.{104.0, 112.0, 164.0, 44.0}) }

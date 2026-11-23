@@ -41,10 +41,10 @@ def update():
             'og:url': url, 'og:title': head.title, 'og:description': head.description,
             'og:image': 'https://kryonlabs.com/og.png', 'og:image:type': 'image/png',
             'og:image:width': '1200', 'og:image:height': '630',
-            'og:image:alt': 'Kryon Labs — Useful interfaces. Clear foundations. Desktop apps and visual UI modules.',
+            'og:image:alt': 'Kryon dragon beside the names of the Kryon UI modules and desktop apps.',
             'twitter:card': 'summary_large_image', 'twitter:title': head.title,
             'twitter:description': head.description, 'twitter:image': 'https://kryonlabs.com/og.png',
-            'twitter:image:alt': 'Kryon Labs — Useful interfaces. Clear foundations.',
+            'twitter:image:alt': 'Kryon dragon beside the names of the Kryon UI modules and desktop apps.',
         }
         source = re.sub(r'<meta\b[^>]*(?:property|name)=["\'](?:og:|twitter:)[^>]*>', '', source)
         source = re.sub(r'<link\b[^>]*rel=["\']canonical["\'][^>]*>', '', source)

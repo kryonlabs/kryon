@@ -14,11 +14,11 @@ NAV = [
     ('widgets.html', 'Components'), ('apps.html', 'Apps'), ('docs.html', 'Docs'),
 ]
 MAINTAINED = [
-    ('index.html', 'Kryon — Ziran UI system', 'Kryon is a reusable Ziran UI library with source-driven controls, charts, overlays and data views.'),
+    ('index.html', 'Kryon — UI modules for Ziran', 'Build desktop and web interfaces with Kryon UI modules. Explore the controls behind Terminal, Explorer, and Workbook.'),
     ('getting-started.html', 'Getting started — Kryon', 'Add Kryon to a Ziran project, import widgets, and run the maintained local tests.'),
     ('widgets.html', 'Components — Kryon', 'Browse real light and dark Ziran component examples with source, APIs, options and status.'),
     ('modules.html', 'Modules — Kryon', 'The maintained gallery currently builds Kryon widgets, Plot charts, DataViews controls, focused inputs and overlays.'),
-    ('apps.html', 'Apps and showcase — Kryon', 'Play apps built with Ziran and Kryon in your browser, and find the Kryon Labs desktop apps with their source.'),
+    ('apps.html', 'Apps — Kryon', 'Explore Terminal, Explorer, Workbook, and other desktop and browser apps built with Kryon modules.'),
     ('docs.html', 'Docs — Kryon', 'Kryon ownership, public surface, local commands and integration boundaries.'),
     ('renderers.html', 'Platforms — Kryon', 'Kryon runs through Ziran desktop and Canvas hosts; support varies by backend and target.'),
 ]
@@ -79,6 +79,7 @@ def main():
     mascot_asset.parent.mkdir(parents=True, exist_ok=True)
     if not mascot_asset.exists() or mascot_asset.read_bytes() != mascot_source.read_bytes():
         shutil.copyfile(mascot_source, mascot_asset)
+    shutil.copyfile(mascot_source, SITE / 'assets/brand/mascot-dragon.png')
     prepare()
     subprocess.run(['python3', str(SITE / 'demo/build_preview.py')], cwd=ROOT, check=True)
     environment = os.environ.copy()
@@ -91,7 +92,8 @@ def main():
     with (SITE / 'runtime/simd128.js').open('rb') as stream:
         revision = hashlib.file_digest(stream, 'sha256').hexdigest()[:16]
     for name, title, description in MAINTAINED:
-        write(SITE / name, '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + html.escape(title) + '</title><meta name="description" content="' + html.escape(description, quote=True) + '"><link rel="stylesheet" href="current.css?v=' + revision + '"></head><body><input id="kryon-ime" type="text" tabindex="-1" aria-hidden="true" autocomplete="off" autocapitalize="off" spellcheck="false"><div id="canvas-frame"><canvas id="canvas" tabindex="0" aria-label="Kryon interactive website"></canvas></div><pre id="result" role="status"></pre><noscript>This website runs Ziran through WebAssembly. Enable JavaScript to use the live examples.</noscript><script src="current.js?v=' + revision + '"></script></body></html>\n')
+        write(SITE / name, '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + html.escape(title) + '</title><meta name="description" content="' + html.escape(description, quote=True) + '"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="stylesheet" href="current.css?v=' + revision + '"></head><body><input id="kryon-ime" type="text" tabindex="-1" aria-hidden="true" autocomplete="off" autocapitalize="off" spellcheck="false"><div id="canvas-frame"><canvas id="canvas" tabindex="0" aria-label="Kryon interactive website"></canvas></div><pre id="result" role="status"></pre><noscript>This website runs Ziran through WebAssembly. Enable JavaScript to use the live examples.</noscript><script src="current.js?v=' + revision + '"></script></body></html>\n')
+    subprocess.run(['python3', str(ROOT / 'scripts/site-metadata.py')], check=True)
     print('Packaged live Ziran website: 7 routes, 101 shared widget examples')
 
 
