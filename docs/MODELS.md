@@ -37,8 +37,11 @@ unused RenderScene(*scene, camera, *picture)
 `GltfReadBytes(bytes, base_dir)` reads the same formats from memory;
 `base_dir` resolves relative buffer and image URIs, and stays empty for a GLB
 whose binary chunk holds everything. A loaded `GltfModel` owns its buffers,
-decoded images, materials, meshes, nodes, skins and animation samplers;
-`GltfModelRelease` frees them.
+images, materials, meshes, nodes, skins and animation samplers;
+`GltfModelRelease` frees them. Loading decodes only the images that material
+texture slots sample. Others, such as a VRM thumbnail or an extension's maps,
+stay encoded until `GltfDecodeImage(model, index, base_dir)` decodes one; a
+failure there leaves the model as it was.
 
 The reader covers buffers, bufferViews and accessors for every component type,
 normalized integers and sparse overrides. Primitives read `POSITION`, `NORMAL`

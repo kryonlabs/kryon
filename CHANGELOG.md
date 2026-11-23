@@ -30,6 +30,10 @@ same Kryon as the app, or both get linked. Then:
 
 ## Unreleased
 
+- Android GLES presentation stays on GLES when a smaller picture uploads after a larger one: the presenter's staging buffer keeps its capacity instead of refusing the smaller image and dropping the window to software Pixmap. A GPU image quad whose source passes the image edge by float rounding alone (within 1/256 texel) snaps to the edge instead of taking the per-pixel path. `android_egl_composition_test` covers both.
+
+- glTF loading decodes only the images that material texture slots sample. Others, such as a VRM thumbnail or an extension's maps, stay encoded until `GltfDecodeImage(model, index, base_dir)` asks for them, and an unreadable one no longer fails the model. A practice VRM figure decodes about half as many pixels.
+
 - A Button a placing parent lays out takes its slot before it paints (TreePlaceAhead), so a grid cell's button centers its label in the cell, and an explicit width stays at the start of a wider cell as in CSS. Tests cover buttons in a padded column's grid and a grid in a padded column.
 
 - examples/dashboard builds on Kryon d0711324 and CSS 164d983; its KPI progress bars now paint their fill, and the README records the new light, dark and narrow digests.

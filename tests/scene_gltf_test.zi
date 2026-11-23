@@ -149,6 +149,25 @@ CheckTexturedQuad :: () -> s32 {
     return fail
 }
 
+// A model's thumbnail and extension maps are not sampled by its materials.
+// Loading leaves them encoded, even unreadable, until they are asked for.
+CheckMaterialImages :: () -> s32 {
+    model := LoadFixture("material_images.gltf")
+    defer GltfModelRelease(*model)
+    fail := Check(model.valid && model.images.count == 3, "material_images.gltf loads")
+    if fail != 0 {
+        print("scene gltf: material images error: %\n", GltfError(*model))
+        return fail
+    }
+    fail += Check(ImageValid(*model.images[0].image) && !ImageValid(*model.images[1].image) &&
+        !ImageValid(*model.images[2].image), "only images a material samples decode while loading")
+    fail += Check(GltfDecodeImage(*model, 1, FIXTURES) && model.images[1].image.width == 4,
+        "an unsampled image decodes on request")
+    fail += Check(!GltfDecodeImage(*model, 2, FIXTURES) && model.valid && GltfError(*model).count == 0,
+        "an unreadable unsampled image fails on request and leaves the model valid")
+    return fail
+}
+
 CheckJpegTexture :: () -> s32 {
     model := LoadFixture("jpeg_texture.gltf")
     defer GltfModelRelease(*model)
@@ -692,6 +711,7 @@ main :: () -> s32 {
     fail += CheckTriangle()
     fail += CheckTexturedQuad()
     fail += CheckJpegTexture()
+    fail += CheckMaterialImages()
     fail += CheckSkinned()
     fail += CheckGlb()
     fail += CheckAnimatedCube()

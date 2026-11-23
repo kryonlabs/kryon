@@ -91,8 +91,12 @@ ImageTexture :: (slot: s32) -> u32 {
     if images[slot] != 0 { return images[slot] }
     image_width := P.pixmap_image_widths[slot]; image_height := P.pixmap_image_heights[slot]
     count := cast(s64)image_width * image_height
+    // Staging keeps the capacity of its largest upload, which a smaller image
+    // reuses. A bound below that capacity would refuse the smaller image and
+    // drop the whole presenter to software.
+    limit := ifx staging.capacity > count then staging.capacity else count
     if image_width <= 0 || image_height <= 0 || count > P.PixmapSourceCount(slot) ||
-        !VecResizeBounded(staging, count, count) { return 0 }
+        !VecResizeBounded(staging, count, limit) { return 0 }
     for index: 0..count - 1 {
         pixel := P.PixmapSourcePixel(slot, index); alpha := pixel >> 24
         red := ((pixel >> 16) & cast(u32)255) * alpha / cast(u32)255

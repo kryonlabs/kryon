@@ -1,0 +1,12 @@
+{
+  "asset": {"version": "2.0"},
+  "images": [
+    {"name": "Sampled", "uri": "quad_checker.png"},
+    {"name": "Thumbnail", "uri": "checker.jpg"},
+    {"name": "Missing", "uri": "missing.png"}
+  ],
+  "textures": [{"source": 0}, {"source": 1}, {"source": 2}],
+  "materials": [
+    {"name": "Sampled", "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}}}
+  ]
+}

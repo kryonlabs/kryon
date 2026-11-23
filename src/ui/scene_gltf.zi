@@ -1150,7 +1150,10 @@ GltfParseSamplers :: (model: *GltfModel, doc: *JsonDocument) -> bool {
     return true
 }
 
-GltfParseImages :: (model: *GltfModel, doc: *JsonDocument, base_dir: string) -> bool {
+// Records every image without decoding it. Loading decodes only the images a
+// material samples (GltfDecodeMaterialImages); a VRM thumbnail or an
+// extension's maps stay encoded until GltfDecodeImage is asked for them.
+GltfParseImages :: (model: *GltfModel, doc: *JsonDocument) -> bool {
     node := JsonMember(doc, doc.root, "images")
     if node < 0 { return true }
     if JsonKindOf(doc, node) != .Array { return GltfFail(model, "glTF images must be an array") }
@@ -1169,57 +1172,79 @@ GltfParseImages :: (model: *GltfModel, doc: *JsonDocument, base_dir: string) -> 
             return GltfFail(model, "glTF image has invalid string or bufferView field")
         }
         img.buffer_view = cast(s32)bv
-        uri_str := TextView(VecSlice(img.uri, 0, img.uri.count))
-        if img.buffer_view >= 0 {
-            if img.buffer_view >= model.buffer_views.count {
-                VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
-                return GltfFail(model, "glTF image bufferView index out of range")
-            }
-            view := model.buffer_views[img.buffer_view]
-            buf_ptr := *model.buffers[view.buffer]
-            buf_slice := VecSlice(buf_ptr.data, view.byte_offset, view.byte_offset + view.byte_length)
-            img.image = GltfDecodeImageBytes(buf_slice)
-            if !ImageValid(*img.image) {
-                VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
-                return GltfFail(model, "glTF image in bufferView could not be decoded as PNG or JPEG")
-            }
-        } else if uri_str.count > 0 {
-            if TextHasPrefix(uri_str, "data:") {
-                raw: Vec(u8)
-                defer VecFree(raw)
-                if !GltfDecodeDataUri(uri_str, *raw) {
-                    VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
-                    return GltfFail(model, "glTF image has malformed base64 data: URI")
-                }
-                img.image = GltfDecodeImageBytes(VecSlice(raw, 0, raw.count))
-                if !ImageValid(*img.image) {
-                    VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
-                    return GltfFail(model, "glTF data: URI image could not be decoded as PNG or JPEG")
-                }
-            } else {
-                decoded_uri := GltfPercentDecode(uri_str)
-                if !GltfSafeRelativeUri(decoded_uri) || base_dir.count == 0 {
-                    VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
-                    return GltfFailField(model, "glTF image has unsafe or unresolvable URI: ", uri_str)
-                }
-                full_path := GltfPathJoin(base_dir, decoded_uri)
-                raw: Vec(u8)
-                defer VecFree(raw)
-                if !ReadFileInto(full_path, *raw) {
-                    VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
-                    return GltfFailField(model, "cannot read glTF image file: ", full_path)
-                }
-                img.image = GltfDecodeImageBytes(VecSlice(raw, 0, raw.count))
-                if !ImageValid(*img.image) {
-                    VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
-                    return GltfFailField(model, "cannot decode glTF image file as PNG or JPEG: ", full_path)
-                }
-            }
-        } else {
+        if img.buffer_view >= model.buffer_views.count || (img.buffer_view < 0 && img.uri.count == 0) {
             VecFree(img.name); VecFree(img.uri); VecFree(img.mime_type)
+            if img.buffer_view >= 0 { return GltfFail(model, "glTF image bufferView index out of range") }
             return GltfFail(model, "glTF image must specify either bufferView or uri")
         }
         VecPush(model.images, img)
+    }
+    return true
+}
+
+// Moves a valid DECODED picture into IMG; an invalid one is freed.
+GltfKeepImage :: (img: *GltfImage, decoded: *Image) -> bool {
+    valid := ImageValid(decoded)
+    if valid {
+        img.image.width = decoded.width
+        img.image.height = decoded.height
+        VecSwap(img.image.pixels, decoded.pixels)
+    }
+    VecFree(decoded.pixels)
+    return valid
+}
+
+// Decodes image INDEX unless it is already decoded. File URIs resolve against
+// BASE_DIR. A REPORT failure becomes the model's error and invalidates it;
+// otherwise the model is left as it was.
+GltfDecodeImageAt :: (model: *GltfModel, index: s32, base_dir: string, report: bool) -> bool {
+    if index < 0 || index >= model.images.count { return false }
+    img := *model.images[index]
+    if ImageValid(*img.image) { return true }
+    uri_str := TextView(VecSlice(img.uri, 0, img.uri.count))
+    if img.buffer_view >= 0 {
+        view := model.buffer_views[img.buffer_view]
+        buf_ptr := *model.buffers[view.buffer]
+        decoded := GltfDecodeImageBytes(VecSlice(buf_ptr.data, view.byte_offset, view.byte_offset + view.byte_length))
+        if GltfKeepImage(img, *decoded) { return true }
+        return report && GltfFail(model, "glTF image in bufferView could not be decoded as PNG or JPEG")
+    }
+    if TextHasPrefix(uri_str, "data:") {
+        raw: Vec(u8)
+        defer VecFree(raw)
+        if !GltfDecodeDataUri(uri_str, *raw) {
+            return report && GltfFail(model, "glTF image has malformed base64 data: URI")
+        }
+        decoded := GltfDecodeImageBytes(VecSlice(raw, 0, raw.count))
+        if GltfKeepImage(img, *decoded) { return true }
+        return report && GltfFail(model, "glTF data: URI image could not be decoded as PNG or JPEG")
+    }
+    decoded_uri := GltfPercentDecode(uri_str)
+    if !GltfSafeRelativeUri(decoded_uri) || base_dir.count == 0 {
+        return report && GltfFailField(model, "glTF image has unsafe or unresolvable URI: ", uri_str)
+    }
+    full_path := GltfPathJoin(base_dir, decoded_uri)
+    raw: Vec(u8)
+    defer VecFree(raw)
+    if !ReadFileInto(full_path, *raw) {
+        return report && GltfFailField(model, "cannot read glTF image file: ", full_path)
+    }
+    decoded := GltfDecodeImageBytes(VecSlice(raw, 0, raw.count))
+    if GltfKeepImage(img, *decoded) { return true }
+    return report && GltfFailField(model, "cannot decode glTF image file as PNG or JPEG: ", full_path)
+}
+
+// Decodes the images that material texture slots sample.
+GltfDecodeMaterialImages :: (model: *GltfModel, base_dir: string) -> bool {
+    for m: 0..model.materials.count - 1 {
+        mat := *model.materials[m]
+        textures: [5]s32 = .[mat.base_color_texture.index, mat.metallic_roughness_texture.index,
+            mat.normal_texture.index, mat.occlusion_texture.index, mat.emissive_texture.index]
+        for texture: textures {
+            if texture < 0 || texture >= model.textures.count { continue }
+            source := model.textures[texture].source
+            if source >= 0 && !GltfDecodeImageAt(model, source, base_dir, true) { return false }
+        }
     }
     return true
 }
@@ -2172,9 +2197,10 @@ GltfParseDocument :: (json_text: string, base_dir: string, bin_chunk: []u8, has_
        !GltfParseBufferViews(*model, *doc) ||
        !GltfParseAccessors(*model, *doc) ||
        !GltfParseSamplers(*model, *doc) ||
-       !GltfParseImages(*model, *doc, base_dir) ||
+       !GltfParseImages(*model, *doc) ||
        !GltfParseTextures(*model, *doc) ||
        !GltfParseMaterials(*model, *doc) ||
+       !GltfDecodeMaterialImages(*model, base_dir) ||
        !GltfParseMeshes(*model, *doc) ||
        !GltfParseNodes(*model, *doc) ||
        !GltfParseSkins(*model, *doc) ||
@@ -2261,6 +2287,13 @@ GltfReadFile :: (path: string) -> GltfModel {
 GltfError :: (model: *GltfModel) -> string {
     if model == null { return "null model" }
     return TextView(VecSlice(model.error, 0, model.error.count))
+}
+
+// Decodes image INDEX of a loaded model. Loading decodes only the images
+// materials sample; others, such as a VRM thumbnail, wait for this call. File
+// URIs resolve against BASE_DIR. A failure leaves the model unchanged.
+GltfDecodeImage :: (model: *GltfModel, index: s32, base_dir: string = "") -> bool {
+    return GltfDecodeImageAt(model, index, base_dir, false)
 }
 
 // Releases all memory owned by MODEL, including decoded images and buffers.
