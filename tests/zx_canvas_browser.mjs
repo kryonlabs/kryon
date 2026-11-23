@@ -70,7 +70,8 @@ try {
       assert(!/ZX service failure|portable execution failed|ABORT|RuntimeError/.test(diagnostics),diagnostics);
       await delay(100);
     }
-    assert(diagnostics.includes('ZX media, HTTP and clock passed'),diagnostics+' '+errors);
+    assert(diagnostics.includes('ZX media, HTTP and clock passed'),diagnostics+' '+errors+' '+await evaluate('document.querySelector("#zx-controls").textContent'));
+    assert.equal(await evaluate('getComputedStyle(document.querySelector("canvas")).cursor'),'crosshair','ZX frame cursor did not reach the browser');
     console.log('Browser ZX audio, asynchronous HTTP and clock passed');
   } else if(mode==='hosted') {
     const imageReady='(()=>{const c=document.querySelector("canvas");if(!c)return false;const p=c.getContext("2d").getImageData(550,130,1,1).data;return p[0]===230&&p[1]===30&&p[2]===40;})()';

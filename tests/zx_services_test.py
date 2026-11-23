@@ -84,6 +84,7 @@ env['PATH'] = str(ROOT / 'build/bin') + os.pathsep + env['PATH']
 (output / 'asound.conf').write_text('pcm.!default { type null }\nctl.!default { type hw card 0 }\n')
 env['ALSA_CONFIG_PATH'] = str(output / 'asound.conf')
 env['PULSE_SERVER'] = 'unix:/nonexistent-kryon-test-pulse'
+env['SDL_AUDIODRIVER'] = 'dummy'
 env['WINEPREFIX'] = str(output / 'wine')
 env['WINEDEBUG'] = '-all'
 

@@ -203,8 +203,12 @@ CanvasCursorShow :: (css: s32) {
 // request or the device pixel ratio does.
 #program_export
 CanvasCursor :: (session: Session) {
-    if !page_open { return }
-    props := CursorResolve(session, TreeCursor(session))
+    CanvasCursorApply(CursorResolve(session, TreeCursor(session)))
+}
+
+#program_export
+CanvasCursorApply :: (props: CursorProps) {
+    if !page_open || !CursorPropsValid(props) { return }
     dpi := page_dpi
     if canvas_cursor_applied_valid && CanvasCursorSame(*canvas_cursor_applied, props, dpi) { return }
     if canvas_cursor_retry > 0 && CanvasCursorSame(*canvas_cursor_failed, props, dpi) {

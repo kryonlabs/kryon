@@ -5,6 +5,7 @@ Text :: #import "kryon/text";
 #import "kryon/session"
 #import "kryon/Media"
 #import "kryon/Clock"
+#import "kryon/cursor"
 #import "service_urls"
 
 stage: s32;
@@ -21,6 +22,7 @@ Failure :: (code: s32) -> s32 {
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    if !CursorSet(session, CursorProps.{.shape = cast(s32)CursorShape.CursorCrosshair}) { return Failure(18) }
     label: Text.Props
     label.bounds = Rectangle.{20.0, 20.0, 800.0, 50.0}
     label.text = "Portable audio and asynchronous HTTP"

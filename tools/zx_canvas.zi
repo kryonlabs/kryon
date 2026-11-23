@@ -10,6 +10,7 @@ WindowPage :: #import "window_page_player";
 #import "bundle_storage_web"
 #import "key_input"
 #import "tree_input"
+Cursor :: #import "cursor";
 #import "session"
 media: BundleMedia;
 apps: [2]BundleApp;
@@ -130,6 +131,15 @@ ClosePicker :: () {
 PlatformCall :: (context: *void, module: *u8, function: *u8,
     arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
     name := TextFromCString(function)
+    if name == "BundleFrameCursorHost" && count == 7 {
+        props := Cursor.CursorProps.{TextFromBytes(BytesFromPointer(arguments[1].data, cast(u64)arguments[1].length)),
+            cast(s32)arguments[2].integer, cast(s32)arguments[3].integer,
+            cast(s32)arguments[4].integer, cast(s32)arguments[5].integer,
+            arguments[6].integer != 0, cast(s32)arguments[0].integer}
+        if !Cursor.CursorPropsValid(props) { return 0 }
+        Host.CanvasCursorApply(props)
+        return 1
+    }
     if BundleMediaCall(*media, TextFromCString(module), name, arguments, count, result) == 1 {
         return 1
     }
