@@ -2,8 +2,7 @@
 // native codecs and NativeActivity bitmap bridge as packaged ZX pictures.
 Images :: #import "android_bundle_images";
 #import "ziran_image_decode"
-#import "avif_image"
-#import "webp_image"
+#import "android_image_codecs"
 #import "image_orientation"
 #import "std/byte_text_linux"
 
@@ -83,15 +82,23 @@ AndroidImageDecodeEncoded :: (data: string, file_type: string,
     image: DecodedImage
     webp := ImageWebpSignature(data)
     avif := Images.AndroidImageIsAVIF(data)
-    if webp {
-        image.pixels = WebPImageDecode(data, *image.width, *image.height)
-    } else if avif {
-        image.pixels = AvifImageDecode(data, *image.width, *image.height)
+    if webp && android_webp_decode != null {
+        image.pixels = android_webp_decode(data, *image.width, *image.height)
+        if image.pixels == null && !allow_platform_bitmap { return .{} }
+    } else if avif && android_avif_decode != null {
+        image.pixels = android_avif_decode(data, *image.width, *image.height)
+        if image.pixels == null && !allow_platform_bitmap { return .{} }
     }
     if image.pixels == null {
-        if (webp || avif) && !allow_platform_bitmap { return .{} }
         size := AndroidImageBitmapSize(data)
-        if !allow_platform_bitmap && !AndroidImageSizeAllowed(size) { return .{} }
+        if webp {
+            probe := Riff.WebpProbe(ImageEncodedBytes(data), Codecs.DefaultOptions().limits)
+            if probe.is_ok { size = .{cast(s64)probe.metadata.width, cast(s64)probe.metadata.height} }
+        }
+        // Android's bridge probes dimensions before allocation for AVIF, which
+        // BitmapFactory can decode on supported Android releases.
+        bounded := !allow_platform_bitmap && !avif
+        if bounded && !AndroidImageSizeAllowed(size) { return .{} }
         width: s32; height: s32
         text := cast(*TextDescriptor)(*data)
         bytes := BytesFromPointer(text.data, cast(u64)data.count)
@@ -103,7 +110,7 @@ AndroidImageDecodeEncoded :: (data: string, file_type: string,
         }
         if words == null { return .{} }
         if !AndroidImageSizeAllowed(.{cast(s64)width, cast(s64)height}) ||
-            (!allow_platform_bitmap && (cast(s64)width != size.width || cast(s64)height != size.height)) {
+            (bounded && (cast(s64)width != size.width || cast(s64)height != size.height)) {
             ImagePixelsFree(cast(*u8)words); return .{}
         }
         words = Images.AndroidImageOrient(words, width, height, orientation)

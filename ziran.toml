@@ -5,7 +5,7 @@ module_roots = ["src/ui", "src/backend", "src/ui/alert", "src/ui/avatar", "src/u
 
 [toolchain]
 git = "https://git.waozi.xyz/ziranlang/ziran.git"
-ref = "2684af8d22b623c52bfd19ce785523b50ad83c5e"
+ref = "c041afb6ef171e03ce4557b55122eb739548eb72"
 
 [dependencies.libwebp]
 git = "https://github.com/webmproject/libwebp.git"
@@ -99,6 +99,7 @@ android_device = "src/backend/android_device.zi"
 AndroidDevice = "src/backend/android_device.zi"
 android_run = "src/backend/android_run.zi"
 android_egl = "src/backend/android_egl.zi"
+android_frame_watch = "src/backend/android_frame_watch.zi"
 android_runtime = "src/backend/android_runtime.zi"
 android_touch = "src/backend/android_touch.zi"
 android_picker = "src/backend/android_picker.zi"
@@ -212,6 +213,9 @@ pixmap = "src/backend/pixmap.zi"
 pixmap_frame = "src/backend/pixmap_frame.zi"
 pixmap_image_owner = "src/backend/pixmap_image_owner.zi"
 pixmap_assets_android = "src/backend/pixmap_assets_android.zi"
+android_avif = "src/backend/android_avif.zi"
+android_webp = "src/backend/android_webp.zi"
+android_frames = "src/backend/android_frames.zi"
 pixmap_typefaces_android = "src/backend/pixmap_typefaces_android.zi"
 pixmap_sdl = "src/backend/pixmap_sdl.zi"
 pixmap_sdl_gpu = "src/backend/pixmap_sdl_gpu.zi"
@@ -397,6 +401,8 @@ package = "string"
 min_sdk = "string=21"
 abis = "string=arm64-v8a"
 activity = "string=MainActivity"
+bundled_fonts = "bool=false"
+frame_mode = "string=adaptive"
 
 # Used by `ziran install` to build one profile and add it to the desktop.
 [options.install]
@@ -449,15 +455,15 @@ ref = "3017f0d1cc56975aa29c600a1f55a62e1193cf7b"
 
 [dependencies.avif]
 git = "https://git.waozi.xyz/ziranlang/avif.git"
-ref = "786871ec1d54fde303611a428ef31735bbdcc71d"
+ref = "6ff696d436b6b4f142eb1e3ecf210de7adfa048f"
 
 [dependencies.webp]
 git = "https://git.waozi.xyz/ziranlang/webp.git"
-ref = "6581dfa03711a96d219becd964860543b24b1f4f"
+ref = "4b9a61d32460d481624fe0f83996a7de50327dfe"
 
 [dependencies.audio]
 git = "https://git.waozi.xyz/ziranlang/audio.git"
-ref = "1b2f35b7b39df6fb9af7a52324b4b7cf18e98df2"
+ref = "b5c6b56b71172c4361ae01e3afdd2118bdac0975"
 
 # MinGW import libraries; runtime.tar holds the matching DLLs and licenses.
 [artifacts.renderer-desktop-windows]

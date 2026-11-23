@@ -1,0 +1,169 @@
+// Optional Android debug host diagnostic. One window-loop thread owns the
+// watch, marks bounded work, and stops it before returning from the loop.
+#if #defined(ANDROID_BUILD) && #defined(ANDROID_DEBUG) && (#defined(__aarch64__) || #defined(__arm__) || #defined(__x86_64__) || #defined(__i386__)) {
+    c :: #system_library "c";
+    dl :: #system_library "dl";
+
+    #if #defined(__aarch64__) || #defined(__x86_64__) {
+        SignalAction :: struct { flags: s32; handler: usize; mask: usize; restorer: usize }
+        LoadWord :: (word: *usize, order: s32) -> usize #foreign c "__atomic_load_8";
+        StoreWord :: (word: *usize, value: usize, order: s32) #foreign c "__atomic_store_8";
+    } else {
+        SignalAction :: struct { handler: usize; mask: usize; flags: s32; restorer: usize }
+        LoadWord :: (word: *usize, order: s32) -> usize #foreign c "__atomic_load_4";
+        StoreWord :: (word: *usize, value: usize, order: s32) #foreign c "__atomic_store_4";
+    }
+    // Saved instruction pointer in bionic's sys/ucontext.h for each NDK ABI.
+    #if #defined(__aarch64__) {
+        PcOffset :: 440;
+    } else #if #defined(__arm__) {
+        PcOffset :: 92;
+    } else #if #defined(__x86_64__) {
+        PcOffset :: 168;
+    } else {
+        PcOffset :: 76;
+    }
+
+    Load32 :: (word: *u32, order: s32) -> u32 #foreign c "__atomic_load_4";
+    Store32 :: (word: *u32, value: u32, order: s32) #foreign c "__atomic_store_4";
+    Relaxed :: 0;
+    Acquire :: 2;
+    Release :: 3;
+    SampleSignal :: 23; // SIGURG, ignored by default on Android.
+    SigInfoRestart :: 0x10000004; // SA_RESTART | SA_SIGINFO.
+    ThreadSignalCode :: -6; // SI_TKILL, from tgkill.
+    StallMilliseconds :: 1500;
+    PollMilliseconds :: 125;
+    SamplesPerStall :: 3;
+    MaximumSamples :: 9;
+
+    Timespec :: struct { seconds: usize; nanoseconds: usize }
+    DlInfo :: struct { filename: *u8; base: usize; symbol: *u8; address: usize }
+    WorkerEntry :: #type (*void) -> *void #c_call;
+    SampleHandler :: #type (s32, *void, *void) #c_call;
+    WatchReport :: #type (phase: u32, elapsed_ms: u64, pc: usize, host_base: usize) #c_call;
+    GetSignalAction :: (signal: s32, action: *SignalAction, previous: *SignalAction) -> s32 #foreign c "sigaction";
+    ThreadCreate :: (thread: *usize, attributes: *void, entry: WorkerEntry, argument: *void) -> s32 #foreign c "pthread_create";
+    ThreadJoin :: (thread: usize, result: **void) -> s32 #foreign c "pthread_join";
+    ThreadSelf :: () -> usize #foreign c "pthread_self";
+    ProcessId :: () -> s32 #foreign c "getpid";
+    ThreadId :: () -> s32 #foreign c "gettid";
+    SignalThread :: (process: s32, thread: s32, signal: s32) -> s32 #foreign c "tgkill";
+    MonotonicTime :: (clock: s32, time: *Timespec) -> s32 #foreign c "clock_gettime";
+    Sleep :: (time: *Timespec, remaining: *Timespec) -> s32 #foreign c "nanosleep";
+    FindImage :: (address: *void, image: *DlInfo) -> s32 #foreign dl "dladdr";
+
+    watch_worker: usize;
+    watch_owner: usize;
+    watch_running: u32;
+    watch_stamp: u32;
+    watch_sample_stamp: u32;
+    watch_sample_pc: usize;
+    watch_signal_action: SignalAction;
+    watch_report: WatchReport;
+    watch_host_base: usize;
+    watch_thread_id: s32;
+
+    HandleSample :: (signal: s32, info: *void, context: *void) {
+        unused signal
+        if info == null || context == null || (cast(*s32)info)[2] != ThreadSignalCode { return }
+        if ThreadSelf() != LoadWord(*watch_owner, Acquire) { return }
+        stamp := Load32(*watch_stamp, Acquire)
+        if (stamp & 255) == 0 { return }
+        location := cast(*usize)(cast(usize)context + cast(usize)PcOffset)
+        StoreWord(*watch_sample_pc, location[0], Relaxed)
+        Store32(*watch_sample_stamp, stamp, Release)
+    }
+
+    NowMilliseconds :: () -> u64 {
+        time: Timespec
+        unused MonotonicTime(1, *time) // CLOCK_MONOTONIC.
+        return cast(u64)time.seconds * 1000 + cast(u64)time.nanoseconds / 1000000
+    }
+
+    PauseMilliseconds :: (ms: usize) {
+        time := Timespec.{.nanoseconds = ms * 1000000}
+        unused Sleep(*time, null)
+    }
+
+    RunWatch :: (argument: *void) -> *void {
+        unused argument
+        process := ProcessId()
+        previous: u32 = 0
+        since: u64 = 0
+        samples: s32 = 0
+        total: s32 = 0
+        while Load32(*watch_running, Acquire) != 0 && total < MaximumSamples {
+            stamp := Load32(*watch_stamp, Acquire)
+            now := NowMilliseconds()
+            if stamp != previous {
+                previous = stamp
+                since = now
+                samples = 0
+            } else if (stamp & 255) != 0 && samples < SamplesPerStall && now - since >= StallMilliseconds {
+                Store32(*watch_sample_stamp, 0, Relaxed)
+                delivered := SignalThread(process, watch_thread_id, SampleSignal) == 0
+                if delivered { PauseMilliseconds(20) }
+                if Load32(*watch_stamp, Acquire) == stamp && Load32(*watch_running, Acquire) != 0 {
+                    pc: usize = 0
+                    if delivered && Load32(*watch_sample_stamp, Acquire) == stamp {
+                        pc = LoadWord(*watch_sample_pc, Relaxed)
+                    }
+                    watch_report(stamp & 255, now - since, pc, watch_host_base)
+                    samples += 1
+                    total += 1
+                }
+            }
+            PauseMilliseconds(PollMilliseconds)
+        }
+        return null
+    }
+
+    // Start and stop on the render thread. If another consumer already owns
+    // SIGURG, leave the process signal action untouched and decline the watch.
+    Start :: (report: WatchReport) -> bool {
+        if watch_worker != 0 || report == null { return false }
+        if GetSignalAction(SampleSignal, null, *watch_signal_action) != 0 ||
+        watch_signal_action.handler > 1 { return false }
+        watch_report = report
+        watch_thread_id = ThreadId()
+        handler: SampleHandler = HandleSample
+        image: DlInfo
+        watch_host_base = 0
+        if FindImage(cast(*void)handler, *image) != 0 { watch_host_base = image.base }
+        Store32(*watch_stamp, 0, Relaxed)
+        StoreWord(*watch_owner, ThreadSelf(), Release)
+        action := SignalAction.{.flags = SigInfoRestart, .handler = cast(usize)handler}
+        if GetSignalAction(SampleSignal, *action, null) != 0 { return false }
+        Store32(*watch_running, 1, Release)
+        if ThreadCreate(*watch_worker, null, RunWatch, null) != 0 {
+            Store32(*watch_running, 0, Release)
+            unused GetSignalAction(SampleSignal, *watch_signal_action, null)
+            return false
+        }
+        return true
+    }
+
+    // Each mark advances the generation even if the next frame starts at the
+    // same phase. Use zero to disarm while idle or outside monitored work.
+    Mark :: (phase: u32) {
+        if watch_worker == 0 { return }
+        stamp := Load32(*watch_stamp, Relaxed)
+        generation := ((stamp >> 8) + 1) & 0xffffff
+        Store32(*watch_stamp, (generation << 8) | (phase & 255), Release)
+    }
+
+    Stop :: () {
+        if watch_worker == 0 { return }
+        Mark(0)
+        Store32(*watch_running, 0, Release)
+        if ThreadJoin(watch_worker, null) != 0 { return }
+        watch_worker = 0
+        current: SignalAction
+        handler: SampleHandler = HandleSample
+        if GetSignalAction(SampleSignal, null, *current) == 0 && current.handler == cast(usize)handler {
+            unused GetSignalAction(SampleSignal, *watch_signal_action, null)
+        }
+        StoreWord(*watch_owner, 0, Release)
+    }
+}

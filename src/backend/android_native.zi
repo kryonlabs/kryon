@@ -26,8 +26,13 @@ AndroidCommandHandler :: #type (*NativeAndroidApp, s32) -> void #c_call;
     native_log :: #system_library "log";
     NativeLogWrite :: (priority: s32, tag: *u8, text: *u8) -> s32 #foreign native_log "__android_log_write";
 
-    NativeLooperPollAll :: (timeout: s32, file: *s32, events: *s32,
-        data: **void) -> s32 #foreign android "ALooper_pollAll";
+    #if #defined(KRYON_ANDROID_EVENT_FRAMES) {
+        NativeLooperPoll :: (timeout: s32, file: *s32, events: *s32,
+            data: **void) -> s32 #foreign android "ALooper_pollOnce";
+    } else {
+        NativeLooperPoll :: (timeout: s32, file: *s32, events: *s32,
+            data: **void) -> s32 #foreign android "ALooper_pollAll";
+    }
     NativeWindowAcquire :: (window: *void) #foreign android "ANativeWindow_acquire";
     NativeWindowRelease :: (window: *void) #foreign android "ANativeWindow_release";
     NativeWindowWidth :: (window: *void) -> s32 #foreign android "ANativeWindow_getWidth";
@@ -155,7 +160,6 @@ AndroidNativeSurfaceSize :: (width: *s32, height: *s32) -> bool {
     return true
 }
 
-
 AndroidNativeSetWindowFormat :: (window: *void, format: s32) -> bool {
     return NativeWindowGeometry(window, 0, 0, format) == 0
 }
@@ -208,6 +212,13 @@ AndroidNativeOnCommand :: (app: *NativeAndroidApp, command: s32) {
     }
 }
 
+#if #defined(KRYON_ANDROID_HOST) && !#defined(KRYON_ANDROID_BUNDLED_FONTS) {
+    #import "pixmap_typefaces_android"
+}
+#if #defined(KRYON_ANDROID_EVENT_FRAMES) {
+    #import "android_frames"
+}
+
 AndroidNativeStart :: (app: *NativeAndroidApp) {
     android_native_app = app
     jni_android_app = app
@@ -220,6 +231,12 @@ AndroidNativeStart :: (app: *NativeAndroidApp) {
     android_native_locked = false
     AndroidTouchFocus(true)
     if app != null {
+        #if #defined(KRYON_ANDROID_EVENT_FRAMES) {
+            AndroidFrameSetLooper(app.looper)
+        }
+        #if #defined(KRYON_ANDROID_HOST) && !#defined(KRYON_ANDROID_BUNDLED_FONTS) {
+            AndroidDefaultTypeface()
+        }
         command: AndroidCommandHandler = AndroidNativeOnCommand
         app.command_callback = cast(*void)command
         app.input_callback = AndroidTouchInput
@@ -234,12 +251,16 @@ AndroidNativePoll :: (timeout: s32) -> bool {
     file: s32
     events: s32
     data: *void
-    identifier := NativeLooperPollAll(timeout, *file, *events, *data)
+    identifier := NativeLooperPoll(timeout, *file, *events, *data)
     if identifier >= 0 && data != null {
         source := cast(*AndroidPollSource)data
         if source.process != null { source.process(android_native_app, source) }
     }
     return identifier >= 0
+}
+
+#if #defined(KRYON_ANDROID_EVENT_FRAMES) {
+    AndroidNativeWorkPending :: () -> bool { return Lanczos.LanczosPending() }
 }
 
 AndroidNativeTakeResized :: () -> bool {
@@ -349,6 +370,9 @@ AndroidNativeUnlock :: () -> bool {
 
 AndroidNativeClose :: () {
     if android_native_window_release != null { android_native_window_release() }
+    #if #defined(KRYON_ANDROID_EVENT_FRAMES) {
+        AndroidFrameSetLooper(null)
+    }
     #if #defined(ANDROID_BUILD) {
         Lanczos.LanczosClose()
     }

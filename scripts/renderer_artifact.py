@@ -202,15 +202,15 @@ def build(name, target, stage, root):
         if 'commit' in dependency:
             verify_locked_commit(source, dependency['commit'], not locked, name)
         return source
-    avif_source = locked_source('libavif') if name != 'renderer-web' else None
-    aom_source = locked_source('libaom') if name != 'renderer-web' else None
-    avif_package = locked_source('avif') if name != 'renderer-web' else None
-    # dav1d, the default AV1 engine, is pinned by the avif package's own edge.
-    avif_entry = next((p for p in lock['packages'] if p['id'] == provider['dependencies'].get('avif')), None)
-    dav1d_source = locked_source('dav1d', avif_entry) if name != 'renderer-web' else None
     if name != 'renderer-web':
-        webp_source = locked_source('libwebp')
+        avif_package = locked_source('avif')
+        avif_entry = next(p for p in lock['packages'] if p['id'] == provider['dependencies']['avif'])
+        avif_source = locked_source('libavif', avif_entry)
+        aom_source = locked_source('libaom', avif_entry)
+        dav1d_source = locked_source('dav1d', avif_entry)
         webp_package = locked_source('webp')
+        webp_entry = next(p for p in lock['packages'] if p['id'] == provider['dependencies']['webp'])
+        webp_source = locked_source('libwebp', webp_entry)
         audio_package = locked_source('audio')
         audio_entry = next(p for p in lock['packages'] if p['id'] == provider['dependencies']['audio'])
         opus_source = locked_source('libopus', audio_entry)

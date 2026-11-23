@@ -1,0 +1,5 @@
+// Import to decode AVIF with dav1d on Android, including older Android releases.
+#import "android_image_codecs"
+#import "avif_image"
+
+android_avif_registered: bool = AndroidImageUseAVIF(AvifImageDecode);

@@ -3,6 +3,8 @@
 // application's APK asset. Scene textures decode AVIF in process, which
 // BitmapFactory cannot before API 31.
 Services :: #import "pixmap_assets_android";
+#import "kryon/android_avif"
+#import "kryon/android_webp"
 Raster :: #import "pixmap";
 Pixels :: #import "image_pixels";
 #import "std/vec"
@@ -41,6 +43,16 @@ TestPictures :: (width: s32, height: s32, checksum: u32) -> s32 {
     source = .{0.0, 0.0, cast(float32)width, cast(float32)height}
     if !Raster.PixmapPrepareImage(slot, *source, cast(float32)width / 2.0, cast(float32)height / 2.0) ||
         Services.android_picture_bytes >= cast(s64)width * height * 4 || Raster.ImageHeight(picture) != height { return 14 }
+    // The same picture extracted to a file must follow the ordinary Image
+    // path too, as hosted Arcade and Shovey artwork does.
+    extracted := "/data/local/tmp/kryon-android-pictures-test/framework-logo.png"
+    if Raster.ImageWidth(extracted) != width || Raster.ImageHeight(extracted) != height { return 15 }
+    file_slot := Raster.PixmapImageIndex(extracted)
+    source = .{0.0, 0.0, cast(float32)width, cast(float32)height}
+    if file_slot < 0 || !Raster.PixmapPrepareImage(file_slot, *source, cast(float32)width, cast(float32)height) { return 16 }
+    sum = 0
+    for pixel: Raster.pixmap_image_pixels[file_slot].value { sum = sum * cast(u32)31 + pixel }
+    if sum != checksum { return 17 }
     missing := "images/kryon-missing.png"
     if Raster.ImageWidth(missing) != 0 || Raster.PixmapPaintImageSlot(missing, 0) >= 0 { return 4 }
     Cleanup.AndroidHostResourcesClose()

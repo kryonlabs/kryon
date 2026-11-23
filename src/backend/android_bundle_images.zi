@@ -1,12 +1,11 @@
 // Decode ZX still assets into stable Pixmap slots.
 #import "android_jni"
 #import "android_native"
-#import "avif_image"
+#import "android_image_codecs"
 #import "bundle_resources"
 #import "image_orientation"
 #import "png"
 #import "pixmap"
-#import "webp_image"
 #import "ziran_image_decode"
 #import "std/byte_text_linux"
 #import "std/bundle_host"
@@ -222,7 +221,8 @@ AndroidImageDecodeBitmap :: (data: string, width: *s32, height: *s32) -> *u32 {
     width.* = first[0]
     height.* = first[1]
     total := count - 2
-    if width.* <= 0 || height.* <= 0 || total != width.* * height.* {
+    if width.* <= 0 || height.* <= 0 || width.* > 16384 || height.* > 16384 ||
+    cast(s64)total != cast(s64)width.* * cast(s64)height.* {
         AndroidImageRelease(cast(*void)pixels)
         width.* = 0
         height.* = 0
@@ -268,11 +268,11 @@ AndroidBundleImagesLoad :: (images: *AndroidBundleImages, bundle: *void, base: s
         height: s32
         pixels := AndroidImageDecodePNG(bytes, *width, *height)
         rgba: *u8 = null
-        if pixels == null && ImageWebpSignature(data) {
-            rgba = WebPImageDecode(data, *width, *height)
+        if pixels == null && android_webp_decode != null && ImageWebpSignature(data) {
+            rgba = android_webp_decode(data, *width, *height)
         }
-        if pixels == null && AndroidImageIsAVIF(data) {
-            rgba = AvifImageDecode(data, *width, *height)
+        if pixels == null && android_avif_decode != null && AndroidImageIsAVIF(data) {
+            rgba = android_avif_decode(data, *width, *height)
         }
         if pixels == null && rgba != null {
             pixels = AndroidImageFromBytes(rgba, cast(s64)width * height * 4)

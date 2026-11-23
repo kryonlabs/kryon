@@ -1,0 +1,60 @@
+Watch :: #import "android_frame_watch";
+c :: #system_library "c";
+QuerySignal :: (signal: s32, action: *Watch.SignalAction, previous: *Watch.SignalAction) -> s32 #foreign c "sigaction";
+
+reports: s32;
+invalid_report: bool;
+
+Report :: (phase: u32, elapsed_ms: u64, pc: usize, host_base: usize) {
+    reports += 1
+    if phase != 41 || elapsed_ms < 1500 || pc == 0 || host_base == 0 {
+        invalid_report = true
+    }
+}
+
+Stall :: (milliseconds: u64) {
+    start := Watch.NowMilliseconds()
+    while Watch.NowMilliseconds() - start < milliseconds { }
+}
+
+ExistingHandler :: (signal: s32, info: *void, context: *void) {
+    unused signal
+    unused info
+    unused context
+}
+
+#program_export "main"
+main :: () -> s32 {
+    original: Watch.SignalAction
+    if QuerySignal(Watch.SampleSignal, null, *original) != 0 { return 1 }
+    if !Watch.Start(Report) { return 1 }
+    // The unarmed watch and frequently renewed phases must stay quiet. The
+    // marked stall must yield three real PCs and then return to this thread.
+    Stall(1700)
+    for index: 0..9 {
+        unused index
+        Watch.Mark(42)
+        Stall(200)
+    }
+    Watch.Mark(41)
+    Stall(2600)
+    Watch.Mark(0)
+    Stall(1700)
+    Watch.Stop()
+    if invalid_report || reports != 3 { return 2 }
+    restored: Watch.SignalAction
+    if QuerySignal(Watch.SampleSignal, null, *restored) != 0 ||
+    restored.handler != original.handler || restored.mask != original.mask { return 3 }
+    if !Watch.Start(Report) { return 4 }
+    Watch.Stop()
+    handler: Watch.SampleHandler = ExistingHandler
+    installed := Watch.SignalAction.{.handler = cast(usize)handler, .flags = Watch.SigInfoRestart}
+    if QuerySignal(Watch.SampleSignal, *installed, null) != 0 { return 5 }
+    if Watch.Start(Report) {
+        Watch.Stop()
+        return 6
+    }
+    if QuerySignal(Watch.SampleSignal, null, *restored) != 0 ||
+    restored.handler != installed.handler { return 7 }
+    return 0
+}

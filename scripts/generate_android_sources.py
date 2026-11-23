@@ -8,10 +8,77 @@ name with a Kryon module. Run through scripts/android-build.sh for
 """
 import argparse
 import fcntl
+import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
+import tomllib
+
+
+def android_native_recipes(root, modules, native_modules):
+    """Resolve recipes for native-bearing modules that emitted code."""
+    retained = {path.stem for path in modules}
+    emitted = {path.stem for path in native_modules}
+    package_roots = {}
+    reached = {}
+    inputs = {root / "ziran.toml", root / "ziran.lock"}
+    local = root / "ziran.local.toml"
+    if local.is_file():
+        inputs.add(local)
+    with (root / "build/.ziran/module-map.tsv").open() as module_map:
+        for line in module_map:
+            kind, identity, *fields = line.rstrip("\n").split("\t")
+            if kind == "P":
+                package_roots.setdefault(identity, Path(fields[0]))
+            elif kind == "M":
+                module, source = fields
+                stem = module if identity == "root" else f"{identity}_{module}"
+                if stem in retained:
+                    path = Path(source)
+                    inputs.add(path)
+                    # Generated roots can be outside a dependency's module roots.
+                    if stem in emitted and path.is_relative_to(package_roots[identity]):
+                        reached.setdefault(identity, set()).add(
+                            path.relative_to(package_roots[identity]).as_posix())
+
+    lock = json.loads((root / "ziran.lock").read_text())
+    packages = {item["id"]: item for item in lock["packages"]}
+    packages["root"] = lock["root"]
+    recipes = []
+    for identity, used_modules in sorted(reached.items()):
+        if identity not in packages:
+            continue  # The toolchain's std modules have no package manifest.
+        package = package_roots[identity]
+        path = package / "ziran.toml"
+        inputs.add(path)
+        with path.open("rb") as manifest:
+            native = tomllib.load(manifest).get("tool", {}).get("android", {}).get("native", {})
+        requirements = native.get("modules", {})
+        selected = used_modules & requirements.keys()
+        if not selected:
+            continue
+        aliases = {alias for module in selected for alias in requirements[module]}
+        sources = {}
+        for alias in sorted(aliases):
+            dependency = packages[identity]["dependencies"].get(alias)
+            if dependency not in packages or not packages[dependency].get("source"):
+                raise SystemExit(f"{path}: Android native source {alias!r} must be a locked source dependency")
+            sources[alias] = package_roots[dependency]
+        recipe = (package / native["cmake"]).resolve()
+        if not recipe.is_relative_to(package) or not recipe.is_file():
+            raise SystemExit(f"{path}: Android native recipe is missing or outside the package: {recipe}")
+        recipes.append((identity, recipe, sources))
+    return recipes, sorted(inputs)
+
+
+def cmake_path(path):
+    """A literal CMake argument, including paths with metacharacters."""
+    value = str(path)
+    equals = "="
+    while f"]{equals}]" in value:
+        equals += "="
+    return f"[{equals}[{value}]{equals}]"
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--ziran", type=Path, required=True)
@@ -101,6 +168,31 @@ for name, _, _, provider in kryon_roots:
     bindings.extend(["--bind", f"{ROOTS_MODULE}:{name}={provider}:{name}"])
 
 defines = ["--define", "KRYON_ANDROID_HOST"]
+# The project tool supplies Ziran's validated settings. Direct Gradle runs
+# read the same manifest and local overrides without starting the tool.
+android_options = {}
+tool_options = os.environ.get("ZIRAN_TOOL_OPTIONS")
+if tool_options:
+    with Path(tool_options).open() as options:
+        for line in options:
+            key, _, value = line.rstrip("\n").partition("=")
+            if key.startswith("android."):
+                android_options[key.removeprefix("android.")] = value
+else:
+    for manifest in (root / "ziran.toml", root / "ziran.local.toml"):
+        if manifest.is_file():
+            with manifest.open("rb") as source:
+                android_options.update(tomllib.load(source).get("tool", {}).get("kryon", {}).get("android", {}))
+bundled_fonts = android_options.get("bundled_fonts", False)
+if not isinstance(bundled_fonts, bool) and bundled_fonts not in ("true", "false"):
+    parser.error("[tool.kryon.android] bundled_fonts must be a boolean")
+if bundled_fonts is True or bundled_fonts == "true":
+    defines.extend(["--define", "KRYON_ANDROID_BUNDLED_FONTS"])
+frame_mode = android_options.get("frame_mode", "adaptive")
+if frame_mode not in ("adaptive", "events"):
+    parser.error("[tool.kryon.android] frame_mode must be 'adaptive' or 'events'")
+if frame_mode == "events" and needs_frame:
+    defines.extend(["--define", "KRYON_ANDROID_EVENT_FRAMES"])
 if args.codegen == "zx":
     defines.extend(["--define", "KRYON_ZX_APP", "--define", "BUNDLE_NATIVE_RENDERER"])
 for name in args.define:
@@ -147,8 +239,9 @@ with lock_path.open("w") as lock:
          "-o", str(args.output), *map(str, modules)],
         cwd=root, check=True,
     )
+    outputs = sorted(args.output.rglob("*.c"))
+    native_recipes, configure_inputs = android_native_recipes(root, modules, outputs)
 
-outputs = sorted(args.output.rglob("*.c"))
 if not outputs:
     raise SystemExit("Zi compiler emitted no Android native sources")
 if not any(path.name == "main.c" for path in outputs):
@@ -162,7 +255,20 @@ lines.extend([")", "set(APP_ZIRAN_GENERATED_HEADERS"])
 lines.extend(f'    "{path}"' for path in headers)
 lines.extend([")", "set(APP_ZIRAN_INCLUDE_DIRS"])
 lines.extend(f'    "{path}"' for path in include_dirs)
-lines.append(")\n")
+lines.extend([")", "set(APP_ZIRAN_CONFIGURE_INPUTS"])
+lines.extend(f"    {cmake_path(path)}" for path in configure_inputs)
+lines.append(")")
+if any(module.stem == "std_bundle_host" for module in modules):
+    lines.append("set(APP_ZIRAN_BUNDLE_RUNTIME ON)")
+for identity, recipe, dependencies in native_recipes:
+    lines.append(f"function(_app_ziran_native_{identity} ZIRAN_ANDROID_TARGET)")
+    lines.extend(f"    set(ZIRAN_SOURCE_{name} {cmake_path(path)})"
+                 for name, path in dependencies.items())
+    lines.extend([f"    include({cmake_path(recipe)})", "endfunction()"])
+lines.append("function(app_ziran_link_native target)")
+lines.extend(f'    _app_ziran_native_{identity}("${{target}}")'
+             for identity, _, _ in native_recipes)
+lines.append("endfunction()\n")
 content = "\n".join(lines)
 args.manifest.parent.mkdir(parents=True, exist_ok=True)
 if not args.manifest.exists() or args.manifest.read_text() != content:

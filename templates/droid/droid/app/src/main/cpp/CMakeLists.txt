@@ -2,21 +2,16 @@ cmake_minimum_required(VERSION 3.22)
 project(__CMAKE_NAME__ C)
 
 get_filename_component(REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../../.." ABSOLUTE)
-if(NOT DEFINED KRYON_DIR OR NOT DEFINED ZIRAN_DIR OR NOT DEFINED WEBP_DIR OR
-        NOT DEFINED AVIF_DIR OR NOT DEFINED AOM_DIR)
+if(NOT DEFINED KRYON_DIR OR NOT DEFINED ZIRAN_DIR)
     message(FATAL_ERROR
-        "kryon build --profile android passes -DKRYON_DIR, -DZIRAN_DIR and "
-        "-DWEBP_DIR, -DAVIF_DIR and -DAOM_DIR; a manual gradle run passes "
+        "kryon build --profile android passes -DKRYON_DIR and -DZIRAN_DIR; a manual gradle run passes "
         "them as -P properties")
 endif()
 get_filename_component(KRYON_DIR "${KRYON_DIR}" ABSOLUTE BASE_DIR "${REPO_ROOT}")
 get_filename_component(ZIRAN_DIR "${ZIRAN_DIR}" ABSOLUTE BASE_DIR "${REPO_ROOT}")
-get_filename_component(WEBP_DIR "${WEBP_DIR}" ABSOLUTE BASE_DIR "${REPO_ROOT}")
-get_filename_component(AVIF_DIR "${AVIF_DIR}" ABSOLUTE BASE_DIR "${REPO_ROOT}")
-get_filename_component(AOM_DIR "${AOM_DIR}" ABSOLUTE BASE_DIR "${REPO_ROOT}")
 include("${KRYON_DIR}/cmake/KryonAndroid.cmake")
 
-find_program(HOST_PYTHON NAMES python3 REQUIRED)
+find_package(Python3 3.11 REQUIRED COMPONENTS Interpreter)
 
 set(ZIRAN_BIN "${ZIRAN_DIR}/build/bin/ziran")
 set(ZI2C_BIN "${ZIRAN_DIR}/build/bin/zi2c")
@@ -56,7 +51,7 @@ file(GLOB_RECURSE APP_ZIRAN_SOURCES CONFIGURE_DEPENDS "${REPO_ROOT}/src/*.zi")
 file(GLOB_RECURSE APP_LIBRARY_ZIRAN_SOURCES CONFIGURE_DEPENDS
     "${KRYON_DIR}/src/ui/*.zi" "${KRYON_DIR}/src/backend/*.zi"
     "${ZIRAN_DIR}/std/*.zi")
-execute_process(COMMAND "${HOST_PYTHON}"
+execute_process(COMMAND "${Python3_EXECUTABLE}"
     "${KRYON_DIR}/scripts/generate_android_sources.py"
     --ziran "${ZIRAN_BIN}" --zi2c "${ZI2C_BIN}"
     --root "${REPO_ROOT}" --kryon "${KRYON_DIR}"
@@ -66,22 +61,13 @@ execute_process(COMMAND "${HOST_PYTHON}"
     WORKING_DIRECTORY "${REPO_ROOT}" COMMAND_ERROR_IS_FATAL ANY)
 include("${APP_ZIRAN_MANIFEST}")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-    ${APP_ZIRAN_SOURCES} ${APP_LIBRARY_ZIRAN_SOURCES} "${REPO_ROOT}/ziran.toml")
-
-set(APP_BUNDLE_RUNTIME_DIR "${CMAKE_BINARY_DIR}/bundle-runtime")
-execute_process(COMMAND "${HOST_PYTHON}"
-    "${KRYON_DIR}/scripts/build_android_runtime.py"
-    --source "${ZIRAN_DIR}" --output "${APP_BUNDLE_RUNTIME_DIR}"
-    --cc "${CMAKE_C_COMPILER} --target=${CMAKE_C_COMPILER_TARGET} --sysroot=${CMAKE_SYSROOT}"
-    --ar "${CMAKE_AR}" --objcopy "${CMAKE_OBJCOPY}"
-    "--flags=-O2 -fPIC"
-    COMMAND_ERROR_IS_FATAL ANY)
-
-kryon_android_codecs("${WEBP_DIR}" "${AVIF_DIR}" "${AOM_DIR}")
+    ${APP_ZIRAN_SOURCES} ${APP_LIBRARY_ZIRAN_SOURCES} ${APP_ZIRAN_CONFIGURE_INPUTS}
+    "${KRYON_DIR}/scripts/generate_android_sources.py" "${ZIRAN_BIN}" "${ZI2C_BIN}")
 
 add_library(main SHARED ${APP_ZIRAN_GENERATED_SOURCES})
 kryon_android_app(main)
 kryon_android_host(main ${APP_ZIRAN_GENERATED_SOURCES})
+app_ziran_link_native(main)
 
 target_include_directories(main PRIVATE "${ZIRAN_DIR}/include")
 # Generated module names such as math.h must not shadow libc's <math.h> in
@@ -90,5 +76,15 @@ foreach(directory ${APP_ZIRAN_INCLUDE_DIRS})
     target_compile_options(main PRIVATE "-iquote${directory}")
 endforeach()
 
-target_link_libraries(main PRIVATE z kryon_android_codecs
-    "${APP_BUNDLE_RUNTIME_DIR}/libziran.a")
+target_link_libraries(main PRIVATE z)
+if(APP_ZIRAN_BUNDLE_RUNTIME)
+    set(APP_BUNDLE_RUNTIME_DIR "${CMAKE_BINARY_DIR}/bundle-runtime")
+    execute_process(COMMAND "${Python3_EXECUTABLE}"
+        "${KRYON_DIR}/scripts/build_android_runtime.py"
+        --source "${ZIRAN_DIR}" --output "${APP_BUNDLE_RUNTIME_DIR}"
+        --cc "${CMAKE_C_COMPILER} --target=${CMAKE_C_COMPILER_TARGET} --sysroot=${CMAKE_SYSROOT}"
+        --ar "${CMAKE_AR}" --objcopy "${CMAKE_OBJCOPY}"
+        "--flags=-O2 -fPIC"
+        COMMAND_ERROR_IS_FATAL ANY)
+    target_link_libraries(main PRIVATE "${APP_BUNDLE_RUNTIME_DIR}/libziran.a")
+endif()

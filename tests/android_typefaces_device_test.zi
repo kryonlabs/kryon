@@ -107,7 +107,19 @@ TestFonts :: (env: *JniEnv) -> s32 {
     Fonts.ReleaseTypefaces()
     if Slots.active || Pixels.MeasureGlyphWidth(latin, 28, "") != builtin { return 17 }
     for entry: Fonts.android_pixmap_faces { if entry.face != null { return 18 } }
+    Fonts.AndroidDefaultTypeface()
+    if !Slots.active || Pixels.MeasureGlyphWidth(latin, 28, "") <= 0 { return 20 }
+    if !Fonts.AndroidFontColorMask("😀", 42.0, *second, "", 1.0, cast(u32)0xffffff) ||
+    second.argb.count <= 0 { return 21 }
+    colored := false
+    for index: 0..second.argb.count / 4 - 1 {
+        at := index * 4
+        if second.argb[at + 3] == cast(u8)255 &&
+        (second.argb[at] != second.argb[at + 1] || second.argb[at] != second.argb[at + 2]) { colored = true }
+    }
+    if !colored { return 22 }
     Cleanup.AndroidHostResourcesClose(); Cleanup.AndroidHostResourcesClose()
+    if Slots.active { return 23 }
     return 0
 }
 

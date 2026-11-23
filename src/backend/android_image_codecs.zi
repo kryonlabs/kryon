@@ -1,0 +1,15 @@
+// Native codecs register on import. Android's bitmap services can be used
+// independently of either package.
+AndroidImageCodec :: #type (data: string, width: *s32, height: *s32) -> *u8;
+android_avif_decode: AndroidImageCodec;
+android_webp_decode: AndroidImageCodec;
+
+AndroidImageUseAVIF :: (decode: AndroidImageCodec) -> bool {
+    android_avif_decode = decode
+    return true
+}
+
+AndroidImageUseWebP :: (decode: AndroidImageCodec) -> bool {
+    android_webp_decode = decode
+    return true
+}

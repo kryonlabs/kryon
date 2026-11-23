@@ -199,6 +199,17 @@ main :: () -> s32 {
     if !AndroidNativeLock(1, 1, 3, 3) || !AndroidNativePresentDamage(1, 1, 3, 3) || !AndroidNativeUnlock() { return Failure(14) }
     if window_pixels[325] != 0xff281ee6 || window_pixels[650] != 0xff281ee6 ||
     window_pixels[324] != 0x12345678 || window_pixels[323] != 0x12345678 { return Failure(15) }
+    // Retained frame damage is already in device pixels at every density.
+    // Copy the changed rectangle, leaving its neighbors and row padding alone.
+    zooms: [3]float32 = .[0.75, 1.5, 2.0]
+    for zoom: zooms {
+        for index: 0..64799 { window_pixels[index] = 0x12345678 }
+        if !AndroidPresentPixmap(Rectangle.{5.0, 7.0, 2.0, 2.0}, 320, 200, zoom) { return Failure(26) }
+        if window_pixels[7 * 324 + 5] != 0xff281ee6 || window_pixels[8 * 324 + 6] != 0xff281ee6 ||
+        window_pixels[7 * 324 + 4] != 0x12345678 || window_pixels[8 * 324 + 7] != 0x12345678 ||
+        window_pixels[6 * 324 + 5] != 0x12345678 || window_pixels[9 * 324 + 5] != 0x12345678 ||
+        window_pixels[7 * 324 + 320] != 0x12345678 { return Failure(27) }
+    }
     AndroidNativeOnCommand(*app, AndroidNativeCommandPause)
     if !AndroidNativePaused() { return Failure(16) }
     AndroidNativeOnCommand(*app, AndroidNativeCommandResume)

@@ -1,0 +1,123 @@
+// Applications in the event-driven Android profile can wake the host from a
+// worker thread or schedule their next update on the monotonic clock.
+#if #defined(KRYON_ANDROID_EVENT_FRAMES) {
+    Clock :: #import "std/timer_linux";
+    CString :: #import "std/c_string";
+
+    android_frames_c :: #system_library "c";
+    android_frames_android :: #system_library "android";
+    android_frames_dl :: #system_library "dl";
+    AndroidFrameLock :: (mutex: *void) -> s32 #foreign android_frames_c "pthread_mutex_lock";
+    AndroidFrameUnlock :: (mutex: *void) -> s32 #foreign android_frames_c "pthread_mutex_unlock";
+    AndroidWakeLooper :: (looper: *void) #foreign android_frames_android "ALooper_wake";
+    AndroidFrameSymbol :: (handle: *void, name: *u8) -> *void #foreign android_frames_dl "dlsym";
+
+    // Bionic's static mutex initializer is zero. The same lock protects the
+    // borrowed looper during wake and Activity teardown.
+    android_frame_mutex: [8]u64;
+    android_frame_looper: *void;
+    android_frame_now: bool;
+    android_frame_due: s64 = -1;
+
+    AndroidFrameSetLooper :: (looper: *void) {
+        unused AndroidFrameLock(cast(*void)*android_frame_mutex[0])
+        android_frame_looper = looper
+        if looper == null {
+            android_frame_now = false
+            android_frame_due = -1
+        }
+        unused AndroidFrameUnlock(cast(*void)*android_frame_mutex[0])
+    }
+
+    AndroidFrameDeadline :: (consume_at: s64 = -1) -> s64 {
+        unused AndroidFrameLock(cast(*void)*android_frame_mutex[0])
+        due := ifx android_frame_now then cast(s64)0 else android_frame_due
+        if consume_at >= 0 {
+            android_frame_now = false
+            if android_frame_due >= 0 && consume_at >= android_frame_due { android_frame_due = -1 }
+        }
+        unused AndroidFrameUnlock(cast(*void)*android_frame_mutex[0])
+        return due
+    }
+
+    #program_export
+    AndroidRequestFrame :: (delay_ms: s32 = 0) {
+        unused AndroidFrameLock(cast(*void)*android_frame_mutex[0])
+        wake: bool
+        if delay_ms <= 0 {
+            // An immediate input or invalidation cannot consume a future timer.
+            wake = !android_frame_now
+            android_frame_now = true
+        } else {
+            due := Clock.MonotonicMilliseconds() + cast(s64)delay_ms
+            if android_frame_due < 0 || due < android_frame_due {
+                android_frame_due = due
+                wake = true
+            }
+        }
+        if wake && android_frame_looper != null { AndroidWakeLooper(android_frame_looper) }
+        unused AndroidFrameUnlock(cast(*void)*android_frame_mutex[0])
+    }
+
+    GetChoreographer :: #type () -> *void #c_call;
+    LegacyFrameCallback :: #type (isize, *void) -> void #c_call;
+    FrameCallback64 :: #type (s64, *void) -> void #c_call;
+    PostLegacyFrame :: #type (*void, *void, *void) -> void #c_call;
+    PostFrame64 :: #type (*void, *void, *void) -> void #c_call;
+    AndroidFramePacer :: struct {
+        choreographer: *void
+        post_legacy: PostLegacyFrame
+        post: PostFrame64
+    }
+    android_vsync_waiting: bool;
+    android_vsync_ready: bool;
+
+    AndroidFrameLookup :: (name: string) -> *void {
+        text: [64]u8
+        if !CString.CopyCString(name, text[:]) { return null }
+        return AndroidFrameSymbol(null, *text[0])
+    }
+
+    AndroidFramePacerOpen :: () -> AndroidFramePacer {
+        android_vsync_waiting = false
+        android_vsync_ready = false
+        get := cast(GetChoreographer)AndroidFrameLookup("AChoreographer_getInstance")
+        if get == null { return .{} }
+        return .{get(), cast(PostLegacyFrame)AndroidFrameLookup("AChoreographer_postFrameCallback"),
+            cast(PostFrame64)AndroidFrameLookup("AChoreographer_postFrameCallback64")}
+    }
+
+    AndroidFrameVsync :: (timestamp: s64, user: *void) {
+        unused timestamp; unused user
+        android_vsync_waiting = false
+        android_vsync_ready = true
+    }
+
+    AndroidFrameLegacyVsync :: (timestamp: isize, user: *void) {
+        AndroidFrameVsync(cast(s64)timestamp, user)
+    }
+
+    AndroidFrameTakeVsync :: () -> bool {
+        ready := android_vsync_ready
+        android_vsync_ready = false
+        return ready
+    }
+
+    AndroidFramePostVsync :: (pacer: AndroidFramePacer) -> bool {
+        if pacer.choreographer == null || (pacer.post == null && pacer.post_legacy == null) { return false }
+        if !android_vsync_waiting {
+            android_vsync_waiting = true
+            if pacer.post != null {
+                callback: FrameCallback64 = AndroidFrameVsync
+                pacer.post(pacer.choreographer, cast(*void)callback, null)
+            } else {
+                callback: LegacyFrameCallback = AndroidFrameLegacyVsync
+                pacer.post_legacy(pacer.choreographer, cast(*void)callback, null)
+            }
+        }
+        return true
+    }
+} else {
+    #program_export
+    AndroidRequestFrame :: (delay_ms: s32 = 0) { unused delay_ms }
+}

@@ -64,6 +64,9 @@ def prepare_pictures(run, adb, out, remote):
     run([*adb, "pull", "/system/framework/framework-res.apk", apk], "device-framework")
     with zipfile.ZipFile(apk) as archive, archive.open("assets/images/android-logo-mask.png") as stream:
         image = Image.open(stream).convert("RGBA")
+        extracted = out / "framework-logo.png"
+        image.save(extracted)
+        run([*adb, "push", extracted, remote + "/" + extracted.name], "device-extracted-picture")
         checksum = 0
         pixels = image.tobytes()
         for at in range(0, len(pixels), 4):

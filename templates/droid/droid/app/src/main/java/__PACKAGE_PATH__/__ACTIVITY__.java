@@ -294,20 +294,29 @@ public class __ACTIVITY__ extends NativeActivity {
     // and ARGB_8888 pixels for formats the portable native decoders cannot read.
     public int[] decodeBundleImage(byte[] bytes) {
         if (bytes == null) return null;
+        Bitmap bitmap = null;
         try {
-            Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-            if (bitmap == null || bitmap.getWidth() <= 0 || bitmap.getHeight() <= 0) return null;
-            int width = bitmap.getWidth();
-            int height = bitmap.getHeight();
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
+            int width = options.outWidth;
+            int height = options.outHeight;
+            if (width <= 0 || height <= 0 || width > 32768 || height > 32768
+                    || (long) width * height > 67108864) return null;
+            options.inJustDecodeBounds = false;
+            options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+            bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
+            if (bitmap == null || bitmap.getWidth() != width || bitmap.getHeight() != height) return null;
             int[] result = new int[2 + width * height];
             result[0] = width;
             result[1] = height;
             bitmap.getPixels(result, 2, width, 0, 0, width, height);
-            bitmap.recycle();
             return result;
         } catch (RuntimeException error) {
             Log.w(TAG, "Could not decode bundled image", error);
             return null;
+        } finally {
+            if (bitmap != null) bitmap.recycle();
         }
     }
 

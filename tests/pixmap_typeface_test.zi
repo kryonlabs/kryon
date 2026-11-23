@@ -27,7 +27,7 @@ Raster :: (value: string, font: float32, output: *Slots.PixmapTypefaceMask,
     for at: 0..width * height - 1 {
         coverage[at] = ifx (at / width + at % width) % 2 == 0 then cast(u8)255 else cast(u8)128
     }
-    output.* = .{-2, 1, width, height, coverage[0:width * height]}
+    output.* = .{.left = -2, .top = 1, .width = width, .height = height, .coverage = coverage[0:width * height]}
     return true
 }
 typography_pixels: [4096]u32;

@@ -5,14 +5,18 @@
 #import "vec"
 #import "byte_text_linux"
 
-host_api :: #system_library "host_api";
 // The file's pixels, row after row, with 1 (gray), 2 (gray and alpha), 3
 // (RGB) or 4 (RGBA) bytes each, or null when the host cannot decode the
 // file. They stay valid until ImagePreviewRelease. `upright` says whether
 // the host's decoder already applied the file's Exif orientation.
-ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s32,
-    channels: *s32, upright: *bool) -> *u8 #foreign host_api;
-ImagePreviewRelease :: (pixels: *u8) #foreign host_api;
+#if #defined(KRYON_ANDROID_HOST) && !#defined(KRYON_ZX_APP) {
+    using AndroidPictures :: #import "pixmap_assets_android";
+} else {
+    host_api :: #system_library "host_api";
+    ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s32,
+        channels: *s32, upright: *bool) -> *u8 #foreign host_api;
+    ImagePreviewRelease :: (pixels: *u8) #foreign host_api;
+}
 
 image_preview_c :: #system_library "c";
 PreviewAllocate :: (size: usize) -> *void #foreign image_preview_c "malloc";

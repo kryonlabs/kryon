@@ -6,9 +6,9 @@ from pathlib import Path
 import subprocess
 import shutil
 import sys
+import tomllib
 
 from toolchain import ROOT, ZIRAN, ZIRAN_ROOT, kryon_test_project
-from android_codec_artifact_test import codec_artifact, codec_consumer, codec_environment
 
 WORK = ROOT / "build/scratch/android-source-generation"
 ENV = dict(os.environ, YUE_DESKTOP_RECOVERY="0")
@@ -27,25 +27,17 @@ RECEIVER_EXPORTS = {
     "Java_org_kryonlabs_notifications_NotificationReceiver_receive",
     "Java_org_kryonlabs_notifications_NotificationReceiver_requestPermission",
 }
-
+PICTURE_MODES = {"pictures", "avif", "webp"}
 GLES_MODES = {"native-gles", "runtime-gles", "runtime-gles-armv7"}
-KINDS = ("native", "native-gles", "custom", "runtime", "runtime-gles", "runtime-gles-armv7", "zx")
+KINDS = ("native", "native-gles", "pictures", "avif", "webp", "custom", "runtime", "runtime-gles", "runtime-gles-armv7", "zx")
 
 def link_contract(kind, project, manifest, ndk, abi):
     """Link the graph as an app's libmain.so through kryon_android_app and
     kryon_android_host, whose version script names JNI_OnLoad exactly and
     rejects an undefined name with --no-undefined-version."""
     ndk_root = ndk.parents[3]
-    # A ZX player also links the app's codecs and the ZX runtime, which this
-    # test does not build; the map still requires every name it lists defined.
+    # The ZX runtime is tested separately. The export contract is still checked.
     external = "-Wl,--unresolved-symbols=ignore-all" if kind == "zx" else ""
-    # The native Frame host decodes the pictures an app ships, so it links the
-    # app's codecs and zlib as the droid template does.
-    codecs = ""
-    if kind in ("native", "native-gles"):
-        environment = codec_environment()
-        _, _, flags = codec_artifact(codec_consumer(environment), "aarch64", environment)
-        codecs = "target_link_libraries(main PRIVATE z " + " ".join(f'"{flag}"' for flag in flags) + ")"
     (project / "CMakeLists.txt").write_text(f'''cmake_minimum_required(VERSION 3.22)
 project(GenerationLink C)
 set(ZI2C_BIN "{ZIRAN_ROOT}/build/bin/zi2c")
@@ -56,7 +48,8 @@ target_include_directories(main PRIVATE ${{APP_ZIRAN_INCLUDE_DIRS}} "{ZIRAN_ROOT
 target_link_options(main PRIVATE -Wl,--no-undefined {external})
 kryon_android_app(main)
 kryon_android_host(main ${{APP_ZIRAN_GENERATED_SOURCES}})
-{codecs}
+app_ziran_link_native(main)
+target_link_libraries(main PRIVATE z)
 ''')
     build = project / "build/link"
     shutil.rmtree(build, ignore_errors=True)
@@ -64,12 +57,19 @@ kryon_android_host(main ${{APP_ZIRAN_GENERATED_SOURCES}})
          f"-DCMAKE_TOOLCHAIN_FILE={ndk_root}/build/cmake/android.toolchain.cmake",
          f"-DANDROID_ABI={abi}", "-DANDROID_PLATFORM=android-24"])
     run(["cmake", "--build", build, "--parallel", "2"])
+    targets = (build / "build.ninja").read_text()
+    for target, expected in (("libavif.a", kind == "avif"),
+                             ("libziran_webp_android.a", kind == "webp"), ("libaom.a", False)):
+        if (target in targets) != expected:
+            raise AssertionError(f"{kind} has the wrong native targets for {target}")
     if kind in ("native", "runtime") or kind in GLES_MODES:
         dynamic = subprocess.check_output([ndk / "bin/llvm-readelf", "-d", build / "libmain.so"],
                                           env=ENV, text=True)
         for library in ("libEGL.so", "libGLESv3.so"):
             if (library in dynamic) != (kind in GLES_MODES):
                 raise AssertionError(f"{kind} has the wrong dynamic dependency on {library}")
+        if kind == "native" and "libz.so" in dynamic:
+            raise AssertionError("plain Android Frame host loads libz.so")
     symbols = subprocess.run(
         [ndk / "bin/llvm-nm", "-D", "--defined-only", build / "libmain.so"],
         env=ENV, check=True, capture_output=True, text=True).stdout
@@ -94,15 +94,21 @@ def main():
         raise RuntimeError("Android source generation tests require the NDK")
     ndk = ndks[-1]
     clang = ndk / "bin/clang"
+    local = ROOT / "ziran.local.toml"
+    overrides = []
+    if local.is_file():
+        with local.open("rb") as source:
+            paths = tomllib.load(source).get("overrides", {})
+        overrides = [(name, (ROOT / paths[name]).resolve()) for name in ("avif", "webp") if name in paths]
     for kind in args.kind or KINDS:
         armv7 = kind == "runtime-gles-armv7"
         abi = "armeabi-v7a" if armv7 else "arm64-v8a"
         target = "armv7a-linux-androideabi24" if armv7 else "aarch64-linux-android24"
         cpu_define = "__arm__" if armv7 else "__aarch64__"
         project = WORK / kind
-        identity = kryon_test_project(project)
+        identity = kryon_test_project(project, overrides)
+        native_frame = kind in ("native", "native-gles") or kind in PICTURE_MODES
         source = project / "src"
-        native_frame = kind in ("native", "native-gles")
         entry = source / ("selected.zi" if native_frame else "main.zi")
         # Like the scaffold's glue, nothing in the graph calls this entry:
         # only Android's loader does, so generation must keep it explicitly.
@@ -128,6 +134,14 @@ def main():
                 'Frame :: (session: Session, viewport: Rectangle) -> s32 {',
                 '    unused session; unused viewport',
                 '    EnableAndroidGlesComposition()',
+                '    return 0', '}\n']))
+        elif kind in PICTURE_MODES:
+            codec = f'#import "kryon/android_{kind}"' if kind != "pictures" else ""
+            entry.write_text('\n'.join([
+                '#import "kryon/session"', '#import "kryon/geometry"',
+                'Image :: #import "kryon/image";', codec, '#program_export',
+                'Frame :: (session: Session, viewport: Rectangle) -> s32 {',
+                '    Image.Draw(session, Image.Props.{ .key = 1, .bounds = viewport, .asset_path = "image.png" })',
                 '    return 0', '}\n']))
         if kind in ("runtime", "runtime-gles", "runtime-gles-armv7"):
             enable_gles = kind in GLES_MODES
@@ -191,6 +205,13 @@ def main():
         if any("KryonAndroidRoots" in path.read_text() for path in generated.rglob("*.[ch]")):
             raise AssertionError(kind + " native output contains the generated root")
         cmake = manifest.read_text()
+        if native_frame:
+            if bool(list(ir.glob("*_pixmap_assets_android.zir"))) != (kind in PICTURE_MODES):
+                raise AssertionError(f"{kind} has the wrong picture-provider graph")
+            if ("ZIRAN_SOURCE_libavif" in cmake) != (kind == "avif"):
+                raise AssertionError(f"{kind} has the wrong AVIF dependency graph")
+            if ("ZIRAN_SOURCE_libwebp" in cmake) != (kind == "webp") or "ZIRAN_SOURCE_libaom" in cmake:
+                raise AssertionError(f"{kind} retained an unused codec dependency")
         if any(str(path) not in cmake for path in outputs):
             raise AssertionError("Android CMake manifest omitted generated C")
         includes = {generated, ZIRAN_ROOT / "include",

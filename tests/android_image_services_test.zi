@@ -1,4 +1,6 @@
 Services :: #import "pixmap_assets_android";
+#import "android_avif"
+#import "android_webp"
 Pixels :: #import "image_pixels";
 Decode :: #import "android_image_decode";
 Raster :: #import "pixmap";

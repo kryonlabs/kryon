@@ -1,0 +1,5 @@
+// Import to use libwebp's still and first-frame animation decoder on Android.
+#import "android_image_codecs"
+#import "webp_image"
+
+android_webp_registered: bool = AndroidImageUseWebP(WebPImageDecode);

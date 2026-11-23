@@ -13,6 +13,7 @@
 #import "c_string"
 #import "session"
 #import "text_input_platform"
+#import "android_frames"
 
 #if #defined(ANDROID_BUILD) {
     c :: #system_library "c";
@@ -50,6 +51,7 @@ DeviceTextSend :: (event: TextInputEvent) {
     DeviceLock()
     if device_text_accepts_input {
         TextInputQueueSend(device_text_owner, event)
+        AndroidRequestFrame()
     }
     DeviceUnlock()
 }
@@ -79,6 +81,7 @@ AndroidNativeSetInsets :: (env: *JniEnv, activity: *void, left: s32, top: s32,
     device_java_insets = true
     SetAndroidWindowInsets(left, top, right, bottom, ime, cutout_left,
         cutout_top, cutout_right, cutout_bottom)
+    AndroidRequestFrame()
 }
 
 // An activity without Java code has nobody to report its insets, so the
@@ -333,6 +336,7 @@ AndroidNativeSetWindowSize :: (env: *JniEnv, activity: *void, width: s32,
     unused env
     unused activity
     SetAndroidWindowSize(width, height)
+    AndroidRequestFrame()
 }
 
 #program_export
@@ -344,6 +348,7 @@ AndroidNativeSetDensity :: (env: *JniEnv, activity: *void,
         DeviceLock()
         device_density = density
         DeviceUnlock()
+        AndroidRequestFrame()
     }
     unused density
 }
@@ -359,6 +364,7 @@ AndroidNativeSetSystemDark :: (env: *JniEnv, activity: *void, dark: s32) {
             device_dark = 1
         }
         DeviceUnlock()
+        AndroidRequestFrame()
     }
     unused dark
 }
@@ -372,6 +378,7 @@ AndroidNativeSetOrientation :: (env: *JniEnv, activity: *void,
         DeviceLock()
         device_orientation = orientation
         DeviceUnlock()
+        AndroidRequestFrame()
     }
     unused orientation
 }
@@ -444,6 +451,7 @@ AndroidNativeInvalidateGraphics :: (env: *JniEnv, activity: *void) {
         DeviceLock()
         device_graphics_reload = 1
         DeviceUnlock()
+        AndroidRequestFrame()
     }
 }
 

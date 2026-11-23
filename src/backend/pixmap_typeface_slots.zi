@@ -6,14 +6,24 @@ PixmapTypefaceMask :: struct {
     width: s32
     height: s32
     coverage: []u8
+    argb: []u8
 }
 PixmapTypefaceMeasure :: #type (string, s32, string) -> s32 #reads;
 PixmapTypefaceRaster :: #type (string, float32, *PixmapTypefaceMask, string, float32) -> bool;
+PixmapTypefaceColorRaster :: #type (string, float32, *PixmapTypefaceMask, string, float32, u32) -> bool;
 active: bool;
 measure: PixmapTypefaceMeasure;
 raster: PixmapTypefaceRaster;
+color_raster: PixmapTypefaceColorRaster;
+use_color_raster: bool;
 PixmapTypefaceUse :: (width: PixmapTypefaceMeasure, pixels: PixmapTypefaceRaster) {
-    measure = width; raster = pixels; active = true
+    measure = width; raster = pixels; use_color_raster = false; active = true
+}
+PixmapTypefaceUseColors :: (width: PixmapTypefaceMeasure, pixels: PixmapTypefaceRaster,
+    colors: PixmapTypefaceColorRaster) {
+    PixmapTypefaceUse(width, pixels)
+    color_raster = colors
+    use_color_raster = true
 }
 PixmapTypefaceClear :: () { active = false }
 PixmapTypefaceWidth :: (value: string, font: s32, typeface: string) -> s32 {
@@ -21,7 +31,8 @@ PixmapTypefaceWidth :: (value: string, font: s32, typeface: string) -> s32 {
     return callback(value, font, typeface)
 }
 PixmapTypefacePixels :: (value: string, font: float32, typeface: string, scale: float32,
-    mask: *PixmapTypefaceMask) -> bool {
+    mask: *PixmapTypefaceMask, rgb: u32 = 0) -> bool {
+    if use_color_raster { return color_raster(value, font, mask, typeface, scale, rgb) }
     callback: PixmapTypefaceRaster = raster
     return callback(value, font, mask, typeface, scale)
 }

@@ -4,6 +4,9 @@
 // kryon/image carries those pictures.
 using Image :: #import "image";
 #if !#defined(KRYON_HOSTED_UI) {
+    #if #defined(KRYON_ANDROID_HOST) && !#defined(KRYON_ZX_APP) {
+        #import "pixmap_assets_android"
+    }
     ImageFilesUse :: () -> bool {
         ImageUsePictures()
         return true

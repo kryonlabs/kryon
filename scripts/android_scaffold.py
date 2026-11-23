@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Create the droid/ Gradle project and host glue for a Kryon application.
 
-The generated files belong to the application: this script writes only files
-that do not exist yet, so an app customizes its activity or build freely.
+The generated files belong to the application. Only missing files and exact
+copies of superseded templates are written, so an app can customize freely.
 Library-owned notification receiver code is refreshed and its required manifest
 entries are merged without replacing application routes or configuration.
 Placeholders in kryon/templates/droid carry the application id, activity and
 entry names.
 """
 import argparse
+from hashlib import sha256
 from pathlib import Path
 from android_notifications_scaffold import ensure_notifications
 
@@ -45,6 +46,28 @@ values = {
 
 written = []
 skipped = []
+upgraded = []
+# Normalize only the fields that were substituted by the old templates.
+stock_upgrades = {
+    "droid/app/build.gradle": (
+        "17dd534c81ba962446610198ce872cf3e62cdfb9b5b1715a1773536bd792a49e",
+        ["    namespace '__PACKAGE__'", "        applicationId '__PACKAGE__'"]),
+    "droid/app/src/main/cpp/CMakeLists.txt": (
+        "ae3d4b1624cb05f4143dfb9add7ce3a8a68d5e55136ae83de7b6056468824222",
+        ["project(__CMAKE_NAME__ C)"]),
+    "droid/app/src/main/java/__PACKAGE_PATH__/__ACTIVITY__.java": (
+        "381a7e855806af3cd7af31f3f1e421a60cf5e2129c8a05bb802ef3dc3c8c6981",
+        ["package __PACKAGE__;", "public class __ACTIVITY__ extends NativeActivity {",
+         '    private static final String TAG = "__ACTIVITY__";']),
+}
+
+
+def render(text):
+    for key, value in values.items():
+        text = text.replace(key, value)
+    return text
+
+
 for template in sorted(templates.rglob("*")):
     if template.is_dir() or template.name == "README.md":
         continue
@@ -53,13 +76,18 @@ for template in sorted(templates.rglob("*")):
     # (templates/android-gplay.gradle), so apps hold no Google code.
     if relative.parts[:4] == ("droid", "app", "src", "gplay"):
         continue
-    parts = []
-    for part in relative.parts:
-        for key, value in values.items():
-            part = part.replace(key, value)
-        parts.append(part)
-    target = root.joinpath(*parts)
+    target = root.joinpath(*(render(part) for part in relative.parts))
     if target.exists():
+        stock = stock_upgrades.get(relative.as_posix())
+        if stock and target.is_file() and not target.is_symlink():
+            digest, lines = stock
+            text = target.read_text()
+            for line in lines:
+                text = text.replace(render(line), line, 1)
+            if sha256(text.encode()).hexdigest() == digest:
+                target.write_text(render(template.read_text()))
+                upgraded.append(target.relative_to(root))
+                continue
         skipped.append(target.relative_to(root))
         continue
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -67,21 +95,22 @@ for template in sorted(templates.rglob("*")):
         # The Gradle wrapper jar is binary; copy it without substitution.
         target.write_bytes(template.read_bytes())
     else:
-        text = template.read_text()
-        for key, value in values.items():
-            text = text.replace(key, value)
-        target.write_text(text)
+        target.write_text(render(template.read_text()))
     written.append(target.relative_to(root))
 
 if skipped:
     print("Kept existing files:")
     for path in skipped:
         print(f"  {path}")
+if upgraded:
+    print("Upgraded matching Android stock files:")
+    for path in upgraded:
+        print(f"  {path}")
 if written:
     print("Created Android project files:")
     for path in written:
         print(f"  {path}")
-else:
+elif not upgraded:
     print("Android project already present")
 
 ensure_notifications(root, args.kryon.resolve())

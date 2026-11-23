@@ -1,4 +1,4 @@
-// Optional NativeActivity font services. Android's Paint shapes the same run
+// NativeActivity font services. Android's Paint shapes the same run
 // for both layout and rasterization; Canvas supplies coverage to Pixmap's
 // existing camera, clipping, rotation and compositing paths.
 #import "android_jni"
@@ -32,7 +32,11 @@ FontFileClose :: (file: *void) -> s32 #foreign font_c "fclose";
 AndroidPixmapFace :: struct { name: [128]u8; length: s32; face: *void }
 android_pixmap_faces: [32]AndroidPixmapFace;
 android_pixmap_selected: s32 = -1;
+android_pixmap_default: bool;
 android_pixmap_paint: *void;
+android_pixmap_paint_font: float32;
+android_pixmap_paint_face: s32;
+android_pixmap_paint_style: TextGlyphStyle;
 android_pixmap_tracking_method: *void;
 android_pixmap_tracking: float32;
 android_pixmap_font_line: float32;
@@ -44,6 +48,8 @@ android_pixmap_mask_count: s32 = -1;
 android_pixmap_mask_font: float32;
 android_pixmap_mask_face: s32 = -1;
 android_pixmap_mask_style: TextGlyphStyle;
+android_pixmap_mask_rgb: u32;
+android_pixmap_mask_color: bool;
 android_pixmap_mask_shape: Slots.PixmapTypefaceMask;
 
 AndroidFontVariant :: struct { slot: s32; weight: s32; italic: bool; face: *void }
@@ -104,6 +110,7 @@ AndroidFontForgetMask :: () {
 }
 AndroidFontChanged :: () {
     AndroidFontForgetMask()
+    android_pixmap_paint_font = 0.0
     GlyphMetricsChanged(); PaintResourcesChanged()
 }
 AndroidFontSlot :: (name: string) -> s32 {
@@ -115,7 +122,7 @@ AndroidFontSlot :: (name: string) -> s32 {
 }
 
 AndroidFontVariantFor :: (env: *JniEnv, slot: s32, glyphs: TextGlyphStyle) -> *void {
-    base := android_pixmap_faces[slot].face
+    base := ifx slot >= 0 then android_pixmap_faces[slot].face else null
     weight := glyphs.weight
     italic := glyphs.style == cast(FontStyle)FontStyleItalic || glyphs.style == cast(FontStyle)FontStyleOblique
     if !(weight >= 1 && weight <= 1000) { weight = 0 }
@@ -132,7 +139,7 @@ AndroidFontVariantFor :: (env: *JniEnv, slot: s32, glyphs: TextGlyphStyle) -> *v
         args[1].integer = weight
         if weight == 0 {
             get_weight := AndroidFontMethod(env, kind, "getWeight", "()I")
-            args[1].integer = ifx get_weight != null then env.functions.CallIntMethodA(env, base, get_weight, null) else 400
+            args[1].integer = ifx base != null && get_weight != null then env.functions.CallIntMethodA(env, base, get_weight, null) else 400
             if !AndroidFontOk(env) { args[1].integer = 400 }
         }
         args[2].boolean = ifx italic then cast(u8)1 else cast(u8)0
@@ -141,7 +148,7 @@ AndroidFontVariantFor :: (env: *JniEnv, slot: s32, glyphs: TextGlyphStyle) -> *v
         args[1].integer = ifx weight >= 600 then 1 else 0
         if weight == 0 {
             get_style := AndroidFontMethod(env, kind, "getStyle", "()I")
-            if get_style != null {
+            if base != null && get_style != null {
                 args[1].integer = env.functions.CallIntMethodA(env, base, get_style, null) & 1
                 if !AndroidFontOk(env) { args[1].integer = 0 }
             }
@@ -171,7 +178,10 @@ AndroidFontForgetVariants :: (env: *JniEnv, slot: s32) {
 }
 
 AndroidFontPaint :: (env: *JniEnv, font: float32, slot: s32, glyphs: TextGlyphStyle) -> *void {
-    if slot < 0 || !(font > 0.0 && font <= 1024.0) { return null }
+    if !(font > 0.0 && font <= 1024.0) { return null }
+    if android_pixmap_paint_font == font && android_pixmap_paint_face == slot &&
+    SameTextGlyphStyle(android_pixmap_paint_style, glyphs) { return android_pixmap_paint }
+    android_pixmap_paint_font = 0.0
     kind := AndroidFontClass(env, "android/graphics/Paint")
     if kind == null { return null }
     if android_pixmap_paint == null {
@@ -214,6 +224,7 @@ AndroidFontPaint :: (env: *JniEnv, font: float32, slot: s32, glyphs: TextGlyphSt
             android_pixmap_tracking = spacing
         }
     }
+    android_pixmap_paint_font = font; android_pixmap_paint_face = slot; android_pixmap_paint_style = glyphs
     return android_pixmap_paint
 }
 AndroidFontWidth :: (value: string, font: s32, typeface: string) -> s32 {
@@ -241,7 +252,7 @@ AndroidFontInteger :: (env: *JniEnv, kind: *void, object: *void, name: string) -
     return env.functions.GetIntField(env, object, id)
 }
 AndroidFontRaster :: (value: string, font: float32, output: *Slots.PixmapTypefaceMask,
-    typeface: string = "", scale: float32 = 1.0) -> bool {
+    typeface: string = "", scale: float32 = 1.0, rgb: u32 = 0, colored: bool = false) -> bool {
     output.* = .{}
     if value.count > 32768 { return false }
     slot := AndroidFontSlot(typeface)
@@ -249,6 +260,7 @@ AndroidFontRaster :: (value: string, font: float32, output: *Slots.PixmapTypefac
     glyphs.letter_spacing *= scale
     if android_pixmap_mask_count == value.count && android_pixmap_mask_font == font &&
     android_pixmap_mask_face == slot && SameTextGlyphStyle(android_pixmap_mask_style, glyphs) &&
+    android_pixmap_mask_color == colored && android_pixmap_mask_rgb == rgb &&
     TextView(android_pixmap_mask_text[0:android_pixmap_mask_count]) == value {
         output.* = android_pixmap_mask_shape; return true
     }
@@ -278,6 +290,7 @@ AndroidFontRaster :: (value: string, font: float32, output: *Slots.PixmapTypefac
     if !AndroidFontOk(env) || width < 0 || height < 0 || width > 32768 || height > 2048 ||
     cast(s64)width * height > 4194304 { return false }
     total := cast(s64)width * height
+    storage := ifx colored then total * 4 else total
     if total > 0 {
         config_kind := AndroidFontClass(env, "android/graphics/Bitmap$Config")
         config_method := AndroidFontMethod(env, config_kind, "valueOf", "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;", true)
@@ -300,6 +313,10 @@ AndroidFontRaster :: (value: string, font: float32, output: *Slots.PixmapTypefac
         args[0].reference = bitmap
         canvas := env.functions.NewObjectA(env, canvas_kind, canvas_constructor, *args[0])
         if !AndroidFontOk(env) || canvas == null { return false }
+        set_color := AndroidFontMethod(env, paint_kind, "setColor", "(I)V")
+        if set_color == null { return false }
+        args[0].integer = cast(s32)(cast(u32)0xff000000 | rgb)
+        env.functions.CallVoidMethodA(env, paint, set_color, *args[0])
         args[0].reference = text; args[1].single = -cast(float32)left
         args[2].single = -cast(float32)top; args[3].reference = paint
         env.functions.CallVoidMethodA(env, canvas, draw, *args[0])
@@ -310,31 +327,57 @@ AndroidFontRaster :: (value: string, font: float32, output: *Slots.PixmapTypefac
         args[3].integer = 0; args[4].integer = 0; args[5].integer = width; args[6].integer = height
         env.functions.CallVoidMethodA(env, bitmap, pixels, *args[0])
         if !AndroidFontOk(env) { return false }
-        if total > android_pixmap_mask_size {
-            memory := FontAllocate(cast(usize)total)
+        if storage > android_pixmap_mask_size {
+            memory := FontAllocate(cast(usize)storage)
             if memory == null { return false }
             FontFree(cast(*void)android_pixmap_mask)
-            android_pixmap_mask = memory; android_pixmap_mask_size = total
+            android_pixmap_mask = memory; android_pixmap_mask_size = storage
         }
-        values: [1024]s32
-        at: s64
-        while at < total {
-            length := total - at; if length > 1024 { length = 1024 }
-            env.functions.GetIntArrayRegion(env, array, cast(s32)at, cast(s32)length, *values[0])
-            if !AndroidFontOk(env) { AndroidFontForgetMask(); return false }
-            for index: cast(s64)0..length - 1 {
-                android_pixmap_mask[at + index] = cast(u8)(cast(u32)values[index] >> 24)
+        if colored {
+            env.functions.GetIntArrayRegion(env, array, 0, cast(s32)total, cast(*s32)android_pixmap_mask)
+            if !AndroidFontOk(env) { return false }
+        } else {
+            values: [1024]s32
+            at: s64
+            while at < total {
+                length := total - at; if length > 1024 { length = 1024 }
+                env.functions.GetIntArrayRegion(env, array, cast(s32)at, cast(s32)length, *values[0])
+                if !AndroidFontOk(env) { return false }
+                for index: cast(s64)0..length - 1 {
+                    android_pixmap_mask[at + index] = cast(u8)(cast(u32)values[index] >> 24)
+                }
+                at += length
             }
-            at += length
         }
     }
-    shape := Slots.PixmapTypefaceMask.{left, top + cast(s32)(font * android_pixmap_font_ascent + 0.5),
-        width, height, BytesFromPointer(android_pixmap_mask, cast(u64)total)}
+    shape: Slots.PixmapTypefaceMask
+    shape.left = left
+    shape.top = top + cast(s32)(font * android_pixmap_font_ascent + 0.5)
+    shape.width = width
+    shape.height = height
+    if colored { shape.argb = BytesFromPointer(android_pixmap_mask, cast(u64)storage) }
+    else { shape.coverage = BytesFromPointer(android_pixmap_mask, cast(u64)storage) }
     for at: cast(s64)0..value.count - 1 { android_pixmap_mask_text[at] = value[at] }
     android_pixmap_mask_count = cast(s32)value.count; android_pixmap_mask_font = font
     android_pixmap_mask_face = slot; android_pixmap_mask_style = glyphs
+    android_pixmap_mask_rgb = rgb; android_pixmap_mask_color = colored
     android_pixmap_mask_shape = shape; output.* = shape
     return true
+}
+
+AndroidFontMask :: (value: string, font: float32, output: *Slots.PixmapTypefaceMask,
+    typeface: string, scale: float32) -> bool {
+    return AndroidFontRaster(value, font, output, typeface, scale)
+}
+
+AndroidFontColorMask :: (value: string, font: float32, output: *Slots.PixmapTypefaceMask,
+    typeface: string, scale: float32, rgb: u32) -> bool {
+    // ASCII labels can always use the smaller alpha mask. Android shapes and
+    // paints other runs with their original color glyphs and fallback faces.
+    for byte: value {
+        if byte >= cast(u8)128 { return AndroidFontRaster(value, font, output, typeface, scale, rgb, true) }
+    }
+    return AndroidFontRaster(value, font, output, typeface, scale)
 }
 
 AndroidFontNumber :: (data: string, at: s64, count: s64) -> s64 {
@@ -427,7 +470,7 @@ AndroidFontRemember :: (name: string, path: string, checked: bool = false) -> bo
     entry.length = cast(s32)name.count; entry.face = owned; android_pixmap_faces[slot] = entry
     AndroidFontForgetVariants(env, slot)
     if previous != null { env.functions.DeleteGlobalRef(env, previous) }
-    AndroidTypefacesCleanupUse(ReleaseTypefaces)
+    AndroidTypefacesCleanupUse(AndroidCloseTypefaces)
     if Slots.active { AndroidFontChanged() }
     return true
 }
@@ -475,10 +518,22 @@ SelectTypeface :: (name: string) -> bool {
     if slot < 0 { return false }
     if slot == android_pixmap_selected { return true }
     android_pixmap_selected = slot
-    Slots.PixmapTypefaceUse(AndroidFontWidth, AndroidFontRaster)
+    Slots.PixmapTypefaceUseColors(AndroidFontWidth, AndroidFontMask, AndroidFontColorMask)
     AndroidFontChanged()
     return true
 }
+
+AndroidDefaultTypeface :: () {
+    android_pixmap_default = true
+    Slots.PixmapTypefaceUseColors(AndroidFontWidth, AndroidFontMask, AndroidFontColorMask)
+    AndroidTypefacesCleanupUse(AndroidCloseTypefaces)
+}
+
+AndroidCloseTypefaces :: () {
+    android_pixmap_default = false
+    ReleaseTypefaces()
+}
+
 #program_export
 ReleaseTypefaceCpu :: () {
     FontFree(cast(*void)android_pixmap_mask)
@@ -487,7 +542,7 @@ ReleaseTypefaceCpu :: () {
 }
 #program_export
 ReleaseTypefaces :: () {
-    Slots.PixmapTypefaceClear()
+    if !android_pixmap_default { Slots.PixmapTypefaceClear() }
     android_pixmap_selected = -1
     ReleaseTypefaceCpu()
     session: AndroidJniSession

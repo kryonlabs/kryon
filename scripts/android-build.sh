@@ -29,24 +29,6 @@ if [ ! -x "$ziran_bin" ] || [ ! -x "$zi2c_bin" ]; then
     make -j4 -C "$ziran_dir" build/bin/ziran build/bin/zi2c build/bin/zi2zir
 fi
 
-webp_dir="${KRYON_ANDROID_WEBP_DIR:-}"
-if [ -z "$webp_dir" ]; then
-    webp_dir="$("$ziran_bin" pkg path libwebp 2>/dev/null || true)"
-fi
-if [ -z "$webp_dir" ] || [ ! -f "$webp_dir/CMakeLists.txt" ]; then
-    echo "kryon: the locked libwebp source package is missing; run ziran fetch" >&2
-    exit 2
-fi
-KRYON_ANDROID_WEBP_DIR="$webp_dir"
-export KRYON_ANDROID_WEBP_DIR
-KRYON_ANDROID_AVIF_DIR="${KRYON_ANDROID_AVIF_DIR:-$("$ziran_bin" pkg path libavif)}"
-KRYON_ANDROID_AOM_DIR="${KRYON_ANDROID_AOM_DIR:-$("$ziran_bin" pkg path libaom)}"
-KRYON_DAV1D_DIR="${KRYON_DAV1D_DIR:-$("$ziran_bin" pkg path dav1d)}"
-export KRYON_ANDROID_AVIF_DIR KRYON_ANDROID_AOM_DIR KRYON_DAV1D_DIR
-KRYON_AVIF_PACKAGE_DIR="$("$ziran_bin" pkg path avif)"
-KRYON_WEBP_PACKAGE_DIR="$("$ziran_bin" pkg path webp)"
-export KRYON_AVIF_PACKAGE_DIR KRYON_WEBP_PACKAGE_DIR
-
 if [ "$codegen" = "zx" ]; then
     python3 "$kryon_dir/scripts/android_scaffold.py" \
         --root "$root" --name "${KRYON_PROJECT_NAME:-app}" \
@@ -105,8 +87,6 @@ run_gradle() {
 
 run_gradle -p droid assembleDebug \
     -Pkryon.dir="$kryon_dir" -Pziran.dir="$ziran_dir" \
-    -Pwebp.dir="$webp_dir" -Pavif.dir="$KRYON_ANDROID_AVIF_DIR" \
-    -Paom.dir="$KRYON_ANDROID_AOM_DIR" \
     -Papp.minSdk="$min_sdk" -Papp.abis="$abis" -Papp.codegen="$codegen"
 
 apk="droid/app/build/outputs/apk/debug/app-debug.apk"

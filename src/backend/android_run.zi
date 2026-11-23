@@ -3,305 +3,347 @@
     #program_export
     AndroidRunMain :: () -> s32 { return AndroidBundleRunMain() }
 } else #if OS == .ANDROID || #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
-// Kryon owns Android's NativeActivity application thread. The NDK glue only
-// bridges lifecycle/input events to a looper; this host owns the window,
-// pixels, input, IME, density, damage presentation and frame pacing.
-#import "android_device"
-#import "android_frame_composition"
-#import "android_clipboard"
-#import "android_jni"
-#import "android_native"
-#import "android_process"
-#import "android_surface"
-#import "android_touch"
-#import "frame_entry"
-#import "frame_motion"
-#import "frame_texture_android"
-#import "std/byte_text_linux"
-#import "drawing_props"
-#import "frame_snapshot"
-#import "geometry"
-#import "paint_queue"
-#import "pixmap"
-#import "pixmap_frame"
-// Pictures the application ships load from its APK on first use.
-#import "pixmap_assets_android"
-#import "scroll_device"
-#import "secondary_pointer"
-#import "session"
-#import "test_driver"
-#import "tree"
-#import "tree_draw"
-#import "tree_input"
-#import "input_protocol"
-#import "std/number_text"
-#import "std/text_buffer"
-Clock :: #import "std/timer_linux";
-
-using FrameStatus;
-
-android_log :: #system_library "log";
-AndroidLogWrite :: (priority: s32, tag: *u8, text: *u8) -> s32 #foreign android_log "__android_log_write";
-
-AndroidError :: (message: string) -> s32 {
-    output: [256]u8
-    length: s32 = cast(s32)message.count
-    if length > 254 { length = 254 }
-    index: s32 = 0
-    while index < length {
-        output[index] = message[index]
-        index += 1
+    // Kryon owns Android's NativeActivity application thread. The NDK glue only
+    // bridges lifecycle/input events to a looper; this host owns the window,
+    // pixels, input, IME, density, damage presentation and frame pacing.
+    #import "android_device"
+    #import "android_frame_composition"
+    #import "android_clipboard"
+    #import "android_jni"
+    #import "android_native"
+    #import "android_process"
+    #import "android_surface"
+    #import "android_touch"
+    #import "frame_entry"
+    #import "frame_texture_android"
+    #import "std/byte_text_linux"
+    #import "drawing_props"
+    #import "frame_snapshot"
+    #import "geometry"
+    #import "paint_queue"
+    #import "pixmap"
+    #import "pixmap_frame"
+    #import "scroll_device"
+    #import "secondary_pointer"
+    #import "session"
+    #import "test_driver"
+    #import "tree"
+    #import "tree_draw"
+    #import "frame_motion"
+    #import "tree_input"
+    #import "input_protocol"
+    #import "std/number_text"
+    #import "std/text_buffer"
+    Clock :: #import "std/timer_linux";
+    #if #defined(KRYON_ANDROID_EVENT_FRAMES) {
+        #import "android_frames"
     }
-    output[index] = 0
-    tag: [8]u8 = .[cast(u8)107, cast(u8)114, cast(u8)121, cast(u8)111, cast(u8)110, 0, 0, 0]
-    unused AndroidLogWrite(6, *tag[0], *output[0])
-    return 1
-}
 
-AndroidCanvas :: () -> u32 {
-    canvas := StyleTokenColorOr("canvas", Color.{248, 250, 252, 255})
-    return (cast(u32)canvas.a << 24) | (cast(u32)canvas.r << 16) |
+    using FrameStatus;
+
+    android_log :: #system_library "log";
+    AndroidLogWrite :: (priority: s32, tag: *u8, text: *u8) -> s32 #foreign android_log "__android_log_write";
+
+    AndroidError :: (message: string) -> s32 {
+        output: [256]u8
+        length: s32 = cast(s32)message.count
+        if length > 254 { length = 254 }
+        index: s32 = 0
+        while index < length {
+            output[index] = message[index]
+            index += 1
+        }
+        output[index] = 0
+        tag: [8]u8 = .[cast(u8)107, cast(u8)114, cast(u8)121, cast(u8)111, cast(u8)110, 0, 0, 0]
+        unused AndroidLogWrite(6, *tag[0], *output[0])
+        return 1
+    }
+
+    AndroidCanvas :: () -> u32 {
+        canvas := StyleTokenColorOr("canvas", Color.{248, 250, 252, 255})
+        return (cast(u32)canvas.a << 24) | (cast(u32)canvas.r << 16) |
         (cast(u32)canvas.g << 8) | cast(u32)canvas.b
-}
+    }
 
-AndroidFrameFailure :: (session: Session, step: string) {
-    failure := FrameFailureAt(session)
-    message: [240]u8
-    length: s64 = 0
-    digits: [24]u8
-    parts: [7]string = .["kryon: ", step, ": ", failure.message, " (key ",
+    AndroidFrameFailure :: (session: Session, step: string) {
+        failure := FrameFailureAt(session)
+        message: [240]u8
+        length: s64 = 0
+        digits: [24]u8
+        parts: [7]string = .["kryon: ", step, ": ", failure.message, " (key ",
         FormatInteger(cast(s64)failure.key, digits[:]), ")"]
-    for part: parts {
-        for byte: part {
-            if length < 239 { message[length] = byte; length += 1 }
-        }
-    }
-    unused AndroidError(TextView(message[0:length]))
-}
-
-AndroidPresentPixmap :: (damage: Rectangle, width: s32, height: s32,
-    zoom: float32) -> bool {
-    if width <= 0 || height <= 0 { return false }
-    // EndPixmapFrame already rounds damage into device pixels. Applying
-    // density again misses changed pixels and leaves the previous page visible.
-    unused zoom
-    left := cast(s32)damage.x
-    top := cast(s32)damage.y
-    right := cast(s32)(damage.x + damage.width)
-    bottom := cast(s32)(damage.y + damage.height)
-    if left < 0 { left = 0 }
-    if top < 0 { top = 0 }
-    if right > width { right = width }
-    if bottom > height { bottom = height }
-    if left >= right || top >= bottom { return true }
-    if !AndroidNativeLock(left, top, right, bottom) { return false }
-    copied := AndroidNativePresentDamage(left, top, right, bottom)
-    return AndroidNativeUnlock() && copied
-}
-
-DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
-    bounds: Rectangle, zoom: float32, reuse: bool, paint_unchanged: *bool = null,
-    surface_presented: *bool = null) -> bool {
-    width := viewport.x + viewport.width
-    height := viewport.y + viewport.height
-    if !AndroidNativeSurfaceSize(*width, *height) { return false }
-    composition_enabled := android_composition_begin != null
-    previous_gles := android_composition_active
-    gles := BeginAndroidComposition(width, height)
-    if gles != previous_gles || (gles && !android_composition_presented) { reuse = false }
-    defer CancelAndroidComposition()
-
-    pixels: []u32
-    if !gles {
-        if !AndroidNativeEnsurePixels(width, height) { return false }
-        pixels = AndroidNativePixels()
-    }
-    if !PixmapScale(zoom, zoom) ||
-    !PixmapResumeInto(width, height, pixels, true) { return false }
-
-    ok: bool = true
-    finished: PixmapFrameResult
-    input_open := AndroidTouchFrameInputBegin(session, zoom)
-    if input_open {
-        pointer: PointerFrame = TestDriverPointer(session, PollPointer())
-        TreePointerUpdate(session, pointer)
-        TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
-        seconds := cast(float64)Clock.MonotonicMilliseconds() / 1000.0
-        SetFrameMotionTime(session, seconds)
-        BeginScrollFrame(session, Vector2.{pointer.x, pointer.y},
-            pointer.pressed, pointer.down, pointer.released, 0.0, seconds)
-        key := AndroidTouchTakeKey()
-        if key == 0 {
-            for candidate: cast(s32)0..349 {
-                if TestDriverKeyPressed(candidate) { key = candidate; break }
+        for part: parts {
+            for byte: part {
+                if length < 239 { message[length] = byte; length += 1 }
             }
         }
-        if AndroidTextInputKeyPressed(259) { key = 259 }
-        if AndroidTextInputKeyPressed(257) { key = 257 }
-        if key != 0 { KeyboardSend(session, key) }
-        codepoint := AndroidTextInputCharacter()
-        while codepoint != 0 {
-            TypedCodepointSend(session, codepoint)
-            codepoint = AndroidTextInputCharacter()
-        }
+        unused AndroidError(TextView(message[0:length]))
+    }
 
-        if BeginFrame(session, cast(u64)1, bounds) != cast(FrameStatus)FrameOk {
-            AndroidFrameFailure(session, "the frame could not begin")
-            ok = false
-        } else if Frame(session, bounds) != 0 {
-            unused AndroidError("kryon: the application's frame failed")
-            TreeCancel(session)
-            ok = false
-        } else {
-            // Compose against the last presented pixels; route changes
-            // may capture them before the queued paint replaces them.
-            if !reuse {
-                if !gles { AndroidNativeFill(cast(u32)0xff000000) }
-                ClearAndroidFrame(viewport, AndroidCanvas())
+    AndroidPresentPixmap :: (damage: Rectangle, width: s32, height: s32,
+        zoom: float32) -> bool {
+        if width <= 0 || height <= 0 { return false }
+        // EndPixmapFrame already rounds damage into device pixels. Applying
+        // density again misses changed pixels and leaves the previous page visible.
+        unused zoom
+        left := cast(s32)damage.x
+        top := cast(s32)damage.y
+        right := cast(s32)(damage.x + damage.width)
+        bottom := cast(s32)(damage.y + damage.height)
+        if left < 0 { left = 0 }
+        if top < 0 { top = 0 }
+        if right > width { right = width }
+        if bottom > height { bottom = height }
+        if left >= right || top >= bottom { return true }
+        if !AndroidNativeLock(left, top, right, bottom) { return false }
+        copied := AndroidNativePresentDamage(left, top, right, bottom)
+        return AndroidNativeUnlock() && copied
+    }
+
+    DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
+        bounds: Rectangle, zoom: float32, reuse: bool, paint_unchanged: *bool = null,
+        surface_presented: *bool = null) -> bool {
+        width := viewport.x + viewport.width
+        height := viewport.y + viewport.height
+        if !AndroidNativeSurfaceSize(*width, *height) { return false }
+        composition_enabled := android_composition_begin != null
+        previous_gles := android_composition_active
+        gles := BeginAndroidComposition(width, height)
+        if gles != previous_gles || (gles && !android_composition_presented) { reuse = false }
+        defer CancelAndroidComposition()
+
+        pixels: []u32
+        if !gles {
+            if !AndroidNativeEnsurePixels(width, height) { return false }
+            pixels = AndroidNativePixels()
+        }
+        if !PixmapScale(zoom, zoom) ||
+        !PixmapResumeInto(width, height, pixels, true) { return false }
+
+        ok: bool = true
+        finished: PixmapFrameResult
+        input_open := AndroidTouchFrameInputBegin(session, zoom)
+        if input_open {
+            pointer: PointerFrame = TestDriverPointer(session, PollPointer())
+            TreePointerUpdate(session, pointer)
+            TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
+            seconds := cast(float64)Clock.MonotonicMilliseconds() / 1000.0
+            SetFrameMotionTime(session, seconds)
+            BeginScrollFrame(session, Vector2.{pointer.x, pointer.y},
+                pointer.pressed, pointer.down, pointer.released, 0.0, seconds)
+            key := AndroidTouchTakeKey()
+            if key == 0 {
+                for candidate: cast(s32)0..349 {
+                    if TestDriverKeyPressed(candidate) { key = candidate; break }
+                }
             }
-            finished = EndPixmapFrame(session, reuse, AndroidCanvas())
-            if finished.status != cast(FrameStatus)FrameOk {
-                AndroidFrameFailure(session, "the frame could not finish")
+            if AndroidTextInputKeyPressed(259) { key = 259 }
+            if AndroidTextInputKeyPressed(257) { key = 257 }
+            if key != 0 { KeyboardSend(session, key) }
+            codepoint := AndroidTextInputCharacter()
+            while codepoint != 0 {
+                TypedCodepointSend(session, codepoint)
+                codepoint = AndroidTextInputCharacter()
+            }
+
+            if BeginFrame(session, cast(u64)1, bounds) != cast(FrameStatus)FrameOk {
+                AndroidFrameFailure(session, "the frame could not begin")
                 ok = false
+            } else if Frame(session, bounds) != 0 {
+                unused AndroidError("kryon: the application's frame failed")
+                TreeCancel(session)
+                ok = false
+            } else {
+                // Compose against the last presented pixels; route changes
+                // may capture them before the queued paint replaces them.
+                if !reuse {
+                    if !gles { AndroidNativeFill(cast(u32)0xff000000) }
+                    ClearAndroidFrame(viewport, AndroidCanvas())
+                }
+                finished = EndPixmapFrame(session, reuse, AndroidCanvas())
+                if finished.status != cast(FrameStatus)FrameOk {
+                    AndroidFrameFailure(session, "the frame could not finish")
+                    ok = false
+                }
             }
+            FrameInputEnd(session)
+        } else {
+            ok = false
         }
-        FrameInputEnd(session)
-    } else {
-        ok = false
+        AndroidTouchFrameEnd()
+        PixmapEndInto()
+        if ok && (!reuse || !finished.paint_unchanged) {
+            if !composition_enabled && android_composition_begin != null {
+                // The app enabled GLES in its first Frame call. The CPU
+                // producer must leave this window available for EGL.
+                android_native_redraw = true
+                return true
+            }
+            if gles && !android_composition_present() {
+                // The next frame repaints on the software path. The recorded
+                // frame has no CPU pixels to post here.
+                if paint_unchanged != null { paint_unchanged[0] = false }
+                return true
+            }
+            if !gles { ok = AndroidPresentPixmap(finished.damage, width, height, zoom) }
+            if surface_presented != null { surface_presented[0] = ok }
+        }
+        if ok { TestDriverFrame(session) }
+        if paint_unchanged != null { paint_unchanged[0] = ok && reuse && finished.paint_unchanged }
+        return ok
     }
-    AndroidTouchFrameEnd()
-    PixmapEndInto()
-    if ok && (!reuse || !finished.paint_unchanged) {
-        if !composition_enabled && android_composition_begin != null {
-            // The app enabled GLES in its first Frame call. The CPU
-            // producer must leave this window available for EGL.
-            android_native_redraw = true
-            return true
-        }
-        if gles && !android_composition_present() {
-            // The next frame repaints on the software path. The recorded
-            // frame has no CPU pixels to post here.
-            if paint_unchanged != null { paint_unchanged[0] = false }
-            return true
-        }
-        if !gles { ok = AndroidPresentPixmap(finished.damage, width, height, zoom) }
-        if surface_presented != null { surface_presented[0] = ok }
+
+    AndroidNextFrame :: (quiet_frames: *s32, started_ms: s64, finished_ms: s64,
+        paint_unchanged: bool, events: bool, pointer_held: bool = false) -> s64 {
+        // A finger can pause on unchanged content between drag samples.
+        if events || pointer_held || !paint_unchanged { quiet_frames[0] = 0 }
+        else if quiet_frames[0] < 2 { quiet_frames[0] += 1 }
+        if quiet_frames[0] >= 2 { return finished_ms + 100 }
+        return started_ms + 16
     }
-    if ok { TestDriverFrame(session) }
-    if paint_unchanged != null { paint_unchanged[0] = ok && reuse && finished.paint_unchanged }
-    return ok
-}
 
-AndroidNextFrame :: (quiet_frames: *s32, started_ms: s64, finished_ms: s64,
-    paint_unchanged: bool, events: bool, pointer_held: bool = false) -> s64 {
-    if events || pointer_held || !paint_unchanged { quiet_frames[0] = 0 }
-    else if quiet_frames[0] < 2 { quiet_frames[0] += 1 }
-    if quiet_frames[0] >= 2 { return finished_ms + 100 }
-    return started_ms + 16
-}
-
-AndroidViewportSignature :: (viewport: AndroidViewport, zoom: float32) -> u64 {
-    value := cast(u64)viewport.x | cast(u64)viewport.y << 12 |
+    AndroidViewportSignature :: (viewport: AndroidViewport, zoom: float32) -> u64 {
+        value := cast(u64)viewport.x | cast(u64)viewport.y << 12 |
         cast(u64)viewport.width << 24 | cast(u64)viewport.height << 36 |
         cast(u64)viewport.ready << 48
-    return value ^ cast(u64)(zoom * 256.0)
-}
-
-#program_export
-android_main :: (app: *NativeAndroidApp) {
-    if app == null { return }
-    AndroidNativeStart(app)
-    defer { AndroidNativeClose() }
-    defer { AndroidFrameTexturesClose() }
-    defer { AndroidNativeFinish() }
-    AndroidJniKeepHostThread()
-    defer { AndroidJniReleaseHostThread() }
-    AndroidProcessPrepare()
-
-    session: Session = SessionOpen()
-    if !SessionValid(session) {
-        unused AndroidError("kryon: could not open a UI session")
-        return
+        return value ^ cast(u64)(zoom * 256.0)
     }
-    defer { CloseSession(session) }
-    AndroidTextInputOpen(session)
-    defer { AndroidTextInputClose(session) }
 
-    ok: bool = true
-    first_frame: bool = true
-    reuse: bool = false
-    signature: u64
-    quiet_frames: s32 = 0
-    next_frame_ms := Clock.MonotonicMilliseconds()
-    while ok && !AndroidNativeDestroyRequested() {
-        now := Clock.MonotonicMilliseconds()
-        timeout := ifx next_frame_ms > now then cast(s32)(next_frame_ms - now) else 0
-        if timeout > 1000 { timeout = 1000 }
-        events := AndroidNativePoll(timeout)
-        if AndroidNativeDestroyRequested() { break }
-        frame_started_ms := Clock.MonotonicMilliseconds()
+    #program_export
+    android_main :: (app: *NativeAndroidApp) {
+        if app == null { return }
+        AndroidNativeStart(app)
+        defer { AndroidNativeClose() }
+        defer { AndroidFrameTexturesClose() }
+        defer { AndroidNativeFinish() }
+        AndroidJniKeepHostThread()
+        defer { AndroidJniReleaseHostThread() }
+        AndroidProcessPrepare()
 
-        width: s32
-        height: s32
-        if AndroidNativePaused() || !AndroidNativeWindowReady() ||
-        !AndroidNativeSurfaceSize(*width, *height) {
-            AndroidTextInputFrame(session, false)
-            reuse = false
-            quiet_frames = 0
-            next_frame_ms = Clock.MonotonicMilliseconds() + 1000
-            continue
+        session: Session = SessionOpen()
+        if !SessionValid(session) {
+            unused AndroidError("kryon: could not open a UI session")
+            return
         }
+        defer { CloseSession(session) }
+        AndroidTextInputOpen(session)
+        defer { AndroidTextInputClose(session) }
 
-        if AndroidNativeTakeResized() || AndroidTakeGraphicsInvalidate() != 0 {
-            PaintSnapshotInvalidate(session)
-            reuse = false
+        ok: bool = true
+        first_frame: bool = true
+        reuse: bool = false
+        signature: u64
+        quiet_frames: s32 = 0
+        next_frame_ms := Clock.MonotonicMilliseconds()
+        #if #defined(KRYON_ANDROID_EVENT_FRAMES) {
+            pacer := AndroidFramePacerOpen()
+            pending_events := false
         }
-        if AndroidNativeTakeRedraw() { reuse = false }
+        while ok && !AndroidNativeDestroyRequested() {
+            now := Clock.MonotonicMilliseconds()
+            deadline := next_frame_ms
+            #if #defined(KRYON_ANDROID_EVENT_FRAMES) {
+                if deadline < 0 { deadline = AndroidFrameDeadline() }
+            }
+            timeout: s32 = -1
+            if deadline >= 0 {
+                wait := deadline - now
+                if wait < 0 { wait = 0 }
+                if wait > 2147483647 { wait = 2147483647 }
+                timeout = cast(s32)wait
+            }
+            events := AndroidNativePoll(timeout)
+            if AndroidNativeDestroyRequested() { break }
+            frame_started_ms := Clock.MonotonicMilliseconds()
+            #if #defined(KRYON_ANDROID_EVENT_FRAMES) {
+                pulse := AndroidFrameTakeVsync()
+                requested := AndroidFrameDeadline()
+                requested_idle := next_frame_ms < 0 && requested >= 0 && requested <= frame_started_ms
+                pending_events = pending_events || events
+                event_idle := next_frame_ms < 0 && pending_events
+                scheduled := next_frame_ms >= 0 && next_frame_ms <= frame_started_ms
+                if !event_idle && !pulse && !requested_idle && !scheduled { continue }
+                events = pending_events
+                pending_events = false
+                unused AndroidFrameDeadline(frame_started_ms)
+            }
 
-        viewport: AndroidViewport
-        SyncAndroidViewport(*viewport)
-        if viewport.ready == 0 || viewport.width <= 0 || viewport.height <= 0 {
-            viewport.x = 0
-            viewport.y = 0
-            viewport.width = width
-            viewport.height = height
-        }
-        zoom := AndroidLayoutZoom()
-        AndroidTouchSetZoom(zoom)
-        bounds := Rectangle.{cast(float32)viewport.x / zoom,
-            cast(float32)viewport.y / zoom, cast(float32)viewport.width / zoom,
-            cast(float32)viewport.height / zoom}
-        current_signature := AndroidViewportSignature(viewport, zoom)
-        if current_signature != signature {
-            signature = current_signature
-            reuse = false
-        }
+            width: s32
+            height: s32
+            if AndroidNativePaused() || !AndroidNativeWindowReady() ||
+            !AndroidNativeSurfaceSize(*width, *height) {
+                AndroidTextInputFrame(session, false)
+                reuse = false
+                quiet_frames = 0
+                #if #defined(KRYON_ANDROID_EVENT_FRAMES) {
+                    next_frame_ms = -1
+                } else {
+                    next_frame_ms = Clock.MonotonicMilliseconds() + 1000
+                }
+                continue
+            }
 
-        AndroidTextInputBeginFrame(session)
-        paint_unchanged: bool
-        surface_presented: bool
-        ok = DrawAndroidFrame(session, viewport, bounds, zoom, reuse, *paint_unchanged, *surface_presented)
-        AndroidTextInputFrame(session, TreeTextInputActive(session))
-        if !ok { break }
-        if first_frame && surface_presented {
-            first_frame = false
-            AndroidNotifyFirstFrame()
-        }
+            if AndroidNativeTakeResized() || AndroidTakeGraphicsInvalidate() != 0 {
+                PaintSnapshotInvalidate(session)
+                reuse = false
+            }
+            if AndroidNativeTakeRedraw() { reuse = false }
 
-        reuse = true
-        next_frame_ms = AndroidNextFrame(*quiet_frames, frame_started_ms,
-            Clock.MonotonicMilliseconds(), paint_unchanged && !FrameMotionMoving(session), events,
-            android_frame_input.pointer.down || android_touch_secondary_down)
+            viewport: AndroidViewport
+            SyncAndroidViewport(*viewport)
+            if viewport.ready == 0 || viewport.width <= 0 || viewport.height <= 0 {
+                viewport.x = 0
+                viewport.y = 0
+                viewport.width = width
+                viewport.height = height
+            }
+            zoom := AndroidLayoutZoom()
+            AndroidTouchSetZoom(zoom)
+            bounds := Rectangle.{cast(float32)viewport.x / zoom,
+                cast(float32)viewport.y / zoom, cast(float32)viewport.width / zoom,
+                cast(float32)viewport.height / zoom}
+            current_signature := AndroidViewportSignature(viewport, zoom)
+            if current_signature != signature {
+                signature = current_signature
+                reuse = false
+            }
+
+            AndroidTextInputBeginFrame(session)
+            paint_unchanged: bool
+            surface_presented: bool
+            ok = DrawAndroidFrame(session, viewport, bounds, zoom, reuse, *paint_unchanged, *surface_presented)
+            AndroidTextInputFrame(session, TreeTextInputActive(session))
+            if !ok { break }
+            if first_frame && surface_presented {
+                first_frame = false
+                AndroidNotifyFirstFrame()
+            }
+
+            reuse = true
+            next_frame_ms = AndroidNextFrame(*quiet_frames, frame_started_ms,
+                Clock.MonotonicMilliseconds(), paint_unchanged && !FrameMotionMoving(session), events,
+                android_frame_input.pointer.down || android_touch_secondary_down)
+            #if #defined(KRYON_ANDROID_EVENT_FRAMES) {
+                request_due := AndroidFrameDeadline()
+                ready_soon := request_due >= 0 && request_due <= Clock.MonotonicMilliseconds() + 16
+                if quiet_frames >= 2 && !ready_soon && !TestDriverActive() && !AndroidNativeWorkPending() {
+                    next_frame_ms = -1
+                } else if AndroidFramePostVsync(pacer) {
+                    // The display callback normally runs first. A bounded
+                    // timeout covers a display disappearing mid-request.
+                    next_frame_ms = Clock.MonotonicMilliseconds() + 100
+                }
+            }
+        }
+        if !ok { unused AndroidError("kryon: android frame rendering failed") }
     }
-    if !ok { unused AndroidError("kryon: android frame rendering failed") }
-}
 
-#program_export
-AndroidRunMain :: () -> s32 {
-    app := AndroidNativeApp()
-    if app == null { return AndroidError("kryon: the android activity did not start") }
-    android_main(app)
-    return 0
-}
+    #program_export
+    AndroidRunMain :: () -> s32 {
+        app := AndroidNativeApp()
+        if app == null { return AndroidError("kryon: the android activity did not start") }
+        android_main(app)
+        return 0
+    }
 
 }

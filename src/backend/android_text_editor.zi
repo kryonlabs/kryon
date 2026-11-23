@@ -20,6 +20,7 @@
 #import "widget_kind"
 #import "byte_text_linux"
 #import "text_input_platform"
+#import "android_frames"
 using WidgetKind;
 
 #if #defined(ANDROID_BUILD) {
@@ -214,9 +215,9 @@ AndroidNativeTextInputState :: (env: *JniEnv, activity: *void,
         if count > 0 {
             env.functions.GetByteArrayRegion(env, bytes, 0, count, *buffer[0])
         }
-        if env.functions.ExceptionCheck(env) == 0 {
-            unused AndroidTextEditorUpdate(target, revision,
-                TextView(buffer[:count]), cursor, anchor)
+        if env.functions.ExceptionCheck(env) == 0 && AndroidTextEditorUpdate(target, revision,
+            TextView(buffer[:count]), cursor, anchor) {
+            AndroidRequestFrame()
         }
     }
     unused env

@@ -18,6 +18,7 @@
 //
 // A picked document arrives as a readable path; a scanned code as its text.
 #import "android_jni"
+#import "android_frames"
 #import "c_string"
 
 AndroidPickerResult :: enum {
@@ -209,6 +210,7 @@ AndroidNativePickerSelected :: (env: *JniEnv, activity: *void, request: s32, tex
     if selected != null {
         env.functions.ReleaseStringUTFChars(env, text, selected)
     }
+    AndroidRequestFrame()
 }
 
 #program_export
@@ -216,4 +218,5 @@ AndroidNativePickerCancelled :: (env: *JniEnv, activity: *void, request: s32) {
     unused env
     unused activity
     PickerStore(request, cast(s32)AndroidPickerResult.AndroidPickerCancelled, null)
+    AndroidRequestFrame()
 }

@@ -5,9 +5,9 @@
 #
 #   include("${KRYON_DIR}/cmake/KryonAndroid.cmake")
 #   kryon_android_reproducible_paths("${REPO_ROOT}") # before dependency targets
-#   kryon_android_codecs("${WEBP_DIR}" "${AVIF_DIR}" "${AOM_DIR}")
 #   add_library(main SHARED ${APP_SOURCES})
 #   kryon_android_app(main)                     # glue, size flags, system libs
+#   app_ziran_link_native(main)                 # generated from the app graph
 #
 # The helpers only set what is common; apps add their own definitions,
 # include directories, and libraries to `main` as usual.
@@ -34,8 +34,7 @@ function(kryon_android_reproducible_paths source_root)
         "$<$<COMPILE_LANGUAGE:C,CXX,ASM>:-ffile-prefix-map=${CMAKE_BINARY_DIR}=./build/android>")
 endfunction()
 
-# Build the image codecs Kryon's platform-native Android host uses. Software
-# presentation needs no graphics, audio, or renderer dependency.
+# Explicit composite codec target used by standalone native codec tests.
 function(kryon_android_codecs webp_dir)
     if(NOT EXISTS "${webp_dir}/CMakeLists.txt")
         message(FATAL_ERROR "No libwebp source at ${webp_dir}")
