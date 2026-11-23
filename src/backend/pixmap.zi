@@ -997,15 +997,20 @@ PixmapStrokeRounded :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32,
     if w > band { band = w }
     band += 1
     // A frame large enough to hold four separate corners draws straight sides
-    // as strips. Tighter frames keep the sampling below.
-    if pixmap_gpu_active && inner && x1 - x0 >= band * 2 && y1 - y0 >= band * 2 && color.a != cast(u8)0 {
-        slot := PixmapGpuCornerSlot(band, r, w)
+    // as strips. Tighter frames keep the sampling below. Every curved pixel
+    // lies within the radius or the stroke width of an edge, as PixmapSamples
+    // shows, so a capsule, whose radius is half its height, still holds four
+    // corners of that size when the extra pixel of `band` does not fit.
+    gpu_side: s32 = band
+    if x1 - x0 < gpu_side * 2 || y1 - y0 < gpu_side * 2 { gpu_side = band - 1 }
+    if pixmap_gpu_active && inner && x1 - x0 >= gpu_side * 2 && y1 - y0 >= gpu_side * 2 && color.a != cast(u8)0 {
+        slot := PixmapGpuCornerSlot(gpu_side, r, w)
         if slot >= 0 {
-            PixmapGpuCorners(slot, x0, y0, x1, y1, band, color)
-            PixmapGpuSolid(x0 + band, y0, x1 - band, y0 + w, color)
-            PixmapGpuSolid(x0 + band, y1 - w, x1 - band, y1, color)
-            PixmapGpuSolid(x0, y0 + band, x0 + w, y1 - band, color)
-            PixmapGpuSolid(x1 - w, y0 + band, x1, y1 - band, color)
+            PixmapGpuCorners(slot, x0, y0, x1, y1, gpu_side, color)
+            PixmapGpuSolid(x0 + gpu_side, y0, x1 - gpu_side, y0 + w, color)
+            PixmapGpuSolid(x0 + gpu_side, y1 - w, x1 - gpu_side, y1, color)
+            PixmapGpuSolid(x0, y0 + gpu_side, x0 + w, y1 - gpu_side, color)
+            PixmapGpuSolid(x1 - w, y0 + gpu_side, x1, y1 - gpu_side, color)
             return
         }
     }
