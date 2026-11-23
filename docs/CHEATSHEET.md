@@ -47,7 +47,7 @@ git = "https://git.waozi.xyz/ziranlang/ziran.git"
 ref = "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0"
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
-ref = "fd3bc9982b45bd02e076445262cda93e7398ad9d"
+ref = "65b50b261e839ad8ec3edb4d797a068f154861e8"
 [tool.kryon]
 default_profile = "desktop"
 entry = "src/app.zi"
@@ -247,6 +247,9 @@ Layouts :: (session: Session) {
 | `.ThemeMetricTextXS` `TextSM` `TextBody` `TextLG` `Heading1`…`Heading4` | font sizes for `Text.Props.size` |
 | `StyleTokenColor("canvas" \| "surface" \| "border" \| "text")` | palette colors (`kryon/drawing_props`) |
 | `CssSheetLoad(*sheet, StylePackMaterial())`, `CssSheetInstall` | a look preset from `css/style_pack_material` (also `classic`, `lightfield`); see the starter's `src/look.zi` |
+| `CssSheetParse(*sheet, text, "app.css", CssNoImports)`, `CssSheetInstall` | your own rules; a widget or container takes them by `.class_name = StyleClass("note")` |
+| `Column.note { padding: 12px; gap: 4px; background: #fff; border: 1px solid #ddd; border-radius: 10px }` | containers paint their CSS box (gradients, box-shadow too) and lay out with it |
+| `flex: 1`, `margin-left: auto`, `width: 50%`, `calc()`, `em`/`vw`, nesting, `@media` | sizing in rows and columns; every property: `docs/HTML_TO_KRYON.md` section 4 |
 ## Drive it in a test
 
 `env KRYON_TEST_DRIVER=1 ziran build && ziran run --project --target=c tests/notes_test.zi`:

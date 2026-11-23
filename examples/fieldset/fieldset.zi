@@ -5,6 +5,8 @@
 Box :: #import "kryon/box";
 Fieldset :: #import "kryon/fieldset";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/drawing_props"
 #import "kryon/system_theme"
 #import "std/number_text"
@@ -42,24 +44,30 @@ GalleryBounds :: (bounds: Rectangle) -> Rectangle {
     return bounds
 }
 
-Label :: (session: Session, value: string, y: float32 = 76.0) {
-    Text.Draw(session, Text.Props.{.bounds = GalleryBounds(Rectangle.{28.0, y, 420.0, 38.0}), .text = value})
-}
-
-b: Rectangle;
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Fieldset", .size = 23})
-    b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Fieldset", .size = 23})
     disabled := example_input.disabled
 
-    b.height = 188.0
-    Fieldset.Draw(session, Fieldset.Props.{.bounds = b, .title = "Preferences"})
-    Label(session, "Keep related choices together", 118.0)
+    // The fieldset draws its frame; a padded column over it holds the choices.
+    area := Layout.Stack(session, Layout.Props.{.bounds = .{height = 188}})
+    if area.opened {
+        Fieldset.Draw(session, Fieldset.Props.{.bounds = area.bounds, .title = "Preferences"})
+        inside := Layout.Draw(session, Layout.Props.{.padding = Layout.Gap(.ThemeMetricSpace6), .padding_override = true})
+        if inside.opened {
+            Text.Draw(session, Text.Props.{.bounds = .{height = 38}, .text = "Keep related choices together"})
+            unused End(session)
+        }
+        unused End(session)
+    }
+    unused End(session)
     return 0
 }
 

@@ -5,6 +5,8 @@
 Box :: #import "kryon/box";
 Separator :: #import "kryon/separator";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/drawing_props"
 #import "kryon/system_theme"
 #import "std/number_text"
@@ -42,24 +44,27 @@ GalleryBounds :: (bounds: Rectangle) -> Rectangle {
     return bounds
 }
 
-Label :: (session: Session, value: string, y: float32 = 76.0) {
-    Text.Draw(session, Text.Props.{.bounds = GalleryBounds(Rectangle.{28.0, y, 420.0, 38.0}), .text = value})
-}
-
-b: Rectangle;
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Separator and Bullet", .size = 23})
-    b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Separator and Bullet", .size = 23})
     disabled := example_input.disabled
 
-    Separator.Draw(session, Separator.Props.{.bounds = b, .label = "or continue", .disabled = disabled})
-    Separator.Bullet(session, GalleryBounds(Rectangle.{28.0, 142.0, 16.0, 16.0}))
-    Label(session, "A clear dividing line", 168.0)
+    Separator.Draw(session, Separator.Props.{.bounds = .{height = 44}, .label = "or continue", .disabled = disabled})
+    row := Layout.Row(session, Layout.Props.{.gap = Layout.Gap(.ThemeMetricSpace2), .gap_override = true})
+    if row.opened {
+        dot := Layout.Stack(session, Layout.Props.{.bounds = .{width = 16, height = 16}})
+        if dot.opened { Separator.Bullet(session, dot.bounds); unused End(session) }
+        Text.Draw(session, Text.Props.{.bounds = .{height = 16}, .text = "A clear dividing line"})
+        unused End(session)
+    }
+    unused End(session)
     return 0
 }
 

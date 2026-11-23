@@ -5,6 +5,8 @@
 Box :: #import "kryon/box";
 Press :: #import "kryon/press";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/drawing_props"
 #import "kryon/text_align"
 #import "kryon/system_theme"
@@ -45,25 +47,29 @@ GalleryBounds :: (bounds: Rectangle) -> Rectangle {
 
 clicks: s32;
 
-Label :: (session: Session, value: string, y: float32 = 76.0) {
-    Text.Draw(session, Text.Props.{.bounds = GalleryBounds(Rectangle.{28.0, y, 420.0, 38.0}), .text = value})
-}
-
-b: Rectangle;
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Press", .size = 23})
-    b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Press", .size = 23})
     disabled := example_input.disabled
 
-    Box.Draw(session, Box.Props.{.bounds = b, .fill = StyleTokenColor("surface"), .border = StyleTokenColor("border"), .radius = 6.0})
-    Text.Draw(session, Text.Props.{.bounds = b, .text = "Press this area", .align = TextAlign.TextAlignCenter})
-    if Press.Draw(session, Press.Props.{.bounds = b, .label = "Press and hold", .disabled = disabled}).clicked { clicks += 1 }
-    Label(session, "Press is an invisible interaction area", 128.0)
+    // A stack lays its children over each other: a surface, its caption and
+    // the invisible press target, all on the area it was placed at.
+    area := Layout.Stack(session, Layout.Props.{.bounds = .{height = 44}})
+    if area.opened {
+        Box.Draw(session, Box.Props.{.bounds = area.bounds, .fill = StyleTokenColor("surface"), .border = StyleTokenColor("border"), .radius = 6.0})
+        Text.Draw(session, Text.Props.{.bounds = area.bounds, .text = "Press this area", .align = TextAlign.TextAlignCenter})
+        if Press.Draw(session, Press.Props.{.bounds = area.bounds, .label = "Press and hold", .disabled = disabled}).clicked { clicks += 1 }
+        unused End(session)
+    }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 38}, .text = "Press is an invisible interaction area"})
+    unused End(session)
     return 0
 }
 
