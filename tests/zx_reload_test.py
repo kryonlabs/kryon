@@ -7,7 +7,7 @@ import subprocess
 import sys
 import time
 
-from toolchain import ROOT, ZIRAN
+from toolchain import ROOT, ZIRAN, kryon_test_project
 
 OUTPUT = ROOT / 'build/zx-reload-test'
 
@@ -76,15 +76,25 @@ def main():
     environment = {k: v for k, v in os.environ.items() if k not in
                    ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS')}
     environment['YUE_DESKTOP_RECOVERY'] = '0'
+    # Watching replaces a frame bundle's release; a console program bundle runs
+    # once by design, so the fixtures export Frame through Kryon's zx_run host.
+    guest = OUTPUT / 'app-project'
+    package_id = kryon_test_project(guest)
+    app = guest / 'src'
     for name in ('one', 'two'):
-        source = OUTPUT / (name + '.zi')
-        source.write_text('started: bool;\n#program_export\nmain :: () -> s32 {\n'
+        source = app / (name + '.zi')
+        source.write_text('#import "kryon/geometry"\n#import "kryon/session"\n'
+                          'started: bool;\n#program_export\n'
+                          'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
                           f' if !started {{ print("module {name}\\n"); started = true }}\n return 0\n}}\n')
         assets = OUTPUT / ('assets-' + name)
         assets.mkdir(exist_ok=True)
         (assets / 'version.txt').write_text(name)
-        run([ZIRAN, 'bundle', '--root', OUTPUT, '--entry', name + ':main',
-             '--asset-dir', 'assets=' + str(assets), '-o', OUTPUT / (name + '.zx'), source], env=environment)
+        run([ZIRAN, 'bundle', '--project', '--bind',
+             f'{package_id}_frame_entry:ProjectFrame={name}:Frame', '--root', str(app),
+             '--entry', f'{package_id}_zx_run:main',
+             '--asset-dir', 'assets=' + str(assets), '-o', OUTPUT / (name + '.zx'),
+             ROOT / 'src/backend/zx_run.zi', source], cwd=guest, env=environment)
     (OUTPUT / 'broken.zx').write_bytes(b'ZX\0\0')
     unsupported = OUTPUT / 'unsupported.zi'
     unsupported.write_text('host_api :: #system_library "host_api";\n'
