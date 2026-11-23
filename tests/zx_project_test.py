@@ -130,6 +130,9 @@ backend = "desktop"
     (project / "ziran.local.toml").write_text(local_overrides)
     (project / "assets").mkdir(exist_ok=True)
     solid_png(project / "assets/red.png", 32, 32, (230, 30, 40, 255))
+    # The project is written fresh each run: a lock left by an earlier
+    # toolchain would hold checked packages this toolchain refuses.
+    (project / "ziran.lock").unlink(missing_ok=True)
     run([ZIRAN, "lock"], project, env)
     run([ZIRAN, "tool", "kryon", "build", "portable"], project, env)
     bundle = project / "build/zx_probe-portable.zx"

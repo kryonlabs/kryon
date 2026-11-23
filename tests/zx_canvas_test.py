@@ -54,6 +54,9 @@ def run(command):
     subprocess.run(list(map(str, command)), cwd=project, env=env, check=True, timeout=300)
 
 
+# The project is written fresh each run: a lock left by an earlier
+# toolchain would hold checked packages this toolchain refuses.
+(project / 'ziran.lock').unlink(missing_ok=True)
 run([ZIRAN, 'lock'])
 for profile in ('portable', 'web'):
     run([ZIRAN, 'tool', 'kryon', 'build', '--profile', profile])

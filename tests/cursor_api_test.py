@@ -241,6 +241,9 @@ backend = "canvas"
 assets = "assets"
 '''))
     (OUTPUT/'ziran.local.toml').write_text(kryon_only(f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n'))
+    # The project is written fresh each run: a lock left by an earlier
+    # toolchain would hold checked packages this toolchain refuses.
+    (OUTPUT/'ziran.lock').unlink(missing_ok=True)
     run([ZIRAN,'lock'],OUTPUT)
     for profile in ('desktop','web'):
         run([ZIRAN,'tool','kryon','check','--profile',profile],OUTPUT)

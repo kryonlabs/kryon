@@ -122,6 +122,9 @@ codegen = "zx"
     for key in ['DISPLAY','WAYLAND_DISPLAY','XAUTHORITY','DBUS_SESSION_BUS_ADDRESS','SESSION_MANAGER']: env.pop(key,None)
     env['YUE_DESKTOP_RECOVERY'] = '0'
     subprocess.run(['make','zx-player'],cwd=ROOT,env=env,check=True)
+    # The project is written fresh each run: a lock left by an earlier
+    # toolchain would hold checked packages this toolchain refuses.
+    (OUTPUT/'ziran.lock').unlink(missing_ok=True)
     subprocess.run([str(ZIRAN),'lock'],cwd=OUTPUT,env=env,check=True)
     for mode, profile in [('native','desktop'),('portable','portable')]:
         subprocess.run([str(ZIRAN),'tool','kryon','build','--profile',profile],cwd=OUTPUT,env=env,check=True)
