@@ -36,9 +36,11 @@ BeginFrame :: (session: Session, screen_key: u64,
     slot := SessionIndex(session)
     pointer := PointerSample(session)
     secondary := SecondaryPointerSample(session)
+    tertiary := TertiaryPointerSample(session)
     same_owner := frame_owners[slot].slot == session.slot && frame_owners[slot].epoch == session.epoch
     frame_input_changed = SessionFlagSet(frame_input_changed, slot, !same_owner || pointer.down || pointer.pressed || pointer.released ||
         secondary.down || secondary.pressed || secondary.released ||
+        tertiary.down || tertiary.pressed || tertiary.released ||
         pointer.x != frame_pointer[slot].x || pointer.y != frame_pointer[slot].y ||
         active_key[slot] != 0 || active_codepoints[slot].count > 0 || active_wheel[slot].delta != 0.0 ||
         active_modifiers[slot] != frame_modifiers[slot])

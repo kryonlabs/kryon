@@ -47,6 +47,9 @@ FrameInputProviderGather :: (provider: *FrameInputProvider, raw: FrameInputSnaps
         sample.secondary.down = false
         sample.secondary.pressed = false
         sample.secondary.released = previous.secondary.down || sample.secondary.released
+        sample.tertiary.down = false
+        sample.tertiary.pressed = false
+        sample.tertiary.released = previous.tertiary.down || sample.tertiary.released
     }
     suppress := provider.focus_lost || (previous.available && !previous.focused)
     for key: cast(s32)1..511 {

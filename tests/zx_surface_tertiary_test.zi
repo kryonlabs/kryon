@@ -1,0 +1,123 @@
+Surface :: #import "kryon/host/surface";
+Box :: #import "kryon/box";
+#import "kryon/session"
+#import "kryon/geometry"
+#import "kryon/frame_snapshot"
+#import "kryon/input_protocol"
+#import "input_delivery"
+#import "kryon/tree"
+#import "kryon/tree_draw"
+#import "kryon/tree_input"
+
+Bounds :: Rectangle.{4.0, 4.0, 88.0, 88.0}
+pixels: [96 * 96]u32;
+sample: FrameInputSnapshot;
+primary: PointerFrame;
+secondary: SecondaryPointerFrame;
+tertiary: TertiaryPointerFrame;
+
+Draw :: (frame: Surface.Frame) {
+    session: Session = .{frame.slot, frame.epoch}
+    sample = CaptureFrameInput(session)
+    primary = PointerSample(session)
+    secondary = SecondaryPointerSample(session)
+    tertiary = TertiaryPointerSample(session)
+    unused Box.Draw(session, .{.key = 1, .bounds = Bounds, .fill = .{240, 240, 240, 255}})
+}
+
+Render :: (session: Session, input: FrameInputSnapshot) -> bool {
+    return Surface.SurfaceFrame(session, Draw, 96, 96, input, pixels[:])
+}
+
+// Children and widgets read the state the frame carried, so a render marks the
+// middle sample consumed in the same way the loop does before the next event.
+Advance :: (input: *FrameInputSnapshot) {
+    input.pointer.pressed = false
+    input.pointer.released = false
+    input.secondary.pressed = false
+    input.secondary.released = false
+    input.tertiary.pressed = false
+    input.tertiary.released = false
+}
+
+PrimaryIs :: (down: bool, pressed: bool, released: bool) -> bool {
+    return primary.down == down && primary.pressed == pressed && primary.released == released
+}
+
+SecondaryIs :: (down: bool, pressed: bool, released: bool) -> bool {
+    return secondary.down == down && secondary.pressed == pressed && secondary.released == released
+}
+
+TertiaryIs :: (down: bool, pressed: bool, released: bool) -> bool {
+    return tertiary.down == down && tertiary.pressed == pressed && tertiary.released == released
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    if !SessionValid(session) { return 1 }
+    defer { unused CloseSession(session) }
+    input: FrameInputSnapshot = .{.available = true, .focused = true}
+    queue: InputDelivery
+    if !Render(session, input) { return 2 }
+    if !PrimaryIs(false, false, false) || !SecondaryIs(false, false, false) ||
+        !TertiaryIs(false, false, false) { return 3 }
+
+    // A middle press reaches the tertiary sample, at the point it landed.
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.ButtonDown, .x = 31, .y = 47, .button = 2})
+    if !input.tertiary.pressed || !input.tertiary.down || input.tertiary.released { return 4 }
+    if input.pointer.down || input.pointer.pressed || input.secondary.down || input.secondary.pressed { return 5 }
+    if !Render(session, input) { return 6 }
+    if !TertiaryIs(true, true, false) { return 7 }
+    if sample.tertiary.down != true || sample.tertiary.pressed != true { return 8 }
+    if !PrimaryIs(false, false, false) || !SecondaryIs(false, false, false) { return 9 }
+    if primary.x != 31.0 || primary.y != 47.0 { return 10 }
+    Advance(*input)
+
+    // Held: it stays down without pressing again.
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.PointerMoved, .x = 44, .y = 52})
+    if !Render(session, input) { return 11 }
+    if !TertiaryIs(true, false, false) { return 12 }
+    if !PrimaryIs(false, false, false) || primary.x != 44.0 || primary.y != 52.0 { return 13 }
+    Advance(*input)
+
+    // Releasing the middle button reaches the same sample.
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.ButtonUp, .x = 44, .y = 52, .button = 2})
+    if input.tertiary.down || !input.tertiary.released || input.tertiary.pressed { return 14 }
+    if !Render(session, input) { return 15 }
+    if !TertiaryIs(false, false, true) { return 16 }
+    if !PrimaryIs(false, false, false) || !SecondaryIs(false, false, false) { return 17 }
+    Advance(*input)
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.PointerMoved, .x = 44, .y = 52})
+    if !Render(session, input) { return 18 }
+    if !TertiaryIs(false, false, false) { return 19 }
+    Advance(*input)
+
+    // Button 1 still produces only a primary sample.
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.ButtonDown, .x = 20, .y = 24, .button = 1})
+    if !input.pointer.pressed || !input.pointer.down || input.pointer.released { return 20 }
+    if input.secondary.down || input.secondary.pressed || input.tertiary.down || input.tertiary.pressed { return 21 }
+    if !Render(session, input) { return 22 }
+    if !PrimaryIs(true, true, false) || !SecondaryIs(false, false, false) || !TertiaryIs(false, false, false) { return 23 }
+    Advance(*input)
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.ButtonUp, .x = 20, .y = 24, .button = 1})
+    if !input.pointer.released || input.pointer.down || input.pointer.pressed { return 24 }
+    if !Render(session, input) { return 25 }
+    if !PrimaryIs(false, false, true) || !SecondaryIs(false, false, false) || !TertiaryIs(false, false, false) { return 26 }
+    Advance(*input)
+
+    // Button 3 still produces only a secondary sample.
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.ButtonDown, .x = 71, .y = 66, .button = 3})
+    if !input.secondary.pressed || !input.secondary.down || input.secondary.released { return 27 }
+    if input.pointer.down || input.pointer.pressed || input.tertiary.down || input.tertiary.pressed { return 28 }
+    if !Render(session, input) { return 29 }
+    if !SecondaryIs(true, true, false) || !PrimaryIs(false, false, false) || !TertiaryIs(false, false, false) { return 30 }
+    Advance(*input)
+    Surface.SurfaceInput(*input, *queue, .{.kind = Surface.ButtonUp, .x = 71, .y = 66, .button = 3})
+    if !input.secondary.released || input.secondary.down || input.secondary.pressed { return 31 }
+    if !Render(session, input) { return 32 }
+    if !SecondaryIs(false, false, true) || !PrimaryIs(false, false, false) || !TertiaryIs(false, false, false) { return 33 }
+
+    print("Surface middle button: press, hold and release reach the tertiary sample; buttons 1 and 3 stay primary and secondary\n")
+    return 0
+}

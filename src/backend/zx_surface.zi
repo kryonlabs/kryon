@@ -96,6 +96,10 @@ SurfaceInput :: (input: *FrameInputSnapshot, queue: *InputDelivery, event: Surfa
                 input.secondary.pressed = down && !input.secondary.down
                 input.secondary.released = !down && input.secondary.down
                 input.secondary.down = down
+            } else if event.button == 2 {
+                input.tertiary.pressed = down && !input.tertiary.down
+                input.tertiary.released = !down && input.tertiary.down
+                input.tertiary.down = down
             }
         }
     } else if event.kind == KeyDown || event.kind == KeyUp {
@@ -315,6 +319,7 @@ SurfaceBeginInput :: (session: Session, input: FrameInputSnapshot) -> bool {
     if !FrameInputBegin(session, input) { return false }
     unused TreePointerUpdate(session, input.pointer)
     TreeSecondaryPointerUpdate(session, input.secondary)
+    TreeTertiaryPointerUpdate(session, input.tertiary)
     PointerWheelSend(session, input.pointer.x, input.pointer.y, input.wheel)
     if input.wheel != 0.0 { PointerWheelShare(session) }
     ScrollSampleBegin(session, .{input.pointer.x, input.pointer.y}, input.pointer.pressed,
@@ -507,6 +512,8 @@ SurfaceLoop :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRende
             input.pointer.released = false
             input.secondary.pressed = false
             input.secondary.released = false
+            input.tertiary.pressed = false
+            input.tertiary.released = false
             if (event.kind == KeyDown || event.kind == KeyUp) &&
                 event.key > 0 && event.key < cast(s32)input.keys.count {
                 input.keys[event.key] &= cast(u8)FrameKeyHeld

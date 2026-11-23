@@ -106,15 +106,49 @@ WidgetValidSecondaryPointerFrame :: (value: HostValue) -> bool {
     return true
 }
 
+WidgetTypeTertiaryPointerFrame :: "input_protocol.TertiaryPointerFrame"
+WidgetSliceTypeTertiaryPointerFrame :: "[]input_protocol.TertiaryPointerFrame"
+
+WidgetTertiaryPointerFrameCodec :: struct {
+    fields: [3]HostField
+}
+
+WidgetEncodeTertiaryPointerFrame :: (data: TertiaryPointerFrame, codec: *WidgetTertiaryPointerFrameCodec) -> HostValue {
+    value := HostRecordValue("input_protocol.TertiaryPointerFrame", codec.fields[:])
+    codec.fields[0] = HostField.{.name = HostTextData("down"), .value = HostScalar("bool", ifx data.down then 1 else 0)}
+    codec.fields[1] = HostField.{.name = HostTextData("pressed"), .value = HostScalar("bool", ifx data.pressed then 1 else 0)}
+    codec.fields[2] = HostField.{.name = HostTextData("released"), .value = HostScalar("bool", ifx data.released then 1 else 0)}
+    return value
+}
+
+WidgetDecodeTertiaryPointerFrame :: (value: HostValue, codec: *WidgetTertiaryPointerFrameCodec) -> TertiaryPointerFrame {
+    data: TertiaryPointerFrame
+    unused codec
+    zero: HostValue
+    data.down = HostFieldValue(*value, 0, "down", *zero).integer != 0
+    data.pressed = HostFieldValue(*value, 1, "pressed", *zero).integer != 0
+    data.released = HostFieldValue(*value, 2, "released", *zero).integer != 0
+    return data
+}
+
+WidgetValidTertiaryPointerFrame :: (value: HostValue) -> bool {
+    if !HostRecordValid(*value, "input_protocol.TertiaryPointerFrame") { return false }
+    if !HostFieldScalarValid(*value, 0, "down", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 1, "pressed", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 2, "released", "bool", cast(s32)HostInteger) { return false }
+    return true
+}
+
 WidgetTypeFrameInputSnapshot :: "input_protocol.FrameInputSnapshot"
 WidgetSliceTypeFrameInputSnapshot :: "[]input_protocol.FrameInputSnapshot"
 
-// Widget codec schema: ["FrameInputSnapshot",[["available","bool"],["keys","[512]u8"],["pointer","PointerFrame"],["secondary","SecondaryPointerFrame"],["focused","bool"],["modifiers","s32"],["wheel","float32"],["elapsed_ms","s64"],["delta_ms","s64"],["sequence","u64"]]]
+// Widget codec schema: ["FrameInputSnapshot",[["available","bool"],["keys","[512]u8"],["pointer","PointerFrame"],["secondary","SecondaryPointerFrame"],["tertiary","TertiaryPointerFrame"],["focused","bool"],["modifiers","s32"],["wheel","float32"],["elapsed_ms","s64"],["delta_ms","s64"],["sequence","u64"]]]
 WidgetFrameInputSnapshotCodec :: struct {
-    fields: [10]HostField
+    fields: [11]HostField
     keys_values: [512]HostValue
     pointer: WidgetPointerFrameCodec
     secondary: WidgetSecondaryPointerFrameCodec
+    tertiary: WidgetTertiaryPointerFrameCodec
 }
 
 WidgetEncodeFrameInputSnapshot :: (data: FrameInputSnapshot, codec: *WidgetFrameInputSnapshotCodec) -> HostValue {
@@ -137,12 +171,14 @@ WidgetEncodeFrameInputSnapshot :: (data: FrameInputSnapshot, codec: *WidgetFrame
     codec.fields[2].value = WidgetEncodePointerFrame(data.pointer, *codec.pointer)
     codec.fields[3].name = HostTextData("secondary")
     codec.fields[3].value = WidgetEncodeSecondaryPointerFrame(data.secondary, *codec.secondary)
-    codec.fields[4] = HostField.{.name = HostTextData("focused"), .value = HostScalar("bool", ifx data.focused then 1 else 0)}
-    codec.fields[5] = HostField.{.name = HostTextData("modifiers"), .value = HostScalar("s32", cast(s64)data.modifiers)}
-    codec.fields[6] = HostField.{.name = HostTextData("wheel"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.wheel}}
-    codec.fields[7] = HostField.{.name = HostTextData("elapsed_ms"), .value = HostScalar("s64", cast(s64)data.elapsed_ms)}
-    codec.fields[8] = HostField.{.name = HostTextData("delta_ms"), .value = HostScalar("s64", cast(s64)data.delta_ms)}
-    codec.fields[9] = HostField.{.name = HostTextData("sequence"), .value = HostScalar("u64", cast(s64)data.sequence)}
+    codec.fields[4].name = HostTextData("tertiary")
+    codec.fields[4].value = WidgetEncodeTertiaryPointerFrame(data.tertiary, *codec.tertiary)
+    codec.fields[5] = HostField.{.name = HostTextData("focused"), .value = HostScalar("bool", ifx data.focused then 1 else 0)}
+    codec.fields[6] = HostField.{.name = HostTextData("modifiers"), .value = HostScalar("s32", cast(s64)data.modifiers)}
+    codec.fields[7] = HostField.{.name = HostTextData("wheel"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.wheel}}
+    codec.fields[8] = HostField.{.name = HostTextData("elapsed_ms"), .value = HostScalar("s64", cast(s64)data.elapsed_ms)}
+    codec.fields[9] = HostField.{.name = HostTextData("delta_ms"), .value = HostScalar("s64", cast(s64)data.delta_ms)}
+    codec.fields[10] = HostField.{.name = HostTextData("sequence"), .value = HostScalar("u64", cast(s64)data.sequence)}
     return value
 }
 

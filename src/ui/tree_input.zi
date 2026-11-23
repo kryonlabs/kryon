@@ -65,6 +65,7 @@ PointerDrag :: struct {
 active_pointer: [9]PointerState;
 active_sample: [9]PointerFrame;
 active_secondary: [9]SecondaryPointerFrame;
+active_tertiary: [9]TertiaryPointerFrame;
 active_key: [9]s32;
 active_dismissal: [9]u64;
 active_escape_captured: u32;
@@ -98,6 +99,7 @@ InputSnapshot :: struct {
     pointer: PointerState
     sample: PointerFrame
     secondary: SecondaryPointerFrame
+    tertiary: TertiaryPointerFrame
     key: s32
     dismissal: u64
     escape_captured: bool
@@ -117,6 +119,7 @@ TreeInputSuspend :: (session: Session) -> InputSnapshot {
     snapshot.pointer = active_pointer[slot]
     snapshot.sample = active_sample[slot]
     snapshot.secondary = active_secondary[slot]
+    snapshot.tertiary = active_tertiary[slot]
     snapshot.key = active_key[slot]
     snapshot.dismissal = active_dismissal[slot]
     snapshot.escape_captured = SessionFlagGet(active_escape_captured, slot)
@@ -128,6 +131,7 @@ TreeInputSuspend :: (session: Session) -> InputSnapshot {
     active_pointer[slot] = PointerState.{}
     active_sample[slot] = PointerFrame.{-1.0, -1.0, false, false, false}
     active_secondary[slot] = SecondaryPointerFrame.{}
+    active_tertiary[slot] = TertiaryPointerFrame.{}
     active_key[slot] = 0
     active_dismissal[slot] = 0
     active_escape_captured = SessionFlagSet(active_escape_captured, slot, false)
@@ -147,6 +151,7 @@ TreeInputResume :: (session: Session, snapshot: InputSnapshot) -> bool {
     active_pointer[slot] = snapshot.pointer
     active_sample[slot] = snapshot.sample
     active_secondary[slot] = snapshot.secondary
+    active_tertiary[slot] = snapshot.tertiary
     active_key[slot] = snapshot.key
     active_dismissal[slot] = snapshot.dismissal
     active_escape_captured = SessionFlagSet(active_escape_captured, slot, snapshot.escape_captured)
@@ -254,6 +259,20 @@ SecondaryPointerSample :: (session: Session) -> SecondaryPointerFrame {
     empty: SecondaryPointerFrame
     if !SessionValid(session) { return empty }
     return active_secondary[SessionIndex(session)]
+}
+
+#program_export
+TreeTertiaryPointerUpdate :: (session: Session, frame: TertiaryPointerFrame) {
+    if !SessionValid(session) { return }
+    active_tertiary[SessionIndex(session)] = frame
+}
+
+// This frame's state of the middle button.
+#program_export
+TertiaryPointerSample :: (session: Session) -> TertiaryPointerFrame {
+    empty: TertiaryPointerFrame
+    if !SessionValid(session) { return empty }
+    return active_tertiary[SessionIndex(session)]
 }
 
 #program_export
@@ -892,10 +911,12 @@ TreeInputReset :: (session: Session) {
     pointer: PointerState
     sample: PointerFrame
     secondary: SecondaryPointerFrame
+    tertiary: TertiaryPointerFrame
     wheel: PointerWheelState
     active_pointer[session.slot] = pointer
     active_sample[session.slot] = sample
     active_secondary[session.slot] = secondary
+    active_tertiary[session.slot] = tertiary
     active_wheel[session.slot] = wheel
     active_key[session.slot] = 0
     active_dismissal[session.slot] = 0

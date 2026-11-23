@@ -7,6 +7,13 @@ SecondaryPointerFrame :: struct {
     released: bool
 }
 
+// The middle button, reported beside the secondary one.
+TertiaryPointerFrame :: struct {
+    down: bool
+    pressed: bool
+    released: bool
+}
+
 PointerFrame :: struct {
     x: float32
     y: float32
@@ -57,6 +64,7 @@ FrameInputSnapshot :: struct {
     keys: [512]u8
     pointer: PointerFrame
     secondary: SecondaryPointerFrame
+    tertiary: TertiaryPointerFrame
     focused: bool
     modifiers: s32
     wheel: float32

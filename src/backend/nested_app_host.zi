@@ -100,6 +100,7 @@ ChildWidgets :: (context: *void, module: *u8, function: *u8,
         if !PointInBounds(snapshot.pointer.x, snapshot.pointer.y, app.bounds) {
             snapshot.pointer = .{.x = -1.0, .y = -1.0}
             snapshot.secondary = .{}
+            snapshot.tertiary = .{}
             snapshot.wheel = 0.0
         }
         result.* = WidgetEncodeFrameInputSnapshot(snapshot, *child_snapshot_codec)
