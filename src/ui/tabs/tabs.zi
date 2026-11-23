@@ -185,6 +185,43 @@ Theme :: #import "theme";
         return TabBarTotalWidth(total, (cast(s32)tabs.count), metrics.gap)
     }
 
+    TabBarFit :: struct {
+        metrics: TabBarMetrics
+        font: s32
+    }
+
+    // Tabs wider than WIDTH shrink to fit it in one row: their padding first,
+    // down to half the style's, then their label size, down to four fifths of
+    // it. A row that still does not fit keeps that floor and scrolls.
+    #program_export
+    TabBarFitFor :: (tabs: []Tab, metrics: TabBarMetrics, font: s32,
+        typeface: string, width: float32) -> TabBarFit {
+        fit: TabBarFit = .{metrics, font}
+        count := cast(s32)tabs.count
+        padding_floor := metrics.label_padding / 2
+        font_floor := font * 4 / 5
+        fit.metrics.min_width = padding_floor
+        fit.metrics.label_padding = padding_floor
+        fit.font = font_floor
+        if count <= 0 { return fit }
+        size := font
+        while size >= font_floor {
+            used := metrics.gap * (count - 1)
+            for tab: tabs {
+                if tab.label != "" { used += GlyphWidth(tab.label, size, typeface) }
+                if tab.closeable { used += metrics.close_width }
+            }
+            padding := (cast(s32)width - used) / count
+            if padding >= padding_floor {
+                fit.metrics.label_padding = ifx padding < metrics.label_padding then padding else metrics.label_padding
+                fit.font = size
+                return fit
+            }
+            size -= 1
+        }
+        return fit
+    }
+
     #program_export
     TabBarBoundsAt :: (bounds: Rectangle, tabs: []Tab,
         index: s32, metrics: TabBarMetrics,
@@ -399,6 +436,12 @@ Theme :: #import "theme";
             StyleKindTab(), false, props.disabled, false)
         total_width: s32 = TabBarTotalWidthFor(tabs, metrics,
             font, tab_face.value.typeface)
+        if props.fit && !vertical && cast(float32)total_width > bounds.width {
+            fitted := TabBarFitFor(tabs, metrics, font, tab_face.value.typeface, bounds.width)
+            metrics = fitted.metrics
+            font = fitted.font
+            total_width = TabBarTotalWidthFor(tabs, metrics, font, tab_face.value.typeface)
+        }
         if vertical {
             total_width = TabBarTotalWidth(tab_extent *
                 (cast(s32)tabs.count), (cast(s32)tabs.count), metrics.gap)

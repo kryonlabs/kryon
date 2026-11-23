@@ -1,6 +1,7 @@
 #import "session"
 #import "widget_test_session"
 
+#import "font_metrics"
 #import "geometry"
 #import "scroll_device"
 #import "semantic"
@@ -275,6 +276,50 @@ Swipe :: () -> s32 {
     return 0
 }
 
+// A fitting row stays one line on narrow phones: Breeze's practice tabs on
+// 320, 360 and 412 dp screens, at two scales, show every tab whole, without
+// scrolling and at the bar's full height.
+Fit :: () -> s32 {
+    row: [4]TabBar.Tab = .[TabBar.Tab.{.label = "Meditation"}, TabBar.Tab.{.label = "Yoga"},
+        TabBar.Tab.{.label = "Martial arts"}, TabBar.Tab.{.label = "Workout"}]
+    widths: [3]float32 = .[240.0, 280.0, 332.0]
+    scales: [2]float32 = .[1.0, 1.25]
+    for scale: scales {
+        for width: widths {
+            props: TabBar.Props
+            props.key = cast(u64)950
+            props.bounds = Rectangle.{12.0, 2.0, width, 44.0}
+            props.content_sized = true
+            props.fit = true
+            props.scale = scale
+            props.min_tab_width = cast(s32)(72.0 * scale)
+            props.max_tab_width = cast(s32)(220.0 * scale)
+            TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, width + 80.0, 100.0})
+            bar := TabBar.Draw(TestSession(), props, row[:])
+            if !TreeFinish(TestSession()) || bar.scroll_offset != 0 { return 51 }
+            metrics := TabBar.TabBarMetricsFor(props)
+            fitted := TabBar.TabBarFitFor(row[:], metrics, TabBar.TabBarFontFor(props), "", width)
+            if fitted.font < TabBar.TabBarFontFor(props) * 4 / 5 { return 52 }
+            seen: s32 = 0
+            index: s32 = 0
+            while index < TreeCount(TestSession()) {
+                node := TreeNodeAt(TestSession(), index)
+                for tab: row {
+                    if node.semantic_label != tab.label { continue }
+                    seen += 1
+                    right := node.bounds.x + node.bounds.width
+                    if node.bounds.x < 12.0 || right > 12.0 + width + 0.5 ||
+                    node.bounds.y != 2.0 || node.bounds.height != 44.0 { return 53 }
+                    if node.bounds.width < cast(float32)GlyphWidth(tab.label, fitted.font, "") { return 54 }
+                }
+                index += 1
+            }
+            if seen != 4 { return 55 }
+        }
+    }
+    return 0
+}
+
 // A nonzero, narrow viewport forces Home to unsubmit the old last tab.
 RetainedFrame :: (props: TabBar.Props, tabs: []TabBar.Tab) -> TabBar.Result {
     TreeStart(TestSession(), cast(u64)987, Rectangle.{240.0, 120.0, 240.0, 120.0})
@@ -386,5 +431,7 @@ main :: () -> s32 {
     }
     swipe := Swipe()
     if swipe != 0 { return swipe }
+    fit := Fit()
+    if fit != 0 { return fit }
     return RetainedFocus()
 }

@@ -30,6 +30,8 @@ same Kryon as the app, or both get linked. Then:
 
 ## Unreleased
 
+- `TabBar.Props.fit` keeps a horizontal tab row on one line: tabs that would scroll first lose padding, down to half the style's, then label size, down to four fifths of it (`TabBarFitFor`); only a row still too wide at that floor scrolls. The bar's height and tap area stay. The widget test checks a four-tab row at 320, 360 and 412 dp widths and two scales.
+
 - Android GLES presentation stays on GLES when a smaller picture uploads after a larger one: the presenter's staging buffer keeps its capacity instead of refusing the smaller image and dropping the window to software Pixmap. A GPU image quad whose source passes the image edge by float rounding alone (within 1/256 texel) snaps to the edge instead of taking the per-pixel path. `android_egl_composition_test` covers both.
 
 - glTF loading decodes only the images that material texture slots sample. Others, such as a VRM thumbnail or an extension's maps, stay encoded until `GltfDecodeImage(model, index, base_dir)` asks for them, and an unreadable one no longer fails the model. A practice VRM figure decodes about half as many pixels.

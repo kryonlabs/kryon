@@ -1819,9 +1819,9 @@ WidgetValidTabBarInput :: (value: HostValue) -> bool {
 WidgetTypeTabBarProps :: "tab_bar_props.Props"
 WidgetSliceTypeTabBarProps :: "[]tab_bar_props.Props"
 
-// Widget codec schema: ["TabBarProps",[["key","u64"],["bounds","Rectangle"],["placement","TabBarPlacement"],["class_name","s32"],["selected_index","s32"],["min_tab_width","s32"],["max_tab_width","s32"],["scroll_offset","s32"],["content_sized","bool"],["focus_selected","bool"],["drag_from","s32"],["dragging","bool"],["last_clicked_index","s32"],["last_clicked_at","float32"],["last_click_valid","bool"],["scale","float32"],["id","s32"],["disabled","bool"],["reorder_enabled","bool"],["input","TabBarInput"],["motion","*TransitionMotionState"],["now","float64"],["reduced_motion","bool"]]]
+// Widget codec schema: ["TabBarProps",[["key","u64"],["bounds","Rectangle"],["placement","TabBarPlacement"],["class_name","s32"],["selected_index","s32"],["min_tab_width","s32"],["max_tab_width","s32"],["scroll_offset","s32"],["content_sized","bool"],["fit","bool"],["focus_selected","bool"],["drag_from","s32"],["dragging","bool"],["last_clicked_index","s32"],["last_clicked_at","float32"],["last_click_valid","bool"],["scale","float32"],["id","s32"],["disabled","bool"],["reorder_enabled","bool"],["input","TabBarInput"],["motion","*TransitionMotionState"],["now","float64"],["reduced_motion","bool"]]]
 WidgetTabBarPropsCodec :: struct {
-    fields: [23]HostField
+    fields: [24]HostField
     bounds: WidgetRectangleCodec
     input: WidgetTabBarInputCodec
 }
@@ -1838,20 +1838,21 @@ WidgetDecodeTabBarProps :: (value: HostValue, codec: *WidgetTabBarPropsCodec) ->
     data.max_tab_width = cast(s32)HostFieldValue(*value, 6, "max_tab_width", *zero).integer
     data.scroll_offset = cast(s32)HostFieldValue(*value, 7, "scroll_offset", *zero).integer
     data.content_sized = HostFieldValue(*value, 8, "content_sized", *zero).integer != 0
-    data.focus_selected = HostFieldValue(*value, 9, "focus_selected", *zero).integer != 0
-    data.drag_from = cast(s32)HostFieldValue(*value, 10, "drag_from", *zero).integer
-    data.dragging = HostFieldValue(*value, 11, "dragging", *zero).integer != 0
-    data.last_clicked_index = cast(s32)HostFieldValue(*value, 12, "last_clicked_index", *zero).integer
-    data.last_clicked_at = cast(float32)HostFieldValue(*value, 13, "last_clicked_at", *zero).real
-    data.last_click_valid = HostFieldValue(*value, 14, "last_click_valid", *zero).integer != 0
-    data.scale = cast(float32)HostFieldValue(*value, 15, "scale", *zero).real
-    data.id = cast(s32)HostFieldValue(*value, 16, "id", *zero).integer
-    data.disabled = HostFieldValue(*value, 17, "disabled", *zero).integer != 0
-    data.reorder_enabled = HostFieldValue(*value, 18, "reorder_enabled", *zero).integer != 0
-    data.input = WidgetDecodeTabBarInput(HostFieldValue(*value, 19, "input", *zero).*, *codec.input)
+    data.fit = HostFieldValue(*value, 9, "fit", *zero).integer != 0
+    data.focus_selected = HostFieldValue(*value, 10, "focus_selected", *zero).integer != 0
+    data.drag_from = cast(s32)HostFieldValue(*value, 11, "drag_from", *zero).integer
+    data.dragging = HostFieldValue(*value, 12, "dragging", *zero).integer != 0
+    data.last_clicked_index = cast(s32)HostFieldValue(*value, 13, "last_clicked_index", *zero).integer
+    data.last_clicked_at = cast(float32)HostFieldValue(*value, 14, "last_clicked_at", *zero).real
+    data.last_click_valid = HostFieldValue(*value, 15, "last_click_valid", *zero).integer != 0
+    data.scale = cast(float32)HostFieldValue(*value, 16, "scale", *zero).real
+    data.id = cast(s32)HostFieldValue(*value, 17, "id", *zero).integer
+    data.disabled = HostFieldValue(*value, 18, "disabled", *zero).integer != 0
+    data.reorder_enabled = HostFieldValue(*value, 19, "reorder_enabled", *zero).integer != 0
+    data.input = WidgetDecodeTabBarInput(HostFieldValue(*value, 20, "input", *zero).*, *codec.input)
     data.motion = null
-    data.now = cast(float64)HostFieldValue(*value, 21, "now", *zero).real
-    data.reduced_motion = HostFieldValue(*value, 22, "reduced_motion", *zero).integer != 0
+    data.now = cast(float64)HostFieldValue(*value, 22, "now", *zero).real
+    data.reduced_motion = HostFieldValue(*value, 23, "reduced_motion", *zero).integer != 0
     return data
 }
 
@@ -1866,19 +1867,20 @@ WidgetValidTabBarProps :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 6, "max_tab_width", "s32", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 7, "scroll_offset", "s32", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 8, "content_sized", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 9, "focus_selected", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 10, "drag_from", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 11, "dragging", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 12, "last_clicked_index", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 13, "last_clicked_at", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 14, "last_click_valid", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 15, "scale", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 16, "id", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 17, "disabled", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 18, "reorder_enabled", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldRecordValid(*value, 19, "input", WidgetValidTabBarInput) { return false }
+    if !HostFieldScalarValid(*value, 9, "fit", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 10, "focus_selected", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 11, "drag_from", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 12, "dragging", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 13, "last_clicked_index", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 14, "last_clicked_at", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 15, "last_click_valid", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 16, "scale", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 17, "id", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 18, "disabled", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 19, "reorder_enabled", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldRecordValid(*value, 20, "input", WidgetValidTabBarInput) { return false }
     {
-        field_at := HostFieldAt(value, 20, "motion")
+        field_at := HostFieldAt(value, 21, "motion")
         if field_at >= 0 {
             field := value.fields[field_at].value
             if HostScalarValid(field, "*transition.TransitionMotionState", cast(s32)HostPointer) {
@@ -1891,8 +1893,8 @@ WidgetValidTabBarProps :: (value: HostValue) -> bool {
             }
         }
     }
-    if !HostFieldScalarValid(*value, 21, "now", "float64", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 22, "reduced_motion", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 22, "now", "float64", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 23, "reduced_motion", "bool", cast(s32)HostInteger) { return false }
     return true
 }
 
@@ -5484,7 +5486,7 @@ WidgetTypeStyleData :: "style.StyleData"
 WidgetSliceTypeStyleData :: "[]style.StyleData"
 
 WidgetStyleDataCodec :: struct {
-    fields: [35]HostField
+    fields: [36]HostField
 }
 
 WidgetEncodeStyleData :: (data: StyleData, codec: *WidgetStyleDataCodec) -> HostValue {
@@ -5524,6 +5526,7 @@ WidgetEncodeStyleData :: (data: StyleData, codec: *WidgetStyleDataCodec) -> Host
     codec.fields[32] = HostField.{.name = HostTextData("width"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.width}}
     codec.fields[33] = HostField.{.name = HostTextData("height"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.height}}
     codec.fields[34] = HostField.{.name = HostTextData("grid_tracks"), .value = HostScalar("s32", cast(s64)data.grid_tracks)}
+    codec.fields[35] = HostField.{.name = HostTextData("percent"), .value = HostScalar("u32", cast(s64)data.percent)}
     return value
 }
 
@@ -5566,6 +5569,7 @@ WidgetDecodeStyleData :: (value: HostValue, codec: *WidgetStyleDataCodec) -> Sty
     data.width = cast(float32)HostFieldValue(*value, 32, "width", *zero).real
     data.height = cast(float32)HostFieldValue(*value, 33, "height", *zero).real
     data.grid_tracks = cast(s32)HostFieldValue(*value, 34, "grid_tracks", *zero).integer
+    data.percent = cast(u32)HostFieldValue(*value, 35, "percent", *zero).bits
     return data
 }
 
@@ -5606,6 +5610,7 @@ WidgetValidStyleData :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 32, "width", "float32", cast(s32)HostReal) { return false }
     if !HostFieldScalarValid(*value, 33, "height", "float32", cast(s32)HostReal) { return false }
     if !HostFieldScalarValid(*value, 34, "grid_tracks", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 35, "percent", "u32", cast(s32)HostUnsigned) { return false }
     return true
 }
 
