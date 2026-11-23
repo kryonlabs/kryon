@@ -398,6 +398,8 @@ Usage :: () -> s32 {
 PreviewUsage :: () -> s32 {
     PrintFd(1, "usage: kryon preview FIXTURE --theme light|dark --width PX[,PX...] --height PX --output FILE.png|PREFIX [--profile NAME]\n")
     PrintFd(1, "       Builds previews/FIXTURE.zi once and writes PNG and JSON. Multiple widths append -PX to the prefix.\n")
+    PrintFd(1, "       The fixture exports Frame; it imports the module that draws the screen, never the entry\n")
+    PrintFd(1, "       module that exports the app's own Frame. To shoot the app itself: kryon run --png FILE.png\n")
     return 0
 }
 
@@ -624,7 +626,7 @@ PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string)
         return Error("the capture output must name a file or prefix")
     }
     area := ifx options.fixture == "" then "build/shot" else "build/preview"
-    failure := "preview build or render failed; see diagnostics above, add previews to [package] module_roots and export Frame from the fixture"
+    failure := "preview build or render failed; see diagnostics above, add previews to [package] module_roots, export Frame from the fixture and import the drawing module, not the entry that exports Frame"
     if options.fixture == "" {
         failure = "run --png build or render failed; see diagnostics above and export Frame from the project entry"
     }

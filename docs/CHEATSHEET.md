@@ -14,6 +14,8 @@ kryon upgrade                 # an older app: pin this kryon's Ziran, Kryon and 
 ```
 
 No display needed; `build/shot.json` lists each node's kind, role, label and bounds.
+`kryon` and `ziran` come from `make install-user` in their repositories: an old `kryon`
+makes an old starter, so reinstall after updating. `ziran pkg list` names every importable module.
 
 ## Rules
 
@@ -49,6 +51,9 @@ ref = "8133bd41ef171e03ce4557b55122eb739548eb72"
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
 ref = "02cc10e682b83fe7ba9c2ed4638507818d3c9cc0"
+[dependencies.css]
+git = "https://git.waozi.xyz/kryonlabs/css.git"
+ref = "b0e83ac2d2d8e3abc35ab015d447bef5c17517ca"
 [tool.kryon]
 default_profile = "desktop"
 entry = "src/app.zi"
@@ -78,11 +83,12 @@ NoteCountText :: () -> string { return ifx note_count == 0 then "No notes yet" e
 ```zi
 // file: src/app.zi
 Button :: #import "kryon/button";
-Card :: #import "kryon/card";
-Dropdown :: #import "kryon/dropdown";
+Card :: #import "kryon/card";            // .variant .clickable -> .opened .activated; then End
+CSS :: #import "css/Css";                // StyleClass, CssSheetParse, CssSheetInstall
+Dropdown :: #import "kryon/dropdown";    // .selected_index .placeholder -> .changed .selected_index
 Layout :: #import "kryon/layout";
 Text :: #import "kryon/text";
-TextField :: #import "kryon/text_field";
+TextField :: #import "kryon/text_field"; // Bind(*state, .placeholder .label) -> .committed
 Theme :: #import "kryon/theme";
 TitleBar :: #import "kryon/title_bar";
 Toggle :: #import "kryon/toggle";
@@ -98,9 +104,12 @@ showcase: bool;
 draft_bytes: [64]u8;
 draft: TextField.State;
 no_menu: []Dropdown.Option;
+sheet: CSS.CssSheet;
+NOTE_CSS :: "Card.note { border-radius: 14px; gap: 4px; }";
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    if !started { draft.bytes = draft_bytes[:]; dark = Theme.CurrentTheme().dark; started = true }
+    if !started { draft.bytes = draft_bytes[:]; dark = Theme.CurrentTheme().dark; started = true
+        if CSS.CssSheetParse(*sheet, NOTE_CSS, "app.css", CSS.CssNoImports) { unused CSS.CssSheetInstall(*sheet, CSS.CssDefaultEnvironment(), null) } }
     screen := Layout.Draw(session, Layout.Props.{.bounds = viewport})
     if !screen.opened { return 0 }
     AppBar(session)
@@ -137,7 +146,7 @@ NotesScreen :: (session: Session) {
     }
     Text.Draw(session, Text.Props.{.bounds = .{height = control}, .text = NoteCountText()})
     for i: 0..note_count - 1 {
-        card := Card.Draw(session, Card.Props.{.variant = .CardOutlined})   // a padded column that grows to its content
+        card := Card.Draw(session, Card.Props.{.variant = .CardOutlined, .class_name = CSS.StyleClass("note")})   // grows to its content
         if card.opened { Text.Draw(session, Text.Props.{.text = NoteAt(i)}); unused End(session) }
     }
     if Button.Draw(session, Button.Props.{.label = "All widgets", .bounds = .{height = control}}) == 1 { showcase = true }
@@ -245,10 +254,10 @@ Layouts :: (session: Session) {
 | --- | --- |
 | `Layout.Gap(.ThemeMetricSpace1)` … `Space6` | 4, 8, 12, 16, 20, 24 px of gap or padding |
 | `Theme.CurrentThemeMetric(.ThemeMetricControlHeightMedium)` | control height; also `Small`, `Large` |
-| `.ThemeMetricTextXS` `TextSM` `TextBody` `TextLG` `Heading1`…`Heading4` | font sizes for `Text.Props.size` |
+| `Text.Props.size = cast(s32)Theme.CurrentThemeMetric(.ThemeMetricTextLG)` | font size in px; also `TextXS` `TextSM` `TextBody` `Heading1`…`Heading4` |
 | `StyleTokenColor("canvas" \| "surface" \| "border" \| "text")` | palette colors (`kryon/drawing_props`) |
 | `CssSheetLoad(*sheet, StylePackMaterial())`, `CssSheetInstall` | a look preset from `css/style_pack_material` (also `classic`, `lightfield`); see the starter's `src/look.zi` |
-| `CssSheetParse(*sheet, text, "app.css", CssNoImports)`, `CssSheetInstall` | your own rules; a widget or container takes them by `.class_name = StyleClass("note")` |
+| `CSS :: #import "css/Css";` then `CSS.CssSheetParse(*sheet, text, "app.css", CSS.CssNoImports)`, `CSS.CssSheetInstall` | your own rules (as `NOTE_CSS` above); a widget takes them by `.class_name = CSS.StyleClass("note")`; the CSS package's `build/tools/css_tool check app.css` names what is not native and exits 1 |
 | `Column.note { padding: 12px; gap: 4px; background: #fff; border: 1px solid #ddd; border-radius: 10px }` | containers paint their CSS box (gradients, box-shadow too) and lay out with it |
 | `flex: 1`, `margin-left: auto`, `width: 50%`, `calc()`, `em`/`vw`, nesting, `@media` | sizing in rows and columns; every property: `docs/HTML_TO_KRYON.md` section 4 |
 ## Drive it in a test
