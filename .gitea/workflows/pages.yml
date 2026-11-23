@@ -31,7 +31,7 @@ jobs:
   browser-runtime:
     name: Build ZX website
     if: github.ref == 'refs/heads/master'
-    runs-on: alpha-ubuntu24.04
+    runs-on: build-native
     env:
       MAKEFLAGS: -j2
     defaults:
@@ -107,7 +107,7 @@ jobs:
     name: Website
     needs: browser-runtime
     if: github.ref == 'refs/heads/master'
-    runs-on: alpha-ubuntu24.04
+    runs-on: build-native
     defaults:
       run:
         working-directory: kryonlabs/kryon
@@ -191,7 +191,7 @@ jobs:
     name: Deploy Kryon Labs
     needs: verify
     if: github.ref == 'refs/heads/master'
-    runs-on: alpha-ubuntu24.04
+    runs-on: build-native
     timeout-minutes: 15
     steps:
       - uses: actions/download-artifact@v4
