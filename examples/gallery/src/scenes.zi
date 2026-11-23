@@ -169,16 +169,14 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
         gap := Layout.Gap(.ThemeMetricSpace2)
         button := Button.Props.{.label = "Continue", .disabled = disabled}
         button_size := Button.ButtonMeasure(button)
-        sizes: [2]Rectangle = .{button_size, button_size}
-        b.height = 0.0
-        form := Layout.Draw(session, Layout.Props.{.key = 1, .gap = gap,
-            .bounds = Layout.LayoutContentBounds(b, .FlexColumn, sizes[:], gap)})
+        // A column without a height grows to its row and counter.
+        form := Layout.Draw(session, Layout.Props.{.gap = gap, .gap_override = true,
+            .bounds = Rectangle.{b.x, b.y, b.width, 0.0}})
         if form.opened {
-            row := Layout.Row(session, Layout.Props.{.key = 2, .gap = gap,
-                .bounds = Rectangle.{.width = form.content.width, .height = button_size.height}})
+            row := Layout.Row(session, Layout.Props.{.gap = gap, .gap_override = true,
+                .bounds = .{height = button_size.height}})
             if row.opened {
                 for index: 0..3 {
-                    button.key = cast(u64)(10 + index)
                     button.tone = cast(ButtonTone)index
                     if Button.Draw(session, button) == 1 { clicks += 1 }
                 }
@@ -188,23 +186,19 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
             counter: [48]u8
             length := Copy(counter[:], "Clicks: ")
             length += Copy(counter[length:], FormatInteger(cast(s64)clicks, digits[:]))
-            Text.Draw(session, Text.Props.{.bounds = Rectangle.{.width = form.content.width, .height = button_size.height},
+            Text.Draw(session, Text.Props.{.bounds = .{height = button_size.height},
                 .text = TextView(counter[0:length])})
             unused End(session)
         }
     } else if scene == 1 {
         gap := Layout.Gap(.ThemeMetricSpace3)
         props := TextField.Props.{.placeholder = "Write something...", .disabled = disabled}
-        size := TextField.Measure(props)
-        sizes: [2]Rectangle = .{size, size}
-        b.height = 0.0
-        form := Layout.Draw(session, Layout.Props.{.key = 1, .gap = gap,
-            .bounds = Layout.LayoutContentBounds(b, .FlexColumn, sizes[:], gap)})
+        // A column without a height grows to its two fields.
+        form := Layout.Draw(session, Layout.Props.{.gap = gap, .gap_override = true,
+            .bounds = Rectangle.{b.x, b.y, b.width, 0.0}})
         if form.opened {
-            props.key = 10
             props.label = "Filled field"
             unused TextField.Bind(session, *field, props)
-            props.key = 11
             props.label = "Empty field"
             unused TextField.Bind(session, *empty_field, props)
             unused End(session)

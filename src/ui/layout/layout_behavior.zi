@@ -157,33 +157,6 @@ LayoutMetricsFor :: (bounds: Rectangle, gap: s32, padding: s32, padding_y: s32 =
     return metrics
 }
 
-// Fit unset container axes to the measured children in submission order.
-// Each child contributes a gap only when another child precedes it.
-#program_export
-LayoutContentBounds :: (bounds: Rectangle, direction: FlexDirection,
-    children: []Rectangle, gap: s32 = 0, padding: s32 = 0, padding_y: s32 = -1) -> Rectangle {
-    metrics := LayoutMetricsFor(bounds, gap, padding, padding_y)
-    horizontal := direction != cast(FlexDirection)FlexColumn
-    main: float32 = 0.0
-    cross: float32 = 0.0
-    for child: children {
-        extent := ifx horizontal then child.width else child.height
-        breadth := ifx horizontal then child.height else child.width
-        if extent > 0.0 { main += extent }
-        if breadth > cross { cross = breadth }
-    }
-    if children.count > 1 {
-        main += cast(float32)(children.count - 1) * cast(float32)metrics.gap
-    }
-    if bounds.width <= 0.0 {
-        bounds.width = cast(float32)metrics.padding * 2.0 + (ifx horizontal then main else cross)
-    }
-    if bounds.height <= 0.0 {
-        bounds.height = cast(float32)metrics.padding_y * 2.0 + (ifx horizontal then cross else main)
-    }
-    return bounds
-}
-
 #program_export
 LayoutScopeBounds :: (bounds: Rectangle, fallback_width: s32, fallback_height: s32) -> Rectangle {
     out: Rectangle = bounds

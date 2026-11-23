@@ -66,9 +66,8 @@ Submit ordinary widgets inside the scope and close it with `End(session)`.
 Omit the bounds of an intrinsic button in a row or a bound text field in a
 column. The button sizes to its content, and the field fills the column's inner
 width and uses the themed control height. `Layout.Gap(.ThemeMetricSpace2)`
-resolves a theme spacing token in logical units. `Layout.LayoutContentBounds`
-measures unset outer dimensions from child rectangles, direction, main-axis gap
-and padding. Its optional `padding_y` sets the vertical inset independently.
+resolves a theme spacing token in logical units. A container without a height
+grows to the children it places when `End` closes it.
 Pass a calculated dimension in `Layout.Props.bounds` to fit it to
 content, or use an explicit width to compose inside a viewport.
 
