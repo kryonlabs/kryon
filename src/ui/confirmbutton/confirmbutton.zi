@@ -5,6 +5,7 @@ Button :: #import "button";
 #import "focus"
 #import "font_metrics"
 #import "geometry"
+#import "style_sheet"
 #import "icon"
 // Its icons are atlas pictures, which its button draws (see image_lookup).
 #import "image"
@@ -254,9 +255,10 @@ Draw :: (session: Session, props: Props,
         if submitted.pill || submitted.circle { radius = result.bounds.height * 0.5 }
         focus_color := face.focus
         if (focus_color & cast(u32)255) == cast(u32)0 { focus_color = CurrentPalette().focus }
-        PaintRoundedOutline(session, result.node,
-            FocusDefaultOutlineBounds(result.bounds, 1.0), radius + 2.0, 12,
-            2.0, ColorFromPacked(focus_color))
+        ring := FocusRingFor(ifx submitted.style_kind > 0 then submitted.style_kind else StyleKindButton(),
+            submitted.id, submitted.class_name, result.bounds, radius)
+        PaintRoundedOutline(session, result.node, ring.bounds, ring.radius, 12, ring.width,
+            ColorFromPacked(focus_color))
     } else if result.armed && result.remaining > 0.0 {
         face := Button.ButtonInstalledFaceFor(armed, face_state)
         color := props.countdown_color

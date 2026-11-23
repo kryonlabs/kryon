@@ -18,14 +18,6 @@ FocusTabDirectionFor :: (tab_pressed: bool, shift_down: bool) -> s32 {
     return 1
 }
 
-#program_export
-FocusDefaultOutlineBounds :: (bounds: Rectangle, scale: float32) -> Rectangle {
-    if scale <= 0.0 { scale = 1.0 }
-    pad: s32 = cast(s32)(2.0 * scale)
-    return Rectangle.{.x = bounds.x - cast(float32)pad, .y = bounds.y - cast(float32)pad,
-        .width = bounds.width + cast(float32)(pad * 2),
-        .height = bounds.height + cast(float32)(pad * 2)}
-}
 TreeFocusScan :: struct {
     index: s32
     origin: s32

@@ -1,5 +1,6 @@
 #import "style"
 #import "control_props"
+#import "geometry"
 #import "text_style"
 using Vectors :: #import "std/vec"
 
@@ -399,6 +400,18 @@ StyleBoxField :: enum {
     StyleBoxMarginRight :: 64
     StyleBoxMarginBottom :: 128
     StyleBoxMarginLeft :: 256
+    // Per-side border widths, then colors: top, right, bottom, left.
+    StyleBoxBorderTop :: 512
+    StyleBoxBorderRight :: 1024
+    StyleBoxBorderBottom :: 2048
+    StyleBoxBorderLeft :: 4096
+    StyleBoxBorderTopColor :: 8192
+    StyleBoxBorderRightColor :: 16384
+    StyleBoxBorderBottomColor :: 32768
+    StyleBoxBorderLeftColor :: 65536
+    // A focused widget's ring (CSS outline), not a container field.
+    StyleBoxOutlineWidth :: 131072
+    StyleBoxOutlineOffset :: 262144
 }
 using StyleBoxField;
 
@@ -419,10 +432,19 @@ StyleBoxData :: struct {
     // The min_width, max_width and max_height fields that hold a
     // percentage of the parent's content box.
     percent: u32
+    // Per-side borders, top, right, bottom, left; a side without its own
+    // width or color takes the uniform border's.
+    border_widths: [4]float32
+    border_colors: [4]u32
+    outline_width: float32
+    outline_offset: float32
 }
 
 // Every box field but text-align, which only Text reads.
-StyleBoxContainerFields :: 495
+StyleBoxContainerFields :: 131055
+// The per-side border widths and colors.
+StyleBoxBorderSides :: 130560
+StyleBoxOutlineFields :: 393216
 
 StyleFlexField :: enum {
     StyleFlexDirection :: 1
@@ -1168,6 +1190,38 @@ ResolveInstalledStyleRules :: (base: StyleData, facts: StyleFacts,
     return ResolveIndexedStyle(base, facts, active_state, true, null, cast(u32)0)
 }
 
+// A keyboard focus ring: the rectangle to stroke, its corner radius and
+// its stroke width.
+FocusRing :: struct {
+    bounds: Rectangle
+    radius: float32
+    width: float32
+}
+
+// The ring a focused widget of style `kind` draws around `bounds`: CSS
+// outline-width and outline-offset from the rules for its id and class in
+// the focus state, else a 2px ring just outside the edge.
+#program_export
+FocusRingFor :: (kind: s32, id: s32, class_name: s32, bounds: Rectangle, radius: float32) -> FocusRing {
+    facts := StyleDefaultFacts(kind)
+    facts.id = id
+    facts.class_name = class_name
+    // Only a widget drawing its ring asks; a sheet without outline rules
+    // answers at once.
+    outline: StyleBoxData
+    unused ResolveIndexedStyle(StyleData.{}, facts, cast(s32)ButtonStateFocus, false, null, cast(u32)0,
+        *outline, cast(u32)StyleBoxOutlineFields)
+    width: float32 = 2.0
+    offset: float32 = 0.0
+    if (outline.fields & cast(u32)StyleBoxOutlineWidth) != 0 && outline.outline_width > 0.0 {
+        width = outline.outline_width
+    }
+    if (outline.fields & cast(u32)StyleBoxOutlineOffset) != 0 { offset = outline.outline_offset }
+    grow := offset + width
+    return .{.bounds = Rectangle.{bounds.x - grow, bounds.y - grow, bounds.width + grow * 2.0,
+        bounds.height + grow * 2.0}, .radius = radius + grow, .width = width}
+}
+
 #program_export
 ResolveInstalledLayoutStyle :: (facts: StyleFacts, flex: *StyleFlexData,
     box: *StyleBoxData = null) -> StyleData {
@@ -1207,6 +1261,18 @@ ApplyBoxFields :: (target: *StyleBoxData, value: *StyleBoxData, fields: u32) {
     if (fields & cast(u32)StyleBoxMarginRight) != 0 { target.margin_right = value.margin_right }
     if (fields & cast(u32)StyleBoxMarginBottom) != 0 { target.margin_bottom = value.margin_bottom }
     if (fields & cast(u32)StyleBoxMarginLeft) != 0 { target.margin_left = value.margin_left }
+    if (fields & cast(u32)StyleBoxOutlineWidth) != 0 { target.outline_width = value.outline_width }
+    if (fields & cast(u32)StyleBoxOutlineOffset) != 0 { target.outline_offset = value.outline_offset }
+    if (fields & cast(u32)StyleBoxBorderSides) != 0 {
+        for side: cast(u32)0..3 {
+            if (fields & (cast(u32)StyleBoxBorderTop << side)) != 0 {
+                target.border_widths[side] = value.border_widths[side]
+            }
+            if (fields & (cast(u32)StyleBoxBorderTopColor << side)) != 0 {
+                target.border_colors[side] = value.border_colors[side]
+            }
+        }
+    }
     target.percent = (target.percent & ~fields) | (value.percent & fields)
     target.fields |= fields
 }

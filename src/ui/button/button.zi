@@ -295,8 +295,10 @@ Theme :: #import "theme";
             if (focus & cast(u32)0xff) == cast(u32)0 {
                 focus = Theme.CurrentPalette().focus
             }
-            PaintRoundedOutline(session, node, FocusDefaultOutlineBounds(bounds, 1.0),
-                radius + 2.0, 12, 2.0, ColorFromPacked(focus))
+            ring := FocusRingFor(ifx props.style_kind > 0 then props.style_kind else StyleKindButton(),
+                props.id, props.class_name, bounds, radius)
+            PaintRoundedOutline(session, node, ring.bounds, ring.radius, 12, ring.width,
+                ColorFromPacked(focus))
         }
         // A built-in icon_type is drawn from the icon atlas unless the caller
         // supplied its own image. Atlas icons come with kryon/icon and file

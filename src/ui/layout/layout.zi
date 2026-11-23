@@ -358,12 +358,12 @@ LayoutGrowParent :: (session: Session, parent_index: s32, bounds: Rectangle, siz
 
 // A container with a CSS background or border paints its box, like a
 // styled div, beneath its children.
-LayoutPaintsBox :: (face: StyleData) -> bool {
+LayoutPaintsBox :: (face: StyleData, box: StyleBoxData) -> bool {
     if layout_box_paint == null { return false }
     fill := StyleHasField(face, cast(u32)StyleBackground) && (face.background & cast(u32)255) != 0
     line := StyleHasField(face, cast(u32)StyleBorderWidth) && face.border_width > 0.0 &&
         (face.border & cast(u32)255) != 0
-    return fill || line
+    return fill || line || (box.fields & cast(u32)StyleBoxBorderSides) != 0
 }
 
 
@@ -375,9 +375,10 @@ LayoutCloseContent :: (session: Session, index: s32) {
     TreeSetSubmittedBounds(session, index, bounds)
     size := TreeContentSizeAt(session, index)
     if size.paint_mark >= 0 {
+        box: StyleBoxData
         face := LayoutFace(PropsModule.Props.{.id = node.style_id, .class_name = node.style_class},
-            node.kind, null, null)
-        layout_box_paint(session, bounds, face, size.paint_mark)
+            node.kind, null, *box)
+        layout_box_paint(session, bounds, face, box, size.paint_mark)
     }
     if node.auto_placed { LayoutGrowParent(session, node.parent, bounds, size) }
 }
@@ -521,9 +522,9 @@ OpenContainer :: (session: Session, props: PropsModule.Props,
     result.content = LayoutMetricsFor(result.bounds, result.gap, result.padding, result.padding_y).content
     TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0, result.padding_y)
     size := LayoutContentSizeFor(face, box)
-    if LayoutPaintsBox(face) {
+    if LayoutPaintsBox(face, box) {
         if content_sized { size.paint_mark = layout_paint_mark(session) }
-        else { layout_box_paint(session, result.bounds, face, -1) }
+        else { layout_box_paint(session, result.bounds, face, box, -1) }
     }
     if content_sized { TreeSetClose(session, result.node, LayoutCloseContent, size) }
     if box.clip_children {

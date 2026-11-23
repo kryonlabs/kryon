@@ -111,8 +111,10 @@ Draw :: (session: Session, props: PropsModule.Props) -> SelectableToggleResult {
             ColorFromPacked(Opacity(face.value.border, opacity)))
     }
     if !props.disabled && TreeFocusVisibleAt(session, previous) {
-        PaintRoundedOutline(session, node, FocusDefaultOutlineBounds(paint.bounds, 1.0),
-            face.value.radius + 2.0, 12, 2.0, ColorFromPacked(face.value.focus))
+        ring := FocusRingFor(StyleKindSelectable(), props.id, props.class_name, paint.bounds,
+            face.value.radius)
+        PaintRoundedOutline(session, node, ring.bounds, ring.radius, 12, ring.width,
+            ColorFromPacked(face.value.focus))
     }
     if props.label != "" {
         font: s32 = ResolveFont(0,

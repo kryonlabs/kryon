@@ -165,8 +165,10 @@ Draw :: (session: Session, props: PropsModule.Props) -> s32 {
         TreeSetLabel(session, node, props.label)
     }
     if !props.disabled && TreeFocusVisibleAt(session, previous) {
-        PaintRoundedOutline(session, node, FocusDefaultOutlineBounds(paint.mark_bounds, 1.0),
-            paint.outer_radius + 2.0, 12, 2.0, ColorFromPacked(ring.value.focus))
+        focus := FocusRingFor(StyleKindRadio(), props.id, props.class_name, paint.mark_bounds,
+            paint.outer_radius)
+        PaintRoundedOutline(session, node, focus.bounds, focus.radius, 12, focus.width,
+            ColorFromPacked(ring.value.focus))
     }
     PaintRadioForNode(session, node, props, paint, label, font,
         label_height, hovered && !props.disabled,

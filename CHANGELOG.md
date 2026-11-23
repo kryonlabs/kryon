@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Row, Column and Grid paint CSS per-side borders (`border-top|right|bottom|left`, the logical block/inline sides, and their `-width`, `-color` and `-style`) as square bands over the uniform border, for dividers, accent bars and tab underlines; with a border radius a box keeps its uniform border. `StyleBoxData` carries the side widths and colors and the `outline` width and offset, and `FocusRingFor` sizes the keyboard focus ring Button, ConfirmButton, Selectable and Radio draw from their `:focus-visible` outline rules. `FocusDefaultOutlineBounds` is removed.
+
 - CSS percentages size Row, Column and Grid natively: `width`, `height`, `min-height`, `min-width`, `max-width` and `max-height` in % of the parent's content box (a grid child's track), with a percent height in a content-sized parent computing to auto, and `flex-basis` % of a measured flex row's inner size. `StyleData`, `StyleBoxData` and `StyleFlexData` carry a `percent` mask that layout resolves when it opens the container; other widgets ignore percentages.
 
 - examples/dashboard is rewritten on self-sizing containers and its stylesheet: no rectangle arithmetic or computed keys, 760 px media rules for the narrow layout, painted cards, and a passing driver test on the pinned Kryon and CSS.
