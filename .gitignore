@@ -37,3 +37,5 @@ tools/otfchop/otfchop
 # Gallery metadata and editable snippets are generated from examples/gallery.
 /docs/site/gallery-data.js
 /docs/site/gallery-sources/
+# gprof output from profiled builds
+gmon.out
