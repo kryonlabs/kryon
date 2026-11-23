@@ -1,0 +1,40 @@
+// The retained widget tree as a shared ZX library (kryon-tree.zx, built by
+// `make zx-libraries`). Each call lends the caller's frame to the ordinary
+// tree and draws one complete frame of it with the one Button widget; the
+// session is private to the call, so nothing depends on state in another
+// library or in the program.
+#import "zx_frame"
+#import "geometry"
+#import "session"
+Tree :: #import "tree";
+#import "tree_draw"
+#import "pixmap"
+
+Button :: #import "button";
+
+// Draws a Button with `label` in (x, y, width, height) over `frame`, as the
+// first frame of a fresh session under `screen_key`, and returns the frame.
+DrawButton :: (frame: ZXFrame, screen_key: u64, x: s32, y: s32,
+    width: s32, height: s32, label: string) -> ZXFrame {
+    session := SessionOpen()
+    if !SessionValid(session) { return frame }
+    defer { SessionClose(session) }
+    if !PixmapResumeInto(frame.width, frame.height, frame.pixels[:]) { return frame }
+    defer { PixmapEndInto() }
+    bounds: Rectangle = .{cast(float32)x, cast(float32)y, cast(float32)width, cast(float32)height}
+    viewport: Rectangle = .{0.0, 0.0, cast(float32)frame.width, cast(float32)frame.height}
+    if cast(s32)BeginFrame(session, screen_key, viewport) != 0 { return frame }
+    unused Button.Draw(session, .{.bounds = bounds, .label = label})
+    unused EndFrame(session)
+    return frame
+}
+
+// The identity a widget of `kind` under `parent` receives for `key`.
+TreeIdentityHash :: (parent: u64, key: u64, kind: s32) -> u64 {
+    return Tree.TreeIdentityHash(parent, key, kind)
+}
+
+// The message for a FrameStatus value.
+FrameStatusMessage :: (status: s32) -> string {
+    return Tree.FrameStatusMessage(status)
+}

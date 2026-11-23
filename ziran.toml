@@ -211,6 +211,13 @@ play_billing = "src/backend/play_billing.zi"
 pixmap = "src/backend/pixmap.zi"
 "host/surface" = "src/backend/zx_surface.zi"
 pixmap_frame = "src/backend/pixmap_frame.zi"
+# The roots of the shared ZX libraries (make zx-libraries): Kryon's portable
+# halves, and the complete frame a program exchanges with them by value.
+zx_frame = "src/backend/zx_frame.zi"
+pixmap_library = "src/backend/pixmap_library.zi"
+session_library = "src/backend/session_library.zi"
+tree_library = "src/backend/tree_library.zi"
+text_library = "src/backend/text_library.zi"
 pixmap_image_owner = "src/backend/pixmap_image_owner.zi"
 pixmap_assets_android = "src/backend/pixmap_assets_android.zi"
 android_avif = "src/backend/android_avif.zi"

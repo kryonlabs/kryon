@@ -1,0 +1,33 @@
+// The pixel backend as a shared ZX library (kryon-pixmap.zx, built by
+// `make zx-libraries`). Complete frames cross the library boundary by value;
+// the rasterizer inside is the ordinary Pixmap, so a host that loads the
+// library paints exactly what a statically linked program paints.
+#import "zx_frame"
+#import "drawing_props"
+#import "pixmap"
+
+// A frame cleared to one opaque RGB background (0xRRGGBB).
+Background :: (background: u32) -> ZXFrame {
+    frame := ZXFrameNew(background)
+    if PixmapBeginInto(background, frame.width, frame.height, frame.pixels[:]) {
+        PixmapEndInto()
+    }
+    return frame
+}
+
+// Fills a rounded rectangle of color 0xRRGGBBAA into a copy of `frame`.
+Panel :: (frame: ZXFrame, x0: s32, y0: s32, x1: s32, y1: s32,
+    radius: s32, color: u32) -> ZXFrame {
+    if PixmapResumeInto(frame.width, frame.height, frame.pixels[:]) {
+        PixmapFillRounded(x0, y0, x1, y1, radius, ColorFromPacked(color))
+        PixmapEndInto()
+    }
+    return frame
+}
+
+// The rasterizer's rounding and coverage mixing, for callers that lay out
+// their own shapes.
+Round :: (value: float32) -> s32 { return PixmapRound(value) }
+Mix :: (source: s32, destination: s32, alpha: s32) -> s32 {
+    return PixmapMix(source, destination, alpha)
+}

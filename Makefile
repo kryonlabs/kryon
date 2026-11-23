@@ -355,6 +355,91 @@ zx-surface-test: project-toolchain
 		-o build/scratch/zx-surface/wake-pixels.zx examples/hosted_surface.zi
 	build/scratch/zx-surface/test build/scratch/zx-surface/wake-pixels.zx wake-pixels
 
+# Kryon's portable halves as shared ZX libraries (docs/BACKENDS.md). Each
+# library is built once from its export root, keeping the one implementation
+# of its code, and a program loads it at run time with `ziran run
+# --module-root build/zx-libraries`. The drawing libraries carry the
+# software rasterizer (--bind-host pixmap, as zx-surface-test binds it), so
+# they need no host grants. The example is the check: linked against the
+# four libraries, it must print the frame hash of its statically linked
+# build, where the same modules are compiled in.
+ZX_LIBRARIES := build/zx-libraries
+ZX_LIBRARIES_TEST := build/test/zx-libraries
+ZX_LIBRARY_SOURCES := $(wildcard src/backend/*.zi) $(shell find src/ui -name '*.zi') \
+	$(wildcard $(ZIRAN_DIR)/std/*.zi) ziran.toml ziran.lock $(ZIRAN_BIN)
+# The linked example finds Kryon's modules by plain name, as the libraries
+# do under --project. A `kryon=DIR` package path renames the modules it
+# supplies (session becomes p<hash>_session), and a record a library hands
+# over by value is matched by its module-qualified name.
+ZX_LIBRARY_PATHS := $(foreach directory,$(sort $(shell find src/ui -type d)),--module-path $(directory)) \
+	--module-path src/backend
+ZX_LIBRARY_REQUIRES := --require-module KryonPixmap.v1=kryon-pixmap \
+	--require-module KryonSession.v1=kryon-session \
+	--require-module KryonTree.v1=kryon-tree \
+	--require-module KryonText.v1=kryon-text
+# Every call the linked example makes: its foreign Lib<Name> here, the
+# library's export there.
+ZX_LIBRARY_IMPORTS := \
+	$(foreach function,Background Panel Round Mix,--import zx_libraries:Lib$(function)=KryonPixmap.v1:$(function)) \
+	$(foreach function,SessionOpen SessionValid SessionIndex SessionClose WidgetPartKey,--import zx_libraries:Lib$(function)=KryonSession.v1:$(function)) \
+	$(foreach function,DrawButton TreeIdentityHash FrameStatusMessage,--import zx_libraries:Lib$(function)=KryonTree.v1:$(function)) \
+	$(foreach function,DrawLabel TextSpan,--import zx_libraries:Lib$(function)=KryonText.v1:$(function))
+
+.PHONY: zx-libraries zx-libraries-example
+zx-libraries: $(ZX_LIBRARIES)/kryon-pixmap.zx $(ZX_LIBRARIES)/kryon-session.zx \
+	$(ZX_LIBRARIES)/kryon-tree.zx $(ZX_LIBRARIES)/kryon-text.zx zx-libraries-example
+
+$(ZX_LIBRARIES)/kryon-pixmap.zx: src/backend/pixmap_library.zi $(ZX_LIBRARY_SOURCES)
+	mkdir -p $(ZX_LIBRARIES)
+	$(ZIRAN_BIN) bundle --project --library kryon-pixmap --bind-host pixmap \
+		--export pixmap_library:Background --export pixmap_library:Panel \
+		--export pixmap_library:Round --export pixmap_library:Mix \
+		-o $@ src/backend/pixmap_library.zi
+
+$(ZX_LIBRARIES)/kryon-session.zx: src/backend/session_library.zi $(ZX_LIBRARY_SOURCES)
+	mkdir -p $(ZX_LIBRARIES)
+	$(ZIRAN_BIN) bundle --project --library kryon-session \
+		--export session_library:SessionOpen --export session_library:SessionValid \
+		--export session_library:SessionIndex --export session_library:SessionClose \
+		--export session_library:WidgetPartKey \
+		-o $@ src/backend/session_library.zi
+
+$(ZX_LIBRARIES)/kryon-tree.zx: src/backend/tree_library.zi $(ZX_LIBRARY_SOURCES)
+	mkdir -p $(ZX_LIBRARIES)
+	$(ZIRAN_BIN) bundle --project --library kryon-tree --bind-host pixmap \
+		--export tree_library:DrawButton --export tree_library:TreeIdentityHash \
+		--export tree_library:FrameStatusMessage \
+		-o $@ src/backend/tree_library.zi
+
+$(ZX_LIBRARIES)/kryon-text.zx: src/backend/text_library.zi $(ZX_LIBRARY_SOURCES)
+	mkdir -p $(ZX_LIBRARIES)
+	$(ZIRAN_BIN) bundle --project --library kryon-text --bind-host pixmap \
+		--export text_library:DrawLabel --export text_library:TextSpan \
+		-o $@ src/backend/text_library.zi
+
+# The example both ways: statically linked, with the four modules compiled
+# in, and linked, with them loaded from --module-root. Each prints one frame
+# hash, and the two outputs must agree.
+zx-libraries-example: $(ZX_LIBRARIES)/kryon-pixmap.zx $(ZX_LIBRARIES)/kryon-session.zx \
+	$(ZX_LIBRARIES)/kryon-tree.zx $(ZX_LIBRARIES)/kryon-text.zx examples/zx_libraries.zi \
+	$(ZX_LIBRARY_SOURCES)
+	mkdir -p $(ZX_LIBRARIES_TEST)
+	$(ZIRAN_BIN) bundle --project --bind-host pixmap --entry zx_libraries:main \
+		-o $(ZX_LIBRARIES_TEST)/static.zx examples/zx_libraries.zi
+	$(ZIRAN_BIN) bundle --root examples --module-path $(ZIRAN_DIR)/std $(ZX_LIBRARY_PATHS) \
+		--define KRYON_ZX_LIBRARIES $(ZX_LIBRARY_REQUIRES) $(ZX_LIBRARY_IMPORTS) \
+		--entry zx_libraries:main -o $(ZX_LIBRARIES_TEST)/linked.zx examples/zx_libraries.zi
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		HARMONY_DESKTOP_RECOVERY=0 $(ZIRAN_BIN) run $(ZX_LIBRARIES_TEST)/static.zx \
+		> $(ZX_LIBRARIES_TEST)/static.out
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		HARMONY_DESKTOP_RECOVERY=0 $(ZIRAN_BIN) run --module-root $(ZX_LIBRARIES) \
+		$(ZX_LIBRARIES_TEST)/linked.zx > $(ZX_LIBRARIES_TEST)/linked.out
+	cmp $(ZX_LIBRARIES_TEST)/static.out $(ZX_LIBRARIES_TEST)/linked.out
+	cat $(ZX_LIBRARIES_TEST)/linked.out
+
+test: zx-libraries-example
+
 .PHONY: surface-render-test
 surface-render-test: project-toolchain
 	@set -e; for name in window_chrome_test workspace_pager_test zx_surface_damage_test zx_surface_wheel_test; do \

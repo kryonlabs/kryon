@@ -1,0 +1,156 @@
+// Kryon's portable halves as shared ZX libraries. The same program is built
+// twice: statically linked, where the Pixmap, session, tree and Text modules
+// are compiled in, and linked, where they are loaded at run time from the four
+// kryon-*.zx libraries with "ziran run --module-root". Both print the same
+// frame hash. Build and run both with "make zx-libraries" (BACKENDS.md).
+//
+// "main" below is shared; only the binding layer differs. In the linked
+// build every library call carries the handle "Modules.Load" returned, and
+// the drawing libraries receive and return the complete frame by value,
+// because a library loaded by "ziran run" has no host grants and shares
+// no state with its program. The frame and session records come from Kryon's
+// zx_frame and session modules in both builds: a library import is checked
+// by record name and layout, so a program declares them under the same
+// module names as the libraries do.
+#import "zx_frame"
+#import "session"
+
+#if #defined(KRYON_ZX_LIBRARIES) {
+    using Modules :: #import "std/zx_module"
+    host_api :: #system_library "host_api";
+
+    LibBackground :: (handle: u64, background: u32) -> ZXFrame #foreign host_api;
+    LibPanel :: (handle: u64, frame: ZXFrame, x0: s32, y0: s32, x1: s32, y1: s32,
+        radius: s32, color: u32) -> ZXFrame #foreign host_api;
+    LibRound :: (handle: u64, value: float32) -> s32 #foreign host_api;
+    LibMix :: (handle: u64, source: s32, destination: s32, alpha: s32) -> s32 #foreign host_api;
+    LibSessionOpen :: (handle: u64) -> Session #foreign host_api;
+    LibSessionValid :: (handle: u64, session: Session) -> bool #foreign host_api;
+    LibSessionIndex :: (handle: u64, session: Session) -> s32 #foreign host_api;
+    LibSessionClose :: (handle: u64, session: Session) -> bool #foreign host_api;
+    LibWidgetPartKey :: (handle: u64, key: u64, part: s32) -> u64 #foreign host_api;
+    LibDrawButton :: (handle: u64, frame: ZXFrame, screen_key: u64, x: s32, y: s32,
+        width: s32, height: s32, label: string) -> ZXFrame #foreign host_api;
+    LibTreeIdentityHash :: (handle: u64, parent: u64, key: u64, kind: s32) -> u64 #foreign host_api;
+    LibFrameStatusMessage :: (handle: u64, status: s32) -> string #foreign host_api;
+    LibDrawLabel :: (handle: u64, frame: ZXFrame, screen_key: u64, text: string, x: s32,
+        y: s32, width: s32, height: s32, size: s32) -> ZXFrame #foreign host_api;
+    LibTextSpan :: (handle: u64, source: string, start: s32,
+        length: s32) -> string #foreign host_api;
+
+    // Handles of the four loaded libraries; zero until Link runs.
+    pixmap_handle: u64;
+    tree_handle: u64;
+    text_handle: u64;
+    session_handle: u64;
+
+    Link :: () -> bool {
+        pixmap_handle = Modules.Load("KryonPixmap.v1")
+        tree_handle = Modules.Load("KryonTree.v1")
+        text_handle = Modules.Load("KryonText.v1")
+        session_handle = Modules.Load("KryonSession.v1")
+        return pixmap_handle != 0 && tree_handle != 0 && text_handle != 0 && session_handle != 0
+    }
+
+    Unlink :: () {
+        unused Modules.Release(pixmap_handle)
+        unused Modules.Release(tree_handle)
+        unused Modules.Release(text_handle)
+        unused Modules.Release(session_handle)
+    }
+} else {
+    Pixmap :: #import "pixmap_library";
+    Tree :: #import "tree_library";
+    Text :: #import "text_library";
+
+    // The statically linked build carries the same modules, so the handles
+    // are zero and every call goes straight to the one implementation.
+    pixmap_handle: u64;
+    tree_handle: u64;
+    text_handle: u64;
+    session_handle: u64;
+
+    LibBackground :: (handle: u64, background: u32) -> ZXFrame {
+        unused handle
+        return Pixmap.Background(background)
+    }
+    LibPanel :: (handle: u64, frame: ZXFrame, x0: s32, y0: s32, x1: s32, y1: s32,
+        radius: s32, color: u32) -> ZXFrame {
+        unused handle
+        return Pixmap.Panel(frame, x0, y0, x1, y1, radius, color)
+    }
+    LibRound :: (handle: u64, value: float32) -> s32 { unused handle; return Pixmap.Round(value) }
+    LibMix :: (handle: u64, source: s32, destination: s32, alpha: s32) -> s32 {
+        unused handle
+        return Pixmap.Mix(source, destination, alpha)
+    }
+    LibSessionOpen :: (handle: u64) -> Session { unused handle; return SessionOpen() }
+    LibSessionValid :: (handle: u64, session: Session) -> bool {
+        unused handle
+        return SessionValid(session)
+    }
+    LibSessionIndex :: (handle: u64, session: Session) -> s32 {
+        unused handle
+        return SessionIndex(session)
+    }
+    LibSessionClose :: (handle: u64, session: Session) -> bool {
+        unused handle
+        return SessionClose(session)
+    }
+    LibWidgetPartKey :: (handle: u64, key: u64, part: s32) -> u64 {
+        unused handle
+        return WidgetPartKey(key, part)
+    }
+    LibDrawButton :: (handle: u64, frame: ZXFrame, screen_key: u64, x: s32, y: s32,
+        width: s32, height: s32, label: string) -> ZXFrame {
+        unused handle
+        return Tree.DrawButton(frame, screen_key, x, y, width, height, label)
+    }
+    LibTreeIdentityHash :: (handle: u64, parent: u64, key: u64, kind: s32) -> u64 {
+        unused handle
+        return Tree.TreeIdentityHash(parent, key, kind)
+    }
+    LibFrameStatusMessage :: (handle: u64, status: s32) -> string {
+        unused handle
+        return Tree.FrameStatusMessage(status)
+    }
+    LibDrawLabel :: (handle: u64, frame: ZXFrame, screen_key: u64, text: string, x: s32,
+        y: s32, width: s32, height: s32, size: s32) -> ZXFrame {
+        unused handle
+        return Text.DrawLabel(frame, screen_key, text, x, y, width, height, size)
+    }
+    LibTextSpan :: (handle: u64, source: string, start: s32, length: s32) -> string {
+        unused handle
+        return Text.TextSpan(source, start, length)
+    }
+
+    Link :: () -> bool { return true }
+    Unlink :: () {}
+}
+
+#program_export
+main :: () -> s32 {
+    if !Link() {
+        print("link failed\n")
+        return 1
+    }
+    defer { Unlink() }
+    frame := LibBackground(pixmap_handle, 0xF8FAFC)
+    frame = LibPanel(pixmap_handle, frame, 12, 12, 228, 132, 8, 0xE6EAF2FF)
+    ui := LibSessionOpen(session_handle)
+    if !LibSessionValid(session_handle, ui) { return 2 }
+    if LibSessionIndex(session_handle, ui) != 1 { return 3 }
+    key := LibWidgetPartKey(session_handle, ui.epoch, 0)
+    frame = LibDrawButton(tree_handle, frame, key, 12, 24, 216, 38, "Count click")
+    label := LibTextSpan(text_handle, "Kryon shared ZX libraries", 6, 19)
+    frame = LibDrawLabel(text_handle, frame, key, label, 12, 76, 216, 24, 14)
+    print("session % %\n", LibSessionIndex(session_handle, ui), ui.epoch)
+    print("label %\n", label)
+    print("status %\n", LibFrameStatusMessage(tree_handle, 0))
+    print("identity %\n", LibTreeIdentityHash(tree_handle, key, 11, 3))
+    print("raster % %\n", LibRound(pixmap_handle, 2.5),
+        LibMix(pixmap_handle, 0x102030, 0x405060, 128))
+    if !LibSessionClose(session_handle, ui) { return 4 }
+    print("frame %\n", ZXFrameHash(*frame))
+    return 0
+}

@@ -1,0 +1,21 @@
+// The retained session as a shared ZX library (kryon-session.zx, built by
+// `make zx-libraries`). Session is Kryon's portable value handle, so it
+// crosses the library boundary by value; the sessions themselves live in
+// this library, and a program that loads it owns them alone. The facades
+// keep the names of session.zi, which stays the one implementation.
+using Sessions :: #import "session";
+
+// Opens a session. Slot zero is invalid; the epoch rejects it after close.
+SessionOpen :: () -> Session { return Sessions.SessionOpen() }
+
+// Whether SESSION is still the session it was opened as.
+SessionValid :: (session: Session) -> bool { return Sessions.SessionValid(session) }
+
+// SESSION's slot, or zero when it is no longer valid.
+SessionIndex :: (session: Session) -> s32 { return Sessions.SessionIndex(session) }
+
+// Releases SESSION's bitmaps and slot; false when it was already invalid.
+SessionClose :: (session: Session) -> bool { return Sessions.SessionClose(session) }
+
+// The key of one part of a widget made of several nodes.
+WidgetPartKey :: (key: u64, part: s32) -> u64 { return Sessions.WidgetPartKey(key, part) }

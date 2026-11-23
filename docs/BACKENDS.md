@@ -238,6 +238,83 @@ engine with a typed host. It verifies the RGBA bytes, rendered count changing
 after a click, UTF-8 editing, resize, close and opt-in timeout redraw. An
 emulator can launch the same bundle by registering the four capabilities.
 
+## Shared ZX libraries
+
+A program that imports Kryon's widgets compiles the pixel, session, tree and
+text code into its own bundle. `make zx-libraries` builds that code once as
+four ZX libraries that a program links when it is built and loads when it
+runs, so Kryon is linked, not copied:
+
+| Library | Export root | Exports |
+| --- | --- | --- |
+| `kryon-pixmap.zx` | `pixmap_library` ([`src/backend/pixmap_library.zi`](../src/backend/pixmap_library.zi)) | `Background`, `Panel`, `Round`, `Mix` |
+| `kryon-session.zx` | `session_library` ([`src/backend/session_library.zi`](../src/backend/session_library.zi)) | `SessionOpen`, `SessionValid`, `SessionIndex`, `SessionClose`, `WidgetPartKey` |
+| `kryon-tree.zx` | `tree_library` ([`src/backend/tree_library.zi`](../src/backend/tree_library.zi)) | `DrawButton`, `TreeIdentityHash`, `FrameStatusMessage` |
+| `kryon-text.zx` | `text_library` ([`src/backend/text_library.zi`](../src/backend/text_library.zi)) | `DrawLabel`, `TextSpan` |
+
+Each root delegates to the ordinary modules under `src/ui/` and
+`src/backend/pixmap.zi`; no widget is implemented twice. `ziran.toml` exports
+the roots and `zx_frame` by name, so a project build imports them like any
+other Kryon module, and the `zx-libraries` rules of the `Makefile` build each
+library with `ziran bundle --project --library NAME --export root:Function ...`
+into `build/zx-libraries/NAME.zx`. The drawing libraries bind the software
+rasterizer with `--bind-host pixmap`, as the hosted surface above does, so a
+library needs no host grants and loads under a plain `ziran run`. The
+raster is compiled into each drawing library (about 2.8 MB for pixmap, 5.2 MB
+for tree and 4.9 MB for text; the session library is about 30 KB). A host
+that paints with its own rasterizer would grant the libraries its pixmap
+capabilities per library instead; that is not what these bundles do.
+
+A program links the libraries when it is built and loads them when it runs.
+[`examples/zx_libraries.zi`](../examples/zx_libraries.zi) is the consumer;
+from the Kryon checkout, with `ZIRAN` the Ziran source directory:
+
+```sh
+ziran bundle --root examples --module-path $ZIRAN/std \
+  --module-path src/ui --module-path src/backend --define KRYON_ZX_LIBRARIES \
+  --require-module KryonPixmap.v1=kryon-pixmap \
+  --require-module KryonSession.v1=kryon-session \
+  --require-module KryonTree.v1=kryon-tree \
+  --require-module KryonText.v1=kryon-text \
+  --import zx_libraries:LibPanel=KryonPixmap.v1:Panel ... \
+  --entry zx_libraries:main -o app.zx examples/zx_libraries.zi
+ziran run --module-root build/zx-libraries app.zx
+```
+
+`--require-module` names a library interface and the module file that
+provides it under `--module-root`; `--import` binds one foreign declaration
+of the program to one export of a library, one flag per declaration (the
+example binds fourteen). Every such declaration takes the `u64` handle that
+`Modules.Load("KryonPixmap.v1")` of `std/zx_module` returns as its first parameter,
+and the program releases the handles with `Modules.Release` before it exits.
+The complete command is the `zx-libraries-example` rule of the `Makefile`.
+
+Values cross the boundary by value, never through a pointer or shared
+state. A drawing library receives the complete frame, `ZXFrame` of
+[`kryon/zx_frame`](../src/backend/zx_frame.zi) (240 × 144 pixels of
+`0xRRGGBB`), and returns the frame it painted; the session library takes
+and returns Kryon's `Session` of `kryon/session`. An import is checked
+against the library's export by record name and field layout, and the name
+is module-qualified, so the program must import both records from modules
+named `zx_frame` and `session`, as the libraries do, and not declare its
+own copies. Two build rules follow from that:
+
+- Build the linked program from plain module paths only. A package path such
+  as `--module-path kryon=src/ui` renames the modules it supplies
+  (`session` becomes `p<hash>_session`), and the records no longer match.
+- Build it without `--project`. Under a project the standard library's
+  `zx_module` is named `std_zx_module`; its `Load` and `Release` are then
+  not recognized as runtime services, and `ziran run` hands the program to
+  an installed runtime provider of the same toolchain build instead of
+  running it itself.
+
+Libraries and the programs that load them must come from the same Ziran
+toolchain. `make zx-libraries` builds the four libraries from the current
+tree, then `make zx-libraries-example` builds the example twice, statically
+linked with the four modules compiled in and linked against the libraries
+from `--module-root`, runs both, and requires their printed frame hashes to
+agree. `make test` runs the same check.
+
 ## Experimental SDL3 GPU renderer
 
 Custom Linux x86_64 GNU hosts can import `kryon/pixmap_sdl3` and

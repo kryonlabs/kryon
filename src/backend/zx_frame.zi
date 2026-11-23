@@ -1,0 +1,42 @@
+// A complete frame, exchanged by value between Kryon's shared ZX libraries
+// (kryon-pixmap, kryon-tree, kryon-text) and the program that loads them.
+// Every library receives the pixels it must composite and returns the
+// result, so the layers never share state and never call a host: a library
+// loaded by `ziran run --module-root` has no host grants. The size is the
+// hosted surface example's window, so the same layout checks both builds.
+ZX_FRAME_WIDTH :: 240;
+ZX_FRAME_HEIGHT :: 144;
+ZX_FRAME_PIXELS :: ZX_FRAME_WIDTH * ZX_FRAME_HEIGHT;
+
+// Pixels are 0xRRGGBB words, row-major from the top left, as Pixmap stores them.
+ZXFrame :: struct {
+    width: s32
+    height: s32
+    pixels: [ZX_FRAME_PIXELS]u32
+}
+
+// Fills a frame with one color and stamps its dimensions.
+ZXFrameClear :: (frame: *ZXFrame, color: u32) {
+    frame.width = ZX_FRAME_WIDTH
+    frame.height = ZX_FRAME_HEIGHT
+    for index: 0..ZX_FRAME_PIXELS - 1 {
+        frame.pixels[index] = color
+    }
+}
+
+// A new frame filled with one color.
+ZXFrameNew :: (color: u32) -> ZXFrame {
+    frame: ZXFrame
+    ZXFrameClear(*frame, color)
+    return frame
+}
+
+// FNV-1a over the pixel words, so a program can compare the frame a shared
+// library produced with the one the statically linked build produced.
+ZXFrameHash :: (frame: *ZXFrame) -> u64 {
+    hash: u64 = 14695981039346656037
+    for index: 0..ZX_FRAME_PIXELS - 1 {
+        hash = (hash ^ cast(u64)frame.pixels[index]) * 1099511628211
+    }
+    return hash
+}

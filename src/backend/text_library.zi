@@ -1,0 +1,33 @@
+// The Text widget as a shared ZX library (kryon-text.zx, built by
+// `make zx-libraries`). Each call lends the caller's frame to the ordinary
+// tree and draws one label with the one Text implementation.
+#import "zx_frame"
+#import "geometry"
+#import "session"
+Tree :: #import "tree";
+#import "tree_draw"
+#import "pixmap"
+
+Text :: #import "text";
+
+// Draws `text` at `size` in (x, y, width, height) over `frame`, as the first
+// frame of a fresh session under `screen_key`, and returns the frame.
+DrawLabel :: (frame: ZXFrame, screen_key: u64, text: string, x: s32, y: s32,
+    width: s32, height: s32, size: s32) -> ZXFrame {
+    session := SessionOpen()
+    if !SessionValid(session) { return frame }
+    defer { SessionClose(session) }
+    if !PixmapResumeInto(frame.width, frame.height, frame.pixels[:]) { return frame }
+    defer { PixmapEndInto() }
+    bounds: Rectangle = .{cast(float32)x, cast(float32)y, cast(float32)width, cast(float32)height}
+    viewport: Rectangle = .{0.0, 0.0, cast(float32)frame.width, cast(float32)frame.height}
+    if cast(s32)BeginFrame(session, screen_key, viewport) != 0 { return frame }
+    Text.Draw(session, .{.bounds = bounds, .text = text, .size = size})
+    unused EndFrame(session)
+    return frame
+}
+
+// The grapheme-safe substring the Text widget measures and paints.
+TextSpan :: (source: string, start: s32, length: s32) -> string {
+    return Text.TextSpan(source, start, length)
+}
