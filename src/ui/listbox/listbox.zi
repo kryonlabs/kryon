@@ -347,6 +347,8 @@ Draw :: (session: Session, props: PropsModule.Props,
     items: []ListBoxItem, location := #caller_location) -> ListBoxResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     result: ListBoxResult = .{.node = -1, .selected_index = props.selected_index,
         .scroll_offset = props.scroll_offset}
     view: ListBoxViewState = ListBoxViewStart(session,
@@ -410,6 +412,8 @@ ListBoxMultiApply :: (selected: []bool, clicked: s32,
 #program_export
 ListBoxMulti :: (session: Session, props: ListBoxMultiProps, items: []ListBoxItem,
     selected: []bool) -> ListBoxMultiResult {
+    // A placing column places the list before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     result: ListBoxMultiResult = .{.node = -1, .clicked_index = -1, .anchor = props.anchor,
         .scroll_offset = props.scroll_offset}
     if (cast(s32)selected.count) != (cast(s32)items.count) { return result }

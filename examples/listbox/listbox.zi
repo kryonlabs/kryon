@@ -1,5 +1,7 @@
 ListBox :: #import "kryon/list_box";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/geometry"
 #import "kryon/session"
 
@@ -8,10 +10,14 @@ selected: [3]bool;
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "List box", .size = 28})
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace5),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{height = 40}, .text = "List box", .size = 28})
     items := ListBox.ListBoxItem.[.{.label = "Morning walk"}, .{.label = "Read a chapter"}, .{.label = "Make something"}]
-    choice = ListBox.Draw(session, ListBox.Props.{.disabled = example_disabled, .bounds = .{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 100.0}, .row_height = 32, .selected_index = choice}, items[:]).selected_index
-    ListBox.ListBoxMulti(session, ListBox.ListBoxMultiProps.{.disabled = example_disabled, .bounds = .{viewport.x + 20.0, viewport.y + 192.0, viewport.width - 40.0, 100.0}, .row_height = 32}, items[:], selected[:])
+    choice = ListBox.Draw(session, ListBox.Props.{.disabled = example_disabled, .bounds = .{height = 100}, .row_height = 32, .selected_index = choice}, items[:]).selected_index
+    ListBox.ListBoxMulti(session, ListBox.ListBoxMultiProps.{.disabled = example_disabled, .bounds = .{height = 100}, .row_height = 32}, items[:], selected[:])
+    unused End(session)
     return 0
 }
 
