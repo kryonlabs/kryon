@@ -5,6 +5,8 @@
 Box :: #import "kryon/box";
 Radio :: #import "kryon/radio";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/drawing_props"
 #import "kryon/system_theme"
 #import "std/number_text"
@@ -38,20 +40,21 @@ checked: bool = true;
 
 balanced: bool = true;
 
-b: Rectangle;
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Radio", .size = 23})
-    b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Radio", .size = 23})
     disabled := example_input.disabled
 
-    if Radio.Draw(session, Radio.Props.{.bounds = b, .label = "Balanced", .checked = balanced, .disabled = disabled}) == 1 { balanced = true }
-    b.y += 64.0
-    if Radio.Draw(session, Radio.Props.{.bounds = b, .label = "Compact", .disabled = disabled, .checked = !balanced}) == 1 { balanced = false }
+    if Radio.Draw(session, Radio.Props.{.bounds = .{height = 44}, .label = "Balanced", .checked = balanced, .disabled = disabled}) == 1 { balanced = true }
+    if Radio.Draw(session, Radio.Props.{.bounds = .{height = 44}, .label = "Compact", .disabled = disabled, .checked = !balanced}) == 1 { balanced = false }
+    unused End(session)
     return 0
 }
 

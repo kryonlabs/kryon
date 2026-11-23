@@ -79,19 +79,19 @@ Draw :: (session: Session, props: PropsModule.Props, location := #caller_locatio
         props.disabled, false, TreePressedAt(session, previous),
         TreeHoveredAt(session, previous), false, result.selected)
     face: StyleFrame = SelectableFaceFor(props, state)
+    // A column fills an unset width; alone, an item is 120 wide.
     bounds: Rectangle = props.bounds
-    if bounds.width <= 0.0 { bounds.width = 120.0 }
+    if bounds.width <= 0.0 && !TreeWillPlace(session, bounds) { bounds.width = 120.0 }
     if bounds.height <= 0.0 { bounds.height = 36.0 }
     spec: SelectableSpec
-    spec.bounds = bounds
     spec.selected = result.selected
     spec.hovered = TreeHoveredAt(session, previous)
     spec.pressed = TreePressedAt(session, previous)
     spec.disabled = props.disabled
     spec.face = face
     spec.label_inset = SelectableLabelInset(1.0, face)
-    paint: SelectablePaint = SelectablePaintFor(spec)
     node: s32 = -1
+    spec.bounds = bounds
     if TreeIsBuilding(session) {
         node = TreeSubmitCurrent(session, key, WidgetKindSelectable, bounds)
         if node < 0 { return result }
@@ -100,7 +100,9 @@ Draw :: (session: Session, props: PropsModule.Props, location := #caller_locatio
         TreeSetStyleId(session, node, props.id)
         TreeSetSelected(session, node, result.selected)
         TreeSetLabel(session, node, props.label)
+        spec.bounds = TreeNodePaintBounds(session, node, bounds)
     }
+    paint: SelectablePaint = SelectablePaintFor(spec)
     opacity: float32 = StyleOpacityValue(face.value.fields,
         face.value.opacity)
     if paint.draw_fill {

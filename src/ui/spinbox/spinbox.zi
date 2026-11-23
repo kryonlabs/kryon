@@ -148,11 +148,10 @@ Draw :: (session: Session, props: Spinbox.Props, location := #caller_location) -
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
     if key == cast(u64)0 { key = TreeNextKey(session) }
+    // A placing column fills an unset width; alone, a spinbox is 120 wide.
     bounds: Rectangle = props.bounds
-    if bounds.width <= 0.0 { bounds.width = 120.0 }
+    if bounds.width <= 0.0 && !TreeWillPlace(session, bounds) { bounds.width = 120.0 }
     if bounds.height <= 0.0 { bounds.height = 36.0 }
-    layout: SpinboxLayout = SpinboxLayoutFor(bounds,
-        SpinboxDefaultButtonWidth(1.0))
     node: s32 = -1
     if TreeIsBuilding(session) {
         node = TreeSubmitCurrent(session, key, WidgetKindSpinbox, bounds)
@@ -165,6 +164,15 @@ Draw :: (session: Session, props: Spinbox.Props, location := #caller_location) -
         TreeSetStyleId(session, node, props.id)
         TreeSetLabel(session, node, props.label)
     }
+    // Paint on the node stays where it was measured and moves with it; the
+    // step buttons are child widgets, laid out where the spinbox was placed.
+    placed := bounds
+    if node >= 0 {
+        placed = TreeSubmittedBounds(session, node)
+        bounds = TreeNodePaintBounds(session, node, bounds)
+    }
+    layout: SpinboxLayout = SpinboxLayoutFor(bounds, SpinboxDefaultButtonWidth(1.0))
+    buttons: SpinboxLayout = SpinboxLayoutFor(placed, SpinboxDefaultButtonWidth(1.0))
     face: StyleData = SpinboxFaceFor(props, false)
     value_face: StyleData = SpinboxFaceFor(props, true)
     SpinboxPaintFace(session, node, bounds, face)
@@ -188,7 +196,7 @@ Draw :: (session: Session, props: Spinbox.Props, location := #caller_location) -
     }
     decrement: Button.Props
     decrement.key = cast(u64)1
-    decrement.bounds = layout.left
+    decrement.bounds = buttons.left
     decrement.bounds.x += button_inset
     decrement.bounds.y += button_inset
     decrement.bounds.width -= button_inset
@@ -202,7 +210,7 @@ Draw :: (session: Session, props: Spinbox.Props, location := #caller_location) -
     decrement.size = cast(ControlSize)ControlSizeSmall
     increment: Button.Props = decrement
     increment.key = cast(u64)2
-    increment.bounds = layout.right
+    increment.bounds = buttons.right
     increment.bounds.y += button_inset
     increment.bounds.width -= button_inset
     increment.bounds.height -= button_inset * 2.0

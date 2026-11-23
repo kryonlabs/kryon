@@ -731,6 +731,19 @@ NodeGeometry :: struct {
         return Rectangle.{measured.x, measured.y, placed.width, placed.height}
     }
 
+    // Whether the parent will place a widget submitted with these bounds: a
+    // placing container (column, row, stack, grid) places a child that sets
+    // no origin and fills its unset size. A widget leaves its size unset for
+    // such a parent and picks its own otherwise.
+    TreeWillPlace :: (session: Session, bounds: Rectangle) -> bool {
+        if !SessionValid(session) || bounds.x != 0.0 || bounds.y != 0.0 { return false }
+        slot: s32 = SessionIndex(session)
+        parent := TreeCurrentParent(session)
+        if !trees[slot].building || parent < 0 || parent >= trees[slot].submitted_count { return false }
+        layout := trees[slot].submitted[parent].layout_index
+        return layout >= 0 && trees[slot].layouts[layout].places_children
+    }
+
     #program_export
     TreeInputAt :: (session: Session, index: s32) -> NodeInput {
         input: NodeInput

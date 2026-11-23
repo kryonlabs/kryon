@@ -5,6 +5,8 @@
 Box :: #import "kryon/box";
 Selectable :: #import "kryon/selectable";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/drawing_props"
 #import "kryon/system_theme"
 #import "std/number_text"
@@ -38,20 +40,21 @@ selected: bool = true;
 
 another: bool;
 
-b: Rectangle;
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Selectable", .size = 23})
-    b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Selectable", .size = 23})
     disabled := example_input.disabled
 
-    selected = Selectable.Draw(session, Selectable.Props.{.bounds = b, .label = "Selected item", .selected = selected, .disabled = disabled}).selected
-    b.y += 64.0
-    another = Selectable.Draw(session, Selectable.Props.{.bounds = b, .label = "Another item", .disabled = disabled, .selected = another}).selected
+    selected = Selectable.Draw(session, Selectable.Props.{.bounds = .{height = 44}, .label = "Selected item", .selected = selected, .disabled = disabled}).selected
+    another = Selectable.Draw(session, Selectable.Props.{.bounds = .{height = 44}, .label = "Another item", .disabled = disabled, .selected = another}).selected
+    unused End(session)
     return 0
 }
 

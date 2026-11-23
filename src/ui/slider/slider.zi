@@ -140,16 +140,17 @@ using Slider :: #import "slider_props";
             prepared.line_height = GlyphLineHeight(prepared.font,
                 prepared.label.value.typeface)
         }
-        // An unset length stays zero so a column or row can fill it; a set one
-        // is at least the style's shortest track.
+        // A placing column or row fills an unset length; otherwise the track is
+        // at least the style's shortest.
         min_length: float32 = cast(float32)SliderMinimumLengthForStyle(track, 1.0)
         thumb_size: float32 = cast(float32)SliderThumbSizeForStyle(thumb, 1.0)
         prepared.min_length = min_length
+        fill := TreeWillPlace(session, bounds)
         if vertical {
-            if bounds.height > 0.0 && bounds.height < min_length { bounds.height = min_length }
+            if (bounds.height > 0.0 || !fill) && bounds.height < min_length { bounds.height = min_length }
             if bounds.width < thumb_size { bounds.width = thumb_size }
         } else {
-            if bounds.width > 0.0 && bounds.width < min_length { bounds.width = min_length }
+            if (bounds.width > 0.0 || !fill) && bounds.width < min_length { bounds.width = min_length }
             if bounds.height < thumb_size { bounds.height = thumb_size }
         }
         SliderGeometry(*prepared, bounds, label_text, value_text, vertical)

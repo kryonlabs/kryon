@@ -119,10 +119,13 @@ Button :: #import "button";
         result: SegmentedControl.SegmentedControlResult = .{.node = -1, .clicked_index = -1, .selected_index = -1}
         if props.has_selection { result.selected_index = props.selected_index }
         result.height = SegmentedControlHeight(session, props, options)
+        // A placing column fills an unset width; otherwise the control spans
+        // its parent.
         bounds: Rectangle = props.bounds
-        if bounds.width <= 0.0 { bounds.width = TreeCurrentParentBounds(session).width }
-        if (cast(s32)options.count) <= 0 || bounds.width <= 0.0 ||
-            result.height <= 0 { return result }
+        if bounds.width <= 0.0 && !TreeWillPlace(session, bounds) {
+            bounds.width = TreeCurrentParentBounds(session).width
+        }
+        if (cast(s32)options.count) <= 0 || result.height <= 0 { return result }
         bounds.height = cast(float32)result.height
         key: u64 = props.key
         if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
@@ -149,14 +152,20 @@ Button :: #import "button";
             props.has_selection)
         result.selected_index = selection.selected_index
         result.changed = selection.changed
+        // The segments are child widgets, laid out where the control was
+        // placed; its fill and outline are node paint, which stays where it
+        // was measured and moves with it.
+        placed := bounds
         if TreeIsBuilding(session) {
             result.node = TreeSubmitCurrent(session, key,
                 WidgetKindSegmentedControl, bounds)
             if result.node < 0 { return result }
             TreeSetStyleClass(session, result.node, props.class_name)
             TreeSetStyleId(session, result.node, props.id)
-            bounds = TreeSubmittedNodeAt(session, result.node).bounds
+            placed = TreeSubmittedBounds(session, result.node)
         }
+        if placed.width <= 0.0 { return result }
+        paint := Rectangle.{bounds.x, bounds.y, placed.width, placed.height}
         metrics: SegmentedMetrics = SegmentedControlMetricsFor(props)
         // A single-row control is one outlined group, as the theme styles it;
         // the outline is painted after the segments so the selection sits in it.
@@ -168,7 +177,7 @@ Button :: #import "button";
             cast(u32)StyleBorderWidth) != cast(u32)0 &&
             control.value.border_width > 0.0
         if !props.wrap && (control.value.fields & cast(u32)StyleBackground) != cast(u32)0 {
-            PaintRoundedFill(session, result.node, bounds, control.value.radius, 12,
+            PaintRoundedFill(session, result.node, paint, control.value.radius, 12,
                 ColorFromPacked(Opacity(control.value.background, control_opacity)))
         }
         segment: StyleFrame = SegmentedControlFaceFor(props,
@@ -179,7 +188,7 @@ Button :: #import "button";
         row_start: s32 = 0
         row_width: s32 = 0
         row_count: s32 = 0
-        row_y: s32 = cast(s32)bounds.y
+        row_y: s32 = cast(s32)placed.y
         index: s32 = 0
         while index <= (cast(s32)options.count) {
             end_row: bool = index == (cast(s32)options.count)
@@ -189,7 +198,7 @@ Button :: #import "button";
                     GlyphWidth(options[index].label, font,
                         segment.value.typeface), metrics)
                 advance = SegmentedRowAdvanceFor(props.wrap, row_width,
-                    row_count, item_width, cast(s32)bounds.width, metrics)
+                    row_count, item_width, cast(s32)placed.width, metrics)
                 if !advance.wrap_before {
                     row_width = advance.row_width
                     row_count = advance.row_count
@@ -198,8 +207,8 @@ Button :: #import "button";
                 }
             }
             if row_count > 0 {
-                row: SegmentedRow = SegmentedRowFor(bounds.x,
-                    bounds.width, row_y, row_start, row_count,
+                row: SegmentedRow = SegmentedRowFor(placed.x,
+                    placed.width, row_y, row_start, row_count,
                     row_width, props.wrap, metrics)
                 item_x: s32 = row.x
                 row_item: s32 = 0
@@ -239,7 +248,7 @@ Button :: #import "button";
             index += 1
         }
         if outlined {
-            PaintRoundedOutline(session, result.node, bounds, control.value.radius,
+            PaintRoundedOutline(session, result.node, paint, control.value.radius,
                 12, control.value.border_width,
                 ColorFromPacked(Opacity(control.value.border, control_opacity)))
         }
