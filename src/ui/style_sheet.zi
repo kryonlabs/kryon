@@ -378,7 +378,30 @@ StyleSelector :: struct {
     validation: s32
     orientation: s32
     placement: s32
+    // Tree context (StyleContext bits): an ancestor, or with
+    // StyleContextParent the parent, carrying ancestor_class and
+    // ancestor_id; being its parent's first child; not carrying not_class
+    // and not being in not_state.
+    context: u32
+    ancestor_class: s32
+    ancestor_id: s32
+    not_class: s32
+    not_state: s32
 }
+
+StyleContext :: enum {
+    StyleContextAncestor :: 1
+    StyleContextParent :: 2
+    StyleContextFirstChild :: 4
+    StyleContextNot :: 8
+}
+using StyleContext;
+
+// Ancestor, parent and first-child context of the widget being styled.
+// BeginFrame installs it, so a program without a frame carries none, and
+// rules without context never call it.
+StyleTreeMatch :: #type (selector: StyleSelector) -> bool;
+style_tree_match: StyleTreeMatch;
 
 StyleRule :: struct {
     selector: StyleSelector
@@ -888,7 +911,24 @@ StyleSelectorSpecificity :: (selector: StyleSelector) -> s32 {
     if selector.name != 0 {
         names = 1
     }
+    if selector.context != 0 {
+        if selector.ancestor_class != 0 { classes += 1 }
+        if selector.ancestor_id != 0 { names += 2 }
+        if (selector.context & cast(u32)StyleContextFirstChild) != 0 { classes += 1 }
+        if selector.not_class != 0 { classes += 1 }
+        if selector.not_state != 0 { classes += 1 }
+    }
     return StyleSpecificity(kinds, attributes, classes, names)
+}
+
+// A selector's tree context: the :not() exclusions, then the ancestors and
+// siblings the frame knows.
+#program_export
+StyleContextMatches :: (selector: StyleSelector, facts: StyleFacts, active_state: s32) -> bool {
+    if selector.not_class != 0 && selector.not_class == facts.class_name { return false }
+    if selector.not_state != 0 && selector.not_state == active_state { return false }
+    if (selector.context & ~cast(u32)StyleContextNot) == 0 { return true }
+    return style_tree_match != null && style_tree_match(selector)
 }
 #program_export
 StyleRuleMatchesState :: (rule_state: s32, active_state: s32) -> bool {
@@ -902,7 +942,8 @@ StyleRuleMatches :: (rule: StyleRule, facts: StyleFacts, active_state: s32) -> b
     if !StyleRuleMatchesState(rule.state, active_state) {
         return false
     }
-    return StyleSelectorMatches(rule.selector, facts)
+    return StyleSelectorMatches(rule.selector, facts) &&
+        (rule.selector.context == 0 || StyleContextMatches(rule.selector, facts, active_state))
 }
 
 #program_export
@@ -954,7 +995,8 @@ ApplyStyleRules :: (cascade: StyleCascade, rules: []StyleRule,
     index: s64 = 0
     while index < rules.count {
         if StyleRuleMatchesState(rules[index].state, active_state) &&
-        StyleSelectorMatches(rules[index].selector, facts) {
+        StyleSelectorMatches(rules[index].selector, facts) && (rules[index].selector.context == 0 ||
+            StyleContextMatches(rules[index].selector, facts, active_state)) {
             priority: StylePriority
             priority.present = true
             priority.layer = rules[index].layer
@@ -1312,7 +1354,8 @@ ResolveIndexedStyle :: (base: StyleData, facts: StyleFacts, active_state: s32,
             index := word * 64 + StyleFirstBit(candidates)
             candidates &= candidates - cast(u64)1
             if StyleRuleMatchesState(installed_states[index], active_state) &&
-            StyleSelectorMatches(installed_selectors[index], facts) {
+            StyleSelectorMatches(installed_selectors[index], facts) && (installed_selectors[index].context == 0 ||
+                StyleContextMatches(installed_selectors[index], facts, active_state)) {
                 rule := *installed_rules.items[installed_rule_indices[index]]
                 if remaining != 0 {
                     value := rule.style

@@ -1,5 +1,6 @@
 #import "geometry"
 #import "layout_paint"
+#import "style_tree"
 #import "paint_queue"
 #import "session"
 #import "tree"
@@ -48,6 +49,7 @@ BeginFrame :: (session: Session, screen_key: u64,
     TextEditingFrameBegin(session)
     PaintClear(session)
     LayoutPaintInstall()
+    StyleTreeInstall(session)
     frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, SessionIndex(session), false)
     FrameMotionBegin(session)
     TreeStart(session, screen_key, bounds)

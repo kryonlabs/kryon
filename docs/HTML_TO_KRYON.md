@@ -177,7 +177,7 @@ arithmetic and no computed keys.
 | `@media (max-width: 820px)` | Keep the declaration and supply logical viewport width to the native CSS environment. Orientation, height, print and range-operator queries stay browser-side. |
 | `gap: 12px 14px`, `padding: 8px 12px` | Use the same CSS on `Grid`. Grid interprets row and column gap independently and follows the native axis-pair padding model. Card uses axis padding for its content rectangle. |
 | `font-size: clamp(...)`, `padding: clamp(16px, 4vw, 58px)`, `letter-spacing: -.06em` | Same CSS. `calc()`, `min()`, `max()`, `clamp()`, `em`, `vw` and `vh` resolve natively; viewport lengths follow the width you install (`CssSheetSameMedia` reports when one changes). `width`, `height`, box and flex lengths take static expressions only. |
-| `.card span`, `.card strong` (descendant selectors) | Give the inner widget its own class (`Text.card-label`, `Text.card-value`). Native styles match without tree context, so combinators, `:not()` and `:first-child` are errors; nest `&:hover`, `&.active`, `&#id` or `&[tone=Accent]` inside a rule instead. |
+| `.card span`, `.card > strong`, `li:first-child`, `a:not(.active)` | `.card Text`, `.card > Text`, `Text:first-child` and `Text:not(.active)` work natively with one ancestor matched by class or id. For deeper chains, give the inner widget its own class (`Text.card-label`). |
 | `box-shadow: 0 8px 24px ...`, `font: 15px/1.55 system-ui, sans-serif` | Same CSS: a shadow selects an elevation role (raised up to 8px blur, else floating) and `font` sets size, line height, weight and style; generic families keep the theme face and `monospace` selects the code role. |
 | `font-weight`, `line-height`, `letter-spacing` | Keep native-supported literal properties on `Heading` and `Text`. Use a typeface with fixed-width digits or a mono face for numeric columns. CSS `font-variant-numeric` and `text-transform` do not apply to native text. |
 | `background: radial-gradient(...)` | Use the base `background-color`, or a supported two-stop `linear-gradient` on a surface that draws gradients. The native CSS parser does not accept radial gradients. |
@@ -223,8 +223,9 @@ Parse once per stylesheet in a running app. The example reparses to show the com
 - **Classes & IDs**: at most one `.class` and one `#id` per compound selector (e.g. `Button.primary#save:hover`).
 - **Kryon attributes**: `[tone=Neutral|Accent|Danger|Success|Warning]`, `[emphasis=Filled|Soft|Outline|Ghost|Link]`, `[size=Small|Medium|Large]`, `[role=Label|Panel|Track|Fill|Header|Close|...]`, `[state=any|normal|hover|pressed|focus|disabled|loading|selected]`.
 - **State pseudo-classes** (max 1 per selector): `:hover`, `:active`, `:focus`, `:focus-visible`, `:disabled`, `:selected`, `:checked`, `:loading`.
-- **Nesting**: `&:state`, `&.class`, `&#id` and `&[attribute]` rules one level deep inside a rule; each adds to the parent selector.
-- **Not supported** (parse error): descendant/child/sibling combinators (` `, `>`, `+`, `~`), `:first-child`/`:last-child`, pseudo-elements (`::before`), `!important`, `//` comments, selector functions (`:not()`). Give the inner widget its own class instead.
+- **Tree context**: one ancestor, matched by its class or id, as a descendant (`.card Text`, `#sidebar .item`) or the parent (`.toolbar > Button`); `:first-child`; and `:not(.class)` or `:not(:state)` (`Text:not(.muted)`, `Button:not(:disabled)`). The widget being styled is the next child of the open container, so these match while the frame builds; a sheet without such rules does no tree work.
+- **Nesting**: `&:state`, `&.class`, `&#id`, `&[attribute]`, `&:first-child` and `&:not(...)` rules one level deep inside a rule; each adds to the parent selector.
+- **Not supported** (parse error): a typed ancestor (`Row Text`) or more than one (`.a .b .c`), sibling combinators (`+`, `~`), `:last-child` and `:nth-child()` (the frame has not built the later siblings yet), nested combinators (`& .b`), pseudo-elements (`::before`), `!important`, `//` comments, other selector functions. Give the inner widget its own class instead.
 
 ### Supported Properties & Values
 

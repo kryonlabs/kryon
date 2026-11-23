@@ -188,6 +188,7 @@ style_motion_slot.zi
 layout_motion_slot.zi
 layout_paint_slot.zi
 layout_paint.zi
+style_tree.zi
 surface.zi
 svgicon/svg_icon_behavior.zi
 svgicon/svg_icon_props.zi

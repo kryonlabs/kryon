@@ -23,7 +23,7 @@ using Vectors :: #import "std/vec";
 ListRows :: 1000;
 NodeBudget :: 3100;
 PaintBudget :: 6200;
-StarterBundleBudget :: 3850000;
+StarterBundleBudget :: 3950000;
 
 failures: s32;
 
