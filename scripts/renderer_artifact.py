@@ -12,6 +12,7 @@ import tempfile
 
 SUPPORTED_RENDERERS = {
     'renderer-desktop': ('linux-x86_64-gnu', 'android-aarch64-bionic', 'android-armv7-bionic'),
+    'renderer-desktop-encode': ('linux-x86_64-gnu',),
     'renderer-desktop-windows': ('windows-x86_64-mingw',),
     'renderer-web': ('emscripten-wasm32-emscripten',),
 }
@@ -202,11 +203,16 @@ def build(name, target, stage, root):
         if 'commit' in dependency:
             verify_locked_commit(source, dependency['commit'], not locked, name)
         return source
+    # The default desktop artifact decodes AVIF with dav1d only. libaom is
+    # resolved for AVIF encoding (the encode artifact) and the Android codec
+    # artifact, which keeps the oracle and the encoder.
+    needs_aom = name == 'renderer-desktop-encode' or (
+        name == 'renderer-desktop' and target.startswith('android-'))
     if name != 'renderer-web':
         avif_package = locked_source('avif')
         avif_entry = next(p for p in lock['packages'] if p['id'] == provider['dependencies']['avif'])
         avif_source = locked_source('libavif', avif_entry)
-        aom_source = locked_source('libaom', avif_entry)
+        aom_source = locked_source('libaom', avif_entry) if needs_aom else None
         dav1d_source = locked_source('dav1d', avif_entry)
         webp_package = locked_source('webp')
         webp_entry = next(p for p in lock['packages'] if p['id'] == provider['dependencies']['webp'])
@@ -221,13 +227,16 @@ def build(name, target, stage, root):
         copy(opus_source / 'COPYING', stage / 'resources/LICENSE-opus')
 
     def codec_arguments(work, cc):
-        return [f'KRYON_DIR={root}', f'CODEC_CC={cc}', 'CODEC_JOBS=2',
-                f'WEBP_PACKAGE={webp_source}', f'WEBP_CODEC_PACKAGE={webp_package}',
-                f'WEBP_BUILD={work}/webp', f'AVIF_CODEC_PACKAGE={avif_package}',
-                f'AVIF_PACKAGE={avif_source}', f'AOM_PACKAGE={aom_source}',
-                f'DAV1D_PACKAGE={dav1d_source}', f'AVIF_BUILD={work}/avif-codec',
-                f'AUDIO_CODEC_PACKAGE={audio_package}', f'OPUS_PACKAGE={opus_source}',
-                f'SAMPLERATE_PACKAGE={samplerate_source}', f'OPUS_BUILD={work}/audio']
+        arguments = [f'KRYON_DIR={root}', f'CODEC_CC={cc}', 'CODEC_JOBS=2',
+                     f'WEBP_PACKAGE={webp_source}', f'WEBP_CODEC_PACKAGE={webp_package}',
+                     f'WEBP_BUILD={work}/webp', f'AVIF_CODEC_PACKAGE={avif_package}',
+                     f'AVIF_PACKAGE={avif_source}',
+                     f'DAV1D_PACKAGE={dav1d_source}', f'AVIF_BUILD={work}/avif-codec',
+                     f'AUDIO_CODEC_PACKAGE={audio_package}', f'OPUS_PACKAGE={opus_source}',
+                     f'SAMPLERATE_PACKAGE={samplerate_source}', f'OPUS_BUILD={work}/audio']
+        if needs_aom:
+            arguments.append(f'AOM_PACKAGE={aom_source}')
+        return arguments
 
     if name == 'renderer-web':
         copy(toolchain / 'web/ziran_web.js', stage / 'web/ziran_web.js')
@@ -269,7 +278,8 @@ def build(name, target, stage, root):
         meta['shared_libraries'] = ['lib/libkryonavif.so']
         meta['defines'] = ['ANDROID_BUILD']
         meta['link_flags'] = ['-lm']
-    elif name == 'renderer-desktop':
+    elif name in ('renderer-desktop', 'renderer-desktop-encode'):
+        encode = name == 'renderer-desktop-encode'
         packages = ['sdl2', 'cairo', 'freetype2', 'pangocairo', 'fontconfig', 'gio-2.0']
         meta['compile_flags'] = shlex.split(capture(['pkg-config', '--cflags', *packages]))
         meta['link_flags'] = shlex.split(capture(['pkg-config', '--libs', *packages])) + ['-ldl', '-lm', '-lpthread']
@@ -279,19 +289,28 @@ def build(name, target, stage, root):
             raise ValueError('CC must target Linux x86_64')
         with tempfile.TemporaryDirectory(prefix='.build-', dir=stage) as temporary:
             work = Path(temporary)
-            run(['make', '-j1', '-f', root / 'mk/codecs.mk', *codec_arguments(work, cc),
-                 'codec-archives', str(work / 'avif-codec/libkryonavif.so')])
+            if encode:
+                run(['make', '-j1', '-f', root / 'mk/codecs.mk', *codec_arguments(work, cc),
+                     'codec-archives', str(work / 'avif-codec/libkryonavif.so')])
+                copy(work / 'avif-codec/avif/libavif.a', stage / 'lib/libavif.a')
+                copy(work / 'avif-codec/aom/libaom.a', stage / 'lib/libaom.a')
+                copy(work / 'avif-codec/libkryonavif.so', stage / 'lib/libkryonavif.so')
+                meta['archives'] = ['lib/libkryonwebp.a', 'lib/libavif.a',
+                                    'lib/libaom.a', 'lib/libopus.a']
+            else:
+                run(['make', '-j1', '-f', root / 'mk/codecs.mk', *codec_arguments(work, cc),
+                     'decoder-archives'])
+                copy(work / 'avif-codec/decoder/avif/libavif.a', stage / 'lib/libavif.a')
+                copy(work / 'avif-codec/decoder/libkryonavif.so', stage / 'lib/libkryonavif.so')
+                meta['archives'] = ['lib/libkryonwebp.a', 'lib/libavif.a', 'lib/libopus.a']
             copy(work / 'webp/libkryonwebp.a', stage / 'lib/libkryonwebp.a')
-            copy(work / 'avif-codec/avif/libavif.a', stage / 'lib/libavif.a')
-            copy(work / 'avif-codec/aom/libaom.a', stage / 'lib/libaom.a')
             copy(work / 'audio/libopus/libopus.a', stage / 'lib/libopus.a')
-            copy(work / 'avif-codec/libkryonavif.so', stage / 'lib/libkryonavif.so')
-        meta['archives'] = ['lib/libkryonwebp.a', 'lib/libavif.a', 'lib/libaom.a', 'lib/libopus.a']
         meta['shared_libraries'] = ['lib/libkryonavif.so']
     if name != 'renderer-web':
         copy(avif_source / 'LICENSE', stage / 'resources/LICENSE-libavif')
-        copy(aom_source / 'LICENSE', stage / 'resources/LICENSE-libaom')
-        copy(aom_source / 'PATENTS', stage / 'resources/PATENTS-libaom')
+        if needs_aom:
+            copy(aom_source / 'LICENSE', stage / 'resources/LICENSE-libaom')
+            copy(aom_source / 'PATENTS', stage / 'resources/PATENTS-libaom')
         copy(dav1d_source / 'COPYING', stage / 'resources/LICENSE-dav1d')
     (stage / 'renderer.json').write_text(json.dumps(meta, indent=2) + '\n')
 

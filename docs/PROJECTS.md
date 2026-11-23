@@ -257,6 +257,8 @@ native_platform = "linux-x86_64-gnu"
 ```
 
 This adds the desktop codec support and resources to the SDL/Cairo profile.
+`kryon:renderer-desktop` decodes AVIF with dav1d only; an app that compresses
+AVIF selects `kryon:renderer-desktop-encode` instead, which adds libaom.
 Use space-separated `package:artifact` selections for several providers.
 Selections come from the application's resolved package graph; no cache
 paths or prebuilt archive copies belong in its manifest. The toolchain must

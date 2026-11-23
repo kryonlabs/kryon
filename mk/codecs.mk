@@ -21,6 +21,11 @@ AVIF_A ?= $(AVIF_BUILD)/avif/libavif.a
 AOM_A ?= $(AVIF_BUILD)/aom/libaom.a
 AVIF_SO ?= $(AVIF_BUILD)/libkryonavif.so
 AVIF_INPUTS = $(KRYON_DIR)/mk/codecs.mk $(KRYON_DIR)/cmake/AVIF.cmake $(KRYON_DIR)/cmake/ImagePackages.cmake $(KRYON_DIR)/cmake/avif/CMakeLists.txt $(wildcard $(AVIF_CODEC_PACKAGE)/native/*.cmake)
+# The decode-only build backs the default renderer artifact: dav1d only, no
+# libaom encoder or oracle. Full AVIF compression uses the encode artifact.
+AVIF_DECODER_BUILD ?= $(AVIF_BUILD)/decoder
+AVIF_DECODER_A ?= $(AVIF_DECODER_BUILD)/avif/libavif.a
+AVIF_DECODER_SO ?= $(AVIF_DECODER_BUILD)/libkryonavif.so
 
 AUDIO_CODEC_PACKAGE = $(eval AUDIO_CODEC_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path audio $(if $(wildcard ziran.local.toml),,--locked)))$(AUDIO_CODEC_PACKAGE)
 OPUS_PACKAGE = $(eval OPUS_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path libopus $(if $(wildcard ziran.local.toml),,--locked)))$(OPUS_PACKAGE)
@@ -74,6 +79,21 @@ $(AVIF_BUILD)/kryon-built: codec-config-force
 
 # Make must recheck library mtimes after the shared build replaces them.
 $(AVIF_A) $(AOM_A) $(AVIF_SO): $(AVIF_BUILD)/kryon-built
+	@test -f $@
+
+.PHONY: decoder-archives
+decoder-archives: $(WEBP_A) $(AVIF_DECODER_A) $(OPUS_A) $(if $(filter Linux,$(CODEC_HOST_OS)),$(AVIF_DECODER_SO))
+
+$(AVIF_DECODER_BUILD)/kryon-built: codec-config-force
+	python3 $(KRYON_DIR)/scripts/build_avif.py "$(AVIF_DECODER_BUILD)" --jobs "$(CODEC_JOBS)" \
+		--decode-only --archive "$(AVIF_DECODER_A)" \
+		$(if $(filter Linux,$(CODEC_HOST_OS)),--shared-library "$(AVIF_DECODER_SO)") \
+		$(foreach source,$(AVIF_INPUTS) $(KRYON_DIR)/scripts/codec_configure.py $(KRYON_DIR)/scripts/build_avif.py,--input "$(source)") \
+		"source=$(KRYON_DIR)/cmake/avif" "compiler=$(CODEC_CC)" \
+		"avif=$(AVIF_PACKAGE)" "dav1d=$(DAV1D_PACKAGE)" \
+		"package=$(AVIF_CODEC_PACKAGE)"
+
+$(AVIF_DECODER_A) $(AVIF_DECODER_SO): $(AVIF_DECODER_BUILD)/kryon-built
 	@test -f $@
 
 endif

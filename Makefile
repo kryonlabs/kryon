@@ -215,9 +215,13 @@ renderer-consumer-test:
 
 test: renderer-consumer-test
 
-.PHONY: desktop-codec-artifact-test
+.PHONY: desktop-codec-artifact-test desktop-codec-encode-artifact-test
 desktop-codec-artifact-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/desktop_codec_artifact_test.py
+
+# AVIF compression needs libaom; the default artifact decodes with dav1d only.
+desktop-codec-encode-artifact-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/desktop_codec_artifact_test.py --encode
 
 test: desktop-codec-artifact-test
 

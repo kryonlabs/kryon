@@ -422,7 +422,13 @@ android_ndk = "string"
 android_api = "string=21"
 
 [artifacts.renderer-desktop]
-inputs = ["cmake/desktop-codecs/CMakeLists.txt", "mk/codecs.mk", "scripts/codec_configure.py", "cmake/WebP.cmake", "cmake/webp/CMakeLists.txt", "cmake/AVIF.cmake", "cmake/ImagePackages.cmake", "cmake/avif/CMakeLists.txt", "src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
+inputs = ["cmake/desktop-codecs/CMakeLists.txt", "mk/codecs.mk", "scripts/build_avif.py", "scripts/codec_configure.py", "cmake/WebP.cmake", "cmake/webp/CMakeLists.txt", "cmake/AVIF.cmake", "cmake/ImagePackages.cmake", "cmake/avif/CMakeLists.txt", "src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
+outputs = ["lib/libkryonwebp.a", "lib/libavif.a", "lib/libopus.a", "lib/libkryonavif.so", "resources/LICENSE-libwebp", "resources/PATENTS-libwebp", "resources/LICENSE-opus", "resources/LICENSE-libavif", "resources/LICENSE-dav1d", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
+
+# AVIF compression: the same profile plus libaom. The default artifact decodes
+# with dav1d only; select this one from the apps that import AVIF encoding.
+[artifacts.renderer-desktop-encode]
+inputs = ["cmake/desktop-codecs/CMakeLists.txt", "mk/codecs.mk", "scripts/build_avif.py", "scripts/codec_configure.py", "cmake/WebP.cmake", "cmake/webp/CMakeLists.txt", "cmake/AVIF.cmake", "cmake/ImagePackages.cmake", "cmake/avif/CMakeLists.txt", "src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
 outputs = ["lib/libkryonwebp.a", "lib/libavif.a", "lib/libaom.a", "lib/libopus.a", "lib/libkryonavif.so", "resources/LICENSE-libwebp", "resources/PATENTS-libwebp", "resources/LICENSE-opus", "resources/LICENSE-libavif", "resources/LICENSE-libaom", "resources/PATENTS-libaom", "resources/LICENSE-dav1d", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
 
 [artifacts.renderer-web]

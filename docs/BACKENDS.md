@@ -365,11 +365,14 @@ their existing paths.
 including extensionless names and packaged bundle/APK assets. Native hosts
 decode with the locked libavif 1.3 and dav1d, its assembly selected at run time
 for the CPU (x86 SSE2 to AVX-512, ARMv7 and AArch64 NEON); Android 9 requires
-no OS AVIF support. libaom is linked as the explicit comparison oracle, never
-as a fallback. The still-image API shows the first complete frame of a
-sequence. The ARMv7 oracle keeps libaom's portable kernels, because the locked
-AOM/NDK combination emits unaligned NEON loads which fault on real Android
-hardware; dav1d's own NEON runs there.
+no OS AVIF support. libaom is linked as the explicit comparison oracle and as
+the AVIF encoder, never as a fallback. The default `kryon:renderer-desktop`
+artifact therefore carries dav1d decode only; an app that compresses AVIF
+selects `kryon:renderer-desktop-encode`, which adds libaom (`make
+desktop-codec-encode-artifact-test`). The still-image API shows the first
+complete frame of a sequence. The ARMv7 oracle keeps libaom's portable
+kernels, because the locked AOM/NDK combination emits unaligned NEON loads
+which fault on real Android hardware; dav1d's own NEON runs there.
 
 Desktop hosts load the AVIF bridge (`libkryonavif.so`, `kryonavif.dll`) on
 first use, from `KRYON_AVIF_LIBRARY`, the library search path or beside the
@@ -441,7 +444,9 @@ The native `image_preview` module provides
 quality: s32 = 35) -> ImageAVIFResult`. On success, `data` owns actual AVIF
 bytes and `source_bytes`/`encoded_bytes` support a real size comparison.
 `width`/`height` are the full stored dimensions. Call `ImageAVIFFree(*result)`
-when finished. Encoding does not resize or discard a larger result.
+when finished. Encoding does not resize or discard a larger result. An artifact
+consumer selects `kryon:renderer-desktop-encode` for compression: the default
+renderer artifact carries dav1d decode only.
 `ImageAVIFEncodingAvailable()` reports whether this host supports encoding.
 Browser hosts return false, and compression returns `UnsupportedCapability`
 without linking native codec archives. Browser RGBA previews remain available.

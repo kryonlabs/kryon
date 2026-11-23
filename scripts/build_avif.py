@@ -28,14 +28,20 @@ def main():
     parser.add_argument("build", type=Path)
     parser.add_argument("--jobs", required=True)
     parser.add_argument("--archive", type=Path, required=True)
-    parser.add_argument("--aom-archive", type=Path, required=True)
+    parser.add_argument("--aom-archive", type=Path)
+    parser.add_argument("--decode-only", action="store_true",
+                        help="dav1d decode without libaom; --aom-archive is not accepted")
     parser.add_argument("--shared-library", type=Path)
     parser.add_argument("--input", type=Path, action="append", default=[])
     parser.add_argument("config", nargs="+")
     args = parser.parse_intermixed_args()
+    if args.decode_only == (args.aom_archive is not None):
+        parser.error("pass either --decode-only or --aom-archive")
     inputs = dict(argument.split("=", 1) for argument in args.config)
     cmake_build = args.build / "cmake-build"
-    outputs = {"avif/libavif.a": args.archive, "aom/libaom.a": args.aom_archive}
+    outputs = {"avif/libavif.a": args.archive}
+    if not args.decode_only:
+        outputs["aom/libaom.a"] = args.aom_archive
     targets = ["avif_static"]
     if args.shared_library:
         outputs["libkryonavif.so"] = args.shared_library
@@ -51,9 +57,10 @@ def main():
                 all(path.is_file() and path.stat().st_size > 0 for path in outputs.values())):
             return
         done.unlink(missing_ok=True)
+        mode = ["-DDECODE_ONLY=ON"] if args.decode_only else [f"-DAOM_DIR={inputs['aom']}"]
         subprocess.run([
             "cmake", "-S", inputs["source"], "-B", str(cmake_build),
-            f"-DAVIF_DIR={inputs['avif']}", f"-DAOM_DIR={inputs['aom']}",
+            f"-DAVIF_DIR={inputs['avif']}", *mode,
             f"-DDAV1D_DIR={inputs['dav1d']}", f"-DKRYON_AVIF_PACKAGE_DIR={inputs['package']}",
             "-DCMAKE_POLICY_VERSION_MINIMUM=3.5", "-DCMAKE_BUILD_TYPE=Release",
             f"-DCMAKE_C_COMPILER={inputs['compiler']}",
