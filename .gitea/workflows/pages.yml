@@ -1,0 +1,227 @@
+name: Cloudflare Pages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - assets/brand/**
+      - docs/site/**
+      - examples/gallery/**
+      - src/**
+      - mk/**
+      - ziran.toml
+      - scripts/gallery.py
+      - scripts/build-gallery.py
+      - scripts/build-site.py
+      - scripts/site-metadata.py
+      - tests/site_browser_test.py
+      - ziran.lock
+      - tests/portable_format_runtime.cjs
+      - .gitea/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  browser-runtime:
+    name: Build ZX website
+    if: github.ref == 'refs/heads/master'
+    runs-on: alpha-ubuntu24.04
+    env:
+      MAKEFLAGS: -j2
+    defaults:
+      run:
+        working-directory: kryonlabs/kryon
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: kryonlabs/kryon
+          persist-credentials: false
+      # The locked compiler comes prebuilt.
+      - name: Set up the locked Ziran
+        uses: https://git.waozi.xyz/ziranlang/ziran/.github/actions/setup@4135e07fae33bcd0c00dd66b5716fdfe19c1fca5
+        with:
+          project: kryonlabs/kryon
+          path: ziranlang/ziran
+          packages: python3-pil
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - uses: emscripten-core/setup-emsdk@v15
+        with:
+          version: '6.0.6'
+      - name: Select these source revisions
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          import subprocess
+          root = Path(os.environ['GITHUB_WORKSPACE'])
+          settings = '[overrides]\nkryon = "' + str(root / 'kryonlabs/kryon') + '"\nziran = "' + str(root / 'ziranlang/ziran') + '"\n'
+          for project in ('.', 'examples/gallery'):
+              (Path(project) / 'ziran.local.toml').write_text(settings)
+              # An override can add dependency edges absent from the saved
+              # consumer lock. Resolve the selected checkout before building.
+              subprocess.run([str(root / 'ziranlang/ziran/build/bin/ziran'), 'lock'],
+                             cwd=project, check=True)
+          PY
+      - name: Build and verify portable browser assets
+        run: |
+          export PATH="$GITHUB_WORKSPACE/ziranlang/ziran/build/bin:$PATH"
+          export ZIRAN_ROOT="$GITHUB_WORKSPACE/ziranlang/ziran"
+          python3 scripts/build-site.py
+          node tests/portable_format_runtime.cjs
+          ZIRAN_PLAYGROUND_RUNTIME="$PWD/docs/site/runtime/playground-runtime.js" node "$GITHUB_WORKSPACE/ziranlang/ziran/tests/web_bundle_runtime.cjs"
+      - name: Stage public website files
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, shutil, subprocess
+          site = Path('docs/site')
+          output = Path('build/scratch/website-deploy')
+          paths = {Path(p) for p in subprocess.check_output(['git', 'ls-files', '-z', '--', str(site)]).decode().split('\0') if p}
+          paths.add(site / 'gallery-data.js')
+          paths.add(site / 'assets/brand/mascot-dragon.png')
+          paths.update((site / 'gallery-sources').rglob('*.zi'))
+          # The build numbers runtime assets; stage every one it lists, since
+          # a newly bundled asset is not tracked yet.
+          paths.update(site / name for _, name in json.loads((site / 'runtime/assets.json').read_text()))
+          for source in paths:
+              destination = output / source.relative_to(site)
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copyfile(source, destination)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kryon-website
+          path: kryonlabs/kryon/build/scratch/website-deploy/
+          if-no-files-found: error
+          include-hidden-files: true
+
+  verify:
+    name: Website
+    needs: browser-runtime
+    if: github.ref == 'refs/heads/master'
+    runs-on: alpha-ubuntu24.04
+    defaults:
+      run:
+        working-directory: kryonlabs/kryon
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          path: kryonlabs/kryon
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: kryon-website
+          path: kryonlabs/kryon/docs/site
+
+      # The portable source test invokes the locked compiler directly.
+      - name: Set up the locked Ziran
+        uses: https://git.waozi.xyz/ziranlang/ziran/.github/actions/setup@4135e07fae33bcd0c00dd66b5716fdfe19c1fca5
+        with:
+          project: kryonlabs/kryon
+          path: ziranlang/ziran
+
+      # Source-preservation tests regenerate the gallery manifest in this job.
+      # Select the same Kryon and Ziran sources as the website build job.
+      - name: Select source revisions for gallery verification
+        working-directory: kryonlabs/kryon/examples/gallery
+        run: |
+          ziran_root="$GITHUB_WORKSPACE/ziranlang/ziran"
+          printf '[overrides]\nkryon = "%s"\nziran = "%s"\n' \
+            "$GITHUB_WORKSPACE/kryonlabs/kryon" "$ziran_root" > ziran.local.toml
+          "$ziran_root/build/bin/ziran" lock
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Install private display tools
+        timeout-minutes: 10
+        run: sh "$GITHUB_WORKSPACE/ziranlang/ziran/scripts/ci_packages.sh" build-essential python3 python3-pil
+
+      # Test and deploy the same runtime built from the locked compiler.
+      - name: Check static site assets
+        run: |
+          test -f docs/site/index.html
+          test -f docs/site/runtime/playground-runtime.js
+          test -f docs/site/runtime/playground-runtime.wasm
+          test -f docs/site/demo-theme.js
+          test -f docs/site/current.css
+          test -f docs/site/favicon.svg
+          test -f docs/site/favicon-32.png
+          test -f docs/site/og.png
+          test -f docs/site/assets/brand/mark.svg
+          test -f docs/site/assets/brand/mascot-dragon.png
+          test -f docs/site/widgets.html
+          test -f docs/site/gallery-data.js
+          test -f docs/site/gallery-sources/kryon/0.zi
+
+      - name: Test the Canvas website
+        timeout-minutes: 45
+        env:
+          CHROMIUM: google-chrome
+          # Chrome creates Unix sockets below TMPDIR; keep them clear of the
+          # runner's deeply nested checkout path.
+          KRYON_TEST_RUNTIME: ${{ runner.temp }}
+        run: |
+          export PATH="$GITHUB_WORKSPACE/ziranlang/ziran/build/bin:$PATH"
+          export ZIRAN_ROOT="$GITHUB_WORKSPACE/ziranlang/ziran"
+          env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+            YUE_DESKTOP_RECOVERY=0 python3 -u tests/site_browser_test.py
+
+      - name: Save browser startup diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-browser-log
+          path: kryonlabs/kryon/build/scratch/site-browser/profile/chromium.log
+          if-no-files-found: ignore
+
+  deploy-production:
+    name: Deploy Kryon Labs
+    needs: verify
+    if: github.ref == 'refs/heads/master'
+    runs-on: alpha-ubuntu24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: kryon-website
+          path: site/
+      - name: Prepare Wrangler
+        run: npm exec --yes --package=wrangler@4.152.0 -- wrangler --version
+      - name: Publish to Cloudflare Pages
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          set -euo pipefail
+          test -s site/index.html
+          : "${CLOUDFLARE_API_TOKEN:?Missing Pages deployment token}"
+          : "${CLOUDFLARE_ACCOUNT_ID:?Missing Cloudflare account}"
+          npm exec --offline --yes --package=wrangler@4.152.0 -- wrangler pages deploy site \
+            --project-name=kryon --branch=master --commit-hash="$GITHUB_SHA"
+      - name: Verify the production asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsSL --max-time 20 "https://kryonlabs.com/runtime/simd128.js?revision=$GITHUB_SHA" | cmp -s - site/runtime/simd128.js; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 6 ]; then sleep 5; fi
+          done
+          echo 'Production Kryon asset differs from the deployed site' >&2
+          exit 1
