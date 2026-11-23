@@ -5,6 +5,8 @@
 Box :: #import "kryon/box";
 Menu :: #import "kryon/menu";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/drawing_props"
 #import "kryon/transition"
 #import "kryon/system_theme"
@@ -49,7 +51,10 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Menu", .size = 23})
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Menu", .size = 23})
     b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
     disabled := example_input.disabled
     now := cast(float64)CaptureFrameInput(session).elapsed_ms / 1000.0
@@ -59,6 +64,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     groups[0].label = "File"; groups[0].items = items[:]
     if !menu_initialized { Menu.MenuStateInit(*menu_state); menu_state.open_index = 0; menu_initialized = true }
     if Menu.Draw(session, Menu.Props.{.motion = *example_motion, .now = now, .reduced_motion = example_input.reduced_motion, .bounds = b}, groups[:], *menu_state).activated_id > 0 { clicks += 1 }
+    unused End(session)
     return 0
 }
 

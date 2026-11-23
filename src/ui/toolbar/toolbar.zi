@@ -104,6 +104,11 @@ Draw :: (session: Session, props: PropsModule.Props, options: []Dropdown.Option,
     actions: []ToolbarAction, location := #caller_location) -> ToolbarResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // With no position or width, a placing column places the bar.
+    if props.x == 0 && props.y == 0 && props.width == 0 {
+        placed := TreePlaceAhead(session, Rectangle.{0.0, 0.0, 0.0, cast(float32)props.height})
+        props.x = cast(s32)placed.x; props.y = cast(s32)placed.y; props.width = cast(s32)placed.width
+    }
     result: ToolbarResult
     result.node = -1
     result.dropdown.node = -1

@@ -6,6 +6,8 @@ Box :: #import "kryon/box";
 Button :: #import "kryon/button";
 Overlay :: #import "kryon/overlay";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/drawing_props"
 #import "kryon/system_theme"
 #import "std/number_text"
@@ -56,17 +58,21 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "DismissibleOverlay", .size = 23})
-    b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "DismissibleOverlay", .size = 23})
+    b = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 44.0})
     disabled := example_input.disabled
 
     if dismissed {
-        if Button.Draw(session, Button.Props.{.bounds = b, .label = "Show overlay again"}) == 1 { dismissed = false }
+        if Button.Draw(session, Button.Props.{.bounds = .{height = 44}, .label = "Show overlay again"}) == 1 { dismissed = false }
     } else {
         overlay := Overlay.Draw(session, Overlay.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 188.0}), .view_width = 480, .view_height = 320, .scrim = .{16, 34, 45, 120}})
         if overlay.panel_node >= 0 { Label(session, "Click outside the panel to dismiss it.", 128.0) }
         if overlay.closed { dismissed = true }
     }
+    unused End(session)
     return 0
 }
 

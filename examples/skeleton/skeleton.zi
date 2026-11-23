@@ -1,5 +1,6 @@
 Layout :: #import "kryon/layout";
 Skeleton :: #import "kryon/skeleton";
+Text :: #import "kryon/text";
 #import "kryon/geometry"
 #import "kryon/session"
 #import "kryon/tree"
@@ -13,6 +14,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     column := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace5), .padding_override = true,
         .gap = 10, .gap_override = true})
     if !column.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 40}, .text = "Skeleton", .size = 28})
     Skeleton.Draw(session, Skeleton.Props.{.shape = .SkeletonCircle, .now = seconds})
     Skeleton.Draw(session, Skeleton.Props.{.shape = .SkeletonLine, .now = seconds})
     Skeleton.Draw(session, Skeleton.Props.{.shape = .SkeletonLine, .now = seconds, .bounds = .{width = column.content.width * 0.6}})

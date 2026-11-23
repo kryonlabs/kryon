@@ -5,6 +5,8 @@
 Box :: #import "kryon/box";
 Overlay :: #import "kryon/overlay";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/drawing_props"
 #import "kryon/system_theme"
 #import "std/number_text"
@@ -51,7 +53,10 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Popup", .size = 23})
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Popup", .size = 23})
     disabled := example_input.disabled
 
     popup := Overlay.Popup(session, Overlay.PopupProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 188.0})})
@@ -59,6 +64,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         Box.Draw(session, Box.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 188.0}), .fill = StyleTokenColor("surface"), .border = StyleTokenColor("border"), .radius = 8.0})
         Label(session, "A floating panel", 120.0)
     }
+    unused End(session)
     return 0
 }
 

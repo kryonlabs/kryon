@@ -11,6 +11,8 @@ HoverCard :: #import "kryon/hover_card";
 Sheet :: #import "kryon/sheet";
 Text :: #import "kryon/text";
 Tooltip :: #import "kryon/tooltip";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/drawing_props"
 #import "kryon/input_protocol"
 #import "kryon/tree_input"
@@ -101,7 +103,10 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "ConfirmPopover", .size = 23})
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "ConfirmPopover", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 4
     Prepare(session, scene)
@@ -137,6 +142,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     }
     confirmed := ConfirmPopover.Draw(session, props, *confirm_state)
     if gallery_live && (confirmed.closed || confirmed.confirmed || confirmed.cancelled) { live_confirm_open = false }
+    unused End(session)
     return 0
 }
 

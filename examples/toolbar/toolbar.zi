@@ -6,6 +6,8 @@ Box :: #import "kryon/box";
 Dropdown :: #import "kryon/dropdown";
 Text :: #import "kryon/text";
 Toolbar :: #import "kryon/toolbar";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/drawing_props"
 #import "kryon/system_theme"
 #import "std/number_text"
@@ -39,20 +41,22 @@ clicks: s32;
 
 no_options: []Dropdown.Option;
 
-b: Rectangle;
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Toolbar", .size = 23})
-    b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Toolbar", .size = 23})
     disabled := example_input.disabled
 
     actions: [2]Toolbar.ToolbarAction
     actions[0].label = "New note"; actions[1].label = "Share"; actions[1].disabled = disabled
-    if Toolbar.Draw(session, Toolbar.Props.{.x = cast(s32)b.x, .y = cast(s32)b.y, .width = cast(s32)b.width, .height = 48}, no_options, actions[:]).clicked_action >= 0 { clicks += 1 }
+    if Toolbar.Draw(session, Toolbar.Props.{.height = 48}, no_options, actions[:]).clicked_action >= 0 { clicks += 1 }
+    unused End(session)
     return 0
 }
 
