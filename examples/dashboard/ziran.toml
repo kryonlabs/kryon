@@ -7,15 +7,15 @@ tool = "kryon"
 
 [toolchain]
 git = "https://git.waozi.xyz/ziranlang/ziran.git"
-ref = "8133bd41ef171e03ce4557b55122eb739548eb72"
+ref = "e225a4fe6acd41c40c78a46f6dab6ff779dd08ce"
 
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
-ref = "02cc10e682b83fe7ba9c2ed4638507818d3c9cc0"
+ref = "2f9b5db29bcfe10a0bb124ac7d1f6d316a16f148"
 
 [dependencies.css]
 git = "https://git.waozi.xyz/kryonlabs/css.git"
-ref = "b0e83ac2d2d8e3abc35ab015d447bef5c17517ca"
+ref = "d55590a6cd97fc22096227d619e13f656f12c5b3"
 
 [tool.kryon]
 default_profile = "desktop"
