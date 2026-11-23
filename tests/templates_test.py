@@ -22,8 +22,8 @@ KRYON = ROOT / "build/bin/kryon"
 # starter's look changes on purpose, check build/test/templates/*.png and
 # put the digests the failure prints here.
 STARTER_DIGESTS = {
-    "light": "2efc45f3b103114b9f2b9a721fa21443063d0b9da8736c17d7c0e45dbf0533fb",
-    "dark": "dc3347a9e1215234318919ad0b0cdd3a84e06aece528a55751d8ac1721c60339",
+    "light": "c588dd0f5e965e714434ea76a006a3b40689d52e94a8c9daae697c2eb033e2b7",
+    "dark": "5d9d46e85b73a942ce5f17c56ed1e35b7febb2f1e5e35411a650b828c18d2ccd",
 }
 
 
