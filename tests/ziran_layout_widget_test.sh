@@ -179,6 +179,23 @@ ContentAnswer :: () -> s32 {
     return 42
 }
 
+// A grid in a padded column keeps inside the column's padding on both sides.
+PaddedGridAnswer :: () -> s32 {
+    session := TestSession()
+    viewport: Rectangle = .{0.0, 0.0, 480.0, 320.0}
+    TreeStart(session, cast(u64)501, viewport)
+    page := Layout.Draw(session, Layout.Props.{.key = 502, .bounds = viewport, .padding = 20, .gap = 12,
+        .gap_override = true})
+    grid := Layout.Grid(session, GridProps.{.key = 503, .columns = 2, .gap = 12})
+    first := Leaf(session, 504, 0.0, 44.0)
+    second := Leaf(session, 505, 0.0, 44.0)
+    if !page.opened || !grid.container.opened || grid.container.bounds.x != 20.0 ||
+        grid.container.bounds.width != 440.0 { return -40 }
+    if first.x != 20.0 || first.width != 214.0 || second.x != 246.0 || second.x + second.width != 460.0 { return -41 }
+    if !End(session) || !End(session) || !TreeFinish(session) { return -42 }
+    return 42
+}
+
 #program_export
 Answer :: () -> s32 {
     root: Rectangle = Rectangle.{0.0, 0.0, 300.0, 200.0}
@@ -257,7 +274,9 @@ Answer :: () -> s32 {
     if measured != 42 { return measured }
     flex := FlexAnswer()
     if flex != 42 { return flex }
-    return ContentAnswer()
+    content := ContentAnswer()
+    if content != 42 { return content }
+    return PaddedGridAnswer()
 }
 ZI
 

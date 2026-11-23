@@ -515,6 +515,13 @@ Theme :: #import "theme";
         }
         node: s32 = -1
         if TreeIsBuilding(session) {
+            // The placing parent gives the measured button its slot before it
+            // paints, so a grid cell's button centers its label in the cell.
+            // An explicit width stays, at the start of a wider cell, as in CSS.
+            if parent_index == TreeCurrentParent(session) {
+                bounds = TreePlaceAhead(session, bounds)
+                if props.bounds.width > 0.0 && bounds.width > props.bounds.width { bounds.width = props.bounds.width }
+            }
             node = TreeSubmit(session, key, parent_index, WidgetKindButton, bounds)
             if node < 0 { return 0 }
             TreeSetInteractive(session, node, flags.disabled, flags.loading, props.id)

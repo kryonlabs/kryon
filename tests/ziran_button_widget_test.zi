@@ -3,12 +3,15 @@ Theme :: #import "theme";
 #import "widget_test_session"
 
 Button :: #import "kryon/button";
+Layout :: #import "kryon/layout";
 Image :: #import "kryon/image";
 // Built-in icon_type icons draw once a program imports kryon/icon.
 #import "kryon/icon"
 #import "button_behavior"
 #import "control_props"
 #import "geometry"
+#import "grid_props"
+#import "paint_queue"
 #import "drawing_props"
 #import "style"
 #import "style_sheet"
@@ -146,6 +149,49 @@ Frame :: () -> s32 {
 }
 
 #program_export
+// Buttons a grid places fill their cells and center their labels there,
+// and the grid keeps inside the padding of the column that holds it.
+GridButtons :: () -> s32 {
+    session := TestSession()
+    BeginFrame(session, cast(u64)5, Rectangle.{0.0, 0.0, 480.0, 320.0})
+    page := Layout.Draw(session, Layout.Props.{.key = 301, .bounds = .{0.0, 0.0, 480.0, 320.0}, .padding = 20,
+        .gap = 12, .gap_override = true})
+    grid := Layout.Grid(session, GridProps.{.key = 302, .columns = 2, .gap = 12})
+    for index: cast(s32)0..1 {
+        unused Button.Draw(session, Button.Props.{.key = cast(u64)(303 + index), .label = "Run",
+            .bounds = .{height = 44.0}})
+        node := TreeSubmittedCount(session) - 1
+        cell := TreeSubmittedBounds(session, node)
+        left := 20.0 + cast(float32)index * 226.0
+        if cell.x != left || cell.width != 214.0 || cell.height != 44.0 { return 1 + index }
+        labels: s32 = 0
+        for n: 0..PendingPaintCount(session) - 1 {
+            command := PendingPaintAt(session, n)
+            if command.node != node || (command.kind != cast(s32)PaintKind.PaintKindText &&
+                command.kind != cast(s32)PaintKind.PaintKindClippedText) { continue }
+            center := cast(float32)command.x + 10.5
+            if center < left + 106.0 || center > left + 108.0 { return 3 + index }
+            labels += 1
+        }
+        if labels == 0 { return 5 + index }
+    }
+    if !grid.container.opened || !End(session) { return 7 }
+    // A grid with its own height and padding keeps explicit-width buttons
+    // inside its tracks.
+    framed := Layout.Grid(session, GridProps.{.key = 310, .bounds = .{height = 208.0}, .columns = 2, .gap = 12,
+        .padding = 8})
+    for index: cast(s32)0..1 {
+        unused Button.Draw(session, Button.Props.{.key = cast(u64)(311 + index), .label = "Run",
+            .bounds = .{0.0, 0.0, 164.0, 44.0}})
+        cell := TreeSubmittedBounds(session, TreeSubmittedCount(session) - 1)
+        left := 28.0 + cast(float32)index * 218.0
+        if cell.x != left || cell.width != 164.0 { return 1000 * (10 + index) + cast(s32)(cell.x + cell.width) }
+    }
+    if !framed.container.opened || !End(session) || !page.opened || !End(session) { return 9 }
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 8 }
+    return 0
+}
+
 main :: () -> s32 {
     if !CheckButtonLineHeight() || ButtonHostFailed() { return 96 }
     // Neutral soft/outline/ghost/link actions retain readable ink; their
@@ -265,5 +311,7 @@ main :: () -> s32 {
     unused Button.Draw(TestSession(), detail)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || ButtonHostFailed() { return 50 }
     if DetailProblem() != 0 { return 50 + DetailProblem() }
+    placed := GridButtons()
+    if placed != 0 { return 100 + placed }
     return 0
 }
