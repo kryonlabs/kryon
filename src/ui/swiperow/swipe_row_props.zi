@@ -1,0 +1,78 @@
+#import "geometry"
+#import "drawing_props"
+
+// What a sideways swipe reveals behind a row: a strip in its fill with the
+// icon near the edge the row left. A side without an icon does not move.
+SwipeRowAction :: struct {
+    fill: Color
+    icon_shape: string
+    icon_color: Color
+    // The action takes the row away, as a delete does, so the row does not
+    // slide back afterwards.
+    removes: bool
+}
+
+// A list row that a tap or a sideways swipe acts on, as in a to-do list:
+// swiping right reveals `start`, swiping left reveals `end`. It paints only
+// the revealed strip; the app draws the row's content shifted sideways by
+// the result's offset.
+Props :: struct {
+    key: u64
+    bounds: Rectangle
+    // Names the row for accessibility; Enter or Space tap it.
+    label: string
+    // The app's clock in seconds, which times the slide back.
+    now: float64
+    scale: float32
+    start: SwipeRowAction
+    end: SwipeRowAction
+    // The share of the row's width a swipe travels to act; 0 means 0.35.
+    threshold: float32
+    // A positive fixed travel span in bounds units, replacing the row width
+    // as this side's drag limit and threshold basis. Zero uses the full row.
+    start_width: float32
+    disabled: bool
+    // Optional second stage; 0 means 0.5. It must exceed threshold.
+    long_threshold: float32
+    long_start: SwipeRowAction
+    long_end: SwipeRowAction
+    // Optional left-swipe threshold; 0 uses the effective shared threshold.
+    end_threshold: float32
+    // The left-swipe counterpart of start_width.
+    end_width: float32
+}
+
+// The swipe in progress, kept by the app between frames. One serves a whole
+// list, since only one row moves at a time.
+SwipeRowState :: struct {
+    key: u64
+    pressing: bool
+    start_x: float32
+    start_y: float32
+    // The press has moved far enough to be a swipe or a scroll.
+    decided: bool
+    sideways: bool
+    offset: float32
+    // The slide back after the finger lifts, from settle_from to 0.
+    settle_from: float32
+    settle_at: float64
+}
+
+SwipeRowResult :: struct {
+    // Draw the row's content shifted sideways by this.
+    offset: float32
+    // A tap, or Enter or Space; never the end of a swipe.
+    clicked: bool
+    // The secondary button was released on the row, as on Press.
+    right_clicked: bool
+    // Where the pointer clicked or was released.
+    pointer_x: float32
+    pointer_y: float32
+    // The row was swiped right or left far enough; true on that frame only.
+    swiped_start: bool
+    swiped_end: bool
+    state: SwipeRowState
+    // Exclusive with the short results, emitted only on release.
+    swiped_long_start: bool
+    swiped_long_end: bool
+}

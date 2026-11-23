@@ -16,7 +16,7 @@
 
 - Row, Column, Grid and Flow without a height size to the children they place when `End` closes them, and move the next sibling down; Flow wraps; `Layout.GridSpan` spans the next grid child. The manual `ColumnChildBounds`, `RowChildBounds`, `StackChildBoundsFor` and `FlowChildBounds` helpers are gone.
 
-- Removed legacy and duplicate code with no users left: the BSD and GNU make shims and go.mod beside the one Makefile, the SwipeRow widget and its example, the images_pending stub, the host/android and host/terminal re-exports, the unused canvas and DOM HTML shells, the system_typeface_linux and typeface_collection modules, the tree_label_cost scripts, and the release-notes, update_version, subset-fonts and update-showcase scripts (Harmony keeps its own copies).
+- Removed legacy and duplicate code with no users left: the BSD and GNU make shims and go.mod beside the one Makefile, the SwipeRow example (the widget stays: Breeze Lists uses it), the images_pending stub, the host/android and host/terminal re-exports, the unused canvas and DOM HTML shells, the system_typeface_linux and typeface_collection modules, the tree_label_cost scripts, and the release-notes, update_version, subset-fonts and update-showcase scripts (Harmony keeps its own copies).
 
 - Layout containers read CSS margins (with `auto` centering), min/max width, max height and overflow clipping; Text reads text-align.
 
