@@ -44,10 +44,10 @@ links = ["X11"]           # private_display in the driver test uses Xlib
 tool = "kryon"
 [toolchain]
 git = "https://git.waozi.xyz/ziranlang/ziran.git"
-ref = "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0"
+ref = "8133bd41ef171e03ce4557b55122eb739548eb72"
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
-ref = "65b50b261e839ad8ec3edb4d797a068f154861e8"
+ref = "02cc10e682b83fe7ba9c2ed4638507818d3c9cc0"
 [tool.kryon]
 default_profile = "desktop"
 entry = "src/app.zi"

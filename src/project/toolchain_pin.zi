@@ -3,7 +3,7 @@
 // [toolchain] floats on a branch (`ziran new` writes "master") this pin,
 // and keeps a project's own exact commit.
 KryonZiranGit :: "https://git.waozi.xyz/ziranlang/ziran.git";
-KryonZiranRef :: "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0";
+KryonZiranRef :: "8133bd41ef171e03ce4557b55122eb739548eb72";
 
 // A 40-digit lowercase hexadecimal commit.
 ExactCommit :: (ref: string) -> bool {
