@@ -266,7 +266,18 @@ AndroidBundleImagesLoad :: (images: *AndroidBundleImages, bundle: *void, base: s
         bytes := BytesFromPointer(BundleAssetBytes(bundle, index), BundleAssetLength(bundle, index))
         width: s32
         height: s32
-        pixels := AndroidImageDecodePNG(bytes, *width, *height)
+        pixels: *u32
+        orientation: s32 = 1
+        // Android's BitmapFactory decodes PNG several times faster than the
+        // in-process decoder on phone CPUs. Hosts without the bitmap bridge
+        // still fall back to the in-process path.
+        if PNGSignature(bytes) {
+            pixels = AndroidImageDecodeBitmap(data, *width, *height)
+            orientation = ImageExifOrientation(data)
+        }
+        if pixels == null {
+            pixels = AndroidImageDecodePNG(bytes, *width, *height)
+        }
         rgba: *u8 = null
         if pixels == null && android_webp_decode != null && ImageWebpSignature(data) {
             rgba = android_webp_decode(data, *width, *height)
@@ -278,7 +289,6 @@ AndroidBundleImagesLoad :: (images: *AndroidBundleImages, bundle: *void, base: s
             pixels = AndroidImageFromBytes(rgba, cast(s64)width * height * 4)
             AndroidImageRelease(cast(*void)rgba)
         }
-        orientation: s32 = 1
         if pixels == null {
             pixels = AndroidImageDecodeBitmap(data, *width, *height)
             orientation = ImageExifOrientation(data)

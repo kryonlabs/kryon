@@ -98,7 +98,7 @@ AndroidPictureInstall :: (path: string, data: string, file_type: string, width: 
         }
     }
     if slot < 0 { return false }
-    image := AndroidImageDecodeEncoded(data, file_type)
+    image := AndroidImageDecodeEncoded(data, file_type, false, true)
     if image.pixels == null { return false }
     natural_width := image.width; natural_height := image.height
     image = ReduceDecodedImage(image, width, height)

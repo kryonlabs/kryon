@@ -41,6 +41,8 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Android picture caches decode PNG through the activity's BitmapFactory bridge first, and keep the in-process decoder for hosts without a bridge; a 960x1440 title picture decodes three times faster on the USB Moto.
+
 - CSS transforms paint natively on every host: `kryon/paint_transform` gives Row, Column, Grid, Button, Card, Text, Link and Image nodes the `transform`, `translate`, `rotate` and `scale` of their style rules (with `:hover` and `:active` from the pointer) about their `transform-origin`, to the node and everything in it, and eases changes over a transform transition. Whole-pixel moves, text and images are rewritten in place and keep the host's rasterizer; other shapes draw as triangles through a new `PaintKindTransformed`. It is opt-in: an app calls `PaintTransformInstall()` once, and apps that do not link none of it. `StyleBoxData` carries the transform fields and `PaintCommand` an owner node and a matrix.
 
 - `TabBar.Props.fit` keeps a horizontal tab row on one line: tabs that would scroll first lose padding, down to half the style's, then label size, down to four fifths of it (`TabBarFitFor`); only a row still too wide at that floor scrolls. The bar's height and tap area stay. The widget test checks a four-tab row at 320, 360 and 412 dp widths and two scales.

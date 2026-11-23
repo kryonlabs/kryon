@@ -144,7 +144,7 @@ main :: () -> s32 {
     slot := Raster.PixmapImageIndex("pictures/a.png")
     source: Rectangle = .{0.0, 0.0, 2.0, 1.0}
     if slot < 0 || !Raster.PixmapPrepareImage(slot, *source, 2.0, 1.0) { return 36 }
-    if Raster.pixmap_image_pixels[slot].value[0] != cast(u32)0x61ad3ddb { return 9 }
+    if Raster.pixmap_image_pixels[slot].value[0] != cast(u32)0x80341256 { return 9 }
     previous := *Raster.pixmap_image_pixels[slot].value[0]
     if Services.PixmapLoadImageBytes("pictures/a.png", "invalid", "") || *Raster.pixmap_image_pixels[slot].value[0] != previous { return 10 }
     if !Services.PixmapLoadImageBytes("pictures/a.png", TextFromBytes(webp[:]), "") || Services.android_picture_bytes != 24 { return 11 }
@@ -170,7 +170,7 @@ main :: () -> s32 {
     slot = Raster.PixmapImageIndex("pictures/shipped.png")
     source = .{0.0, 0.0, 2.0, 1.0}
     if slot < 0 || !Raster.PixmapPrepareImage(slot, *source, 2.0, 1.0) { return 36 }
-    if Raster.pixmap_image_pixels[slot].value[0] != cast(u32)0x61ad3ddb ||
+    if Raster.pixmap_image_pixels[slot].value[0] != cast(u32)0x80341256 ||
         Raster.PixmapPaintImageSlot("pictures/shipped.png", 0) != slot || asset_opens != 2 { return 21 }
     if Raster.ImageWidth("pictures/missing.png") != 0 || Raster.ImageHeight("pictures/missing.png") != 0 ||
         Raster.PixmapPaintImageSlot("pictures/missing.png", 0) >= 0 || asset_opens != 3 { return 22 }
@@ -187,23 +187,24 @@ main :: () -> s32 {
 
     // Scene textures and CPU images decode PNG, WebP and AVIF in process,
     // without the activity's Bitmap bridge.
+    bitmap_calls = 0
     asset_pointer = *avif[0]; asset_count = cast(s32)avif.count
     avif_texture := Pixels.LoadImagePixels("pictures/shipped.avif"); defer VecFree(avif_texture.pixels)
-    if avif_texture.width != 4 || avif_texture.height != 4 || avif_texture.pixels.count != 64 || bitmap_calls != 2 { return 27 }
+    if avif_texture.width != 4 || avif_texture.height != 4 || avif_texture.pixels.count != 64 || bitmap_calls != 0 { return 27 }
     for at: 0..63 { if avif_texture.pixels[at] != golden[at] { return 28 } }
     asset_pointer = *webp[0]; asset_count = cast(s32)webp.count
     webp_texture := Pixels.LoadImagePixels("pictures/shipped.webp"); defer VecFree(webp_texture.pixels)
-    if webp_texture.pixels.count == 0 || bitmap_calls != 2 ||
+    if webp_texture.pixels.count == 0 || bitmap_calls != 0 ||
         WebPFixtureCheck("lossless", *webp_texture.pixels[0], webp_texture.width, webp_texture.height, 0).count != 0 { return 29 }
     asset_pointer = *png[0]; asset_count = cast(s32)png.count
     png_texture := Pixels.LoadImagePixels("pictures/shipped.png"); defer VecFree(png_texture.pixels)
-    if png_texture.width != 2 || png_texture.height != 1 || png_texture.pixels.count != 8 || bitmap_calls != 2 { return 30 }
+    if png_texture.width != 2 || png_texture.height != 1 || png_texture.pixels.count != 8 || bitmap_calls != 0 { return 30 }
     for at: 0..7 { if png_texture.pixels[at] != expected[at] { return 31 } }
     // A texture can still go through the activity's Bitmap bridge.
     asset_pointer = *jpeg[0]; asset_count = cast(s32)jpeg.count
     jpeg_texture := Pixels.LoadImagePixels("pictures/shipped.jpg"); defer VecFree(jpeg_texture.pixels)
     if jpeg_texture.width != 1 || jpeg_texture.height != 2 || jpeg_texture.pixels.count != 8 ||
-        bitmap_calls != 3 || frames != 0 || references != 0 { return 32 }
+        bitmap_calls != 1 || frames != 0 || references != 0 { return 32 }
     for at: 0..7 { if jpeg_texture.pixels[at] != jpeg_expected[at] { return 33 } }
     // Without the bridge, repeated failures return an empty image and log once.
     bridge_missing = true
@@ -211,7 +212,7 @@ main :: () -> s32 {
     missing_bridge := Pixels.LoadImagePixels("pictures/shipped.jpg"); defer VecFree(missing_bridge.pixels)
     if missing_bridge.pixels.count != 0 || native_test_log_lines != logs + 1 || frames != 0 || references != 0 { return 34 }
     again := Pixels.LoadImagePixels("pictures/shipped.jpg"); defer VecFree(again.pixels)
-    if again.pixels.count != 0 || native_test_log_lines != logs + 1 || bitmap_calls != 3 { return 35 }
+    if again.pixels.count != 0 || native_test_log_lines != logs + 1 || bitmap_calls != 1 { return 35 }
     bridge_missing = false
     // Large shipped WebP: metadata allocates no RGBA, first draw retains a
     // 64x smaller high-quality copy, and repeated/smaller draws reuse it.

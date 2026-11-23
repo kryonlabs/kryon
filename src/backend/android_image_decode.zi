@@ -76,7 +76,8 @@ AndroidImageEncodedSize :: (data: string) -> AndroidImageSize {
 // File textures can also use formats recognized only by Android BitmapFactory.
 // APK picture and preview callers keep their preflight dimension requirement.
 AndroidImageDecodeEncoded :: (data: string, file_type: string,
-    allow_platform_bitmap: bool = false) -> DecodedImage {
+    allow_platform_bitmap: bool = false,
+    prefer_platform_bitmap: bool = false) -> DecodedImage {
     unused file_type
     if data.count <= 0 || data.count > 268435456 { return .{} }
     image: DecodedImage
@@ -102,9 +103,22 @@ AndroidImageDecodeEncoded :: (data: string, file_type: string,
         width: s32; height: s32
         text := cast(*TextDescriptor)(*data)
         bytes := BytesFromPointer(text.data, cast(u64)data.count)
-        words := Images.AndroidImageDecodePNG(bytes, *width, *height)
+        // The picture cache asks for the native decoder first: BitmapFactory
+        // decodes PNG several times faster than the in-process decoder on
+        // phone CPUs. Hosts without the bridge keep the in-process path.
+        words: *u32
         orientation: s32 = 1
+        bridge_tried := false
+        if prefer_platform_bitmap {
+            words = Images.AndroidImageDecodeBitmap(data, *width, *height)
+            orientation = ImageExifOrientation(data)
+            bridge_tried = true
+        }
         if words == null {
+            words = Images.AndroidImageDecodePNG(bytes, *width, *height)
+            orientation = 1
+        }
+        if words == null && !bridge_tried {
             words = Images.AndroidImageDecodeBitmap(data, *width, *height)
             orientation = ImageExifOrientation(data)
         }
