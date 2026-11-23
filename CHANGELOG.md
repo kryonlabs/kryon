@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- examples/dashboard builds on Kryon d0711324 and CSS 164d983; its KPI progress bars now paint their fill, and the README records the new light, dark and narrow digests.
+
 - Row, Column and Grid paint `linear-gradient()` at any angle or toward a side or corner with two to six stops, from vertical gradient strips (one strip split at its stops for a vertical gradient, up to 64 otherwise). `StyleBoxData` carries the gradient direction, corner, stops and middle colors.
 
 - `Layout.Box(session, props, face)` opens a padded column (or row) that takes a widget's own resolved face for its padding, gap and paint, so a composite widget such as Card can be a self-sizing container that paints at `End`; Row, Column and Grid also paint a CSS `box-shadow` (an elevation role) under their box.

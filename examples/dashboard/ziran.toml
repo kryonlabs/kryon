@@ -11,11 +11,11 @@ ref = "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0"
 
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
-ref = "a04a3ba1982ce5ca1337f5cf8695345fdcb30553"
+ref = "d0711324df9f759db055b060f14d58e950e92642"
 
 [dependencies.css]
 git = "https://git.waozi.xyz/kryonlabs/css.git"
-ref = "d8044da394329309f3d45aab9eb089f89c4cf4fd"
+ref = "164d983c42ac40b56e58dcf83ec39aaecd8207e2"
 
 [tool.kryon]
 default_profile = "desktop"

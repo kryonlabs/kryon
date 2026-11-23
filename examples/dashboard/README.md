@@ -75,8 +75,9 @@ kryon run --png build/shots/narrow.png --width 550 --height 800 --theme light
 
 At the pinned Kryon and CSS, the 1120x720 shots decode to these pixel
 digests (SHA-256 of the RGB rows, as `tests/templates_test.py` computes
-them): light `191ecc30bd190dd2fecb7ce400229563ab721d03ac1ab3ef5584964f7337aadc`,
-dark `a09af759c2f22f509f22fc69958ca8184116446e367ddc51fbd701e4c4b8ac08`.
+them): light `5591e70c81e697696871a1d72862864c499e0ea68506c7120695df1361bf72d3`,
+dark `19701865acddf4ad2be826fe0f8faeb12d6caf69b3a7684e450d98732cb02e94`; the
+550x800 narrow shot `3ee5c72d50ee64bfdb7029d675a4b6a5b8c68d278a0f248f92df3f432bb00eb4`.
 
 ## Named preview fixtures
 
