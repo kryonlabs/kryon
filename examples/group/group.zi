@@ -53,11 +53,14 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Group", .size = 23})
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Group", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 39
 
-    props: Layout.Props = .{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .gap = 12, .padding = 8}
+    props: Layout.Props = .{.bounds = .{height = 208}, .gap = 12, .padding = 8}
     container: Layout.LayoutContainer
     if scene == 36 { container = Layout.Draw(session, props) }
     else if scene == 37 { container = Layout.Row(session, props) }
@@ -71,11 +74,12 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         if scene == 39 || scene == 48 {
             first.x = container.content.x; first.y = container.content.y
             second.x = first.x; second.y = first.y + 60.0
-        } else if scene == 38 { second = GalleryBounds(Rectangle.{104.0, 112.0, 164.0, 44.0}) }
+        } else if scene == 38 { second = Rectangle.{container.bounds.x + 80.0, container.bounds.y + 48.0, 164.0, 44.0} }
         if Button.Draw(session, Button.Props.{.label = "First item", .bounds = first, .disabled = disabled}) == 1 { clicks += 1 }
         if Button.Draw(session, Button.Props.{.label = "Second item", .bounds = second, .tone = ButtonTone.ButtonToneAccent, .disabled = disabled}) == 1 { clicks += 1 }
         unused End(session)
     }
+    unused End(session)
     return 0
 }
 
