@@ -32,7 +32,10 @@ same Kryon as the app, or the build names the export both define. Then:
   set a widget part's offset or metric. After: `NavigationBar[role=Panel] { -kryon-content-offset: 340px 0; }`
   keeps that metric, and `Button:hover { translate: 0 -2px; }` lifts the whole button at paint
   time, as on the web. The old meaning has no alias: rename every `translate:` that set a part
-  metric (the CSS presets already use `-kryon-content-offset`).
+  metric (the CSS presets already use `-kryon-content-offset`). Apps' own sheets need the same
+  rename: Breeze's `assets/styles/inbe.css:243` `translate: 0 0` reset a part offset and now asks
+  for a transform, which `CssSheetInstall` refuses without `PaintTransformInstall()`; it should
+  read `-kryon-content-offset: 0 0`.
 - **Import `kryon/Frame`.** The old `kryon/tree_draw` name still works but is on its way out.
 - `kryon/swipe_row` stays: Breeze Lists uses it.
 
