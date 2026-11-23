@@ -203,11 +203,9 @@ def build(name, target, stage, root):
         if 'commit' in dependency:
             verify_locked_commit(source, dependency['commit'], not locked, name)
         return source
-    # The default desktop artifact decodes AVIF with dav1d only. libaom is
-    # resolved for AVIF encoding (the encode artifact) and the Android codec
-    # artifact, which keeps the oracle and the encoder.
-    needs_aom = name == 'renderer-desktop-encode' or (
-        name == 'renderer-desktop' and target.startswith('android-'))
+    # The default desktop and Android artifacts decode AVIF with dav1d only.
+    # libaom is resolved for the AVIF encode artifact.
+    needs_aom = name == 'renderer-desktop-encode'
     if name != 'renderer-web':
         avif_package = locked_source('avif')
         avif_entry = next(p for p in lock['packages'] if p['id'] == provider['dependencies']['avif'])
@@ -267,14 +265,14 @@ def build(name, target, stage, root):
                  f'-DANDROID_ABI={abi}', f'-DANDROID_PLATFORM=android-{api}',
                  f'-DWEBP_DIR={webp_source}', f'-DKRYON_WEBP_PACKAGE_DIR={webp_package}',
                  f'-DKRYON_AVIF_PACKAGE_DIR={avif_package}', f'-DAVIF_DIR={avif_source}',
-                 f'-DAOM_DIR={aom_source}', f'-DDAV1D_DIR={dav1d_source}',
+                 f'-DDAV1D_DIR={dav1d_source}',
                  f'-DAUDIO_DIR={audio_package}', *opus_config])
             run(['cmake', '--build', work, '--target', 'kryonwebp', 'avif_static',
-                 'aom', 'opus', 'kryonavif', '--parallel', '1'])
-            for archive in ('libkryonwebp.a', 'libavif.a', 'libaom.a', 'libopus.a'):
+                 'opus', 'kryonavif', '--parallel', '1'])
+            for archive in ('libkryonwebp.a', 'libavif.a', 'libopus.a'):
                 copy(next(work.rglob(archive)), stage / 'lib' / archive)
             copy(next(work.rglob('libkryonavif.so')), stage / 'lib/libkryonavif.so')
-        meta['archives'] = ['lib/libkryonwebp.a', 'lib/libavif.a', 'lib/libaom.a', 'lib/libopus.a']
+        meta['archives'] = ['lib/libkryonwebp.a', 'lib/libavif.a', 'lib/libopus.a']
         meta['shared_libraries'] = ['lib/libkryonavif.so']
         meta['defines'] = ['ANDROID_BUILD']
         meta['link_flags'] = ['-lm']
