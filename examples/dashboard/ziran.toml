@@ -11,7 +11,7 @@ ref = "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0"
 
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
-ref = "d0711324df9f759db055b060f14d58e950e92642"
+ref = "347202066bbd4f16761f6f820547e3982d050d51"
 
 [dependencies.css]
 git = "https://git.waozi.xyz/kryonlabs/css.git"

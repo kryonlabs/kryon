@@ -71,9 +71,10 @@ Label :: (session: Session, bounds: Rectangle, key: u64, text: string, class_nam
         .class_name = CSS.StyleClass(class_name), .wrap = .TextWrapNone})
 }
 
-Panel :: (session: Session, bounds: Rectangle, key: u64) -> Rectangle {
+// A panel is a card: draw its content, then close it with End.
+Panel :: (session: Session, bounds: Rectangle, key: u64) -> Card.CardResult {
     return Card.Draw(session, Card.Props.{.bounds = bounds, .key = key,
-        .class_name = CSS.StyleClass("panel"), .variant = .CardOutlined}).content
+        .class_name = CSS.StyleClass("panel"), .variant = .CardOutlined})
 }
 
 Metrics :: (session: Session) {
@@ -86,9 +87,11 @@ Metrics :: (session: Session) {
     for i: 0..3 {
         cursor = Grid.GridStep(cursor, items[i].height, items[i].column_span)
         key := cast(u64)(100 + i * 3)
-        content := Panel(session, cursor.item, key)
+        panel := Panel(session, cursor.item, key)
+        content := panel.content
         Label(session, Rectangle.{content.x, content.y, content.width, 19.0}, key + 1, names[i], "muted")
         Label(session, Rectangle.{content.x, content.y + 20.0, content.width, 28.0}, key + 2, values[i], "positive")
+        if panel.opened { unused End(session) }
     }
     unused End(session)
 }
@@ -103,12 +106,14 @@ ChartSections :: (session: Session) {
     for i: 0..2 {
         cursor = Grid.GridStep(cursor, items[i].height, items[i].column_span)
         key := cast(u64)(200 + i * 3)
-        content := Panel(session, cursor.item, key)
+        panel := Panel(session, cursor.item, key)
+        content := panel.content
         Page.Heading(session, .{.bounds = Rectangle.{content.x, content.y, content.width, 24.0},
             .key = key + 1, .text = titles[i], .level = 2, .class_name = CSS.StyleClass("panel-title")})
         // Give this content slot to the corresponding Plot chart in an app.
         Label(session, Rectangle.{content.x, content.y + 26.0, content.width, 20.0},
             key + 2, descriptions[i], "muted")
+        if panel.opened { unused End(session) }
     }
     unused End(session)
 }
