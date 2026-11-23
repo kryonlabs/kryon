@@ -12,6 +12,9 @@ import tomllib
 from toolchain import ROOT, ZIRAN_ROOT, ZIRAN
 from image_test_tools import png_pixels, rgb, solid_png
 
+# `ziran run` hands a bundle only to a provider registered for its toolchain.
+IDENTITY = subprocess.check_output([str(ZIRAN), "version", "--identity"], text=True).strip()
+
 OUTPUT = ROOT / "build/zx-test"
 
 
@@ -27,7 +30,7 @@ def environment():
     env["KRYON_FONT_PATH"] = str(ROOT / "assets/fonts/LiberationSans-Regular.ttf")
     providers = OUTPUT / "runtime providers"
     providers.mkdir(parents=True, exist_ok=True)
-    (providers / "kryon-desktop.host").write_text(str(ROOT / "build/bin/zx") + "\n")
+    (providers / "kryon-desktop.host").write_text(f"{ROOT / 'build/bin/zx'}\nziran {IDENTITY}\n")
     env["ZIRAN_HOST_PATH"] = str(providers)
     env["YUE_DESKTOP_RECOVERY"] = "0"
     return env
@@ -176,7 +179,7 @@ backend = "desktop"
     runtime_prefix = OUTPUT / "runtime install with spaces"
     run(["make", "install-user", "PREFIX=" + str(runtime_prefix)], ROOT, env)
     registration = runtime_prefix / "share/ziran/hosts/kryon-desktop.host"
-    assert registration.read_text().strip() == str(runtime_prefix / "bin/zx")
+    assert registration.read_text() == f"{runtime_prefix / 'bin/zx'}\nziran {IDENTITY}\n", registration.read_text()
     installed_runtime = OUTPUT / "runtime-installed.png"
     run(["xvfb-run", "-a", ZIRAN, "run", downloaded], ROOT,
         {**env, "ZIRAN_HOST_PATH": "", "XDG_DATA_HOME": str(runtime_prefix / "share"),

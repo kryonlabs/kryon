@@ -12,7 +12,8 @@
 // library and zx2native:
 //     ziran run --target=c tests/zx_window_test.zi -- $PWD/build/test/zx-window \
 //         $PWD/build/bin/zx $PWD/build/lib/libkryon-desktop.so ZIRAN/build/bin/zx2native
-// ZIRAN_BIN names the ziran command (default ziran).
+// ZIRAN_BIN names the ziran command (default ziran); ZIRAN_IDENTITY is what
+// `ziran version --identity` prints for it.
 #import "private_display_linux"
 #import "c_string"
 #import "byte_text_linux"
@@ -46,9 +47,12 @@ Fail :: (message: string) -> s32 {
 }
 
 // A registration holding one absolute path.
-Register :: (path: string, target: string) -> bool {
+// A registration names its target; a provider's also names the toolchain
+// identity it was built for, which `ziran run` requires.
+Register :: (path: string, target: string, identity: string = "") -> bool {
     registration: Vec(u8)
     BuilderPrint(*registration, "%\n", target)
+    if identity != "" { BuilderPrint(*registration, "ziran %\n", identity) }
     return WriteEntireFile(path, BuilderFinish(registration))
 }
 
@@ -135,7 +139,9 @@ main :: (argc: s32, argv: **u8) -> s32 {
     empty := Path(folder, "no-hosts")
     if !CreateDirectories(hosts) || !CreateDirectories(empty) { return Fail("cannot create the host registries") }
     // The registry holds only this checkout's player and host library.
-    if !Register(Path(hosts, "kryon-desktop.host"), player) ||
+    identity := EnvironmentText("ZIRAN_IDENTITY")
+    if identity == "" { return Fail("ZIRAN_IDENTITY must name the toolchain identity") }
+    if !Register(Path(hosts, "kryon-desktop.host"), player, identity) ||
         !Register(Path(hosts, "kryon-desktop.library"), library) {
         return Fail("cannot register the player and the host library")
     }

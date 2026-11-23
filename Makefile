@@ -26,6 +26,8 @@ ZI2ZIR_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2zir
 ZI2C_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2c
 ZI2GO_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2go
 ZIRAN_BIN ?= $(ZIRAN_BUILD_DIR)/bin/ziran
+# The registry Kryon's tests run bundles through (see install-user).
+HOST_REGISTRY := $(abspath build/hosts)
 # Ziran's make rebuilds every object when its build directory is spelled
 # another way, so its own directory is passed the way it spells it.
 ifeq ($(ZIRAN_BUILD_DIR),$(abspath $(ZIRAN_DIR)/build))
@@ -150,9 +152,9 @@ markdown-editor-test:
 	done
 	cmp build/markdown-editor/source.zx build/markdown-editor/saved.zx
 
-behavior-tests:
+behavior-tests: $(HOST_REGISTRY)/kryon-desktop.host
 	@env -u CC -u CXX "$(abspath $(ZIRAN_BUILD_DIR))/bin/ziran" fetch
-	@ZIRAN_BIN="$(abspath $(ZIRAN_BUILD_DIR))/bin/ziran" \
+	@ZIRAN_HOST_PATH="$(HOST_REGISTRY)" ZIRAN_BIN="$(abspath $(ZIRAN_BUILD_DIR))/bin/ziran" \
 		ZIRAN_LIB="$(abspath $(ZIRAN_BUILD_DIR))/libziran.a" \
 		ZIRAN_INCLUDE="$(abspath $(ZIRAN_DIR))/include" \
 		python3 tools/run-ziran-tests.py --jobs "$(TEST_JOBS)" --filter "$(TEST)"
@@ -273,7 +275,8 @@ test: zx-reload-test
 zx-window-test: zx-player zx-window-host
 	@rm -rf build/test/zx-window
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
-		ZIRAN_BIN="$(abspath $(ZIRAN_BIN))" "$(ZIRAN_BIN)" run --target=c tests/zx_window_test.zi -- \
+		ZIRAN_BIN="$(abspath $(ZIRAN_BIN))" ZIRAN_IDENTITY="$$("$(ZIRAN_BIN)" version --identity)" \
+		"$(ZIRAN_BIN)" run --target=c tests/zx_window_test.zi -- \
 		"$(abspath build/test/zx-window)" "$(abspath $(PLAYER))" "$(abspath $(WINDOW_HOST))" \
 		"$(abspath $(dir $(ZIRAN_BIN))zx2native)"
 test: zx-window-test
@@ -495,6 +498,15 @@ pixmap-mono-font: $(OUTLINE_FONT_PROGRAM)
 
 # Installs the kryon command. Outside `ziran tool kryon` it forwards project
 # commands to ziran, which runs the Kryon each project's lock pins.
+# A registry holding this checkout's player for the toolchain that built it:
+# `ziran run` hands a bundle only to a provider registered with its own
+# toolchain identity, so tests run bundles through this one, not whatever
+# player happens to be installed.
+$(HOST_REGISTRY)/kryon-desktop.host: $(PLAYER) $(ZIRAN_BIN)
+	@mkdir -p "$(HOST_REGISTRY)"
+	@printf '%s\nziran %s\n' "$(abspath $(PLAYER))" "$$("$(ZIRAN_BIN)" version --identity)" > "$@.new"
+	@mv -f "$@.new" "$@"
+
 PREFIX ?= $(HOME)/.local
 install-user: build/bin/kryon zx-player zx-window-host
 	mkdir -p "$(PREFIX)/bin"
@@ -507,7 +519,8 @@ install-user: build/bin/kryon zx-player zx-window-host
 	mv -f "$(PREFIX)/lib/kryon/libkryon-desktop.so.new" "$(PREFIX)/lib/kryon/libkryon-desktop.so"
 	mkdir -p "$(PREFIX)/share/ziran/hosts"
 	@provider=$$(CDPATH= cd -- "$(PREFIX)/bin" && pwd -P) && \
-		printf '%s/zx\n' "$$provider" > "$(PREFIX)/share/ziran/hosts/kryon-desktop.host.new"
+		identity=$$("$(ZIRAN_BIN)" version --identity) && \
+		printf '%s/zx\nziran %s\n' "$$provider" "$$identity" > "$(PREFIX)/share/ziran/hosts/kryon-desktop.host.new"
 	mv -f "$(PREFIX)/share/ziran/hosts/kryon-desktop.host.new" "$(PREFIX)/share/ziran/hosts/kryon-desktop.host"
 	@library=$$(CDPATH= cd -- "$(PREFIX)/lib/kryon" && pwd -P) && \
 		printf '%s/libkryon-desktop.so\n' "$$library" > "$(PREFIX)/share/ziran/hosts/kryon-desktop.library.new"
