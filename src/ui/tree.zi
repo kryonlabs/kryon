@@ -721,6 +721,16 @@ NodeGeometry :: struct {
         return trees[slot].submitted[index].bounds
     }
 
+    // Where a widget paints its own node: the rect it was measured in, at the
+    // size its parent placed it. The paint queue moves the node's paint from
+    // there to the placed spot, so a widget whose width or height its parent
+    // fills draws at that size.
+    TreeNodePaintBounds :: (session: Session, index: s32, measured: Rectangle) -> Rectangle {
+        placed := TreeSubmittedBounds(session, index)
+        if placed.width <= 0.0 || placed.height <= 0.0 { return measured }
+        return Rectangle.{measured.x, measured.y, placed.width, placed.height}
+    }
+
     #program_export
     TreeInputAt :: (session: Session, index: s32) -> NodeInput {
         input: NodeInput

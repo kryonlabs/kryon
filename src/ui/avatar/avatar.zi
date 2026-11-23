@@ -200,20 +200,24 @@ Draw :: (session: Session, props: Props, location := #caller_location) -> Avatar
     TreeSetLabel(session, result.node, ifx result.image_fallback then props.name else props.image.alt_text)
     TreeSetStyleId(session, result.node, props.id)
     TreeSetStyleClass(session, result.node, props.class_name)
-    TreeSetChildClip(session, result.node, result.bounds)
+    // Paint on the node stays where it was measured and moves with it; the
+    // initials and the picture are child widgets, drawn where it was placed.
+    paint := TreeNodePaintBounds(session, result.node, result.bounds)
+    placed := TreeSubmittedBounds(session, result.node)
+    TreeSetChildClip(session, result.node, placed)
     opacity := StyleOpacityValue(face.fields, face.opacity)
     if result.image_fallback {
         if (face.fields & cast(u32)StyleBackground) != cast(u32)0 {
-            PaintRoundedFill(session, result.node, result.bounds, face.radius, 12,
+            PaintRoundedFill(session, result.node, paint, face.radius, 12,
                 ColorFromPacked(Opacity(face.background, opacity)))
         }
         if (face.fields & cast(u32)StyleBorderWidth) != cast(u32)0 && face.border_width > 0.0 {
-            PaintRoundedOutline(session, result.node, result.bounds, face.radius, 12,
+            PaintRoundedOutline(session, result.node, paint, face.radius, 12,
                 face.border_width, ColorFromPacked(Opacity(face.border, opacity)))
         }
         if result.initials_length > 0 {
             Text.Draw(session, Text.Props.{.key = WidgetPartKey(key, 1),
-                .bounds = result.bounds, .text = TextView(result.initials[0:result.initials_length]),
+                .bounds = placed, .text = TextView(result.initials[0:result.initials_length]),
                 .size = ResolveFont(0, StyleFontValue(face.fields, face.font_size), 12),
                 .typeface = face.typeface, .align = .TextAlignCenter,
                 .vertical_align = cast(TextAlign)TextAlignCenter,
@@ -222,22 +226,23 @@ Draw :: (session: Session, props: Props, location := #caller_location) -> Avatar
     } else {
         image := props.image
         image.key = WidgetPartKey(key, 2)
-        image.bounds = result.bounds
+        image.bounds = placed
         image.radius = face.radius
         Image.Draw(session, image)
     }
     if props.status != .AvatarStatusNone {
         status_color := AvatarStatusColor(props.status)
-        dot_size := result.bounds.width * 0.28
+        dot_size := paint.width * 0.28
         if dot_size < 8.0 { dot_size = 8.0 }
-        dot := Rectangle.{result.bounds.x + result.bounds.width - dot_size + 1.0,
-            result.bounds.y + result.bounds.height - dot_size + 1.0, dot_size, dot_size}
+        dot := Rectangle.{paint.x + paint.width - dot_size + 1.0,
+            paint.y + paint.height - dot_size + 1.0, dot_size, dot_size}
         PaintRoundedFill(session, result.node, dot, dot_size * 0.5, 12,
             ColorFromPacked(CurrentPalette().surface))
         PaintRoundedFill(session, result.node,
             Rectangle.{dot.x + 2.0, dot.y + 2.0, dot.width - 4.0, dot.height - 4.0},
             (dot.width - 4.0) * 0.5, 12, ColorFromPacked(status_color))
     }
+    result.bounds = placed
     return result
 }
 
@@ -273,6 +278,8 @@ AvatarGroup :: (session: Session, props: AvatarGroupProps,
     if result.node < 0 { return result }
     TreeSetLabel(session, result.node, "Avatar group")
     TreeSetStyleClass(session, result.node, props.class_name)
+    // The group paints nothing itself: its avatars go where it was placed.
+    result.bounds = TreeSubmittedBounds(session, result.node)
     TreeSetChildClip(session, result.node, result.bounds)
     if !TreePushScope(session, result.node) { return result }
     at: s32 = 0

@@ -120,15 +120,21 @@ PaintSeparatorForNode :: (session: Session, node: s32, props: PropsModule.Props,
 Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // Without a size across the line, a separator takes a gap's worth.
+    placed := props
+    across := Theme.CurrentThemeMetric(.ThemeMetricSpace4)
+    if !props.vertical && placed.bounds.height <= 0.0 { placed.bounds.height = across }
+    if props.vertical && placed.bounds.width <= 0.0 { placed.bounds.width = across }
     node: s32 = -1
     if TreeIsBuilding(session) {
-        node = TreeSubmitCurrent(session, props.key, WidgetKindSeparator, props.bounds)
+        node = TreeSubmitCurrent(session, props.key, WidgetKindSeparator, placed.bounds)
         if node < 0 { return }
         TreeSetStyleClass(session, node, props.class_name)
         TreeSetStyleId(session, node, props.id)
+        placed.bounds = TreeNodePaintBounds(session, node, placed.bounds)
     }
-    faces: SeparatorFaces = SeparatorFacesFor(props, DefaultSeparatorFaces())
-    PaintSeparatorForNode(session, node, props, faces)
+    faces: SeparatorFaces = SeparatorFacesFor(placed, DefaultSeparatorFaces())
+    PaintSeparatorForNode(session, node, placed, faces)
 }
 
 #program_export

@@ -162,6 +162,7 @@ Layout :: #import "kryon/layout";
 ListItem :: #import "kryon/list_item";   // .title .subtitle .leading_name .trailing -> .clicked
 Progress :: #import "kryon/progress";    // .min .max .value .label
 Radio :: #import "kryon/radio";          // .label .checked -> 1 when picked
+Separator :: #import "kryon/separator";  // a rule across the column
 Skeleton :: #import "kryon/skeleton";    // .shape .now: a pulsing placeholder
 Slider :: #import "kryon/slider";        // DiscreteSlider: .value .min .max -> .changed .value
 Text :: #import "kryon/text";            // .text .size .wrap .align .strong
@@ -176,9 +177,6 @@ checked: bool;
 choice: s32;
 level: s32 = 3;
 on: bool = true;
-Slot :: (session: Session, height: float32) -> Layout.LayoutContainer {
-    return Layout.Stack(session, Layout.Props.{.bounds = .{height = height}})   // draw into it, then End
-}
 Widgets :: (session: Session) {
     h := Theme.CurrentThemeMetric(.ThemeMetricControlHeightMedium)
     unused Button.Draw(session, Button.Props.{.label = "Save", .bounds = .{height = h}, .tone = .ButtonToneAccent, .emphasis = .ButtonEmphasisFilled})
@@ -187,14 +185,10 @@ Widgets :: (session: Session) {
     switch := Toggle.Draw(session, Toggle.Props.{.label = "Sync", .value = on, .bounds = .{height = h}})
     if switch.changed { on = switch.value }
     if Radio.Draw(session, Radio.Props.{.label = "Weekly", .checked = choice == 1, .bounds = .{height = h}}) == 1 { choice = 1 }
-    slider := Slot(session, h)
-    if slider.opened {
-        moved := Slider.DiscreteSlider(session, Slider.DiscreteSliderProps.{.semantic_label = "Level", .value = level, .min = 1, .max = 5, .bounds = slider.bounds})
-        if moved.changed { level = moved.value }
-        unused End(session)
-    }
-    bar := Slot(session, 8)
-    if bar.opened { Progress.Draw(session, Progress.Props.{.max = 5, .value = level, .bounds = bar.bounds}); unused End(session) }
+    moved := Slider.DiscreteSlider(session, Slider.DiscreteSliderProps.{.semantic_label = "Level", .value = level, .min = 1, .max = 5, .bounds = .{height = h}})
+    if moved.changed { level = moved.value }
+    Progress.Draw(session, Progress.Props.{.max = 5, .value = level, .bounds = .{height = 8}})
+    Separator.Draw(session, Separator.Props.{})
     unused Chip.Draw(session, Chip.Props.{.label = "Design", .selectable = true, .selected = on})
     unused ListItem.Draw(session, ListItem.Props.{.title = "Ada", .subtitle = "Profile", .leading_name = "Ada Lovelace", .trailing = .ListTrailingChevron})
     Skeleton.Draw(session, Skeleton.Props.{.shape = .SkeletonLine})

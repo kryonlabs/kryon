@@ -69,9 +69,12 @@ using Progress :: #import "progress_props";
             TreeSetStyleClass(session, node, props.class_name)
             TreeSetStyleId(session, node, props.id)
         }
+        // A bar whose column fills its width fills at the placed width.
+        placed := props
+        placed.bounds = TreeNodePaintBounds(session, node, props.bounds)
         faces: ProgressFaces = ProgressFacesFor(props.id, props.class_name, DefaultProgressFaces())
-        prepared: PreparedProgress = PrepareProgress(props, faces)
-        PaintProgressForNode(session, node, props.bounds, prepared.paint,
+        prepared: PreparedProgress = PrepareProgress(placed, faces)
+        PaintProgressForNode(session, node, placed.bounds, prepared.paint,
             props.label, prepared.font, prepared.label_opacity)
     }
 }

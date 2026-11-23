@@ -90,6 +90,13 @@ using Slider :: #import "slider_props";
         font: s32
         line_height: s32
         value_text: string
+        // The submitted node, and how far its parent moved it from where it
+        // was measured; drags map back through that move.
+        node: s32
+        placed_dx: float32
+        placed_dy: float32
+        // The shortest track the style allows.
+        min_length: float32
     }
 
     #program_export
@@ -97,6 +104,7 @@ using Slider :: #import "slider_props";
         label_text: string, value_text: string, vertical: bool, disabled: bool,
         class_name: s32) -> SliderPrepared {
         prepared: SliderPrepared
+        prepared.node = -1
         prepared.key = key
         prepared.class_name = class_name
         prepared.value_text = value_text
@@ -132,15 +140,33 @@ using Slider :: #import "slider_props";
             prepared.line_height = GlyphLineHeight(prepared.font,
                 prepared.label.value.typeface)
         }
+        // An unset length stays zero so a column or row can fill it; a set one
+        // is at least the style's shortest track.
         min_length: float32 = cast(float32)SliderMinimumLengthForStyle(track, 1.0)
         thumb_size: float32 = cast(float32)SliderThumbSizeForStyle(thumb, 1.0)
+        prepared.min_length = min_length
         if vertical {
-            if bounds.height < min_length { bounds.height = min_length }
+            if bounds.height > 0.0 && bounds.height < min_length { bounds.height = min_length }
             if bounds.width < thumb_size { bounds.width = thumb_size }
         } else {
-            if bounds.width < min_length { bounds.width = min_length }
+            if bounds.width > 0.0 && bounds.width < min_length { bounds.width = min_length }
             if bounds.height < thumb_size { bounds.height = thumb_size }
         }
+        SliderGeometry(*prepared, bounds, label_text, value_text, vertical)
+        prepared.spec.vertical = vertical
+        prepared.spec.active = prepared.drag.active
+        prepared.spec.hovered = hovered
+        prepared.spec.disabled = disabled
+        prepared.spec.scale = 1.0
+        prepared.spec.track = track
+        prepared.spec.active_track = active
+        prepared.spec.thumb = thumb
+        return prepared
+    }
+
+    // The label, value and track rects of a slider drawn in bounds.
+    SliderGeometry :: (prepared: *SliderPrepared, bounds: Rectangle,
+        label_text: string, value_text: string, vertical: bool) {
         if label_text == "" && value_text == "" {
             prepared.layout.bounds = bounds
             prepared.layout.track = bounds
@@ -156,25 +182,16 @@ using Slider :: #import "slider_props";
                 false, vertical, false, false)
         }
         prepared.spec.bounds = prepared.layout.track
-        prepared.spec.vertical = vertical
-        prepared.spec.active = prepared.drag.active
-        prepared.spec.hovered = hovered
-        prepared.spec.disabled = disabled
-        prepared.spec.scale = 1.0
-        prepared.spec.track = track
-        prepared.spec.active_track = active
-        prepared.spec.thumb = thumb
-        return prepared
     }
 
     #program_export
     SliderDragRatio :: (prepared: SliderPrepared) -> float32 {
         paint: SliderPaint = SliderPaintFor(prepared.spec)
         if prepared.spec.vertical {
-            return SliderPointerRatio(prepared.drag.y,
+            return SliderPointerRatio(prepared.drag.y - prepared.placed_dy,
                 paint.track_bounds.y, paint.track_bounds.height, true)
         }
-        return SliderPointerRatio(prepared.drag.x,
+        return SliderPointerRatio(prepared.drag.x - prepared.placed_dx,
             paint.track_bounds.x, paint.track_bounds.width, false)
     }
 
@@ -243,25 +260,45 @@ using Slider :: #import "slider_props";
         }
     }
 
-    #program_export
-    SubmitSlider :: (session: Session, prepared: SliderPrepared, ratio: float32,
-        id: s32, label_text: string, semantic_label: string,
-        disabled: bool) {
+    // Submits the slider's node and fits its parts to the size its parent
+    // placed it at; false when the frame refused the node.
+    SliderPlace :: (session: Session, prepared: *SliderPrepared, id: s32,
+        label_text: string, semantic_label: string, disabled: bool) -> bool {
+        measured := prepared.layout.bounds
+        if !TreeIsBuilding(session) {
+            SliderFit(prepared, measured, label_text)
+            return true
+        }
+        node := TreeSubmitCurrent(session, prepared.key, WidgetKindSlider, measured)
+        if node < 0 { return false }
+        prepared.node = node
+        TreeSetInteractive(session, node, disabled, false, id)
+        TreeSetStyleClass(session, node, prepared.class_name)
+        TreeSetStyleId(session, node, id)
+        TreeSetDragCapture(session, node, true)
+        if semantic_label == "" { semantic_label = label_text }
+        TreeSetLabel(session, node, semantic_label)
+        placed := TreeSubmittedBounds(session, node)
+        prepared.placed_dx = placed.x - measured.x
+        prepared.placed_dy = placed.y - measured.y
+        SliderFit(prepared, TreeNodePaintBounds(session, node, measured), label_text)
+        return true
+    }
+
+    // Lays the slider out in bounds, at least the style's shortest track long.
+    SliderFit :: (prepared: *SliderPrepared, bounds: Rectangle, label_text: string) {
+        if prepared.spec.vertical {
+            if bounds.height < prepared.min_length { bounds.height = prepared.min_length }
+        } else if bounds.width < prepared.min_length { bounds.width = prepared.min_length }
+        SliderGeometry(prepared, bounds, label_text, prepared.value_text, prepared.spec.vertical)
+    }
+
+    PaintSlider :: (session: Session, prepared: SliderPrepared, ratio: float32,
+        label_text: string) {
         spec: SliderSpec = prepared.spec
         spec.ratio = ratio
         paint: SliderPaint = SliderPaintFor(spec)
-        node: s32 = -1
-        if TreeIsBuilding(session) {
-            node = TreeSubmitCurrent(session, prepared.key, WidgetKindSlider,
-                prepared.layout.bounds)
-            if node < 0 { return }
-            TreeSetInteractive(session, node, disabled, false, id)
-            TreeSetStyleClass(session, node, prepared.class_name)
-            TreeSetStyleId(session, node, id)
-            TreeSetDragCapture(session, node, true)
-            if semantic_label == "" { semantic_label = label_text }
-            TreeSetLabel(session, node, semantic_label)
-        }
+        node := prepared.node
         if prepared.focus_visible {
             focus_bounds := Rectangle.{paint.thumb_x - paint.thumb_radius - 3.0,
                 paint.thumb_y - paint.thumb_radius - 3.0,
@@ -284,6 +321,8 @@ using Slider :: #import "slider_props";
             props.disabled, props.class_name)
         result: Slider.SliderStep
         result.value = props.value
+        if !SliderPlace(session, *prepared, props.id, props.label,
+            props.semantic_label, props.disabled) { return result }
         if !props.disabled && props.max > props.min &&
             (prepared.drag.active || prepared.drag.started ||
                 prepared.drag.ended) {
@@ -291,9 +330,8 @@ using Slider :: #import "slider_props";
                 SliderDragRatio(prepared))
             result.changed = result.value != props.value
         }
-        SubmitSlider(session, prepared, SliderRatio(result.value,
-            props.min, props.max), props.id, props.label,
-            props.semantic_label, props.disabled)
+        PaintSlider(session, prepared, SliderRatio(result.value,
+            props.min, props.max), props.label)
         return result
     }
 
@@ -306,6 +344,8 @@ using Slider :: #import "slider_props";
             props.disabled, props.class_name)
         result: Slider.SliderDiscreteStep
         result.value = props.value
+        if !SliderPlace(session, *prepared, props.id, props.label,
+            props.semantic_label, props.disabled) { return result }
         if !props.disabled && props.max > props.min &&
             (prepared.drag.active || prepared.drag.started ||
                 prepared.drag.ended) {
@@ -313,9 +353,8 @@ using Slider :: #import "slider_props";
                 SliderDragRatio(prepared))
             result.changed = result.value != props.value
         }
-        SubmitSlider(session, prepared, SliderDiscreteRatio(result.value,
-            props.min, props.max), props.id, props.label,
-            props.semantic_label, props.disabled)
+        PaintSlider(session, prepared, SliderDiscreteRatio(result.value,
+            props.min, props.max), props.label)
         return result
     }
 }

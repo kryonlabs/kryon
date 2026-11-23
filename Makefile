@@ -455,14 +455,15 @@ budget-test: build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_BIN="$(ZIRAN_BIN)" build/test/budget-c/budget_test
 test: budget-test
 
-# Unkeyed widgets keep their identity by call site, not by sibling position.
-.PHONY: call-site-test
-call-site-test:
-	@rm -rf build/test/call-site-c
+# Unkeyed widgets keep their identity by call site; placed widgets fill
+# their column and take input where they were placed.
+.PHONY: widget-tree-test
+widget-tree-test:
+	@rm -rf build/test/widget-tree-c
 	$(ZIRAN_BIN) build --project --module-path $(CURDIR)/tests $(HEADLESS_WIDGET_BINDINGS) --target=c \
-		--root $(CURDIR)/tests --entry call_site_test:Main --exe -o build/test/call-site-c $(CURDIR)/tests/call_site_test.zi
-	@build/test/call-site-c/call_site_test
-test: call-site-test
+		--root $(CURDIR)/tests --entry widget_tree_test:Main --exe -o build/test/widget-tree-c $(CURDIR)/tests/widget_tree_test.zi
+	@build/test/widget-tree-c/widget_tree_test
+test: widget-tree-test
 
 # Every supported target -- C, Go, and the portable runner --
 # renders each template and example on the headless pixmap host, and every

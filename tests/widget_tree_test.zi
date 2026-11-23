@@ -2,8 +2,9 @@
 // its identity when a conditional sibling appears before it, and one call
 // site in a loop gives each repeat its own identity, the same every frame.
 // A chip takes its caller's identity, not the line of the button it draws,
-// and an avatar's own state key follows its caller too.
-// Run from the Kryon root: make call-site-test.
+// and an avatar's own state key follows its caller too. A slider whose
+// column fills its width spans the column and maps a drag where it was
+// placed. Run from the Kryon root: make widget-tree-test.
 Avatar :: #import "kryon/avatar";
 Button :: #import "kryon/button";
 Checkbox :: #import "kryon/checkbox";
@@ -11,10 +12,14 @@ Chip :: #import "kryon/chip";
 // The headless bindings also cover pictures, so the test links them.
 #import "kryon/image"
 Layout :: #import "kryon/layout";
+Slider :: #import "kryon/slider";
+Text :: #import "kryon/text";
 Theme :: #import "kryon/theme";
 #import "kryon/geometry"
+#import "kryon/input_protocol"
 #import "kryon/session"
 #import "kryon/tree"
+#import "kryon/tree_input"
 #import "kryon/widget_kind"
 using WidgetKind;
 #import "widget_test_session"
@@ -26,7 +31,7 @@ failures: s32;
 Expect :: (ok: bool, what: string) {
     if ok { return }
     failures += 1
-    print("call site: FAIL %\n", what)
+    print("widget tree: FAIL %\n", what)
 }
 
 Keys :: struct {
@@ -67,6 +72,30 @@ Frame :: (with_button: bool) -> Keys {
     return keys
 }
 
+level: s32;
+
+// A heading, then a slider the padded column fills; the slider's placed rect.
+SliderFrame :: () -> Rectangle {
+    session := TestSession()
+    TreeStart(session, cast(u64)2, Rectangle.{0.0, 0.0, 400.0, 300.0})
+    column := Layout.Draw(session, Layout.Props.{.bounds = .{0.0, 0.0, 400.0, 300.0},
+        .padding = Layout.Gap(.ThemeMetricSpace4)})
+    placed: Rectangle
+    if column.opened {
+        Text.Draw(session, Text.Props.{.text = "Level", .bounds = .{height = 40}})
+        moved := Slider.DiscreteSlider(session, Slider.DiscreteSliderProps.{.semantic_label = "Level",
+            .value = level, .min = 0, .max = 10, .bounds = .{height = 32}})
+        if moved.changed { level = moved.value }
+        for index: 0..TreeSubmittedCount(session) - 1 {
+            node := TreeSubmittedNodeAt(session, index)
+            if node.kind == cast(s32)WidgetKindSlider { placed = node.bounds }
+        }
+        unused End(session)
+    }
+    unused TreeFinish(session)
+    return placed
+}
+
 #program_export
 Main :: () -> s32 {
     unused Theme.InstallDefaultTheme(false)
@@ -84,7 +113,15 @@ Main :: () -> s32 {
     Expect(plain.chip == extra.chip, "a chip keeps its identity when another chip appears before it")
     Expect(plain.avatar == extra.avatar && plain.avatar != cast(u64)0,
         "an avatar keeps its state key when another avatar appears before it")
+    track := SliderFrame()
+    Expect(track.width > 300.0 && track.x > 0.0 && track.y >= 40.0, "the column places and fills the slider")
+    // Press and drag at four fifths of the placed track.
+    x := track.x + track.width * 0.8
+    y := track.y + track.height * 0.5
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, true, true, false})
+    unused SliderFrame()
+    Expect(level >= 7 && level <= 9, "a drag on the placed slider sets about four fifths")
     if failures > 0 { return 1 }
-    print("call site: identities follow call sites and repeats\n")
+    print("widget tree: identities follow call sites; placed widgets fill and take drags\n")
     return 0
 }
