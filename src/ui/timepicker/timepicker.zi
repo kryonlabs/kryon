@@ -274,8 +274,9 @@ Draw :: (session: Session, props: TimePicker.Props, location := #caller_location
     result: TimePickerResult
     result.node = -1
     result.value = TimePickerClamp(props.value)
+    // A placing column fills an unset width.
     bounds: Rectangle = props.bounds
-    if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
+    if bounds.height <= 0.0 || (bounds.width <= 0.0 && !TreeWillPlace(session, bounds)) { return result }
     scale: float32 = props.scale
     if scale <= 0.0 { scale = 1.0 }
     key: u64 = TimePickerKey(session, props)
@@ -400,6 +401,8 @@ Draw :: (session: Session, props: TimePicker.Props, location := #caller_location
         if label == "" { label = shown }
         TreeSetLabel(session, result.node, label)
         TreeSetSemanticDetail(session, result.node, shown)
+        // The field and its popup go where it was placed.
+        TreeAdoptPlacement(session, result.node)
         bounds = TreeSubmittedNodeAt(session, result.node).bounds
     }
     TimePickerPaintField(session, result.node, bounds, props, face,
