@@ -24,7 +24,9 @@ LayoutPaintBox :: (session: Session, bounds: Rectangle, face: StyleData, box: St
     }
     if StyleHasField(face, cast(u32)StyleBackground) {
         top := ColorFromPacked(Opacity(face.background, opacity))
-        if StyleHasField(face, cast(u32)StyleBackgroundEnd) {
+        if StyleHasField(face, cast(u32)StyleBackgroundEnd) && (box.fields & cast(u32)StyleBoxGradient) != 0 {
+            LayoutPaintGradient(session, bounds, face, box, opacity)
+        } else if StyleHasField(face, cast(u32)StyleBackgroundEnd) {
             PaintVerticalGradient(session, -1, bounds, top,
                 ColorFromPacked(Opacity(face.background_end, opacity)))
         } else if top.a != cast(u8)0 {
@@ -39,6 +41,119 @@ LayoutPaintBox :: (session: Session, bounds: Rectangle, face: StyleData, box: St
         PaintRoundedOutline(session, -1, bounds, radius, 8, uniform, border)
     }
     if mark >= 0 { PaintMoveBelow(session, mark, from) }
+}
+
+LayoutGradientStops :: struct {
+    count: s32
+    positions: [6]float64
+    colors: [6]Color
+}
+
+LayoutMix :: (a: u8, b: u8, t: float64) -> u8 {
+    return cast(u8)(cast(float64)a + (cast(float64)b - cast(float64)a) * t + 0.5)
+}
+
+// The gradient's color at `t` along its line, clamped to the end stops.
+LayoutGradientAt :: (stops: *LayoutGradientStops, t: float64) -> Color {
+    if t <= stops.positions[0] { return stops.colors[0] }
+    last := stops.count - 1
+    for index: 1..last {
+        if t <= stops.positions[index] {
+            start := stops.positions[index - 1]
+            span := stops.positions[index] - start
+            f := ifx span > 0.0 then (t - start) / span else 1.0
+            a := stops.colors[index - 1]
+            b := stops.colors[index]
+            return Color.{LayoutMix(a.r, b.r, f), LayoutMix(a.g, b.g, f), LayoutMix(a.b, b.b, f), LayoutMix(a.a, b.a, f)}
+        }
+    }
+    return stops.colors[last]
+}
+
+LayoutAbs :: (value: float64) -> float64 { return ifx value < 0.0 then -value else value }
+
+LayoutRound :: (value: float64) -> float64 {
+    if value >= 0.0 { return cast(float64)cast(s64)(value + 0.5) }
+    return -cast(float64)cast(s64)(0.5 - value)
+}
+
+// A linear gradient at any angle with up to six stops, from vertical
+// gradients: a vertical one is one strip split at its stops; any other is
+// up to 64 narrow strips, each split where a stop line crosses it, so the
+// colors are exact along each strip's center line.
+LayoutPaintGradient :: (session: Session, bounds: Rectangle, face: StyleData, box: StyleBoxData, opacity: float32) {
+    if bounds.width <= 0.0 || bounds.height <= 0.0 { return }
+    stops: LayoutGradientStops
+    stops.count = ifx box.gradient_count >= 2 && box.gradient_count <= 6 then box.gradient_count else 2
+    last := stops.count - 1
+    for index: 0..last {
+        stops.positions[index] = cast(float64)box.gradient_stops[index]
+        packed := face.background_end
+        if index == 0 { packed = face.background }
+        else if index < last { packed = box.gradient_colors[index - 1] }
+        stops.colors[index] = ColorFromPacked(Opacity(packed, opacity))
+    }
+    w := cast(float64)bounds.width
+    h := cast(float64)bounds.height
+    // The gradient line's direction; a corner runs perpendicular to the
+    // diagonal that misses it, as in CSS. Its scale cancels below.
+    dx := cast(float64)box.gradient_dx
+    dy := cast(float64)box.gradient_dy
+    corner := box.gradient_corner
+    if corner >= 1 && corner <= 4 {
+        dx = ifx corner <= 2 then h else -h
+        dy = ifx corner == 2 || corner == 3 then w else -w
+    }
+    length := LayoutAbs(w * dx) + LayoutAbs(h * dy)
+    if length <= 0.0 { return }
+    cx := cast(float64)bounds.x + w / 2.0
+    cy := cast(float64)bounds.y + h / 2.0
+    strips: s32 = 1
+    if LayoutAbs(dx) * w > 0.0001 * length {
+        strips = cast(s32)(w / 4.0 + 0.999)
+        if strips > 64 { strips = 64 }
+        if strips < 1 { strips = 1 }
+    }
+    top := cast(float64)bounds.y
+    bottom := top + h
+    for strip: 0..strips - 1 {
+        left := LayoutRound(cast(float64)bounds.x + w * cast(float64)strip / cast(float64)strips)
+        right := LayoutRound(cast(float64)bounds.x + w * cast(float64)(strip + 1) / cast(float64)strips)
+        if strip == strips - 1 { right = cast(float64)bounds.x + w }
+        if right <= left { continue }
+        center := (left + right) / 2.0
+        along := (center - cx) * dx
+        // t(y) = (along + (y - cy) * dy) / length + 0.5 down the strip.
+        if LayoutAbs(dy) * h < 0.000001 * length {
+            color := LayoutGradientAt(*stops, along / length + 0.5)
+            PaintRoundedFill(session, -1, Rectangle.{cast(float32)left, bounds.y, cast(float32)(right - left), bounds.height},
+                0.0, 4, color)
+            continue
+        }
+        cuts: [8]float64
+        cut_count: s32 = 0
+        cuts[0] = top
+        cut_count = 1
+        for index: 0..last {
+            // The y where the strip crosses stop `index`, in top-down order.
+            stop := ifx dy > 0.0 then index else last - index
+            y := cy + ((stops.positions[stop] - 0.5) * length - along) / dy
+            if y > cuts[cut_count - 1] && y < bottom {
+                cuts[cut_count] = y
+                cut_count += 1
+            }
+        }
+        cuts[cut_count] = bottom
+        for segment: 0..cut_count - 1 {
+            y0 := cuts[segment]
+            y1 := cuts[segment + 1]
+            if y1 - y0 <= 0.0 { continue }
+            upper := LayoutGradientAt(*stops, (along + (y0 - cy) * dy) / length + 0.5)
+            lower := LayoutGradientAt(*stops, (along + (y1 - cy) * dy) / length + 0.5)
+            PaintVerticalGradient(session, -1, Rectangle.{cast(float32)left, cast(float32)y0,
+                cast(float32)(right - left), cast(float32)(y1 - y0)}, upper, lower)
+        }
+    }
 }
 
 // Each side is a band inside the border box: top and bottom span its width,

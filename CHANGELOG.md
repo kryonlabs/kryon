@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Row, Column and Grid paint `linear-gradient()` at any angle or toward a side or corner with two to six stops, from vertical gradient strips (one strip split at its stops for a vertical gradient, up to 64 otherwise). `StyleBoxData` carries the gradient direction, corner, stops and middle colors.
+
 - `Layout.Box(session, props, face)` opens a padded column (or row) that takes a widget's own resolved face for its padding, gap and paint, so a composite widget such as Card can be a self-sizing container that paints at `End`; Row, Column and Grid also paint a CSS `box-shadow` (an elevation role) under their box.
 
 - CSS selectors carry tree context natively: one ancestor matched by class or id (`.card Text`, `#sidebar .item`), the parent (`.toolbar > Button`), `:first-child`, and `:not(.class)` or `:not(:state)`. `StyleSelector` gains `context`, `ancestor_class`, `ancestor_id`, `not_class` and `not_state`; the style_tree module, installed by `BeginFrame`, matches the widget being styled as the next child of the open container, and rules without context skip it. The starter budget is raised to 3,950,000 bytes (3,885,985 measured).

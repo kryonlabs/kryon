@@ -435,6 +435,9 @@ StyleBoxField :: enum {
     // A focused widget's ring (CSS outline), not a container field.
     StyleBoxOutlineWidth :: 131072
     StyleBoxOutlineOffset :: 262144
+    // A linear gradient past top to bottom with two stops: its angle or
+    // corner, stops and middle colors (the face holds the first and last).
+    StyleBoxGradient :: 524288
 }
 using StyleBoxField;
 
@@ -461,10 +464,21 @@ StyleBoxData :: struct {
     border_colors: [4]u32
     outline_width: float32
     outline_offset: float32
+    // The gradient line's direction for a CSS angle (sin, -cos: 0 degrees
+    // points up), or a corner: 1 top right, 2 bottom right, 3 bottom left,
+    // 4 top left, which follows the box's diagonal.
+    gradient_dx: float32
+    gradient_dy: float32
+    gradient_corner: s32
+    // 2 to 6 stops at increasing positions from 0 to 1.
+    gradient_count: s32
+    gradient_stops: [6]float32
+    // Stops 1 to 4; stop 0 is the face's background, the last its end.
+    gradient_colors: [4]u32
 }
 
 // Every box field but text-align, which only Text reads.
-StyleBoxContainerFields :: 131055
+StyleBoxContainerFields :: 655343
 // The per-side border widths and colors.
 StyleBoxBorderSides :: 130560
 StyleBoxOutlineFields :: 393216
@@ -1303,6 +1317,14 @@ ApplyBoxFields :: (target: *StyleBoxData, value: *StyleBoxData, fields: u32) {
     if (fields & cast(u32)StyleBoxMarginRight) != 0 { target.margin_right = value.margin_right }
     if (fields & cast(u32)StyleBoxMarginBottom) != 0 { target.margin_bottom = value.margin_bottom }
     if (fields & cast(u32)StyleBoxMarginLeft) != 0 { target.margin_left = value.margin_left }
+    if (fields & cast(u32)StyleBoxGradient) != 0 {
+        target.gradient_dx = value.gradient_dx
+        target.gradient_dy = value.gradient_dy
+        target.gradient_corner = value.gradient_corner
+        target.gradient_count = value.gradient_count
+        target.gradient_stops = value.gradient_stops
+        target.gradient_colors = value.gradient_colors
+    }
     if (fields & cast(u32)StyleBoxOutlineWidth) != 0 { target.outline_width = value.outline_width }
     if (fields & cast(u32)StyleBoxOutlineOffset) != 0 { target.outline_offset = value.outline_offset }
     if (fields & cast(u32)StyleBoxBorderSides) != 0 {
