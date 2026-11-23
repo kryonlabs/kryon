@@ -2,7 +2,8 @@
 set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
-work=$(mktemp -d)
+mkdir -p "$repo/build/scratch"
+work=$(mktemp -d "$repo/build/scratch/file-download-test.XXXXXX")
 server=
 cleanup() {
     if [ -n "$server" ]; then kill "$server" 2>/dev/null || true; fi
@@ -26,4 +27,4 @@ for define in _WIN32 PLATFORM_WEB ANDROID_BUILD; do
     "$ziran_root/build/bin/zi2c" --no-main --define "$define" --root "$repo/src/backend" \
         --module-path "$ziran_root/std" -o "$work/$define" "$repo/src/backend/file_download.zi"
 done
-echo 'File download: live byte progress, redirect totals, header bounds, complete file, missing, size limit, release, unreachable network and one at a time passed'
+echo 'File download: live byte progress, redirect totals, header bounds, complete file, direct and redirected HTTP 404, size limit, release, unreachable network and one at a time passed'

@@ -31,6 +31,11 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == '/slow':
             time.sleep(3)
             self.answer(200, b'late answer')
+        elif self.path == '/redirect-missing':
+            self.send_response(302)
+            self.send_header('Location', '/missing')
+            self.send_header('Content-Length', '0')
+            self.end_headers()
         elif self.path == '/redirect-stream':
             self.send_response(302)
             self.send_header('Location', '/stream')

@@ -53,7 +53,9 @@ main :: () -> s32 {
     "HTTP/1.1 404 Missing\r\nContent-Length: 100000\r\n\r\n"]
     for header, index: headers {
         expected: u64 = ifx index < 2 then 100000 else 0
-        if CurlHeaderTotal(header) != expected { return 10 + cast(s32)index }
+        parsed := CurlParseHeaders(header)
+        expected_status: s32 = ifx index == 2 then 0 else ifx index == 6 then 404 else 200
+        if parsed.total != expected || parsed.status != expected_status { return 10 + cast(s32)index }
     }
     name: [16]u8
     CopyCString("HTTP_TEST_PORT", name[:])
@@ -66,9 +68,15 @@ main :: () -> s32 {
     }
     download = FileDownload.{}
     if !FileDownloadStart(*download, Url("/missing", url[:]), "missing.bin") || Finish(*download) != .Error ||
-    TextFromCString(*download.error[0]) != "download failed" || Exists("missing.bin") ||
+    download.http_status != 404 || TextFromCString(*download.error[0]) != "download failed" || Exists("missing.bin") ||
     Exists("missing.bin.part") || Exists("missing.bin.part.headers") {
         return 2
+    }
+    download = FileDownload.{}
+    if !FileDownloadStart(*download, Url("/redirect-missing", url[:]), "redirect.bin") ||
+    Finish(*download) != .Error || download.http_status != 404 || Exists("redirect.bin") ||
+    Exists("redirect.bin.part") || Exists("redirect.bin.part.headers") {
+        return 17
     }
     // A download larger than its limit fails and leaves nothing behind.
     download = FileDownload.{.maximum_bytes = 1000}
@@ -88,7 +96,7 @@ main :: () -> s32 {
     // Nothing listens on port 9: the network is reported unreachable.
     download = FileDownload.{}
     if !FileDownloadStart(*download, "http://127.0.0.1:9/file", "refused.bin") || Finish(*download) != .Error ||
-    TextFromCString(*download.error[0]) != "NETWORK_UNAVAILABLE" {
+    download.http_status != 0 || TextFromCString(*download.error[0]) != "NETWORK_UNAVAILABLE" {
         return 6
     }
     // A second start while one runs is refused.

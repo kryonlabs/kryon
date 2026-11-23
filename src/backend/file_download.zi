@@ -181,35 +181,47 @@ FileDownloadRelease :: (download: *FileDownload) {
         return true
     }
 
-    // Only a complete successful response can supply a transfer total. A
-    // redirect, incomplete header, conflicting length or chunked body cannot.
-    CurlHeaderTotal :: (headers: string) -> u64 {
+    CurlResponseHeaders :: struct {
+        status: s32
+        total: u64
+    }
+
+    // Use the final complete response. Only a successful response with an
+    // unambiguous Content-Length can supply a transfer total.
+    CurlParseHeaders :: (headers: string) -> CurlResponseHeaders {
         at: s64
         total: u64
-        result: u64
+        result: CurlResponseHeaders
+        status: s32
         valid: bool
         length_seen: bool
-        successful: bool
         while at < headers.count {
             start := at
             while at < headers.count && headers[at] != 10 { at += 1 }
-            if at == headers.count { return 0 }
+            if at == headers.count { return CurlResponseHeaders.{} }
             end := at
             at += 1
             if end > start && headers[end - 1] == 13 { end -= 1 }
             line := headers[start:end]
             if line.count >= 5 && line[:5] == "HTTP/" {
                 total = 0
-                result = 0
+                result = CurlResponseHeaders.{}
+                status = 0
                 valid = true
                 length_seen = false
                 space: s64
                 while space < line.count && line[space] != 32 { space += 1 }
-                successful = space + 4 <= line.count && line[space + 1] == 50 &&
-                line[space + 2] >= 48 && line[space + 2] <= 57 &&
-                line[space + 3] >= 48 && line[space + 3] <= 57
+                if space + 4 <= line.count && (space + 4 == line.count || line[space + 4] == 32) {
+                    first := line[space + 1]
+                    middle := line[space + 2]
+                    last := line[space + 3]
+                    if first >= 49 && first <= 53 && middle >= 48 && middle <= 57 && last >= 48 && last <= 57 {
+                        status = cast(s32)(first - 48) * 100 + cast(s32)(middle - 48) * 10 + cast(s32)(last - 48)
+                    }
+                }
             } else if line.count == 0 {
-                result = ifx successful && valid && length_seen then total else 0
+                result.status = status
+                result.total = ifx status >= 200 && status < 300 && valid && length_seen then total else 0
             } else {
                 colon: s64
                 while colon < line.count && line[colon] != 58 { colon += 1 }
@@ -240,20 +252,20 @@ FileDownloadRelease :: (download: *FileDownload) {
         return result
     }
 
-    CurlReadTotal :: (download: *FileDownload) {
+    CurlReadHeaders :: (download: *FileDownload) -> CurlResponseHeaders {
         path: [4096]u8
         mode: [4]u8
-        if download.total_bytes > 0 || !CurlHeadersPath(download, path[:]) ||
-        !CopyCString("rb", mode[:]) { return }
+        empty := CurlResponseHeaders.{}
+        if !CurlHeadersPath(download, path[:]) || !CopyCString("rb", mode[:]) { return empty }
         file := DownloadOpen(*path[0], *mode[0])
-        if file == null { return }
+        if file == null { return empty }
         defer { unused DownloadClose(file) }
-        if DownloadSeek(file, 0, 2) != 0 { return }
+        if DownloadSeek(file, 0, 2) != 0 { return empty }
         count := DownloadTell(file)
-        if count <= 0 || count > 65536 || DownloadSeek(file, 0, 0) != 0 { return }
+        if count <= 0 || count > 65536 || DownloadSeek(file, 0, 0) != 0 { return empty }
         bytes: [65536]u8
-        if DownloadRead(*bytes[0], 1, cast(usize)count, file) != cast(usize)count { return }
-        download.total_bytes = CurlHeaderTotal(TextFromBytes(bytes[:count]))
+        if DownloadRead(*bytes[0], 1, cast(usize)count, file) != cast(usize)count { return empty }
+        return CurlParseHeaders(TextFromBytes(bytes[:count]))
     }
 
     CurlRemoveHeaders :: (download: *FileDownload) {
@@ -328,7 +340,9 @@ FileDownloadRelease :: (download: *FileDownload) {
         if download.handle == 0 {
             return
         }
-        CurlReadTotal(download)
+        if download.total_bytes == 0 {
+            download.total_bytes = CurlReadHeaders(download).total
+        }
         mode: [4]u8
         if CopyCString("rb", mode[:]) {
             file := DownloadOpen(*download.temporary[0], *mode[0])
@@ -356,6 +370,15 @@ FileDownloadRelease :: (download: *FileDownload) {
             return
         }
         download.handle = 0
+        exit_code := (status >> 8) & 255
+        // curl --fail exits 22 for an HTTP error. A connection failure or
+        // interrupted successful body has no HTTP error status to report.
+        if result == pid && exit_code == 22 {
+            response := CurlReadHeaders(download)
+            if response.status >= 400 {
+                download.http_status = response.status
+            }
+        }
         CurlRemoveHeaders(download)
         if result == pid && status == 0 &&
         DownloadRename(*download.temporary[0], *download.destination[0]) == 0 {
@@ -365,7 +388,6 @@ FileDownloadRelease :: (download: *FileDownload) {
         }
         DownloadRemove(*download.temporary[0])
         // curl: could not resolve, could not connect, timed out.
-        exit_code := (status >> 8) & 255
         if exit_code == 6 || exit_code == 7 || exit_code == 28 {
             FileDownloadError(download, "NETWORK_UNAVAILABLE")
         } else {
