@@ -8,6 +8,16 @@ text_draws: s32;
 image_draws: s32;
 failed: bool;
 
+// Rounded panels are painted through the queue; these checks count only
+// lines, text and images, so the shapes need just a host to link.
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {}
+
 #program_export
 RasterLine :: (line: Rectangle, color: Color) {
     unused color

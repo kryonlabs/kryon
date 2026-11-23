@@ -9,6 +9,7 @@
 #import "text_input_platform"
 Motion :: #import "scroll_device";
 #import "text_input_platform_host"
+#import "ziran_frame_retained_host"
 using FrameStatus;
 using PaintKind;
 

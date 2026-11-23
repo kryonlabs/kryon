@@ -11,7 +11,9 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_frame_reuse_test.zi
 
-set --
+set -- \
+    --bind kryon/raster_shape:RasterRoundedRectangle=ziran_frame_retained_host:RasterRoundedRectangle \
+    --bind kryon/raster_shape:RasterRoundedRectangleOutline=ziran_frame_retained_host:RasterRoundedRectangleOutline
 
 matrix_bundles=before
 matrix_forms=both

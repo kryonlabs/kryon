@@ -17,6 +17,8 @@ set -- \
     --bind kryon/raster_text:RasterTextClipped=ziran_frame_retained_host:RasterTextClipped \
     --bind kryon/raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated \
     --bind kryon/paint_queue:RasterImage=ziran_frame_retained_host:RasterImage \
+    --bind kryon/raster_shape:RasterRoundedRectangle=ziran_frame_retained_host:RasterRoundedRectangle \
+    --bind kryon/raster_shape:RasterRoundedRectangleOutline=ziran_frame_retained_host:RasterRoundedRectangleOutline \
     --bind kryon/paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
 
 kryon_ui_args=$kryon_project_args

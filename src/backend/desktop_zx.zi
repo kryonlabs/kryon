@@ -93,6 +93,7 @@ Supported :: (module: string, function: string) -> bool {
     if ModuleName(module, "paint_queue") {
         return function == "RasterImage" || function == "RasterImageMesh"
     }
+    if ModuleName(module, "cursor_picture") { return function == "CursorPictureHost" }
     if ModuleName(module, "image_raster") {
         return function == "ImageWidth" || function == "ImageHeight"
     }
@@ -725,6 +726,22 @@ RunFrameBundle :: (bundle_path: string, opened_bundle: *void, check: bool,
             assets_root = TextFromCString(*temporary[0])
             ok = ExtractAssets(bundle, assets_root) && ChangeDirectory(*temporary[0]) == 0
         }
+    }
+    // Kryon's frame host (zx_run) and a Frame export are drawn each frame.
+    // Any other entry is a program: it runs once and prints its result, as
+    // `ziran run` does for a console bundle.
+    program := !ModuleName(TextFromCString(BundleEntryModule(bundle)), "zx_run") &&
+        TextFromCString(BundleEntryFunction(bundle)) != "Frame"
+    if ok && !check && program {
+        result: s64
+        has_result: s32
+        ok = RunBundleInstance(instance, *result, *has_result) != 0
+        CloseBundleInstance(instance)
+        BundleMediaClose(*player.media)
+        if assets_root != "" && !RemoveAssetDirectory(assets_root) { ok = false }
+        if !ok { print("zx: app execution failed\n"); return 1 }
+        if has_result != 0 { print("%\n", result) }
+        return 0
     }
     if ok { ok = OpenDesktop() }
     if ok {
