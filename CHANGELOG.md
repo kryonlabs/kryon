@@ -1,5 +1,33 @@
 # Changelog
 
+## Moving an app to this Kryon
+
+Bump the Ziran toolchain, Kryon and CSS pins together (the starter pins
+Ziran 8133bd41, Kryon 02cc10e6 and CSS b0e83ac2); a CSS package must pin the
+same Kryon as the app, or both get linked. Then:
+
+- **Card is a container.** Before: `c := Card.Draw(session, .{.bounds = slot.bounds}).content`
+  and children drawn at `c`. After: `card := Card.Draw(session, Card.Props.{.variant = .CardOutlined})`,
+  then `if card.opened { children; unused End(session) }`; without a height it grows to its
+  children. (atr src/ui/chrome.zi:30 uses the old form.)
+- **Child-rect helpers are gone:** `ColumnChildBounds`, `RowChildBounds`, `StackChildBoundsFor`,
+  `FlowChildBounds`, `CardContentBounds`. Draw children inside `Layout.Draw`, `Row`, `Stack`,
+  `Grid` or `Flow` and let it place them; a widget leaves its width (column) or height (row)
+  unset to fill. `FocusDefaultOutlineBounds` is gone: `FocusRingFor` sizes the focus ring
+  from the style's `:focus-visible` outline.
+- **No Stack slots for composites.** TitleBar sizes itself in a column; draw trailing widgets
+  at `bar.trailing_bounds`. Containers without a height size to their children at `End`, and
+  Row, Column and Grid paint their CSS background, border, radius and box-shadow.
+- **Widget keys are optional.** Before: `.key = cast(u64)(100 + index)`. After: no key; a
+  widget is known by its calling line and parent, and a loop's repeats count in order. Keep
+  `.key = item.id` only where rows reorder.
+- **Stricter CSS.** A plain `CssSheetParse` refuses browser-only declarations (`transform`,
+  `transform-origin`, `scale`, `rotate`) with the reason; `CssSheetParseWithDiagnostics`
+  reports them. A style pack in an older layout is refused as stale: rebuild it with the
+  pinned CSS package.
+- **Import `kryon/Frame`.** The old `kryon/tree_draw` name still works but is on its way out.
+- `kryon/swipe_row` stays: Breeze Lists uses it.
+
 ## Unreleased
 
 - examples/dashboard builds on Kryon d0711324 and CSS 164d983; its KPI progress bars now paint their fill, and the README records the new light, dark and narrow digests.
