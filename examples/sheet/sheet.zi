@@ -100,8 +100,8 @@ Prepare :: (session: Session, scene: s32) {
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Sheet", .size = 23})
+    Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Sheet", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 1
     Prepare(session, scene)
@@ -127,7 +127,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         .disabled = disabled, .surface_style = Sheet.SheetSurfaceDefaultStyle(),
         .scrim_style = Sheet.SheetScrimDefaultStyle()}
     if gallery_live {
-        if Button.Draw(session, Button.Props.{.key = 709, .bounds = anchor, .label = "Open sheet", .disabled = disabled}) != 0 { live_sheet_open = true }
+        if Button.Draw(session, Button.Props.{.bounds = anchor, .label = "Open sheet", .disabled = disabled}) != 0 { live_sheet_open = true }
         props.open = live_sheet_open
         props.now_ms = cast(s64)(gallery_now * 1000.0)
         props.input.pointer = live_pointer; props.input.keys = live_keys

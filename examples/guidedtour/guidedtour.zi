@@ -100,8 +100,8 @@ Prepare :: (session: Session, scene: s32) {
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "GuidedTour", .size = 23})
+    Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "GuidedTour", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 5
     Prepare(session, scene)
@@ -119,8 +119,8 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         tour_steps[0].target = GalleryBounds(Rectangle.{168.0, 112.0, 144.0, 42.0})
         tour_steps[1].target = GalleryBounds(Rectangle.{168.0, 180.0, 144.0, 42.0})
     }
-    Text.Draw(session, Text.Props.{.key = 750, .bounds = tour_steps[0].target, .text = "Catalog target", .size = 17})
-    props: GuidedTour.Props = .{.key = 751, .steps = tour_steps[:], .step = 0,
+    Text.Draw(session, Text.Props.{.bounds = tour_steps[0].target, .text = "Catalog target", .size = 17})
+    props: GuidedTour.Props = .{.steps = tour_steps[:], .step = 0,
         .width = 290.0, .padding = 12.0, .block_target = false,
         .next_label = "Next", .back_label = "Back", .done_label = "Done",
         .skip_label = "Skip", .count_format = "%d of %d", .viewport = viewport,
@@ -129,7 +129,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         .scrim_style = GuidedTour.GuidedTourScrimDefaultStyle(),
         .button_style = GuidedTour.GuidedTourButtonDefaultStyle()}
     if gallery_live {
-        if Button.Draw(session, Button.Props.{.key = 749, .bounds = anchor, .label = "Start tour", .disabled = disabled}) != 0 { live_tour_step = 0 }
+        if Button.Draw(session, Button.Props.{.bounds = anchor, .label = "Start tour", .disabled = disabled}) != 0 { live_tour_step = 0 }
         props.step = live_tour_step; props.input.pointer = live_pointer
         props.input.escape = live_keys.escape; props.input.enter = live_keys.enter
         props.input.left = live_keys.left; props.input.right = live_keys.right

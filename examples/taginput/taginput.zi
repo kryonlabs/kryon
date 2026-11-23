@@ -77,8 +77,8 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     gallery_input: TextField.Input
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TagInput", .size = 23})
+    Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TagInput", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 0
     Prepare(session, scene)
@@ -90,7 +90,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     tag_style := TagInput.TagInputDefaultStyle()
     tag_style.width = bounds.width
     tag_style.height = bounds.height
-    unused TagInput.Draw(session, TagInput.Props.{.key = 600, .bounds = bounds,
+    unused TagInput.Draw(session, TagInput.Props.{.bounds = bounds,
         .label = "Project tags", .placeholder = "Add tag", .max_tags = 6,
         .allow_duplicates = false, .trim_spaces = true, .separator = ",",
         .disabled = disabled, .input = gallery_input,

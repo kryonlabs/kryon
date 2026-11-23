@@ -3,8 +3,8 @@ Text :: #import "kryon/text";
 #import "kryon/session"
 using SharedLayout :: #import "kryon/PageLayout";
 
-Label :: (session: Session, key: s32, text: string, bounds: Rectangle, size: s32) {
-    Text.Draw(session, Text.Props.{.key = cast(u64)key, .bounds = bounds, .text = text, .size = size})
+Label :: (session: Session, text: string, bounds: Rectangle, size: s32) {
+    Text.Draw(session, Text.Props.{.bounds = bounds, .text = text, .size = size})
 }
 
 // first followed by second, in output.

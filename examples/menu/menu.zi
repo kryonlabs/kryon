@@ -48,8 +48,8 @@ example_motion: TransitionMotionState;
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Menu", .size = 23})
+    Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Menu", .size = 23})
     b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
     disabled := example_input.disabled
     now := cast(float64)CaptureFrameInput(session).elapsed_ms / 1000.0
@@ -58,7 +58,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     items[0].id = 1; items[0].label = "New note"; items[1].id = 2; items[1].label = "Open..."; items[1].disabled = disabled
     groups[0].label = "File"; groups[0].items = items[:]
     if !menu_initialized { Menu.MenuStateInit(*menu_state); menu_state.open_index = 0; menu_initialized = true }
-    if Menu.Draw(session, Menu.Props.{.key = 1403, .motion = *example_motion, .now = now, .reduced_motion = example_input.reduced_motion, .bounds = b}, groups[:], *menu_state).activated_id > 0 { clicks += 1 }
+    if Menu.Draw(session, Menu.Props.{.motion = *example_motion, .now = now, .reduced_motion = example_input.reduced_motion, .bounds = b}, groups[:], *menu_state).activated_id > 0 { clicks += 1 }
     return 0
 }
 

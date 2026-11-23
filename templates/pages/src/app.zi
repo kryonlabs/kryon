@@ -31,7 +31,6 @@ favorite: [6]bool = .{true, false, true, false, false, true};
 
 Tab :: (session: Session, page: *PageLayout, row: Rectangle, index: s32, label: string) {
     props: Button.Props
-    props.key = cast(u64)(10 + index)
     props.id = 10 + index
     props.bounds = RowPart(page, row, index, 3)
     props.label = label
@@ -44,11 +43,10 @@ Tab :: (session: Session, page: *PageLayout, row: Rectangle, index: s32, label: 
 }
 
 Home :: (session: Session, page: *PageLayout) {
-    Label(session, 20, "Welcome", NextRow(page, 30.0), FontSize(page, 24))
-    Label(session, 21, "Pick a book in the library. Settings change what it shows.",
+    Label(session, "Welcome", NextRow(page, 30.0), FontSize(page, 24))
+    Label(session, "Pick a book in the library. Settings change what it shows.",
         NextRow(page, 22.0), FontSize(page, 16))
     open: Button.Props
-    open.key = cast(u64)22
     open.id = 22
     open.bounds = RowPart(page, NextRow(page, 40.0), 0, 2)
     open.label = "Open the library"
@@ -75,7 +73,6 @@ Library :: (session: Session, page: *PageLayout) {
                 label := Joined(titles[index], "", book_text[count][:])
                 book_lengths[count] = label.count
             }
-            books[count].key = cast(u64)(200 + index)
             count += 1
         }
         index += 1
@@ -86,7 +83,6 @@ Library :: (session: Session, page: *PageLayout) {
     }
     if selected_book >= count { selected_book = 0 }
     list: ListBox.Props
-    list.key = cast(u64)30
     list.id = 30
     list.bounds = NextRow(page, 6.0 * 34.0)
     list.row_height = 34
@@ -103,14 +99,13 @@ Library :: (session: Session, page: *PageLayout) {
     selected_book = result.selected_index
     book_scroll = result.scroll_offset
     if count > 0 {
-        Label(session, 31, Joined("Selected: ", books[selected_book].label, detail_text[:]),
+        Label(session, Joined("Selected: ", books[selected_book].label, detail_text[:]),
             NextRow(page, 22.0), FontSize(page, 16))
     }
 }
 
 Settings :: (session: Session, page: *PageLayout) {
     favorites: Checkbox.Props
-    favorites.key = cast(u64)40
     favorites.id = 40
     favorites.bounds = NextRow(page, 32.0)
     favorites.label = "Show favorites only"
@@ -118,7 +113,6 @@ Settings :: (session: Session, page: *PageLayout) {
     changed: Checkbox.CheckboxValueResult = Checkbox.Draw(session, favorites)
     if changed.changed { favorites_only = changed.checked }
     authors: Checkbox.Props
-    authors.key = cast(u64)41
     authors.id = 41
     authors.bounds = NextRow(page, 32.0)
     authors.label = "Show authors"
@@ -130,7 +124,7 @@ Settings :: (session: Session, page: *PageLayout) {
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     page: PageLayout = PageFor(viewport, 560.0)
-    Label(session, 1, "{{name}}", NextRow(*page, 36.0), FontSize(*page, 28))
+    Label(session, "{{name}}", NextRow(*page, 36.0), FontSize(*page, 28))
     tabs: Rectangle = NextRow(*page, 40.0)
     Tab(session, *page, tabs, PageHome, "Home")
     Tab(session, *page, tabs, PageLibrary, "Library")

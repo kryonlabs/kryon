@@ -12,12 +12,12 @@ state: TransitionState;
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     input := CaptureFrameInput(session)
-    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Transition", .size = 28})
-    if Button.Draw(session, Button.Props.{.disabled = example_disabled, .key = 10, .bounds = .{viewport.x + 20.0, viewport.y + 76.0, 180.0, 44.0}, .label = "Animate fade"}) != 0 { state = TransitionStart(0.6) }
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Transition", .size = 28})
+    if Button.Draw(session, Button.Props.{.disabled = example_disabled, .bounds = .{viewport.x + 20.0, viewport.y + 76.0, 180.0, 44.0}, .label = "Animate fade"}) != 0 { state = TransitionStart(0.6) }
     state = TransitionAdvance(state, (ifx (example_reduced_motion || DemoTheme.CurrentTheme().motion.reduced_motion) then 1.0 else cast(float32)input.delta_ms / 1000.0)).state
     bounds := Rectangle.{viewport.x + 20.0, viewport.y + 144.0, viewport.width - 40.0, 128.0}
-    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 11, .bounds = bounds, .text = "A transition over this content"})
-    Box.Draw(session, Box.Props.{.key = 12, .bounds = bounds, .fill = TransitionFadeColor(state, .{16, 34, 45, 180})})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = bounds, .text = "A transition over this content"})
+    Box.Draw(session, Box.Props.{.bounds = bounds, .fill = TransitionFadeColor(state, .{16, 34, 45, 180})})
     return 0
 }
 

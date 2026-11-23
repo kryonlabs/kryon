@@ -98,11 +98,11 @@ Apply :: (target: []u8, length: s32, edit: TextField.Edit) -> s32 {
     return new_length
 }
 
-EditField :: (session: Session, key: u64, bounds: Rectangle, disabled: bool, empty: bool, input: TextField.Input) {
+EditField :: (session: Session, bounds: Rectangle, disabled: bool, empty: bool, input: TextField.Input) {
     index: s32 = ifx empty then 1 else 0
     value := TextView(field_bytes[0:field_length])
     if empty { value = TextView(empty_bytes[0:empty_length]) }
-    result := TextField.Draw(session, TextField.Props.{.key = key, .bounds = bounds, .value = value, .placeholder = "Write something...", .max_bytes = 1024, .disabled = disabled, .cursor = demo_field_cursor[index], .anchor = demo_field_anchor[index], .scroll_x = demo_field_scroll[index], .input = input})
+    result := TextField.Draw(session, TextField.Props.{.bounds = bounds, .value = value, .placeholder = "Write something...", .max_bytes = 1024, .disabled = disabled, .cursor = demo_field_cursor[index], .anchor = demo_field_anchor[index], .scroll_x = demo_field_scroll[index], .input = input})
     if result.clipboard_write { unused SystemClipboardSet(result.clipboard_text) }
     demo_field_cursor[index] = result.cursor; demo_field_anchor[index] = result.anchor; demo_field_scroll[index] = result.scroll_x
     if empty { empty_length = Apply(empty_next[:], empty_length, result.edit) }
@@ -153,15 +153,15 @@ Prepare :: (session: Session, scene: s32) -> SceneInput {
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TextField", .size = 23})
+    Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TextField", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 1
     input := Prepare(session, scene)
     field_input := input.field
-    EditField(session, 10, b, disabled, false, field_input)
+    EditField(session, b, disabled, false, field_input)
     b.y += 64.0
-    EditField(session, 11, b, disabled, true, field_input)
+    EditField(session, b, disabled, true, field_input)
     return 0
 }
 

@@ -123,8 +123,8 @@ Prepare :: (session: Session, scene: s32) {
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TableView", .size = 23})
+    Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TableView", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 2
     InstallStyles(example_input.theme == 2)
@@ -133,8 +133,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         for index: 0..5 { table_rows[index].cells = table_cells[index * 3:index * 3 + 3] }
         table_ready = true
     }
-    result := Tables.TableView(session, Tables.TableViewProps.{.key = 600,
-        .bounds = bounds, .columns = table_headers[:], .rows = table_rows[:],
+    result := Tables.TableView(session, Tables.TableViewProps.{.bounds = bounds, .columns = table_headers[:], .rows = table_rows[:],
         .column_widths = table_widths[:], .selected_row = table_selection,
         .selected_column = table_column, .sort_column = table_sort,
         .sort_direction = table_direction, .scroll_offset = table_scroll,

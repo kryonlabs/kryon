@@ -59,20 +59,20 @@ example_motion: TransitionMotionState;
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Collapsible", .size = 23})
+    Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Collapsible", .size = 23})
     b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
     disabled := example_input.disabled
     now := cast(float64)CaptureFrameInput(session).elapsed_ms / 1000.0
 
     b.height = 188.0
-    revealed := Collapsible.Draw(session, Collapsible.Props.{.key = 1404, .motion = *example_motion, .now = now, .reduced_motion = example_input.reduced_motion, .bounds = b, .label = "More details", .open = details, .has_open = true, .disabled = disabled}, no_headers)
+    revealed := Collapsible.Draw(session, Collapsible.Props.{.motion = *example_motion, .now = now, .reduced_motion = example_input.reduced_motion, .bounds = b, .label = "More details", .open = details, .has_open = true, .disabled = disabled}, no_headers)
     details = revealed.open
     if revealed.content.height > 0.0 {
-        body := Box.Draw(session, Box.Props.{.key = 1405, .bounds = revealed.content})
+        body := Box.Draw(session, Box.Props.{.bounds = revealed.content})
         TreeSetChildClip(session, body, revealed.content)
         TreePushScope(session, body)
-        Text.Draw(session, Text.Props.{.key = 1406, .bounds = .{revealed.content.x + 12.0, revealed.content.y + 12.0, revealed.content.width - 24.0, 60.0}, .text = "The section is open. Click its header to fold it.", .size = 16})
+        Text.Draw(session, Text.Props.{.bounds = .{revealed.content.x + 12.0, revealed.content.y + 12.0, revealed.content.width - 24.0, 60.0}, .text = "The section is open. Click its header to fold it.", .size = 16})
         TreePopScope(session)
     }
     return 0

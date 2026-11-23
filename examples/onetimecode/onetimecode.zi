@@ -73,8 +73,8 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     gallery_input: TextField.Input
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "OneTimeCode", .size = 23})
+    Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "OneTimeCode", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 1
     Prepare(session, scene)
@@ -88,8 +88,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     code_style.slot_height = 48.0
     code_style.gap = ifx gallery_live && bounds.width < 340.0 then 4.0 else 7.0
     code_style.group_gap = 14.0
-    unused OneTimeCode.Draw(session, OneTimeCode.Props.{.key = 601,
-        .bounds = bounds, .length = 6, .focus = !gallery_live, .disabled = disabled,
+    unused OneTimeCode.Draw(session, OneTimeCode.Props.{.bounds = bounds, .length = 6, .focus = !gallery_live, .disabled = disabled,
         .text = gallery_input.text, .left = gallery_input.left, .right = gallery_input.right,
         .backspace = gallery_input.backspace, .delete_forward = gallery_input.delete_forward, .escape = gallery_input.escape,
         .style = code_style}, *one_time_state)

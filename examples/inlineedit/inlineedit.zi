@@ -73,8 +73,8 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     gallery_input: TextField.Input
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "InlineEdit", .size = 23})
+    Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "InlineEdit", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 2
     Prepare(session, scene)
@@ -83,7 +83,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         gallery_input_key = KeyboardTake(session)
         gallery_input = TextFieldInputFor(gallery_input_key, KeyboardModifiers(session), TypedTextTake(session, gallery_typed[:]))
     }
-    unused InlineEdit.Draw(session, InlineEdit.Props.{.key = 602, .bounds = bounds,
+    unused InlineEdit.Draw(session, InlineEdit.Props.{.bounds = bounds,
         .value = "Launch checklist", .placeholder = "Document title",
         .input = gallery_input, .disabled = disabled, .focus_visible = true, .height = 42.0,
         .font_size = 17.0}, *inline_state)

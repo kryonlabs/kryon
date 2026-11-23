@@ -103,8 +103,8 @@ Prepare :: (session: Session, scene: s32) {
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "CommandPalette", .size = 23})
+    Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "CommandPalette", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 2
     Prepare(session, scene)
@@ -123,7 +123,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         tour_steps[1].target = GalleryBounds(Rectangle.{168.0, 180.0, 144.0, 42.0})
     }
     viewport = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0})
-    if Button.Draw(session, Button.Props.{.key = 719, .bounds = anchor, .label = "Open palette", .disabled = disabled}) != 0 {
+    if Button.Draw(session, Button.Props.{.bounds = anchor, .label = "Open palette", .disabled = disabled}) != 0 {
         palette_open = true
     }
     input_key := KeyboardTake(session)
@@ -135,7 +135,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     palette_input.enter = field_input.commit
     palette_input.up = input_key == KeyUp
     palette_input.down = input_key == KeyDown
-    props: CommandPalette.Props = .{.key = 720, .owner = 701, .open = palette_open,
+    props: CommandPalette.Props = .{.owner = 701, .open = palette_open,
         .placeholder = "Search commands", .viewport = viewport, .width = 380.0,
         .maximum_height = 96.0, .now_ms = 500, .commands = commands[:],
         .input = palette_input,
