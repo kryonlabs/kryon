@@ -351,8 +351,11 @@ Theme :: #import "theme";
         bar_face: StyleFrame = TabBarFaceFor(props,
             StyleKindTabBar(), false, props.disabled, false)
         tab_extent: s32 = TabBarPolicyHeight(props.scale, bar_face)
-        auto_bounds: bool = bounds.width <= 0.0 || bounds.height <= 0.0
-        if bounds.width <= 0.0 {
+        // A placing column places a horizontal bar that sets no width; alone,
+        // a bar spans its parent at the edge its placement names.
+        placing := !vertical && bounds.width <= 0.0 && TreeWillPlace(session, bounds)
+        auto_bounds: bool = !placing && (bounds.width <= 0.0 || bounds.height <= 0.0)
+        if bounds.width <= 0.0 && !placing {
             if vertical {
                 bounds.width = cast(float32)TabBarDefaultMetrics(
                     props.min_tab_width, props.max_tab_width,
@@ -377,8 +380,17 @@ Theme :: #import "theme";
                 bounds.x = parent.x + parent.width - bounds.width
             }
         }
-        if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
+        if bounds.height <= 0.0 || (bounds.width <= 0.0 && !placing) { return result }
         key: u64 = TabBarKey(session, props)
+        early: s32 = -1
+        if placing {
+            // The tabs lay out where the column put the bar.
+            early = TreeSubmitCurrent(session, key, WidgetKindTabBar, bounds)
+            if early < 0 { return result }
+            TreeAdoptPlacement(session, early)
+            bounds = TreeSubmittedBounds(session, early)
+            if bounds.width <= 0.0 { return result }
+        }
         scale: float32 = props.scale
         if scale <= 0.0 { scale = 1.0 }
         metrics: TabBarMetrics = TabBarMetricsFor(props)
@@ -593,8 +605,10 @@ Theme :: #import "theme";
                 tab_face.value.typeface, scroll, vertical, tab_extent)
         }
         if TreeIsBuilding(session) {
-            result.node = TreeSubmitCurrent(session, key,
-                WidgetKindTabBar, bounds)
+            result.node = early
+            if result.node < 0 {
+                result.node = TreeSubmitCurrent(session, key, WidgetKindTabBar, bounds)
+            }
             if result.node < 0 { return result }
             TreeSetStyleClass(session, result.node, props.class_name)
             TreeSetStyleId(session, result.node, props.id)

@@ -744,6 +744,15 @@ NodeGeometry :: struct {
         return layout >= 0 && trees[slot].layouts[layout].places_children
     }
 
+    // A widget that lays itself out after its parent placed it adopts the
+    // placement: it then gives its own paint in placed coordinates, and the
+    // paint queue does not move that paint a second time.
+    TreeAdoptPlacement :: (session: Session, index: s32) {
+        slot: s32 = SessionIndex(session)
+        if !trees[slot].building || index < 0 || index >= trees[slot].submitted_count { return }
+        trees[slot].submitted[index].measured_bounds = trees[slot].submitted[index].bounds
+    }
+
     #program_export
     TreeInputAt :: (session: Session, index: s32) -> NodeInput {
         input: NodeInput

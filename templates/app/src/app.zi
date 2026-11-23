@@ -56,14 +56,11 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
 AppBar :: (session: Session) {
     height := Theme.CurrentThemeMetric(.ThemeMetricControlHeightLarge) +
         Theme.CurrentThemeMetric(.ThemeMetricSpace3)
-    slot := Layout.Stack(session, Layout.Props.{.bounds = .{.height = height}})
-    if !slot.opened { return }
-    bar := TitleBar.Draw(session, TitleBar.Props.{.bounds = slot.bounds,
+    bar := TitleBar.Draw(session, TitleBar.Props.{.bounds = .{height = height},
         .title = "{{name}}", .strong_title = true, .trailing_width = 120}, no_menu)
     switch := Toggle.Draw(session, Toggle.Props.{.bounds = bar.trailing_bounds,
         .label = "Dark", .value = dark})
     if switch.changed { dark = switch.value }
-    unused End(session)
 }
 
 // One task as a card: a checkbox with its title, and a detail line.

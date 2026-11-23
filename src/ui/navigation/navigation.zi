@@ -226,22 +226,33 @@ DrawNavigationDockItem :: (session: Session, props: PropsModule.Props,
 
 DrawCompactNavigation :: (session: Session, props: PropsModule.Props,
     items: []NavigationBarItem, result: NavigationBarResult) -> NavigationBarResult {
-    if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result }
+    // A placing column fills an unset width.
+    if props.bounds.height <= 0.0 { return result }
+    if props.bounds.width <= 0.0 && !TreeWillPlace(session, props.bounds) { return result }
     key := NavigationBarKey(session, props)
-    layout := NavigationBarDockLayoutFor(props.bounds, props.vertical,
-        cast(s32)items.count, props.footer_count, props.scale)
-    if props.fit_items {
-        layout = NavigationBarDockFitLayoutFor(props.bounds, props.vertical,
-            cast(s32)items.count, props.footer_count, props.scale)
-    }
-    result.y = cast(s32)props.bounds.y
-    result.height = cast(s32)props.bounds.height
     previous := TreePrevious(session, TreeCurrentParent(session), key,
         WidgetKindNavigationBar)
+    result.node = TreeSubmitCurrent(session, key, WidgetKindNavigationBar, props.bounds)
+    if result.node < 0 || !TreePushScope(session, result.node) { return result }
+    // The items are child widgets, laid out where the bar was placed; the
+    // bar's fill and selection are node paint, which stays where it was
+    // measured and moves with it.
+    placed := TreeSubmittedBounds(session, result.node)
+    paint := TreeNodePaintBounds(session, result.node, props.bounds)
+    dx := placed.x - paint.x
+    dy := placed.y - paint.y
+    layout := NavigationBarDockLayoutFor(placed, props.vertical,
+        cast(s32)items.count, props.footer_count, props.scale)
+    if props.fit_items {
+        layout = NavigationBarDockFitLayoutFor(placed, props.vertical,
+            cast(s32)items.count, props.footer_count, props.scale)
+    }
+    result.y = cast(s32)placed.y
+    result.height = cast(s32)placed.height
     reveal := previous < 0
     if previous >= 0 {
         old := TreeNodeAt(session, previous).bounds
-        reveal = old.width != props.bounds.width || old.height != props.bounds.height
+        reveal = old.width != placed.width || old.height != placed.height
     }
     offset := props.scroll_offset
     old_scroll := TreePreviousCommitted(session, previous,
@@ -255,12 +266,10 @@ DrawCompactNavigation :: (session: Session, props: PropsModule.Props,
             }
         }
     }
-    result.node = TreeSubmitCurrent(session, key, WidgetKindNavigationBar, props.bounds)
-    if result.node < 0 || !TreePushScope(session, result.node) { return result }
     TreeSetStyleClass(session, result.node, props.class_name)
     TreeSetStyleId(session, result.node, props.id)
     bar := NavigationBarFaceFor(props)
-    PaintRoundedFill(session, result.node, props.bounds, 0.0, 4,
+    PaintRoundedFill(session, result.node, paint, 0.0, 4,
         ColorFromPacked(Opacity(bar.value.background,
         StyleOpacityValue(bar.value.fields, bar.value.opacity))))
     WidgetTransitionBegin(session, props.motion, props.now, props.reduced_motion,
@@ -274,6 +283,8 @@ DrawCompactNavigation :: (session: Session, props: PropsModule.Props,
                     target := NavigationBarDockItemBounds(layout, content, active)
                     indicator := TransitionIndicatorBounds(props.motion, target, 0)
                     indicator = RectangleIntersection(indicator, layout.scroll_bounds)
+                    indicator.x -= dx
+                    indicator.y -= dy
                     PaintRoundedFill(session, result.node, indicator, 12.0, 12,
                         ColorFromPacked(Theme.CurrentSelection()))
                     result.animating = TransitionMotionActive(props.motion)
@@ -304,6 +315,8 @@ DrawCompactNavigation :: (session: Session, props: PropsModule.Props,
                     target := NavigationBarDockItemBounds(layout, content, active)
                     indicator := TransitionIndicatorBounds(props.motion, target, 0)
                     indicator = RectangleIntersection(indicator, layout.scroll_bounds)
+                    indicator.x -= dx
+                    indicator.y -= dy
                     PaintRoundedFill(session, result.node, indicator, 12.0, 12,
                         ColorFromPacked(Theme.CurrentSelection()))
                     result.animating = TransitionMotionActive(props.motion)
@@ -331,6 +344,8 @@ DrawCompactNavigation :: (session: Session, props: PropsModule.Props,
         }
         if props.motion != null && items[layout.primary_count + index].active {
             indicator := TransitionIndicatorBounds(props.motion, bounds, 0)
+            indicator.x -= dx
+            indicator.y -= dy
             PaintRoundedFill(session, result.node, indicator, 12.0, 12,
                 ColorFromPacked(Theme.CurrentSelection()))
             result.animating = TransitionMotionActive(props.motion)
@@ -344,7 +359,8 @@ DrawCompactNavigation :: (session: Session, props: PropsModule.Props,
             bounds := NavigationBarDockItemBounds(layout, content, result.drop_index)
             bounds = RectangleIntersection(bounds, layout.scroll_bounds)
             if bounds.width > 0.0 && bounds.height > 0.0 {
-                PaintRoundedOutline(session, result.node, bounds, 12.0, 12, 2.0,
+                PaintRoundedOutline(session, result.node,
+                    Rectangle.{bounds.x - dx, bounds.y - dy, bounds.width, bounds.height}, 12.0, 12, 2.0,
                     ColorFromPacked(bar.value.foreground))
             }
         }

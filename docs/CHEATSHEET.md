@@ -22,8 +22,9 @@ No display needed; `build/shot.json` lists each node's kind, role, label and bou
 - Containers (Layout, Grid, Flow, Modal) place children: never compute `x` or `y`;
   a child declares its size, and zero width fills a column. A Row, Column, Grid
   or Flow without a height sizes to its children when it closes with `End`. If `opened`, draw the
-  children, then `End(session)`: a missing `End` fails the whole frame. Composite
-  widgets (Card, TitleBar) draw into a `Layout.Stack` slot: pass `slot.bounds`.
+  children, then `End(session)`: a missing `End` fails the whole frame. A widget given a
+  rectangle with an origin (`bar.trailing_bounds`) is drawn there, over the column. A Card
+  draws into a `Layout.Stack` slot: pass `slot.bounds`.
 - Size and space come from theme tokens. Act on a result in the same frame.
 - Typed text lives in `TextField.State` bytes; zero `length cursor anchor scroll_x` to clear.
 - A returned `string` must view file-scope bytes (as `NoteAt` does), never a local buffer.
@@ -113,12 +114,9 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
 }
 AppBar :: (session: Session) {
     height := Theme.CurrentThemeMetric(.ThemeMetricControlHeightLarge) + Theme.CurrentThemeMetric(.ThemeMetricSpace3)
-    slot := Layout.Stack(session, Layout.Props.{.bounds = .{height = height}})
-    if !slot.opened { return }
-    bar := TitleBar.Draw(session, TitleBar.Props.{.bounds = slot.bounds, .title = "Notes", .strong_title = true, .trailing_width = 120}, no_menu)
-    switch := Toggle.Draw(session, Toggle.Props.{.bounds = bar.trailing_bounds, .label = "Dark", .value = dark})
+    bar := TitleBar.Draw(session, TitleBar.Props.{.bounds = .{height = height}, .title = "Notes", .strong_title = true, .trailing_width = 120}, no_menu)
+    switch := Toggle.Draw(session, Toggle.Props.{.bounds = bar.trailing_bounds, .label = "Dark", .value = dark})   // drawn over the bar
     if switch.changed { dark = switch.value; unused Theme.SetThemeMode(dark) }
-    unused End(session)
 }
 NotesScreen :: (session: Session) {
     control := Theme.CurrentThemeMetric(.ThemeMetricControlHeightMedium)

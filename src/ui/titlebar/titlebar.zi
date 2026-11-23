@@ -134,17 +134,18 @@ Draw :: (session: Session, props: TitleBarSchema.Props,
         props.has_leading_action,
         props.has_dropdown && (cast(s32)options.count) > 0)
     result.height = state.height
+    // A placing column fills an unset width; otherwise the bar spans its
+    // parent.
     bounds: Rectangle = props.bounds
-    if bounds.width <= 0.0 {
+    if bounds.width <= 0.0 && !TreeWillPlace(session, bounds) {
         parent: Rectangle = TreeCurrentParentBounds(session)
         bounds.x = parent.x
         bounds.width = parent.width
     }
     bounds.height = cast(float32)state.height
-    if bounds.width <= 0.0 || bounds.height <= 0.0 {
-        return result
-    }
+    if bounds.height <= 0.0 { return result }
     key: u64 = TitleBarKey(session, props)
+    placed := bounds
     if TreeIsBuilding(session) {
         result.node = TreeSubmitCurrent(session, key, WidgetKindTitleBar,
             bounds)
@@ -152,13 +153,22 @@ Draw :: (session: Session, props: TitleBarSchema.Props,
         TreeSetStyleClass(session, result.node, props.class_name)
         TreeSetStyleId(session, result.node, props.id)
         TreeSetLabel(session, result.node, props.title)
-        bounds = TreeSubmittedNodeAt(session, result.node).bounds
+        placed = TreeSubmittedBounds(session, result.node)
+        bounds = TreeNodePaintBounds(session, result.node, bounds)
     }
+    if placed.width <= 0.0 { return result }
+    // The bar, its line and its title are node paint, which stays where the
+    // bar was measured and moves with it; the leading button, the dropdown
+    // and the caller's trailing widgets go where the bar was placed.
     layout: TitleBarLayout = TitleBarLayoutAt(bounds,
         state.has_leading, state.has_dropdown,
         props.dropdown_height, props.dropdown_min_width,
         props.trailing_width, metrics)
-    result.trailing_bounds = layout.trailing_bounds
+    children: TitleBarLayout = TitleBarLayoutAt(placed,
+        state.has_leading, state.has_dropdown,
+        props.dropdown_height, props.dropdown_min_width,
+        props.trailing_width, metrics)
+    result.trailing_bounds = children.trailing_bounds
     opacity: float32 = StyleOpacityValue(bar.value.fields,
         bar.value.opacity)
     PaintRoundedFill(session, result.node, bounds, bar.value.radius, 12,
@@ -174,7 +184,7 @@ Draw :: (session: Session, props: TitleBarSchema.Props,
     if state.has_leading {
         button: Button.Props
         button.key = key * cast(u64)65599 + cast(u64)1
-        button.bounds = layout.leading_bounds
+        button.bounds = children.leading_bounds
         button.id = props.id
         button.class_name = props.class_name
         button.style_kind = StyleKindTitleBar()
@@ -193,7 +203,7 @@ Draw :: (session: Session, props: TitleBarSchema.Props,
     }
     if state.has_dropdown {
         dropdown: DropdownSchema.Props = props.dropdown
-        dropdown.bounds = layout.dropdown_bounds
+        dropdown.bounds = children.dropdown_bounds
         if dropdown.key == cast(u64)0 {
             dropdown.key = key * cast(u64)65599 + cast(u64)2
         }

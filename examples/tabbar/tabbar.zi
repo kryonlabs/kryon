@@ -5,6 +5,8 @@
 Box :: #import "kryon/box";
 TabBar :: #import "kryon/tab_bar";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/drawing_props"
 #import "kryon/transition"
 #import "kryon/system_theme"
@@ -37,7 +39,6 @@ SetGalleryViewport :: (view: Rectangle, live: bool, now: float32, reduced_motion
 
 tab: s32 = 1;
 
-b: Rectangle;
 example_motion: TransitionMotionState;
 
 #program_export
@@ -45,14 +46,17 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TabBar", .size = 23})
-    b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "TabBar", .size = 23})
     disabled := example_input.disabled
     now := cast(float64)CaptureFrameInput(session).elapsed_ms / 1000.0
 
     tabs: [3]TabBar.Tab
     tabs[0].label = "Overview"; tabs[1].label = "Notes"; tabs[2].label = "Files"
-    tab = TabBar.Draw(session, TabBar.Props.{.motion = *example_motion, .now = now, .reduced_motion = example_input.reduced_motion, .bounds = b, .selected_index = tab, .disabled = disabled}, tabs[:]).selected_index
+    tab = TabBar.Draw(session, TabBar.Props.{.motion = *example_motion, .now = now, .reduced_motion = example_input.reduced_motion, .bounds = .{height = 44}, .selected_index = tab, .disabled = disabled}, tabs[:]).selected_index
+    unused End(session)
     return 0
 }
 

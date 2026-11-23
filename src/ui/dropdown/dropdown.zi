@@ -355,8 +355,9 @@ Scroll :: #import "scroll";
         result.selected_index = props.selected_index
         result.action_index = -1
         result.open = retained.open
+        // A placing column fills an unset width.
         bounds: Rectangle = props.bounds
-        if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
+        if bounds.height <= 0.0 || (bounds.width <= 0.0 && !TreeWillPlace(session, bounds)) { return result }
         key: u64 = DropdownKey(session, props)
         previous: s32 = -1
         previous_overlay: s32 = -1
