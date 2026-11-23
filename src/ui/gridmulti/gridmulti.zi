@@ -24,6 +24,8 @@ Draw :: (session: Session, props: PropsModule.Props, items: []GridMultiItem,
     selected: []bool, location := #caller_location) -> GridMultiResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     result: GridMultiResult = .{.node = -1, .clicked_index = -1, .activated_index = -1,
         .cursor = props.cursor, .anchor = props.anchor}
     if items.count != selected.count || items.count > 1000000 { return result }

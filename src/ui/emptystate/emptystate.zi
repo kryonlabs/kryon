@@ -86,6 +86,8 @@ result_placeholder :: () -> EmptyStateLayout { return EmptyStateLayout.{} }
 Draw :: (session: Session, props: Props, location := #caller_location) -> EmptyStateResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     result: EmptyStateResult
     result.layout = EmptyStateLayoutFor(props)
     if !SessionValid(session) || !TreeIsBuilding(session) ||

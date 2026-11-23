@@ -96,6 +96,8 @@ TILE_MAP_HOSTED_LIMIT :: 1024
 Draw :: (session: Session, props: Props, location := #caller_location) -> TileMapResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     grid := TileMapFit(props.bounds, props.columns, props.rows, props.pixel_snap)
     if grid.cell <= 0.0 { return grid }
     #if #defined(KRYON_HOSTED_UI) {
