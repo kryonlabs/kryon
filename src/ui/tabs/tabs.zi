@@ -732,6 +732,11 @@ Theme :: #import "theme";
                     TreeHoveredAt(session, close_previous))
                 paint: TabBarPaint = TabBarPaintFor(bar_face,
                     face, close_face, scale)
+                // The label sits inside the padding the tab was sized with,
+                // which a row fitted to its width narrows below the style's.
+                if paint.text_padding > metrics.label_padding / 2 {
+                    paint.text_padding = metrics.label_padding / 2
+                }
                 fill_color: Color = ColorFromPacked(Opacity(
                     face.value.background, opacity))
                 if fill_color.a > cast(u8)0 {
