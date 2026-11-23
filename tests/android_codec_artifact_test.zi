@@ -1,13 +1,12 @@
-// Link all four codec APIs through the dependency-owned Android artifact.
+// Link the decode codec APIs through the dependency-owned Android artifact.
+// libaom is encode-only and comes from the encode artifact.
 codec :: #system_library "c";
 WebPVersion :: () -> s32 #foreign codec "WebPGetDecoderVersion";
 AVIFVersion :: () -> *u8 #foreign codec "avifVersion";
-AOMVersion :: () -> s32 #foreign codec "aom_codec_version";
 OpusVersion :: () -> *u8 #foreign codec "opus_get_version_string";
 
 #program_export
 main :: () -> s32 {
-    if WebPVersion() <= 0 || AVIFVersion() == null ||
-        AOMVersion() <= 0 || OpusVersion() == null { return 1 }
+    if WebPVersion() <= 0 || AVIFVersion() == null || OpusVersion() == null { return 1 }
     return 0
 }

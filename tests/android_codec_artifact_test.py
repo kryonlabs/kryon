@@ -82,13 +82,13 @@ def main():
                         "--entry", "main:main", "-o", str(ir), str(source)], cwd=project, env=selected, check=True)
         artifact, meta, flags = codec_artifact(project, arch, env)
         assert [Path(path).name for path in meta["archives"]] == [
-            "libkryonwebp.a", "libavif.a", "libaom.a", "libopus.a"]
+            "libkryonwebp.a", "libavif.a", "libopus.a"]
         assert meta["compile_flags"] == [] and meta["include_directories"] == []
         assert meta["defines"] == ["ANDROID_BUILD"]
         forbidden = ("raylib", "sdl", "cairo", "opengl", "gles", "-legl", "opensles", "mp3", "vorbis", "samplerate")
         assert not any(word in str(flags).lower() for word in forbidden), flags
-        for name in ("LICENSE-libwebp", "PATENTS-libwebp", "LICENSE-libavif", "LICENSE-libaom",
-                     "PATENTS-libaom", "LICENSE-dav1d", "LICENSE-opus"):
+        for name in ("LICENSE-libwebp", "PATENTS-libwebp", "LICENSE-libavif",
+                     "LICENSE-dav1d", "LICENSE-opus"):
             assert artifact.output("resources/" + name).stat().st_size > 0
         for form in ("source", "saved"):
             generated = OUT / arch / form
@@ -108,7 +108,7 @@ def main():
                 assert machine in header, header
                 dynamic = subprocess.check_output([str(TOOLS / "llvm-readelf"), "-d", str(library)], text=True)
                 assert not any(word in dynamic.lower() for word in forbidden), dynamic
-            print(f"{arch} {form}: verified codec descriptor, all four APIs link, no renderer dependencies", flush=True)
+            print(f"{arch} {form}: verified codec descriptor, decode APIs link, no renderer dependencies", flush=True)
     print("Android codec artifact source/saved NDK link passed for ARMv7 and AArch64; no device execution")
 
 
