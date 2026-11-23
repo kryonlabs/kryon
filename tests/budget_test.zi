@@ -62,7 +62,10 @@ StarterBundleBytes :: (ziran: string) -> s64 {
     if !WriteEntireFile(JoinPath(work, "overrides.toml"), BuilderFinish(overrides)) { return -1 }
     templates: Vec(u8)
     BuilderPrint(*templates, "KRYON_TEMPLATES=%", root)
-    environment: [1]string = .[BuilderFinish(templates)]
+    // `kryon new` locks with the `ziran` on PATH: the toolchain under test.
+    search: Vec(u8)
+    BuilderPrint(*search, "PATH=%:%", PathParent(ziran), EnvironmentText("PATH"))
+    environment: [2]string = .[BuilderFinish(templates), BuilderFinish(search)]
     kryon := JoinPath(root, "build/bin/kryon")
     create: [7]string = .[kryon, "new", "starter", "--template", "app", "--overrides", JoinPath(work, "overrides.toml")]
     made: ProcessRun
