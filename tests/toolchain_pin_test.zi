@@ -1,8 +1,18 @@
 // kryon init pins a floating [toolchain] to the Ziran Kryon's templates
-// pin and keeps an exact one; every template pins that same Ziran.
+// pin and keeps an exact one; every template pins that same Ziran. kryon
+// upgrade rewrites only the toolchain, kryon and css tables, and the app
+// template pins exactly the set it writes.
 // Run from the Kryon root: make toolchain-pin-test
 #import "toolchain_pin"
 #import "std/file"
+
+Contains :: (text: string, part: string) -> bool {
+    if part.count > text.count { return false }
+    for at: 0..text.count - part.count {
+        if text[at:at + part.count] == part { return true }
+    }
+    return false
+}
 
 failures: s32;
 
@@ -34,7 +44,20 @@ main :: () -> s32 {
         text, ok := ReadEntireFile(path)
         Expect(ok && ToolchainRef(text) == KryonZiranRef, path)
     }
+    old_app := "[toolchain]\ngit = \"https://github.com/ziranlang/ziran.git\"\nref = \"5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0\"\n\n[dependencies.kryon]\ngit = \"https://github.com/kryonlabs/kryon.git\"\nref = \"cdf23986a0434cfb01513ecca4763b0477d01a7e\"\n\n[dependencies.other]\nref = \"main\"\n"
+    pins: [3]TablePin
+    count := KryonUpgradePins(pins[:])
+    upgraded: [1024]u8
+    moved := PinTables(old_app, pins[0:count], upgraded[:])
+    Expect(ToolchainRef(moved) == KryonZiranRef, "upgrade pins Kryon's Ziran")
+    Expect(Contains(moved, KryonRef) && Contains(moved, KryonGit), "upgrade pins Kryon's Kryon")
+    Expect(Contains(moved, "[dependencies.other]\nref = \"main\""), "upgrade keeps other tables")
+    Expect(!Contains(moved, "[dependencies.css]"), "upgrade adds no table the app lacks")
+
+    app, app_ok := ReadEntireFile("templates/app/ziran.toml")
+    same: [4096]u8
+    Expect(app_ok && PinTables(app, pins[0:count], same[:]) == app, "the app template pins the upgrade set")
     if failures > 0 { return 1 }
-    print("toolchain pin: floating, exact and missing toolchains; four templates agree\n")
+    print("toolchain pin: floating, exact and missing toolchains; four templates agree; upgrade pins the app template's set\n")
     return 0
 }

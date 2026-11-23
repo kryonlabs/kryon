@@ -165,6 +165,36 @@ ReplaceFileText :: (path: string, text: string) -> bool {
 
 // kryon init with one of Kryon's templates: a project whose [toolchain]
 // floats on a branch gets the Ziran Kryon pins, so its checked packages lock.
+// kryon upgrade: moves the app in this directory to the Ziran, Kryon and
+// CSS this kryon pins together, then locks it afresh.
+Upgrade :: () -> s32 {
+    manifest_bytes: [32768]u8
+    manifest: FileContents = ReadFile("ziran.toml", manifest_bytes[:])
+    if !manifest.ok { return Error("kryon upgrade runs in a project directory with ziran.toml") }
+    pins: [3]TablePin
+    count := KryonUpgradePins(pins[:])
+    pinned_bytes: [32768]u8
+    pinned := PinTables(manifest.text, pins[0:count], pinned_bytes[:])
+    if pinned == "" { return Error("ziran.toml is too large to upgrade") }
+    if pinned != manifest.text && !ReplaceFileText("ziran.toml", pinned) { return Error("cannot write ziran.toml") }
+    PrintFd(1, "pinned Ziran ")
+    PrintFd(1, KryonZiranRef)
+    PrintFd(1, ", Kryon ")
+    PrintFd(1, KryonRef)
+    PrintFd(1, " and CSS ")
+    PrintFd(1, KryonCssRef)
+    PrintFd(1, " where ziran.toml names them\n")
+    // The old lock holds checked packages of the earlier toolchain.
+    lock: [16]u8
+    if Exists("ziran.lock") && (!CString("ziran.lock", lock[:]) || RawUnlink(*lock[0]) != 0) {
+        return Error("cannot remove the old ziran.lock")
+    }
+    args: [2]string = .["ziran", "lock"]
+    status := RunChild(args[:])
+    if status == 127 { return Error("cannot run ziran; install it with make install-user in the Ziran repository") }
+    return status
+}
+
 PinProjectToolchain :: () -> bool {
     manifest_bytes: [32768]u8
     manifest: FileContents = ReadFile("ziran.toml", manifest_bytes[:])
@@ -358,6 +388,7 @@ Usage :: () -> s32 {
     PrintFd(1, "       kryon run FILE.zx\n")
     PrintFd(1, "       kryon install [--prefix DIR]\n")
     PrintFd(1, "       kryon profiles\n")
+    PrintFd(1, "       kryon upgrade      pin this app to the Ziran, Kryon and CSS this kryon pins, then lock\n")
     unused PreviewUsage()
     PrintFd(1, "Kryon templates: app (window), tui (terminal), pages (navigation), web (browser page)\n")
     PrintFd(1, "An android profile builds an installable APK; it needs [tool.kryon.android] package.\n")
@@ -795,6 +826,10 @@ main :: (argc: s32, argv: **u8) -> s32 {
         }
         preview = ParsePreview(command_line)
         if preview.error != "" { return Error(preview.error) }
+    }
+    if verb == "upgrade" {
+        if ArgumentCount(command_line) != 2 { return Error("usage: kryon upgrade") }
+        return Upgrade()
     }
     bundle_path := ArgumentAt(command_line, 2)
     if verb == "run" && bundle_path.count >= 3 &&

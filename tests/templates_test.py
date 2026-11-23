@@ -104,6 +104,24 @@ def main():
             digest = hashlib.sha256(b"".join(bytes(row) for row in pixels[3])).hexdigest()
             assert digest == expected, f"the {theme} starter changed: see {png}; digest {digest}"
 
+        # kryon upgrade moves an app on an older set back to the Ziran, Kryon
+        # and CSS this kryon pins, and locks it afresh.
+        manifest = work / "demo-app/ziran.toml"
+        pinned = manifest.read_text()
+        older = pinned
+        for table, ref in (("[toolchain]", "5db3d3c39425d5dfe4bfe4a84e6f6e2e5a810ad0"),
+                           ("[dependencies.kryon]", "cdf23986a0434cfb01513ecca4763b0477d01a7e"),
+                           ("[dependencies.css]", "e2d73fcdd4cffbd745673cbffd4ded7658591365")):
+            current = tomllib.loads(pinned)
+            for key in table.strip("[]").split("."):
+                current = current[key]
+            older = older.replace(f'ref = "{current["ref"]}"', f'ref = "{ref}"', 1)
+        assert older != pinned
+        manifest.write_text(older)
+        run([KRYON, "upgrade"], work / "demo-app", env)
+        assert manifest.read_text() == pinned, "kryon upgrade restores the template's pins"
+        assert (work / "demo-app/ziran.lock").is_file(), "kryon upgrade locks the app"
+
         run([KRYON, "new", "demo-web", "--template", "web", "--overrides",
              work / "overrides.toml"], work, env)
         run([KRYON, "check"], work / "demo-web", env)

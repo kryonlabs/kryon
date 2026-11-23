@@ -10,6 +10,7 @@ declares every widget from the app's state; widgets report what the user did.
 kryon new notes && cd notes   # app starter: app bar, cards, dark mode; locks itself
 kryon run --watch             # the window; rebuilds and relaunches on every save
 kryon run shot --png build/shot.png --width 390 --height 844 --theme dark
+kryon upgrade                 # an older app: pin this kryon's Ziran, Kryon and CSS, relock
 ```
 
 No display needed; `build/shot.json` lists each node's kind, role, label and bounds.

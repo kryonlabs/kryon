@@ -5,6 +5,30 @@
 KryonZiranGit :: "https://git.waozi.xyz/ziranlang/ziran.git";
 KryonZiranRef :: "8133bd41ef171e03ce4557b55122eb739548eb72";
 
+// The Kryon and CSS the app template pins with that Ziran. A CSS package is
+// built on one Kryon, so an app pins the same one; `kryon upgrade` moves an
+// app to this set.
+KryonGit :: "https://git.waozi.xyz/kryonlabs/kryon.git";
+KryonRef :: "02cc10e682b83fe7ba9c2ed4638507818d3c9cc0";
+KryonCssGit :: "https://git.waozi.xyz/kryonlabs/css.git";
+KryonCssRef :: "b0e83ac2d2d8e3abc35ab015d447bef5c17517ca";
+
+// A manifest table's git and ref, as `kryon init` and `kryon upgrade` set them.
+TablePin :: struct {
+    table: string
+    git: string
+    ref: string
+}
+
+// Writes the tables `kryon upgrade` pins into PINS; returns how many.
+KryonUpgradePins :: (pins: []TablePin) -> s64 {
+    if pins.count < 3 { return 0 }
+    pins[0] = .{table = "[toolchain]", git = KryonZiranGit, ref = KryonZiranRef}
+    pins[1] = .{table = "[dependencies.kryon]", git = KryonGit, ref = KryonRef}
+    pins[2] = .{table = "[dependencies.css]", git = KryonCssGit, ref = KryonCssRef}
+    return 3
+}
+
 // A 40-digit lowercase hexadecimal commit.
 ExactCommit :: (ref: string) -> bool {
     if ref.count != 40 { return false }
@@ -50,6 +74,15 @@ ToolchainRef :: (manifest: string) -> string {
 PinToolchain :: (manifest: string, output: []u8) -> string {
     current := ToolchainRef(manifest)
     if current == "" || ExactCommit(current) { return "" }
+    pins: [1]TablePin
+    pins[0] = .{table = "[toolchain]", git = KryonZiranGit, ref = KryonZiranRef}
+    return PinTables(manifest, pins[:], output)
+}
+
+// MANIFEST with the git and ref lines of each pinned table replaced, written
+// into OUTPUT; a table MANIFEST lacks stays absent. "" when OUTPUT is too
+// small.
+PinTables :: (manifest: string, pins: []TablePin, output: []u8) -> string {
     table := ""
     length: s64 = 0
     start: s64 = 0
@@ -58,17 +91,21 @@ PinToolchain :: (manifest: string, output: []u8) -> string {
         while finish < manifest.count && manifest[finish] != #char "\n" { finish += 1 }
         line := manifest[start:finish]
         if line.count > 0 && line[0] == #char "[" { table = line }
-        if table == "[toolchain]" && PinValue(line, "git") != "" {
-            length = PinAppend(output, length, "git = \"")
-            length = PinAppend(output, length, KryonZiranGit)
-            length = PinAppend(output, length, "\"")
-        } else if table == "[toolchain]" && PinValue(line, "ref") != "" {
-            length = PinAppend(output, length, "ref = \"")
-            length = PinAppend(output, length, KryonZiranRef)
-            length = PinAppend(output, length, "\"")
-        } else {
-            length = PinAppend(output, length, line)
+        replaced := false
+        for pin: pins {
+            if !replaced && table == pin.table && PinValue(line, "git") != "" {
+                length = PinAppend(output, length, "git = \"")
+                length = PinAppend(output, length, pin.git)
+                length = PinAppend(output, length, "\"")
+                replaced = true
+            } else if !replaced && table == pin.table && PinValue(line, "ref") != "" {
+                length = PinAppend(output, length, "ref = \"")
+                length = PinAppend(output, length, pin.ref)
+                length = PinAppend(output, length, "\"")
+                replaced = true
+            }
         }
+        if !replaced { length = PinAppend(output, length, line) }
         if finish < manifest.count { length = PinAppend(output, length, "\n") }
         if length < 0 { return "" }
         start = finish + 1

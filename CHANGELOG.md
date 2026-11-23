@@ -2,9 +2,10 @@
 
 ## Moving an app to this Kryon
 
-Bump the Ziran toolchain, Kryon and CSS pins together (the starter pins
-Ziran 8133bd41, Kryon 02cc10e6 and CSS b0e83ac2); a CSS package must pin the
-same Kryon as the app, or both get linked. Then:
+Bump the Ziran toolchain, Kryon and CSS pins together: `kryon upgrade` in the
+app's directory pins the set this kryon knows (the starter's: Ziran 8133bd41,
+Kryon 02cc10e6, CSS b0e83ac2) and locks afresh. A CSS package must pin the
+same Kryon as the app, or the build names the export both define. Then:
 
 - **Card is a container.** Before: `c := Card.Draw(session, .{.bounds = slot.bounds}).content`
   and children drawn at `c`. After: `card := Card.Draw(session, Card.Props.{.variant = .CardOutlined})`,
