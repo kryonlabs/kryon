@@ -151,6 +151,8 @@ TouchDirection :: (dx: float32, dy: float32, reach: float32) -> s32 {
 Draw :: (session: Session, props: Props, location := #caller_location) -> JoystickResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     result := JoystickResult.{.direction = -1}
     slot := TouchSlotFor(props.key)
     bounds := props.bounds

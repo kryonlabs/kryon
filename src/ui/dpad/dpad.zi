@@ -126,6 +126,8 @@ DirectionPadCell :: (x: float32, y: float32, third: float32, arm: s32) -> Rectan
 Draw :: (session: Session, props: Props, location := #caller_location) -> DirectionPadResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     result := DirectionPadResult.{.direction = -1}
     slot := Joystick.TouchSlotFor(props.key)
     bounds := props.bounds
