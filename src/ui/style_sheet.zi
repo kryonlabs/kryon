@@ -416,6 +416,9 @@ StyleBoxData :: struct {
     margin_right: float32
     margin_bottom: float32
     margin_left: float32
+    // The min_width, max_width and max_height fields that hold a
+    // percentage of the parent's content box.
+    percent: u32
 }
 
 // Every box field but text-align, which only Text reads.
@@ -445,6 +448,8 @@ StyleFlexData :: struct {
     grow: float32
     shrink: float32
     align_self: s32
+    // StyleFlexBasis when the basis is a percentage of the container's size.
+    percent: u32
 }
 
 StyleFlexContainerFields :: 15
@@ -577,6 +582,7 @@ StyleWithoutTypeface :: (source: StyleData) -> StyleData {
         .material = source.material, .letter_spacing = source.letter_spacing,
         .min_height = source.min_height, .line_height = source.line_height,
         .width = source.width, .height = source.height, .grid_tracks = source.grid_tracks,
+        .percent = source.percent,
         .line_height_unit = source.line_height_unit,
         .font_weight = source.font_weight, .font_style = source.font_style,
         .font_role = source.font_role, .elevation = source.elevation,
@@ -911,6 +917,11 @@ StyleIsContainerLayout :: (kind: s32) -> bool {
     return kind == StyleKindRow() || kind == StyleKindColumn() || kind == StyleKindGrid()
 }
 
+// One field's percent bit, taken along with its value.
+StyleTakePercent :: (percent: u32, value: StyleData, field: u32) -> u32 {
+    return (percent & ~field) | (value.percent & field)
+}
+
 // Applies rules to a cascade. The rules are a borrowed view and are read in
 // place, so resolving a face copies neither the rule table nor a rule nor the
 // cascade per rule; resolution runs for every widget every frame.
@@ -1025,20 +1036,24 @@ ApplyStyleRules :: (cascade: StyleCascade, rules: []StyleRule,
                 cascade.letter_spacing_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleMinHeight) != cast(u32)0 &&
+            (container_layout || (rules[index].style.percent & cast(u32)StyleMinHeight) == 0) &&
             StylePriorityWins(priority, cascade.min_height_priority) {
                 cascade.result.min_height = rules[index].style.min_height
+                cascade.result.percent = StyleTakePercent(cascade.result.percent, rules[index].style, cast(u32)StyleMinHeight)
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleMinHeight
                 cascade.min_height_priority = priority
             }
             if container_layout && StyleHasField(rules[index].style, cast(u32)StyleWidth) &&
             StylePriorityWins(priority, cascade.width_priority) {
                 cascade.result.width = rules[index].style.width
+                cascade.result.percent = StyleTakePercent(cascade.result.percent, rules[index].style, cast(u32)StyleWidth)
                 cascade.result.fields |= cast(u32)StyleWidth
                 cascade.width_priority = priority
             }
             if container_layout && StyleHasField(rules[index].style, cast(u32)StyleHeight) &&
             StylePriorityWins(priority, cascade.height_priority) {
                 cascade.result.height = rules[index].style.height
+                cascade.result.percent = StyleTakePercent(cascade.result.percent, rules[index].style, cast(u32)StyleHeight)
                 cascade.result.fields |= cast(u32)StyleHeight
                 cascade.height_priority = priority
             }
@@ -1178,6 +1193,7 @@ ApplyFlexFields :: (target: *StyleFlexData, value: *StyleFlexData, fields: u32) 
     if (fields & cast(u32)StyleFlexGrow) != 0 { target.grow = value.grow }
     if (fields & cast(u32)StyleFlexShrink) != 0 { target.shrink = value.shrink }
     if (fields & cast(u32)StyleFlexSelf) != 0 { target.align_self = value.align_self }
+    target.percent = (target.percent & ~fields) | (value.percent & fields)
     target.fields |= fields
 }
 
@@ -1191,6 +1207,7 @@ ApplyBoxFields :: (target: *StyleBoxData, value: *StyleBoxData, fields: u32) {
     if (fields & cast(u32)StyleBoxMarginRight) != 0 { target.margin_right = value.margin_right }
     if (fields & cast(u32)StyleBoxMarginBottom) != 0 { target.margin_bottom = value.margin_bottom }
     if (fields & cast(u32)StyleBoxMarginLeft) != 0 { target.margin_left = value.margin_left }
+    target.percent = (target.percent & ~fields) | (value.percent & fields)
     target.fields |= fields
 }
 
@@ -1238,6 +1255,8 @@ ResolveIndexedStyle :: (base: StyleData, facts: StyleFacts, active_state: s32,
                         if !StyleHasField(value, cast(u32)StyleColumnGap) { value.column_gap = value.gap }
                         value.fields |= cast(u32)StyleRowGap | cast(u32)StyleColumnGap
                     }
+                    // A percentage sizes only a container; other widgets keep looking.
+                    if !container_layout { value.fields &= ~value.percent }
                     value.fields &= remaining
                     base = MergeValues(base, value)
                     remaining &= ~value.fields

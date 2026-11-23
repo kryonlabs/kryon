@@ -219,6 +219,60 @@ LayoutAutoWidth :: (declared: float32, face: StyleData) -> bool {
     return declared <= 0.0 && !(StyleHasField(face, cast(u32)StyleWidth) && face.width > 0.0)
 }
 
+// The box CSS percentages of a child refer to: the parent's content box,
+// or its track in a grid. A zero height is indefinite.
+LayoutPercentBasis :: (session: Session, parent: Rectangle) -> Rectangle {
+    track := AutoGridChildWidth(session, Rectangle.{})
+    if track > 0.0 { return Rectangle.{parent.x, parent.y, track, 0.0} }
+    return parent
+}
+
+// A percentage of `extent`; not definite when the extent is unknown, and
+// the declaration then computes to its initial value.
+LayoutPercentOf :: (percentage: float32, extent: float32) -> (value: float32, definite: bool) {
+    if !(extent > 0.0) { return 0.0, false }
+    return cast(float32)(cast(float64)percentage * cast(float64)extent / 100.0), true
+}
+
+// CSS percentages of width, height, min-height, min-width, max-width and
+// max-height in logical pixels of `basis`.
+LayoutResolvePercent :: (face: *StyleData, box: *StyleBoxData, basis: Rectangle) {
+    sizes := face.percent & face.fields
+    if (sizes & cast(u32)StyleWidth) != 0 {
+        value, definite := LayoutPercentOf(face.width, basis.width)
+        face.width = value
+        if !definite { face.fields &= ~cast(u32)StyleWidth }
+    }
+    if (sizes & cast(u32)StyleHeight) != 0 {
+        value, definite := LayoutPercentOf(face.height, basis.height)
+        face.height = value
+        if !definite { face.fields &= ~cast(u32)StyleHeight }
+    }
+    if (sizes & cast(u32)StyleMinHeight) != 0 {
+        value, definite := LayoutPercentOf(face.min_height, basis.height)
+        face.min_height = value
+        if !definite { face.fields &= ~cast(u32)StyleMinHeight }
+    }
+    face.percent = 0
+    limits := box.percent & box.fields
+    if (limits & cast(u32)StyleBoxMinWidth) != 0 {
+        value, definite := LayoutPercentOf(box.min_width, basis.width)
+        box.min_width = value
+        if !definite { box.fields &= ~cast(u32)StyleBoxMinWidth }
+    }
+    if (limits & cast(u32)StyleBoxMaxWidth) != 0 {
+        value, definite := LayoutPercentOf(box.max_width, basis.width)
+        box.max_width = value
+        if !definite { box.fields &= ~cast(u32)StyleBoxMaxWidth }
+    }
+    if (limits & cast(u32)StyleBoxMaxHeight) != 0 {
+        value, definite := LayoutPercentOf(box.max_height, basis.height)
+        box.max_height = value
+        if !definite { box.fields &= ~cast(u32)StyleBoxMaxHeight }
+    }
+    box.percent = 0
+}
+
 // What the placing parent row or column has left on its main axis after
 // the children it already placed; zero or less when nothing is left.
 LayoutRemaining :: (session: Session, horizontal: bool) -> float32 {
@@ -354,6 +408,7 @@ ContainerFor :: (session: Session, props: PropsModule.Props,
     parent := LayoutParentBounds(session)
     box: StyleBoxData
     face := LayoutFace(props, kind, null, *box)
+    if face.percent != 0 || box.percent != 0 { LayoutResolvePercent(*face, *box, LayoutPercentBasis(session, parent)) }
     auto_width := LayoutAutoWidth(props.bounds.width, face)
     result.bounds.width = LayoutExtentFor(props.bounds.width, parent.width,
         face.width, StyleHasField(face, cast(u32)StyleWidth))
@@ -518,6 +573,7 @@ ResolveLayoutFlexItem :: (item: FlexItem) -> FlexItem {
     if !item.has_basis && (flex.fields & cast(u32)StyleFlexBasis) != 0 && flex.basis >= 0.0 {
         item.basis = flex.basis
         item.has_basis = true
+        item.basis_percent = (flex.percent & cast(u32)StyleFlexBasis) != 0
     }
     if item.grow == 0.0 && !item.grow_override && (flex.fields & cast(u32)StyleFlexGrow) != 0 {
         item.grow = flex.grow
@@ -540,6 +596,7 @@ MeasuredFlex :: (session: Session, props: PropsModule.Props, kind: s32,
     box: StyleBoxData
     face := LayoutFace(props, kind, *style, *box)
     parent := LayoutParentBounds(session, true)
+    if face.percent != 0 || box.percent != 0 { LayoutResolvePercent(*face, *box, LayoutPercentBasis(session, parent)) }
     direction := ifx kind == WidgetKindColumn then 1 else 0
     if (style.fields & cast(u32)StyleFlexDirection) != 0 { direction = style.direction }
     horizontal := (direction & 1) == 0
@@ -666,6 +723,7 @@ Grid :: (session: Session, props: GridProps, items: []GridItem = EmptyGridItems(
     box: StyleBoxData
     face := LayoutFace(scope, WidgetKindGrid, null, *box)
     parent := LayoutParentBounds(session, true)
+    if face.percent != 0 || box.percent != 0 { LayoutResolvePercent(*face, *box, LayoutPercentBasis(session, parent)) }
     auto_width := LayoutAutoWidth(props.bounds.width, face)
     props.bounds.width = LayoutExtentFor(props.bounds.width, parent.width,
         face.width, StyleHasField(face, cast(u32)StyleWidth))

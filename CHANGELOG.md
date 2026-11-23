@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- CSS percentages size Row, Column and Grid natively: `width`, `height`, `min-height`, `min-width`, `max-width` and `max-height` in % of the parent's content box (a grid child's track), with a percent height in a content-sized parent computing to auto, and `flex-basis` % of a measured flex row's inner size. `StyleData`, `StyleBoxData` and `StyleFlexData` carry a `percent` mask that layout resolves when it opens the container; other widgets ignore percentages.
+
 - examples/dashboard is rewritten on self-sizing containers and its stylesheet: no rectangle arithmetic or computed keys, 760 px media rules for the narrow layout, painted cards, and a passing driver test on the pinned Kryon and CSS.
 
 - Containers lay out like CSS flex and block boxes without sizes from the app: in a placing Row an auto-width container takes the width its earlier siblings left and a container in a fixed-height Row stretches to it; CSS `flex: 1` on a container in a fixed-height Column takes the remaining height; `margin-left: auto` pushes a fixed-width container to the row's end. Text placed with no size fills a column or grid track (a row keeps its own width) and takes its wrapped line height. Badge draws its label where it was placed, and a full-width Button fills the column that places it.

@@ -78,6 +78,8 @@ FlexItem :: struct {
     class_name: s32
     grow_override: bool
     shrink_override: bool
+    // The basis is a percentage of the container's inner main size.
+    basis_percent: bool
 }
 
 FlexItemResolver :: #type (item: FlexItem) -> FlexItem;
@@ -301,8 +303,13 @@ FlexNonnegative :: (value: float32) -> float32 {
     return ifx value > 0.0 then value else 0.0
 }
 
-FlexBasis :: (item: FlexItem, horizontal: bool) -> float32 {
-    if item.has_basis { return FlexNonnegative(item.basis) }
+// A percentage basis refers to the inner main size; against an indefinite
+// one (zero: a column without a height) the item is content-sized.
+FlexBasis :: (item: FlexItem, horizontal: bool, main: float32) -> float32 {
+    if item.has_basis && !item.basis_percent { return FlexNonnegative(item.basis) }
+    if item.has_basis && main > 0.0 {
+        return FlexNonnegative(cast(float32)(cast(float64)item.basis * cast(float64)main / 100.0))
+    }
     return FlexNonnegative(ifx horizontal then item.width else item.height)
 }
 
@@ -365,10 +372,11 @@ PlaceFlexItems :: (props: FlexProps, items: []FlexItem, boxes: []FlexPlacement,
     start: s32 = 0
     count := cast(s32)items.count
     natural_main: float32 = 0.0
+    definite_main := ifx horizontal || props.bounds.height > 0.0 then available else 0.0
     for i: cast(s32)0..count - 1 {
         item := items[i]
         if resolve != null { item = resolve(item) }
-        basis := FlexBasis(item, horizontal)
+        basis := FlexBasis(item, horizontal, definite_main)
         extent := FlexNonnegative(ifx horizontal then item.height else item.width)
         boxes[i] = .{.bounds = .{0.0, 0.0, basis, extent},
             .grow = FlexNonnegative(item.grow), .shrink = FlexNonnegative(item.shrink),

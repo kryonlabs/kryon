@@ -82,6 +82,9 @@ StyleData :: struct {
     height: float32
     // Positive: equal columns. Negative: auto-fit with this minimum width.
     grid_tracks: s32
+    // The width, height and min_height fields that hold a percentage of the
+    // parent's content box; layout resolves them.
+    percent: u32
 }
 
 StyleFrame :: struct {
@@ -210,6 +213,7 @@ MergeValues :: (base: StyleData, override: StyleData) -> StyleData {
     if (override.fields & cast(u32)StyleWidth) != 0 { base.width = override.width }
     if (override.fields & cast(u32)StyleHeight) != 0 { base.height = override.height }
     if (override.fields & cast(u32)StyleGridTracks) != 0 { base.grid_tracks = override.grid_tracks }
+    base.percent = (base.percent & ~override.fields) | (override.percent & override.fields)
     base.fields = base.fields | override.fields
     return base
 }
