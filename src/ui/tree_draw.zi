@@ -49,6 +49,7 @@ BeginFrame :: (session: Session, screen_key: u64,
     unused TreeKeyboardRoute(session)
     TextEditingFrameBegin(session)
     PaintClear(session)
+    PaintSetViewport(session, bounds)
     LayoutPaintInstall()
     StyleTreeInstall(session)
     if paint_matrix_frame != null { paint_matrix_frame(session, false) }

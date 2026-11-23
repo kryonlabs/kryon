@@ -125,6 +125,9 @@ PaintCommands :: struct {
 }
 
 pending_paint: [9]PaintCommands;
+// Each session's frame viewport, from BeginFrame; paint wholly outside it
+// is never seen, so a full flush leaves it out.
+paint_viewports: [9]Rectangle;
 ordered_paint: [9]Vec(QueuedPaint);
 PAINT_TEXT_CAPACITY :: 32768
 PAINT_SHORT_TEXT_CAPACITY :: 256
@@ -1819,8 +1822,17 @@ FramePaintUnchanged :: (session: Session) -> bool {
     return SessionFlagGet(frame_paint_unchanged, SessionIndex(session))
 }
 
+// The frame's visible area; PaintFlush emits only commands that may touch it.
+PaintSetViewport :: (session: Session, viewport: Rectangle) {
+    if SessionValid(session) { paint_viewports[SessionIndex(session)] = viewport }
+}
+
 #program_export
 PaintFlush :: (session: Session) {
+    // A long list sends only the rows on screen. Commands whose area is
+    // unknown, and emitters outside the paint queue, are always emitted.
+    viewport := paint_viewports[SessionIndex(session)]
+    if viewport.width > 0.0 && viewport.height > 0.0 { PaintFlushArea(session, viewport); return }
     if PaintOverflow(session) || !PaintOrder(session) { PaintClear(session); return }
     index: s32 = 0
     while cast(s64)index < pending_paint[SessionIndex(session)].items.count {

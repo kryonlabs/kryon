@@ -422,11 +422,15 @@ NodeGeometry :: struct {
         return trees[slot].submitted[parent].identity_generation
     }
 
+    // A short tree is cheaper to search directly than to clear and hash an
+    // index. The larger-tree index keeps its existing load factor and keys.
+    TreeLinearIndexLimit :: 8
+
     TreeBuildOldIndex :: (session: Session) -> bool {
         slot: s32 = SessionIndex(session)
         if trees[slot].identity_index_valid { return true }
         VecClear(trees[slot].slots)
-        if trees[slot].committed_count == 0 {
+        if trees[slot].committed_count <= TreeLinearIndexLimit {
             trees[slot].identity_index_valid = true
             return true
         }
@@ -458,6 +462,7 @@ NodeGeometry :: struct {
 
     TreeBuildNewIndex :: (session: Session, needed: s32) -> bool {
         slot: s32 = SessionIndex(session)
+        if needed <= TreeLinearIndexLimit { return true }
         if trees[slot].new_slots.count > cast(s64)needed * 2 {
             return true
         }
@@ -515,6 +520,18 @@ NodeGeometry :: struct {
     TreeFindOld :: (session: Session, parent: u64, key: u64,
         kind: s32, auto_key: bool, auto_ordinal: s32) -> s32 {
         slot: s32 = SessionIndex(session)
+        if trees[slot].committed_count <= TreeLinearIndexLimit {
+            for index: 0..trees[slot].committed_count - 1 {
+                entry: *NodeCore = *trees[slot].committed[index]
+                if entry.key == key && entry.kind == kind &&
+                entry.auto_key == auto_key &&
+                (!auto_key || entry.auto_ordinal == auto_ordinal) &&
+                TreeParentGeneration(session, index, true) == parent {
+                    return index
+                }
+            }
+            return -1
+        }
         capacity: s32 = cast(s32)trees[slot].slots.count
         if capacity == 0 { return -1 }
         hash: u64 = TreeIdentityHash(parent, key, kind)
@@ -590,6 +607,14 @@ NodeGeometry :: struct {
 
     TreeExplicitExists :: (session: Session, parent: u64, key: u64) -> bool {
         slot: s32 = SessionIndex(session)
+        if trees[slot].submitted_count < TreeLinearIndexLimit {
+            for index: 0..trees[slot].submitted_count - 1 {
+                entry: *NodeCore = *trees[slot].submitted[index]
+                if !entry.auto_key && entry.key == key &&
+                TreeParentGeneration(session, index, false) == parent { return true }
+            }
+            return false
+        }
         capacity: s32 = cast(s32)trees[slot].new_slots.count
         hash: u64 = TreeIdentityHash(parent, key, 0)
         position: s32 = cast(s32)(hash & cast(u64)(capacity - 1))
@@ -1174,7 +1199,7 @@ NodeGeometry :: struct {
             }
             trees[slot].submitted[parent_index].last_child = index
         }
-        if !node.auto_key {
+        if !node.auto_key && index >= TreeLinearIndexLimit {
             capacity: s32 = cast(s32)trees[slot].new_slots.count
             hash: u64 = TreeIdentityHash(parent_generation, node.key, 0)
             position: s32 = cast(s32)(hash & cast(u64)(capacity - 1))

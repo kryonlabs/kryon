@@ -49,8 +49,44 @@ Same :: (left: Identities, right: Identities) -> bool {
         left.automatic == right.automatic
 }
 
+// Reordering and identity retirement must remain correct while a frame grows
+// past a short tree and later shrinks back to it, including warm index reuse.
+IndexTransitions :: () -> bool {
+    session := SessionOpen()
+    defer SessionClose(session)
+    defer TreeDispose(session)
+    bounds: Rectangle = .{0.0, 0.0, 100.0, 20.0}
+    counts := s32.[6, 7, 8, 15, 7, 8, 6, 15]
+    identities: [15]u64
+    previous: s32
+    for pass: 0..counts.count - 1 {
+        count := counts[pass]
+        indices: [15]s32
+        TreeStart(session, cast(u64)91, bounds)
+        for at: 0..count - 1 {
+            key := ifx pass % 2 == 0 then at else count - at - 1
+            indices[key] = TreeSubmit(session, cast(u64)(key + 100), 0,
+                WidgetKindProgress, bounds)
+            if indices[key] < 0 { return false }
+        }
+        if !TreeFinish(session) || TreeCount(session) != count + 1 { return false }
+        for key: 0..count - 1 {
+            identity := TreeNodeAt(session, indices[key]).identity_generation
+            if key < previous {
+                if identity != identities[key] { return false }
+            } else if identities[key] != cast(u64)0 && identity == identities[key] {
+                return false
+            }
+            identities[key] = identity
+        }
+        previous = count
+    }
+    return true
+}
+
 #program_export
 main :: () -> s32 {
+    if !IndexTransitions() { return 15 }
     session := SessionOpen()
     original := Build(session, false, WidgetKindText, false)
     if !original.valid { return 1 }

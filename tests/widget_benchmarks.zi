@@ -92,10 +92,18 @@ InputCase :: () -> s32 {
 
 #program_export
 main :: () -> s32 {
+    // Untimed output oracle, recorded from the frozen generated-C baseline.
+    // Keep the three measured entry bodies unchanged.
     for repetition: cast(s32)0..2 {
         if ButtonCase() != 0 { return 1 }
+        if WidgetPaintCount() != 4 || WidgetTextCount() != 2 ||
+            WidgetPaintChecksum() != 3500 { return 4 }
         if TextCase() != 0 { return 2 }
+        if WidgetPaintCount() != 4 || WidgetTextCount() != 4 ||
+            WidgetPaintChecksum() != 7320 { return 5 }
         if InputCase() != 0 { return 3 }
+        if WidgetPaintCount() != 7 || WidgetTextCount() != 2 ||
+            WidgetPaintChecksum() != 4708 { return 6 }
     }
     return 0
 }
