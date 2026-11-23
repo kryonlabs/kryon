@@ -4,6 +4,8 @@ source=$repo/tests/ziran_button_widget_test.zi
 
 widget_host=ziran_button_widget_host
 widget_mesh_host=ziran_mesh_noop_host
+# The transformed button draws through triangles.
+widget_triangles_needed=1
 set -- \
     --bind image_raster:ImageWidth=ziran_button_widget_host:ImageWidth \
     --bind image_raster:ImageHeight=ziran_button_widget_host:ImageHeight

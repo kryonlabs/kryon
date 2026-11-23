@@ -1,0 +1,55 @@
+// The transform of paint commands, shared by the paint queue, the frame and
+// the styles. Transforms are opt-in: PaintTransformInstall (paint_transform)
+// fills these slots, and a program that never calls it carries none of the
+// transform code. When a frame commits, text, images and whole-pixel moves
+// under a transform are rewritten in place and paint as usual; any other
+// shape takes a PaintKindTransformed kind and its map, and is drawn through
+// `paint_matrix` while it is emitted.
+#import "drawing_props"
+#import "geometry"
+#import "session"
+
+// x' = a*x + c*y + tx and y' = b*x + d*y + ty.
+PaintMatrix :: struct {
+    a: float32
+    b: float32
+    c: float32
+    d: float32
+    tx: float32
+    ty: float32
+}
+
+// A node's CSS transform about its origin. `values` holds the translation,
+// rotation (degrees) and x and y scale of `transform`, applied to a point
+// scale first, then the rotation and x and y scale of the `rotate` and
+// `scale` properties. A percent origin is a percentage of the node's box.
+// With `seconds` above zero a change of values eases over that time along
+// the cubic-bezier `timing` (all zero is linear).
+NodeTransform :: struct {
+    values: [8]float32
+    origin: Vector2
+    origin_percent_x: bool
+    origin_percent_y: bool
+    seconds: float32
+    timing: [4]float32
+}
+
+PaintNodeTransform :: #type (Session, s32, NodeTransform) -> void;
+PaintMatrixFrame :: #type (Session, bool) -> void;
+PaintMatrixTriangles :: #type ([]Vector2, Color) -> void;
+
+// Sets the transform of a node built this frame; null until installed.
+paint_node_transform: PaintNodeTransform;
+// Called when a frame begins (false) and before it commits (true).
+paint_matrix_frame: PaintMatrixFrame;
+// Triangles a shape emits while a transformed command is drawn.
+paint_matrix_triangles: PaintMatrixTriangles;
+
+// The map of the transformed command being emitted.
+paint_matrix_active: bool;
+paint_matrix: PaintMatrix;
+
+PaintMatrixSame :: (first: PaintMatrix, second: PaintMatrix) -> bool {
+    return first.a == second.a && first.b == second.b && first.c == second.c && first.d == second.d &&
+        first.tx == second.tx && first.ty == second.ty
+}

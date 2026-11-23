@@ -15,7 +15,10 @@ using StyleBoxField;
 // background (a color or two-stop gradient), border and radius at the
 // container's bounds. Per-side borders
 // paint square edges; with a radius the box keeps its uniform border.
-LayoutPaintBox :: (session: Session, bounds: Rectangle, face: StyleData, box: StyleBoxData, mark: s64) {
+LayoutPaintBox :: (session: Session, bounds: Rectangle, face: StyleData, box: StyleBoxData, mark: s64,
+    node: s32) {
+    PaintOwner(node)
+    defer { PaintOwner(-1) }
     from := PaintMark(session)
     opacity := StyleOpacityValue(face.fields, face.opacity)
     radius := ifx StyleHasField(face, cast(u32)StyleRadius) && face.radius > 0.0 then face.radius else 0.0

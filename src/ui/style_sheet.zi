@@ -438,6 +438,14 @@ StyleBoxField :: enum {
     // A linear gradient past top to bottom with two stops: its angle or
     // corner, stops and middle colors (the face holds the first and last).
     StyleBoxGradient :: 524288
+    // CSS transform, the rotate and scale properties, the transform origin
+    // on each axis, and the transition a change of them eases over.
+    StyleBoxTransform :: 1048576
+    StyleBoxRotate :: 2097152
+    StyleBoxScale :: 4194304
+    StyleBoxOriginX :: 8388608
+    StyleBoxOriginY :: 16777216
+    StyleBoxTransformMotion :: 33554432
 }
 using StyleBoxField;
 
@@ -475,10 +483,28 @@ StyleBoxData :: struct {
     gradient_stops: [6]float32
     // Stops 1 to 4; stop 0 is the face's background, the last its end.
     gradient_colors: [4]u32
+    // `transform` as a translation, a rotation in degrees and an x and y
+    // scale, applied to a point scale first; then the `rotate` and `scale`
+    // properties. The origin is in logical pixels, or with its percent bit
+    // a percentage of the box (50% of each side when unset). The paint
+    // transform pass (paint_transform) reads these for each node; layout
+    // never does.
+    transform: [5]float32
+    rotate: float32
+    scale: [2]float32
+    transform_origin: [2]float32
+    // A change of transform eases over these seconds along this
+    // cubic-bezier curve, in hundredths; all zero is linear.
+    transform_seconds: float32
+    transform_timing: [4]u8
 }
 
 // Every box field but text-align, which only Text reads.
 StyleBoxContainerFields :: 655343
+// Transform, rotate, scale, their origin and their transition; then only
+// the three that set a transform.
+StyleBoxTransformFields :: 66060288
+StyleBoxTransformSets :: 7340032
 // The per-side border widths and colors.
 StyleBoxBorderSides :: 130560
 StyleBoxOutlineFields :: 393216
@@ -1317,6 +1343,17 @@ ApplyBoxFields :: (target: *StyleBoxData, value: *StyleBoxData, fields: u32) {
     if (fields & cast(u32)StyleBoxMarginRight) != 0 { target.margin_right = value.margin_right }
     if (fields & cast(u32)StyleBoxMarginBottom) != 0 { target.margin_bottom = value.margin_bottom }
     if (fields & cast(u32)StyleBoxMarginLeft) != 0 { target.margin_left = value.margin_left }
+    if (fields & cast(u32)StyleBoxTransformFields) != 0 {
+        if (fields & cast(u32)StyleBoxTransform) != 0 { target.transform = value.transform }
+        if (fields & cast(u32)StyleBoxRotate) != 0 { target.rotate = value.rotate }
+        if (fields & cast(u32)StyleBoxScale) != 0 { target.scale = value.scale }
+        if (fields & cast(u32)StyleBoxOriginX) != 0 { target.transform_origin[0] = value.transform_origin[0] }
+        if (fields & cast(u32)StyleBoxOriginY) != 0 { target.transform_origin[1] = value.transform_origin[1] }
+        if (fields & cast(u32)StyleBoxTransformMotion) != 0 {
+            target.transform_seconds = value.transform_seconds
+            target.transform_timing = value.transform_timing
+        }
+    }
     if (fields & cast(u32)StyleBoxGradient) != 0 {
         target.gradient_dx = value.gradient_dx
         target.gradient_dy = value.gradient_dy

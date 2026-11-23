@@ -1,0 +1,592 @@
+// CSS transforms at paint time, the same on every host. Before the frame
+// commits, when every box has its final size, each Row, Column, Grid,
+// Button, Card, Text, Link and Image node takes the transform its style
+// rules give its class, id and state (hover and active follow the pointer);
+// a widget may also set one itself through paint_node_transform. Each
+// queued paint command of a transformed node and of its descendants then
+// takes the map composed through its ancestors: a whole-pixel move shifts
+// the command; text moves to its mapped anchor, turns and takes the nearest
+// whole font size; an image scales and turns; and any other shape becomes
+// PaintKindTransformed and is drawn here as triangles. Text and images
+// keep the host's own rasterizer, so they stay crisp. Layout and input keep
+// the untransformed boxes. A change of transform eases when its style
+// gives a transition.
+#import "drawing_props"
+#import "frame_motion"
+#import "geometry"
+Motion :: #import "motion";
+#import "motion_history"
+#import "paint_matrix"
+#import "paint_queue"
+#import "raster_triangles"
+#import "control_props"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+#import "std/math"
+
+TransformEntry :: struct {
+    node: s32
+    origin: Vector2
+    origin_percent_x: bool
+    origin_percent_y: bool
+    values: [8]float32
+}
+
+TransformNodeLimit :: 32
+TransformPointLimit :: 768
+
+TransformFrame :: struct {
+    count: s32
+    // The smallest transformed node: ancestors come before their
+    // descendants, so no earlier node is under a transform.
+    first: s32
+    eased: bool
+    entries: [32]TransformEntry
+}
+
+// The easing of one node's values from where they were to their target.
+TransformRow :: struct {
+    from: [8]float32
+    target: [8]float32
+    started: float64
+    seconds: float64
+    timing: Motion.Timing
+    running: bool
+}
+
+using StyleBoxField;
+
+transform_frames: [9]TransformFrame;
+transform_histories: [9]MotionHistory(TransformRow);
+transform_points: [768]Vector2;
+
+TransformAbs :: (value: float32) -> float32 {
+    return ifx value < 0.0 then -value else value
+}
+
+TransformSample :: (row: *TransformRow, now: float64) -> [8]float32 {
+    if !row.running { return row.target }
+    progress: float32 = 1.0
+    if row.seconds > 0.0 { progress = cast(float32)((now - row.started) / row.seconds) }
+    if progress >= 1.0 {
+        row.running = false
+        return row.target
+    }
+    if progress < 0.0 { progress = 0.0 }
+    eased := Motion.Progress(row.timing, progress)
+    result: [8]float32
+    for index: 0..7 { result[index] = row.from[index] + (row.target[index] - row.from[index]) * eased }
+    return result
+}
+
+// The values to paint this frame: the target, or a point on the way to it
+// while the node's transition runs.
+TransformEase :: (session: Session, node: s32, value: NodeTransform) -> [8]float32 {
+    target := value.values
+    identity := TreeSubmittedIdentity(session, node)
+    if identity == 0 { return target }
+    slot := SessionIndex(session)
+    history := *transform_histories[slot]
+    if history.epoch != session.epoch { MotionHistoryStart(history, session.epoch) }
+    row: TransformRow
+    now := frame_motion_time[slot]
+    current := target
+    if MotionHistoryRead(history, identity, *row) {
+        current = TransformSample(*row, now)
+        changed := false
+        for index: 0..7 {
+            if row.target[index] != target[index] { changed = true }
+        }
+        if changed {
+            row.from = current
+            row.target = target
+            row.started = now
+            row.seconds = cast(float64)value.seconds
+            row.timing = Motion.Timing.{}
+            if value.timing[0] != 0.0 || value.timing[1] != 0.0 || value.timing[2] != 0.0 || value.timing[3] != 0.0 {
+                row.timing = Motion.CubicBezier(value.timing[0], value.timing[1], value.timing[2], value.timing[3])
+            }
+            row.running = value.seconds > 0.0
+            if !row.running { current = target }
+        }
+    } else {
+        row.from = target
+        row.target = target
+    }
+    if row.running { FrameMotionMark(session) }
+    unused MotionHistoryWrite(history, identity, row)
+    transform_frames[slot].eased = true
+    return current
+}
+
+PaintTransformSet :: (session: Session, node: s32, value: NodeTransform) {
+    if !SessionValid(session) || node < 0 { return }
+    frame := *transform_frames[SessionIndex(session)]
+    values := TransformEase(session, node, value)
+    if values[0] == 0.0 && values[1] == 0.0 && values[2] == 0.0 && values[3] == 1.0 && values[4] == 1.0 &&
+        values[5] == 0.0 && values[6] == 1.0 && values[7] == 1.0 { return }
+    if frame.count >= TransformNodeLimit { return }
+    if frame.count == 0 || node < frame.first { frame.first = node }
+    frame.entries[frame.count] = .{.node = node, .origin = value.origin,
+        .origin_percent_x = value.origin_percent_x, .origin_percent_y = value.origin_percent_y, .values = values}
+    frame.count += 1
+}
+
+// A map with the turn (degrees, clockwise) and size text takes under it.
+TransformMap :: struct {
+    matrix: PaintMatrix
+    rotation: float32
+    scale: float32
+}
+
+TransformIdentity :: () -> TransformMap {
+    return .{.matrix = .{.a = 1.0, .d = 1.0}, .scale = 1.0}
+}
+
+// A rotation by `degrees` after a scale by sx and sy.
+TransformTurn :: (degrees: float32, sx: float32, sy: float32) -> TransformMap {
+    sine := SineDegrees(degrees)
+    cosine := CosineDegrees(degrees)
+    return .{.matrix = .{.a = cosine * sx, .b = sine * sx, .c = -sine * sy, .d = cosine * sy}, .rotation = degrees,
+        .scale = (TransformAbs(sx) + TransformAbs(sy)) / 2.0}
+}
+
+// The map that applies `inner` and then `outer`.
+TransformCompose :: (after: TransformMap, before: TransformMap) -> TransformMap {
+    outer := after.matrix
+    inner := before.matrix
+    return .{.matrix = .{.a = outer.a * inner.a + outer.c * inner.b, .b = outer.b * inner.a + outer.d * inner.b,
+        .c = outer.a * inner.c + outer.c * inner.d, .d = outer.b * inner.c + outer.d * inner.d,
+        .tx = outer.a * inner.tx + outer.c * inner.ty + outer.tx,
+        .ty = outer.b * inner.tx + outer.d * inner.ty + outer.ty},
+        .rotation = after.rotation + before.rotation, .scale = after.scale * before.scale}
+}
+
+// A node's own map about its origin in its final box.
+TransformNodeMatrix :: (session: Session, entry: TransformEntry) -> TransformMap {
+    bounds := TreeSubmittedBounds(session, entry.node)
+    ox := bounds.x + entry.origin.x
+    oy := bounds.y + entry.origin.y
+    if entry.origin_percent_x { ox = bounds.x + bounds.width * entry.origin.x / 100.0 }
+    if entry.origin_percent_y { oy = bounds.y + bounds.height * entry.origin.y / 100.0 }
+    inner := TransformTurn(entry.values[2], entry.values[3], entry.values[4])
+    inner.matrix.tx = entry.values[0]
+    inner.matrix.ty = entry.values[1]
+    map := TransformCompose(TransformTurn(entry.values[5], entry.values[6], entry.values[7]), inner)
+    // About the origin: bring it to zero, map, and bring it back.
+    map.matrix.tx += ox - (map.matrix.a * ox + map.matrix.c * oy)
+    map.matrix.ty += oy - (map.matrix.b * ox + map.matrix.d * oy)
+    return map
+}
+
+// The map of what `owner` paints: its own transform, then each ancestor's.
+TransformOf :: (session: Session, frame: *TransformFrame, owner: s32, out: *TransformMap) -> bool {
+    matrix := TransformIdentity()
+    found := false
+    node := owner
+    for depth: 0..255 {
+        if node < frame.first { break }
+        for index: cast(s32)0..frame.count - 1 {
+            if frame.entries[index].node == node {
+                matrix = TransformCompose(TransformNodeMatrix(session, frame.entries[index]), matrix)
+                found = true
+                break
+            }
+        }
+        node = TreeSubmittedNodeAt(session, node).parent
+    }
+    if !found { return false }
+    <<out = matrix
+    return found
+}
+
+TransformRound :: (value: float32) -> float32 {
+    if value >= 0.0 { return cast(float32)cast(s32)(value + 0.5) }
+    return -cast(float32)cast(s32)(0.5 - value)
+}
+
+TransformLength :: (x: float32, y: float32) -> float32 {
+    square := x * x + y * y
+    if !(square > 0.0) { return 0.0 }
+    guess := TransformAbs(x) + TransformAbs(y)
+    for step: 0..5 { guess = (guess + square / guess) / 2.0 }
+    return guess
+}
+
+TransformApply :: (m: PaintMatrix, x: float32, y: float32) -> Vector2 {
+    return .{m.a * x + m.c * y + m.tx, m.b * x + m.d * y + m.ty}
+}
+
+TransformEverything :: () -> Rectangle {
+    return .{-65536.0, -65536.0, 131072.0, 131072.0}
+}
+
+// A whole-pixel move: every coordinate the command draws with.
+TransformMove :: (session: Session, data: *PaintCommand, dx: float32, dy: float32) {
+    data.bounds.x += dx
+    data.bounds.y += dy
+    data.clip.x += dx
+    data.clip.y += dy
+    data.x += cast(s32)dx
+    data.y += cast(s32)dy
+    text := data.kind == cast(s32)PaintKind.PaintKindText || data.kind == cast(s32)PaintKind.PaintKindClippedText
+    if text && data.rotation != 0.0 {
+        data.origin.x += dx
+        data.origin.y += dy
+    }
+    if data.image_clip_count == 0 {
+        points := PendingPaintPoints(session, data)
+        for index: cast(s32)0..cast(s32)points.count - 1 {
+            points[index].x += dx
+            points[index].y += dy
+        }
+    }
+}
+
+// Text keeps its glyphs: it moves to its mapped anchor, turns by the map's
+// rotation and takes the nearest whole font size to the map's scale; its
+// own clip scales and turns with it.
+TransformLabel :: (data: *PaintCommand, map: TransformMap) {
+    anchor: Vector2 = .{cast(float32)data.x, cast(float32)data.y}
+    if data.rotation != 0.0 {
+        anchor = WorldToScreen(anchor, Camera.{.offset = data.origin, .target = data.origin,
+            .rotation = data.rotation, .zoom = 1.0})
+    }
+    at := TransformApply(map.matrix, anchor.x, anchor.y)
+    at.x = TransformRound(at.x)
+    at.y = TransformRound(at.y)
+    scale := map.scale
+    if !(scale > 0.0) { scale = 1.0 }
+    local := TransformEverything()
+    if data.kind == cast(s32)PaintKind.PaintKindClippedText {
+        local = .{at.x + (data.clip.x - cast(float32)data.x) * scale, at.y + (data.clip.y - cast(float32)data.y) * scale,
+            data.clip.width * scale, data.clip.height * scale}
+    }
+    size := cast(s32)(cast(float32)data.font * scale + 0.5)
+    data.font = ifx size < 1 then 1 else size
+    data.glyph_style.letter_spacing *= scale
+    data.x = cast(s32)at.x
+    data.y = cast(s32)at.y
+    data.clip = local
+    data.origin = at
+    data.rotation += map.rotation
+    // A cell rectangle no longer bounds the label.
+    data.bounds = Rectangle.{}
+}
+
+// An image keeps its raster: its corner moves to where the map puts it,
+// its sides scale and it turns about that corner. Its clip cannot turn
+// with it and is dropped; a warped image maps its points.
+TransformPicture :: (session: Session, data: *PaintCommand, map: TransformMap) {
+    m := map.matrix
+    points := PendingPaintPoints(session, data)
+    if points.count > 0 && data.image_clip_count == 0 {
+        for index: cast(s32)0..cast(s32)points.count - 1 {
+            points[index] = TransformApply(m, points[index].x, points[index].y)
+        }
+        data.clip = TransformEverything()
+        return
+    }
+    sx := TransformLength(m.a, m.b)
+    sy := TransformLength(m.c, m.d)
+    corner := TransformApply(m, data.bounds.x, data.bounds.y)
+    data.bounds = .{corner.x, corner.y, data.bounds.width * sx, data.bounds.height * sy}
+    data.origin = .{data.origin.x * sx, data.origin.y * sy}
+    data.rotation += map.rotation
+    data.radius *= map.scale
+    data.clip = TransformEverything()
+}
+
+// The style kind a tree node is styled as for transforms, or 0.
+TransformStyleKind :: (kind: s32) -> s32 {
+    if kind == cast(s32)WidgetKind.WidgetKindRow { return StyleKindRow() }
+    if kind == cast(s32)WidgetKind.WidgetKindColumn { return StyleKindColumn() }
+    if kind == cast(s32)WidgetKind.WidgetKindGrid { return StyleKindGrid() }
+    if kind == cast(s32)WidgetKind.WidgetKindButton { return StyleKindButton() }
+    if kind == cast(s32)WidgetKind.WidgetKindCard { return StyleKindCard() }
+    if kind == cast(s32)WidgetKind.WidgetKindImage { return StyleKindImage() }
+    if kind == cast(s32)WidgetKind.WidgetKindLink { return StyleKindLink() }
+    if kind == cast(s32)WidgetKind.WidgetKindText { return StyleKindText() }
+    return 0
+}
+
+// Gives every styled node the transform of its rules. Rules match by kind,
+// class, id and state, without ancestors: the tree is already built.
+TransformNodes :: (session: Session) {
+    if (installed_box_fields & cast(u32)StyleBoxTransformSets) == 0 { return }
+    point := active_sample[SessionIndex(session)]
+    for index: cast(s32)0..TreeSubmittedCount(session) - 1 {
+        entry := TreeSubmittedNodeAt(session, index)
+        kind := TransformStyleKind(entry.kind)
+        if kind == 0 { continue }
+        state := cast(s32)ButtonState.ButtonStateNormal
+        if entry.disabled {
+            state = cast(s32)ButtonState.ButtonStateDisabled
+        } else if point.x >= entry.bounds.x && point.x < entry.bounds.x + entry.bounds.width &&
+            point.y >= entry.bounds.y && point.y < entry.bounds.y + entry.bounds.height {
+            state = ifx point.down then cast(s32)ButtonState.ButtonStatePressed else cast(s32)ButtonState.ButtonStateHover
+        }
+        facts := StyleDefaultFacts(kind)
+        if kind == StyleKindText() {
+            facts = StyleTextFacts(0, 0, ifx entry.heading_level > 0 then StyleKindHeading() else StyleKindText(), state)
+        }
+        facts.id = entry.style_id
+        facts.class_name = entry.style_class
+        facts.state = state
+        box: StyleBoxData
+        unused ResolveIndexedStyle(StyleData.{}, facts, state, false, null, cast(u32)0,
+            *box, cast(u32)StyleBoxTransformFields)
+        if (box.fields & cast(u32)StyleBoxTransformFields) == 0 { continue }
+        value: NodeTransform
+        value.values = float32.[0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0]
+        if (box.fields & cast(u32)StyleBoxTransform) != 0 {
+            for part: 0..4 { value.values[part] = box.transform[part] }
+        }
+        if (box.fields & cast(u32)StyleBoxRotate) != 0 { value.values[5] = box.rotate }
+        if (box.fields & cast(u32)StyleBoxScale) != 0 {
+            value.values[6] = box.scale[0]
+            value.values[7] = box.scale[1]
+        }
+        value.origin = .{50.0, 50.0}
+        value.origin_percent_x = true
+        value.origin_percent_y = true
+        if (box.fields & cast(u32)StyleBoxOriginX) != 0 {
+            value.origin.x = box.transform_origin[0]
+            value.origin_percent_x = (box.percent & cast(u32)StyleBoxOriginX) != 0
+        }
+        if (box.fields & cast(u32)StyleBoxOriginY) != 0 {
+            value.origin.y = box.transform_origin[1]
+            value.origin_percent_y = (box.percent & cast(u32)StyleBoxOriginY) != 0
+        }
+        if (box.fields & cast(u32)StyleBoxTransformMotion) != 0 {
+            value.seconds = box.transform_seconds
+            for part: 0..3 { value.timing[part] = cast(float32)box.transform_timing[part] / 100.0 }
+        }
+        PaintTransformSet(session, index, value)
+    }
+}
+
+PaintTransformFrame :: (session: Session, commit: bool) {
+    if !SessionValid(session) { return }
+    slot := SessionIndex(session)
+    frame := *transform_frames[slot]
+    if !commit {
+        frame.count = 0
+        return
+    }
+    TransformNodes(session)
+    if frame.eased {
+        MotionHistoryCommit(*transform_histories[slot])
+        frame.eased = false
+    }
+    if frame.count == 0 { return }
+    owner: s32 = -1
+    map: TransformMap
+    mapped := false
+    for index: cast(s32)0..PendingPaintCount(session) - 1 {
+        data := PendingPaintCommand(session, index)
+        if data == null || data.owner < frame.first || data.kind >= cast(s32)PaintKind.PaintKindTransformed { continue }
+        if data.owner != owner {
+            owner = data.owner
+            mapped = TransformOf(session, frame, owner, *map)
+        }
+        if !mapped { continue }
+        m := map.matrix
+        if m.a == 1.0 && m.b == 0.0 && m.c == 0.0 && m.d == 1.0 {
+            dx := TransformRound(m.tx)
+            dy := TransformRound(m.ty)
+            if dx != 0.0 || dy != 0.0 { TransformMove(session, data, dx, dy) }
+            continue
+        }
+        kind := data.kind
+        if kind == cast(s32)PaintKind.PaintKindText || kind == cast(s32)PaintKind.PaintKindClippedText {
+            TransformLabel(data, map)
+        } else if kind == cast(s32)PaintKind.PaintKindImage {
+            TransformPicture(session, data, map)
+        } else {
+            // Rectangles, outlines, lines and gradients draw here; shape
+            // widgets keep their emitter and map their triangles.
+            if kind == cast(s32)PaintKind.PaintKindLine || kind == cast(s32)PaintKind.PaintKindRoundedFill ||
+                kind == cast(s32)PaintKind.PaintKindRoundedOutline ||
+                kind == cast(s32)PaintKind.PaintKindVerticalGradient {
+                PendingPaintEmitter(session, index, TransformEmit)
+            }
+            data.matrix = m
+            data.kind = kind + cast(s32)PaintKind.PaintKindTransformed
+        }
+    }
+    frame.count = 0
+}
+
+TransformPoint :: (x: float32, y: float32) -> Vector2 {
+    return .{paint_matrix.a * x + paint_matrix.c * y + paint_matrix.tx,
+        paint_matrix.b * x + paint_matrix.d * y + paint_matrix.ty}
+}
+
+// Fills the first `count` buffered points as triangles. A mirroring map
+// turns them the other way, so each is turned back clockwise.
+TransformFlush :: (count: s32, color: Color) {
+    if count < 3 || color.a == cast(u8)0 { return }
+    if paint_matrix.a * paint_matrix.d - paint_matrix.b * paint_matrix.c < 0.0 {
+        for triangle: cast(s32)0..count / 3 - 1 {
+            second := transform_points[triangle * 3 + 1]
+            transform_points[triangle * 3 + 1] = transform_points[triangle * 3 + 2]
+            transform_points[triangle * 3 + 2] = second
+        }
+    }
+    // The host's own rasterizer: the points are already mapped.
+    paint_matrix_active = false
+    FillTriangles(transform_points[0:count], color)
+    paint_matrix_active = true
+}
+
+// The corners of a rounded rectangle clockwise on screen from the top left,
+// each with `steps` arc segments; 4 * (steps + 1) points.
+TransformPerimeter :: (bounds: Rectangle, radius: float32, steps: s32, out: []Vector2) -> s32 {
+    half := ifx bounds.width < bounds.height then bounds.width / 2.0 else bounds.height / 2.0
+    if radius > half { radius = half }
+    if radius < 0.0 { radius = 0.0 }
+    count: s32 = 0
+    for corner: cast(s32)0..3 {
+        cx := ifx corner == 0 || corner == 3 then bounds.x + radius else bounds.x + bounds.width - radius
+        cy := ifx corner <= 1 then bounds.y + radius else bounds.y + bounds.height - radius
+        for step: cast(s32)0..steps {
+            angle := cast(float32)(180 + corner * 90)
+            if steps > 0 { angle += 90.0 * cast(float32)step / cast(float32)steps }
+            out[count] = .{cx + radius * CosineDegrees(angle), cy + radius * SineDegrees(angle)}
+            count += 1
+        }
+    }
+    return count
+}
+
+// A rounded rectangle, filled when `width` is zero, else stroked inside.
+TransformShape :: (bounds: Rectangle, radius: float32, segments: s32, width: float32, color: Color) {
+    if color.a == cast(u8)0 || bounds.width <= 0.0 || bounds.height <= 0.0 { return }
+    steps: s32 = 0
+    if radius > 0.0 {
+        steps = segments
+        if steps < 4 { steps = 4 }
+        if steps > 16 { steps = 16 }
+    }
+    outer: [68]Vector2
+    count := TransformPerimeter(bounds, radius, steps, outer[:])
+    hole: Rectangle = .{bounds.x + width, bounds.y + width, bounds.width - width * 2.0, bounds.height - width * 2.0}
+    used: s32 = 0
+    if width <= 0.0 || hole.width <= 0.0 || hole.height <= 0.0 {
+        first := TransformPoint(outer[0].x, outer[0].y)
+        previous := TransformPoint(outer[1].x, outer[1].y)
+        for index: cast(s32)2..count - 1 {
+            next := TransformPoint(outer[index].x, outer[index].y)
+            transform_points[used] = first
+            transform_points[used + 1] = previous
+            transform_points[used + 2] = next
+            used += 3
+            previous = next
+        }
+    } else {
+        inner: [68]Vector2
+        unused TransformPerimeter(hole, radius - width, steps, inner[:])
+        for index: cast(s32)0..count - 1 {
+            after := index + 1
+            if after == count { after = 0 }
+            a := TransformPoint(outer[index].x, outer[index].y)
+            b := TransformPoint(outer[after].x, outer[after].y)
+            c := TransformPoint(inner[after].x, inner[after].y)
+            d := TransformPoint(inner[index].x, inner[index].y)
+            transform_points[used] = a
+            transform_points[used + 1] = b
+            transform_points[used + 2] = c
+            transform_points[used + 3] = a
+            transform_points[used + 4] = c
+            transform_points[used + 5] = d
+            used += 6
+        }
+    }
+    TransformFlush(used, color)
+}
+
+// A one-pixel line from the corner of `line` along its width and height.
+TransformLine :: (line: Rectangle, color: Color) {
+    length := TransformLength(line.width, line.height)
+    if length <= 0.0 { return }
+    nx := -line.height / length * 0.5
+    ny := line.width / length * 0.5
+    a := TransformPoint(line.x - nx, line.y - ny)
+    b := TransformPoint(line.x + line.width - nx, line.y + line.height - ny)
+    c := TransformPoint(line.x + line.width + nx, line.y + line.height + ny)
+    d := TransformPoint(line.x + nx, line.y + ny)
+    transform_points[0] = a
+    transform_points[1] = b
+    transform_points[2] = c
+    transform_points[3] = a
+    transform_points[4] = c
+    transform_points[5] = d
+    TransformFlush(6, color)
+}
+
+// A top-to-bottom gradient as bands of one color each; opaque bands
+// overlap the next so no seam shows between them.
+TransformGradient :: (command: PaintCommand) {
+    bounds := command.bounds
+    bands := cast(s32)(bounds.height / 3.0) + 1
+    if bands > 64 { bands = 64 }
+    step := bounds.height / cast(float32)bands
+    opaque := command.color.a == cast(u8)255 && command.end_color.a == cast(u8)255
+    for band: cast(s32)0..bands - 1 {
+        row: Rectangle = .{bounds.x, bounds.y + step * cast(float32)band, bounds.width, step}
+        if opaque && band < bands - 1 { row.height += 0.75 }
+        TransformShape(row, 0.0, 0, 0.0, GradientColorAt(command.color, command.end_color,
+            (cast(float32)band + 0.5) / cast(float32)bands))
+    }
+}
+
+// The emitter of a transformed rectangle, outline, line or gradient. A
+// scroll clip that cuts a square shape cuts it before the map; a rounded
+// one is drawn whole.
+TransformEmit :: (command: PaintCommand) {
+    kind := command.kind
+    bounds := command.bounds
+    if command.clip_set && command.radius <= 0.0 && kind != cast(s32)PaintKind.PaintKindLine {
+        bounds = RectangleIntersection(bounds, command.clip)
+    }
+    if kind == cast(s32)PaintKind.PaintKindLine {
+        TransformLine(command.bounds, command.color)
+    } else if kind == cast(s32)PaintKind.PaintKindRoundedFill {
+        TransformShape(bounds, command.radius, command.segments, 0.0, command.color)
+    } else if kind == cast(s32)PaintKind.PaintKindRoundedOutline {
+        TransformShape(command.bounds, command.radius, command.segments,
+            ifx command.line_width > 0.0 then command.line_width else 1.0, command.color)
+    } else if kind == cast(s32)PaintKind.PaintKindVerticalGradient {
+        command.bounds = bounds
+        TransformGradient(command)
+    }
+}
+
+TransformTriangles :: (points: []Vector2, color: Color) {
+    whole := cast(s32)points.count - cast(s32)points.count % 3
+    used: s32 = 0
+    for index: cast(s32)0..whole - 1 {
+        transform_points[used] = TransformPoint(points[index].x, points[index].y)
+        used += 1
+        if used == TransformPointLimit {
+            TransformFlush(used, color)
+            used = 0
+        }
+    }
+    TransformFlush(used, color)
+}
+
+// Turns transforms on: styles may then transform nodes, and transformed
+// paint is drawn. An app whose styles set a transform calls it once before
+// its first frame; apps that never do link none of this module.
+#program_export
+PaintTransformInstall :: () {
+    paint_node_transform = PaintTransformSet
+    paint_matrix_frame = PaintTransformFrame
+    paint_matrix_triangles = TransformTriangles
+}

@@ -5,6 +5,7 @@ Bitmaps :: #import "bitmap_store";
 #import "geometry"
 #import "elevation"
 #import "image_behavior"
+#import "paint_matrix"
 #import "paint_texture"
 #import "raster"
 #import "raster_shape"
@@ -14,6 +15,9 @@ Bitmaps :: #import "bitmap_store";
 #import "tree"
 #import "vec"
 host_api :: #system_library "host_api";
+
+// One more than the node PaintOwner named; zero when none.
+paint_owner: s32;
 
 PaintKind :: enum {
     PaintKindLine :: 1
@@ -28,6 +32,10 @@ PaintKind :: enum {
     PaintKindShapeCircle :: 9
     PaintKindShapeRing :: 10
     PaintKindShapeTriangle :: 11
+    // This plus its own kind: a shape under a transform (see paint_matrix),
+    // drawn through the command's matrix. Code that reads areas by kind
+    // does not know these kinds and stays conservative.
+    PaintKindTransformed :: 12
 }
 using PaintKind;
 using ElevationRole;
@@ -86,6 +94,10 @@ PaintCommand :: struct {
     mesh_block: s32
     mesh_start: s32
     owns_mesh: bool
+    // The node whose transforms, and whose ancestors', apply to this paint.
+    owner: s32
+    // The map of a PaintKindTransformed command.
+    matrix: PaintMatrix
 }
 
 PaintEmitter :: #type (command: PaintCommand) -> ();
@@ -427,7 +439,16 @@ EmitPaintDirect :: (command: QueuedPaint) {
     }
     if command.has_emitter {
         emit: PaintEmitter = command.emit
-        emit(command.data)
+        if command.data.kind >= PaintKindTransformed {
+            data := command.data
+            data.kind -= PaintKindTransformed
+            paint_matrix = data.matrix
+            paint_matrix_active = true
+            emit(data)
+            paint_matrix_active = false
+        } else {
+            emit(command.data)
+        }
     }
 }
 
@@ -766,6 +787,7 @@ QueuePaint :: (session: Session, command: *QueuedPaint, value: string,
     }
     layer_node := command.data.node
     if layer_node < 0 { layer_node = TreeCurrentParent(session) }
+    command.data.owner = ifx paint_owner > 0 then paint_owner - 1 else layer_node
     command.data.overlay_layer = TreeOverlayLayerAt(session, layer_node,
         !TreeIsBuilding(session))
     slot := SessionIndex(session)
@@ -1182,6 +1204,37 @@ PendingPaintCount :: (session: Session) -> s32 {
     return cast(s32)pending_paint[SessionIndex(session)].items.count
 }
 
+// While set, queued paint belongs to this node's transforms and not to the
+// node or scope it names: a container painting its own box. -1 clears it.
+PaintOwner :: (node: s32) {
+    paint_owner = node + 1
+}
+
+// A queued command in place, for the transform pass before a frame commits;
+// null past the end.
+PendingPaintCommand :: (session: Session, index: s32) -> *PaintCommand {
+    slot: s32 = SessionIndex(session)
+    if index < 0 || cast(s64)index >= pending_paint[slot].items.count { return null }
+    return *pending_paint[slot].items[index].data
+}
+
+// The queued copy of a command's mesh or polygon points, in place.
+PendingPaintPoints :: (session: Session, data: *PaintCommand) -> []Vector2 {
+    none: []Vector2
+    count := PaintPointCount(data.*)
+    if count == 0 || !data.owns_mesh { return none }
+    return pending_mesh[SessionIndex(session)][data.mesh_block].points[data.mesh_start:
+        data.mesh_start + cast(s32)count]
+}
+
+// Gives a queued command another emitter that reads the same fields.
+PendingPaintEmitter :: (session: Session, index: s32, emit: PaintEmitter) {
+    slot: s32 = SessionIndex(session)
+    if index < 0 || cast(s64)index >= pending_paint[slot].items.count { return }
+    pending_paint[slot].items[index].emit = emit
+    pending_paint[slot].items[index].has_emitter = true
+}
+
 #program_export
 PendingPaintAt :: (session: Session, index: s32) -> PaintCommand {
     slot: s32 = SessionIndex(session)
@@ -1352,6 +1405,7 @@ PaintCommandEqual :: (slot: s32, current: PaintCommand,
     current.text_outer_clip.width != previous.data.text_outer_clip.width ||
     current.text_outer_clip.height != previous.data.text_outer_clip.height { return false }
     if current.smooth != previous.data.smooth { return false }
+    if !PaintMatrixSame(current.matrix, previous.data.matrix) { return false }
     if current.image_clip_count != previous.data.image_clip_count || current.mesh_columns != previous.data.mesh_columns ||
     current.mesh_rows != previous.data.mesh_rows { return false }
     if !SnapshotMeshEqual(slot, current, previous) { return false }

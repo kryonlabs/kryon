@@ -400,7 +400,7 @@ LayoutCloseContent :: (session: Session, index: s32) {
     if size.paint_mark >= 0 {
         box: StyleBoxData
         face := LayoutClosingFace(index, node, *box)
-        layout_box_paint(session, bounds, face, box, size.paint_mark)
+        layout_box_paint(session, bounds, face, box, size.paint_mark, index)
     }
     if node.auto_placed { LayoutGrowParent(session, node.parent, bounds, size) }
 }
@@ -548,7 +548,7 @@ OpenContainer :: (session: Session, props: PropsModule.Props,
     size := LayoutContentSizeFor(face, box)
     if LayoutPaintsBox(face, box) {
         if !content_sized {
-            layout_box_paint(session, result.bounds, face, box, -1)
+            layout_box_paint(session, result.bounds, face, box, -1, result.node)
         } else if !own_face || layout_box_face_count < LayoutBoxFaceLimit {
             size.paint_mark = layout_paint_mark(session)
             if own_face {

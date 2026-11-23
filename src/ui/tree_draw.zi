@@ -1,5 +1,6 @@
 #import "geometry"
 #import "layout_paint"
+#import "paint_matrix"
 #import "style_tree"
 #import "paint_queue"
 #import "session"
@@ -50,6 +51,7 @@ BeginFrame :: (session: Session, screen_key: u64,
     PaintClear(session)
     LayoutPaintInstall()
     StyleTreeInstall(session)
+    if paint_matrix_frame != null { paint_matrix_frame(session, false) }
     frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, SessionIndex(session), false)
     FrameMotionBegin(session)
     TreeStart(session, screen_key, bounds)
@@ -93,6 +95,9 @@ CommitFrame :: (session: Session) -> FrameStatus {
         PaintClear(session)
         return cast(FrameStatus)FramePaintOverflow
     }
+    // Transforms take their final maps while the tree still holds the
+    // frame's boxes.
+    if paint_matrix_frame != null { paint_matrix_frame(session, true) }
     if !TreeFinish(session) {
         status: FrameStatus = TreeFrameStatus(session)
         PaintClear(session)

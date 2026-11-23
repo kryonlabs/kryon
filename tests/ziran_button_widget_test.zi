@@ -11,7 +11,9 @@ Image :: #import "kryon/image";
 #import "control_props"
 #import "geometry"
 #import "grid_props"
+#import "paint_matrix"
 #import "paint_queue"
+#import "paint_transform"
 #import "drawing_props"
 #import "style"
 #import "style_sheet"
@@ -192,6 +194,56 @@ GridButtons :: () -> s32 {
     return 0
 }
 
+// A button whose rule sets a transform keeps its layout box. When the
+// frame commits, its shapes take the map about the center of that box and
+// its label is rewritten in place: moved, and at twice the font size.
+TransformedButton :: () -> s32 {
+    session := TestSession()
+    PaintTransformInstall()
+    rules: StyleRules
+    rules.count = 1
+    rule: StyleRule
+    rule.selector = StyleDefaultSelector()
+    rule.selector.kind = StyleKindButton()
+    rule.selector.class_name = 9
+    rule.box.fields = cast(u32)StyleBoxField.StyleBoxTransform
+    rule.box.transform = float32.[4.0, 0.0, 0.0, 2.0, 2.0]
+    rules.items[0] = rule
+    InstallStyleRules(rules)
+    BeginFrame(session, cast(u64)6, Rectangle.{0.0, 0.0, 300.0, 100.0})
+    unused Button.Draw(session, Button.Props.{.key = 320, .class_name = 9, .label = "Run",
+        .bounds = .{10.0, 20.0, 80.0, 30.0}})
+    node := TreeSubmittedCount(session) - 1
+    if TreeSubmittedBounds(session, node).x != 10.0 || TreeSubmittedBounds(session, node).width != 80.0 { return 1 }
+    font: s32 = 0
+    for n: 0..PendingPaintCount(session) - 1 {
+        command := PendingPaintAt(session, n)
+        if command.node == node && (command.kind == cast(s32)PaintKind.PaintKindText ||
+            command.kind == cast(s32)PaintKind.PaintKindClippedText) { font = command.font }
+    }
+    paint_matrix_frame(session, true)
+    shapes: s32 = 0
+    labels: s32 = 0
+    for n: 0..PendingPaintCount(session) - 1 {
+        command := PendingPaintAt(session, n)
+        if command.node != node { continue }
+        if command.kind == cast(s32)PaintKind.PaintKindText || command.kind == cast(s32)PaintKind.PaintKindClippedText {
+            if font <= 0 || command.font != font * 2 { return 2 }
+            labels += 1
+        } else {
+            if command.kind < cast(s32)PaintKind.PaintKindTransformed || command.matrix.a != 2.0 ||
+                command.matrix.d != 2.0 || command.matrix.b != 0.0 || command.matrix.tx != -46.0 ||
+                command.matrix.ty != -35.0 { return 3 }
+            shapes += 1
+        }
+    }
+    if shapes == 0 || labels == 0 { return 4 }
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 5 }
+    empty: StyleRules
+    InstallStyleRules(empty)
+    return 0
+}
+
 main :: () -> s32 {
     if !CheckButtonLineHeight() || ButtonHostFailed() { return 96 }
     // Neutral soft/outline/ghost/link actions retain readable ink; their
@@ -313,5 +365,7 @@ main :: () -> s32 {
     if DetailProblem() != 0 { return 50 + DetailProblem() }
     placed := GridButtons()
     if placed != 0 { return 100 + placed }
+    turned := TransformedButton()
+    if turned != 0 { return 200 + turned }
     return 0
 }

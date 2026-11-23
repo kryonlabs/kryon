@@ -30,6 +30,8 @@ same Kryon as the app, or both get linked. Then:
 
 ## Unreleased
 
+- CSS transforms paint natively on every host: `kryon/paint_transform` gives Row, Column, Grid, Button, Card, Text, Link and Image nodes the `transform`, `rotate` and `scale` of their style rules (with `:hover` and `:active` from the pointer) about their `transform-origin`, to the node and everything in it, and eases changes over a transform transition. Whole-pixel moves, text and images are rewritten in place and keep the host's rasterizer; other shapes draw as triangles through a new `PaintKindTransformed`. It is opt-in: an app calls `PaintTransformInstall()` once, and apps that do not link none of it. `StyleBoxData` carries the transform fields and `PaintCommand` an owner node and a matrix.
+
 - `kryon/sortable` reorders rows by dragging, also into, out of and between nested groups: `Sortable.Item` lifts a row on a mouse drag or a touch hold (a swipe still scrolls), `Sortable.Target` says where it lands (between rows, at a group's end, or into a group dropped on its start row) and `Sortable.Indicator` shows it. Built from Press and Box, so hosted packages use it too. `ziran_sortable_test` covers drops, presses and the hosted build.
 
 - `TabBar.Props.fit` keeps a horizontal tab row on one line: tabs that would scroll first lose padding, down to half the style's, then label size, down to four fifths of it (`TabBarFitFor`); only a row still too wide at that floor scrolls. The bar's height and tap area stay. The widget test checks a four-tab row at 320, 360 and 412 dp widths and two scales.

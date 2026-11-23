@@ -6,8 +6,9 @@
 // A Row, Column or Grid with a CSS background or border paints its box
 // through these. The frame fills them, so a program that never paints
 // carries no paint queue. A box painted with a mark at or above zero moves
-// beneath the commands queued since that mark.
-LayoutBoxPaint :: #type (Session, Rectangle, StyleData, StyleBoxData, s64) -> void;
+// beneath the commands queued since that mark; the node is the container,
+// whose transform its box takes.
+LayoutBoxPaint :: #type (Session, Rectangle, StyleData, StyleBoxData, s64, s32) -> void;
 LayoutPaintMark :: #type (Session) -> s64;
 layout_box_paint: LayoutBoxPaint;
 layout_paint_mark: LayoutPaintMark;
