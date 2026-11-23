@@ -186,8 +186,10 @@ MeasureBounds :: (props: ButtonSchema.Props, paint: StyleData, minimum_height: f
         available_width / scale, props.full_width,
         props.square || props.icon_only, props.circle)
     // Preserve explicit physical coordinates without a lossy scale roundtrip.
+    // icon_only hides the visible label while keeping semantic_label; it only
+    // defaults to a square when no explicit width was given.
     if bounds.height <= 0.0 { bounds.height = height * scale }
-    if props.square || props.circle || props.icon_only {
+    if props.square || props.circle {
         bounds.width = bounds.height
     } else if bounds.width <= 0.0 {
         bounds.width = width * scale

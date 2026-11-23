@@ -281,6 +281,19 @@ main :: () -> s32 {
     measured.bounds = Rectangle.{0.0, 0.0, 200.0, 40.0}
     fit = Button.ButtonMeasure(measured)
     if fit.width != 200.0 || fit.height != 40.0 { return 35 }
+    // icon_only keeps an explicit width instead of collapsing to a square,
+    // while still measuring square when width is omitted.
+    icon_row := measured
+    icon_row.icon_only = true
+    fit = Button.ButtonMeasure(icon_row)
+    if fit.width != 200.0 || fit.height != 40.0 { return 97 }
+    icon_row.bounds = Rectangle.{0.0, 0.0, 0.0, 40.0}
+    fit = Button.ButtonMeasure(icon_row)
+    if fit.width != 40.0 || fit.height != 40.0 { return 98 }
+    icon_row.bounds = Rectangle.{0.0, 0.0, 200.0, 40.0}
+    icon_row.square = true
+    fit = Button.ButtonMeasure(icon_row)
+    if fit.width != 40.0 || fit.height != 40.0 { return 99 }
     stacked := ContentLayout(100.0, 80.0, 40.0, 24.0, 8.0,
         true, false, false, 0.0, 0.0, true, 14.0)
     if stacked.icon_x != 38.0 || stacked.icon_y != 17.0 ||
