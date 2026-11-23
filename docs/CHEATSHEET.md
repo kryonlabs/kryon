@@ -200,12 +200,11 @@ Widgets :: (session: Session) {
 }
 ```
 
-Also: `kryon/text_field` (`Bind(session, *state, props)`), `kryon/card`
-(`.variant` -> `opened`, then `End`), `kryon/title_bar` (`.trailing_width` ->
-`.trailing_bounds`), `kryon/box` (`.fill .border .radius`), `kryon/dropdown`
-(`Draw(session, props, options)`), `kryon/modal` (`opened` -> `End`,
-`.dismissed`), `kryon/avatar` (`.name`), `kryon/image` (`.asset_path .fit`),
-`kryon/badge`, `kryon/toast`, `kryon/scroll`; `ziran api kryon/<path>` prints an API.
+Also: `kryon/text_field` (`Bind(session, *state, props)`), `kryon/card` (`.variant` -> `opened`, then `End`),
+`kryon/title_bar` (`.trailing_width` -> `.trailing_bounds`), `kryon/box` (`.fill .border .radius`), `kryon/dropdown`
+(`Draw(session, props, options)`), `kryon/modal` (`opened` -> `End`, `.dismissed`), `kryon/avatar` (`.name`),
+`kryon/image` (`.asset_path .fit`), `kryon/badge`, `kryon/toast`, `kryon/scroll`. `ziran api --project --imports-only
+src/app.zi` names each import's module; `ziran api --project --module NAME src/app.zi` prints that module's API.
 
 ## Layout recipe
 
