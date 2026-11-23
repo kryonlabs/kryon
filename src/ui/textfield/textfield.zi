@@ -106,6 +106,8 @@ Theme :: #import "theme";
         session_input: bool = true, location := #caller_location) -> BindingResult {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }
+        // A placing column places this widget before it draws.
+        props.bounds = TreePlaceAhead(session, props.bounds)
         bound: BindingResult = .{.node = -1}
         if state == null { return bound }
         props = TextField.StatePropsFor(state, props)
@@ -875,6 +877,8 @@ Theme :: #import "theme";
         Draw :: (session: Session, props: TextField.Props, location := #caller_location) -> Result {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }
+        // A placing column places this widget before it draws.
+        props.bounds = TreePlaceAhead(session, props.bounds)
         key: u64 = TextFieldKey(session, props)
         editable: bool = !props.read_only && !props.secure
         selection: TextSelectionRange = TextSelectionRangeForLength(props.anchor,

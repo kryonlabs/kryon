@@ -755,6 +755,11 @@ NodeGeometry :: struct {
         if !TreeWillPlace(session, bounds) { return bounds }
         slot: s32 = SessionIndex(session)
         parent := TreeCurrentParent(session)
+        // A column advances by its child's height and a row by its width: a
+        // widget that sizes itself along that axis is placed when it submits.
+        kind := trees[slot].submitted[parent].kind
+        if kind == cast(s32)WidgetKindColumn && bounds.height <= 0.0 { return bounds }
+        if kind == cast(s32)WidgetKindRow && bounds.width <= 0.0 { return bounds }
         layout: LayoutData = trees[slot].layouts[trees[slot].submitted[parent].layout_index]
         placement: TreePlacement = layout.placement
         trees[slot].sites.placed_ahead = true

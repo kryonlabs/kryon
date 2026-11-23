@@ -6,6 +6,8 @@ Box :: #import "kryon/box";
 Text :: #import "kryon/text";
 TextArea :: #import "kryon/text_area";
 TextField :: #import "kryon/text_field";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/drawing_props"
 #import "kryon/input_protocol"
 #import "kryon/key_input"
@@ -111,7 +113,6 @@ EditField :: (session: Session, bounds: Rectangle, disabled: bool, empty: bool, 
 
 SceneInput :: struct { field: TextField.Input; area: TextArea.Input }
 
-b: Rectangle;
 
 typed: [128]u8;
 
@@ -145,7 +146,6 @@ Prepare :: (session: Session, scene: s32) -> SceneInput {
     area_input.enter = input_key == KeyEnter
     area_input.up = input_key == KeyUp; area_input.down = input_key == KeyDown
     area_input.page_up = input_key == KeyPageUp; area_input.page_down = input_key == KeyPageDown
-    b = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 44.0})
     return SceneInput.{field_input, area_input}
 }
 
@@ -154,14 +154,17 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TextField", .size = 23})
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "TextField", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 1
     input := Prepare(session, scene)
     field_input := input.field
-    EditField(session, b, disabled, false, field_input)
-    b.y += 64.0
-    EditField(session, b, disabled, true, field_input)
+    EditField(session, .{height = 44}, disabled, false, field_input)
+    EditField(session, .{height = 44}, disabled, true, field_input)
+    unused End(session)
     return 0
 }
 

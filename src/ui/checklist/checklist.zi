@@ -135,6 +135,8 @@ OnboardingChecklistDescription :: (done: s32, total: s32, output: []u8) -> strin
 Draw :: (session: Session, props: Props, location := #caller_location) -> OnboardingChecklistResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     result: OnboardingChecklistResult
     result.total = cast(s32)props.tasks.count
     result.current = OnboardingChecklistCurrent(props.tasks)

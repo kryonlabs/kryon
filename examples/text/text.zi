@@ -1,4 +1,6 @@
+Layout :: #import "kryon/layout";
 Text :: #import "kryon/text";
+#import "kryon/tree"
 #import "kryon/geometry"
 #import "kryon/session"
 #import "kryon/text_selection"
@@ -6,9 +8,13 @@ Text :: #import "kryon/text";
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     TextSelectionEnable()
-    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Text", .size = 28})
-    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 56.0}, .text = "Make room for good ideas", .size = 24})
-    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{viewport.x + 20.0, viewport.y + 148.0, viewport.width - 40.0, 144.0}, .text = "Select and copy this text. Unicode works here too: café, Ω, é.", .size = 18, .selectable = true})
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace5),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{height = 40}, .text = "Text", .size = 28})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{height = 56}, .text = "Make room for good ideas", .size = 24})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{height = 144}, .text = "Select and copy this text. Unicode works here too: café, Ω, é.", .size = 18, .selectable = true})
+    unused End(session)
     return 0
 }
 

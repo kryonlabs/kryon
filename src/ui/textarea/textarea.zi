@@ -1879,6 +1879,8 @@ TextAreaCore :: (session: Session, props: TextArea.Props) -> Result {
 Draw :: (session: Session, props: TextArea.Props, location := #caller_location) -> Result {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     key: u64 = TextAreaKey(session, props)
     editable: bool = !props.read_only
     command: s32 = TextMenuTakeCommand(session, key)
