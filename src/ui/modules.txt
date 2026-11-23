@@ -149,6 +149,9 @@ raster_triangles.zi
 reorder/reorder_behavior.zi
 reorder/reorder_props.zi
 reorder/reorder.zi
+sortable/sortable_props.zi
+sortable/sortable_behavior.zi
+sortable/sortable.zi
 router.zi
 router_props.zi
 scene_tree_props.zi

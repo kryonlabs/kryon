@@ -1,0 +1,87 @@
+#import "geometry"
+
+// One drawn row of a sortable list. A group is drawn as its start row, the
+// rows inside it and then its end row. Lifting a start row carries the whole
+// group with it.
+Row :: struct {
+    bounds: Rectangle
+    // 0 at the top level. A group's start and end rows share its depth;
+    // the rows inside it are one deeper.
+    depth: s32
+    // On a group's start row, the index of its end row; -1 on other rows.
+    end: s32
+    // A group's end row.
+    closes: bool
+    // The row takes drops but cannot be lifted.
+    fixed: bool
+}
+
+// Where lifted rows land: before row `before` (the row count for the end of
+// the list) at `depth`. A drop on a group's start row lands at the end of
+// that group, and `into` names the start row.
+Drop :: struct {
+    valid: bool
+    before: s32
+    depth: s32
+    into: s32
+    // A bar of zero height where the rows land, or the start row's bounds
+    // for a drop into a group.
+    line: Rectangle
+}
+
+// Kept by the caller for each list across frames.
+State :: struct {
+    // A row is pressed.
+    active: bool
+    // The pressed row.
+    row: s32
+    // The pressed row follows the pointer.
+    lifted: bool
+    origin: Vector2
+    pointer: Vector2
+    // Where the press landed inside the row.
+    grab: Vector2
+    // The row's bounds when it was pressed.
+    bounds: Rectangle
+}
+
+ItemProps :: struct {
+    key: u64
+    id: s32
+    // This row's index in the list's rows.
+    row: s32
+    bounds: Rectangle
+    // Names the row for accessibility.
+    label: string
+    // The app's clock in seconds, which times a touch hold.
+    now: float64
+    // On a touch screen a swipe scrolls and a hold lifts the row; a mouse
+    // lifts it as soon as it moves.
+    touch: bool
+    // How long a touch is held before the row lifts; 0 means half a second.
+    hold_seconds: float32
+    // How far a press moves before it is a drag; 0 means 6.
+    slop: float32
+    disabled: bool
+}
+
+// What the pointer did on one row this frame.
+ItemResult :: struct {
+    // Tapped, or clicked with Enter or Space, without lifting.
+    clicked: bool
+    // The row is lifted and follows `pointer`.
+    lifted: bool
+    // Released after lifting: find the drop with Target at `pointer`.
+    dropped: bool
+    pointer: Vector2
+}
+
+// What the press on a row reported this frame; see Track.
+ItemPress :: struct {
+    down: bool
+    held: bool
+    released: bool
+    clicked: bool
+    x: float32
+    y: float32
+}

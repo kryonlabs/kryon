@@ -1,0 +1,40 @@
+// Rows that are reordered by dragging, also into and out of groups. The app
+// draws each row and its groups; Item makes a row liftable, Target says
+// where lifted rows land and Indicator shows it. Built from Press and Box, so
+// it also runs in hosted packages.
+using Sortable :: #import "sortable_props";
+using Behavior :: #import "sortable_behavior";
+Box :: #import "box";
+Press :: #import "press";
+#import "drawing_props"
+#import "geometry"
+#import "session"
+
+// A pressable row: a tap clicks it, and a mouse drag or a touch hold lifts
+// it. Give every row its own key. Draw the row's face after this, and the
+// lifted row last, at Lifted.
+Item :: (session: Session, state: *State, props: ItemProps) -> ItemResult {
+    lifted := state.active && state.row == props.row && state.lifted
+    press := Press.Draw(session, Press.Props.{.key = props.key, .id = props.id, .bounds = props.bounds,
+        .label = props.label, .now = props.now, .hold_seconds = props.hold_seconds,
+        .capture = !props.touch || lifted, .disabled = props.disabled})
+    return Track(state, props, ItemPress.{.down = press.down, .held = press.held,
+        .released = press.released, .clicked = press.clicked, .x = press.x, .y = press.y})
+}
+
+// Shows where lifted rows land: a bar between rows, or an outline around the
+// start row of the group they go into.
+Indicator :: (session: Session, key: u64, drop: Drop, color: Color, thickness: float32, radius: float32) {
+    if !drop.valid {
+        return
+    }
+    if drop.into >= 0 {
+        tint := color
+        tint.a = cast(u8)(cast(s32)color.a / 5)
+        Box.Draw(session, Box.Props.{.key = key, .bounds = drop.line, .fill = tint, .border = color,
+            .radius = radius})
+        return
+    }
+    bar := Rectangle.{drop.line.x, drop.line.y - thickness * 0.5, drop.line.width, thickness}
+    Box.Draw(session, Box.Props.{.key = key, .bounds = bar, .fill = color, .radius = thickness * 0.5})
+}

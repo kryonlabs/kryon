@@ -1,0 +1,154 @@
+#import "geometry"
+#import "sortable_props"
+
+SORTABLE_SLOP :: 6.0
+
+// The last row a lifted row carries: its group's end row, or itself.
+LiftedLast :: (rows: []Row, lifted: s32) -> s32 {
+    if rows[lifted].end > lifted {
+        return rows[lifted].end
+    }
+    return lifted
+}
+
+// Where rows lifted from `lifted` land when released at height `y`. The
+// middle half of a group's start row takes them into the group; elsewhere
+// they land between the two rows nearest to `y`, at the depth of the row
+// below, or inside the group whose end row is below. `indent` is the
+// horizontal step of one depth, used for the indicator bar.
+Target :: (rows: []Row, lifted: s32, y: float32, indent: float32) -> Drop {
+    drop: Drop
+    drop.into = -1
+    count := cast(s32)rows.count
+    if lifted < 0 || lifted >= count || rows[lifted].closes || rows[lifted].fixed {
+        return drop
+    }
+    last := LiftedLast(rows, lifted)
+    left: float32 = 0.0
+    right: float32 = 0.0
+    index: s32 = 0
+    while index < count {
+        row := rows[index]
+        start := row.bounds.x - cast(float32)row.depth * indent
+        end := row.bounds.x + row.bounds.width
+        if index == 0 || start < left {
+            left = start
+        }
+        if index == 0 || end > right {
+            right = end
+        }
+        outside := index < lifted || index > last
+        band := row.bounds.height * 0.25
+        if outside && row.end > index && y >= row.bounds.y + band &&
+            y < row.bounds.y + row.bounds.height - band {
+            drop.valid = true
+            drop.before = row.end
+            drop.depth = row.depth + 1
+            drop.into = index
+            drop.line = row.bounds
+            return drop
+        }
+        index += 1
+    }
+    before := count
+    above: s32 = -1
+    index = 0
+    while index < count {
+        if index < lifted || index > last {
+            row := rows[index]
+            if y < row.bounds.y + row.bounds.height * 0.5 {
+                before = index
+                break
+            }
+            above = index
+        }
+        index += 1
+    }
+    depth: s32 = 0
+    if before < count {
+        depth = rows[before].depth
+        if rows[before].closes {
+            depth += 1
+        }
+    }
+    line_y: float32 = 0.0
+    if before < count && above >= 0 {
+        line_y = (rows[above].bounds.y + rows[above].bounds.height + rows[before].bounds.y) * 0.5
+    } else if before < count {
+        line_y = rows[before].bounds.y
+    } else if above >= 0 {
+        line_y = rows[above].bounds.y + rows[above].bounds.height
+    }
+    x := left + cast(float32)depth * indent
+    drop.valid = true
+    drop.before = before
+    drop.depth = depth
+    drop.line = Rectangle.{x, line_y, right - x, 0.0}
+    return drop
+}
+
+// Follows one row's press: a mouse lifts the row once it moves past the
+// slop, a touch once it is held without moving, and a touch that moves first
+// is a swipe left to the enclosing scroll.
+Track :: (state: *State, props: ItemProps, press: ItemPress) -> ItemResult {
+    result: ItemResult
+    point := Vector2.{press.x, press.y}
+    if press.down && !state.active && !props.disabled {
+        state.* = State.{.active = true, .row = props.row, .origin = point, .pointer = point,
+            .grab = Vector2.{press.x - props.bounds.x, press.y - props.bounds.y}, .bounds = props.bounds}
+    }
+    if !state.active || state.row != props.row {
+        result.clicked = press.clicked
+        return result
+    }
+    result.pointer = point
+    if press.down {
+        state.pointer = point
+        if !state.lifted {
+            slop := ifx props.slop > 0.0 then props.slop else SORTABLE_SLOP
+            dx := point.x - state.origin.x
+            dy := point.y - state.origin.y
+            moved := dx * dx + dy * dy >= slop * slop
+            if props.touch && moved {
+                state.* = State.{}
+                return result
+            }
+            if (props.touch && press.held) || (!props.touch && moved) {
+                state.lifted = true
+            }
+        }
+        result.lifted = state.lifted
+        return result
+    }
+    result.dropped = state.lifted && press.released
+    result.clicked = !state.lifted && press.clicked
+    state.* = State.{}
+    return result
+}
+
+// The lifted row's bounds as it follows the pointer.
+Lifted :: (state: State) -> Rectangle {
+    return Rectangle.{state.bounds.x, state.pointer.y - state.grab.y, state.bounds.width, state.bounds.height}
+}
+
+// Scrolls a list while a lifted row is held within `margin` of its top or
+// bottom edge, by `step` each frame and within 0 and `limit`.
+AutoScroll :: (state: State, top: float32, bottom: float32, offset: s32, limit: s32,
+    margin: float32, step: s32) -> s32 {
+    if !state.active || !state.lifted || limit <= 0 {
+        return offset
+    }
+    next := offset
+    if state.pointer.y < top + margin {
+        next -= step
+    } else if state.pointer.y > bottom - margin {
+        next += step
+    }
+    if next < 0 {
+        next = 0
+    }
+    if next > limit {
+        next = limit
+    }
+    return next
+}
