@@ -5,6 +5,8 @@
 Box :: #import "kryon/box";
 Shape :: #import "kryon/shape";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/drawing_props"
 #import "kryon/system_theme"
 #import "std/number_text"
@@ -41,13 +43,17 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Circle Ring Triangle Line", .size = 23})
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Circle Ring Triangle Line", .size = 23})
     disabled := example_input.disabled
 
     unused Shape.Circle(session, Shape.CircleProps.{.center = .{88.0, 128.0}, .radius = 38.0, .fill = .{30, 115, 138, 255}})
     unused Shape.Ring(session, Shape.RingProps.{.center = .{202.0, 128.0}, .inner_radius = 27.0, .outer_radius = 38.0, .start_angle = -90.0, .end_angle = 200.0, .color = .{30, 115, 138, 255}})
     unused Shape.Triangle(session, Shape.TriangleProps.{.first = .{292.0, 166.0}, .second = .{330.0, 90.0}, .third = .{368.0, 166.0}, .color = .{30, 115, 138, 255}})
     unused Shape.Draw(session, Shape.Props.{.start = .{28.0, 220.0}, .end = .{432.0, 220.0}, .thickness = 2.0, .color = .{30, 115, 138, 255}})
+    unused End(session)
     return 0
 }
 

@@ -4,6 +4,8 @@
 #import "kryon/style_sheet"
 Box :: #import "kryon/box";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/drawing_props"
 #import "kryon/system_theme"
 #import "std/number_text"
@@ -41,20 +43,25 @@ GalleryBounds :: (bounds: Rectangle) -> Rectangle {
     return bounds
 }
 
-Label :: (session: Session, value: string, y: float32 = 76.0) {
-    Text.Draw(session, Text.Props.{.bounds = GalleryBounds(Rectangle.{28.0, y, 420.0, 38.0}), .text = value})
-}
-
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Box", .size = 23})
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Box", .size = 23})
     disabled := example_input.disabled
 
-    unused Box.Draw(session, Box.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 164.0}), .fill = .{235, 244, 245, 255}, .border = .{135, 164, 170, 255}, .radius = 12.0})
-    Label(session, "A surface with rounded edges", 118.0)
+    // A stack lays the caption over the surface.
+    area := Layout.Stack(session, Layout.Props.{.bounds = .{height = 164}})
+    if area.opened {
+        unused Box.Draw(session, Box.Props.{.bounds = area.bounds, .fill = .{235, 244, 245, 255}, .border = .{135, 164, 170, 255}, .radius = 12.0})
+        Text.Draw(session, Text.Props.{.bounds = area.bounds, .text = "A surface with rounded edges", .vertical_align = .TextAlignCenter})
+        unused End(session)
+    }
+    unused End(session)
     return 0
 }
 

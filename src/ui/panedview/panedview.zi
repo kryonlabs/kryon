@@ -269,6 +269,8 @@ PaneDropZone :: (bounds: Rectangle, mouse: Vector2, scale: float32,
 Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) -> PanedViewResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     result: PanedViewResult
     result.node = -1
     bounds: Rectangle = props.bounds

@@ -6,6 +6,7 @@ Box :: #import "kryon/box";
 Button :: #import "kryon/button";
 Flow :: #import "kryon/flow";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
 #import "kryon/drawing_props"
 #import "kryon/tree"
 #import "kryon/system_theme"
@@ -49,15 +50,19 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Flow", .size = 23})
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Flow", .size = 23})
     disabled := example_input.disabled
 
-    flow := Flow.Draw(session, Flow.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .gap = 12, .padding = 8})
+    flow := Flow.Draw(session, Flow.Props.{.bounds = .{height = 208}, .gap = 12, .padding = 8})
     if flow.opened {
         unused Button.Draw(session, Button.Props.{.bounds = Rectangle.{0.0, 0.0, ifx gallery_live then 164.0 * gallery_view.width / 480.0 else 164.0, 44.0}, .label = "First item", .disabled = disabled})
         unused Button.Draw(session, Button.Props.{.bounds = Rectangle.{0.0, 0.0, ifx gallery_live then 164.0 * gallery_view.width / 480.0 else 164.0, 44.0}, .label = "Second item", .disabled = disabled})
         unused End(session)
     }
+    unused End(session)
     return 0
 }
 

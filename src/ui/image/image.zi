@@ -148,6 +148,8 @@ PaintImagePlaceholder :: (session: Session, node: s32, image: Image.Props,
 Draw :: (session: Session, image: Image.Props, location := #caller_location) {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    image.bounds = TreePlaceAhead(session, image.bounds)
     // A zx bundle's pictures live in its player, which checks them when it paints.
     #if !#defined(KRYON_ZX) {
         if Bitmaps.BitmapTagged(image.texture.id) &&

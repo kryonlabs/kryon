@@ -11,6 +11,8 @@ Tables :: #import "data_views/TableView";
 Trees :: #import "data_views/TreeView";
 Board :: #import "data_views/Kanban";
 Theme :: #import "kryon/theme";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 
 WidgetContext :: struct { theme: s32; now: float32; disabled: bool; reduced_motion: bool }
 
@@ -97,7 +99,10 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Kanban", .size = 23})
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Kanban", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 1
     InstallStyles(example_input.theme == 2)
@@ -129,6 +134,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         gesture := Board.PointerKanban(*board_cell, bounds, 3, .{pointer.x, pointer.y}, pointer.down, pointer.pressed, pointer.released)
         if gesture.moved && gesture.lane >= 0 && gesture.identity >= 700 && gesture.identity < 703 { card_lanes[cast(s32)gesture.identity - 700] = gesture.lane }
     }
+    unused End(session)
     return 0
 }
 

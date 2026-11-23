@@ -9,6 +9,8 @@ Text :: #import "kryon/text";
 Plot :: #import "plot/PlotWidget";
 Charts :: #import "plot/Plot";
 Theme :: #import "kryon/theme";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 
 WidgetContext :: struct { theme: s32; now: float32; disabled: bool; reduced_motion: bool }
 
@@ -72,7 +74,10 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "BandChart", .size = 23})
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "BandChart", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 5
     InstallStyles(example_input.theme == 2)
@@ -82,6 +87,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     bands: [1]Charts.BandChartBand
     bands[0] = .{.low = 4.0, .high = 9.0, .has_low = true, .has_high = true}
     unused Charts.BandChart(session, Charts.BandChartProps.{.bounds = bounds, .semantic_label = "Values and a target band", .slots = 8, .min_value = 0.0, .max_value = 12.0, .top_label = "12", .bottom_label = "0", .font = 14, .good_color = .{35, 115, 92, 255}, .other_color = .{180, 125, 70, 255}, .band_color = .{131, 181, 160, 80}, .grid_color = .{180, 200, 210, 150}, .text_color = StyleTokenColor("text"), .label_fill = StyleTokenColor("surface")}, points[:], bands[:])
+    unused End(session)
     return 0
 }
 
