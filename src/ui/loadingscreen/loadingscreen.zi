@@ -93,6 +93,8 @@ LoadingScreenColor :: (token: string, fallback: Color) -> Color {
 Draw :: (session: Session, props: Props, location := #caller_location) {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     layout := LoadingScreenLayoutFor(props.bounds, props.scale)
     scale := layout.scale
     if scale <= 0.0 {

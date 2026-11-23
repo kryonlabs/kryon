@@ -13,6 +13,8 @@ CallSiteSlots :: 512;
 CallSites :: struct {
     // The call site the next unkeyed node takes, or 0.
     pending: u64
+    // The next node was placed ahead by its widget (TreePlaceAhead).
+    placed_ahead: bool
     frame: u32
     // The last calling file's name hash: most calls come from one file.
     file: string
@@ -45,6 +47,7 @@ CallSitesStart :: (sites: *CallSites) {
     sites.frame += 1
     if sites.frame == 0 { sites.frame = 1 }
     sites.pending = 0
+    sites.placed_ahead = false
 }
 
 // Records the caller unless an enclosing widget's caller is still waiting

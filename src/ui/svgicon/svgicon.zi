@@ -16,6 +16,8 @@ using SvgIcon :: #import "svg_icon_props";
         Draw :: (session: Session, props: SvgIcon.Props, location := #caller_location) {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }
+        // A placing column places this widget before it draws.
+        props.bounds = TreePlaceAhead(session, props.bounds)
         PaintSvgIcon(session, -1, props.shape, props.bounds, props.color)
     }
 }

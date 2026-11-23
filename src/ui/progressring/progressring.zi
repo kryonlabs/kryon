@@ -157,6 +157,8 @@ Draw :: (session: Session, props: Props,
     state: *ProgressRingState, location := #caller_location) -> ProgressRingResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     result: ProgressRingResult
     result.value = ProgressRingClampValue(props.value)
     unused ProgressRingAdvance(state, result.value, 0.0,

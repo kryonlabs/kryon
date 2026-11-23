@@ -113,6 +113,8 @@ Draw :: (session: Session, props: Props, location := #caller_location) -> Keycap
     result.bounds.height = height
     if props.bounds.width > 0.0 { result.bounds.width = props.bounds.width }
     if props.bounds.height > 0.0 { result.bounds.height = props.bounds.height }
+    // A placing column places the measured keycap before it draws.
+    result.bounds = TreePlaceAhead(session, result.bounds)
     if !SessionValid(session) || !TreeIsBuilding(session) { return result }
     key := props.key
     if key == cast(u64)0 { key = TreeNextKey(session) }
@@ -125,7 +127,7 @@ Draw :: (session: Session, props: Props, location := #caller_location) -> Keycap
     if !TreePushScope(session, result.node) { return result }
     opacity := StyleOpacityValue(face.fields, face.opacity)
     at = 0
-    x := props.bounds.x
+    x := result.bounds.x
     part: s32 = 0
     while at < cast(s32)props.keys.count {
         while at < cast(s32)props.keys.count && props.keys[at] == cast(u8)32 { at += 1 }
@@ -134,7 +136,7 @@ Draw :: (session: Session, props: Props, location := #caller_location) -> Keycap
         if end > at {
             value := props.keys[at:end]
             part_width := KeycapPart(value, face, font)
-            cap := Rectangle.{x, props.bounds.y, part_width, height}
+            cap := Rectangle.{x, result.bounds.y, part_width, height}
             if (face.fields & cast(u32)StyleBackground) != cast(u32)0 {
                 PaintRoundedFill(session, result.node, cap, face.radius, 6,
                     ColorFromPacked(Opacity(face.background, opacity)))

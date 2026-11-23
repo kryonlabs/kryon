@@ -4,13 +4,15 @@
 // A chip takes its caller's identity, not the line of the button it draws,
 // and an avatar's own state key follows its caller too. A slider whose
 // column fills its width spans the column and maps a drag where it was
-// placed. Run from the Kryon root: make widget-tree-test.
+// placed, and a keycap placed ahead submits its node at the placed rect.
+// Run from the Kryon root: make widget-tree-test.
 Avatar :: #import "kryon/avatar";
 Button :: #import "kryon/button";
 Checkbox :: #import "kryon/checkbox";
 Chip :: #import "kryon/chip";
 // The headless bindings also cover pictures, so the test links them.
 #import "kryon/image"
+Keycap :: #import "kryon/keycap";
 Layout :: #import "kryon/layout";
 Slider :: #import "kryon/slider";
 Text :: #import "kryon/text";
@@ -73,6 +75,7 @@ Frame :: (with_button: bool) -> Keys {
 }
 
 level: s32;
+keycap: Rectangle;
 
 // A heading, then a slider the padded column fills; the slider's placed rect.
 SliderFrame :: () -> Rectangle {
@@ -86,6 +89,8 @@ SliderFrame :: () -> Rectangle {
         moved := Slider.DiscreteSlider(session, Slider.DiscreteSliderProps.{.semantic_label = "Level",
             .value = level, .min = 0, .max = 10, .bounds = .{height = 32}})
         if moved.changed { level = moved.value }
+        cap := Keycap.Draw(session, Keycap.Props.{.bounds = .{width = 120, height = 32}, .keys = "Ctrl+K"})
+        if cap.node >= 0 { keycap = TreeSubmittedNodeAt(session, cap.node).bounds }
         for index: 0..TreeSubmittedCount(session) - 1 {
             node := TreeSubmittedNodeAt(session, index)
             if node.kind == cast(s32)WidgetKindSlider { placed = node.bounds }
@@ -121,6 +126,8 @@ Main :: () -> s32 {
     TreePointerUpdate(TestSession(), PointerFrame.{x, y, true, true, false})
     unused SliderFrame()
     Expect(level >= 7 && level <= 9, "a drag on the placed slider sets about four fifths")
+    Expect(keycap.x == track.x && keycap.y > track.y && keycap.width == 120.0 && keycap.height == 32.0,
+        "a keycap placed ahead submits its node where the column put it")
     if failures > 0 { return 1 }
     print("widget tree: identities follow call sites; placed widgets fill and take drags\n")
     return 0

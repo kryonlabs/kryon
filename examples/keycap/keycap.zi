@@ -1,15 +1,20 @@
 Keycap :: #import "kryon/keycap";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/geometry"
 #import "kryon/session"
 
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Keycap", .size = 28})
-    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
-    Keycap.Draw(session, Keycap.Props.{.disabled = example_disabled, .bounds = .{bounds.x, bounds.y, 160.0, 44.0}, .keys = "Ctrl+K"})
-    Keycap.Draw(session, Keycap.Props.{.disabled = example_disabled, .bounds = .{bounds.x, bounds.y + 64.0, 160.0, 44.0}, .keys = "Shift+Enter"})
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace5),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{height = 40}, .text = "Keycap", .size = 28})
+    Keycap.Draw(session, Keycap.Props.{.disabled = example_disabled, .bounds = .{width = 160, height = 44}, .keys = "Ctrl+K"})
+    Keycap.Draw(session, Keycap.Props.{.disabled = example_disabled, .bounds = .{width = 160, height = 44}, .keys = "Shift+Enter"})
+    unused End(session)
     return 0
 }
 

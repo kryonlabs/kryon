@@ -41,6 +41,8 @@ LoadingDotLevel :: (phase: s32, dot: s32) -> s32 {
 Draw :: (session: Session, props: Props, location := #caller_location) {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     scale := ifx props.scale > 0.0 then props.scale else 1.0
     size := 8.0 * scale
     step := 14.0 * scale

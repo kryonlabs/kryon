@@ -125,6 +125,8 @@ Draw :: (session: Session, props: Props,
     items: []Button.Props, state: *ButtonGroupState, location := #caller_location) -> ButtonGroupResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     result: ButtonGroupResult
     result.node = -1
     result.focus_node = -1

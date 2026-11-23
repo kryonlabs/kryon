@@ -24,6 +24,7 @@ NodeGeometry :: struct {
         unused session; unused location; return false
     }
     TreeCallSiteEnd :: (session: Session, owned: bool) { unused session; unused owned }
+    TreePlaceAhead :: (session: Session, bounds: Rectangle) -> Rectangle { unused session; return bounds }
     #program_export
     TreePushScope :: (session: Session, index: s32) -> bool {
         return TreePushScopeHostedHost(session, index)
@@ -497,7 +498,9 @@ NodeGeometry :: struct {
     }
 
     TreeCallSiteEnd :: (session: Session, owned: bool) {
-        if owned { trees[SessionIndex(session)].sites.pending = 0 }
+        if !owned { return }
+        trees[SessionIndex(session)].sites.pending = 0
+        trees[SessionIndex(session)].sites.placed_ahead = false
     }
 
     // A parent's next unkeyed child: its caller's ordinal, or the next
@@ -742,6 +745,20 @@ NodeGeometry :: struct {
         if !trees[slot].building || parent < 0 || parent >= trees[slot].submitted_count { return false }
         layout := trees[slot].submitted[parent].layout_index
         return layout >= 0 && trees[slot].layouts[layout].places_children
+    }
+
+    // Places a widget before it draws: the rect its parent gives a node with
+    // these bounds, now, so the widget lays out, paints and submits its node
+    // there and nothing moves afterwards. Bounds the parent does not place
+    // come back as they are.
+    TreePlaceAhead :: (session: Session, bounds: Rectangle) -> Rectangle {
+        if !TreeWillPlace(session, bounds) { return bounds }
+        slot: s32 = SessionIndex(session)
+        parent := TreeCurrentParent(session)
+        layout: LayoutData = trees[slot].layouts[trees[slot].submitted[parent].layout_index]
+        placement: TreePlacement = layout.placement
+        trees[slot].sites.placed_ahead = true
+        return placement(session, parent, bounds)
     }
 
     // A widget that lays itself out after its parent placed it adopts the
@@ -1065,7 +1082,12 @@ NodeGeometry :: struct {
         }
         node.kind = kind
         node.measured_bounds = bounds
-        if parent_index >= 0 && bounds.x == 0.0 && bounds.y == 0.0 &&
+        // A widget placed ahead submits at the rect its parent gave it.
+        if trees[slot].sites.placed_ahead {
+            trees[slot].sites.placed_ahead = false
+            node.bounds = bounds
+            node.auto_placed = true
+        } else if parent_index >= 0 && bounds.x == 0.0 && bounds.y == 0.0 &&
         trees[slot].submitted[parent_index].layout_index >= 0 {
             layout: LayoutData = trees[slot].layouts[
             trees[slot].submitted[parent_index].layout_index]

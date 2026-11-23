@@ -57,6 +57,8 @@ Draw :: (session: Session, props: PropsModule.Props,
     items: []BreadcrumbItem, location := #caller_location) -> BreadcrumbResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     result := BreadcrumbResult.{.node = -1, .activated_index = -1}
     count := cast(s32)items.count
     bounds := props.bounds

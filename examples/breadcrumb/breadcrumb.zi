@@ -1,16 +1,21 @@
 Breadcrumb :: #import "kryon/breadcrumb";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
+#import "kryon/tree"
 #import "kryon/geometry"
 #import "kryon/session"
 
 active: s32 = 2;
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Breadcrumb", .size = 28})
-    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace5),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{height = 40}, .text = "Breadcrumb", .size = 28})
     items := Breadcrumb.BreadcrumbItem.[.{.label = "Home"}, .{.label = "Projects"}, .{.label = "Kryon"}]
-    result := Breadcrumb.Draw(session, Breadcrumb.Props.{.disabled = example_disabled, .bounds = .{bounds.x, bounds.y, bounds.width, 44.0}, .active_index = active}, items[:])
+    result := Breadcrumb.Draw(session, Breadcrumb.Props.{.disabled = example_disabled, .bounds = .{height = 44}, .active_index = active}, items[:])
     if result.changed { active = result.activated_index }
+    unused End(session)
     return 0
 }
 

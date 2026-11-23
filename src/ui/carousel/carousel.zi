@@ -162,6 +162,8 @@ Draw :: (session: Session, props: Props, items: []CarouselItem,
     state: *CarouselState, location := #caller_location) -> s32 {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     if items.count == 0 || props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return -1 }
     bounds := props.bounds
     scale := ifx props.scale > 0.0 then props.scale else 1.0

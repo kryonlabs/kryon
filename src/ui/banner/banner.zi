@@ -139,6 +139,8 @@ Draw :: (session: Session, props: Props,
     state: *BannerState, location := #caller_location) -> BannerResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     result: BannerResult
     result.state = state.*
     if !state.open || state.collapse_progress <= 0.002 { return result }

@@ -195,6 +195,8 @@ Draw :: (session: Session, props: Props,
     state: *CountdownState, location := #caller_location) -> CountdownResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     result: CountdownResult
     result.parts = CountdownPartsFor(props.seconds_left, props.hide_days)
     unused CountdownAdvance(state, result.parts,

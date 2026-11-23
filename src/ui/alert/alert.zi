@@ -117,6 +117,8 @@ Draw :: (session: Session, props: Props,
     state: *AlertState, location := #caller_location) -> AlertResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
+    // A placing column places this widget before it draws.
+    props.bounds = TreePlaceAhead(session, props.bounds)
     result: AlertResult
     result.state = state.*
     if state.dismissed { return result }
