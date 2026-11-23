@@ -28,7 +28,9 @@ using Scroll :: #import "scroll_props";
     // A value based scroll viewport. The caller supplies wheel or keyboard
     // movement, keeps the returned offset, and positions children in content.
     // Close the child scope with End(session).
-        Draw :: (session: Session, props: Scroll.Props) -> Scroll.ScrollResult {
+        Draw :: (session: Session, props: Scroll.Props, location := #caller_location) -> Scroll.ScrollResult {
+        site := TreeCallSite(session, location)
+        defer { TreeCallSiteEnd(session, site) }
         result: Scroll.ScrollResult
         result.node = -1
         result.viewport = props.bounds

@@ -136,7 +136,9 @@ BannerLayoutFor :: (props: Props) -> BannerLayout {
 }
 
 Draw :: (session: Session, props: Props,
-    state: *BannerState) -> BannerResult {
+    state: *BannerState, location := #caller_location) -> BannerResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: BannerResult
     result.state = state.*
     if !state.open || state.collapse_progress <= 0.002 { return result }

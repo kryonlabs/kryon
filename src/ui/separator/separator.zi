@@ -117,7 +117,9 @@ PaintSeparatorForNode :: (session: Session, node: s32, props: PropsModule.Props,
             ColorFromPacked(prepared.line_color))
     }
 }
-Draw :: (session: Session, props: PropsModule.Props) {
+Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     node: s32 = -1
     if TreeIsBuilding(session) {
         node = TreeSubmitCurrent(session, props.key, WidgetKindSeparator, props.bounds)

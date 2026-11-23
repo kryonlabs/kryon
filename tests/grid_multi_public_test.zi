@@ -4,7 +4,7 @@ GridMulti :: #import "kryon/grid_multi";
 #import "kryon/session"
 Icons :: #import "kryon/icon";
 GridProcedure :: #type (session: Session, props: GridMulti.Props,
-    items: []GridMulti.GridMultiItem, selected: []bool) -> GridMulti.GridMultiResult;
+    items: []GridMulti.GridMultiItem, selected: []bool, location: Source_Code_Location) -> GridMulti.GridMultiResult;
 #program_export
 main :: () -> s32 {
     widget: GridProcedure = GridMulti.Draw

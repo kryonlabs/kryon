@@ -154,7 +154,9 @@ percent_text :: (value: float32, output: []u8) -> string {
 
 #scope_export
 Draw :: (session: Session, props: Props,
-    state: *ProgressRingState) -> ProgressRingResult {
+    state: *ProgressRingState, location := #caller_location) -> ProgressRingResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: ProgressRingResult
     result.value = ProgressRingClampValue(props.value)
     unused ProgressRingAdvance(state, result.value, 0.0,

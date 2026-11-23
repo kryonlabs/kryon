@@ -381,7 +381,9 @@ ContextMenuResult :: struct {
     }
 
         Draw :: (session: Session, props: Props,
-        items: []ContextMenuItem) -> ContextMenuResult {
+        items: []ContextMenuItem, location := #caller_location) -> ContextMenuResult {
+        site := TreeCallSite(session, location)
+        defer { TreeCallSiteEnd(session, site) }
         result: ContextMenuResult
         result.open = props.open
         if !props.open || items.count == 0 { return result }

@@ -1,3 +1,4 @@
+#import "tree"
 Box :: #import "box";
 Press :: #import "press";
 // Touch controls for games, composed from Press and Box so they also work
@@ -147,7 +148,9 @@ TouchDirection :: (dx: float32, dy: float32, reach: float32) -> s32 {
     return ifx dy < 0.0 then 1 else 3
 }
 
-Draw :: (session: Session, props: Props) -> JoystickResult {
+Draw :: (session: Session, props: Props, location := #caller_location) -> JoystickResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result := JoystickResult.{.direction = -1}
     slot := TouchSlotFor(props.key)
     bounds := props.bounds

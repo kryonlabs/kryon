@@ -101,7 +101,9 @@ NavigationBarConfigButton :: (session: Session, key: u64, id: s32,
 // UI state. The caller owns save/cancel/reset effects and route persistence.
 Draw :: (session: Session, props: PropsModule.Props,
     routes: []s32, slot_labels: []string,
-    options: []PropsModule.Option) -> PropsModule.Result {
+    options: []PropsModule.Option, location := #caller_location) -> PropsModule.Result {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: PropsModule.Result = .{.node = -1, .scroll_offset = props.scroll_offset,
         .dropdown_open = props.dropdown_open, .dropdown_row = props.dropdown_row}
     counts: NavigationBarConfigCounts =

@@ -203,7 +203,7 @@ GuidedTourHostedReply :: struct {
 } else {
     #import "paint_queue"
         Draw :: (session: Session, props: GuidedTour.Props,
-    state: *GuidedTourState) -> GuidedTourResult { return GuidedTourCore(session, props, state, true) }
+    state: *GuidedTourState, location := #caller_location) -> GuidedTourResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return GuidedTourCore(session, props, state, true) }
     #program_export
 GuidedTourCore :: (session: Session, props: GuidedTour.Props,
     state: *GuidedTourState, effects: bool) -> GuidedTourResult {

@@ -62,7 +62,9 @@ using Fieldset :: #import "fieldset_props";
         return frame
     }
 
-        Draw :: (session: Session, props: Fieldset.Props) {
+        Draw :: (session: Session, props: Fieldset.Props, location := #caller_location) {
+        site := TreeCallSite(session, location)
+        defer { TreeCallSiteEnd(session, site) }
         key: u64 = props.key
         if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
         if key == cast(u64)0 { key = TreeNextKey(session) }

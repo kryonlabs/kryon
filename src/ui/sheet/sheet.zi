@@ -347,7 +347,9 @@ SheetEnd :: (session: Session) -> bool {
 }
 
 Draw :: (session: Session, props: Sheet.Props,
-    state: *SheetState) -> SheetResult {
+    state: *SheetState, location := #caller_location) -> SheetResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result := SheetBegin(session, props, state)
     if result.content_node >= 0 { unused SheetEnd(session) }
     return result

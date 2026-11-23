@@ -246,7 +246,7 @@ ScrubFieldHostedReply :: struct { state: ScrubFieldState; result: ScrubFieldResu
     }
 } else {
         Draw :: (session: Session, props: Props,
-    state: *ScrubFieldState) -> ScrubFieldResult { return ScrubFieldCore(session, props, state, true) }
+    state: *ScrubFieldState, location := #caller_location) -> ScrubFieldResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return ScrubFieldCore(session, props, state, true) }
     #program_export
     ScrubFieldCore :: (session: Session, props: Props,
     state: *ScrubFieldState, effects: bool) -> ScrubFieldResult {

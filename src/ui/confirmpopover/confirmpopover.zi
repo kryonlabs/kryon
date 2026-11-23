@@ -108,7 +108,7 @@ ConfirmPopoverHostedReply :: struct {
 } else {
     #import "paint_queue"
         Draw :: (session: Session, props: ConfirmPopover.Props,
-    state: *ConfirmPopoverState) -> ConfirmPopoverResult { return ConfirmPopoverCore(session, props, state, true) }
+    state: *ConfirmPopoverState, location := #caller_location) -> ConfirmPopoverResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return ConfirmPopoverCore(session, props, state, true) }
     #program_export
 ConfirmPopoverCore :: (session: Session, props: ConfirmPopover.Props,
     state: *ConfirmPopoverState, effects: bool) -> ConfirmPopoverResult {

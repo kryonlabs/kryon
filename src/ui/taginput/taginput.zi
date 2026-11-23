@@ -368,7 +368,7 @@ TagInputHostedReply :: struct { state: TagInputState; result: TagInputResult }
     }
 } else {
         Draw :: (session: Session, props: Props,
-    state: *TagInputState) -> TagInputResult { return TagInputCore(session, props, state, true) }
+    state: *TagInputState, location := #caller_location) -> TagInputResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return TagInputCore(session, props, state, true) }
     #program_export
     TagInputCore :: (session: Session, props: Props,
     state: *TagInputState, effects: bool) -> TagInputResult {

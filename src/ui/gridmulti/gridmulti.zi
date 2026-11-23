@@ -21,7 +21,9 @@ using BehaviorModule :: #import "grid_multi_behavior";
 
 // Selection storage belongs to the caller and is never retained.
 Draw :: (session: Session, props: PropsModule.Props, items: []GridMultiItem,
-    selected: []bool) -> GridMultiResult {
+    selected: []bool, location := #caller_location) -> GridMultiResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: GridMultiResult = .{.node = -1, .clicked_index = -1, .activated_index = -1,
         .cursor = props.cursor, .anchor = props.anchor}
     if items.count != selected.count || items.count > 1000000 { return result }

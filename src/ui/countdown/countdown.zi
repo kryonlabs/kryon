@@ -192,7 +192,9 @@ unit_label :: (index: s32) -> string {
 
 #scope_export
 Draw :: (session: Session, props: Props,
-    state: *CountdownState) -> CountdownResult {
+    state: *CountdownState, location := #caller_location) -> CountdownResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: CountdownResult
     result.parts = CountdownPartsFor(props.seconds_left, props.hide_days)
     unused CountdownAdvance(state, result.parts,

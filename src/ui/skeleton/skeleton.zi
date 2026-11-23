@@ -3,6 +3,7 @@
 // pulse gently with the caller's clock and hold still when the theme asks
 // for reduced motion. Unlike Loading's dots, a skeleton keeps the layout's
 // shape. Measure gives a line or circle its height from the theme.
+#import "tree"
 Box :: #import "box";
 #import "drawing_props"
 #import "geometry"
@@ -48,7 +49,9 @@ SkeletonLevel :: (now: float64, dark: bool, reduced_motion: bool) -> u32 {
     return low + cast(u32)(rise * 10.0)
 }
 
-Draw :: (session: Session, props: Props) {
+Draw :: (session: Session, props: Props, location := #caller_location) {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     size := Measure(props)
     bounds := props.bounds
     if bounds.width <= 0.0 { bounds.width = size.width }

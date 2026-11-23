@@ -1,3 +1,4 @@
+#import "tree"
 Box :: #import "box";
 Image :: #import "image";
 // TileMap: the 2D node for board and tile games. It draws a grid of square
@@ -92,7 +93,9 @@ TileMapFit :: (bounds: Rectangle, columns: s32, rows: s32, pixel_snap: bool = fa
 // call. A larger map is drawn cell by cell.
 TILE_MAP_HOSTED_LIMIT :: 1024
 
-Draw :: (session: Session, props: Props) -> TileMapResult {
+Draw :: (session: Session, props: Props, location := #caller_location) -> TileMapResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     grid := TileMapFit(props.bounds, props.columns, props.rows, props.pixel_snap)
     if grid.cell <= 0.0 { return grid }
     #if #defined(KRYON_HOSTED_UI) {

@@ -1,3 +1,4 @@
+#import "tree"
 Box :: #import "box";
 // The one loading animation every app and host shows while something is on
 // its way: three dots that brighten and rise in turn, as Lumi types. It is
@@ -37,7 +38,9 @@ LoadingDotLevel :: (phase: s32, dot: s32) -> s32 {
     return ifx own < 500 then own * 2 else (1000 - own) * 2
 }
 
-Draw :: (session: Session, props: Props) {
+Draw :: (session: Session, props: Props, location := #caller_location) {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     scale := ifx props.scale > 0.0 then props.scale else 1.0
     size := 8.0 * scale
     step := 14.0 * scale

@@ -1876,7 +1876,9 @@ TextAreaCore :: (session: Session, props: TextArea.Props) -> Result {
 // The area with its context menu, as TextField has: a click of the secondary
 // button inside it opens Cut, Copy, Paste, and Select all on the system
 // clipboard, and the keyboard's Cut, Copy, and Paste reach it too.
-Draw :: (session: Session, props: TextArea.Props) -> Result {
+Draw :: (session: Session, props: TextArea.Props, location := #caller_location) -> Result {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     key: u64 = TextAreaKey(session, props)
     editable: bool = !props.read_only
     command: s32 = TextMenuTakeCommand(session, key)

@@ -17,6 +17,8 @@ No display needed; `build/shot.json` lists each node's kind, role, label and bou
 ## Rules
 
 - Declare every widget every frame; keep state at file scope (`x: s32;`) in a Kryon-free module.
+  Widgets need no `.key`: one is known by its calling line and parent, and a loop's
+  repeats count in order. Pass `.key = item.id` only to keep state when rows reorder.
 - Containers (Layout, Grid, Flow, Modal) place children: never compute `x` or `y`;
   a child declares its size, and zero width fills a column. A Row, Column, Grid
   or Flow without a height sizes to its children when it closes with `End`. If `opened`, draw the
@@ -25,9 +27,8 @@ No display needed; `build/shot.json` lists each node's kind, role, label and bou
 - Size and space come from theme tokens. Act on a result in the same frame.
 - Typed text lives in `TextField.State` bytes; zero `length cursor anchor scroll_x` to clear.
 - A returned `string` must view file-scope bytes (as `NoteAt` does), never a local buffer.
-- `ziran lock` refused "checked package metadata": `[toolchain]` must be the
-  exact Ziran that Kryon pins (`kryon init` sets it). No window under the
-  driver: build with `KRYON_TEST_DRIVER=1`. Never start Xvfb yourself.
+- `ziran lock` refused "checked package metadata": `[toolchain]` must be the exact Ziran
+  Kryon pins (`kryon init` sets it). No window under the driver: build with `KRYON_TEST_DRIVER=1`.
 
 ## The project
 
@@ -269,9 +270,7 @@ Layouts :: (session: Session) {
 #import "kryon/test_driver_client"
 #import "std/file"
 failures: s32;
-Expect :: (ok: bool, what: string) {
-    if !ok { failures += 1; print("FAIL: %\n", what) }
-}
+Expect :: (ok: bool, what: string) { if !ok { failures += 1; print("FAIL: %\n", what) } }
 main :: () -> s32 {
     Expect(NoteCountText() == "No notes yet", "starts empty")   // the model, directly
     display := OpenPrivateDisplay(800, 600, "build/xvfb.log")
@@ -296,5 +295,5 @@ main :: () -> s32 {
 }
 ```
 
-Selectors: `.{label = "...", role = "button" | "checkbox" | "text_field" | "text",
-index = n}`. `DriverWait` polls until its timeout; a failure prints the labels.
+Selectors: `.{label = "...", role = "button" | "checkbox" | "text_field" | "text", index = n}`.
+`DriverWait` polls until its timeout; a failure prints the labels. Never start Xvfb yourself.

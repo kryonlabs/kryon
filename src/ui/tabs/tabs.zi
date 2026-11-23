@@ -333,7 +333,9 @@ Theme :: #import "theme";
 
     // Tabs are borrowed values. Kryon owns layout, style, and hit decisions;
     // callers apply the returned selection, close, and reorder events.
-        Draw :: (session: Session, props: TabBar.Props, tabs: []Tab) -> Result {
+        Draw :: (session: Session, props: TabBar.Props, tabs: []Tab, location := #caller_location) -> Result {
+        site := TreeCallSite(session, location)
+        defer { TreeCallSiteEnd(session, site) }
         result: Result = .{.node = -1, .activated_index = -1, .closed_index = -1,
             .double_clicked_index = -1, .middle_clicked_index = -1, .reordered_from = -1,
             .reordered_to = -1, .drag_from = -1, .drag_to = -1}

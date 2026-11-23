@@ -324,7 +324,9 @@ Scroll :: #import "scroll";
     }
 
         Draw :: (session: Session, props: Dropdown.Props,
-        options: []Option) -> Result {
+        options: []Option, location := #caller_location) -> Result {
+        site := TreeCallSite(session, location)
+        defer { TreeCallSiteEnd(session, site) }
         menu: DropdownMenu
         if TreeIsBuilding(session) {
             previous: s32 = TreePrevious(session, TreeCurrentParent(session),

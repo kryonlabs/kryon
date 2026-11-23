@@ -49,7 +49,9 @@ using Shape :: #import "shape_props";
         return node.* >= 0
     }
 
-        Draw :: (session: Session, props: Shape.Props) -> s32 {
+        Draw :: (session: Session, props: Shape.Props, location := #caller_location) -> s32 {
+        site := TreeCallSite(session, location)
+        defer { TreeCallSiteEnd(session, site) }
         thickness: float32 = props.thickness
         if thickness <= 0.0 { thickness = 1.0 }
         bounds: Rectangle = LineCovered(props.start, props.end, thickness)

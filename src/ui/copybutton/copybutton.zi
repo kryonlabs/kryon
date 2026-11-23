@@ -83,7 +83,9 @@ CopyButtonApply :: (state: *CopyButtonState, props: Props,
 }
 
 Draw :: (session: Session, props: Props,
-    state: *CopyButtonState) -> CopyButtonResult {
+    state: *CopyButtonState, location := #caller_location) -> CopyButtonResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     key := props.button.key
     if key == cast(u64)0 && props.button.id > 0 { key = cast(u64)cast(u32)props.button.id }
     previous: s32 = -1

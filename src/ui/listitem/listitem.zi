@@ -69,7 +69,9 @@ TrailingWidth :: (props: Props, height: float32) -> float32 {
         CurrentThemeMetric(.ThemeMetricSpace4)
 }
 
-Draw :: (session: Session, props: Props) -> ListItemResult {
+Draw :: (session: Session, props: Props, location := #caller_location) -> ListItemResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result := ListItemResult.{switch_on = props.switch_on}
     bounds := props.bounds
     if bounds.height <= 0.0 { bounds.height = Measure(props).height }

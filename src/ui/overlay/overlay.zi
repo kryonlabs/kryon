@@ -40,7 +40,9 @@ OverlayPanelKey :: () -> u64 {
 // children can be submitted under result.panel_node with TreePushScope/End.
 // Pointer release is owned by the retained backdrop, including drags that
 // finish outside the viewport. The caller decides when to stop submitting it.
-Draw :: (session: Session, props: Overlay.Props) -> Overlay.DismissibleOverlayResult {
+Draw :: (session: Session, props: Overlay.Props, location := #caller_location) -> Overlay.DismissibleOverlayResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: Overlay.DismissibleOverlayResult
     result.node = -1
     result.panel_node = -1

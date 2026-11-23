@@ -97,7 +97,9 @@ TimelineLayoutFor :: (props: Props) -> TimelineLayout {
     return layout
 }
 
-Draw :: (session: Session, props: Props) -> TimelineResult {
+Draw :: (session: Session, props: Props, location := #caller_location) -> TimelineResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: TimelineResult
     result.layout = TimelineLayoutFor(props)
     result.tone_color = TimelineToneColor(props.tone)

@@ -130,7 +130,9 @@ BadgeHeightFor :: (size: ControlSize) -> float32 {
     return 22.0
 }
 
-Draw :: (session: Session, props: Props) -> BadgeResult {
+Draw :: (session: Session, props: Props, location := #caller_location) -> BadgeResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: BadgeResult
     result.node = -1
     state := cast(s32)ButtonStateNormal

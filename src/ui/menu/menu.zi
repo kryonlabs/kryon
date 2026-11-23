@@ -196,7 +196,9 @@ Keyboard :: (groups: []MenuGroup, state: *MenuState, input: MenuKeyboardInput, r
 }
 
 #scope_export
-Draw :: (session: Session, props: PropsModule.Props, groups: []MenuGroup, state: *MenuState) -> MenuResult {
+Draw :: (session: Session, props: PropsModule.Props, groups: []MenuGroup, state: *MenuState, location := #caller_location) -> MenuResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: MenuResult
     result.open_index = -1
     if state == null { return result }

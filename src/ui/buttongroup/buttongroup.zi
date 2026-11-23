@@ -122,7 +122,9 @@ ButtonGroupNextFocus :: (items: []Button.Props, current: s32,
 }
 
 Draw :: (session: Session, props: Props,
-    items: []Button.Props, state: *ButtonGroupState) -> ButtonGroupResult {
+    items: []Button.Props, state: *ButtonGroupState, location := #caller_location) -> ButtonGroupResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: ButtonGroupResult
     result.node = -1
     result.focus_node = -1

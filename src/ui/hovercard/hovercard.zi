@@ -119,7 +119,7 @@ HoverCardHostedReply :: struct {
 } else {
     #import "paint_queue"
         Draw :: (session: Session, props: HoverCard.Props,
-    state: *HoverCardState) -> HoverCardResult { return HoverCardCore(session, props, state, true) }
+    state: *HoverCardState, location := #caller_location) -> HoverCardResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return HoverCardCore(session, props, state, true) }
     #program_export
 HoverCardCore :: (session: Session, props: HoverCard.Props,
     state: *HoverCardState, effects: bool) -> HoverCardResult {

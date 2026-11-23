@@ -114,7 +114,9 @@ AlertLayoutFor :: (props: Props) -> AlertLayout {
 }
 
 Draw :: (session: Session, props: Props,
-    state: *AlertState) -> AlertResult {
+    state: *AlertState, location := #caller_location) -> AlertResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: AlertResult
     result.state = state.*
     if state.dismissed { return result }

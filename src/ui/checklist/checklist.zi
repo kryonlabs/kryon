@@ -132,7 +132,9 @@ OnboardingChecklistDescription :: (done: s32, total: s32, output: []u8) -> strin
     return TextView(output[0:cast(s64)at])
 }
 
-Draw :: (session: Session, props: Props) -> OnboardingChecklistResult {
+Draw :: (session: Session, props: Props, location := #caller_location) -> OnboardingChecklistResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: OnboardingChecklistResult
     result.total = cast(s32)props.tasks.count
     result.current = OnboardingChecklistCurrent(props.tasks)

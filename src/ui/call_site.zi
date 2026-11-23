@@ -1,0 +1,84 @@
+// Widget identity from the call site. A widget drawn with no key takes its
+// identity from the line that called it and the parent it lands in, so its
+// state stays put when an earlier sibling appears or disappears; repeats of
+// one call site under one parent (a loop) count up in call order. A widget
+// records its caller with TreeCallSite; the tree consumes that record when
+// it gives the widget's first node an identity. Keys hash the file's name,
+// not its address, so a replayed run gives the same keys.
+
+// Sited ordinals sit above any positional ordinal a parent hands out.
+CallSiteOrdinalBase :: 16777216;
+CallSiteSlots :: 512;
+
+CallSites :: struct {
+    // The call site the next unkeyed node takes, or 0.
+    pending: u64
+    frame: u32
+    // The last calling file's name hash: most calls come from one file.
+    file: string
+    file_hash: u64
+    keys: [512]u64
+    counts: [512]s32
+    stamps: [512]u32
+}
+
+CallSiteMix :: (hash: u64, value: u64) -> u64 {
+    mixed := (hash ^ value) * cast(u64)1099511628211
+    return mixed ^ (mixed >> cast(u64)29)
+}
+
+// A hash of the calling file and line; never 0.
+CallSiteHash :: (sites: *CallSites, location: Source_Code_Location) -> u64 {
+    name := location.fully_pathed_filename
+    if sites.file_hash == cast(u64)0 || name != sites.file {
+        hash: u64 = 1469598103934665603
+        for byte: name { hash = CallSiteMix(hash, cast(u64)byte) }
+        sites.file = name
+        sites.file_hash = hash
+    }
+    hash := CallSiteMix(sites.file_hash, cast(u64)location.line_number)
+    return ifx hash == cast(u64)0 then cast(u64)1 else hash
+}
+
+// A new frame: every call site starts counting from its first repeat.
+CallSitesStart :: (sites: *CallSites) {
+    sites.frame += 1
+    if sites.frame == 0 { sites.frame = 1 }
+    sites.pending = 0
+}
+
+// Records the caller unless an enclosing widget's caller is still waiting
+// for its node; true when this call owns the record.
+CallSitesRecord :: (sites: *CallSites, location: Source_Code_Location) -> bool {
+    if sites.pending != cast(u64)0 { return false }
+    sites.pending = CallSiteHash(sites, location)
+    return true
+}
+
+// The pending call site's ordinal under the parent with identity PARENT,
+// or 0 when no site is pending (or the frame's table is full). CONSUME
+// counts this repeat and clears the pending site; a lookup before
+// submission leaves both alone.
+CallSiteOrdinal :: (sites: *CallSites, parent: u64, consume: bool) -> s32 {
+    site := sites.pending
+    if site == cast(u64)0 { return 0 }
+    if consume { sites.pending = 0 }
+    key := CallSiteMix(site, parent)
+    if key == cast(u64)0 { key = 1 }
+    at := cast(s32)(key & cast(u64)(CallSiteSlots - 1))
+    for 0..CallSiteSlots - 1 {
+        if sites.stamps[at] != sites.frame || sites.keys[at] == key {
+            repeat: s32 = 0
+            if sites.stamps[at] == sites.frame { repeat = sites.counts[at] }
+            if consume {
+                sites.stamps[at] = sites.frame
+                sites.keys[at] = key
+                sites.counts[at] = repeat + 1
+            }
+            spread := CallSiteMix(key, cast(u64)repeat) % cast(u64)(2147483647 - CallSiteOrdinalBase)
+            return CallSiteOrdinalBase + cast(s32)spread
+        }
+        at = (at + 1) & (CallSiteSlots - 1)
+    }
+    return 0
+}

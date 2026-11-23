@@ -1,3 +1,4 @@
+#import "tree"
 #import "geometry"
 #import "drawing_props"
 #import "session"
@@ -84,7 +85,9 @@ WindowBounds :: (props: Props, window: Window, workspace: s32) -> Rectangle {
 }
 
 #program_export
-Draw :: (session: Session, props: Props, windows: []Window) -> s32 {
+Draw :: (session: Session, props: Props, windows: []Window, location := #caller_location) -> s32 {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     if props.background == cast(u32)0 { props.background = cast(u32)0x0c0e14ff }
     if props.border == cast(u32)0 { props.border = cast(u32)0x252834ff }
     if props.active == cast(u32)0 { props.active = cast(u32)0xc50ed2ff }

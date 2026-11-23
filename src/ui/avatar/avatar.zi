@@ -169,7 +169,9 @@ AvatarInstalledFaceFor :: (props: Props, state: s32) -> StyleData {
     return MergeValues(ResolveValues(face, props.states, state), props.style)
 }
 
-Draw :: (session: Session, props: Props) -> AvatarResult {
+Draw :: (session: Session, props: Props, location := #caller_location) -> AvatarResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: AvatarResult
     result.node = -1
     result.tone = AvatarNameTone(props.name)

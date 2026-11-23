@@ -1,0 +1,90 @@
+// Unkeyed widgets take their identity from the call site: a checkbox keeps
+// its identity when a conditional sibling appears before it, and one call
+// site in a loop gives each repeat its own identity, the same every frame.
+// A chip takes its caller's identity, not the line of the button it draws,
+// and an avatar's own state key follows its caller too.
+// Run from the Kryon root: make call-site-test.
+Avatar :: #import "kryon/avatar";
+Button :: #import "kryon/button";
+Checkbox :: #import "kryon/checkbox";
+Chip :: #import "kryon/chip";
+// The headless bindings also cover pictures, so the test links them.
+#import "kryon/image"
+Layout :: #import "kryon/layout";
+Theme :: #import "kryon/theme";
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/tree"
+#import "kryon/widget_kind"
+using WidgetKind;
+#import "widget_test_session"
+#import "ziran_widget_noop_host"
+#import "ziran_mesh_noop_host"
+
+failures: s32;
+
+Expect :: (ok: bool, what: string) {
+    if ok { return }
+    failures += 1
+    print("call site: FAIL %\n", what)
+}
+
+Keys :: struct {
+    single: u64
+    loop: [3]u64
+    count: s32
+    // The last chip's button and the last avatar.
+    chip: u64
+    avatar: u64
+}
+
+// One frame: an optional button, a checkbox, then three checkboxes from one
+// call site; the keys of the checkboxes in submission order.
+Frame :: (with_button: bool) -> Keys {
+    session := TestSession()
+    keys: Keys
+    TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 600.0})
+    column := Layout.Draw(session, Layout.Props.{.bounds = .{0.0, 0.0, 400.0, 600.0}})
+    if column.opened {
+        if with_button { unused Button.Draw(session, Button.Props.{.label = "Extra", .bounds = .{height = 32}}) }
+        unused Checkbox.Draw(session, Checkbox.Props.{.label = "Single", .bounds = .{height = 32}})
+        for 0..2 { unused Checkbox.Draw(session, Checkbox.Props.{.label = "Row", .bounds = .{height = 32}}) }
+        if with_button { unused Chip.Draw(session, Chip.Props.{.label = "First"}) }
+        unused Chip.Draw(session, Chip.Props.{.label = "Last"})
+        if with_button { unused Avatar.Draw(session, Avatar.Props.{.name = "Ada Byron", .bounds = .{width = 32, height = 32}}) }
+        unused Avatar.Draw(session, Avatar.Props.{.name = "Alan Kay", .bounds = .{width = 32, height = 32}})
+        unused End(session)
+    }
+    for index: 0..TreeSubmittedCount(session) - 1 {
+        node := TreeSubmittedNodeAt(session, index)
+        if node.kind == cast(s32)WidgetKindButton { keys.chip = node.key }
+        if node.kind == cast(s32)WidgetKindImage { keys.avatar = node.key }
+        if node.kind != cast(s32)WidgetKindCheckbox { continue }
+        if keys.count == 0 { keys.single = node.key } else if keys.count <= 3 { keys.loop[keys.count - 1] = node.key }
+        keys.count += 1
+    }
+    unused TreeFinish(session)
+    return keys
+}
+
+#program_export
+Main :: () -> s32 {
+    unused Theme.InstallDefaultTheme(false)
+    plain := Frame(false)
+    again := Frame(false)
+    extra := Frame(true)
+    Expect(plain.count == 4 && extra.count == 4, "four checkboxes each frame")
+    Expect(plain.single == again.single && plain.single == extra.single,
+        "a checkbox keeps its identity when a button appears before it")
+    Expect(plain.loop[0] != plain.loop[1] && plain.loop[1] != plain.loop[2] && plain.loop[0] != plain.loop[2],
+        "each repeat of one call site has its own identity")
+    Expect(plain.loop[0] == extra.loop[0] && plain.loop[2] == extra.loop[2],
+        "repeats keep their identities when a sibling appears")
+    Expect(plain.single != plain.loop[0], "different call sites differ")
+    Expect(plain.chip == extra.chip, "a chip keeps its identity when another chip appears before it")
+    Expect(plain.avatar == extra.avatar && plain.avatar != cast(u64)0,
+        "an avatar keeps its state key when another avatar appears before it")
+    if failures > 0 { return 1 }
+    print("call site: identities follow call sites and repeats\n")
+    return 0
+}

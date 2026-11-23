@@ -1,3 +1,4 @@
+#import "tree"
 Joystick :: #import "joystick";
 Shape :: #import "shape";
 Box :: #import "box";
@@ -158,7 +159,9 @@ CarouselActionRibbon :: (session: Session, key: u64, button: Rectangle, label: s
 // Returns the activated item, or -1. Pointer, swipe, wheel and keyboard
 // select the same page; only the selected page exposes an action.
 Draw :: (session: Session, props: Props, items: []CarouselItem,
-    state: *CarouselState) -> s32 {
+    state: *CarouselState, location := #caller_location) -> s32 {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     if items.count == 0 || props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return -1 }
     bounds := props.bounds
     scale := ifx props.scale > 0.0 then props.scale else 1.0

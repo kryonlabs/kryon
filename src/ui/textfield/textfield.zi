@@ -103,7 +103,9 @@ Theme :: #import "theme";
     // session_input=false to supply all keyboard input through Props.input.
     #program_export
     Bind :: (session: Session, state: *State, props: TextField.Props,
-        session_input: bool = true) -> BindingResult {
+        session_input: bool = true, location := #caller_location) -> BindingResult {
+        site := TreeCallSite(session, location)
+        defer { TreeCallSiteEnd(session, site) }
         bound: BindingResult = .{.node = -1}
         if state == null { return bound }
         props = TextField.StatePropsFor(state, props)
@@ -870,7 +872,9 @@ Theme :: #import "theme";
     // The field with its context menu: a click of the secondary button inside it
     // opens Cut, Copy, Paste, and Select all, working on the system clipboard, and
     // Cut, Copy, and Paste from the keyboard reach the system clipboard too.
-        Draw :: (session: Session, props: TextField.Props) -> Result {
+        Draw :: (session: Session, props: TextField.Props, location := #caller_location) -> Result {
+        site := TreeCallSite(session, location)
+        defer { TreeCallSiteEnd(session, site) }
         key: u64 = TextFieldKey(session, props)
         editable: bool = !props.read_only && !props.secure
         selection: TextSelectionRange = TextSelectionRangeForLength(props.anchor,

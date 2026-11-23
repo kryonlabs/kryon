@@ -95,7 +95,9 @@ ModalFrameTitleStart :: (layout: ModalFrameLayout, metrics: ModalMetrics,
 // open, the frame opens the panel's scope and reports `opened`; the caller
 // submits the content and Ends the scope. A frame whose dismissal or action
 // fired opens no scope, and its caller acts on the result instead.
-Draw :: (session: Session, props: Modal.Props) -> ModalFrameResult {
+Draw :: (session: Session, props: Modal.Props, location := #caller_location) -> ModalFrameResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: ModalFrameResult
     result.node = -1
     result.panel_node = -1

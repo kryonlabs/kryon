@@ -96,7 +96,9 @@ ToastLabelFace :: (class_name: s32, id: s32 = 0) -> StyleFrame {
 
 // The caller passes the previous result.state on every frame. A nonempty
 // props.message starts or replaces the toast; props.clear removes it.
-Draw :: (session: Session, props: PropsModule.Props) -> ToastResult {
+Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) -> ToastResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: ToastResult
     result.node = -1
     state: ToastState = props.state

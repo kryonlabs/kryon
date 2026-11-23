@@ -121,7 +121,9 @@ HoldButtonApply :: (state: *HoldButtonState, props: Props,
 }
 
 Draw :: (session: Session, props: Props,
-    state: *HoldButtonState) -> HoldButtonResult {
+    state: *HoldButtonState, location := #caller_location) -> HoldButtonResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     key := props.button.key
     if key == cast(u64)0 && props.button.id > 0 { key = cast(u64)cast(u32)props.button.id }
     previous: s32 = -1

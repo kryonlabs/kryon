@@ -54,7 +54,9 @@ Activate :: (props: PropsModule.Props, item: BreadcrumbItem, index: s32,
 #scope_export
 
 Draw :: (session: Session, props: PropsModule.Props,
-    items: []BreadcrumbItem) -> BreadcrumbResult {
+    items: []BreadcrumbItem, location := #caller_location) -> BreadcrumbResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result := BreadcrumbResult.{.node = -1, .activated_index = -1}
     count := cast(s32)items.count
     bounds := props.bounds

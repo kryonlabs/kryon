@@ -18,7 +18,9 @@ using Box :: #import "box_props";
     using WidgetKind;
 
     // A decorative surface that does not capture pointer or keyboard input.
-        Draw :: (session: Session, props: Box.Props) -> s32 {
+        Draw :: (session: Session, props: Box.Props, location := #caller_location) -> s32 {
+        site := TreeCallSite(session, location)
+        defer { TreeCallSiteEnd(session, site) }
         node: s32 = -1
         if TreeIsBuilding(session) {
             key := props.key

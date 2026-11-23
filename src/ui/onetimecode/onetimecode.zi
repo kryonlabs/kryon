@@ -201,7 +201,7 @@ OneTimeCodeHostedReply :: struct { state: OneTimeCodeState; result: OneTimeCodeR
     }
 } else {
         Draw :: (session: Session, props: Props,
-    state: *OneTimeCodeState) -> OneTimeCodeResult { return OneTimeCodeCore(session, props, state, true) }
+    state: *OneTimeCodeState, location := #caller_location) -> OneTimeCodeResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return OneTimeCodeCore(session, props, state, true) }
     #program_export
     OneTimeCodeCore :: (session: Session, props: Props,
     state: *OneTimeCodeState, effects: bool) -> OneTimeCodeResult {

@@ -113,7 +113,9 @@ Button :: #import "button";
     // A segment is a checked Button with the Segment style kind. Option keys
     // preserve identity when caller owned options move between rows or positions.
         Draw :: (session: Session, props: SegmentedControl.Props,
-        options: []SegmentedControl.SegmentOption) -> SegmentedControl.SegmentedControlResult {
+        options: []SegmentedControl.SegmentOption, location := #caller_location) -> SegmentedControl.SegmentedControlResult {
+        site := TreeCallSite(session, location)
+        defer { TreeCallSiteEnd(session, site) }
         result: SegmentedControl.SegmentedControlResult = .{.node = -1, .clicked_index = -1, .selected_index = -1}
         if props.has_selection { result.selected_index = props.selected_index }
         result.height = SegmentedControlHeight(session, props, options)

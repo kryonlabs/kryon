@@ -268,7 +268,9 @@ TimePickerRowHeight :: (bounds: Rectangle, scale: float32) -> float32 {
 // Escape, the field or a press outside it closes it. The picker keeps its
 // open state, keyboard column and scroll offsets on its retained nodes, so
 // a caller passes only the value and reads value and changed.
-Draw :: (session: Session, props: TimePicker.Props) -> TimePickerResult {
+Draw :: (session: Session, props: TimePicker.Props, location := #caller_location) -> TimePickerResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: TimePickerResult
     result.node = -1
     result.value = TimePickerClamp(props.value)

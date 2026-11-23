@@ -280,7 +280,7 @@ MoneyFieldHostedReply :: struct { state: MoneyFieldState; result: MoneyFieldResu
     }
 } else {
         Draw :: (session: Session, props: Props,
-    state: *MoneyFieldState) -> MoneyFieldResult { return MoneyFieldCore(session, props, state, true) }
+    state: *MoneyFieldState, location := #caller_location) -> MoneyFieldResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return MoneyFieldCore(session, props, state, true) }
     #program_export
     MoneyFieldCore :: (session: Session, props: Props,
     state: *MoneyFieldState, effects: bool) -> MoneyFieldResult {

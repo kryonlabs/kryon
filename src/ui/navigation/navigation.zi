@@ -356,7 +356,9 @@ DrawCompactNavigation :: (session: Session, props: PropsModule.Props,
 // Items are borrowed values. Each item owns a stable key when routes can
 // move. The result reports the activated route; the caller applies routing.
 Draw :: (session: Session, props: PropsModule.Props,
-    items: []NavigationBarItem) -> NavigationBarResult {
+    items: []NavigationBarItem, location := #caller_location) -> NavigationBarResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: NavigationBarResult = .{.node = -1, .clicked_index = -1, .clicked_route = -1,
         .closed_index = -1, .closed_route = -1, .drop_index = -1, .drag_route = -1}
     if props.compact { return DrawCompactNavigation(session, props, items, result) }

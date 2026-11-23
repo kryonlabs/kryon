@@ -18,11 +18,18 @@ NodeGeometry :: struct {
     TreePushScopeHostedHost :: (session: Session, index: s32) -> bool #foreign host_api;
     #program_export
     End :: (session: Session) -> bool { return EndHostedHost(session) }
+    // The host gives hosted widgets their identity; composed widgets that
+    // also build in hosted programs record nothing.
+    TreeCallSite :: (session: Session, location: Source_Code_Location) -> bool {
+        unused session; unused location; return false
+    }
+    TreeCallSiteEnd :: (session: Session, owned: bool) { unused session; unused owned }
     #program_export
     TreePushScope :: (session: Session, index: s32) -> bool {
         return TreePushScopeHostedHost(session, index)
     }
 } else {
+    #import "call_site"
     #import "semantic"
     #import "session"
     #import "widget_kind"
@@ -385,6 +392,8 @@ NodeGeometry :: struct {
         staged_identity_generation: u64
         identity_index_valid: bool
         identity_order_unchanged: bool
+        // The caller of the widget being drawn, for its unkeyed identity.
+        sites: CallSites
         building: bool
         error: FrameStatus
         // The widget that made the frame fail, so hosts can report it.
@@ -479,6 +488,27 @@ NodeGeometry :: struct {
         return true
     }
 
+    // A widget records its caller before it submits its first node, and
+    // ends the record when it returns: the outermost widget's caller names
+    // its first node, whatever the widget draws inside first.
+    TreeCallSite :: (session: Session, location: Source_Code_Location) -> bool {
+        if !SessionValid(session) { return false }
+        return CallSitesRecord(*trees[SessionIndex(session)].sites, location)
+    }
+
+    TreeCallSiteEnd :: (session: Session, owned: bool) {
+        if owned { trees[SessionIndex(session)].sites.pending = 0 }
+    }
+
+    // A parent's next unkeyed child: its caller's ordinal, or the next
+    // position for a node no widget call recorded (parts inside a widget).
+    TreeAutoOrdinal :: (slot: s32, parent_index: s32, consume: bool) -> s32 {
+        parent: *NodeCore = *trees[slot].submitted[parent_index]
+        sited := CallSiteOrdinal(*trees[slot].sites, parent.identity_generation, consume)
+        if sited != 0 { return sited }
+        return parent.next_auto_ordinal + 1
+    }
+
     TreeFindOld :: (session: Session, parent: u64, key: u64,
         kind: s32, auto_key: bool, auto_ordinal: s32) -> s32 {
         slot: s32 = SessionIndex(session)
@@ -512,7 +542,7 @@ NodeGeometry :: struct {
         auto_key: bool = key == cast(u64)0
         ordinal: s32 = 0
         if auto_key {
-            ordinal = parent.next_auto_ordinal + 1
+            ordinal = TreeAutoOrdinal(slot, parent_index, false)
             key = cast(u64)ordinal
         }
         return TreeFindOld(session, parent.identity_generation, key,
@@ -806,6 +836,7 @@ NodeGeometry :: struct {
     TreeStart :: (session: Session, screen_key: u64, bounds: Rectangle) {
         if !SessionValid(session) { return }
         slot: s32 = session.slot
+        CallSitesStart(*trees[slot].sites)
         VecClear(trees[slot].submitted)
         VecClear(trees[slot].submitted_semantics)
         VecClear(trees[slot].submitted_text)
@@ -961,11 +992,13 @@ NodeGeometry :: struct {
         }
         node: NodeCore = .{.key = key, .auto_key = key == cast(u64)0, .semantic_index = -1,
             .interaction_index = -1, .state_index = -1, .layout_index = -1}
+        // A widget's explicit key uses up its recorded caller.
+        if !node.auto_key { trees[slot].sites.pending = 0 }
         parent_generation: u64 = cast(u64)0
         if parent_index >= 0 {
             parent_generation = trees[slot].submitted[parent_index].identity_generation
             if node.auto_key {
-                node.auto_ordinal = trees[slot].submitted[parent_index].next_auto_ordinal + 1
+                node.auto_ordinal = TreeAutoOrdinal(slot, parent_index, true)
                 node.key = cast(u64)node.auto_ordinal
             }
             parent_clip: NodeCore = trees[slot].submitted[parent_index]
@@ -1070,7 +1103,7 @@ NodeGeometry :: struct {
             return -1
         }
         if parent_index >= 0 {
-            if node.auto_key {
+            if node.auto_key && node.auto_ordinal < CallSiteOrdinalBase {
                 trees[slot].submitted[parent_index].next_auto_ordinal =
                 node.auto_ordinal
             }
@@ -1370,11 +1403,15 @@ NodeGeometry :: struct {
         parent: s32 = TreeCurrentParent(session)
         if parent < 0 { return cast(u64)0 }
         slot: s32 = SessionIndex(session)
-        ordinal: s32 = 1
-        last: s32 = trees[slot].submitted[parent].last_child
-        if last >= 0 { ordinal = trees[slot].submitted[last].sibling_ordinal + 1 }
-        return TreeIdentityHash(trees[slot].submitted[parent].identity_generation,
-            cast(u64)ordinal, 2147483647)
+        generation := trees[slot].submitted[parent].identity_generation
+        // A widget's caller names the key it keeps its state under.
+        ordinal := CallSiteOrdinal(*trees[slot].sites, generation, true)
+        if ordinal == 0 {
+            ordinal = 1
+            last: s32 = trees[slot].submitted[parent].last_child
+            if last >= 0 { ordinal = trees[slot].submitted[last].sibling_ordinal + 1 }
+        }
+        return TreeIdentityHash(generation, cast(u64)ordinal, 2147483647)
     }
     #program_export
     TreeRootBounds :: (session: Session) -> Rectangle {

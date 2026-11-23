@@ -177,7 +177,9 @@ PaintConfirmFace :: (session: Session, node: s32, props: Button.Props,
 
 #scope_export
 Draw :: (session: Session, props: Props,
-    state: *ConfirmButtonState) -> ConfirmButtonResult {
+    state: *ConfirmButtonState, location := #caller_location) -> ConfirmButtonResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     idle := props.button
     armed := ConfirmFace(props)
     if idle.label == "" { idle.label = "Confirm" }

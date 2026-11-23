@@ -1,3 +1,4 @@
+#import "tree"
 Shape :: #import "shape";
 Box :: #import "box";
 Image :: #import "image";
@@ -89,7 +90,9 @@ LoadingScreenColor :: (token: string, fallback: Color) -> Color {
     }
 }
 
-Draw :: (session: Session, props: Props) {
+Draw :: (session: Session, props: Props, location := #caller_location) {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     layout := LoadingScreenLayoutFor(props.bounds, props.scale)
     scale := layout.scale
     if scale <= 0.0 {

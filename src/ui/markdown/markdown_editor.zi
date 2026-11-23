@@ -1,5 +1,6 @@
 // Inner Breeze Diary's editor, shared without its storage or media services.
 // The active lines show Markdown syntax; other lines show the formatted text.
+#import "tree"
 Preview :: #import "kryon/markdown_preview";
 TextArea :: #import "kryon/text_area";
 #import "kryon/session"
@@ -28,7 +29,9 @@ workspace: Workspace;
 
 // No shadow document or conversion step is involved: edits address the
 // original Markdown bytes. Every range is consumed by TextArea in this call.
-Draw :: (session: Session, props: Props) -> TextArea.Result {
+Draw :: (session: Session, props: Props, location := #caller_location) -> TextArea.Result {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     area := props.area
     Preview.Scan(*workspace.preview, area.value, area.cursor, area.anchor,
         area.focused && !area.read_only, props.images)

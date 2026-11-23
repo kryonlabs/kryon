@@ -129,7 +129,7 @@ WIDGET_NOOP_BINDINGS = \
 	--bind kryon/paint_queue:RasterImage=ziran_widget_noop_host:RasterImage \
 	--bind kryon/image_raster:ImageWidth=ziran_widget_noop_host:ImageWidth \
 	--bind kryon/image_raster:ImageHeight=ziran_widget_noop_host:ImageHeight
-BUDGET_TEST_BINDINGS = $(WIDGET_NOOP_BINDINGS) \
+HEADLESS_WIDGET_BINDINGS = $(WIDGET_NOOP_BINDINGS) \
 	--bind kryon/raster_triangles:RasterTriangles=ziran_mesh_noop_host:NoopRasterTriangles
 MARKDOWN_TEST_BINDINGS = $(WIDGET_NOOP_BINDINGS) \
 	--bind kryon/system_clipboard:SystemClipboardOpenHost=system_clipboard_host:SystemClipboardOpenHost \
@@ -450,10 +450,19 @@ test: new-widgets-test
 .PHONY: budget-test
 budget-test: build/bin/kryon
 	@rm -rf build/test/budget build/test/budget-c
-	$(ZIRAN_BIN) build --project --module-path $(CURDIR)/tests $(BUDGET_TEST_BINDINGS) --target=c \
+	$(ZIRAN_BIN) build --project --module-path $(CURDIR)/tests $(HEADLESS_WIDGET_BINDINGS) --target=c \
 		--root $(CURDIR)/tests --entry budget_test:Main --exe -o build/test/budget-c $(CURDIR)/tests/budget_test.zi
 	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_BIN="$(ZIRAN_BIN)" build/test/budget-c/budget_test
 test: budget-test
+
+# Unkeyed widgets keep their identity by call site, not by sibling position.
+.PHONY: call-site-test
+call-site-test:
+	@rm -rf build/test/call-site-c
+	$(ZIRAN_BIN) build --project --module-path $(CURDIR)/tests $(HEADLESS_WIDGET_BINDINGS) --target=c \
+		--root $(CURDIR)/tests --entry call_site_test:Main --exe -o build/test/call-site-c $(CURDIR)/tests/call_site_test.zi
+	@build/test/call-site-c/call_site_test
+test: call-site-test
 
 # Every supported target -- C, Go, and the portable runner --
 # renders each template and example on the headless pixmap host, and every

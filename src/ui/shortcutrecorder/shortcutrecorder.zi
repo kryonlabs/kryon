@@ -170,7 +170,7 @@ ShortcutRecorderHostedReply :: struct { state: ShortcutRecorderState; result: Sh
 } else {
         Draw :: (session: Session,
     props: Props,
-    state: *ShortcutRecorderState) -> ShortcutRecorderResult { return ShortcutRecorderCore(session, props, state, true) }
+    state: *ShortcutRecorderState, location := #caller_location) -> ShortcutRecorderResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return ShortcutRecorderCore(session, props, state, true) }
     #program_export
     ShortcutRecorderCore :: (session: Session,
     props: Props,

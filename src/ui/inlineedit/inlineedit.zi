@@ -166,7 +166,7 @@ InlineEditHostedReply :: struct { state: InlineEditState; result: InlineEditResu
     }
 } else {
         Draw :: (session: Session, props: Props,
-    state: *InlineEditState) -> InlineEditResult { return InlineEditCore(session, props, state, true) }
+    state: *InlineEditState, location := #caller_location) -> InlineEditResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return InlineEditCore(session, props, state, true) }
     #program_export
     InlineEditCore :: (session: Session, props: Props,
     state: *InlineEditState, effects: bool) -> InlineEditResult {

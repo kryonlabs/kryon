@@ -207,7 +207,9 @@ ToggleMinimumSize :: (props: Toggle.Props) -> Vector2 {
 
 // The caller retains the value returned here and supplies it on the next
 // frame. Pointer activation is consumed from the previous committed tree.
-Draw :: (session: Session, props: Toggle.Props) -> Toggle.ToggleValueResult {
+Draw :: (session: Session, props: Toggle.Props, location := #caller_location) -> Toggle.ToggleValueResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
     previous: s32 = -1

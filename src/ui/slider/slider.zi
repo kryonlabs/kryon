@@ -276,7 +276,9 @@ using Slider :: #import "slider_props";
 
     // The caller stores the proposed value for the next frame. Multiple values
     // are ordinary compositions of this scalar control and SliderCellBoundsFor.
-        Draw :: (session: Session, props: Slider.Props) -> Slider.SliderStep {
+        Draw :: (session: Session, props: Slider.Props, location := #caller_location) -> Slider.SliderStep {
+        site := TreeCallSite(session, location)
+        defer { TreeCallSiteEnd(session, site) }
         prepared: SliderPrepared = PrepareSlider(session, props.key, props.bounds,
             props.id, props.label, props.value_text, props.vertical,
             props.disabled, props.class_name)
@@ -296,7 +298,9 @@ using Slider :: #import "slider_props";
     }
 
     #program_export
-    DiscreteSlider :: (session: Session, props: Slider.DiscreteSliderProps) -> Slider.SliderDiscreteStep {
+    DiscreteSlider :: (session: Session, props: Slider.DiscreteSliderProps, location := #caller_location) -> Slider.SliderDiscreteStep {
+        site := TreeCallSite(session, location)
+        defer { TreeCallSiteEnd(session, site) }
         prepared: SliderPrepared = PrepareSlider(session, props.key, props.bounds,
             props.id, props.label, props.value_text, props.vertical,
             props.disabled, props.class_name)

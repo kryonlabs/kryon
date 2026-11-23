@@ -344,7 +344,9 @@ ListBoxViewFinish :: (session: Session, view: ListBoxViewState,
 // Selection and scroll are returned as values. Rows keep identity through
 // their keys and use the same retained pointer routing as other controls.
 Draw :: (session: Session, props: PropsModule.Props,
-    items: []ListBoxItem) -> ListBoxResult {
+    items: []ListBoxItem, location := #caller_location) -> ListBoxResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: ListBoxResult = .{.node = -1, .selected_index = props.selected_index,
         .scroll_offset = props.scroll_offset}
     view: ListBoxViewState = ListBoxViewStart(session,

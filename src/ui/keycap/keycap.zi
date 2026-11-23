@@ -84,7 +84,9 @@ KeycapPart :: (value: string, face: StyleData, font: s32) -> float32 {
     return width
 }
 
-Draw :: (session: Session, props: Props) -> KeycapResult {
+Draw :: (session: Session, props: Props, location := #caller_location) -> KeycapResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: KeycapResult
     result.node = -1
     state := cast(s32)ButtonStateNormal

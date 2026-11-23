@@ -106,7 +106,9 @@ ColorPickerSliderBounds :: (row: Rectangle, thumb_radius: float32,
 
 // A zero key uses the containing tree's next key; child sliders use stable
 // per-channel keys. The returned values belong to the caller's next frame.
-Draw :: (session: Session, props: PropsModule.Props) -> ColorPickerResult {
+Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) -> ColorPickerResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: ColorPickerResult
     result.node = -1
     index: s32 = 0

@@ -104,7 +104,9 @@ ReorderAutoScroll :: (list: PropsModule.Props, pointer_y: s32) -> s32 {
 // Each handle is an ordinary retained Button. Kryon owns the gesture and
 // returns a route independent move; the caller applies it to its data.
 Draw :: (session: Session, list: PropsModule.Props,
-    items: []ReorderItem) -> ReorderListResult {
+    items: []ReorderItem, location := #caller_location) -> ReorderListResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: ReorderListResult = ReorderListResultDefault(0)
     result.scroll_offset = list.scroll_offset
     if !SessionValid(session) || list.id == 0 ||

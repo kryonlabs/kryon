@@ -1,5 +1,6 @@
 // A wrapping row: children keep their widths, wrap onto new lines and the
 // flow sizes to its lines. Draw children with no x or y; it places them.
+#import "tree"
 Layout :: #import "layout";
 #import "session"
 #import "geometry"
@@ -20,7 +21,9 @@ FlowResult :: struct {
     padding: s32
 }
 
-Draw :: (session: Session, props: Props) -> FlowResult {
+Draw :: (session: Session, props: Props, location := #caller_location) -> FlowResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     container: Layout.LayoutContainer = Layout.Flow(session, Layout.Props.{.bounds = props.bounds,
         .gap = props.gap, .padding = props.padding, .key = props.key})
     return FlowResult.{.node = container.node, .opened = container.opened,

@@ -1,3 +1,4 @@
+#import "tree"
 using PropsModule :: #import "card_props";
 Box :: #import "box";
 Button :: #import "button";
@@ -12,7 +13,9 @@ using BehaviorModule :: #import "card_behavior";
 Theme :: #import "theme";
 
 // Composed from existing host capabilities; portable apps need no new effect.
-Draw :: (session: Session, props: PropsModule.Props) -> CardResult {
+Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) -> CardResult {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
     result: CardResult
     result.content = CardContentBounds(props.bounds)
     if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result }

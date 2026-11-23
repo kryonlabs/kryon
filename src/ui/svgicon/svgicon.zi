@@ -1,3 +1,4 @@
+#import "tree"
 using SvgIcon :: #import "svg_icon_props";
 // A vector icon on its own, such as a symbol beside a name or a coin beside
 // an amount, in a color of the caller's. It takes no input; an icon that
@@ -12,7 +13,9 @@ using SvgIcon :: #import "svg_icon_props";
     #import "session"
     #import "svg_icon_behavior"
 
-        Draw :: (session: Session, props: SvgIcon.Props) {
+        Draw :: (session: Session, props: SvgIcon.Props, location := #caller_location) {
+        site := TreeCallSite(session, location)
+        defer { TreeCallSiteEnd(session, site) }
         PaintSvgIcon(session, -1, props.shape, props.bounds, props.color)
     }
 }

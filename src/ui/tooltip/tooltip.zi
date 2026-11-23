@@ -119,7 +119,7 @@ TooltipHostedReply :: struct {
 } else {
     #import "paint_queue"
         Draw :: (session: Session, props: Tooltip.Props,
-    state: *TooltipState) -> TooltipResult { return TooltipCore(session, props, state, true) }
+    state: *TooltipState, location := #caller_location) -> TooltipResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return TooltipCore(session, props, state, true) }
     #program_export
 TooltipCore :: (session: Session, props: Tooltip.Props,
     state: *TooltipState, effects: bool) -> TooltipResult {
