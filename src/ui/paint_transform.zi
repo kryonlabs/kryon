@@ -33,7 +33,7 @@ TransformEntry :: struct {
     origin: Vector2
     origin_percent_x: bool
     origin_percent_y: bool
-    values: [8]float32
+    values: [10]float32
 }
 
 TransformNodeLimit :: 32
@@ -50,8 +50,8 @@ TransformFrame :: struct {
 
 // The easing of one node's values from where they were to their target.
 TransformRow :: struct {
-    from: [8]float32
-    target: [8]float32
+    from: [10]float32
+    target: [10]float32
     started: float64
     seconds: float64
     timing: Motion.Timing
@@ -68,7 +68,7 @@ TransformAbs :: (value: float32) -> float32 {
     return ifx value < 0.0 then -value else value
 }
 
-TransformSample :: (row: *TransformRow, now: float64) -> [8]float32 {
+TransformSample :: (row: *TransformRow, now: float64) -> [10]float32 {
     if !row.running { return row.target }
     progress: float32 = 1.0
     if row.seconds > 0.0 { progress = cast(float32)((now - row.started) / row.seconds) }
@@ -78,14 +78,14 @@ TransformSample :: (row: *TransformRow, now: float64) -> [8]float32 {
     }
     if progress < 0.0 { progress = 0.0 }
     eased := Motion.Progress(row.timing, progress)
-    result: [8]float32
-    for index: 0..7 { result[index] = row.from[index] + (row.target[index] - row.from[index]) * eased }
+    result: [10]float32
+    for index: 0..9 { result[index] = row.from[index] + (row.target[index] - row.from[index]) * eased }
     return result
 }
 
 // The values to paint this frame: the target, or a point on the way to it
 // while the node's transition runs.
-TransformEase :: (session: Session, node: s32, value: NodeTransform) -> [8]float32 {
+TransformEase :: (session: Session, node: s32, value: NodeTransform) -> [10]float32 {
     target := value.values
     identity := TreeSubmittedIdentity(session, node)
     if identity == 0 { return target }
@@ -98,7 +98,7 @@ TransformEase :: (session: Session, node: s32, value: NodeTransform) -> [8]float
     if MotionHistoryRead(history, identity, *row) {
         current = TransformSample(*row, now)
         changed := false
-        for index: 0..7 {
+        for index: 0..9 {
             if row.target[index] != target[index] { changed = true }
         }
         if changed {
@@ -128,7 +128,7 @@ PaintTransformSet :: (session: Session, node: s32, value: NodeTransform) {
     frame := *transform_frames[SessionIndex(session)]
     values := TransformEase(session, node, value)
     if values[0] == 0.0 && values[1] == 0.0 && values[2] == 0.0 && values[3] == 1.0 && values[4] == 1.0 &&
-        values[5] == 0.0 && values[6] == 1.0 && values[7] == 1.0 { return }
+        values[5] == 0.0 && values[6] == 1.0 && values[7] == 1.0 && values[8] == 0.0 && values[9] == 0.0 { return }
     if frame.count >= TransformNodeLimit { return }
     if frame.count == 0 || node < frame.first { frame.first = node }
     frame.entries[frame.count] = .{.node = node, .origin = value.origin,
@@ -180,6 +180,9 @@ TransformNodeMatrix :: (session: Session, entry: TransformEntry) -> TransformMap
     // About the origin: bring it to zero, map, and bring it back.
     map.matrix.tx += ox - (map.matrix.a * ox + map.matrix.c * oy)
     map.matrix.ty += oy - (map.matrix.b * ox + map.matrix.d * oy)
+    // The translate property moves the result; the origin does not matter.
+    map.matrix.tx += entry.values[8]
+    map.matrix.ty += entry.values[9]
     return map
 }
 
@@ -342,7 +345,7 @@ TransformNodes :: (session: Session) {
             *box, cast(u32)StyleBoxTransformFields)
         if (box.fields & cast(u32)StyleBoxTransformFields) == 0 { continue }
         value: NodeTransform
-        value.values = float32.[0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0]
+        value.values = float32.[0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0]
         if (box.fields & cast(u32)StyleBoxTransform) != 0 {
             for part: 0..4 { value.values[part] = box.transform[part] }
         }
@@ -350,6 +353,10 @@ TransformNodes :: (session: Session) {
         if (box.fields & cast(u32)StyleBoxScale) != 0 {
             value.values[6] = box.scale[0]
             value.values[7] = box.scale[1]
+        }
+        if (box.fields & cast(u32)StyleBoxTranslate) != 0 {
+            value.values[8] = box.translate[0]
+            value.values[9] = box.translate[1]
         }
         value.origin = .{50.0, 50.0}
         value.origin_percent_x = true

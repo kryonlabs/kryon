@@ -439,13 +439,15 @@ StyleBoxField :: enum {
     // corner, stops and middle colors (the face holds the first and last).
     StyleBoxGradient :: 524288
     // CSS transform, the rotate and scale properties, the transform origin
-    // on each axis, and the transition a change of them eases over.
+    // on each axis, the transition a change of them eases over, and the
+    // translate property.
     StyleBoxTransform :: 1048576
     StyleBoxRotate :: 2097152
     StyleBoxScale :: 4194304
     StyleBoxOriginX :: 8388608
     StyleBoxOriginY :: 16777216
     StyleBoxTransformMotion :: 33554432
+    StyleBoxTranslate :: 67108864
 }
 using StyleBoxField;
 
@@ -485,7 +487,7 @@ StyleBoxData :: struct {
     gradient_colors: [4]u32
     // `transform` as a translation, a rotation in degrees and an x and y
     // scale, applied to a point scale first; then the `rotate` and `scale`
-    // properties. The origin is in logical pixels, or with its percent bit
+    // properties, then the `translate` property's x and y. The origin is in logical pixels, or with its percent bit
     // a percentage of the box (50% of each side when unset). The paint
     // transform pass (paint_transform) reads these for each node; layout
     // never does.
@@ -497,14 +499,15 @@ StyleBoxData :: struct {
     // cubic-bezier curve, in hundredths; all zero is linear.
     transform_seconds: float32
     transform_timing: [4]u8
+    translate: [2]float32
 }
 
 // Every box field but text-align, which only Text reads.
 StyleBoxContainerFields :: 655343
-// Transform, rotate, scale, their origin and their transition; then only
-// the three that set a transform.
-StyleBoxTransformFields :: 66060288
-StyleBoxTransformSets :: 7340032
+// Transform, rotate, scale, translate, their origin and their transition;
+// then only the four that set a transform.
+StyleBoxTransformFields :: 133169152
+StyleBoxTransformSets :: 74448896
 // The per-side border widths and colors.
 StyleBoxBorderSides :: 130560
 StyleBoxOutlineFields :: 393216
@@ -1347,6 +1350,7 @@ ApplyBoxFields :: (target: *StyleBoxData, value: *StyleBoxData, fields: u32) {
         if (fields & cast(u32)StyleBoxTransform) != 0 { target.transform = value.transform }
         if (fields & cast(u32)StyleBoxRotate) != 0 { target.rotate = value.rotate }
         if (fields & cast(u32)StyleBoxScale) != 0 { target.scale = value.scale }
+        if (fields & cast(u32)StyleBoxTranslate) != 0 { target.translate = value.translate }
         if (fields & cast(u32)StyleBoxOriginX) != 0 { target.transform_origin[0] = value.transform_origin[0] }
         if (fields & cast(u32)StyleBoxOriginY) != 0 { target.transform_origin[1] = value.transform_origin[1] }
         if (fields & cast(u32)StyleBoxTransformMotion) != 0 {

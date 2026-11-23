@@ -22,11 +22,11 @@ PaintMatrix :: struct {
 // A node's CSS transform about its origin. `values` holds the translation,
 // rotation (degrees) and x and y scale of `transform`, applied to a point
 // scale first, then the rotation and x and y scale of the `rotate` and
-// `scale` properties. A percent origin is a percentage of the node's box.
+// `scale` properties, then the x and y of the `translate` property. A percent origin is a percentage of the node's box.
 // With `seconds` above zero a change of values eases over that time along
 // the cubic-bezier `timing` (all zero is linear).
 NodeTransform :: struct {
-    values: [8]float32
+    values: [10]float32
     origin: Vector2
     origin_percent_x: bool
     origin_percent_y: bool
