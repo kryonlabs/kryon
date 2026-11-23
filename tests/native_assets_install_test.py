@@ -71,6 +71,9 @@ icon_name = "system-file-manager"
     def run(*args, cwd=project):
         subprocess.run([str(arg) for arg in args], cwd=cwd, env=env, check=True)
 
+    # The project is written fresh each run: a lock left by an earlier
+    # toolchain would hold checked packages this toolchain refuses.
+    (project / 'ziran.lock').unlink(missing_ok=True)
     run(ZIRAN, 'lock')
     run(ZIRAN, 'tool', 'kryon', 'build', '--profile', 'desktop')
     program = project / 'build/asset_probe-desktop'
