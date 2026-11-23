@@ -20,14 +20,16 @@ def positive_int(value):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--jobs", type=positive_int, default=4)
-    parser.add_argument("--filter", default="", help="part of a test script name")
+    parser.add_argument("--filter", default="",
+                        help="part of a test script name; several, comma-separated, select any")
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parent.parent
     tests = sorted(repo.glob("tests/ziran_*_test.sh"))
     if args.filter:
-        tests = [test for test in tests if args.filter in test.stem]
+        parts = [part for part in args.filter.split(",") if part]
+        tests = [test for test in tests if any(part in test.stem for part in parts)]
     if not tests:
         parser.error(f"no Ziran tests match {args.filter!r}")
     if args.list:

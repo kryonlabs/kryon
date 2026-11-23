@@ -159,6 +159,13 @@ behavior-tests: $(HOST_REGISTRY)/kryon-desktop.host
 		ZIRAN_INCLUDE="$(abspath $(ZIRAN_DIR))/include" \
 		python3 tools/run-ziran-tests.py --jobs "$(TEST_JOBS)" --filter "$(TEST)"
 
+# Quick feedback for widget, layout and starter work: the behavior areas that
+# change with them, the identity tree, and the starter's pin and build checks.
+.PHONY: test-fast
+test-fast:
+	@$(MAKE) --no-print-directory ziran-test TEST=widget,layout TEST_JOBS="$(TEST_JOBS)"
+	@$(MAKE) --no-print-directory widget-tree-test toolchain-pin-test templates-test
+
 # Run one behavior area without regenerating every UI module and target.
 test-focus:
 	@test -n "$(TEST)" || { echo 'usage: make test-focus TEST=link_widget' >&2; exit 2; }
@@ -221,8 +228,6 @@ renderer-artifact-test: build/bin/kryon
 include mk/zx-canvas.mk
 include mk/codecs.mk
 
-# Injected graphics hosts still link the production WebP and AVIF native ABIs.
-ziran-test behavior-tests: $(WEBP_A) $(AVIF_A) $(AOM_A)
 $(ZX_CANVAS_GENERATED)/.complete: | project-toolchain
 zx-reload-test: zx-player
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \

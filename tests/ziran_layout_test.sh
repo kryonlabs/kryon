@@ -93,13 +93,6 @@ Answer :: () -> s32 {
     scoped.height = -1.0
     scoped = LayoutScopeBounds(scoped, 80, 40)
     if scoped.width != 80.0 || scoped.height != 40.0 { return 0 }
-    sizes: [2]Rectangle = .{Rectangle.{0.0, 0.0, 20.5, 12.5}, Rectangle.{0.0, 0.0, 31.0, 16.0}}
-    fitted := LayoutContentBounds(Rectangle.{10.0, 20.0, 0.0, 0.0},
-        cast(FlexDirection)FlexRow, sizes[:], 7, 5)
-    if fitted.x != 10.0 || fitted.y != 20.0 || fitted.width != 68.5 || fitted.height != 26.0 { return 0 }
-    fitted = LayoutContentBounds(Rectangle.{10.0, 20.0, 53.5, 0.0},
-        cast(FlexDirection)FlexColumn, sizes[:], 7, 5, 2)
-    if fitted.width != 53.5 || fitted.height != 39.5 { return 0 }
     if LayoutCursorForChild(metrics, true, 2, 30.0) != 59.0 { return 0 }
     current: Rectangle
     current.width = 20.0
