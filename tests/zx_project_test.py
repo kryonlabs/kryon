@@ -177,9 +177,11 @@ backend = "desktop"
     assert png_pixels(portable_vm) == png, "portable VM rendering differs"
     # Install a reusable package provider, then discover it through XDG data.
     runtime_prefix = OUTPUT / "runtime install with spaces"
+    shutil.rmtree(runtime_prefix, ignore_errors=True)
     run(["make", "install-user", "PREFIX=" + str(runtime_prefix)], ROOT, env)
     registration = runtime_prefix / "share/ziran/hosts/kryon-desktop.host"
-    assert registration.read_text() == f"{runtime_prefix / 'bin/zx'}\nziran {IDENTITY}\n", registration.read_text()
+    assert registration.read_text() == f"{runtime_prefix / 'lib/kryon/zx-desktop'}\nziran {IDENTITY}\n", registration.read_text()
+    assert not (runtime_prefix / "bin/zx").exists(), "Kryon installed over Ziran's zx runner"
     installed_runtime = OUTPUT / "runtime-installed.png"
     run(["xvfb-run", "-a", ZIRAN, "run", downloaded], ROOT,
         {**env, "ZIRAN_HOST_PATH": "", "XDG_DATA_HOME": str(runtime_prefix / "share"),

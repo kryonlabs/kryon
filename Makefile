@@ -448,7 +448,7 @@ new-widgets-test:
 		"$(ZIRAN_BIN)" run --target=c tests/new_widgets_test.zi
 test: new-widgets-test
 
-# The starter's portable bundle and the work of a 1,000-row list stay within
+# The starter's binary size and the work of a 1,000-row list stay within
 # their recorded budgets: counts, never timings.
 .PHONY: budget-test
 budget-test: build/bin/kryon
@@ -512,15 +512,16 @@ install-user: build/bin/kryon zx-player zx-window-host
 	mkdir -p "$(PREFIX)/bin"
 	cp build/bin/kryon "$(PREFIX)/bin/kryon.new"
 	mv -f "$(PREFIX)/bin/kryon.new" "$(PREFIX)/bin/kryon"
-	cp build/bin/zx "$(PREFIX)/bin/zx.new"
-	mv -f "$(PREFIX)/bin/zx.new" "$(PREFIX)/bin/zx"
+	@# `zx` is Ziran's generic runner; this provider serves `ziran run` and stays off PATH.
 	mkdir -p "$(PREFIX)/lib/kryon"
+	cp $(PLAYER) "$(PREFIX)/lib/kryon/zx-desktop.new"
+	mv -f "$(PREFIX)/lib/kryon/zx-desktop.new" "$(PREFIX)/lib/kryon/zx-desktop"
 	cp $(WINDOW_HOST) "$(PREFIX)/lib/kryon/libkryon-desktop.so.new"
 	mv -f "$(PREFIX)/lib/kryon/libkryon-desktop.so.new" "$(PREFIX)/lib/kryon/libkryon-desktop.so"
 	mkdir -p "$(PREFIX)/share/ziran/hosts"
-	@provider=$$(CDPATH= cd -- "$(PREFIX)/bin" && pwd -P) && \
+	@provider=$$(CDPATH= cd -- "$(PREFIX)/lib/kryon" && pwd -P) && \
 		identity=$$("$(ZIRAN_BIN)" version --identity) && \
-		printf '%s/zx\nziran %s\n' "$$provider" "$$identity" > "$(PREFIX)/share/ziran/hosts/kryon-desktop.host.new"
+		printf '%s/zx-desktop\nziran %s\n' "$$provider" "$$identity" > "$(PREFIX)/share/ziran/hosts/kryon-desktop.host.new"
 	mv -f "$(PREFIX)/share/ziran/hosts/kryon-desktop.host.new" "$(PREFIX)/share/ziran/hosts/kryon-desktop.host"
 	@library=$$(CDPATH= cd -- "$(PREFIX)/lib/kryon" && pwd -P) && \
 		printf '%s/libkryon-desktop.so\n' "$$library" > "$(PREFIX)/share/ziran/hosts/kryon-desktop.library.new"
@@ -1152,15 +1153,15 @@ android-surface-platform-test: project-toolchain
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS python3 tests/android_surface_platform_test.py
 test: android-surface-platform-test
 
-.PHONY: android-egl-composition-test
-android-egl-composition-test: project-toolchain
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/android_egl_composition_test.sh
-test: android-egl-composition-test
-
 .PHONY: android-source-generation-test
 android-source-generation-test: project-toolchain
 	@python3 tests/android_source_generation_test.py
 test: android-source-generation-test
+
+.PHONY: android-egl-composition-test
+android-egl-composition-test: project-toolchain
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/android_egl_composition_test.sh
+test: android-egl-composition-test
 
 .PHONY: widget-import-order-test
 widget-import-order-test: project-toolchain
@@ -1225,6 +1226,9 @@ test: android-process-test
 
 android-runtime-test: project-toolchain
 	@sh tests/ziran_android_runtime_test.sh
+.PHONY: android-frame-watch-test
+android-frame-watch-test: project-toolchain
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/android_frame_watch_test.sh $(if $(ANDROID_TEST_SERIAL),"$(ANDROID_TEST_SERIAL)")
 pixmap-camera-test: project-toolchain
 	@sh tests/pixmap_camera_test.sh
 android-image-services-test: project-toolchain codec-archives
