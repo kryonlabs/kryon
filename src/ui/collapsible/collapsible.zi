@@ -174,8 +174,9 @@ Draw :: (session: Session, props: PropsModule.Props,
     if scale <= 0.0 { scale = 1.0 }
     metrics: CollapsibleMetrics = CollapsibleMetricsFor(scale,
         face, tree_face, close_face)
+    // A placing column fills an unset width; otherwise it spans its parent.
     bounds: Rectangle = props.bounds
-    if bounds.width <= 0.0 {
+    if bounds.width <= 0.0 && !TreeWillPlace(session, bounds) {
         bounds.width = TreeCurrentParentBounds(session).width
     }
     layout: CollapsibleLayout = CollapsibleLayoutFor(bounds,
@@ -184,9 +185,12 @@ Draw :: (session: Session, props: PropsModule.Props,
         result.node = TreeSubmitCurrent(session, key,
             WidgetKindCollapsible, layout.header)
         if result.node < 0 { return result }
+        // It lays itself out and paints where it was placed.
+        TreeAdoptPlacement(session, result.node)
         submitted: Rectangle = TreeSubmittedNodeAt(session, result.node).bounds
         bounds.x += submitted.x - layout.header.x
         bounds.y += submitted.y - layout.header.y
+        if bounds.width <= 0.0 { bounds.width = submitted.width }
         layout = CollapsibleLayoutFor(bounds, props.tree, props.depth,
             props.closable, metrics)
         TreeSetInteractive(session, result.node, props.disabled,

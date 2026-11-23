@@ -34,8 +34,10 @@ using Scroll :: #import "scroll_props";
         result: Scroll.ScrollResult
         result.node = -1
         result.viewport = props.bounds
+        // A placing column fills an unset width; otherwise the view spans
+        // its parent.
         parent: Rectangle = TreeCurrentParentBounds(session)
-        if result.viewport.width <= 0.0 {
+        if result.viewport.width <= 0.0 && !TreeWillPlace(session, props.bounds) {
             result.viewport.width = parent.width
         }
         if result.viewport.height <= 0.0 {
@@ -51,6 +53,8 @@ using Scroll :: #import "scroll_props";
             if result.node < 0 { return result }
             TreeSetStyleClass(session, result.node, props.class_name)
             TreeSetStyleId(session, result.node, props.id)
+            // Its scrollbar and content go where it was placed.
+            TreeAdoptPlacement(session, result.node)
             result.viewport = TreeSubmittedNodeAt(session, result.node).bounds
         }
         if !props.input.enabled && ScrollDeviceSampled(session) {

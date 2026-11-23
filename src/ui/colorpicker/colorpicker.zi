@@ -116,11 +116,13 @@ Draw :: (session: Session, props: PropsModule.Props, location := #caller_locatio
         result.values[index] = props.values[index]
         index += 1
     }
+    // A placing column fills an unset width; otherwise it spans its parent.
     bounds: Rectangle = props.bounds
     parent: Rectangle = TreeCurrentParentBounds(session)
-    if bounds.width <= 0.0 { bounds.width = parent.width }
+    placing := TreeWillPlace(session, bounds)
+    if bounds.width <= 0.0 && !placing { bounds.width = parent.width }
     if bounds.height <= 0.0 { bounds.height = parent.height }
-    if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
+    if bounds.height <= 0.0 || (bounds.width <= 0.0 && !placing) { return result }
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
     if key == cast(u64)0 { key = TreeNextKey(session) }
@@ -130,6 +132,8 @@ Draw :: (session: Session, props: PropsModule.Props, location := #caller_locatio
         if result.node < 0 { return result }
         TreeSetStyleClass(session, result.node, props.class_name)
         TreeSetStyleId(session, result.node, props.id)
+        // Its channels and swatch go where it was placed.
+        TreeAdoptPlacement(session, result.node)
         bounds = TreeSubmittedNodeAt(session, result.node).bounds
         if !TreePushScope(session, result.node) { return result }
     }

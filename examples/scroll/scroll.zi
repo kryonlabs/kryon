@@ -5,6 +5,7 @@
 Box :: #import "kryon/box";
 Scroll :: #import "kryon/scroll";
 Text :: #import "kryon/text";
+Layout :: #import "kryon/layout";
 #import "kryon/drawing_props"
 #import "kryon/tree"
 #import "kryon/system_theme"
@@ -37,19 +38,19 @@ SetGalleryViewport :: (view: Rectangle, live: bool, now: float32, reduced_motion
 
 scroll: s32;
 
-b: Rectangle;
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text.Draw(session, Text.Props.{.bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Scroll", .size = 23})
-    b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
+        .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
+    if !page.opened { return 0 }
+    Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Scroll", .size = 23})
     disabled := example_input.disabled
 
-    b.height = 188.0
-    result := Scroll.Draw(session, Scroll.Props.{.bounds = b, .content_height = 420, .scroll_offset = scroll})
+    result := Scroll.Draw(session, Scroll.Props.{.bounds = .{height = 188}, .content_height = 420, .scroll_offset = scroll})
     scroll = result.scroll_offset
     if result.opened {
         for row: 0..9 {
@@ -57,6 +58,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         }
         unused End(session)
     }
+    unused End(session)
     return 0
 }
 
