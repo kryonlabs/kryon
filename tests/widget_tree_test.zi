@@ -5,9 +5,11 @@
 // and an avatar's own state key follows its caller too. A slider whose
 // column fills its width spans the column and maps a drag where it was
 // placed, and a keycap placed ahead submits its node at the placed rect.
+// A card spaces its children by the theme's Space2 unless CSS sets a gap.
 // Run from the Kryon root: make widget-tree-test.
 Avatar :: #import "kryon/avatar";
 Button :: #import "kryon/button";
+Card :: #import "kryon/card";
 Checkbox :: #import "kryon/checkbox";
 Chip :: #import "kryon/chip";
 // The headless bindings also cover pictures, so the test links them.
@@ -101,6 +103,31 @@ SliderFrame :: () -> Rectangle {
     return placed
 }
 
+// The gap between a card's two text children.
+CardGap :: () -> float32 {
+    session := TestSession()
+    TreeStart(session, cast(u64)3, Rectangle.{0.0, 0.0, 400.0, 300.0})
+    column := Layout.Draw(session, Layout.Props.{.bounds = .{0.0, 0.0, 400.0, 300.0}})
+    texts: [2]Rectangle
+    found: s32 = 0
+    if column.opened {
+        card := Card.Draw(session, Card.Props.{.variant = .CardOutlined})
+        if card.opened {
+            Text.Draw(session, Text.Props.{.text = "Title", .bounds = .{height = 24}})
+            Text.Draw(session, Text.Props.{.text = "Body", .bounds = .{height = 20}})
+            unused End(session)
+        }
+        unused End(session)
+    }
+    unused TreeFinish(session)
+    for index: 0..TreeCount(session) - 1 {
+        node := TreeNodeAt(session, index)
+        if node.kind == cast(s32)WidgetKindText && found < 2 { texts[found] = node.bounds; found += 1 }
+    }
+    if found < 2 { return -1.0 }
+    return texts[1].y - (texts[0].y + texts[0].height)
+}
+
 #program_export
 Main :: () -> s32 {
     unused Theme.InstallDefaultTheme(false)
@@ -128,6 +155,8 @@ Main :: () -> s32 {
     Expect(level >= 7 && level <= 9, "a drag on the placed slider sets about four fifths")
     Expect(keycap.x == track.x && keycap.y > track.y && keycap.width == 120.0 && keycap.height == 32.0,
         "a keycap placed ahead submits its node where the column put it")
+    gap := CardGap()
+    Expect(gap == Theme.CurrentThemeMetric(.ThemeMetricSpace2), "a card spaces its children by Space2")
     if failures > 0 { return 1 }
     print("widget tree: identities follow call sites; placed widgets fill and take drags\n")
     return 0

@@ -6,6 +6,7 @@ This complete `.zi` program translates a common HTML pattern (`<section class="c
 App :: #import "kryon/app";
 Button :: #import "kryon/button";
 Card :: #import "kryon/card";
+Layout :: #import "kryon/layout";
 Text :: #import "kryon/text";
 TextField :: #import "kryon/text_field";
 Theme :: #import "kryon/theme";
@@ -94,45 +95,35 @@ Draw :: (frame: App.Frame) {
         started = true
     }
 
-    card := Card.Draw(session, Card.Props.{
-        .key = 1, .class_name = CSS.StyleClass("panel"),
-        .bounds = Rectangle.{20.0, 20.0, viewport.width - 40.0, viewport.height - 40.0},
-        .variant = .CardOutlined
-    })
-    c := card.content
-    Text.Draw(session, Text.Props.{
-        .key = 2, .bounds = Rectangle.{c.x, c.y, c.width, 24.0},
-        .text = "Filter cluster nodes", .size = 18
-    })
-    edited := TextField.Bind(session, *query, TextField.Props.{
-        .key = 3, .id = 3, .focus_id = 3, .class_name = CSS.StyleClass("query-box"),
-        .bounds = Rectangle.{c.x, c.y + 34.0, c.width - 110.0, 38.0},
-        .label = "Filter", .placeholder = "Type host or region..."
-    })
-
-    if Button.Draw(session, Button.Props.{
-        .key = 4, .id = 4, .class_name = CSS.StyleClass("primary"),
-        .bounds = Rectangle.{c.x + c.width - 98.0, c.y + 34.0, 98.0, 38.0},
-        .label = "Apply", .tone = .ButtonToneAccent, .emphasis = .ButtonEmphasisFilled
-    }) != 0 || edited.committed {
-        submitted = true
+    // A padded page column; the card in it is a padded column that grows
+    // to its content, so nothing below needs a rectangle.
+    page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = 20, .padding_override = true})
+    if !page.opened { return }
+    card := Card.Draw(session, Card.Props.{.class_name = CSS.StyleClass("panel"), .variant = .CardOutlined})
+    if card.opened {
+        Text.Draw(session, Text.Props.{.bounds = .{height = 24}, .text = "Filter cluster nodes", .size = 18})
+        row := Layout.Row(session, Layout.Props.{.bounds = .{height = 38}, .gap = 12, .gap_override = true})
+        if row.opened {
+            apply := Button.Props.{.id = 4, .class_name = CSS.StyleClass("primary"), .bounds = .{width = 98},
+                .label = "Apply", .tone = .ButtonToneAccent, .emphasis = .ButtonEmphasisFilled}
+            // The field takes the width the button leaves.
+            edited := TextField.Bind(session, *query, TextField.Props.{
+                .id = 3, .focus_id = 3, .class_name = CSS.StyleClass("query-box"),
+                .bounds = .{width = row.content.width - apply.bounds.width - cast(float32)row.gap},
+                .label = "Filter", .placeholder = "Type host or region..."})
+            if Button.Draw(session, apply) != 0 || edited.committed { submitted = true }
+            unused End(session)
+        }
+        if Button.Draw(session, Button.Props.{.id = 5, .bounds = .{width = 120, .height = 32},
+            .label = ifx dark then "Light mode" else "Dark mode", .emphasis = .ButtonEmphasisOutline}) != 0 {
+            dark = !dark
+            InstallTheme()
+        }
+        status := ifx submitted && query.length > 0 then TextView(query_bytes[0:query.length]) else "All nodes active"
+        Text.Draw(session, Text.Props.{.bounds = .{height = 22}, .text = status, .size = 14})
+        unused End(session)
     }
-
-    if Button.Draw(session, Button.Props.{
-        .key = 5, .id = 5, .bounds = Rectangle.{c.x, c.y + 84.0, 120.0, 32.0},
-        .label = ifx dark then "Light mode" else "Dark mode",
-        .emphasis = .ButtonEmphasisOutline
-    }) != 0 {
-        dark = !dark
-        InstallTheme()
-    }
-
-    status := ifx submitted && query.length > 0 then TextView(query_bytes[0:query.length]) else "All nodes active"
-    Text.Draw(session, Text.Props.{
-        .key = 6, .bounds = Rectangle.{c.x, c.y + 128.0, c.width, 22.0},
-        .text = status, .size = 14
-    })
-    if card.opened { unused End(session) }   // the card is a container
+    unused End(session)
 }
 ```
 

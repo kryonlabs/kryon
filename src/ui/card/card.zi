@@ -35,8 +35,12 @@ Draw :: (session: Session, props: PropsModule.Props, location := #caller_locatio
     face := ResolveInstalledStyleRules(CardDefaultFace(emphasis, state), facts, state)
     if !StyleHasField(face, cast(u32)StylePaddingX) { face.padding_x = 16.0 }
     if !StyleHasField(face, cast(u32)StylePaddingY) { face.padding_y = 16.0 }
-    if !StyleHasField(face, cast(u32)StyleGap) { face.gap = Theme.CurrentThemeMetric(.ThemeMetricSpace2) }
-    face.fields |= cast(u32)StylePaddingX | cast(u32)StylePaddingY | cast(u32)StyleGap
+    // The column reads row_gap: a CSS `gap` on a card means its row gap.
+    if !StyleHasField(face, cast(u32)StyleRowGap) {
+        face.row_gap = Theme.CurrentThemeMetric(.ThemeMetricSpace2)
+        if StyleHasField(face, cast(u32)StyleGap) { face.row_gap = face.gap }
+    }
+    face.fields |= cast(u32)StylePaddingX | cast(u32)StylePaddingY | cast(u32)StyleRowGap
     opacity := StyleOpacityValue(face.fields, face.opacity)
     if props.disabled && opacity == 1.0 { opacity = 0.45 }
     face.background = Opacity(face.background, opacity)
