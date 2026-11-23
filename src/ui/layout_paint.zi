@@ -11,13 +11,17 @@
 using StyleField;
 using StyleBoxField;
 
-// A container's CSS box, like a styled div: background (a color or two-stop
-// gradient), border and radius at the container's bounds. Per-side borders
+// A container's CSS box, like a styled div: shadow (an elevation role),
+// background (a color or two-stop gradient), border and radius at the
+// container's bounds. Per-side borders
 // paint square edges; with a radius the box keeps its uniform border.
 LayoutPaintBox :: (session: Session, bounds: Rectangle, face: StyleData, box: StyleBoxData, mark: s64) {
     from := PaintMark(session)
     opacity := StyleOpacityValue(face.fields, face.opacity)
     radius := ifx StyleHasField(face, cast(u32)StyleRadius) && face.radius > 0.0 then face.radius else 0.0
+    if StyleHasField(face, cast(u32)StyleElevation) && face.elevation != .ElevationRoleNone {
+        PaintElevationForRole(session, -1, bounds, radius, opacity, cast(s32)face.elevation)
+    }
     if StyleHasField(face, cast(u32)StyleBackground) {
         top := ColorFromPacked(Opacity(face.background, opacity))
         if StyleHasField(face, cast(u32)StyleBackgroundEnd) {

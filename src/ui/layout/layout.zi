@@ -356,14 +356,37 @@ LayoutGrowParent :: (session: Session, parent_index: s32, bounds: Rectangle, siz
     TreeSetLayoutProgress(session, parent_index, progress)
 }
 
-// A container with a CSS background or border paints its box, like a
-// styled div, beneath its children.
+// A container with a CSS background, border or shadow paints its box, like
+// a styled div, beneath its children.
 LayoutPaintsBox :: (face: StyleData, box: StyleBoxData) -> bool {
     if layout_box_paint == null { return false }
     fill := StyleHasField(face, cast(u32)StyleBackground) && (face.background & cast(u32)255) != 0
     line := StyleHasField(face, cast(u32)StyleBorderWidth) && face.border_width > 0.0 &&
         (face.border & cast(u32)255) != 0
-    return fill || line || (box.fields & cast(u32)StyleBoxBorderSides) != 0
+    shadow := StyleHasField(face, cast(u32)StyleElevation) && face.elevation != .ElevationRoleNone
+    return fill || line || shadow || (box.fields & cast(u32)StyleBoxBorderSides) != 0
+}
+
+// The faces of open Boxes that paint at End, innermost last: containers
+// close in reverse order, so each close finds its face on top.
+LayoutBoxFace :: struct {
+    node: s32
+    face: StyleData
+}
+LayoutBoxFaceLimit :: 8
+layout_box_faces: [8]LayoutBoxFace;
+layout_box_face_count: s32;
+
+// The face a content-sized container paints at End: a Box's own, else its CSS.
+LayoutClosingFace :: (index: s32, node: TreeEntry, box: *StyleBoxData) -> StyleData {
+    while layout_box_face_count > 0 {
+        top := layout_box_faces[layout_box_face_count - 1]
+        if top.node < index { break }
+        layout_box_face_count -= 1
+        if top.node == index { return top.face }
+    }
+    return LayoutFace(PropsModule.Props.{.id = node.style_id, .class_name = node.style_class},
+        node.kind, null, box)
 }
 
 
@@ -376,8 +399,7 @@ LayoutCloseContent :: (session: Session, index: s32) {
     size := TreeContentSizeAt(session, index)
     if size.paint_mark >= 0 {
         box: StyleBoxData
-        face := LayoutFace(PropsModule.Props.{.id = node.style_id, .class_name = node.style_class},
-            node.kind, null, *box)
+        face := LayoutClosingFace(index, node, *box)
         layout_box_paint(session, bounds, face, box, size.paint_mark)
     }
     if node.auto_placed { LayoutGrowParent(session, node.parent, bounds, size) }
@@ -402,13 +424,15 @@ LayoutParentBounds :: (session: Session, inset_sections: bool = false) -> Rectan
     return parent
 }
 
+// With `own`, the container takes that face's padding, gap and paint and no
+// CSS of its own (see Box).
 #program_export
 ContainerFor :: (session: Session, props: PropsModule.Props,
-    kind: s32) -> LayoutContainer {
+    kind: s32, own: *StyleData = null) -> LayoutContainer {
     result: LayoutContainer = .{.node = -1, .kind = kind, .bounds = props.bounds}
     parent := LayoutParentBounds(session)
     box: StyleBoxData
-    face := LayoutFace(props, kind, null, *box)
+    face := ifx own != null then <<own else LayoutFace(props, kind, null, *box)
     if face.percent != 0 || box.percent != 0 { LayoutResolvePercent(*face, *box, LayoutPercentBasis(session, parent)) }
     auto_width := LayoutAutoWidth(props.bounds.width, face)
     result.bounds.width = LayoutExtentFor(props.bounds.width, parent.width,
@@ -460,7 +484,7 @@ ContainerFor :: (session: Session, props: PropsModule.Props,
     result.padding_y = metrics.padding_y
     available := parent.width
     if in_row { available = LayoutRemaining(session, true) }
-    return OpenContainer(session, props, result, box, available, content_sized, face)
+    return OpenContainer(session, props, result, box, available, content_sized, face, own != null)
 }
 
 // The slot a parent places: the border box plus its margins. An `auto`
@@ -502,7 +526,7 @@ LayoutBoxInSlot :: (placed: Rectangle, bounds: Rectangle, box: StyleBoxData) -> 
 
 OpenContainer :: (session: Session, props: PropsModule.Props,
     result: LayoutContainer, box: StyleBoxData, available: float32,
-    content_sized: bool = false, face: StyleData = StyleData.{}) -> LayoutContainer {
+    content_sized: bool = false, face: StyleData = StyleData.{}, own_face: bool = false) -> LayoutContainer {
     if !TreeIsBuilding(session) { return result }
     key: u64 = props.key
     if key == cast(u64)0 { key = TreeNextKey(session) }
@@ -523,8 +547,21 @@ OpenContainer :: (session: Session, props: PropsModule.Props,
     TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0, result.padding_y)
     size := LayoutContentSizeFor(face, box)
     if LayoutPaintsBox(face, box) {
-        if content_sized { size.paint_mark = layout_paint_mark(session) }
-        else { layout_box_paint(session, result.bounds, face, box, -1) }
+        if !content_sized {
+            layout_box_paint(session, result.bounds, face, box, -1)
+        } else if !own_face || layout_box_face_count < LayoutBoxFaceLimit {
+            size.paint_mark = layout_paint_mark(session)
+            if own_face {
+                // Node indices grow within a frame: an entry at or past this
+                // node is left from an earlier frame.
+                while layout_box_face_count > 0 &&
+                    layout_box_faces[layout_box_face_count - 1].node >= result.node {
+                    layout_box_face_count -= 1
+                }
+                layout_box_faces[layout_box_face_count] = .{.node = result.node, .face = face}
+                layout_box_face_count += 1
+            }
+        }
     }
     if content_sized { TreeSetClose(session, result.node, LayoutCloseContent, size) }
     if box.clip_children {
@@ -644,6 +681,20 @@ MeasuredFlex :: (session: Session, props: PropsModule.Props, kind: s32,
         boxes[i].bounds.x += result.bounds.x - before.x
         boxes[i].bounds.y += result.bounds.y - before.y
     }
+    return result
+}
+
+// A padded column, or a row with `kind` WidgetKindRow, whose box paints
+// `face` (fill, border, radius and elevation) and takes its padding and gap
+// instead of CSS of its own: a composite widget such as Card resolves its
+// face and lays out its content here. Without a height it sizes to its
+// children and paints its box at End, beneath them.
+#program_export
+Box :: (session: Session, props: PropsModule.Props, face: StyleData,
+    kind: s32 = WidgetKindColumn) -> LayoutContainer {
+    result: LayoutContainer = ContainerFor(session, props, kind, *face)
+    if kind == WidgetKindRow { TreeSetPlacement(session, result.node, TreePlaceRow) }
+    else { TreeSetPlacement(session, result.node, TreePlaceColumn) }
     return result
 }
 
