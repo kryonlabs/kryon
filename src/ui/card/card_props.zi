@@ -21,6 +21,8 @@ CardVariant :: enum {
 }
 
 CardResult :: struct {
+    // Draw the card's content while it is opened, then End(session).
+    opened: bool
     activated: bool
     content: Rectangle
 }

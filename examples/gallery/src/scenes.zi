@@ -487,6 +487,7 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
     } else if scene == 53 {
         card := Card.Draw(session, Card.Props.{.key = 10, .bounds = b})
         Text.Draw(session, Text.Props.{.bounds = card.content, .text = "One modern style"})
+        if card.opened { unused End(session) }   // a Card is a container
         Label(session, "Colors and light/dark remain customizable.", 150.0)
     } else if scene == 54 {
         variants: [3]Card.CardVariant = .{.CardFilled, .CardElevated, .CardOutlined}
@@ -496,6 +497,7 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
                 .bounds = card_bounds, .variant = variants[index]})
             Text.Draw(session, Text.Props.{.bounds = result.content,
                 .text = ifx index == 0 then "Filled card" else ifx index == 1 then "Elevated card" else "Outlined card"})
+            if result.opened { unused End(session) }
         }
     }
 }

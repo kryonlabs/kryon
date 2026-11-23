@@ -411,7 +411,8 @@ SiteOverview :: (session: Session, view: Rectangle) {
     SiteMuted(session, 10035, .{x, y, width, 24.0}, "A SMALL TASTE OF KRYON", 12)
     y += 38.0
     column := ifx large then (width - 20.0) * 0.5 else width
-    unused Card.Draw(session, Card.Props.{.key = 10036, .bounds = .{x, y, column, 250.0}, .variant = .CardOutlined})
+    // Each card is a container: its controls sit inside it until End.
+    first := Card.Draw(session, Card.Props.{.key = 10036, .bounds = .{x, y, column, 250.0}, .variant = .CardOutlined})
     digits: [32]u8
     SiteText(session, 10037, .{x + 20.0, y + 20.0, column - 40.0, 32.0}, "Every click counts", 20)
     if Button.Draw(session, Button.Props.{.key = 10038, .bounds = .{x + 20.0, y + 72.0, column - 40.0, 42.0},
@@ -420,8 +421,9 @@ SiteOverview :: (session: Session, view: Rectangle) {
         .bounds = .{x + 20.0, y + 136.0, column - 40.0, 40.0}, .label = "Notifications", .value = site_notifications}).value
     site_volume = Slider.Draw(session, Slider.Props.{.key = 10040,
         .bounds = .{x + 20.0, y + 188.0, column - 40.0, 48.0}, .label = "Volume", .value = site_volume, .max = 100.0}).value
+    if first.opened { unused End(session) }
     if large { x += column + 20.0 } else { y += 270.0 }
-    unused Card.Draw(session, Card.Props.{.key = 10041, .bounds = .{x, y, column, 250.0}, .variant = .CardOutlined})
+    second := Card.Draw(session, Card.Props.{.key = 10041, .bounds = .{x, y, column, 250.0}, .variant = .CardOutlined})
     SiteText(session, 10042, .{x + 20.0, y + 20.0, column - 40.0, 32.0}, "Actions with intent", 20)
     held := HoldButton.Draw(session, HoldButton.Props.{.button = .{.key = 10043,
         .bounds = .{x + 20.0, y + 72.0, column - 40.0, 42.0}, .label = "Hold to complete"},
@@ -432,6 +434,7 @@ SiteOverview :: (session: Session, view: Rectangle) {
         .confirm_button = .{.label = "Confirm delete"}, .now = site_now, .key = site_key}, *site_confirm)
     if confirmed.committed { site_confirm_count += 1 }
     SiteText(session, 10045, .{x + 20.0, y + 196.0, column - 40.0, 34.0}, "Hold, release, confirm or Escape.", 13)
+    if second.opened { unused End(session) }
     x = (view.width - width) * 0.5
     y += 306.0
     Box.Draw(session, Box.Props.{.key = 10204, .bounds = .{x, y, width, 1.0}, .fill = SiteBorder()})

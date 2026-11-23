@@ -47,19 +47,3 @@ CardEmphasis :: (variant: CardVariant) -> ButtonEmphasis {
     return .ButtonEmphasisSoft
 }
 
-// Return usable space without changing the caller's parent or clipping children.
-#program_export
-CardContentBounds :: (bounds: Rectangle, padding_x: float32 = 16.0,
-    padding_y: float32 = 16.0) -> Rectangle {
-    x := bounds.width * 0.5
-    y := bounds.height * 0.5
-    if x > padding_x { x = padding_x }
-    if y > padding_y { y = padding_y }
-    if x < 0.0 { x = 0.0 }
-    if y < 0.0 { y = 0.0 }
-    width := bounds.width - x * 2.0
-    height := bounds.height - y * 2.0
-    if width < 0.0 { width = 0.0 }
-    if height < 0.0 { height = 0.0 }
-    return Rectangle.{bounds.x + x, bounds.y + y, width, height}
-}

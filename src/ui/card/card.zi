@@ -1,61 +1,54 @@
 #import "tree"
 using PropsModule :: #import "card_props";
-Box :: #import "box";
-Button :: #import "button";
+Layout :: #import "layout";
 using BehaviorModule :: #import "card_behavior";
 #import "control_props"
 #import "drawing_props"
-#import "elevation"
 #import "session"
-#import "surface"
 #import "style"
 #import "style_sheet"
+#import "surface"
+#import "tree_input"
+#import "widget_kind"
 Theme :: #import "theme";
 
-// Composed from existing host capabilities; portable apps need no new effect.
+using StyleField;
+using WidgetKind;
+
+// A card is a padded column with the card's face: draw its content while it
+// is opened, then End(session). Without a height it grows to its content; a
+// clickable card is one press target with hover and pressed faces.
 Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) -> CardResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
     result: CardResult
-    result.content = CardContentBounds(props.bounds)
-    if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result }
+    previous: s32 = -1
+    if props.clickable && TreeIsBuilding(session) {
+        previous = TreePrevious(session, TreeCurrentParent(session), props.key, WidgetKindColumn)
+    }
     state := ResolveState(cast(s32)props.state, props.disabled, false,
-        false, false, false, props.selected)
+        TreePressedAt(session, previous), TreeHoveredAt(session, previous), false, props.selected)
     emphasis := CardEmphasis(props.variant)
     facts := StyleControlRoleFacts(StyleKindCard(), props.id, props.class_name,
         StyleAny(), cast(s32)ButtonTone.ButtonToneNeutral, cast(s32)emphasis,
         cast(s32)ControlSize.ControlSizeMedium, state)
     face := ResolveInstalledStyleRules(CardDefaultFace(emphasis, state), facts, state)
-    padding_x := ifx StyleHasField(face, cast(u32)StyleField.StylePaddingX) then face.padding_x else 16.0
-    padding_y := ifx StyleHasField(face, cast(u32)StyleField.StylePaddingY) then face.padding_y else 16.0
-    result.content = CardContentBounds(props.bounds, padding_x, padding_y)
+    if !StyleHasField(face, cast(u32)StylePaddingX) { face.padding_x = 16.0 }
+    if !StyleHasField(face, cast(u32)StylePaddingY) { face.padding_y = 16.0 }
+    if !StyleHasField(face, cast(u32)StyleGap) { face.gap = Theme.CurrentThemeMetric(.ThemeMetricSpace2) }
+    face.fields |= cast(u32)StylePaddingX | cast(u32)StylePaddingY | cast(u32)StyleGap
     opacity := StyleOpacityValue(face.fields, face.opacity)
     if props.disabled && opacity == 1.0 { opacity = 0.45 }
-    if props.variant == .CardElevated {
-        // Two precomputed alpha edges, each one unit wide. No blurred surface,
-        // bitmap cache, clock or temporary allocation; interiors paint once.
-        for layer: cast(s32)1..2 {
-            edge := ElevationEdgeBounds(props.bounds, layer, face.radius)
-            alpha := ElevationAlphaForRole(face.elevation, layer)
-            if alpha != cast(u32)0 {
-                unused Box.Draw(session, Box.Props.{.bounds = edge,
-                    .fill = ColorFromPacked(Opacity(alpha, opacity))})
-            }
-        }
-    }
-    if props.clickable {
-        result.activated = Button.Draw(session, Button.Props.{.key = props.key,
-            .bounds = props.bounds, .id = props.id, .class_name = props.class_name,
-            .label = props.label, .style_kind = StyleKindCard(),
-            .emphasis = emphasis, .disabled = props.disabled,
-            .selected = props.selected, .state = props.state}) == 1
-    } else {
-        border: Color
-        if face.border_width > 0.0 { border = ColorFromPacked(Opacity(face.border, opacity)) }
-        unused Box.Draw(session, Box.Props.{.key = props.key, .bounds = props.bounds,
-            .id = props.id, .class_name = props.class_name,
-            .fill = ColorFromPacked(Opacity(face.background, opacity)),
-            .border = border, .radius = face.radius})
+    face.background = Opacity(face.background, opacity)
+    face.border = Opacity(face.border, opacity)
+    face.opacity = 1.0
+    box := Layout.Box(session, Layout.Props.{.key = props.key, .bounds = props.bounds}, face)
+    result.opened = box.opened
+    result.content = box.content
+    if props.clickable && box.node >= 0 {
+        TreeSetInteractive(session, box.node, props.disabled, false, props.id)
+        TreeSetLabel(session, box.node, props.label)
+        result.activated = !props.disabled && TreeTakeActivationAt(session, previous)
     }
     return result
 }

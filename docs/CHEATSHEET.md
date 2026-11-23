@@ -22,9 +22,9 @@ No display needed; `build/shot.json` lists each node's kind, role, label and bou
 - Containers (Layout, Grid, Flow, Modal) place children: never compute `x` or `y`;
   a child declares its size, and zero width fills a column. A Row, Column, Grid
   or Flow without a height sizes to its children when it closes with `End`. If `opened`, draw the
-  children, then `End(session)`: a missing `End` fails the whole frame. A widget given a
-  rectangle with an origin (`bar.trailing_bounds`) is drawn there, over the column. A Card
-  draws into a `Layout.Stack` slot: pass `slot.bounds`.
+  children, then `End(session)`: a missing `End` fails the whole frame; a Card is such a
+  container. A widget given a rectangle with an origin (`bar.trailing_bounds`) is drawn
+  there, over the column.
 - Size and space come from theme tokens. Act on a result in the same frame.
 - Typed text lives in `TextField.State` bytes; zero `length cursor anchor scroll_x` to clear.
 - A returned `string` must view file-scope bytes (as `NoteAt` does), never a local buffer.
@@ -136,12 +136,8 @@ NotesScreen :: (session: Session) {
     }
     Text.Draw(session, Text.Props.{.bounds = .{height = control}, .text = NoteCountText()})
     for i: 0..note_count - 1 {
-        slot := Layout.Stack(session, Layout.Props.{.bounds = .{height = control + 2.0 * Theme.CurrentThemeMetric(.ThemeMetricSpace3)}})
-        if slot.opened {
-            card := Card.Draw(session, Card.Props.{.bounds = slot.bounds, .variant = .CardOutlined})
-            Text.Draw(session, Text.Props.{.bounds = card.content, .text = NoteAt(i)})
-            unused End(session)
-        }
+        card := Card.Draw(session, Card.Props.{.variant = .CardOutlined})   // a padded column that grows to its content
+        if card.opened { Text.Draw(session, Text.Props.{.text = NoteAt(i)}); unused End(session) }
     }
     if Button.Draw(session, Button.Props.{.label = "All widgets", .bounds = .{height = control}}) == 1 { showcase = true }
 }
@@ -195,7 +191,7 @@ Widgets :: (session: Session) {
 ```
 
 Also: `kryon/text_field` (`Bind(session, *state, props)`), `kryon/card`
-(`.variant` -> `.content`), `kryon/title_bar` (`.trailing_width` ->
+(`.variant` -> `opened`, then `End`), `kryon/title_bar` (`.trailing_width` ->
 `.trailing_bounds`), `kryon/box` (`.fill .border .radius`), `kryon/dropdown`
 (`Draw(session, props, options)`), `kryon/modal` (`opened` -> `End`,
 `.dismissed`), `kryon/avatar` (`.name`), `kryon/image` (`.asset_path .fit`),

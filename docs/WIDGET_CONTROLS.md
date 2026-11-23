@@ -119,16 +119,17 @@ icons.
 
 ## Cards
 
-`Card.Draw(session, Card.Props)` draws a filled, elevated or outlined Material
-surface. Import it as `Card :: #import "kryon/card";`. Set `variant` to
-`CardFilled` (the default), `CardElevated` or `CardOutlined`, and supply
-`bounds` and a stable `key`. The returned `content` rectangle has 16 units of
-padding, reduced for small bounds. Draw your content in that rectangle; Card
-does not open a scope.
+`Card.Draw(session, Card.Props)` opens a filled, elevated or outlined Material
+surface as a padded column: while the result is `opened`, draw the content,
+which the column places, then call `End(session)`. Import it as
+`Card :: #import "kryon/card";`. Set `variant` to `CardFilled` (the default),
+`CardElevated` or `CardOutlined`. Without a height the card grows to its
+content; with `bounds` it keeps them, and `content` is the area inside its
+16 units of padding.
 
-Cards are decorative by default. `clickable` enables the standard Button's
-pointer, keyboard, focus and disabled behavior; `activated` reports activation.
-An optional `label` is drawn centered and announced by the clickable surface.
+Cards are decorative by default. `clickable` makes the card one press target
+with pointer, keyboard, focus and disabled behavior; `activated` reports activation.
+An optional `label` names the clickable card for assistive technology.
 Selected and explicit state props keep their usual meaning. Installed Card
 style rules apply by id, class and emphasis (soft, filled and outline for the
 three variants). Elevated cards and floating menus/dialogs use two fixed,

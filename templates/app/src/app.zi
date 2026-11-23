@@ -63,26 +63,17 @@ AppBar :: (session: Session) {
     if switch.changed { dark = switch.value }
 }
 
-// One task as a card: a checkbox with its title, and a detail line.
+// One task as a card: a checkbox with its title, and a detail line. The
+// card grows to its content.
 TaskCard :: (session: Session, index: s32) {
     task := TaskAt(index)
-    lines: [2]Rectangle = .[.{height = Theme.CurrentThemeMetric(.ThemeMetricControlHeightMedium)},
-        .{height = LineHeight(.ThemeMetricTextSM)}]
-    gap := Layout.Gap(.ThemeMetricSpace1)
-    padding := Layout.Gap(.ThemeMetricSpace4)
-    measured := Layout.LayoutContentBounds(Rectangle.{}, .FlexColumn, lines[:], gap, padding)
-    slot := Layout.Stack(session, Layout.Props.{.bounds = .{.height = measured.height}})
-    if !slot.opened { return }
-    card := Card.Draw(session, Card.Props.{.bounds = slot.bounds, .variant = .CardOutlined})
-    column := Layout.Draw(session, Layout.Props.{.bounds = card.content, .gap = gap, .gap_override = true})
-    if column.opened {
-        check := Checkbox.Draw(session, Checkbox.Props.{.bounds = lines[0],
-            .label = task.title, .checked = task.done})
-        if check.changed { SetTaskDone(index, check.checked) }
-        Text.Draw(session, Text.Props.{.bounds = lines[1], .text = task.detail,
-            .size = cast(s32)Theme.CurrentThemeMetric(.ThemeMetricTextSM)})
-        unused End(session)
-    }
+    card := Card.Draw(session, Card.Props.{.variant = .CardOutlined})
+    if !card.opened { return }
+    check := Checkbox.Draw(session, Checkbox.Props.{.label = task.title, .checked = task.done,
+        .bounds = .{height = Theme.CurrentThemeMetric(.ThemeMetricControlHeightMedium)}})
+    if check.changed { SetTaskDone(index, check.checked) }
+    Text.Draw(session, Text.Props.{.bounds = .{height = LineHeight(.ThemeMetricTextSM)}, .text = task.detail,
+        .size = cast(s32)Theme.CurrentThemeMetric(.ThemeMetricTextSM)})
     unused End(session)
 }
 

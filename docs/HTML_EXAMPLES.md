@@ -132,6 +132,7 @@ Draw :: (frame: App.Frame) {
         .key = 6, .bounds = Rectangle.{c.x, c.y + 128.0, c.width, 22.0},
         .text = status, .size = 14
     })
+    if card.opened { unused End(session) }   // the card is a container
 }
 ```
 
