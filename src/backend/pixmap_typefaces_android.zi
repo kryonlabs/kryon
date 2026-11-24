@@ -41,16 +41,33 @@ android_pixmap_tracking_method: *void;
 android_pixmap_tracking: float32;
 android_pixmap_font_line: float32;
 android_pixmap_font_ascent: float32;
+// Scratch of the raster at work.
 android_pixmap_mask: *u8;
 android_pixmap_mask_size: s64;
-android_pixmap_mask_text: [32768]u8;
-android_pixmap_mask_count: s32 = -1;
-android_pixmap_mask_font: float32;
-android_pixmap_mask_face: s32 = -1;
-android_pixmap_mask_style: TextGlyphStyle;
-android_pixmap_mask_rgb: u32;
-android_pixmap_mask_color: bool;
-android_pixmap_mask_shape: Slots.PixmapTypefaceMask;
+// Recent rasters. A screen draws the same labels every frame, and every
+// Android raster is a JNI round trip with a Bitmap and a pixel array, so a
+// run is kept with its text and the font it was shaped with.
+AndroidMaskEntry :: struct {
+    key: s64
+    length: s32
+    text: *u8
+    pixels: *u8
+    capacity: s64
+    font: float32
+    face: s32
+    style: TextGlyphStyle
+    rgb: u32
+    colored: bool
+    shape: Slots.PixmapTypefaceMask
+    used: u32
+}
+AndroidMaskEntries :: 64;
+// The largest raster kept, and the bytes all kept rasters take together.
+AndroidMaskEntryLimit :: 131072;
+AndroidMaskBytes :: 4194304;
+android_pixmap_masks: [AndroidMaskEntries]AndroidMaskEntry;
+android_pixmap_mask_bytes: s64;
+android_pixmap_mask_clock: u32;
 
 AndroidFontVariant :: struct { slot: s32; weight: s32; italic: bool; face: *void }
 android_font_variants: [16]AndroidFontVariant;
@@ -104,9 +121,102 @@ AndroidFontString :: (env: *JniEnv, value: string, count: *s32) -> *void {
     if !AndroidFontOk(env) { return null }
     return result
 }
+AndroidMaskEvict :: (index: s32) {
+    entry := *android_pixmap_masks[index]
+    if entry.key == 0 { return }
+    if entry.text != null { FontFree(cast(*void)entry.text) }
+    if entry.pixels != null {
+        FontFree(cast(*void)entry.pixels)
+        android_pixmap_mask_bytes -= entry.capacity
+    }
+    <<entry = .{}
+}
+
 AndroidFontForgetMask :: () {
-    android_pixmap_mask_count = -1
-    android_pixmap_mask_shape = .{}
+    for index: cast(s32)0..AndroidMaskEntries - 1 { AndroidMaskEvict(index) }
+}
+
+// Names a run's coverage by its text, font, face, glyph style, color and
+// kind. Run keys stay below -2^62, apart from chunk keys (-2^61 and above),
+// emoji keys (near -2^56) and glyph keys (positive).
+AndroidMaskKey :: (value: string, font: float32, slot: s32, glyphs: TextGlyphStyle,
+    rgb: u32, colored: bool) -> s64 {
+    prime: u64 = 1099511628211
+    hash: u64 = 14695981039346656037
+    for byte: value { hash = (hash ^ cast(u64)byte) * prime }
+    size := font
+    hash = (hash ^ cast(u64)(cast(*u32)(*size)).*) * prime
+    hash = (hash ^ cast(u64)(cast(u32)slot)) * prime
+    hash = (hash ^ cast(u64)(cast(u32)glyphs.weight)) * prime
+    hash = (hash ^ cast(u64)(cast(u32)glyphs.style)) * prime
+    spacing := glyphs.letter_spacing
+    hash = (hash ^ cast(u64)(cast(*u32)(*spacing)).*) * prime
+    hash = (hash ^ cast(u64)rgb) * prime
+    kind: u64 = 0
+    if colored { kind = 1 }
+    hash = (hash ^ kind) * prime
+    return -(cast(s64)(hash & cast(u64)4611686018427387903)) - (cast(s64)1 << cast(s64)62)
+}
+
+// The entry holding this run's raster, or -1.
+AndroidMaskFind :: (key: s64, value: string, font: float32, slot: s32, glyphs: TextGlyphStyle,
+    rgb: u32, colored: bool) -> s32 {
+    for index: cast(s32)0..AndroidMaskEntries - 1 {
+        entry := *android_pixmap_masks[index]
+        if entry.key != key || entry.length != cast(s32)value.count { continue }
+        if entry.font != font || entry.face != slot || entry.rgb != rgb || entry.colored != colored ||
+        !SameTextGlyphStyle(entry.style, glyphs) { continue }
+        if TextView(BytesFromPointer(entry.text, cast(u64)entry.length)) != value { continue }
+        return index
+    }
+    return -1
+}
+
+// Keeps a fresh raster under its key. The least recently used entry gives
+// way when every one is taken, and again while the bytes exceed the limit.
+AndroidMaskStore :: (key: s64, value: string, font: float32, slot: s32, glyphs: TextGlyphStyle,
+    rgb: u32, colored: bool, shape: Slots.PixmapTypefaceMask, storage: s64) -> s32 {
+    index: s32 = -1
+    for at: cast(s32)0..AndroidMaskEntries - 1 {
+        if android_pixmap_masks[at].key == 0 { index = at; break }
+    }
+    if index < 0 {
+        index = 0
+        for at: cast(s32)1..AndroidMaskEntries - 1 {
+            if android_pixmap_masks[at].used < android_pixmap_masks[index].used { index = at }
+        }
+        AndroidMaskEvict(index)
+    }
+    while android_pixmap_mask_bytes + storage > AndroidMaskBytes {
+        victim: s32 = -1
+        for at: cast(s32)0..AndroidMaskEntries - 1 {
+            if at == index || android_pixmap_masks[at].key == 0 { continue }
+            if victim < 0 || android_pixmap_masks[at].used < android_pixmap_masks[victim].used { victim = at }
+        }
+        if victim < 0 { return -1 }
+        AndroidMaskEvict(victim)
+    }
+    text := FontAllocate(cast(usize)value.count + cast(usize)1)
+    pixels := FontAllocate(cast(usize)storage)
+    if text == null || pixels == null {
+        if text != null { FontFree(cast(*void)text) }
+        if pixels != null { FontFree(cast(*void)pixels) }
+        return -1
+    }
+    for at: 0..cast(s64)value.count - 1 { text[at] = value[at] }
+    source := ifx colored then shape.argb else shape.coverage
+    for at: 0..storage - 1 { pixels[at] = source[at] }
+    android_pixmap_mask_clock += 1
+    entry := *android_pixmap_masks[index]
+    entry.key = key; entry.length = cast(s32)value.count; entry.text = text
+    entry.pixels = pixels; entry.capacity = storage
+    entry.font = font; entry.face = slot; entry.style = glyphs; entry.rgb = rgb; entry.colored = colored
+    entry.shape = shape; entry.shape.key = key
+    if colored { entry.shape.argb = BytesFromPointer(pixels, cast(u64)storage) }
+    else { entry.shape.coverage = BytesFromPointer(pixels, cast(u64)storage) }
+    entry.used = android_pixmap_mask_clock
+    android_pixmap_mask_bytes += storage
+    return index
 }
 AndroidFontChanged :: () {
     AndroidFontForgetMask()
@@ -258,13 +368,14 @@ AndroidFontRaster :: (value: string, font: float32, output: *Slots.PixmapTypefac
     slot := AndroidFontSlot(typeface)
     glyphs := text_glyph_style
     glyphs.letter_spacing *= scale
-    if android_pixmap_mask_count == value.count && android_pixmap_mask_font == font &&
-    android_pixmap_mask_face == slot && SameTextGlyphStyle(android_pixmap_mask_style, glyphs) &&
-    android_pixmap_mask_color == colored && android_pixmap_mask_rgb == rgb &&
-    TextView(android_pixmap_mask_text[0:android_pixmap_mask_count]) == value {
-        output.* = android_pixmap_mask_shape; return true
+    key := AndroidMaskKey(value, font, slot, glyphs, rgb, colored)
+    found := AndroidMaskFind(key, value, font, slot, glyphs, rgb, colored)
+    if found >= 0 {
+        android_pixmap_mask_clock += 1
+        android_pixmap_masks[found].used = android_pixmap_mask_clock
+        output.* = android_pixmap_masks[found].shape
+        return true
     }
-    AndroidFontForgetMask()
     session: AndroidJniSession
     if AndroidJniAttachCurrent(*session) == 0 { return false }
     defer AndroidJniDetachCurrent(*session)
@@ -355,13 +466,14 @@ AndroidFontRaster :: (value: string, font: float32, output: *Slots.PixmapTypefac
     shape.top = top + cast(s32)(font * android_pixmap_font_ascent + 0.5)
     shape.width = width
     shape.height = height
+    shape.key = key
     if colored { shape.argb = BytesFromPointer(android_pixmap_mask, cast(u64)storage) }
     else { shape.coverage = BytesFromPointer(android_pixmap_mask, cast(u64)storage) }
-    for at: cast(s64)0..value.count - 1 { android_pixmap_mask_text[at] = value[at] }
-    android_pixmap_mask_count = cast(s32)value.count; android_pixmap_mask_font = font
-    android_pixmap_mask_face = slot; android_pixmap_mask_style = glyphs
-    android_pixmap_mask_rgb = rgb; android_pixmap_mask_color = colored
-    android_pixmap_mask_shape = shape; output.* = shape
+    output.* = shape
+    if storage > 0 && storage <= AndroidMaskEntryLimit {
+        kept := AndroidMaskStore(key, value, font, slot, glyphs, rgb, colored, shape, storage)
+        if kept >= 0 { output.* = android_pixmap_masks[kept].shape }
+    }
     return true
 }
 

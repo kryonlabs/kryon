@@ -5,6 +5,9 @@ PixmapTypefaceMask :: struct {
     top: s32
     width: s32
     height: s32
+    // Names this coverage among the pixel backend's GPU atlas entries, so a
+    // run draws as textured quads; 0 when the raster does not name it.
+    key: s64
     coverage: []u8
     argb: []u8
 }

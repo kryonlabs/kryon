@@ -4,6 +4,7 @@ Presenter :: #import "pixmap_sdl";
 Gpu :: #import "pixmap_sdl_gpu";
 Cells :: #import "pixmap_cell_text";
 #import "pixmap"
+#import "pixmap_text"
 #import "pixmap_gpu"
 #import "geometry"
 #import "drawing_props"
@@ -27,6 +28,9 @@ cpu: [153600]u32;
 gpu: [153600]u32;
 asset: [256]u32;
 smooth_asset: [256]u32;
+// A named run wider than an atlas entry: 600 x 24, drawn in column chunks.
+wide: [14400]u8;
+wide_mask: PixmapGlyphMask;
 
 Scene :: (full: bool) {
     if !full {
@@ -61,6 +65,7 @@ Scene :: (full: bool) {
     RasterImage("smooth", 0, .{0.0, 0.0, 16.0, 16.0}, .{280.0, 210.0, 48.0, 48.0}, .{0.0, 0.0, 480.0, 320.0}, none, 0.0, 0.0, white)
     emitting_smooth = false
     RasterRoundedRectangle(.{280.0, 262.0, 48.0, 6.0}, 0.0, 0, Color.{240, 80, 80, 255})
+    PixmapBlendMask(wide_mask, wide[:], Color.{255, 255, 255, 255})
     if !full { PixmapDamageEnd() }
 }
 
@@ -103,8 +108,15 @@ main :: () -> s32 {
     for index: 0..255 {
         smooth_asset[index] = cast(u32)0xff000000 | (cast(u32)(index % 16 * 16) << cast(u32)16) | (cast(u32)(index / 16 * 16) << cast(u32)8)
     }
+    for index: 0..14399 {
+        // A gradient across the run and a stripe every 97 pixels.
+        level := (index % 600) * 255 / 599
+        if (index % 600) % 97 < 9 { level = 255 - level }
+        wide[index] = cast(u8)level
+    }
     unused PixmapSetImage(1, "smooth", 16, 16, smooth_asset[:])
     failures: s32
+    wide_mask = .{14, 288, 600, 24, -(cast(s64)1 << cast(s64)62) - 7}
     for pass: cast(s32)0..1 {
         full := pass == 0
         unused PixmapBeginInto(cast(u32)0x20252b, Width, Height, cpu[:], true)

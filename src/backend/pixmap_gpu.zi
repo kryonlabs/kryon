@@ -111,12 +111,31 @@ PixmapGpuStage :: (pixel: u32) { unused VecPush(pixmap_gpu_staged, pixel) }
 
 // Ink is the vertex color; the atlas supplies only coverage.
 PixmapGpuAddMask :: (key: s64, width: s32, height: s32, coverage: []u8) -> s32 {
+    return PixmapGpuAddMaskRows(key, width, height, coverage, width, 0)
+}
+
+// A width x height part of a wider mask whose rows begin every stride bytes,
+// the first at start.
+PixmapGpuAddMaskRows :: (key: s64, width: s32, height: s32, coverage: []u8,
+    stride: s32, start: s32) -> s32 {
     at := PixmapGpuReserve(key, width, height)
     if at < 0 { return -1 }
-    for index: 0..cast(s64)width * height - 1 {
-        PixmapGpuStage((cast(u32)coverage[index] << cast(u32)24) | cast(u32)0x00ffffff)
+    for row: 0..height - 1 {
+        first := start + row * stride
+        for index: 0..width - 1 {
+            PixmapGpuStage((cast(u32)coverage[first + index] << cast(u32)24) | cast(u32)0x00ffffff)
+        }
     }
     return at
+}
+
+// The key of one column chunk of a mask wider than an atlas entry. Chunk
+// keys stay below -2^61, apart from run keys (-2^62 and below), emoji keys
+// (near -2^56) and glyph keys (positive).
+PixmapGpuPartKey :: (key: s64, part: s32) -> s64 {
+    mixed := cast(u64)key * cast(u64)11400714819323198485 + cast(u64)part * cast(u64)0x9e3779b97f4a7c15
+    mixed ^= mixed >> cast(u64)29
+    return -(cast(s64)(mixed & cast(u64)1152921504606846975)) - (cast(s64)1 << cast(s64)61)
 }
 
 PixmapGpuBatchFor :: (slot: s32, smooth: bool) {

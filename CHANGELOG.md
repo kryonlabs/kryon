@@ -41,6 +41,8 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Android system text draws from the pixel backend's GPU atlas as textured quads, like bundled glyphs, instead of one quad per pixel: the Android typeface raster keeps the last 64 runs (4 MB together) instead of one, names each raster by its text, font, face, style and color, and a run wider than an atlas entry draws in column chunks (`PixmapGpuAddMaskRows`). The GPU recording test draws a 600-pixel named run on both paths.
+
 - Android picture caches decode PNG through the activity's BitmapFactory bridge first, and keep the in-process decoder for hosts without a bridge; a 960x1440 title picture decodes three times faster on the USB Moto.
 
 - CSS transforms paint natively on every host: `kryon/paint_transform` gives Row, Column, Grid, Button, Card, Text, Link and Image nodes the `transform`, `translate`, `rotate` and `scale` of their style rules (with `:hover` and `:active` from the pointer) about their `transform-origin`, to the node and everything in it, and eases changes over a transform transition. Whole-pixel moves, text and images are rewritten in place and keep the host's rasterizer; other shapes draw as triangles through a new `PaintKindTransformed`. It is opt-in: an app calls `PaintTransformInstall()` once, and apps that do not link none of it. `StyleBoxData` carries the transform fields and `PaintCommand` an owner node and a matrix.
