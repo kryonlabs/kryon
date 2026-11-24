@@ -101,12 +101,79 @@ GlyphMetricsChanged :: () {
     Typeface.glyph_metrics_revision += cast(u64)1
 }
 
+// A width measured through the host costs a JNI round trip on Android. Tab
+// labels are measured again at every candidate size on each frame, so the
+// advances of recent (text, typeface, font, style) tuples stay here while the
+// host's glyph metrics hold (see GlyphMetricsRevision), as TextLineCache keeps
+// laid-out lines. Zero keeps measurements uncached.
+GLYPH_WIDTH_SLOTS :: 256
+GlyphWidthCache :: struct {
+    revision: u64
+    hash: u64
+    count: s64
+    face: u64
+    glyph_style: TextGlyphStyle
+    font: s32
+    used: u64
+    width: s32
+}
+glyph_width_cache: [GLYPH_WIDTH_SLOTS]GlyphWidthCache;
+glyph_width_clock: u64;
+glyph_width_last: s32;
+
+GlyphWidthHash :: (value: string) -> u64 {
+    hash: u64 = cast(u64)14695981039346656037
+    for byte: value { hash = (hash ^ cast(u64)byte) * cast(u64)1099511628211 }
+    return hash
+}
+
+GlyphWidthCacheMatches :: (entry: *GlyphWidthCache, revision: u64, hash: u64, count: s64,
+    face: u64, font: s32, glyph_style: TextGlyphStyle) -> bool {
+    return entry.revision == revision && entry.hash == hash && entry.count == count && entry.face == face &&
+        entry.font == font && SameTextGlyphStyle(entry.glyph_style, glyph_style)
+}
+
 #program_export
 GlyphWidth :: (value: string, font: s32,
     typeface: string, style: TextGlyphStyle = TextGlyphStyle.{}) -> s32 {
+    revision := GlyphMetricsRevision()
+    if revision == cast(u64)0 {
+        previous := UseTextGlyphStyle(style)
+        defer { unused UseTextGlyphStyle(previous) }
+        return MeasureGlyphWidth(value, font, typeface)
+    }
+    hash := GlyphWidthHash(value)
+    face := GlyphWidthHash(typeface)
+    slot := glyph_width_last
+    if GlyphWidthCacheMatches(*glyph_width_cache[slot], revision, hash, value.count, face, font, style) {
+        glyph_width_clock += cast(u64)1
+        glyph_width_cache[slot].used = glyph_width_clock
+        return glyph_width_cache[slot].width
+    }
+    for index: cast(s32)0..GLYPH_WIDTH_SLOTS - 1 {
+        if GlyphWidthCacheMatches(*glyph_width_cache[index], revision, hash, value.count, face, font, style) {
+            glyph_width_last = index
+            glyph_width_clock += cast(u64)1
+            glyph_width_cache[index].used = glyph_width_clock
+            return glyph_width_cache[index].width
+        }
+    }
+    slot = 0
+    for index: cast(s32)1..GLYPH_WIDTH_SLOTS - 1 {
+        if glyph_width_cache[index].used < glyph_width_cache[slot].used { slot = index }
+    }
     previous := UseTextGlyphStyle(style)
-    defer { unused UseTextGlyphStyle(previous) }
-    return MeasureGlyphWidth(value, font, typeface)
+    width := MeasureGlyphWidth(value, font, typeface)
+    unused UseTextGlyphStyle(previous)
+    // Measuring can load a fallback font, which moves the revision.
+    if GlyphMetricsRevision() == revision {
+        glyph_width_cache[slot] = .{.revision = revision, .hash = hash, .count = value.count, .face = face,
+            .glyph_style = style, .font = font, .width = width}
+    }
+    glyph_width_last = slot
+    glyph_width_clock += cast(u64)1
+    glyph_width_cache[slot].used = glyph_width_clock
+    return width
 }
 
 #program_export
