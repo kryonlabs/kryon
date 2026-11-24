@@ -43,7 +43,7 @@ main :: () -> s32 {
     Gpu.PixmapGpuRect(0, 0, 4, 4, Color.{32, 64, 128, 255})
     Gpu.PixmapGpuRect(0, 0, 2, 2, Color.{224, 32, 0, 128})
     Pixmap.PixmapEndInto()
-    if !Paint.BlitToWindow(4, 4) { return 9 }
+    if !Paint.PresentToWindow(4, 4) { return 9 }
     rgba: [4]u8
     G.BindFramebuffer(0x8ca8, 0)
     G.ReadPixels(0, 3, 1, 1, 0x1908, 0x1401, cast(*void)*rgba[0])
@@ -51,7 +51,7 @@ main :: () -> s32 {
     if !Paint.Read(0, 3, 1, 1, rgba[:]) || !Pixel(rgba[:], 32, 64, 128) { return 11 }
 
     Gpu.PixmapGpuRect(3, 0, 4, 1, Color.{24, 200, 40, 255})
-    if !Paint.BlitToWindow(4, 4) || Swap(display, surface) == 0 { return 12 }
+    if !Paint.PresentToWindow(4, 4) || Swap(display, surface) == 0 { return 12 }
     if !Paint.Read(0, 0, 1, 1, rgba[:]) || !Pixel(rgba[:], 128, 48, 64) { return 13 }
     if !Paint.Read(3, 0, 1, 1, rgba[:]) || !Pixel(rgba[:], 24, 200, 40) { return 14 }
 
@@ -61,7 +61,7 @@ main :: () -> s32 {
     if !Pixmap.PixmapGpuImageQuad(0, Rectangle.{0.0, 0.0, 1.0, 1.0}, Rectangle.{0.0, 3.0, 1.0, 1.0},
         Rectangle.{0.0, 0.0, 4.0, 4.0}, Vector2.{0.0, 0.0}, 0.0, 0.0, Color.{255, 255, 255, 255}) { return 17 }
     Pixmap.PixmapEndInto()
-    if !Paint.BlitToWindow(4, 4) || !Paint.Read(0, 3, 1, 1, rgba[:]) || !Pixel(rgba[:], 144, 96, 64) { return 18 }
+    if !Paint.PresentToWindow(4, 4) || !Paint.Read(0, 3, 1, 1, rgba[:]) || !Pixel(rgba[:], 144, 96, 64) { return 18 }
 
     // A smaller image uploads into staging that a larger one grew. The frame
     // stays on GLES.
@@ -74,19 +74,19 @@ main :: () -> s32 {
     if !Pixmap.PixmapGpuImageQuad(1, Rectangle.{0.0, 0.0, 2.0, 2.0}, Rectangle.{0.0, 0.0, 2.0, 2.0},
         whole, Vector2.{0.0, 0.0}, 0.0, 0.0, white) { return 24 }
     Pixmap.PixmapEndInto()
-    if !Paint.BlitToWindow(4, 4) || !Paint.Read(0, 0, 1, 1, rgba[:]) || !Pixel(rgba[:], 0, 0, 255) { return 25 }
+    if !Paint.PresentToWindow(4, 4) || !Paint.Read(0, 0, 1, 1, rgba[:]) || !Pixel(rgba[:], 0, 0, 255) { return 25 }
     if !Pixmap.PixmapResumeInto(4, 4, pixels, true) { return 26 }
     if !Pixmap.PixmapGpuImageQuad(2, Rectangle.{0.0, 0.0, 1.0, 1.0}, Rectangle.{3.0, 3.0, 1.0, 1.0},
         whole, Vector2.{0.0, 0.0}, 0.0, 0.0, white) { return 27 }
     Pixmap.PixmapEndInto()
-    if !Paint.BlitToWindow(4, 4) || !Paint.Read(3, 3, 1, 1, rgba[:]) || !Pixel(rgba[:], 0, 255, 0) { return 28 }
+    if !Paint.PresentToWindow(4, 4) || !Paint.Read(3, 3, 1, 1, rgba[:]) || !Pixel(rgba[:], 0, 255, 0) { return 28 }
     // A scaled crop that passes the image edge by float rounding alone is
     // still one textured quad.
     if !Pixmap.PixmapResumeInto(4, 4, pixels, true) { return 29 }
     if !Pixmap.PixmapGpuImageQuad(1, Rectangle.{0.0, 0.0, 1.0, 2.000001}, Rectangle.{3.0, 0.0, 1.0, 1.0},
         whole, Vector2.{0.0, 0.0}, 0.0, 0.0, white) { return 30 }
     Pixmap.PixmapEndInto()
-    if !Paint.BlitToWindow(4, 4) || !Paint.Read(3, 0, 1, 1, rgba[:]) || !Pixel(rgba[:], 0, 0, 255) { return 31 }
+    if !Paint.PresentToWindow(4, 4) || !Paint.Read(3, 0, 1, 1, rgba[:]) || !Pixel(rgba[:], 0, 0, 255) { return 31 }
     if !Paint.Resize(2, 2) || !Paint.Read(0, 0, 1, 1, rgba[:]) || !Pixel(rgba[:], 0, 0, 0) { return 19 }
     Paint.Close(true)
     if Pixmap.PixmapResumeInto(2, 2, pixels, true) { return 20 }

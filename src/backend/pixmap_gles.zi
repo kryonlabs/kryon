@@ -60,6 +60,9 @@ width: s32;
 height: s32;
 failed: bool;
 seen_revision: u64;
+present_width: s32;
+present_height: s32;
+presented: bool;
 images: [P.PixmapImageLimit]u32;
 image_revisions: [P.PixmapImageLimit]u64;
 staging: Vec(u32);
@@ -165,6 +168,8 @@ Resize :: (columns: s32, rows: s32) -> bool {
     }
     if target != 0 { G.DeleteTextures(1, *target) }
     target = next; width = columns; height = rows
+    // A new target has no snapshot yet, and the window is the nearest size.
+    presented = false; present_width = columns; present_height = rows
     G.ClearColor(0.0, 0.0, 0.0, 1.0)
     G.Clear(ColorBuffer)
     return G.GetError() == 0
@@ -189,8 +194,10 @@ Draw :: () -> bool {
                 if images[slot] != 0 && image_revisions[slot] != P.pixmap_image_revisions[slot] { DropImage(slot) }
             }
         }
-        G.BindFramebuffer(FrameBufferTarget, framebuffer)
-        G.Viewport(0, 0, width, height)
+        // The composition is drawn straight into the window surface; the
+        // offscreen target is only the snapshot Read() publishes.
+        G.BindFramebuffer(0x8ca9, 0)
+        G.Viewport(0, 0, present_width, present_height)
         G.UseProgram(program); G.Uniform2f(extent_location, cast(float32)width, cast(float32)height)
         G.Disable(0x0b71); G.Disable(0x0b44); G.Disable(0x0c11)
         G.Enable(0x0be2); BlendEquation(0x8006)
@@ -222,20 +229,30 @@ Draw :: () -> bool {
     return true
 }
 
-BlitToWindow :: (window_width: s32, window_height: s32) -> bool {
+// The recorded composition is presented straight into the window surface. No
+// offscreen copy happens on the frame; Read() refreshes the snapshot only when
+// a caller asks for pixels, so an idle frame pays for the draw alone.
+PresentToWindow :: (window_width: s32, window_height: s32) -> bool {
+    present_width = window_width; present_height = window_height
     if !Draw() { return false }
-    G.BindFramebuffer(0x8ca8, framebuffer)
-    G.BindFramebuffer(0x8ca9, 0)
-    G.BlitFramebuffer(0, 0, width, height, 0, 0, window_width, window_height, ColorBuffer, 0x2600)
-    return G.GetError() == 0
+    if G.GetError() != 0 { return Fail() }
+    presented = true
+    return true
 }
 
-// Explicit snapshots alone read pixels back. The caller flips GL's rows when
-// publishing the CPU image. Deferred paint stays queued for the next frame.
+// Explicit snapshots alone read pixels back. The window holds the presented
+// composition, so it is copied into the offscreen target first; the FBO stays
+// the readback surface. The caller flips GL's rows when publishing the CPU
+// image. Deferred paint stays queued for the next frame.
 Read :: (left: s32, top: s32, columns: s32, rows: s32, pixels: []u8) -> bool {
     if failed || target == 0 || left < 0 || top < 0 || columns <= 0 || rows <= 0 ||
         columns > width - left || rows > height - top ||
         pixels.count < cast(s64)columns * rows * 4 { return false }
+    if presented {
+        G.BindFramebuffer(0x8ca8, 0)
+        G.BindFramebuffer(0x8ca9, framebuffer)
+        G.BlitFramebuffer(0, 0, present_width, present_height, 0, 0, width, height, ColorBuffer, 0x2600)
+    }
     G.BindFramebuffer(0x8ca8, framebuffer)
     G.ReadPixels(left, height - top - rows, columns, rows, Rgba, ByteType, cast(*void)*pixels[0])
     return G.GetError() == 0
@@ -256,4 +273,5 @@ Close :: (current: bool) {
     VecFree(staging)
     program = 0; vertices = 0; atlas = 0; framebuffer = 0; target = 0
     width = 0; height = 0; seen_revision = 0; failed = false
+    present_width = 0; present_height = 0; presented = false
 }

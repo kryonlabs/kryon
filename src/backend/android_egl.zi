@@ -140,7 +140,7 @@ Disable :: () {
 Present :: () -> bool {
     if !frame_open { return false }
     first := !android_composition_presented
-    if !Paint.BlitToWindow(window_width, window_height) || SwapBuffers(display, surface) == 0 { Disable(); return false }
+    if !Paint.PresentToWindow(window_width, window_height) || SwapBuffers(display, surface) == 0 { Disable(); return false }
     android_composition_presented = true
     if first { Native.AndroidNativeLog("Android frame presentation: GLES 3 / EGL window swap") }
     Cancel()
