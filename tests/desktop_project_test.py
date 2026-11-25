@@ -151,6 +151,8 @@ def main():
         solid_png(project / "red.png", 32, 32, (230, 30, 40, 255))
         env = private_environment()
         env["XDG_CONFIG_HOME"] = str(project / "config")
+        # The frame-mode probe keeps its frame entry until phase 2 ports it.
+        env["KRYON_FRAME_ENTRY"] = "1"
         run([ZIRAN, "lock"], project, env)
         run([ZIRAN, "tool", "kryon", "build", "--profile", "desktop"],
             project, env)

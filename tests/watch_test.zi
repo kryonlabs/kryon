@@ -91,7 +91,7 @@ main :: () -> s32 {
     defer ClosePrivateDisplay(*display)
     driver := DriverOpen(JoinPath(project, "driver"))
     arguments: [5]string = .[ziran, "tool", "kryon", "run", "--watch"]
-    extra: [1]string = .[DriverEnvironment(*driver)]
+    extra: [2]string = .[DriverEnvironment(*driver), "KRYON_FRAME_ENTRY=1"]
     watcher := StartOnDisplay(*display, arguments[:], extra[:], project, "build/test/watch.log")
     if !watcher.started { print("watch: FAIL kryon run --watch did not start\n"); return 1 }
     defer { unused StopOwnedProcess(*watcher, 5000) }

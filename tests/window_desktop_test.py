@@ -146,6 +146,8 @@ def main():
         (project / "src/app.zi").write_text(APP)
         (project / "driver.py").write_text(DRIVER)
         env = private_environment()
+        # The frame-mode probe keeps its frame entry until phase 2 ports it.
+        env["KRYON_FRAME_ENTRY"] = "1"
         run([ZIRAN, "lock"], project, env)
         run([ZIRAN, "tool", "kryon", "build", "--profile", "desktop"],
             project, env)

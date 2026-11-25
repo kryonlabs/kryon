@@ -41,6 +41,8 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Kryon enforces `main` on desktop UI programs: a desktop entry without `main :: () -> s32` (opening its window through `kryon/app`) fails with a migration error; `KRYON_FRAME_ENTRY=1` keeps frame-mode fixtures building until their host capabilities move into `kryon/app`. Capture builds (`kryon` preview, `run --png`) bind the entry's `Frame` even for a program entry, so fixtures stay drawing modules, and `App.Frame` carries the `viewport` its draw runs in.
+
 - Android system text draws from the pixel backend's GPU atlas as textured quads, like bundled glyphs, instead of one quad per pixel: the Android typeface raster keeps the last 64 runs (4 MB together) instead of one, names each raster by its text, font, face, style and color, and a run wider than an atlas entry draws in column chunks (`PixmapGpuAddMaskRows`). The GPU recording test draws a 600-pixel named run on both paths.
 
 - Android picture caches decode PNG through the activity's BitmapFactory bridge first, and keep the in-process decoder for hosts without a bridge; a 960x1440 title picture decodes three times faster on the USB Moto.

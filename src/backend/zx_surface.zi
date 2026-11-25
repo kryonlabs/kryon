@@ -330,7 +330,7 @@ SurfaceBeginInput :: (session: Session, input: FrameInputSnapshot) -> bool {
 SurfaceCompose :: (session: Session, draw: Draw, width: s32, height: s32) -> bool {
     bounds: Rectangle = .{0.0, 0.0, cast(float32)width, cast(float32)height}
     if BeginFrame(session, cast(u64)1, bounds) != cast(FrameStatus)FrameOk { return false }
-    App.CallDraw(draw, session.slot, session.epoch)
+    App.CallDraw(draw, session.slot, session.epoch, bounds)
     return true
 }
 

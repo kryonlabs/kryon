@@ -644,7 +644,7 @@ PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string)
     }
     args[5] = "build"
     args[22] = Join("PROJECT_BUILD_DIR=", build_root, build_option_bytes[:])
-    args[23] = "PROJECT_PROGRAM=" // Bind Frame even if the fixture declares a main.
+    args[23] = "PROJECT_CAPTURE=1" // Render Frame even for a program entry.
     if args[22] == "" { return Error("capture build directory is too long") }
     mkdir: [4]string = .["mkdir", "-p", "--", build_root]
     if RunChild(mkdir[:]) != 0 { return Error("cannot create the capture build directory") }

@@ -112,16 +112,37 @@ endif
 # selects the host for the compiled target. A frame entry declares Frame and
 # the profile's host owns main.
 PROJECT_PROGRAM := $(shell grep -Eqs '^main[[:space:]]*::' '$(PROJECT_ENTRY)' && echo program)
+# Capture builds (kryon preview / run --png) render a fixture's or the
+# entry's Frame even when it declares a main; fixtures are drawing modules,
+# not programs.
+PROJECT_CAPTURE := $(PROJECT_CAPTURE)
+ifeq ($(PROJECT_CAPTURE),)
 ifeq ($(PROJECT_BACKEND),dom)
 ifneq ($(PROJECT_PROGRAM),)
 $(error backend dom needs an exported Frame rather than main)
+endif
+endif
+# A desktop or portable UI program declares main; frame entries are being
+# retired. The deprecated KRYON_FRAME_ENTRY=1 escape keeps not-yet-migrated
+# frame-mode fixtures building until their host capabilities move into
+# kryon/app (see plans/enforce-main-ui-programs.md).
+ifneq ($(filter $(PROJECT_BACKEND),desktop),)
+ifeq ($(PROJECT_PROGRAM),)
+ifeq ($(KRYON_FRAME_ENTRY),)
+$(error $(PROJECT_ENTRY) has no main. Kryon UI programs declare one: add `main :: () -> s32` that runs App.Run from kryon/app, as docs/APPS.md shows. A frame entry still builds during the migration with KRYON_FRAME_ENTRY=1)
+endif
+endif
 endif
 endif
 # Track the export annotation belonging to main, rather than unrelated exports.
 # Every make version reads \# in an assignment as a literal number sign.
 PROJECT_HASH := \#
 PROJECT_EXPORTED_MAIN := $(shell awk '/^$(PROJECT_HASH)program_export([[:space:]]*("main")?[[:space:]]*;?[[:space:]]*)$$/ { exported=1; next } /^main[[:space:]]*::/ { if (exported) print "main"; exit } !/^[[:space:]]*($$|\/\/|$(PROJECT_HASH))/ { exported=0 }' '$(PROJECT_ENTRY)')
-ifneq ($(PROJECT_PROGRAM),)
+ifneq ($(PROJECT_CAPTURE),)
+# A capture renders Frame even for a program entry.
+PROJECT_FRAME_BIND := --bind $(ZIRAN_PACKAGE_ID)_frame_entry:ProjectFrame=$(PROJECT_ENTRY_MODULE):Frame
+HOST_ROOT_SOURCES += $(PROJECT_ENTRY) $(KRYON_DIR)/src/backend/frame_entry.zi
+else ifneq ($(PROJECT_PROGRAM),)
 ifeq ($(PROJECT_CODEGEN),zx)
 # A portable program's bundle is its own main, which kryon/app gives the
 # window ZX bundles have; the profile's player runs it.

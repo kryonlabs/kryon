@@ -13,7 +13,7 @@ using Geometry :: #import "geometry";
 active_draw: App.Draw;
 
 DrawFrame :: (session: Session, bounds: Rectangle) -> s32 {
-    App.CallDraw(active_draw, session.slot, session.epoch)
+    App.CallDraw(active_draw, session.slot, session.epoch, bounds)
     return 0
 }
 

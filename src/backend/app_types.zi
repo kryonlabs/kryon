@@ -1,14 +1,19 @@
+// The viewport type comes from the shared geometry module.
+#import "geometry"
+
 Window :: struct {
     title: string
     width: s32
     height: s32
 }
 
-// A frame identifies the session currently being composed. Widgets whose
-// bounds are left at zero use that session's root bounds.
+// A frame identifies the session currently being composed and the viewport
+// it draws in. Widgets whose bounds are left at zero use that session's
+// root bounds.
 Frame :: struct {
     slot: s32
     epoch: u64
+    viewport: Rectangle
 }
 
 // Builds one frame's widgets.
@@ -17,6 +22,6 @@ Draw :: #type (frame: Frame) -> void;
 // Calls `draw` for the frame of session `slot` at `epoch`. The frame hosts
 // import this module by name and call through here: Ziran checks a direct
 // call of an `App.Draw` against an unqualified `Frame`.
-CallDraw :: (draw: Draw, slot: s32, epoch: u64) {
-    draw(Frame.{.slot = slot, .epoch = epoch})
+CallDraw :: (draw: Draw, slot: s32, epoch: u64, viewport: Rectangle) {
+    draw(Frame.{.slot = slot, .epoch = epoch, .viewport = viewport})
 }

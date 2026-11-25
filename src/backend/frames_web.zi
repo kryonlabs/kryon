@@ -27,7 +27,7 @@ DrawCanvasFrame :: (session: Session, viewport: Rectangle, draw: App.Draw) -> bo
         EndCanvasFrame()
         return false
     }
-    App.CallDraw(draw, session.slot, session.epoch)
+    App.CallDraw(draw, session.slot, session.epoch, viewport)
     if EndCanvasUiFrame(session) != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
         return false
