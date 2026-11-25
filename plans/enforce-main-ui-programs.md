@@ -51,9 +51,13 @@ Backends and phases:
 | web canvas | yes (`page_window`/`frames_web`) but fixtures use frame-mode host capabilities (`RequestWindowClose`) | phase 2 |
 | terminal, dom, pixmap(shot), android | no app-side run helper; hosts own the loop | phase 2/3 |
 
-`#program_export` stays a Ziran language feature for native C exports
-(window, notification and Cairo modules use it); what disappears is its use
-as a UI program entry.
+Owner direction: the Frame program export is removed entirely — no compat
+alias, no second entry mode, no `#program_export` UI program path. The only
+migration aid is the phase 1 build error pointing at `main`.
+`#program_export` itself stays a Ziran language feature for plain native C
+exports (window, notification and Cairo modules export functions, not
+programs); removing it from the language would be a Ziran-side change
+outside this plan.
 
 ## Phase 1 (this change, kryonlabs/kryon)
 
@@ -90,6 +94,14 @@ Once no consumer builds a Frame-entry program:
 - delete the hosts' `main`+`Frame` bodies (desktop_run 45, canvas_run 81,
   dom_run 48, terminal_run 245, pixmap_run 37, zx_run 171, android_run ~400
   lines shrink to thin loop modules behind `App.Run*`);
+- the end state has one program model: every Kryon UI file declares `main`.
+  A Frame entry then fails the build with the phase 1 migration error
+  (pointing at `main` and docs/APPS.md) — no compat alias, no
+  `KRYON_FRAME_ENTRY` escape, no capture-only exemption;
+- capture rework: plain `kryon run shot` (no `--png`) only ever reaches the
+  frame-entry path, so it disappears with Frame — either render a program's
+  `Draw` once through a generated host or drop the bare form; `--png`
+  capture (`PROJECT_CAPTURE=1`) already runs program entries and stays;
 - ziran-vscode: no special casing needed; the wasm/native targets unify on
   the hasMain path (`targets.cjs`), `isKryonProgram` keeps only the
   `kryon/app` import check (preview.cjs lines 70-76, run.cjs line 196); the
