@@ -341,11 +341,149 @@ surface: *void;
 paint: *void;
 frame_pending: bool;
 raster_presented_surface: *void;
+raster_main_surface: *void;
+raster_target_swapped: bool;
+raster_gpu_width: s32;
+raster_gpu_height: s32;
 RasterFrameImage :: #type (id: u32) -> *void;
 RasterFramePresent :: #type (finished: *void) -> void;
 raster_frame_image: RasterFrameImage;
 raster_frame_present: RasterFramePresent;
 raster_frames_close: RasterRelease;
+
+// Optional hardware GPU 2D backend hooks installed by desktop_runtime when an
+// accelerated SDL2 GPU renderer is active. Keeps cairo_raster independent of
+// SDL2 for headless/non-SDL tests while letting all desktop apps, zx-desktop
+// and libkryon-desktop.so render directly on the GPU via SDL_RenderGeometry.
+RasterGpuTextArgs :: struct {
+    value: string
+    font: s32
+    family: s32
+    weight: s32
+    slant: s32
+    spacing: s32
+    scale: float64
+    offset_x: float64
+    offset_y: float64
+    x: s32
+    y: s32
+    color: Color
+    has_clip: bool
+    clip: Rectangle
+    rotated: bool
+    origin: Vector2
+    rotation: float32
+    outer_clipped: bool
+    outer_clip: Rectangle
+}
+
+RasterGpuImageArgs :: struct {
+    surface_ptr: *void
+    texture_id: u32
+    serial: u64
+    img_w: s32
+    img_h: s32
+    data: *u8
+    stride: s32
+    source: Rectangle
+    dest: Rectangle
+    clip: Rectangle
+    origin: Vector2
+    rotation: float32
+    tint: Color
+    smooth: bool
+    polygon: []Vector2
+    scale: float64
+    offset_x: float64
+    offset_y: float64
+}
+
+RasterGpuMeshArgs :: struct {
+    surface_ptr: *void
+    texture_id: u32
+    serial: u64
+    img_w: s32
+    img_h: s32
+    data: *u8
+    stride: s32
+    source: Rectangle
+    points: []Vector2
+    columns: s32
+    rows: s32
+    clip: Rectangle
+    tint: Color
+    smooth: bool
+    scale: float64
+    offset_x: float64
+    offset_y: float64
+}
+
+RasterGpuClearCall :: #type (color: Color) -> void;
+RasterGpuRoundedRectCall :: #type (bounds: Rectangle, radius: float32, color: Color,
+    scale: float64, offset_x: float64, offset_y: float64) -> void;
+RasterGpuRoundedOutlineCall :: #type (bounds: Rectangle, radius: float32, line_width: float32,
+    color: Color, scale: float64, offset_x: float64, offset_y: float64) -> void;
+RasterGpuLineCall :: #type (line: Rectangle, color: Color,
+    scale: float64, offset_x: float64, offset_y: float64) -> void;
+RasterGpuTrianglesCall :: #type (points: []Vector2, color: Color,
+    scale: float64, offset_x: float64, offset_y: float64) -> void;
+RasterGpuTextCachedCall :: #type (args: *RasterGpuTextArgs) -> bool;
+RasterGpuTextUploadCall :: #type (args: *RasterGpuTextArgs, bmp_w: s32, bmp_h: s32,
+    data: *u8, stride: s32, is_color: bool) -> bool;
+RasterGpuImageCall :: #type (args: *RasterGpuImageArgs) -> bool;
+RasterGpuImageMeshCall :: #type (args: *RasterGpuMeshArgs) -> bool;
+RasterGpuReadbackCall :: #type (pixels: *u8, stride: s32) -> bool;
+RasterGpuInvalidateCall :: #type () -> void;
+
+RasterGpuHooks :: struct {
+    active: bool
+    clear: RasterGpuClearCall
+    rounded_rect: RasterGpuRoundedRectCall
+    rounded_outline: RasterGpuRoundedOutlineCall
+    line: RasterGpuLineCall
+    triangles: RasterGpuTrianglesCall
+    text_cached: RasterGpuTextCachedCall
+    text_upload: RasterGpuTextUploadCall
+    image: RasterGpuImageCall
+    image_mesh: RasterGpuImageMeshCall
+    readback: RasterGpuReadbackCall
+    invalidate_images: RasterGpuInvalidateCall
+}
+raster_gpu: RasterGpuHooks;
+
+RasterGpuInstall :: (hooks: RasterGpuHooks) {
+    raster_gpu = hooks
+}
+RasterGpuClearHooks :: () {
+    raster_gpu = .{}
+}
+RasterGpuOn :: () -> bool {
+    return raster_gpu.active && !raster_target_swapped
+}
+
+// Lazily allocates/resizes the Cairo readback surface when a GPU frame is
+// explicitly read back for PNG capture or FramePreviousSnapshotHost.
+RasterReadbackGpuSurface :: () -> bool {
+    if !RasterGpuOn() || raster_gpu.readback == null { return true }
+    if raster_gpu_width <= 0 || raster_gpu_height <= 0 { return false }
+    if surface == null || ImageSurfaceWidth(surface) != raster_gpu_width ||
+        ImageSurfaceHeight(surface) != raster_gpu_height {
+        if raster_text_close != null { raster_text_close() }
+        if paint != null { Destroy(paint); paint = null }
+        if surface != null { SurfaceDestroy(surface); surface = null }
+        surface = ImageSurfaceCreate(0, raster_gpu_width, raster_gpu_height)
+        if surface == null || SurfaceStatus(surface) != 0 { return false }
+        paint = Create(surface)
+        if paint != null {
+            Translate(paint, raster_offset_x, raster_offset_y)
+            Scale(paint, raster_scale, raster_scale)
+        }
+        raster_main_surface = surface
+    }
+    ok := raster_gpu.readback(ImageSurfaceData(surface), ImageSurfaceStride(surface))
+    if ok { SurfaceMarkDirty(surface) }
+    return ok
+}
 
 // The surface and paint frames draw into. A secondary window swaps its own in
 // for its frame and gives the previous back after (see
@@ -354,6 +492,7 @@ RasterTarget :: struct { surface: *void; paint: *void; pending: bool; }
 RasterUseTarget :: (next: RasterTarget) -> RasterTarget {
     previous := RasterTarget.{surface, paint, frame_pending}
     surface = next.surface; paint = next.paint; frame_pending = next.pending
+    raster_target_swapped = raster_main_surface != null && surface != raster_main_surface
     if layout != null && paint != null { UseKryonFont() }
     return previous
 }
@@ -574,13 +713,21 @@ OpenRaster :: (width: s32, height: s32) -> bool {
         if paint != null { Destroy(paint); paint = null }
         if surface != null { SurfaceDestroy(surface); surface = null }
     }
-    surface = ImageSurfaceCreate(0, width, height)
+    raster_gpu_width = width
+    raster_gpu_height = height
+    // When GPU rendering is active, allocate only a 1x1 Cairo surface for
+    // Pango font metrics/shaping; full-screen pixel storage lives on the GPU.
+    alloc_w := ifx raster_gpu.active then cast(s32)1 else width
+    alloc_h := ifx raster_gpu.active then cast(s32)1 else height
+    surface = ImageSurfaceCreate(0, alloc_w, alloc_h)
     if surface == null || SurfaceStatus(surface) != 0 { return false }
     paint = Create(surface)
     if paint != null {
         Translate(paint, raster_offset_x, raster_offset_y)
         Scale(paint, raster_scale, raster_scale)
     }
+    raster_main_surface = surface
+    raster_target_swapped = false
     return paint != null && Status(paint) == 0
 }
 
@@ -656,6 +803,8 @@ CloseRaster :: () {
     if surface != null { SurfaceDestroy(surface) }
     paint = null
     surface = null
+    raster_main_surface = null
+    raster_target_swapped = false
     raster_presented_surface = null
 }
 
@@ -681,10 +830,14 @@ PrepareRasterPaint :: () {
     if !frame_pending { return }
     frame_pending = false
     raster_presented_surface = null
-    Save(paint)
     color: Color = .{248, 250, 252, 255}
     // Frame code may install a palette before emitting its first draw.
     if raster_appearance.background != null { color = ColorFromPacked(raster_appearance.background(false)) }
+    if RasterGpuOn() && raster_gpu.clear != null {
+        raster_gpu.clear(color)
+        return
+    }
+    Save(paint)
     SetSourceRGBA(paint, cast(float64)color.r / 255.0, cast(float64)color.g / 255.0,
         cast(float64)color.b / 255.0, cast(float64)color.a / 255.0)
     Paint(paint)
@@ -695,9 +848,13 @@ PrepareRasterPaint :: () {
 // the caller's clip and drawing state for the commands after the clear.
 #program_export
 ClearRasterFrame :: (color: Color) {
-    if paint == null { return }
     frame_pending = false
     raster_presented_surface = null
+    if RasterGpuOn() && raster_gpu.clear != null {
+        raster_gpu.clear(color)
+        return
+    }
+    if paint == null { return }
     Save(paint)
     ResetClip(paint)
     SetOperator(paint, 1) // CAIRO_OPERATOR_SOURCE
@@ -711,6 +868,7 @@ ClearRasterFrame :: (color: Color) {
 FinishRasterFrame :: (retain: bool = false) -> bool {
     // A changed frame with no commands still replaces the previous picture.
     if !retain { PrepareRasterPaint() }
+    if RasterGpuOn() { return !text_error }
     if text_error || Status(paint) != 0 { return false }
     SurfaceFlush(surface)
     if SurfaceStatus(surface) != 0 { return false }
@@ -720,15 +878,24 @@ FinishRasterFrame :: (retain: bool = false) -> bool {
 // The presenter calls this only after a successful display update. Finished
 // off-screen or failed frames must not replace the previous presented frame.
 RasterFramePresented :: () {
+    if RasterGpuOn() && raster_frame_present != null {
+        unused RasterReadbackGpuSurface()
+    }
     raster_presented_surface = surface
     if raster_frame_present != null { raster_frame_present(surface) }
 }
 
 #program_export
-RasterSurfaceData :: () -> *u8 { return ImageSurfaceData(surface) }
+RasterSurfaceData :: () -> *u8 {
+    if RasterGpuOn() { unused RasterReadbackGpuSurface() }
+    return ImageSurfaceData(surface)
+}
 
 #program_export
-RasterSurfaceStride :: () -> s32 { return ImageSurfaceStride(surface) }
+RasterSurfaceStride :: () -> s32 {
+    if RasterGpuOn() { unused RasterReadbackGpuSurface() }
+    return ImageSurfaceStride(surface)
+}
 
 #program_export
 CaptureRequested :: () -> bool {
@@ -743,6 +910,7 @@ CaptureConfigured :: () -> bool {
     if !CopyCString("KRYON_CAPTURE_PATH", key[:]) { return false }
     path: *u8 = RasterGetEnvironment(*key[0])
     if path == null { return false }
+    if RasterGpuOn() && !RasterReadbackGpuSurface() { return false }
     return SurfaceWritePNG(surface, path) == 0
 }
 
@@ -793,6 +961,7 @@ RasterTextPixels :: (value: string, font: s32, color: Color, width: s32, height:
 RasterWritePNG :: (path: string) -> bool {
     name: [4096]u8
     if !CopyCString(path, name[:]) { return false }
+    if RasterGpuOn() && !RasterReadbackGpuSurface() { return false }
     return SurfaceWritePNG(surface, *name[0]) == 0
 }
 #program_export
@@ -812,10 +981,84 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
     return height
 }
 
+CairoCeilS32 :: (value: float64) -> s32 {
+    n := cast(s32)value
+    return ifx value > cast(float64)n then n + 1 else n
+}
+
+// Draws text on the GPU using the Pango/Cairo shaped glyph atlas cache.
+// On atlas hit, zero Cairo calls occur; on miss, only the small text run is
+// rasterized once to a temporary surface and uploaded into GPU VRAM.
+CairoGpuDrawText :: (value: string, x: s32, y: s32, font: s32, color: Color,
+    has_clip: bool, clip: Rectangle, rotated: bool, origin: Vector2, rotation: float32,
+    outer_clipped: bool, outer_clip: Rectangle) -> bool {
+    if !RasterGpuOn() || raster_gpu.text_cached == null || raster_gpu.text_upload == null {
+        return false
+    }
+    if value.count == 0 { return true }
+    family := ShapedFamily(text_raster_typeface)
+    style := text_glyph_style
+    weight := ifx style.weight > 0 then style.weight else 400
+    slant := cast(s32)style.style
+    spacing := cast(s32)(style.letter_spacing * 1024.0)
+    args: RasterGpuTextArgs = .{
+        value, font, family.id, weight, slant, spacing,
+        raster_scale, raster_offset_x, raster_offset_y,
+        x, y, color, has_clip, clip, rotated, origin, rotation,
+        outer_clipped, outer_clip
+    }
+    if raster_gpu.text_cached(*args) {
+        return true
+    }
+    if !ShapedLayout(value, font, text_raster_typeface) { text_error = true; return true }
+    laid_w: s32 = 0; laid_h: s32 = 0
+    LayoutSize(layout, *laid_w, *laid_h)
+    if laid_w <= 0 || laid_h <= 0 { return true }
+    bmp_w := CairoCeilS32(cast(float64)laid_w * raster_scale) + 2
+    bmp_h := CairoCeilS32(cast(float64)laid_h * raster_scale) + 2
+    if bmp_w <= 0 || bmp_h <= 0 || bmp_w > 4096 || bmp_h > 4096 { return false }
+    scratch := ImageSurfaceCreate(0, bmp_w, bmp_h)
+    if scratch == null || SurfaceStatus(scratch) != 0 {
+        if scratch != null { SurfaceDestroy(scratch) }
+        return false
+    }
+    ctx := Create(scratch)
+    if ctx == null { SurfaceDestroy(scratch); return false }
+    Scale(ctx, raster_scale, raster_scale)
+    SetSourceRGBA(ctx, 1.0, 1.0, 1.0, 1.0)
+    MoveTo(ctx, 0.0, 0.0)
+    LayoutShow(ctx, layout)
+    Destroy(ctx)
+    SurfaceFlush(scratch)
+    data := ImageSurfaceData(scratch)
+    stride := ImageSurfaceStride(scratch)
+    is_color := false
+    for py: cast(s32)0..bmp_h - 1 {
+        row := *data[cast(s64)py * cast(s64)stride]
+        for px: cast(s32)0..bmp_w - 1 {
+            word := (cast(*u32)(*row[cast(s64)px * 4])).*
+            if (word >> cast(u32)24) != cast(u32)0 {
+                r := (word >> cast(u32)16) & cast(u32)255
+                g := (word >> cast(u32)8) & cast(u32)255
+                b := word & cast(u32)255
+                if r != g || g != b { is_color = true; break }
+            }
+        }
+        if is_color { break }
+    }
+    ok := raster_gpu.text_upload(*args, bmp_w, bmp_h, data, stride, is_color)
+    SurfaceDestroy(scratch)
+    return ok
+}
+
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
     PrepareRasterPaint()
+    if RasterGpuOn() && raster_gpu.rounded_rect != null {
+        raster_gpu.rounded_rect(bounds, radius, color, raster_scale, raster_offset_x, raster_offset_y)
+        return
+    }
     RoundBox(bounds, radius)
     SetColor(color)
     Fill(paint)
@@ -825,6 +1068,10 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
 RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     segments: s32, width: float32, color: Color) {
     PrepareRasterPaint()
+    if RasterGpuOn() && raster_gpu.rounded_outline != null {
+        raster_gpu.rounded_outline(bounds, radius, width, color, raster_scale, raster_offset_x, raster_offset_y)
+        return
+    }
     RoundBox(bounds, radius)
     SetColor(color)
     SetLineWidth(paint, width)
@@ -834,6 +1081,10 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
 #program_export
 RasterLine :: (line: Rectangle, color: Color) {
     PrepareRasterPaint()
+    if RasterGpuOn() && raster_gpu.line != null {
+        raster_gpu.line(line, color, raster_scale, raster_offset_x, raster_offset_y)
+        return
+    }
     MoveTo(paint, line.x, line.y)
     LineTo(paint, (line.x + line.width),
         (line.y + line.height))
@@ -847,6 +1098,10 @@ RasterLine :: (line: Rectangle, color: Color) {
 #program_export
 RasterTriangles :: (points: []Vector2, color: Color) {
     PrepareRasterPaint()
+    if RasterGpuOn() && raster_gpu.triangles != null {
+        raster_gpu.triangles(points, color, raster_scale, raster_offset_x, raster_offset_y)
+        return
+    }
     count: s64 = points.count - points.count % 3
     if count == 0 || color.a == cast(u8)0 { return }
     NewPath(paint)
@@ -866,6 +1121,10 @@ RasterTriangles :: (points: []Vector2, color: Color) {
 RasterText :: (value: string, x: s32, y: s32,
     font: s32, color: Color) {
     PrepareRasterPaint()
+    no_rect: Rectangle; no_origin: Vector2
+    if CairoGpuDrawText(value, x, y, font, color, false, no_rect, false, no_origin, 0.0, false, no_rect) {
+        return
+    }
     if !ShapedLayout(value, font, text_raster_typeface) { text_error = true; return }
     MoveTo(paint, cast(float64)x, cast(float64)y)
     SetColor(color)
@@ -876,6 +1135,10 @@ RasterText :: (value: string, x: s32, y: s32,
 RasterTextClipped :: (value: string, x: s32, y: s32,
     font: s32, color: Color, clip: Rectangle) {
     PrepareRasterPaint()
+    no_rect: Rectangle; no_origin: Vector2
+    if CairoGpuDrawText(value, x, y, font, color, true, clip, false, no_origin, 0.0, false, no_rect) {
+        return
+    }
     if !CairoTextOpen() { text_error = true; return }
     Save(paint)
     CanvasRectangle(paint, clip.x, clip.y,
@@ -1051,6 +1314,7 @@ RetainedPreviousFrameTexture :: () -> Texture2D {
     raster_frame_image = CairoFrameImage
     raster_frame_present = CairoFramePresented
     raster_frames_close = CairoFramesClose
+    if RasterGpuOn() { unused RasterReadbackGpuSurface() }
     frame_source = surface
     // First use can copy an intact presented frame. Otherwise begin tracking
     // at the next successful presentation, leaving the snapshot invalid.
@@ -1114,6 +1378,7 @@ CairoForgetCachedImage :: (index: s32) {
     if item.image == null { return }
     image_bytes -= item.bytes
     Lanczos.LanczosForget(item.serial)
+    if raster_gpu.active && raster_gpu.invalidate_images != null { raster_gpu.invalidate_images() }
     SurfaceDestroy(item.image)
     item.* = .{}
 }
@@ -1325,6 +1590,66 @@ RasterImage :: (asset_path: string, texture_id: u32,
         print("Kryon: skipped image: invalid or unavailable picture\n")
         return
     }
+    if RasterGpuOn() && raster_gpu.image != null && radius <= 0.0 {
+        SurfaceFlush(image)
+        img_w := ImageSurfaceWidth(image)
+        img_h := ImageSurfaceHeight(image)
+        serial: u64 = 0
+        if texture_id == cast(u32)0 {
+            serial = CairoImageSerial(image)
+            if serial == cast(u64)0 && image == picture_surface { serial = picture_revision }
+        } else {
+            slot := Bitmaps.BitmapSlot(texture_id)
+            if slot >= 0 { serial = Bitmaps.bitmap_images[slot].revision }
+        }
+        polygon := CurrentPaintPolygon()
+        args: RasterGpuImageArgs = .{
+            image, texture_id, serial, img_w, img_h,
+            ImageSurfaceData(image), ImageSurfaceStride(image),
+            source, destination, clip, origin, rotation, tint,
+            CurrentPaintSmooth(), polygon, raster_scale, raster_offset_x, raster_offset_y
+        }
+        if raster_gpu.image(*args) {
+            CairoReleaseManaged(texture_id, image)
+            return
+        }
+    }
+    if RasterGpuOn() && raster_gpu.image != null && radius > 0.0 {
+        // Rounded-corner image: rasterize just the clipped image bounds into a
+        // small scratch surface and composite on the GPU.
+        bw := CairoCeilS32(cast(float64)clip.width * raster_scale)
+        bh := CairoCeilS32(cast(float64)clip.height * raster_scale)
+        if bw > 0 && bh > 0 && bw <= 4096 && bh <= 4096 {
+            scratch := ImageSurfaceCreate(0, bw, bh)
+            if scratch != null && SurfaceStatus(scratch) == 0 {
+                ctx := Create(scratch)
+                if ctx != null {
+                    Scale(ctx, raster_scale, raster_scale)
+                    Translate(ctx, -cast(float64)clip.x, -cast(float64)clip.y)
+                    prev := RasterUseTarget(RasterTarget.{scratch, ctx, false})
+                    RasterImage(asset_path, texture_id, source, destination, clip, origin, rotation, radius, tint)
+                    unused RasterUseTarget(prev)
+                    Destroy(ctx)
+                    SurfaceFlush(scratch)
+                    empty_poly: []Vector2
+                    no_orig: Vector2
+                    white := Color.{255, 255, 255, 255}
+                    args: RasterGpuImageArgs = .{
+                        null, 0, 0, bw, bh,
+                        ImageSurfaceData(scratch), ImageSurfaceStride(scratch),
+                        Rectangle.{0.0, 0.0, cast(float32)bw, cast(float32)bh},
+                        clip, clip, no_orig, 0.0, white, true, empty_poly,
+                        raster_scale, raster_offset_x, raster_offset_y
+                    }
+                    unused raster_gpu.image(*args)
+                }
+                SurfaceDestroy(scratch)
+                CairoReleaseManaged(texture_id, image)
+                return
+            }
+            if scratch != null { SurfaceDestroy(scratch) }
+        }
+    }
     mirror_x := source.width < 0.0; mirror_y := source.height < 0.0
     if mirror_x { source.width = -source.width }
     if mirror_y { source.height = -source.height }
@@ -1448,6 +1773,29 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
         print("Kryon: skipped image: invalid or unavailable picture\n")
         return
     }
+    if RasterGpuOn() && raster_gpu.image_mesh != null {
+        SurfaceFlush(image)
+        img_w := ImageSurfaceWidth(image)
+        img_h := ImageSurfaceHeight(image)
+        serial: u64 = 0
+        if texture_id == cast(u32)0 {
+            serial = CairoImageSerial(image)
+            if serial == cast(u64)0 && image == picture_surface { serial = picture_revision }
+        } else {
+            slot := Bitmaps.BitmapSlot(texture_id)
+            if slot >= 0 { serial = Bitmaps.bitmap_images[slot].revision }
+        }
+        args: RasterGpuMeshArgs = .{
+            image, texture_id, serial, img_w, img_h,
+            ImageSurfaceData(image), ImageSurfaceStride(image),
+            source, points, columns, rows, clip, tint, CurrentPaintSmooth(),
+            raster_scale, raster_offset_x, raster_offset_y
+        }
+        if raster_gpu.image_mesh(*args) {
+            CairoReleaseManaged(texture_id, image)
+            return
+        }
+    }
     Save(paint)
     CanvasRectangle(paint, cast(float64)clip.x, cast(float64)clip.y,
         cast(float64)clip.width, cast(float64)clip.height)
@@ -1563,12 +1911,17 @@ CairoMeshTriangle :: (image: *void, a: Vector2, a_source: Vector2,
 RasterTextRotated :: (value: string, x: s32, y: s32, font: s32,
     color: Color, clip: Rectangle, origin: Vector2, rotation: float32,
     outer_clip: Rectangle, outer_clipped: bool, emphasis: bool, italic: bool) {
-    PrepareRasterPaint(); Save(paint)
+    PrepareRasterPaint()
+    unused italic
+    stroke := ifx emphasis then (ifx font / 24 > 0 then font / 24 else 1) else 0
+    if CairoGpuDrawText(value, x + stroke, y, font, color, true, clip,
+        true, origin, rotation, outer_clipped, outer_clip) {
+        return
+    }
+    Save(paint)
     if outer_clipped { NewPath(paint); CanvasRectangle(paint,outer_clip.x,outer_clip.y,outer_clip.width,outer_clip.height); Clip(paint) }
     Translate(paint,origin.x,origin.y); Rotate(paint,cast(float64)rotation*0.017453292519943295)
     Translate(paint,-origin.x,-origin.y)
-    unused italic
-    stroke := ifx emphasis then (ifx font / 24 > 0 then font / 24 else 1) else 0
     RasterTextClipped(value,x+stroke,y,font,color,clip)
     Restore(paint)
 }

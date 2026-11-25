@@ -2,6 +2,8 @@ Presenter :: #import "pixmap_sdl";
 #import "std/c_string"
 
 preferred: [32]u8;
+gpu_env: [8]u8;
+sw_env: [8]u8;
 calls: [8]u32;
 creates: s32;
 destroys: s32;
@@ -9,7 +11,14 @@ alive: s32;
 software_fails: bool;
 accelerated_fails: bool;
 explicit: bool;
-forced: bool;
+has_gpu_env: bool;
+has_sw_env: bool;
+
+MatchesEnv :: (pointer: *u8, value: string) -> bool {
+    if pointer == null { return false }
+    for index: 0..value.count - 1 { if pointer[index] != value[index] { return false } }
+    return pointer[value.count] == cast(u8)0
+}
 
 #program_export "SDL_GetHint"
 Hint :: (name: *u8) -> *u8 {
@@ -17,8 +26,12 @@ Hint :: (name: *u8) -> *u8 {
 }
 #program_export "SDL_getenv"
 Env :: (name: *u8) -> *u8 {
-    return ifx forced then *preferred[0] else null
+    if MatchesEnv(name, "KRYON_PIXMAP_GPU") && has_gpu_env { return *gpu_env[0] }
+    if MatchesEnv(name, "LIBGL_ALWAYS_SOFTWARE") && has_sw_env { return *sw_env[0] }
+    return null
 }
+#program_export "SDL_GL_GetCurrentContext"
+GlContext :: () -> *void { return null }
 #program_export "SDL_SetHintWithPriority"
 SetHint :: (name: *u8, value: *u8, priority: s32) -> s32 { return 1 }
 #program_export "SDL_CreateRenderer"
@@ -45,8 +58,11 @@ Reset :: () {
     software_fails = false
     accelerated_fails = false
     explicit = false
-    forced = false
+    has_gpu_env = false
+    has_sw_env = false
     unused CopyCString("opengl", preferred[:])
+    unused CopyCString("1", gpu_env[:])
+    unused CopyCString("1", sw_env[:])
 }
 
 #program_export "main"
@@ -54,9 +70,11 @@ main :: () -> s32 {
     Reset()
     if Presenter.CreatePixmapRenderer(null) != null || creates != 0 { return 1 }
 
+    // Default prefers hardware GPU acceleration (SDL_RENDERER_ACCELERATED = 2).
     result := Presenter.CreatePixmapRenderer(cast(*void)16)
-    if result == null || creates != 1 || calls[0] != 1 || alive != 1 { return 2 }
+    if result == null || creates != 1 || calls[0] != 2 || alive != 1 { return 2 }
 
+    // Explicit SDL_RENDER_DRIVER remains authoritative (flags = 0).
     Reset()
     explicit = true
     result = Presenter.CreatePixmapRenderer(cast(*void)16)
@@ -68,37 +86,49 @@ main :: () -> s32 {
     result = Presenter.CreatePixmapRenderer(cast(*void)16)
     if result == null || creates != 1 || calls[0] != 0 { return 4 }
 
+    // Explicit KRYON_PIXMAP_GPU=1 requests accelerated.
     Reset()
-    forced = true
-    unused CopyCString("1", preferred[:])
+    has_gpu_env = true
+    unused CopyCString("1", gpu_env[:])
     result = Presenter.CreatePixmapRenderer(cast(*void)16)
     if result == null || creates != 1 || calls[0] != 2 { return 5 }
 
+    // Explicit KRYON_PIXMAP_GPU=0 opts into software.
+    Reset()
+    has_gpu_env = true
+    unused CopyCString("0", gpu_env[:])
+    result = Presenter.CreatePixmapRenderer(cast(*void)16)
+    if result == null || creates != 1 || calls[0] != 1 { return 6 }
+
+    // Empty SDL_RENDER_DRIVER falls back to default hardware GPU preference.
     Reset()
     explicit = true
     unused CopyCString("", preferred[:])
     result = Presenter.CreatePixmapRenderer(cast(*void)16)
-    if result == null || creates != 1 || calls[0] != 1 { return 6 }
+    if result == null || creates != 1 || calls[0] != 2 { return 7 }
 
-    Reset()
-    software_fails = true
-    result = Presenter.CreatePixmapRenderer(cast(*void)16)
-    if result == null || creates != 2 || calls[0] != 1 ||
-        calls[1] != 2 || alive != 1 { return 7 }
-
+    // When hardware accelerated renderer fails, falls back cleanly to software.
     Reset()
     accelerated_fails = true
     result = Presenter.CreatePixmapRenderer(cast(*void)16)
-    if result == null || creates != 1 || calls[0] != 1 || alive != 1 { return 8 }
+    if result == null || creates != 2 || calls[0] != 2 ||
+        calls[1] != 1 || alive != 1 { return 8 }
 
+    // LIBGL_ALWAYS_SOFTWARE=1 avoids software GL by picking SDL software directly.
+    Reset()
+    has_sw_env = true
+    result = Presenter.CreatePixmapRenderer(cast(*void)16)
+    if result == null || creates != 1 || calls[0] != 1 || alive != 1 { return 9 }
+
+    // Both failing returns null without leaking.
     Reset()
     software_fails = true
     accelerated_fails = true
     if Presenter.CreatePixmapRenderer(cast(*void)16) != null ||
-        creates != 2 || calls[0] != 1 || calls[1] != 2 || alive != 0 {
-        return 9
+        creates != 2 || calls[0] != 2 || calls[1] != 1 || alive != 0 {
+        return 10
     }
 
-    print("Presenter selection: explicit authority, software default, GPU opt-in and fallback passed\n")
+    print("Presenter selection: explicit authority, hardware GPU default, opt-out and fallback passed\n")
     return 0
 }

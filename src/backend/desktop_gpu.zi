@@ -1,0 +1,1070 @@
+// Hardware-accelerated SDL2 GPU 2D renderer for Kryon desktop windows, the
+// native ZX runner (`zx-desktop`), and `zx2native` desktop executables
+// (`libkryon-desktop.so`).
+//
+// Draws rectangles, rounded rectangles, borders, lines, triangles, cached
+// Pango/Cairo text runs, cached images and warped image meshes directly on the
+// GPU via SDL_RenderGeometry into a retained GPU SDL_TEXTUREACCESS_TARGET
+// texture, with zero full-frame CPU rasterization and zero per-frame full-screen
+// SDL_UpdateTexture uploads.
+#import "std/c_string"
+#import "std/vec"
+#import "drawing_props"
+#import "geometry"
+#import "math"
+Cairo :: #import "cairo_raster";
+
+sdl :: #system_library "SDL2";
+CreateTexture :: (renderer: *void, format: u32, access: s32, width: s32, height: s32) -> *void #foreign sdl "SDL_CreateTexture";
+DestroyTexture :: (texture: *void) #foreign sdl "SDL_DestroyTexture";
+UpdateTexture :: (texture: *void, rect: *void, pixels: *void, pitch: s32) -> s32 #foreign sdl "SDL_UpdateTexture";
+SetTextureBlend :: (texture: *void, mode: s32) -> s32 #foreign sdl "SDL_SetTextureBlendMode";
+SetTextureScale :: (texture: *void, mode: s32) -> s32 #foreign sdl "SDL_SetTextureScaleMode";
+ComposeBlend :: (src_color: s32, dst_color: s32, color_op: s32,
+    src_alpha: s32, dst_alpha: s32, alpha_op: s32) -> s32 #foreign sdl "SDL_ComposeCustomBlendMode";
+SetRenderTarget :: (renderer: *void, texture: *void) -> s32 #foreign sdl "SDL_SetRenderTarget";
+SetRenderDrawColor :: (renderer: *void, r: u8, g: u8, b: u8, a: u8) -> s32 #foreign sdl "SDL_SetRenderDrawColor";
+SetRenderDrawBlend :: (renderer: *void, mode: s32) -> s32 #foreign sdl "SDL_SetRenderDrawBlendMode";
+RenderClear :: (renderer: *void) -> s32 #foreign sdl "SDL_RenderClear";
+RenderSetClipRect :: (renderer: *void, rect: *void) -> s32 #foreign sdl "SDL_RenderSetClipRect";
+RenderGeometry :: (renderer: *void, texture: *void, vertices: *DesktopGpuVertex, count: s32,
+    indices: *s32, index_count: s32) -> s32 #foreign sdl "SDL_RenderGeometry";
+RenderFlush :: (renderer: *void) -> s32 #foreign sdl "SDL_RenderFlush";
+RenderReadPixels :: (renderer: *void, rect: *void, format: u32, pixels: *void, pitch: s32) -> s32 #foreign sdl "SDL_RenderReadPixels";
+GetEnv :: (name: *u8) -> *u8 #foreign sdl "SDL_getenv";
+CurrentGlContext :: () -> *void #foreign sdl "SDL_GL_GetCurrentContext";
+GlGetString :: #type (name: u32) -> *u8 #c_call;
+GetGlProcAddress :: (name: *u8) -> GlGetString #foreign sdl "SDL_GL_GetProcAddress";
+RendererInfo :: struct {
+    name: *u8
+    flags: u32
+    format_count: u32
+    formats: [16]u32
+    max_width: s32
+    max_height: s32
+}
+GetRendererInfo :: (renderer: *void, info: *RendererInfo) -> s32 #foreign sdl "SDL_GetRendererInfo";
+
+DesktopGpuVertex :: struct {
+    x: float32
+    y: float32
+    r: u8
+    g: u8
+    b: u8
+    a: u8
+    u: float32
+    v: float32
+}
+
+DesktopGpuRect :: struct {
+    x: s32
+    y: s32
+    w: s32
+    h: s32
+}
+
+DesktopGpuBatch :: struct {
+    texture: *void
+    smooth: bool
+    has_clip: bool
+    clip: DesktopGpuRect
+    first: s32
+    count: s32
+}
+
+// Cached rounded-corner quarter-disk alpha mask in the GPU atlas.
+DesktopGpuCorner :: struct {
+    radius: s32
+    x: s32
+    y: s32
+}
+
+// Cached Pango/Cairo text run packed into the GPU atlas.
+DESKTOP_GPU_TEXT_KEY_LIMIT :: 128;
+DESKTOP_GPU_TEXT_SLOTS :: 256;
+DesktopGpuTextEntry :: struct {
+    hash: u64
+    font: s32
+    family: s32
+    weight: s32
+    slant: s32
+    spacing: s32
+    scale_milli: s32
+    length: s32
+    bytes: [DESKTOP_GPU_TEXT_KEY_LIMIT]u8
+    atlas_x: s32
+    atlas_y: s32
+    width: s32
+    height: s32
+    is_color: bool
+    used: u64
+}
+
+// Cached GPU texture for a Cairo image surface (asset, managed bitmap, or snapshot).
+DESKTOP_GPU_IMAGE_SLOTS :: 128;
+DesktopGpuImageEntry :: struct {
+    surface: *void
+    texture_id: u32
+    serial: u64
+    alpha_mask: bool
+    width: s32
+    height: s32
+    texture: *void
+    used: u64
+}
+
+DESKTOP_GPU_FORMAT :: 372645892; // SDL_PIXELFORMAT_ARGB8888
+DESKTOP_GPU_ATLAS_SIDE :: 2048;
+DESKTOP_GPU_WHITE_SIDE :: 4;
+DESKTOP_GPU_CORNER_MAX :: 128;
+DESKTOP_GPU_CORNER_SLOTS :: 64;
+
+#scope_module
+gpu_active: bool;
+gpu_renderer: *void;
+gpu_target: *void;
+gpu_atlas: *void;
+gpu_large_text: *void;
+gpu_large_text_w: s32;
+gpu_large_text_h: s32;
+gpu_premultiplied: s32;
+gpu_width: s32;
+gpu_height: s32;
+gpu_max_texture: s32;
+gpu_atlas_x: s32;
+gpu_atlas_y: s32;
+gpu_atlas_row: s32;
+gpu_clock: u64;
+gpu_clear_pending: bool;
+gpu_clear_color: Color;
+gpu_vertices: Vec(DesktopGpuVertex);
+gpu_batches: Vec(DesktopGpuBatch);
+gpu_corners: [DESKTOP_GPU_CORNER_SLOTS]DesktopGpuCorner;
+gpu_corner_count: s32;
+gpu_texts: [DESKTOP_GPU_TEXT_SLOTS]DesktopGpuTextEntry;
+gpu_images: [DESKTOP_GPU_IMAGE_SLOTS]DesktopGpuImageEntry;
+gpu_scratch_pixels: Vec(u32);
+
+GpuTextContains :: (text: *u8, part: string) -> bool {
+    if text == null { return false }
+    at: s64
+    while text[at] != cast(u8)0 {
+        offset: s64
+        while offset < part.count && text[at + offset] == part[offset] { offset += 1 }
+        if offset == part.count { return true }
+        at += 1
+    }
+    return false
+}
+
+GpuSoftwareGl :: () -> bool {
+    if CurrentGlContext() == null { return false }
+    name: [16]u8
+    if !CopyCString("glGetString", name[:]) { return false }
+    get := GetGlProcAddress(*name[0])
+    if get == null { return false }
+    driver := get(cast(u32)0x1F01) // GL_RENDERER
+    return GpuTextContains(driver, "llvmpipe") || GpuTextContains(driver, "softpipe") ||
+        GpuTextContains(driver, "Software")
+}
+
+Premul :: (color: Color) -> Color {
+    if color.a == cast(u8)255 { return color }
+    if color.a == cast(u8)0 { return Color.{0, 0, 0, 0} }
+    a := cast(u32)color.a
+    return Color.{
+        cast(u8)((cast(u32)color.r * a + cast(u32)127) / cast(u32)255),
+        cast(u8)((cast(u32)color.g * a + cast(u32)127) / cast(u32)255),
+        cast(u8)((cast(u32)color.b * a + cast(u32)127) / cast(u32)255),
+        color.a
+    }
+}
+
+WhiteUv :: () -> float32 {
+    return cast(float32)DESKTOP_GPU_WHITE_SIDE / 2.0 / cast(float32)DESKTOP_GPU_ATLAS_SIDE
+}
+
+AtlasReset :: () {
+    gpu_atlas_x = DESKTOP_GPU_WHITE_SIDE + 2
+    gpu_atlas_y = 0
+    gpu_atlas_row = DESKTOP_GPU_WHITE_SIDE + 2
+    gpu_corner_count = 0
+    for i: cast(s32)0..DESKTOP_GPU_TEXT_SLOTS - 1 { gpu_texts[i] = .{} }
+}
+
+AtlasOpen :: () -> bool {
+    gpu_atlas = CreateTexture(gpu_renderer, cast(u32)DESKTOP_GPU_FORMAT, 0,
+        DESKTOP_GPU_ATLAS_SIDE, DESKTOP_GPU_ATLAS_SIDE)
+    if gpu_atlas == null { return false }
+    unused SetTextureBlend(gpu_atlas, gpu_premultiplied)
+    unused SetTextureScale(gpu_atlas, 0)
+    white: [DESKTOP_GPU_WHITE_SIDE * DESKTOP_GPU_WHITE_SIDE]u32
+    for i: 0..white.count - 1 { white[i] = cast(u32)0xffffffff }
+    area: DesktopGpuRect = .{0, 0, DESKTOP_GPU_WHITE_SIDE, DESKTOP_GPU_WHITE_SIDE}
+    if UpdateTexture(gpu_atlas, cast(*void)*area, cast(*void)*white[0],
+        DESKTOP_GPU_WHITE_SIDE * 4) != 0 {
+        DestroyTexture(gpu_atlas); gpu_atlas = null; return false
+    }
+    AtlasReset()
+    return true
+}
+
+// Reserves a w x h slot in the 2048x2048 GPU atlas. When full, flushes any
+// queued GPU geometry that references the current atlas, resets the packing
+// shelf, and retries cleanly.
+AtlasReserve :: (w: s32, h: s32, out_x: *s32, out_y: *s32) -> bool {
+    if w <= 0 || h <= 0 || w > DESKTOP_GPU_ATLAS_SIDE - 4 || h > DESKTOP_GPU_ATLAS_SIDE - 4 {
+        return false
+    }
+    if gpu_atlas_x + w + 1 > DESKTOP_GPU_ATLAS_SIDE {
+        gpu_atlas_x = 0
+        gpu_atlas_y += gpu_atlas_row + 1
+        gpu_atlas_row = 0
+    }
+    if gpu_atlas_y + h + 1 > DESKTOP_GPU_ATLAS_SIDE {
+        DesktopGpuFlush()
+        AtlasReset()
+        if gpu_atlas_x + w + 1 > DESKTOP_GPU_ATLAS_SIDE {
+            gpu_atlas_x = 0
+            gpu_atlas_y += gpu_atlas_row + 1
+            gpu_atlas_row = 0
+        }
+        if gpu_atlas_y + h + 1 > DESKTOP_GPU_ATLAS_SIDE { return false }
+    }
+    out_x.* = gpu_atlas_x
+    out_y.* = gpu_atlas_y
+    gpu_atlas_x += w + 1
+    if h > gpu_atlas_row { gpu_atlas_row = h }
+    return true
+}
+
+ClipSame :: (a: DesktopGpuRect, b: DesktopGpuRect) -> bool {
+    return a.x == b.x && a.y == b.y && a.w == b.w && a.h == b.h
+}
+
+PushTriangle :: (texture: *void, smooth: bool, has_clip: bool, clip: DesktopGpuRect,
+    a: DesktopGpuVertex, b: DesktopGpuVertex, c: DesktopGpuVertex) {
+    if texture == null { return }
+    count := gpu_batches.count
+    if count > 0 {
+        last := *gpu_batches[count - 1]
+        if last.texture == texture && last.smooth == smooth && last.has_clip == has_clip &&
+            (!has_clip || ClipSame(last.clip, clip)) {
+            if VecPush(gpu_vertices, a) && VecPush(gpu_vertices, b) && VecPush(gpu_vertices, c) {
+                last.count += 3
+            }
+            return
+        }
+    }
+    first := cast(s32)gpu_vertices.count
+    if VecPush(gpu_vertices, a) && VecPush(gpu_vertices, b) && VecPush(gpu_vertices, c) {
+        batch: DesktopGpuBatch = .{texture, smooth, has_clip, clip, first, 3}
+        unused VecPush(gpu_batches, batch)
+    }
+}
+
+PushQuad :: (texture: *void, smooth: bool, has_clip: bool, clip: DesktopGpuRect,
+    x0: float32, y0: float32, x1: float32, y1: float32,
+    u0: float32, v0: float32, u1: float32, v1: float32, c: Color) {
+    if x1 <= x0 || y1 <= y0 || c.a == cast(u8)0 { return }
+    a: DesktopGpuVertex = .{x0, y0, c.r, c.g, c.b, c.a, u0, v0}
+    b: DesktopGpuVertex = .{x1, y0, c.r, c.g, c.b, c.a, u1, v0}
+    d: DesktopGpuVertex = .{x1, y1, c.r, c.g, c.b, c.a, u1, v1}
+    e: DesktopGpuVertex = .{x0, y1, c.r, c.g, c.b, c.a, u0, v1}
+    PushTriangle(texture, smooth, has_clip, clip, a, b, d)
+    PushTriangle(texture, smooth, has_clip, clip, a, d, e)
+}
+
+PushSolidQuad :: (x0: float32, y0: float32, x1: float32, y1: float32, c: Color) {
+    no_clip: DesktopGpuRect
+    w := WhiteUv()
+    PushQuad(gpu_atlas, false, false, no_clip, x0, y0, x1, y1, w, w, w, w, c)
+}
+
+CornerMask :: (radius: s32, out_x: *s32, out_y: *s32) -> bool {
+    if radius <= 0 || radius > DESKTOP_GPU_CORNER_MAX { return false }
+    for i: cast(s32)0..gpu_corner_count - 1 {
+        if gpu_corners[i].radius == radius {
+            out_x.* = gpu_corners[i].x
+            out_y.* = gpu_corners[i].y
+            return true
+        }
+    }
+    ax: s32; ay: s32
+    if !AtlasReserve(radius, radius, *ax, *ay) { return false }
+    total := cast(s64)radius * cast(s64)radius
+    limit := ifx gpu_scratch_pixels.capacity > total then gpu_scratch_pixels.capacity else total
+    if !VecResizeBounded(gpu_scratch_pixels, total, limit) { return false }
+    rf := cast(float64)radius
+    // 4x4 supersampled quarter-circle coverage (top-left corner: circle center at (r, r)).
+    for py: cast(s32)0..radius - 1 {
+        for px: cast(s32)0..radius - 1 {
+            hits: s32 = 0
+            for sy: cast(s32)0..3 {
+                dy := rf - (cast(float64)py + (cast(float64)sy + 0.5) * 0.25)
+                for sx: cast(s32)0..3 {
+                    dx := rf - (cast(float64)px + (cast(float64)sx + 0.5) * 0.25)
+                    if dx * dx + dy * dy <= rf * rf { hits += 1 }
+                }
+            }
+            cov := cast(u32)((hits * 255 + 8) / 16)
+            // Premultiplied white (cov, cov, cov, cov) in ARGB8888.
+            gpu_scratch_pixels[cast(s64)py * cast(s64)radius + cast(s64)px] =
+                (cov << cast(u32)24) | (cov << cast(u32)16) | (cov << cast(u32)8) | cov
+        }
+    }
+    area: DesktopGpuRect = .{ax, ay, radius, radius}
+    if UpdateTexture(gpu_atlas, cast(*void)*area, cast(*void)*gpu_scratch_pixels[0],
+        radius * 4) != 0 { return false }
+    if gpu_corner_count < DESKTOP_GPU_CORNER_SLOTS {
+        gpu_corners[gpu_corner_count] = DesktopGpuCorner.{radius, ax, ay}
+        gpu_corner_count += 1
+    }
+    out_x.* = ax; out_y.* = ay
+    return true
+}
+
+HashTextKey :: (value: string, font: s32, family: s32, weight: s32,
+    slant: s32, spacing: s32, scale_milli: s32) -> u64 {
+    h: u64 = 14695981039346656037
+    for i: cast(s64)0..value.count - 1 {
+        h ^= cast(u64)value[i]
+        h *= cast(u64)1099511628211
+    }
+    fields: [6]s32 = .[font, family, weight, slant, spacing, scale_milli]
+    for f: fields {
+        h ^= cast(u64)cast(u32)f
+        h *= cast(u64)1099511628211
+    }
+    return h
+}
+
+TextEntryMatches :: (entry: *DesktopGpuTextEntry, hash: u64, value: string,
+    font: s32, family: s32, weight: s32, slant: s32, spacing: s32, scale_milli: s32) -> bool {
+    if entry.width <= 0 || entry.hash != hash || entry.length != cast(s32)value.count ||
+        entry.font != font || entry.family != family || entry.weight != weight ||
+        entry.slant != slant || entry.spacing != spacing || entry.scale_milli != scale_milli {
+        return false
+    }
+    for i: cast(s32)0..entry.length - 1 {
+        if entry.bytes[i] != value[i] { return false }
+    }
+    return true
+}
+
+ImageEntryDrop :: (slot: s32) {
+    if gpu_images[slot].texture != null {
+        DestroyTexture(gpu_images[slot].texture)
+    }
+    gpu_images[slot] = .{}
+}
+
+// Upload a Cairo ARGB32 premultiplied surface (optionally converted to an
+// alpha-only white mask for colored tints) to a cached GPU SDL_Texture.
+UploadImageTexture :: (surface_ptr: *void, texture_id: u32, serial: u64,
+    alpha_mask: bool, width: s32, height: s32, data: *u8, stride: s32) -> *void {
+    if !gpu_active || data == null || width <= 0 || height <= 0 { return null }
+    if width > gpu_max_texture || height > gpu_max_texture { return null }
+    gpu_clock += 1
+    // Cache lookup (for non-zero serial or managed texture_id).
+    cacheable := serial != cast(u64)0 || texture_id != cast(u32)0
+    oldest: s32 = 0
+    oldest_used: u64 = gpu_clock
+    empty: s32 = -1
+    for i: cast(s32)0..DESKTOP_GPU_IMAGE_SLOTS - 1 {
+        item := *gpu_images[i]
+        if item.texture == null {
+            if empty < 0 { empty = i }
+            continue
+        }
+        if item.used < oldest_used { oldest_used = item.used; oldest = i }
+        if cacheable && item.alpha_mask == alpha_mask &&
+            ((texture_id != cast(u32)0 && item.texture_id == texture_id) ||
+             (texture_id == cast(u32)0 && item.surface == surface_ptr)) {
+            if item.serial == serial && item.width == width && item.height == height {
+                item.used = gpu_clock
+                return item.texture
+            }
+            // Same slot updated with a new revision: flush before replacing its texture.
+            DesktopGpuFlush()
+            if item.width == width && item.height == height {
+                if !alpha_mask {
+                    if UpdateTexture(item.texture, null, cast(*void)data, stride) == 0 {
+                        item.serial = serial; item.used = gpu_clock
+                        return item.texture
+                    }
+                }
+            }
+            ImageEntryDrop(i)
+            empty = i
+            break
+        }
+    }
+    slot := ifx empty >= 0 then empty else oldest
+    if gpu_images[slot].texture != null {
+        DesktopGpuFlush()
+        ImageEntryDrop(slot)
+    }
+    tex := CreateTexture(gpu_renderer, cast(u32)DESKTOP_GPU_FORMAT, 0, width, height)
+    if tex == null { return null }
+    unused SetTextureBlend(tex, gpu_premultiplied)
+    ok: s32
+    if !alpha_mask {
+        ok = UpdateTexture(tex, null, cast(*void)data, stride)
+    } else {
+        total := cast(s64)width * cast(s64)height
+        limit := ifx gpu_scratch_pixels.capacity > total then gpu_scratch_pixels.capacity else total
+        if !VecResizeBounded(gpu_scratch_pixels, total, limit) { DestroyTexture(tex); return null }
+        for y: cast(s32)0..height - 1 {
+            row := *data[cast(s64)y * cast(s64)stride]
+            for x: cast(s32)0..width - 1 {
+                word := (cast(*u32)(*row[cast(s64)x * 4])).*
+                a := word >> cast(u32)24
+                gpu_scratch_pixels[cast(s64)y * cast(s64)width + cast(s64)x] =
+                    (a << cast(u32)24) | (a << cast(u32)16) | (a << cast(u32)8) | a
+            }
+        }
+        ok = UpdateTexture(tex, null, cast(*void)*gpu_scratch_pixels[0], width * 4)
+    }
+    if ok != 0 { DestroyTexture(tex); return null }
+    gpu_images[slot] = DesktopGpuImageEntry.{
+        surface_ptr, texture_id, serial, alpha_mask, width, height, tex, gpu_clock
+    }
+    return tex
+}
+
+#scope_export
+DesktopGpuActive :: () -> bool { return gpu_active }
+DesktopGpuTarget :: () -> *void { return gpu_target }
+
+DesktopGpuOpen :: (renderer: *void, width: s32, height: s32) -> bool {
+    if gpu_active { DesktopGpuClose() }
+    if renderer == null || width <= 0 || height <= 0 { return false }
+    key: [32]u8
+    disabled := false
+    forced := false
+    if CopyCString("KRYON_PIXMAP_GPU", key[:]) {
+        choice := GetEnv(*key[0])
+        disabled = choice != null && choice[0] == cast(u8)48
+        forced = choice != null && choice[0] == cast(u8)49
+    }
+    info: RendererInfo
+    if disabled || GetRendererInfo(renderer, *info) != 0 { return false }
+    if (info.flags & cast(u32)8) == cast(u32)0 { return false } // SDL_RENDERER_TARGETTEXTURE
+    if !forced && ((info.flags & cast(u32)2) == cast(u32)0 || GpuSoftwareGl()) { return false }
+    if (info.max_width > 0 && info.max_width < DESKTOP_GPU_ATLAS_SIDE) ||
+        (info.max_height > 0 && info.max_height < DESKTOP_GPU_ATLAS_SIDE) { return false }
+    gpu_renderer = renderer
+    gpu_premultiplied = ComposeBlend(2, 6, 1, 2, 6, 1)
+    gpu_max_texture = ifx info.max_width < info.max_height then info.max_width else info.max_height
+    if gpu_max_texture <= 0 { gpu_max_texture = 4096 }
+    if !AtlasOpen() { gpu_renderer = null; return false }
+    gpu_target = CreateTexture(gpu_renderer, cast(u32)DESKTOP_GPU_FORMAT, 2, width, height)
+    if gpu_target == null {
+        DestroyTexture(gpu_atlas); gpu_atlas = null; gpu_renderer = null; return false
+    }
+    gpu_width = width; gpu_height = height
+    gpu_clear_pending = true
+    gpu_clear_color = Color.{248, 250, 252, 255}
+    VecClear(gpu_vertices); VecClear(gpu_batches)
+    gpu_active = true
+    return true
+}
+
+DesktopGpuResize :: (width: s32, height: s32) -> bool {
+    if !gpu_active || width <= 0 || height <= 0 { return false }
+    if width == gpu_width && height == gpu_height && gpu_target != null { return true }
+    DesktopGpuFlush()
+    next := CreateTexture(gpu_renderer, cast(u32)DESKTOP_GPU_FORMAT, 2, width, height)
+    if next == null { return false }
+    if gpu_target != null { DestroyTexture(gpu_target) }
+    gpu_target = next
+    gpu_width = width; gpu_height = height
+    gpu_clear_pending = true
+    return true
+}
+
+DesktopGpuReset :: (device_lost: bool) {
+    if !gpu_active { return }
+    VecClear(gpu_vertices); VecClear(gpu_batches)
+    if device_lost {
+        for i: cast(s32)0..DESKTOP_GPU_IMAGE_SLOTS - 1 { ImageEntryDrop(i) }
+        if gpu_large_text != null { DestroyTexture(gpu_large_text); gpu_large_text = null; gpu_large_text_w = 0; gpu_large_text_h = 0 }
+        if gpu_atlas != null { DestroyTexture(gpu_atlas); gpu_atlas = null }
+        if !AtlasOpen() { DesktopGpuClose(); return }
+        if gpu_target != null { DestroyTexture(gpu_target); gpu_target = null }
+        gpu_target = CreateTexture(gpu_renderer, cast(u32)DESKTOP_GPU_FORMAT, 2, gpu_width, gpu_height)
+        if gpu_target == null { DesktopGpuClose(); return }
+    }
+    gpu_clear_pending = true
+}
+
+DesktopGpuClose :: () {
+    VecClear(gpu_vertices); VecClear(gpu_batches)
+    for i: cast(s32)0..DESKTOP_GPU_IMAGE_SLOTS - 1 { ImageEntryDrop(i) }
+    if gpu_large_text != null { DestroyTexture(gpu_large_text); gpu_large_text = null }
+    gpu_large_text_w = 0; gpu_large_text_h = 0
+    if gpu_atlas != null { DestroyTexture(gpu_atlas); gpu_atlas = null }
+    if gpu_target != null { DestroyTexture(gpu_target); gpu_target = null }
+    VecFree(gpu_vertices); VecFree(gpu_batches); VecFree(gpu_scratch_pixels)
+    AtlasReset()
+    gpu_renderer = null
+    gpu_width = 0; gpu_height = 0
+    gpu_clear_pending = false
+    gpu_active = false
+}
+
+DesktopGpuInvalidateImages :: () {
+    if !gpu_active { return }
+    DesktopGpuFlush()
+    for i: cast(s32)0..DESKTOP_GPU_IMAGE_SLOTS - 1 { ImageEntryDrop(i) }
+}
+
+DesktopGpuClear :: (color: Color) {
+    if !gpu_active { return }
+    VecClear(gpu_vertices); VecClear(gpu_batches)
+    gpu_clear_pending = true
+    gpu_clear_color = color
+}
+
+DesktopGpuFlush :: () {
+    if !gpu_active || gpu_renderer == null || gpu_target == null { return }
+    if !gpu_clear_pending && gpu_batches.count == 0 { return }
+    if SetRenderTarget(gpu_renderer, gpu_target) != 0 { return }
+    if gpu_clear_pending {
+        unused RenderSetClipRect(gpu_renderer, null)
+        unused SetRenderDrawBlend(gpu_renderer, 0)
+        p := Premul(gpu_clear_color)
+        unused SetRenderDrawColor(gpu_renderer, p.r, p.g, p.b, p.a)
+        unused RenderClear(gpu_renderer)
+        gpu_clear_pending = false
+    }
+    clip_active := false
+    for i: cast(s64)0..gpu_batches.count - 1 {
+        batch := gpu_batches[i]
+        if batch.has_clip {
+            c := batch.clip
+            unused RenderSetClipRect(gpu_renderer, cast(*void)*c)
+            clip_active = true
+        } else if clip_active {
+            unused RenderSetClipRect(gpu_renderer, null)
+            clip_active = false
+        }
+        if batch.texture != gpu_atlas {
+            unused RenderFlush(gpu_renderer)
+            unused SetTextureScale(batch.texture, ifx batch.smooth then 1 else 0)
+        }
+        unused RenderGeometry(gpu_renderer, batch.texture, *gpu_vertices[batch.first],
+            batch.count, null, 0)
+    }
+    if clip_active { unused RenderSetClipRect(gpu_renderer, null) }
+    unused SetRenderTarget(gpu_renderer, null)
+    VecClear(gpu_vertices); VecClear(gpu_batches)
+}
+
+DesktopGpuReadback :: (pixels: *u8, stride: s32) -> bool {
+    if !gpu_active || gpu_renderer == null || gpu_target == null || pixels == null || stride <= 0 {
+        return false
+    }
+    DesktopGpuFlush()
+    if SetRenderTarget(gpu_renderer, gpu_target) != 0 { return false }
+    ok := RenderReadPixels(gpu_renderer, null, cast(u32)DESKTOP_GPU_FORMAT,
+        cast(*void)pixels, stride) == 0
+    unused SetRenderTarget(gpu_renderer, null)
+    return ok
+}
+
+DesktopGpuDrawRoundedRect :: (bounds: Rectangle, radius: float32, color: Color,
+    scale: float64, offset_x: float64, offset_y: float64) {
+    if !gpu_active || bounds.width <= 0.0 || bounds.height <= 0.0 || color.a == cast(u8)0 { return }
+    x0 := cast(float32)(cast(float64)bounds.x * scale + offset_x)
+    y0 := cast(float32)(cast(float64)bounds.y * scale + offset_y)
+    w := cast(float32)(cast(float64)bounds.width * scale)
+    h := cast(float32)(cast(float64)bounds.height * scale)
+    x1 := x0 + w; y1 := y0 + h
+    c := Premul(color)
+    r := cast(float32)(cast(float64)radius * scale)
+    if r < 0.0 { r = 0.0 }
+    if r > w * 0.5 { r = w * 0.5 }
+    if r > h * 0.5 { r = h * 0.5 }
+    if r <= 0.5 {
+        PushSolidQuad(x0, y0, x1, y1, c)
+        return
+    }
+    cr := cast(s32)(r + 0.5)
+    if cr < 1 { cr = 1 }
+    if cast(float32)cr * 2.0 > w { cr = cast(s32)(w * 0.5) }
+    if cast(float32)cr * 2.0 > h { cr = cast(s32)(h * 0.5) }
+    ax: s32; ay: s32
+    if cr > 0 && cr <= DESKTOP_GPU_CORNER_MAX && CornerMask(cr, *ax, *ay) {
+        rf := cast(float32)cr
+        inv := 1.0 / cast(float32)DESKTOP_GPU_ATLAS_SIDE
+        u0 := cast(float32)ax * inv
+        v0 := cast(float32)ay * inv
+        u1 := cast(float32)(ax + cr) * inv
+        v1 := cast(float32)(ay + cr) * inv
+        no_clip: DesktopGpuRect
+        // 4 anti-aliased rounded corners (TL, TR, BR, BL by UV mirror).
+        PushQuad(gpu_atlas, false, false, no_clip, x0, y0, x0 + rf, y0 + rf, u0, v0, u1, v1, c)
+        PushQuad(gpu_atlas, false, false, no_clip, x1 - rf, y0, x1, y0 + rf, u1, v0, u0, v1, c)
+        PushQuad(gpu_atlas, false, false, no_clip, x1 - rf, y1 - rf, x1, y1, u1, v1, u0, v0, c)
+        PushQuad(gpu_atlas, false, false, no_clip, x0, y1 - rf, x0 + rf, y1, u0, v1, u1, v0, c)
+        // 3 interior solid quads.
+        PushSolidQuad(x0 + rf, y0, x1 - rf, y0 + rf, c)
+        PushSolidQuad(x0, y0 + rf, x1, y1 - rf, c)
+        PushSolidQuad(x0 + rf, y1 - rf, x1 - rf, y1, c)
+        return
+    }
+    // Large radius (>128px): tessellated GPU triangle fan around center.
+    cx := (x0 + x1) * 0.5; cy := (y0 + y1) * 0.5
+    wv := WhiteUv()
+    center := DesktopGpuVertex.{cx, cy, c.r, c.g, c.b, c.a, wv, wv}
+    no_clip: DesktopGpuRect
+    segs: s32 = 24
+    half_pi: float64 = 1.5707963267948966
+    cxs: [4]float32 = .[x1 - r, x1 - r, x0 + r, x0 + r]
+    cys: [4]float32 = .[y0 + r, y1 - r, y1 - r, y0 + r]
+    starts: [4]float64 = .[-half_pi, 0.0, half_pi, 2.0 * half_pi]
+    prev_set := false
+    first_v: DesktopGpuVertex
+    prev_v: DesktopGpuVertex
+    for corner: cast(s32)0..3 {
+        for s: cast(s32)0..segs {
+            ang := starts[corner] + half_pi * cast(float64)s / cast(float64)segs
+            px := cxs[corner] + cast(float32)(Cos(ang) * cast(float64)r)
+            py := cys[corner] + cast(float32)(Sin(ang) * cast(float64)r)
+            v := DesktopGpuVertex.{px, py, c.r, c.g, c.b, c.a, wv, wv}
+            if prev_set {
+                PushTriangle(gpu_atlas, false, false, no_clip, center, prev_v, v)
+            } else {
+                first_v = v
+                prev_set = true
+            }
+            prev_v = v
+        }
+    }
+    if prev_set { PushTriangle(gpu_atlas, false, false, no_clip, center, prev_v, first_v) }
+}
+
+DesktopGpuDrawRoundedOutline :: (bounds: Rectangle, radius: float32, line_width: float32,
+    color: Color, scale: float64, offset_x: float64, offset_y: float64) {
+    if !gpu_active || bounds.width <= 0.0 || bounds.height <= 0.0 || line_width <= 0.0 ||
+        color.a == cast(u8)0 { return }
+    x0 := cast(float32)(cast(float64)bounds.x * scale + offset_x)
+    y0 := cast(float32)(cast(float64)bounds.y * scale + offset_y)
+    w := cast(float32)(cast(float64)bounds.width * scale)
+    h := cast(float32)(cast(float64)bounds.height * scale)
+    x1 := x0 + w; y1 := y0 + h
+    lw := cast(float32)(cast(float64)line_width * scale)
+    if lw < 1.0 { lw = 1.0 }
+    half := lw * 0.5
+    c := Premul(color)
+    r := cast(float32)(cast(float64)radius * scale)
+    if r < 0.0 { r = 0.0 }
+    if r > w * 0.5 { r = w * 0.5 }
+    if r > h * 0.5 { r = h * 0.5 }
+    if r <= 0.5 {
+        PushSolidQuad(x0 - half, y0 - half, x1 + half, y0 + half, c)
+        PushSolidQuad(x0 - half, y1 - half, x1 + half, y1 + half, c)
+        PushSolidQuad(x0 - half, y0 + half, x0 + half, y1 - half, c)
+        PushSolidQuad(x1 - half, y0 + half, x1 + half, y1 - half, c)
+        return
+    }
+    // 4 straight edge segments between rounded corners.
+    PushSolidQuad(x0 + r, y0 - half, x1 - r, y0 + half, c)
+    PushSolidQuad(x0 + r, y1 - half, x1 - r, y1 + half, c)
+    PushSolidQuad(x0 - half, y0 + r, x0 + half, y1 - r, c)
+    PushSolidQuad(x1 - half, y0 + r, x1 + half, y1 - r, c)
+    // 4 tessellated GPU arc strips for corners.
+    r_out := r + half
+    r_in := r - half
+    if r_in < 0.0 { r_in = 0.0 }
+    wv := WhiteUv()
+    no_clip: DesktopGpuRect
+    segs: s32 = 16
+    half_pi: float64 = 1.5707963267948966
+    cxs: [4]float32 = .[x1 - r, x1 - r, x0 + r, x0 + r]
+    cys: [4]float32 = .[y0 + r, y1 - r, y1 - r, y0 + r]
+    starts: [4]float64 = .[-half_pi, 0.0, half_pi, 2.0 * half_pi]
+    for corner: cast(s32)0..3 {
+        for s: cast(s32)0..segs - 1 {
+            a0 := starts[corner] + half_pi * cast(float64)s / cast(float64)segs
+            a1 := starts[corner] + half_pi * cast(float64)(s + 1) / cast(float64)segs
+            ca0 := Cos(a0); sa0 := Sin(a0)
+            ca1 := Cos(a1); sa1 := Sin(a1)
+            o0 := DesktopGpuVertex.{cxs[corner] + cast(float32)(ca0 * cast(float64)r_out),
+                cys[corner] + cast(float32)(sa0 * cast(float64)r_out), c.r, c.g, c.b, c.a, wv, wv}
+            i0 := DesktopGpuVertex.{cxs[corner] + cast(float32)(ca0 * cast(float64)r_in),
+                cys[corner] + cast(float32)(sa0 * cast(float64)r_in), c.r, c.g, c.b, c.a, wv, wv}
+            o1 := DesktopGpuVertex.{cxs[corner] + cast(float32)(ca1 * cast(float64)r_out),
+                cys[corner] + cast(float32)(sa1 * cast(float64)r_out), c.r, c.g, c.b, c.a, wv, wv}
+            i1 := DesktopGpuVertex.{cxs[corner] + cast(float32)(ca1 * cast(float64)r_in),
+                cys[corner] + cast(float32)(sa1 * cast(float64)r_in), c.r, c.g, c.b, c.a, wv, wv}
+            PushTriangle(gpu_atlas, false, false, no_clip, o0, o1, i1)
+            PushTriangle(gpu_atlas, false, false, no_clip, o0, i1, i0)
+        }
+    }
+}
+
+DesktopGpuDrawLine :: (line: Rectangle, color: Color,
+    scale: float64, offset_x: float64, offset_y: float64) {
+    if !gpu_active || color.a == cast(u8)0 { return }
+    x0 := cast(float32)(cast(float64)line.x * scale + offset_x)
+    y0 := cast(float32)(cast(float64)line.y * scale + offset_y)
+    x1 := cast(float32)(cast(float64)(line.x + line.width) * scale + offset_x)
+    y1 := cast(float32)(cast(float64)(line.y + line.height) * scale + offset_y)
+    dx := x1 - x0; dy := y1 - y0
+    len := cast(float32)Sqrt(cast(float64)(dx * dx + dy * dy))
+    if len <= 0.0001 { return }
+    half := cast(float32)(0.5 * scale)
+    if half < 0.5 { half = 0.5 }
+    nx := -dy / len * half
+    ny := dx / len * half
+    c := Premul(color)
+    wv := WhiteUv()
+    no_clip: DesktopGpuRect
+    a := DesktopGpuVertex.{x0 + nx, y0 + ny, c.r, c.g, c.b, c.a, wv, wv}
+    b := DesktopGpuVertex.{x1 + nx, y1 + ny, c.r, c.g, c.b, c.a, wv, wv}
+    d := DesktopGpuVertex.{x1 - nx, y1 - ny, c.r, c.g, c.b, c.a, wv, wv}
+    e := DesktopGpuVertex.{x0 - nx, y0 - ny, c.r, c.g, c.b, c.a, wv, wv}
+    PushTriangle(gpu_atlas, false, false, no_clip, a, b, d)
+    PushTriangle(gpu_atlas, false, false, no_clip, a, d, e)
+}
+
+DesktopGpuDrawTriangles :: (points: []Vector2, color: Color,
+    scale: float64, offset_x: float64, offset_y: float64) {
+    if !gpu_active || color.a == cast(u8)0 { return }
+    count := points.count - points.count % 3
+    if count <= 0 { return }
+    c := Premul(color)
+    wv := WhiteUv()
+    no_clip: DesktopGpuRect
+    at: s64 = 0
+    while at < count {
+        a := DesktopGpuVertex.{
+            cast(float32)(cast(float64)points[at].x * scale + offset_x),
+            cast(float32)(cast(float64)points[at].y * scale + offset_y),
+            c.r, c.g, c.b, c.a, wv, wv}
+        b := DesktopGpuVertex.{
+            cast(float32)(cast(float64)points[at + 1].x * scale + offset_x),
+            cast(float32)(cast(float64)points[at + 1].y * scale + offset_y),
+            c.r, c.g, c.b, c.a, wv, wv}
+        d := DesktopGpuVertex.{
+            cast(float32)(cast(float64)points[at + 2].x * scale + offset_x),
+            cast(float32)(cast(float64)points[at + 2].y * scale + offset_y),
+            c.r, c.g, c.b, c.a, wv, wv}
+        PushTriangle(gpu_atlas, false, false, no_clip, a, b, d)
+        at += 3
+    }
+}
+
+// Looks up a cached shaped text run in the GPU atlas. Returns true on hit
+// (zero Cairo calls needed) and draws it immediately on the GPU.
+DesktopGpuTextCached :: (args: *Cairo.RasterGpuTextArgs) -> bool {
+    if !gpu_active || args == null || args.value.count == 0 ||
+        args.value.count > DESKTOP_GPU_TEXT_KEY_LIMIT { return false }
+    scale_milli := cast(s32)(args.scale * 1000.0 + 0.5)
+    hash := HashTextKey(args.value, args.font, args.family, args.weight,
+        args.slant, args.spacing, scale_milli)
+    for i: cast(s32)0..DESKTOP_GPU_TEXT_SLOTS - 1 {
+        entry := *gpu_texts[i]
+        if TextEntryMatches(entry, hash, args.value, args.font, args.family,
+            args.weight, args.slant, args.spacing, scale_milli) {
+            gpu_clock += 1
+            entry.used = gpu_clock
+            DesktopGpuEmitTextQuad(gpu_atlas, entry.atlas_x, entry.atlas_y,
+                entry.width, entry.height, DESKTOP_GPU_ATLAS_SIDE, DESKTOP_GPU_ATLAS_SIDE,
+                entry.is_color, args)
+            return true
+        }
+    }
+    return false
+}
+
+// Uploads a newly rasterized Pango/Cairo text bitmap (premultiplied ARGB8888,
+// white ink unless color emoji) to the GPU atlas (or reusable large-text GPU
+// texture) and emits its GPU quad.
+DesktopGpuTextUploadAndDraw :: (args: *Cairo.RasterGpuTextArgs, bmp_w: s32, bmp_h: s32,
+    data: *u8, stride: s32, is_color: bool) -> bool {
+    if !gpu_active || args == null || data == null || bmp_w <= 0 || bmp_h <= 0 { return false }
+    if args.value.count <= DESKTOP_GPU_TEXT_KEY_LIMIT && bmp_w <= 512 && bmp_h <= 128 {
+        ax: s32; ay: s32
+        if AtlasReserve(bmp_w, bmp_h, *ax, *ay) {
+            area: DesktopGpuRect = .{ax, ay, bmp_w, bmp_h}
+            if UpdateTexture(gpu_atlas, cast(*void)*area, cast(*void)data, stride) == 0 {
+                scale_milli := cast(s32)(args.scale * 1000.0 + 0.5)
+                hash := HashTextKey(args.value, args.font, args.family, args.weight,
+                    args.slant, args.spacing, scale_milli)
+                gpu_clock += 1
+                slot: s32 = 0
+                oldest: u64 = gpu_clock
+                for i: cast(s32)0..DESKTOP_GPU_TEXT_SLOTS - 1 {
+                    if gpu_texts[i].width <= 0 { slot = i; break }
+                    if gpu_texts[i].used < oldest { oldest = gpu_texts[i].used; slot = i }
+                }
+                entry := *gpu_texts[slot]
+                entry.* = .{}
+                entry.hash = hash
+                entry.font = args.font; entry.family = args.family; entry.weight = args.weight
+                entry.slant = args.slant; entry.spacing = args.spacing; entry.scale_milli = scale_milli
+                entry.length = cast(s32)args.value.count
+                for b: cast(s32)0..entry.length - 1 { entry.bytes[b] = args.value[b] }
+                entry.atlas_x = ax; entry.atlas_y = ay
+                entry.width = bmp_w; entry.height = bmp_h
+                entry.is_color = is_color; entry.used = gpu_clock
+                DesktopGpuEmitTextQuad(gpu_atlas, ax, ay, bmp_w, bmp_h,
+                    DESKTOP_GPU_ATLAS_SIDE, DESKTOP_GPU_ATLAS_SIDE, is_color, args)
+                return true
+            }
+        }
+    }
+    // Oversized text run: upload into reusable dedicated GPU texture and flush after draw.
+    if bmp_w > gpu_max_texture || bmp_h > gpu_max_texture { return false }
+    DesktopGpuFlush()
+    if gpu_large_text == null || gpu_large_text_w < bmp_w || gpu_large_text_h < bmp_h {
+        if gpu_large_text != null { DestroyTexture(gpu_large_text); gpu_large_text = null }
+        nw := ifx bmp_w > gpu_large_text_w then bmp_w else gpu_large_text_w
+        nh := ifx bmp_h > gpu_large_text_h then bmp_h else gpu_large_text_h
+        gpu_large_text = CreateTexture(gpu_renderer, cast(u32)DESKTOP_GPU_FORMAT, 0, nw, nh)
+        if gpu_large_text == null { gpu_large_text_w = 0; gpu_large_text_h = 0; return false }
+        unused SetTextureBlend(gpu_large_text, gpu_premultiplied)
+        gpu_large_text_w = nw; gpu_large_text_h = nh
+    }
+    area: DesktopGpuRect = .{0, 0, bmp_w, bmp_h}
+    if UpdateTexture(gpu_large_text, cast(*void)*area, cast(*void)data, stride) != 0 { return false }
+    DesktopGpuEmitTextQuad(gpu_large_text, 0, 0, bmp_w, bmp_h,
+        gpu_large_text_w, gpu_large_text_h, is_color, args)
+    DesktopGpuFlush()
+    return true
+}
+
+GpuFloor :: (value: float64) -> s32 {
+    n := cast(s32)value
+    return ifx value < cast(float64)n then n - 1 else n
+}
+
+GpuCeil :: (value: float64) -> s32 {
+    n := cast(s32)value
+    return ifx value > cast(float64)n then n + 1 else n
+}
+
+DesktopGpuEmitTextQuad :: (tex: *void, tx: s32, ty: s32, tw: s32, th: s32,
+    tex_w: s32, tex_h: s32, is_color: bool, args: *Cairo.RasterGpuTextArgs) {
+    color := args.color
+    if color.a == cast(u8)0 { return }
+    scale := args.scale; offset_x := args.offset_x; offset_y := args.offset_y
+    vc := ifx is_color then Color.{color.a, color.a, color.a, color.a} else Premul(color)
+    u0 := cast(float32)tx / cast(float32)tex_w
+    v0 := cast(float32)ty / cast(float32)tex_h
+    u1 := cast(float32)(tx + tw) / cast(float32)tex_w
+    v1 := cast(float32)(ty + th) / cast(float32)tex_h
+    dx := cast(float32)(cast(float64)args.x * scale + offset_x)
+    dy := cast(float32)(cast(float64)args.y * scale + offset_y)
+    dw := cast(float32)tw
+    dh := cast(float32)th
+    if !args.rotated {
+        gpu_clip: DesktopGpuRect
+        use_clip := false
+        if args.has_clip {
+            clip := args.clip
+            cx0 := GpuFloor(cast(float64)clip.x * scale + offset_x)
+            cy0 := GpuFloor(cast(float64)clip.y * scale + offset_y)
+            cx1 := GpuCeil(cast(float64)(clip.x + clip.width) * scale + offset_x)
+            cy1 := GpuCeil(cast(float64)(clip.y + clip.height) * scale + offset_y)
+            if cx1 <= cx0 || cy1 <= cy0 { return }
+            gpu_clip = DesktopGpuRect.{cx0, cy0, cx1 - cx0, cy1 - cy0}
+            use_clip = true
+        }
+        PushQuad(tex, false, use_clip, gpu_clip, dx, dy, dx + dw, dy + dh, u0, v0, u1, v1, vc)
+        return
+    }
+    // Rotated text: clip in local coordinates first, then rotate corners around origin.
+    lx0 := cast(float32)args.x; ly0 := cast(float32)args.y
+    lx1 := lx0 + cast(float32)(cast(float64)tw / scale)
+    ly1 := ly0 + cast(float32)(cast(float64)th / scale)
+    lu0 := u0; lv0 := v0; lu1 := u1; lv1 := v1
+    if args.has_clip {
+        clip := args.clip
+        rw := lx1 - lx0; rh := ly1 - ly0
+        if rw <= 0.0 || rh <= 0.0 { return }
+        cx0 := clip.x; cy0 := clip.y; cx1 := clip.x + clip.width; cy1 := clip.y + clip.height
+        nx0 := ifx lx0 > cx0 then lx0 else cx0
+        ny0 := ifx ly0 > cy0 then ly0 else cy0
+        nx1 := ifx lx1 < cx1 then lx1 else cx1
+        ny1 := ifx ly1 < cy1 then ly1 else cy1
+        if nx1 <= nx0 || ny1 <= ny0 { return }
+        lu0 = u0 + (nx0 - lx0) / rw * (u1 - u0)
+        lv0 = v0 + (ny0 - ly0) / rh * (v1 - v0)
+        lu1 = u0 + (nx1 - lx0) / rw * (u1 - u0)
+        lv1 = v0 + (ny1 - ly0) / rh * (v1 - v0)
+        lx0 = nx0; ly0 = ny0; lx1 = nx1; ly1 = ny1
+    }
+    rad := cast(float64)args.rotation * 0.017453292519943295
+    co := Cos(rad); si := Sin(rad)
+    ox := cast(float64)args.origin.x; oy := cast(float64)args.origin.y
+    xs: [4]float64 = .[cast(float64)lx0, cast(float64)lx1, cast(float64)lx1, cast(float64)lx0]
+    ys: [4]float64 = .[cast(float64)ly0, cast(float64)ly0, cast(float64)ly1, cast(float64)ly1]
+    us: [4]float32 = .[lu0, lu1, lu1, lu0]
+    vs: [4]float32 = .[lv0, lv0, lv1, lv1]
+    verts: [4]DesktopGpuVertex
+    for k: cast(s32)0..3 {
+        rx := xs[k] - ox; ry := ys[k] - oy
+        wx := ox + rx * co - ry * si
+        wy := oy + rx * si + ry * co
+        verts[k] = DesktopGpuVertex.{
+            cast(float32)(wx * scale + offset_x),
+            cast(float32)(wy * scale + offset_y),
+            vc.r, vc.g, vc.b, vc.a, us[k], vs[k]
+        }
+    }
+    gpu_clip: DesktopGpuRect
+    use_clip := false
+    if args.outer_clipped {
+        outer_clip := args.outer_clip
+        cx0 := GpuFloor(cast(float64)outer_clip.x * scale + offset_x)
+        cy0 := GpuFloor(cast(float64)outer_clip.y * scale + offset_y)
+        cx1 := GpuCeil(cast(float64)(outer_clip.x + outer_clip.width) * scale + offset_x)
+        cy1 := GpuCeil(cast(float64)(outer_clip.y + outer_clip.height) * scale + offset_y)
+        if cx1 <= cx0 || cy1 <= cy0 { return }
+        gpu_clip = DesktopGpuRect.{cx0, cy0, cx1 - cx0, cy1 - cy0}
+        use_clip = true
+    }
+    PushTriangle(tex, true, use_clip, gpu_clip, verts[0], verts[1], verts[2])
+    PushTriangle(tex, true, use_clip, gpu_clip, verts[0], verts[2], verts[3])
+}
+
+DesktopGpuDrawImage :: (args: *Cairo.RasterGpuImageArgs) -> bool {
+    if !gpu_active || args == null || args.img_w <= 0 || args.img_h <= 0 ||
+        args.tint.a == cast(u8)0 { return true }
+    img_w := args.img_w; img_h := args.img_h; tint := args.tint
+    source := args.source; dest := args.dest; clip := args.clip
+    scale := args.scale; offset_x := args.offset_x; offset_y := args.offset_y
+    alpha_mask := !(tint.r == cast(u8)255 && tint.g == cast(u8)255 && tint.b == cast(u8)255)
+    tex := UploadImageTexture(args.surface_ptr, args.texture_id, args.serial,
+        alpha_mask, img_w, img_h, args.data, args.stride)
+    if tex == null { return false }
+    vc := ifx alpha_mask then Premul(tint) else Color.{tint.a, tint.a, tint.a, tint.a}
+    u0 := source.x / cast(float32)img_w
+    v0 := source.y / cast(float32)img_h
+    u1 := (source.x + source.width) / cast(float32)img_w
+    v1 := (source.y + source.height) / cast(float32)img_h
+    if source.width < 0.0 {
+        u0 = (source.x - source.width) / cast(float32)img_w
+        u1 = source.x / cast(float32)img_w
+    }
+    if source.height < 0.0 {
+        v0 = (source.y - source.height) / cast(float32)img_h
+        v1 = source.y / cast(float32)img_h
+    }
+    cx0 := GpuFloor(cast(float64)clip.x * scale + offset_x)
+    cy0 := GpuFloor(cast(float64)clip.y * scale + offset_y)
+    cx1 := GpuCeil(cast(float64)(clip.x + clip.width) * scale + offset_x)
+    cy1 := GpuCeil(cast(float64)(clip.y + clip.height) * scale + offset_y)
+    if cx1 <= cx0 || cy1 <= cy0 { return true }
+    gpu_clip := DesktopGpuRect.{cx0, cy0, cx1 - cx0, cy1 - cy0}
+    polygon := args.polygon
+    if polygon.count >= 3 && args.rotation == 0.0 {
+        // Polygon-clipped image: GPU triangle fan in destination space.
+        px0 := dest.x + polygon[0].x * dest.width
+        py0 := dest.y + polygon[0].y * dest.height
+        pu0 := u0 + polygon[0].x * (u1 - u0)
+        pv0 := v0 + polygon[0].y * (v1 - v0)
+        v_first := DesktopGpuVertex.{
+            cast(float32)(cast(float64)px0 * scale + offset_x),
+            cast(float32)(cast(float64)py0 * scale + offset_y),
+            vc.r, vc.g, vc.b, vc.a, pu0, pv0}
+        for i: cast(s64)1..polygon.count - 2 {
+            a_x := dest.x + polygon[i].x * dest.width
+            a_y := dest.y + polygon[i].y * dest.height
+            b_x := dest.x + polygon[i + 1].x * dest.width
+            b_y := dest.y + polygon[i + 1].y * dest.height
+            va := DesktopGpuVertex.{
+                cast(float32)(cast(float64)a_x * scale + offset_x),
+                cast(float32)(cast(float64)a_y * scale + offset_y),
+                vc.r, vc.g, vc.b, vc.a,
+                u0 + polygon[i].x * (u1 - u0), v0 + polygon[i].y * (v1 - v0)}
+            vb := DesktopGpuVertex.{
+                cast(float32)(cast(float64)b_x * scale + offset_x),
+                cast(float32)(cast(float64)b_y * scale + offset_y),
+                vc.r, vc.g, vc.b, vc.a,
+                u0 + polygon[i + 1].x * (u1 - u0), v0 + polygon[i + 1].y * (v1 - v0)}
+            PushTriangle(tex, args.smooth, true, gpu_clip, v_first, va, vb)
+        }
+        return true
+    }
+    rad := cast(float64)args.rotation * 0.017453292519943295
+    co := Cos(rad); si := Sin(rad)
+    lx0 := -cast(float64)args.origin.x; ly0 := -cast(float64)args.origin.y
+    lx1 := lx0 + cast(float64)dest.width; ly1 := ly0 + cast(float64)dest.height
+    lxs: [4]float64 = .[lx0, lx1, lx1, lx0]
+    lys: [4]float64 = .[ly0, ly0, ly1, ly1]
+    us: [4]float32 = .[u0, u1, u1, u0]
+    vs: [4]float32 = .[v0, v0, v1, v1]
+    verts: [4]DesktopGpuVertex
+    for k: cast(s32)0..3 {
+        wx := cast(float64)dest.x + lxs[k] * co - lys[k] * si
+        wy := cast(float64)dest.y + lxs[k] * si + lys[k] * co
+        verts[k] = DesktopGpuVertex.{
+            cast(float32)(wx * scale + offset_x),
+            cast(float32)(wy * scale + offset_y),
+            vc.r, vc.g, vc.b, vc.a, us[k], vs[k]}
+    }
+    PushTriangle(tex, args.smooth, true, gpu_clip, verts[0], verts[1], verts[2])
+    PushTriangle(tex, args.smooth, true, gpu_clip, verts[0], verts[2], verts[3])
+    return true
+}
+
+DesktopGpuDrawImageMesh :: (args: *Cairo.RasterGpuMeshArgs) -> bool {
+    if !gpu_active || args == null || args.img_w <= 0 || args.img_h <= 0 ||
+        args.tint.a == cast(u8)0 { return true }
+    img_w := args.img_w; img_h := args.img_h; tint := args.tint
+    source := args.source; clip := args.clip; points := args.points
+    columns := args.columns; rows := args.rows
+    scale := args.scale; offset_x := args.offset_x; offset_y := args.offset_y
+    alpha_mask := !(tint.r == cast(u8)255 && tint.g == cast(u8)255 && tint.b == cast(u8)255)
+    tex := UploadImageTexture(args.surface_ptr, args.texture_id, args.serial,
+        alpha_mask, img_w, img_h, args.data, args.stride)
+    if tex == null { return false }
+    vc := ifx alpha_mask then Premul(tint) else Color.{tint.a, tint.a, tint.a, tint.a}
+    cx0 := GpuFloor(cast(float64)clip.x * scale + offset_x)
+    cy0 := GpuFloor(cast(float64)clip.y * scale + offset_y)
+    cx1 := GpuCeil(cast(float64)(clip.x + clip.width) * scale + offset_x)
+    cy1 := GpuCeil(cast(float64)(clip.y + clip.height) * scale + offset_y)
+    if cx1 <= cx0 || cy1 <= cy0 { return true }
+    gpu_clip := DesktopGpuRect.{cx0, cy0, cx1 - cx0, cy1 - cy0}
+    inv_w := 1.0 / cast(float32)img_w
+    inv_h := 1.0 / cast(float32)img_h
+    for row: cast(s32)0..rows - 2 {
+        ty0 := cast(float32)row / cast(float32)(rows - 1)
+        ty1 := cast(float32)(row + 1) / cast(float32)(rows - 1)
+        sy0 := ifx source.height < 0.0 then source.y - source.height + source.height * ty0 else source.y + source.height * ty0
+        sy1 := ifx source.height < 0.0 then source.y - source.height + source.height * ty1 else source.y + source.height * ty1
+        for col: cast(s32)0..columns - 2 {
+            tx0 := cast(float32)col / cast(float32)(columns - 1)
+            tx1 := cast(float32)(col + 1) / cast(float32)(columns - 1)
+            sx0 := ifx source.width < 0.0 then source.x - source.width + source.width * tx0 else source.x + source.width * tx0
+            sx1 := ifx source.width < 0.0 then source.x - source.width + source.width * tx1 else source.x + source.width * tx1
+            tl := row * columns + col
+            bl := tl + columns
+            va := DesktopGpuVertex.{
+                cast(float32)(cast(float64)points[tl].x * scale + offset_x),
+                cast(float32)(cast(float64)points[tl].y * scale + offset_y),
+                vc.r, vc.g, vc.b, vc.a, sx0 * inv_w, sy0 * inv_h}
+            vb := DesktopGpuVertex.{
+                cast(float32)(cast(float64)points[tl + 1].x * scale + offset_x),
+                cast(float32)(cast(float64)points[tl + 1].y * scale + offset_y),
+                vc.r, vc.g, vc.b, vc.a, sx1 * inv_w, sy0 * inv_h}
+            vc_v := DesktopGpuVertex.{
+                cast(float32)(cast(float64)points[bl].x * scale + offset_x),
+                cast(float32)(cast(float64)points[bl].y * scale + offset_y),
+                vc.r, vc.g, vc.b, vc.a, sx0 * inv_w, sy1 * inv_h}
+            vd := DesktopGpuVertex.{
+                cast(float32)(cast(float64)points[bl + 1].x * scale + offset_x),
+                cast(float32)(cast(float64)points[bl + 1].y * scale + offset_y),
+                vc.r, vc.g, vc.b, vc.a, sx1 * inv_w, sy1 * inv_h}
+            PushTriangle(tex, args.smooth, true, gpu_clip, va, vb, vc_v)
+            PushTriangle(tex, args.smooth, true, gpu_clip, vb, vd, vc_v)
+        }
+    }
+    return true
+}

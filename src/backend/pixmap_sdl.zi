@@ -9,20 +9,47 @@ GetEnv :: (name: *u8) -> *u8 #foreign sdl "SDL_getenv";
 SetHintPriority :: (name: *u8, value: *u8, priority: s32) -> s32 #foreign sdl "SDL_SetHintWithPriority";
 CreateRenderer :: (window: *void, index: s32, flags: u32) -> *void #foreign sdl "SDL_CreateRenderer";
 DestroyRenderer :: (renderer: *void) #foreign sdl "SDL_DestroyRenderer";
+CurrentGlContext :: () -> *void #foreign sdl "SDL_GL_GetCurrentContext";
+GlGetString :: #type (name: u32) -> *u8 #c_call;
+GetGlProcAddress :: (name: *u8) -> GlGetString #foreign sdl "SDL_GL_GetProcAddress";
 
-PixmapGpuSelected :: () -> bool {
-    gpu_name: [32]u8
-    if !CopyCString("KRYON_PIXMAP_GPU", gpu_name[:]) { return false }
-    choice := GetEnv(*gpu_name[0])
-    return choice != null && choice[0] == cast(u8)49
+TextContains :: (text: *u8, part: string) -> bool {
+    if text == null { return false }
+    at: s64
+    while text[at] != cast(u8)0 {
+        offset: s64
+        while offset < part.count && text[at + offset] == part[offset] { offset += 1 }
+        if offset == part.count { return true }
+        at += 1
+    }
+    return false
+}
+
+// Software GL drivers (llvmpipe/softpipe on headless Xvfb) paint on the CPU
+// anyway; avoid them unless KRYON_PIXMAP_GPU=1 explicitly forces GPU testing.
+SoftwareGlDriver :: () -> bool {
+    if CurrentGlContext() == null { return false }
+    name: [16]u8
+    if !CopyCString("glGetString", name[:]) { return false }
+    get := GetGlProcAddress(*name[0])
+    if get == null { return false }
+    driver := get(cast(u32)0x1F01) // GL_RENDERER
+    return TextContains(driver, "llvmpipe") || TextContains(driver, "softpipe") ||
+        TextContains(driver, "Software")
 }
 
 // Call on the window's owner thread, before creating its pixel texture.
 // Normal/override SDL hints and environment preferences take precedence.
+// By default, prefers a real hardware-accelerated GPU SDL2 renderer
+// (SDL_RENDERER_ACCELERATED) so desktop windows, Harmony, ZX runners and
+// zx2native apps run on the GPU rather than CPU software rendering; falls back
+// cleanly to software only when no hardware GPU is available or explicitly
+// requested via KRYON_PIXMAP_GPU=0 / SDL_RENDER_DRIVER=software.
 #program_export
 CreatePixmapRenderer :: (window: *void) -> *void {
     if window == null { return null }
     surface_hint: [32]u8; disabled: [2]u8; driver_hint: [32]u8
+    gpu_key: [32]u8; sw_key: [32]u8
     if !CopyCString("SDL_FRAMEBUFFER_ACCELERATION", surface_hint[:]) ||
         !CopyCString("0", disabled[:]) ||
         !CopyCString("SDL_RENDER_DRIVER", driver_hint[:]) { return null }
@@ -34,12 +61,33 @@ CreatePixmapRenderer :: (window: *void) -> *void {
         // Explicit driver preferences, including software, remain authoritative.
         return CreateRenderer(window, -1, cast(u32)0)
     }
-    if PixmapGpuSelected() { return CreateRenderer(window, -1, cast(u32)2) }
-    // CPU-raster applications pay twice for software OpenGL: create a GL
-    // context to discover llvmpipe, then destroy it and create the real
-    // renderer. Software transport is the fast common path; an explicit
-    // owner choice above retains the GPU upload path.
-    renderer := CreateRenderer(window, -1, cast(u32)1) // SDL_RENDERER_SOFTWARE
-    if renderer != null { return renderer }
-    return CreateRenderer(window, -1, cast(u32)2)
+    if CopyCString("KRYON_PIXMAP_GPU", gpu_key[:]) {
+        choice := GetEnv(*gpu_key[0])
+        if choice != null && choice[0] == cast(u8)48 {
+            renderer := CreateRenderer(window, -1, cast(u32)1)
+            if renderer != null { return renderer }
+            return CreateRenderer(window, -1, cast(u32)2)
+        }
+        if choice != null && choice[0] == cast(u8)49 {
+            renderer := CreateRenderer(window, -1, cast(u32)2)
+            if renderer != null { return renderer }
+            return CreateRenderer(window, -1, cast(u32)1)
+        }
+    }
+    if CopyCString("LIBGL_ALWAYS_SOFTWARE", sw_key[:]) {
+        sw := GetEnv(*sw_key[0])
+        if sw != null && sw[0] == cast(u8)49 {
+            renderer := CreateRenderer(window, -1, cast(u32)1)
+            if renderer != null { return renderer }
+            return CreateRenderer(window, -1, cast(u32)2)
+        }
+    }
+    // Prefer real hardware GPU acceleration by default. Do not request
+    // present-vsync here: waiting for vblank can stall input handling.
+    renderer := CreateRenderer(window, -1, cast(u32)2) // SDL_RENDERER_ACCELERATED
+    if renderer != null {
+        if !SoftwareGlDriver() { return renderer }
+        DestroyRenderer(renderer)
+    }
+    return CreateRenderer(window, -1, cast(u32)1) // SDL_RENDERER_SOFTWARE fallback
 }

@@ -50,8 +50,10 @@ writes a Linux executable that links the real desktop SDL2/GPU stack directly.
 While pure/console/file/clock `zx2native` ELFs stay fully static (no
 `PT_INTERP` or `PT_DYNAMIC`), graphical desktop `zx2native` executables link
 `libkryon-desktop.so` dynamically so portable `.zx` UI programs run at native
-speed with full SDL2 and GPU acceleration where available instead of a
-headless CPU-only pixmap rasterizer. `make zx-window-test`
+speed on the platform's real SDL2 hardware GPU 2D renderer (`desktop_gpu.zi`
+using `SDL_RenderGeometry`, retained GPU target textures, and a GPU atlas for
+rounded corners, cached Pango/Cairo text runs, and images) instead of a
+CPU-only software rasterizer. `make zx-window-test`
 checks `window.zi` on a private Xvfb, and that with no library registered
 `zx2native` stops at the gap naming `ZxWindowOpenHost`. In
 the browser, a project profile with `backend = "canvas"` and `codegen = "zx"`
