@@ -8,6 +8,28 @@ ModuleName :: (value: string, name: string) -> bool {
     if value.count == name.count + 6 && value[:6] == "kryon_" {
         return value[6:] == name
     }
+    // Published bundles also carry readable repository identities followed
+    // by a twelve-digit revision. Match the whole module after that identity,
+    // so image_raster cannot grant the capabilities of raster.
+    prefix := value.count - name.count - 1
+    if prefix >= 14 && value[prefix] == cast(u8)95 && value[prefix + 1:] == name &&
+    value[prefix - 13] == cast(u8)95 {
+        first := value[0]
+        valid := (first >= cast(u8)65 && first <= cast(u8)90) ||
+            (first >= cast(u8)97 && first <= cast(u8)122) || first == cast(u8)95
+        for index: cast(s64)1..prefix - 14 {
+            byte := value[index]
+            valid = valid && ((byte >= cast(u8)48 && byte <= cast(u8)57) ||
+                (byte >= cast(u8)65 && byte <= cast(u8)90) ||
+                (byte >= cast(u8)97 && byte <= cast(u8)122) || byte == cast(u8)95)
+        }
+        for index: prefix - 12..prefix - 1 {
+            byte := value[index]
+            valid = valid && ((byte >= cast(u8)48 && byte <= cast(u8)57) ||
+                (byte >= cast(u8)97 && byte <= cast(u8)102))
+        }
+        if valid { return true }
+    }
     if value.count != name.count + 18 || value[0] != cast(u8)112 ||
     value[17] != cast(u8)95 { return false }
     for index: 1..16 {

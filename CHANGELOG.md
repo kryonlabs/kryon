@@ -41,6 +41,8 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Recognize readable package identities in hosted widget and record module names, so existing bundles start alongside hosts built with newer package naming.
+
 - Reduce simple text programs' dependency graph by separating container measurement, paint operations, style facts, color values, bitmap metadata and portable editor policy. Keep `Text.Draw` and container APIs unchanged; layout-only programs still require no renderer, and editing buffers load with editing widgets.
 - Pin starter projects to the current Ziran toolchain and recognize its dependency-alias module names in portable hosts.
 

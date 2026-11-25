@@ -11,5 +11,13 @@ main :: () -> s32 {
     if ModuleName("", "raster") { return 8 }
     if !ModuleName("kryon__image_raster", "image_raster") { return 9 }
     if ModuleName("kryon__image_raster", "raster") { return 10 }
+    if !ModuleName("waozi_xyz_kryonlabs_kryon_ad43e92a5827_image_raster", "image_raster") { return 11 }
+    if ModuleName("waozi_xyz_kryonlabs_kryon_ad43e92a5827_image_raster", "raster") { return 12 }
+    if !ModuleName("kryon_ad43e92a5827_text_measure", "text_measure") { return 13 }
+    if ModuleName("kryon_ad43e92a582g_text", "text") { return 14 }
+    if ModuleName("kryon_ad43e92a582_text", "text") { return 15 }
+    if ModuleName("kryon_ad43e92a58270_text", "text") { return 16 }
+    if ModuleName("2kryon_ad43e92a5827_text", "text") { return 17 }
+    if ModuleName("other-kryon_ad43e92a5827_text", "text") { return 18 }
     return 0
 }
