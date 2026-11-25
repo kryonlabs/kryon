@@ -123,6 +123,50 @@ CheckWindow :: (display: *PrivateDisplay, app: *ProcessRun, route: string) -> s3
     return status
 }
 
+// Waits for an App.Run UI window, checks that it painted multiple colours
+// (rendered text over background), closes it and checks status 0.
+CheckUiWindow :: (display: *PrivateDisplay, app: *ProcessRun, route: string) -> s32 {
+    window := FindSessionWindow(display, app, 30000)
+    if window == 0 {
+        unused StopOwnedProcess(app, 2000)
+        print("zx window: % showed no window\n", route)
+        return 1
+    }
+    status: s32
+    image: DisplayImage
+    painted_deadline := MonotonicMilliseconds() + 10000
+    while true {
+        if !CaptureWindow(display, window, *image) {
+            status = Fail("cannot capture the UI window")
+            break
+        }
+        if ImageColorCount(*image) > 1 { break }
+        if MonotonicMilliseconds() < painted_deadline && !PollProcess(app) {
+            unused SleepMilliseconds(20)
+            continue
+        }
+        print("zx window: % showed only % colour(s)\n", route, ImageColorCount(*image))
+        status = 1
+        break
+    }
+    if !RequestWindowClose(display, window) {
+        unused StopOwnedProcess(app, 2000)
+        return Fail("cannot ask the UI window to close")
+    }
+    deadline := MonotonicMilliseconds() + 10000
+    while !PollProcess(app) && MonotonicMilliseconds() < deadline { unused SleepMilliseconds(20) }
+    if !app.finished {
+        unused StopOwnedProcess(app, 2000)
+        print("zx window: closing the UI window did not end %\n", route)
+        return 1
+    }
+    if app.code != 0 {
+        print("zx window: % exited with status %\n", route, app.code)
+        return 1
+    }
+    return status
+}
+
 #program_export
 main :: (argc: s32, argv: **u8) -> s32 {
     if argc != 5 { return Fail("usage: zx_window_test FOLDER PLAYER LIBRARY ZX2NATIVE") }
@@ -168,7 +212,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     linked: [1]string = .[Setting("ZIRAN_HOST_PATH", hosts)]
     if Run(lower[:], linked[:], Path(folder, "elf.log")) != 0 { return Fail("zx2native did not lower window.zx; see elf.log") }
 
-    display := OpenPrivateDisplay(640, 480, Path(folder, "xvfb.log"))
+    display := OpenPrivateDisplay(1024, 768, Path(folder, "xvfb.log"))
     if !display.valid { return Fail(display.error) }
     defer ClosePrivateDisplay(*display)
     run: [5]string = .[ziran, "run", "--backend", "native", bundle]
@@ -182,7 +226,49 @@ main :: (argc: s32, argv: **u8) -> s32 {
     elf := StartOnDisplay(*display, direct[:], none[:], "", Path(folder, "elf-run.log"))
     if !elf.started { return Fail("window.elf did not start") }
     if CheckWindow(*display, *elf, "window.elf") != 0 { return 1 }
-    print("zx window: window.zx ran natively through ziran run and as an executable linking the host library, ")
-    print("each in one 320x160 \"Window\" window that exited 0 when closed; with no host library zx2native named the gap\n")
+
+    // Headless text measurement links directly from libkryon-desktop.so
+    // (no separate CPU-only pixmap library and no X display needed).
+    measure_src := Path(folder, "measure.zi")
+    if !WriteEntireFile(measure_src, "Font :: #import \"kryon/font_metrics\";\nmain :: () -> s32 {\n    if Font.MeasureGlyphWidth(\"Hello, world!\", 24, \"\") <= 0 || Font.MeasureGlyphLineHeight(24, \"\") <= 0 { return 1 }\n    return 0\n}\n") {
+        return Fail("cannot write measure.zi")
+    }
+    measure_bundle := Path(folder, "measure.zx")
+    measure_build: [10]string = .[ziran, "bundle", "--project", "--root", folder, "--entry", "measure:main",
+        "-o", measure_bundle, measure_src]
+    if Run(measure_build[:], none[:], Path(folder, "measure-bundle.log")) != 0 {
+        return Fail("measure.zi does not bundle")
+    }
+    measure_elf := Path(folder, "measure.elf")
+    measure_lower: [4]string = .[zx2native, "-o", measure_elf, measure_bundle]
+    if Run(measure_lower[:], linked[:], Path(folder, "measure-elf.log")) != 0 {
+        return Fail("zx2native did not lower measure.zx against libkryon-desktop.so")
+    }
+    measure_cmd: [1]string = .[measure_elf]
+    if Run(measure_cmd[:], none[:], Path(folder, "measure-run.log")) != 0 {
+        return Fail("measure.elf failed headless glyph measurement")
+    }
+
+    // A full App.Run UI bundle (examples/hello.zi) also lowers via zx2native
+    // against libkryon-desktop.so and opens a real SDL2/Cairo window.
+    if PathExists("src/backend/frames_zx.zi") {
+        hello_bundle := Path(folder, "hello.zx")
+        hello_build: [10]string = .[ziran, "bundle", "--project", "--root", "examples", "--entry", "hello:main",
+            "-o", hello_bundle, "examples/hello.zi"]
+        if Run(hello_build[:], none[:], Path(folder, "hello-bundle.log")) != 0 {
+            return Fail("hello.zi does not bundle")
+        }
+        hello_elf := Path(folder, "hello.elf")
+        hello_lower: [4]string = .[zx2native, "-o", hello_elf, hello_bundle]
+        if Run(hello_lower[:], linked[:], Path(folder, "hello-elf.log")) != 0 {
+            return Fail("zx2native did not lower hello.zx against libkryon-desktop.so; see hello-elf.log")
+        }
+        hello_cmd: [1]string = .[hello_elf]
+        hello_run := StartOnDisplay(*display, hello_cmd[:], none[:], "", Path(folder, "hello-run.log"))
+        if !hello_run.started { return Fail("hello.elf did not start") }
+        if CheckUiWindow(*display, *hello_run, "hello.elf") != 0 { return 1 }
+    }
+
+    print("zx window: window.zx, headless measurement and hello.zx ran natively linking libkryon-desktop.so (SDL2/Cairo) and exited 0; with no host library zx2native named the gap\n")
     return 0
 }

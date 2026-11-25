@@ -51,6 +51,10 @@ GetWindowSize :: (window: *void, width: *s32, height: *s32) #foreign sdl_library
 GetWindowPosition :: (window: *void, x: *s32, y: *s32) #foreign sdl_library "SDL_GetWindowPosition";
 OpenURL :: (url: *u8) -> s32 #foreign sdl_library "SDL_OpenURL";
 DestroyRenderer :: (renderer: *void) #foreign sdl_library "SDL_DestroyRenderer";
+CreateRenderer :: (window: *void, index: s32, flags: u32) -> *void #foreign sdl_library "SDL_CreateRenderer";
+GetHint :: (name: *u8) -> *u8 #foreign sdl_library "SDL_GetHint";
+GlGetString :: #type (name: u32) -> *u8 #c_call;
+GlGetProcAddress :: (name: *u8) -> GlGetString #foreign sdl_library "SDL_GL_GetProcAddress";
 CreateTexture :: (renderer: *void, format: u32, access: s32,
     width: s32, height: s32) -> *void #foreign sdl_library "SDL_CreateTexture";
 DestroyTexture :: (texture: *void) #foreign sdl_library "SDL_DestroyTexture";
@@ -488,6 +492,60 @@ DesktopWindowTopmost :: 4;
 // Keeps the frame cadence while the window is hidden or minimized.
 DesktopWindowAlwaysRun :: 8;
 
+// Prefer hardware-accelerated SDL2 rendering on real GPU desktops, while
+// avoiding llvmpipe/softpipe software GL on headless Xvfb displays and
+// honoring explicit SDL_RENDER_DRIVER or KRYON_PIXMAP_GPU overrides.
+DesktopTextContains :: (text: *u8, part: string) -> bool {
+    if text == null { return false }
+    at: s64
+    while text[at] != cast(u8)0 {
+        offset: s64
+        while offset < part.count && text[at + offset] == part[offset] { offset += 1 }
+        if offset == part.count { return true }
+        at += 1
+    }
+    return false
+}
+
+DesktopSoftwareGl :: () -> bool {
+    name: [16]u8; if !CopyCString("glGetString", name[:]) { return false }
+    get := GlGetProcAddress(*name[0])
+    if get == null { return false }
+    driver := get(cast(u32)0x1F01) // GL_RENDERER
+    return DesktopTextContains(driver, "llvmpipe") || DesktopTextContains(driver, "softpipe") ||
+        DesktopTextContains(driver, "Software")
+}
+
+CreateDesktopRenderer :: (target: *void) -> *void {
+    if target == null { return null }
+    driver_hint: [32]u8; gpu_key: [32]u8; sw_key: [32]u8
+    if CopyCString("SDL_RENDER_DRIVER", driver_hint[:]) {
+        preferred := GetHint(*driver_hint[0])
+        if preferred != null && preferred[0] != cast(u8)0 {
+            return Presenter.CreatePixmapRenderer(target)
+        }
+    }
+    if CopyCString("KRYON_PIXMAP_GPU", gpu_key[:]) {
+        choice := GetEnvironment(*gpu_key[0])
+        if choice != null && choice[0] == cast(u8)48 { return Presenter.CreatePixmapRenderer(target) }
+        if choice != null && choice[0] == cast(u8)49 {
+            accelerated := CreateRenderer(target, -1, cast(u32)2)
+            if accelerated != null { return accelerated }
+            return Presenter.CreatePixmapRenderer(target)
+        }
+    }
+    if CopyCString("LIBGL_ALWAYS_SOFTWARE", sw_key[:]) {
+        sw := GetEnvironment(*sw_key[0])
+        if sw != null && sw[0] == cast(u8)49 { return Presenter.CreatePixmapRenderer(target) }
+    }
+    accelerated := CreateRenderer(target, -1, cast(u32)2) // SDL_RENDERER_ACCELERATED
+    if accelerated != null {
+        if !DesktopSoftwareGl() { return accelerated }
+        DestroyRenderer(accelerated)
+    }
+    return Presenter.CreatePixmapRenderer(target)
+}
+
 OpenDesktopTitled :: (width: s32, height: s32, title_text: string) -> bool {
     return OpenDesktopWindow(width, height, title_text, cast(u32)DesktopWindowResizable)
 }
@@ -530,7 +588,7 @@ OpenDesktopWindow :: (width: s32, height: s32, title_text: string, options: u32)
     window = CreateWindow(*title[0], cast(s32)0x2fff0000,
         cast(s32)0x2fff0000, width, height, window_flags)
     if window == null { return DesktopOpenFailed("create its SDL window", true) }
-    renderer = Presenter.CreatePixmapRenderer(window)
+    renderer = CreateDesktopRenderer(window)
     if renderer == null { return DesktopOpenFailed("create its SDL renderer", true) }
     texture = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width, height)
     if texture == null { return DesktopOpenFailed("create its SDL texture", true) }

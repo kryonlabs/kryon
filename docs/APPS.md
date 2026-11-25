@@ -41,16 +41,19 @@ host only for the window, its events, clearing and presenting
 `ZxWindowPresentHost`, `ZxWindowCloseHost`). Kryon's desktop zx player binds
 them to the same SDL window and runs the bundle's `main` as native code, so
 with the player installed (`make install-user`) `ziran run --backend native
-window.zx` opens the window. The same capabilities are a host library,
-`libkryon-desktop.so` from `zx_window_host.zi` (`make zx-window-host`), which
-`make install-user` registers as `kryon-desktop.library`, so `zx2native
-window.zx` writes a Linux executable that links them and opens the window
-itself. The headless raster host registers the same way: `libkryon-pixmap.so`
-from `src/backend/pixmap.zi` (`make zx-pixmap-host`) lands as
-`kryon-pixmap.library`, so a window-less `zx2native` executable links text
-measure and render (`MeasureGlyphWidth`) by name. `make zx-window-test`
-checks both on a private Xvfb, and that with no library registered `zx2native`
-stops at the gap naming `ZxWindowOpenHost`. In
+window.zx` opens the window. The desktop host library, `libkryon-desktop.so` from `zx_window_host.zi` (`make zx-window-host`),
+is registered by `make install-user` as `kryon-desktop.library` and exports
+both the bare `zx_window` capabilities (`App.Show`) and the full native
+SDL2/GPU/Cairo frame-loop, raster, text-measurement (`MeasureGlyphWidth`),
+input, clipboard, clock and service capabilities (`App.Run`), so `zx2native`
+writes a Linux executable that links the real desktop SDL2/GPU stack directly.
+While pure/console/file/clock `zx2native` ELFs stay fully static (no
+`PT_INTERP` or `PT_DYNAMIC`), graphical desktop `zx2native` executables link
+`libkryon-desktop.so` dynamically so portable `.zx` UI programs run at native
+speed with full SDL2 and GPU acceleration where available instead of a
+headless CPU-only pixmap rasterizer. `make zx-window-test`
+checks `window.zi` on a private Xvfb, and that with no library registered
+`zx2native` stops at the gap naming `ZxWindowOpenHost`. In
 the browser, a project profile with `backend = "canvas"` and `codegen = "zx"`
 takes a program entry too: its bundle is the program's own `main`, and the ZX
 canvas player binds the window to the page's canvas (`window_page_player`),

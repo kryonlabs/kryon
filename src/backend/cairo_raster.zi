@@ -569,6 +569,11 @@ UseKryonFont :: () {
 
 #program_export
 OpenRaster :: (width: s32, height: s32) -> bool {
+    if surface != null || paint != null {
+        if raster_text_close != null { raster_text_close() }
+        if paint != null { Destroy(paint); paint = null }
+        if surface != null { SurfaceDestroy(surface); surface = null }
+    }
     surface = ImageSurfaceCreate(0, width, height)
     if surface == null || SurfaceStatus(surface) != 0 { return false }
     paint = Create(surface)
@@ -584,7 +589,7 @@ OpenRaster :: (width: s32, height: s32) -> bool {
 // so the font options stay on the window's paint.
 CairoTextOpen :: () -> bool {
     if layout != null { return true }
-    if paint == null { return false }
+    if paint == null && !OpenRaster(1, 1) { return false }
     UseKryonFont()
     CopyCString("Liberation Sans", font_family[:])
     key: [32]u8

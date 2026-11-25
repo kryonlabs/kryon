@@ -1,11 +1,25 @@
-// zx_window's five host capabilities as a host library: a ZX program's
-// native executable links them by name with the C ABI the C target gives
-// zx_window's declarations, and its calls open, clear, present and close the
-// desktop window directly. `make zx-window-host` builds the library from
-// this module alone and `make install-user` registers it, so `zx2native`
-// links window.zi's bundle against it. It holds the one window such a
-// program opens.
+// Native SDL2/GPU/Cairo desktop host library (libkryon-desktop.so): exports
+// Kryon's desktop window, frame-loop, raster, font, clipboard, theme, clock
+// and service capabilities by name with the C ABI so `zx2native` executables
+// built from portable `.zx` programs (both App.Show and App.Run, as well as
+// headless text-measuring tools) link against the platform's real SDL2/GPU
+// stack instead of a CPU-only software pixmap host.
 Desktop :: #import "desktop_window";
+#import "desktop_runtime"
+#import "cairo_raster"
+#import "cursor"
+#import "session"
+#import "tree_input"
+#import "text_request"
+#import "frame_driver"
+Timer :: #import "std/timer_linux";
+UiTheme :: #import "theme";
+#if OS == .LINUX {
+    Service :: #import "service_linux";
+    Theme :: #import "system_theme_host_linux";
+}
+
+// --- Bare App.Show window capabilities (zx_window.zi) ---
 
 opened: Desktop.DesktopWindow;
 
@@ -36,4 +50,147 @@ ZxWindowPresentHost :: () {
 #program_export
 ZxWindowCloseHost :: () {
     Desktop.Close(*opened)
+}
+
+// --- Full App.Run frame-loop capabilities (frames_zx.zi) ---
+
+BundleInput :: struct {
+    width: s32
+    height: s32
+    x: float32
+    y: float32
+    down: bool
+    pressed: bool
+    released: bool
+    secondary_down: bool
+    secondary_pressed: bool
+    secondary_released: bool
+    modifiers: s32
+    key: s32
+    wheel: float32
+    closed: bool
+}
+
+bundle_open: bool;
+bundle_frames: s32;
+bundle_input: Session;
+
+BundleHostBackground :: (refresh: bool) -> u32 {
+    unused refresh
+    return UiTheme.CurrentBackground()
+}
+
+BundleCloseHost :: () {
+    if SessionValid(bundle_input) {
+        TreeInputReset(bundle_input)
+        unused SessionClose(bundle_input)
+        bundle_input = Session.{}
+    }
+    if bundle_open {
+        CloseDesktop()
+        bundle_open = false
+    }
+    bundle_frames = 0
+}
+
+#program_export
+ReadBundleInput :: () -> BundleInput {
+    result: BundleInput
+    if !bundle_open {
+        if !OpenDesktop() {
+            result.closed = true
+            return result
+        }
+        bundle_input = SessionOpen()
+        if !SessionValid(bundle_input) {
+            CloseDesktop()
+            result.closed = true
+            return result
+        }
+        bundle_open = true
+        bundle_frames = 0
+    }
+    ok := true
+    if bundle_frames > 0 {
+        ok = EndDesktopFrame()
+        if ok && !CaptureRequested() { PauseDesktop() }
+    }
+    if ok && !CaptureRequested() { ok = PollDesktop() }
+    if ok && CaptureRequested() && bundle_frames >= 2 { ok = false }
+    if !ok {
+        if CaptureRequested() { unused CaptureConfigured() }
+        BundleCloseHost()
+        result.closed = true
+        return result
+    }
+    key, modifiers := DesktopInputTake(bundle_input)
+    BeginDesktopFrame()
+    SetRasterBackground(BundleHostBackground)
+    viewport := DesktopViewport()
+    pointer := PollPointer()
+    secondary := PollSecondaryPointer()
+    result.width = cast(s32)viewport.width
+    result.height = cast(s32)viewport.height
+    result.x = pointer.x
+    result.y = pointer.y
+    result.down = pointer.down
+    result.pressed = pointer.pressed
+    result.released = pointer.released
+    result.secondary_down = secondary.down
+    result.secondary_pressed = secondary.pressed
+    result.secondary_released = secondary.released
+    result.modifiers = modifiers
+    result.key = key
+    result.wheel = DesktopWheelMove()
+    result.closed = false
+    bundle_frames += 1
+    return result
+}
+
+#program_export
+TakeBundleCodepoint :: () -> s32 {
+    if !SessionValid(bundle_input) { return 0 }
+    return TypedCodepointTake(bundle_input)
+}
+
+#program_export
+BundleTextInputHost :: (focused: bool) {
+    unused focused
+}
+
+#program_export
+BundleFrameCursorHost :: (shape: s32, asset_path: string, width: s32,
+    height: s32, hotspot_x: s32, hotspot_y: s32, hidden: bool) {
+    cursor := FrameCursor.{asset_path, width, height, hotspot_x, hotspot_y, hidden, shape}
+    unused DesktopCursorApply(cursor)
+}
+
+#program_export
+BundleFrameFinishedHost :: (unchanged: bool) {
+    DesktopFrameUnchanged(unchanged)
+}
+
+#program_export
+BundleFrameReusableHost :: () -> bool {
+    return DesktopFrameReusable()
+}
+
+#program_export
+BundleTextEditorHost :: (identity: u64, value: string, cursor: s32,
+    anchor: s32, flags: s32) {
+    unused identity; unused value; unused cursor; unused anchor; unused flags
+}
+
+#program_export
+BundleTextRequestHost :: (identity: u64) -> TextRequest {
+    unused identity
+    empty: TextRequest
+    return empty
+}
+
+// --- Shared desktop clock capability ---
+
+#program_export
+ClockMillisecondsHost :: () -> s64 {
+    return Timer.MonotonicMilliseconds()
 }
