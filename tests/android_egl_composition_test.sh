@@ -12,4 +12,4 @@ export LIBGL_ALWAYS_SOFTWARE=1
 LDLIBS="-lEGL -lGLESv2 -lGLX -lm" "${ziran%/*}/zi2c" --entry android_egl_composition_test:main \
     --exe --root "$out/ir" -o "$out/c" "$out/ir/"*.zir
 "$out/c/android_egl_composition_test"
-printf '%s\n' 'EGL composition, window blit, retained damage, snapshots, and renderer restart passed'
+printf '%s\n' 'EGL composition, window presentation, retained damage, snapshots, and renderer restart passed'

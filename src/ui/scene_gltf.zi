@@ -293,6 +293,8 @@ GltfMeshInstance :: struct {
     source_vertices: Vec(s32)
     morphed_positions: Vec(Vector3)
     morphed_normals: Vec(Vector3)
+    // The last update blended a morph target into this primitive.
+    morph_active: bool
 }
 
 GltfSceneInstance :: struct {
@@ -309,7 +311,16 @@ GltfSceneInstance :: struct {
     morph_counts: Vec(s32)
     morph_weights: Vec(float64)
     meshes: Vec(GltfMeshInstance)
-    joint_scratch: Vec(SkinAffine)
+    // The bind-to-pose joints of every model skin, computed once per update
+    // (GltfUpdateScene) and posed by each of the skin's primitives.
+    joint_cache: Vec(SkinAffine)
+    joint_offsets: Vec(s64)
+    joint_posed: Vec(u64)
+    // The primitive whose palette holds each skin's pose this update, -1 for
+    // none: the other primitives of the skin follow it (SceneSkinFollowPose).
+    skin_posed: Vec(u64)
+    skin_root: Vec(s32)
+    update: u64
 }
 
 #scope_file
@@ -2623,12 +2634,70 @@ GltfSetDualQuaternion :: (instance: *GltfSceneInstance, enabled: bool) {
     }
 }
 
+#scope_file
+// The bind-to-pose joints of glTF skin SKIN_INDEX in INSTANCE.joint_cache,
+// computed once per update: every primitive of the skin poses the same
+// joints, and a figure of a hundred primitives would otherwise pose them a
+// hundred times. Returns the first joint, or -1.
+GltfSkinJoints :: (model: *GltfModel, instance: *GltfSceneInstance, skin_index: s32) -> s64 {
+    if skin_index < 0 || skin_index >= model.skins.count { return -1 }
+    if instance.joint_offsets.count != model.skins.count + 1 {
+        if !VecResize(instance.joint_offsets, cast(s64)model.skins.count + 1) ||
+            !VecResize(instance.joint_posed, cast(s64)model.skins.count) ||
+            !VecResize(instance.skin_posed, cast(s64)model.skins.count) ||
+            !VecResize(instance.skin_root, cast(s64)model.skins.count) {
+            return -1
+        }
+        total: s64 = 0
+        for k: 0..model.skins.count - 1 {
+            instance.joint_offsets[k] = total
+            instance.joint_posed[k] = 0
+            instance.skin_posed[k] = 0
+            instance.skin_root[k] = -1
+            total += model.skins[k].joints.count
+        }
+        instance.joint_offsets[model.skins.count] = total
+        if !VecResize(instance.joint_cache, cast(s64)total) { return -1 }
+    }
+    if instance.joint_posed[skin_index] == instance.update {
+        return instance.joint_offsets[skin_index]
+    }
+    skin_def := *model.skins[skin_index]
+    first := instance.joint_offsets[skin_index]
+    for j: 0..skin_def.joints.count - 1 {
+        joint_mat := GltfMultiply(instance.node_world[skin_def.joints[j]], skin_def.inverse_bind_matrices[j])
+        instance.joint_cache[first + j] = GltfMatrixToAffine(joint_mat)
+    }
+    instance.joint_posed[skin_index] = instance.update
+    return first
+}
+#scope_export
+// Moves the skinning of every skinned primitive in INSTANCE to the GPU
+// scene backend (SceneSkinUseGpu), or back to the CPU. Call it after
+// GltfSceneCreate. Returns false when a palette cannot be made; the
+// primitives before it keep the mode they got.
+GltfSetGpuSkinning :: (scene: *Scene, instance: *GltfSceneInstance, enabled: bool) -> bool {
+    if instance == null {
+        return false
+    }
+    for i: 0..instance.meshes.count - 1 {
+        if instance.meshes[i].has_skin {
+            if !SceneSkinUseGpu(scene, *instance.meshes[i].skin, enabled, instance.meshes[i].skin_index) {
+                return false
+            }
+        }
+    }
+    return true
+}
+
 // Evaluates world matrices, morph target blending and skinning for INSTANCE
-// into SCENE.
+// into SCENE. A skin made a GPU skin publishes its joints instead of deforming
+// vertices, unless its material or an active morph target needs them posed.
 GltfUpdateScene :: (model: *GltfModel, instance: *GltfSceneInstance, scene: *Scene) -> bool {
     if model == null || instance == null || scene == null || !model.valid || !instance.ready {
         return false
     }
+    instance.update = instance.update + 1
     for i: 0..model.nodes.count - 1 {
         n := *model.nodes[i]
         if instance.trs_dirty[i] || !n.has_matrix {
@@ -2666,7 +2735,23 @@ GltfUpdateScene :: (model: *GltfModel, instance: *GltfSceneInstance, scene: *Sce
         prim := *model.meshes[inst.mesh_index].primitives[inst.primitive_index]
         v_count := inst.source_vertices.count
         t_count := prim.targets.count
+        morph_active := false
         if t_count > 0 {
+            w_off := instance.morph_offsets[inst.gltf_node]
+            w_cnt := instance.morph_counts[inst.gltf_node]
+            for t: 0..t_count - 1 {
+                if t >= w_cnt {
+                    break
+                }
+                if GltfAbs(instance.morph_weights[w_off + t]) > 0.000000001 {
+                    morph_active = true
+                    break
+                }
+            }
+        }
+        // With every target at rest the shape is the base mesh. Only a
+        // change away from a blended shape writes that back, once.
+        if t_count > 0 && (morph_active || inst.morph_active) {
             w_off := instance.morph_offsets[inst.gltf_node]
             w_cnt := instance.morph_counts[inst.gltf_node]
             for v: 0..v_count - 1 {
@@ -2703,17 +2788,37 @@ GltfUpdateScene :: (model: *GltfModel, instance: *GltfSceneInstance, scene: *Sce
                 scene.geometry_frozen = false
             }
         }
+        inst.morph_active = morph_active
         if inst.has_skin {
-            skin_def := *model.skins[inst.skin_index]
-            j_count := skin_def.joints.count
-            if !VecResize(instance.joint_scratch, j_count) { return false }
-            for j: 0..j_count - 1 {
-                j_node := skin_def.joints[j]
-                joint_mat := GltfMultiply(instance.node_world[j_node], skin_def.inverse_bind_matrices[j])
-                instance.joint_scratch[j] = GltfMatrixToAffine(joint_mat)
-            }
-            if !SceneSkinDeform(scene, *inst.skin, VecSlice(instance.joint_scratch, 0, j_count)) {
-                return false
+            first := GltfSkinJoints(model, instance, inst.skin_index)
+            if first < 0 { return false }
+            j_count := model.skins[inst.skin_index].joints.count
+            skin := *inst.skin
+            mesh := scene.meshes[scene.nodes[skin.node].mesh]
+            // The GPU poses indexed smooth meshes only: a flat material or a
+            // box projection bakes posed vertices, and a morph target changes
+            // the bind shape itself.
+            on_gpu := skin.gpu && mesh.index_count > 0 && !mesh.material.flat &&
+                mesh.material.texture_projection != .SceneTextureBox && !morph_active
+            if on_gpu {
+                if instance.skin_posed[inst.skin_index] == instance.update &&
+                    SceneSkinFollowPose(scene, skin, *instance.meshes[instance.skin_root[inst.skin_index]].skin) {
+                    // The skin's first posed primitive this update holds the
+                    // pose; this one takes it without posing a joint again.
+                } else {
+                    if !SceneSkinPose(scene, skin, VecSlice(instance.joint_cache, first, first + j_count)) {
+                        return false
+                    }
+                    instance.skin_posed[inst.skin_index] = instance.update
+                    instance.skin_root[inst.skin_index] = cast(s32)m
+                }
+            } else {
+                if skin.palette > 0 && skin.palette <= scene.skins.count {
+                    scene.skins[skin.palette - 1].active = false
+                }
+                if !SceneSkinDeform(scene, skin, VecSlice(instance.joint_cache, first, first + j_count)) {
+                    return false
+                }
             }
         }
     }
@@ -2728,6 +2833,8 @@ GltfSceneCreate :: (scene: *Scene, model: *GltfModel, instance: *GltfSceneInstan
         return false
     }
     n_count := model.nodes.count
+    // A new scene over a kept instance: the joint cache follows its skins.
+    VecClear(instance.joint_offsets)
     if !VecResize(instance.node_to_scene, n_count) ||
        !VecResize(instance.translations, n_count) ||
        !VecResize(instance.rotations, n_count) ||
@@ -2998,7 +3105,12 @@ GltfInstanceRelease :: (instance: *GltfSceneInstance) {
         VecFree(instance.meshes[i].morphed_normals)
     }
     VecFree(instance.meshes)
-    VecFree(instance.joint_scratch)
+    VecFree(instance.joint_cache)
+    VecFree(instance.joint_offsets)
+    VecFree(instance.joint_posed)
+    VecFree(instance.skin_posed)
+    VecFree(instance.skin_root)
+    instance.update = 0
     instance.root_node = -1
     instance.ready = false
 }

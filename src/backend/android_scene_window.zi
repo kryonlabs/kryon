@@ -1,0 +1,179 @@
+// NativeActivity window ownership for a program that presents a GPU Scene
+// straight to the screen: no Pixmap, no CPU copy and no second context. The
+// host frame loop calls Begin before the program's Frame and Present after it.
+// All calls run on the activity's native thread. The host runs its window
+// branch: the tree commits, nothing is bound to a Pixmap and every frame swaps.
+#if OS == .ANDROID {
+G :: #import "scene_gpu_gl";
+SceneGpu :: #import "scene_gpu";
+Native :: #import "android_native";
+#import "android_frame_composition"
+#import "std/byte_text_linux"
+#import "std/timer_linux"
+#import "std/vec"
+
+egl :: #system_library "EGL";
+CreateWindowSurface :: (display: *void, config: *void, window: *void,
+    attributes: *s32) -> *void #foreign egl "eglCreateWindowSurface";
+DestroySurface :: (display: *void, surface: *void) -> u32 #foreign egl "eglDestroySurface";
+ConfigAttribute :: (display: *void, config: *void, attribute: s32, value: *s32) -> u32 #foreign egl "eglGetConfigAttrib";
+QuerySurface :: (display: *void, surface: *void, attribute: s32, value: *s32) -> u32 #foreign egl "eglQuerySurface";
+SwapBuffers :: (display: *void, surface: *void) -> u32 #foreign egl "eglSwapBuffers";
+
+display: *void;
+context: *void;
+surface: *void;
+attempted_window: *void;
+previous: G.SavedContext;
+frame_open: bool;
+window_width: s32;
+window_height: s32;
+target: *SceneGpu.SceneGpuContext;
+readback: Vec(u8);
+swap_ns: s64;
+presents: s64;
+
+#scope_module
+Contains :: (value: string, pattern: string) -> bool {
+    for index: 0..value.count - pattern.count {
+        if value[index:index + pattern.count] == pattern { return true }
+    }
+    return false
+}
+
+Drop :: () {
+    if display == null { frame_open = false; return }
+    saved := G.SaveContext()
+    if frame_open { saved = previous }
+    // The renderer deletes its objects while the lent context still lives.
+    if context != null && surface != null { unused G.EMakeCurrent(display, surface, surface, context) }
+    if target != null { SceneGpu.SceneGpuWindowLost(target) }
+    frame_open = false
+    G.RestoreContext(saved, display)
+    if surface != null { unused DestroySurface(display, surface) }
+    if context != null { unused G.EDestroyContext(display, context) }
+    display = null; context = null; surface = null
+    window_width = 0; window_height = 0
+    android_composition_presented = false; android_composition_active = false
+    android_composition_window = false
+    android_composition_width = 0; android_composition_height = 0
+}
+
+Open :: (window: *void) -> bool {
+    display = G.ESceneDisplay()
+    if display == null { return false }
+    if G.EInitialize(display, null, null) == 0 || G.EBindAPI(0x30a0) == 0 { return false }
+    attributes: [13]s32 = .[0x3033, 4, 0x3040, 0x40, 0x3024, 8, 0x3023, 8, 0x3022, 8, 0x3021, 8, 0x3038]
+    config: *void; count: s32
+    if G.EChooseConfig(display, *attributes[0], *config, 1, *count) == 0 || count == 0 { return false }
+    format: s32
+    if ConfigAttribute(display, config, 0x302e, *format) == 0 ||
+        !Native.AndroidNativeSetWindowFormat(window, format) { return false }
+    options: [3]s32 = .[0x3098, 3, 0x3038]
+    context = G.ECreateContext(display, config, null, *options[0])
+    if context == null { return false }
+    surface = CreateWindowSurface(display, config, window, null)
+    if surface == null || G.EMakeCurrent(display, surface, surface, context) == 0 { return false }
+    renderer := G.GetString(0x1f01)
+    name := TextFromCString(renderer)
+    Native.AndroidNativeLogRenderer(renderer)
+    if name.count == 0 || Contains(name, "llvmpipe") || Contains(name, "softpipe") ||
+        Contains(name, "SwiftShader") || Contains(name, "Software") { return false }
+    if target != null { SceneGpu.SceneGpuAdoptWindow(target, display, context, surface) }
+    return true
+}
+
+ReleaseWindow :: () {
+    Drop()
+    attempted_window = null
+}
+
+Begin :: (columns: s32, rows: s32) -> bool {
+    unused columns; unused rows
+    window := Native.AndroidNativeSurface()
+    if window == null || frame_open { return false }
+    if window != attempted_window { ReleaseWindow() }
+    if attempted_window != null && surface == null { return false }
+    previous = G.SaveContext()
+    frame_open = true
+    if surface == null {
+        attempted_window = window
+        if !Open(window) { Disable(); return false }
+    } else if G.EMakeCurrent(display, surface, surface, context) == 0 {
+        Disable(); return false
+    }
+    if QuerySurface(display, surface, 0x3057, *window_width) == 0 ||
+        QuerySurface(display, surface, 0x3056, *window_height) == 0 ||
+        window_width <= 0 || window_height <= 0 { Disable(); return false }
+    // The scene fills the window, so the composition is the window itself.
+    if android_composition_width != window_width || android_composition_height != window_height {
+        android_composition_presented = false
+    }
+    android_composition_width = window_width; android_composition_height = window_height
+    android_composition_active = true
+    android_composition_window = true
+    return true
+}
+
+Disable :: () {
+    Drop()
+    // The software presenter requests its own geometry and a full buffer.
+    Native.android_native_window = null
+    Native.android_native_redraw = true
+    Native.AndroidNativeLog("Android scene presentation: software fallback")
+}
+
+Present :: () -> bool {
+    if !frame_open { return false }
+    first := !android_composition_presented
+    started := MonotonicNanoseconds()
+    if SwapBuffers(display, surface) == 0 { Disable(); return false }
+    // A blocking swap is the GPU still working on queued frames.
+    swap_ns = MonotonicNanoseconds() - started
+    presents += 1
+    android_composition_presented = true
+    if first { Native.AndroidNativeLog("Android scene presentation: GLES 3 direct window swap") }
+    return true
+}
+
+Cancel :: () {
+    if !frame_open { return }
+    frame_open = false
+    G.RestoreContext(previous, display)
+}
+
+// A snapshot reads the frame just rendered into the window's back buffer.
+// GL rows are bottom-up.
+Read :: (left: s32, top: s32, columns: s32, rows: s32, rgba: []u8) -> bool {
+    if !frame_open { return false }
+    if left < 0 || top < 0 || columns <= 0 || rows <= 0 ||
+        columns > window_width - left || rows > window_height - top ||
+        rgba.count < cast(s64)columns * rows * 4 { return false }
+    bytes := cast(s64)columns * rows * 4
+    if !VecResize(readback, bytes) { return false }
+    G.BindFramebuffer(0x8ca8, 0)
+    G.ReadPixels(left, window_height - top - rows, columns, rows, 0x1908, 0x1401, cast(*void)*readback[0])
+    if G.GetError() != 0 { return false }
+    for y: 0..rows - 1 {
+        source := cast(s64)(rows - 1 - y) * columns * 4
+        unused G.CopyMemory(cast(*void)*rgba[cast(s64)y * columns * 4], cast(*void)*readback[source], cast(usize)columns * 4)
+    }
+    return true
+}
+
+#scope_export
+// The window belongs to the activity; the renderer draws into it directly.
+EnableAndroidSceneWindow :: (gpu: *SceneGpu.SceneGpuContext) {
+    target = gpu
+    Native.android_native_window_release = ReleaseWindow
+    android_composition_begin = Begin
+    android_composition_present = Present
+    android_composition_cancel = Cancel
+    android_composition_read = Read
+}
+
+AndroidSceneWindowWidth :: () -> s32 { return window_width }
+AndroidSceneWindowHeight :: () -> s32 { return window_height }
+AndroidSceneWindowSwapNanoseconds :: () -> s64 { return swap_ns }
+AndroidSceneWindowPresents :: () -> s64 { return presents }
+}

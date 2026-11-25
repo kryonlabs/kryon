@@ -34,6 +34,12 @@ SceneSkin :: struct {
     normal_transforms: Vec(SkinAffine)
     real: Vec(SkinQuat)
     dual: Vec(SkinQuat)
+    // GPU skinning (SceneSkinUseGpu): palette is the skin's entry in
+    // scene.skins plus one, 0 while the scene holds none.
+    gpu: bool
+    palette: s32
+    // The CPU deform paths wrote posed vertices into the scene's mesh.
+    posed_in_scene: bool
 }
 
 SkinIdentity :: () -> SkinAffine {
@@ -212,6 +218,7 @@ SceneSkinDeform :: (scene: *Scene, skin: *SceneSkin, transforms: []SkinAffine) -
         scene.normals[mesh.first_vertex + index] = SkinNormalize3(normal)
     }
     scene.geometry_frozen = false
+    SceneSkinPosed(scene, skin)
     return true
 }
 
@@ -297,6 +304,160 @@ SceneSkinDeformDualQuaternion :: (scene: *Scene, skin: *SceneSkin, transforms: [
         scene.normals[mesh.first_vertex + index] = SkinNormalize3(SkinQuatRotate(ur, skin.normals[index]))
     }
     scene.geometry_frozen = false
+    SceneSkinPosed(scene, skin)
+    return true
+}
+
+// Moves SKIN's skinning to the GPU scene backend (kryon/scene_gpu). The scene
+// keeps the joint palette and the mesh's vertices in the scene return to
+// their bind pose; SceneSkinPose publishes every new pose. The GPU backend
+// draws a flat material, a box texture projection or an active morph target
+// from the posed vertices instead, so callers keep using SceneSkinDeform for
+// those. A renderer other than the GPU scene backend would show the bind
+// pose. SOURCE names the model skin the joints come from, -1 for none: the
+// palettes of one source hold the same pose and share one upload. Returns
+// false, changing nothing, when the palette cannot be made.
+SceneSkinUseGpu :: (scene: *Scene, skin: *SceneSkin, enabled: bool, source: s32 = -1) -> bool {
+    if scene == null || skin == null || !skin.ready || scene.failed {
+        return false
+    }
+    if !enabled {
+        skin.gpu = false
+        return true
+    }
+    if skin.palette == 0 {
+        mesh_index := scene.nodes[skin.node].mesh
+        if mesh_index < 0 || mesh_index >= scene.meshes.count || skin.bone_count <= 0 ||
+            skin.bone_count > 65535 || skin.influences.count != skin.positions.count {
+            return false
+        }
+        empty: SceneSkinPalette
+        if !VecPush(scene.skins, empty) {
+            return false
+        }
+        palette := *scene.skins[scene.skins.count - 1]
+        palette.mesh = -1
+        palette.joint_count = skin.bone_count
+        palette.dual_quaternion = skin.dual_quaternion
+        palette.source = source
+        if !VecResize(palette.values, cast(s64)skin.bone_count * 24) ||
+            !VecResize(palette.attributes, skin.influences.count) {
+            VecFree(palette.values)
+            VecFree(palette.attributes)
+            palette.joint_count = 0
+            return false
+        }
+        for index: 0..skin.influences.count - 1 {
+            influence := skin.influences[index]
+            attribute: SkinAttribute
+            for lane: 0..3 {
+                attribute.joint[lane] = cast(u16)influence.joints[lane]
+                attribute.weight[lane] = cast(float32)influence.weights[lane]
+            }
+            palette.attributes[index] = attribute
+        }
+        palette.mesh = mesh_index
+        skin.palette = cast(s32)scene.skins.count
+    }
+    SceneSkinBindPose(scene, skin)
+    skin.gpu = true
+    return true
+}
+
+// Publishes TRANSFORMS, the same bind-to-pose matrices SceneSkinDeform takes,
+// as SKIN's pose for the GPU scene backend and marks the palette active.
+// Invalid transforms leave the last pose and the scene unchanged.
+SceneSkinPose :: (scene: *Scene, skin: *SceneSkin, transforms: []SkinAffine) -> bool {
+    if scene == null || skin == null || !skin.ready || !skin.gpu || skin.node < 0 ||
+        skin.node >= scene.nodes.count || skin.palette <= 0 || skin.palette > scene.skins.count ||
+        transforms.count != skin.bone_count || scene.failed {
+        return false
+    }
+    palette := *scene.skins[skin.palette - 1]
+    if palette.joint_count != skin.bone_count || palette.values.count != cast(s64)skin.bone_count * 24 {
+        return false
+    }
+    for index: 0..transforms.count - 1 {
+        transform := transforms[index]
+        cross := SkinCross3(transform.y, transform.z)
+        determinant := SkinDot3(transform.x, cross)
+        if !SkinFinite(transform.x) || !SkinFinite(transform.y) || !SkinFinite(transform.z) ||
+            !SkinFinite(transform.translation) || !Finite64(determinant) ||
+            (skin.dual_quaternion && determinant <= 0.000000001) ||
+            SkinAbs(determinant) < 0.000000001 {
+            return false
+        }
+        at := index * 24
+        tx := transform.translation.x
+        ty := transform.translation.y
+        tz := transform.translation.z
+        if skin.dual_quaternion {
+            r := SkinQuatFromAffine(transform)
+            palette.values[at] = cast(float32)r.x
+            palette.values[at + 1] = cast(float32)r.y
+            palette.values[at + 2] = cast(float32)r.z
+            palette.values[at + 3] = cast(float32)r.w
+            palette.values[at + 4] = cast(float32)(0.5 * (tx * r.w + ty * r.z - tz * r.y))
+            palette.values[at + 5] = cast(float32)(0.5 * (-tx * r.z + ty * r.w + tz * r.x))
+            palette.values[at + 6] = cast(float32)(0.5 * (tx * r.y - ty * r.x + tz * r.w))
+            palette.values[at + 7] = cast(float32)(-0.5 * (tx * r.x + ty * r.y + tz * r.z))
+        } else {
+            palette.values[at] = cast(float32)transform.x.x
+            palette.values[at + 1] = cast(float32)transform.x.y
+            palette.values[at + 2] = cast(float32)transform.x.z
+            palette.values[at + 3] = cast(float32)tx
+            palette.values[at + 4] = cast(float32)transform.y.x
+            palette.values[at + 5] = cast(float32)transform.y.y
+            palette.values[at + 6] = cast(float32)transform.y.z
+            palette.values[at + 7] = cast(float32)ty
+            palette.values[at + 8] = cast(float32)transform.z.x
+            palette.values[at + 9] = cast(float32)transform.z.y
+            palette.values[at + 10] = cast(float32)transform.z.z
+            palette.values[at + 11] = cast(float32)tz
+            // Normals take the inverse transpose, as on the CPU.
+            palette.values[at + 12] = cast(float32)(cross.x / determinant)
+            palette.values[at + 13] = cast(float32)(cross.y / determinant)
+            palette.values[at + 14] = cast(float32)(cross.z / determinant)
+            ny := SkinCross3(transform.z, transform.x)
+            palette.values[at + 16] = cast(float32)(ny.x / determinant)
+            palette.values[at + 17] = cast(float32)(ny.y / determinant)
+            palette.values[at + 18] = cast(float32)(ny.z / determinant)
+            nz := SkinCross3(transform.x, transform.y)
+            palette.values[at + 20] = cast(float32)(nz.x / determinant)
+            palette.values[at + 21] = cast(float32)(nz.y / determinant)
+            palette.values[at + 22] = cast(float32)(nz.z / determinant)
+        }
+    }
+    palette.version = palette.version + 1
+    palette.dual_quaternion = skin.dual_quaternion
+    palette.active = true
+    palette.follows = false
+    SceneSkinBindPose(scene, skin)
+    return true
+}
+
+// SKIN takes the pose FROM published this update (SceneSkinPose): the two
+// belong to one model skin, so their joints are the same and the GPU scene
+// backend reads the rows of FROM's palette for both. SKIN's palette holds no
+// rows of its own until it is posed again.
+SceneSkinFollowPose :: (scene: *Scene, skin: *SceneSkin, from: *SceneSkin) -> bool {
+    if scene == null || skin == null || from == null || !skin.ready || !from.ready ||
+        !skin.gpu || !from.gpu || skin.palette <= 0 || skin.palette > scene.skins.count ||
+        from.palette <= 0 || from.palette > scene.skins.count || skin.palette == from.palette ||
+        skin.bone_count != from.bone_count || skin.dual_quaternion != from.dual_quaternion ||
+        scene.failed {
+        return false
+    }
+    palette := *scene.skins[skin.palette - 1]
+    source := *scene.skins[from.palette - 1]
+    if !source.active || source.follows || palette.joint_count != skin.bone_count {
+        return false
+    }
+    palette.version = source.version
+    palette.dual_quaternion = skin.dual_quaternion
+    palette.active = true
+    palette.follows = true
+    SceneSkinBindPose(scene, skin)
     return true
 }
 
@@ -316,6 +477,35 @@ SceneSkinRelease :: (skin: *SceneSkin) {
     skin.ready = false
     skin.dual_quaternion = false
     skin.bone_count = 0
+    skin.gpu = false
+    skin.palette = 0
+    skin.posed_in_scene = false
+}
+
+// The CPU deform path left posed vertices in the scene: the palette steps
+// back until a pose is published again.
+SceneSkinPosed :: (scene: *Scene, skin: *SceneSkin) {
+    skin.posed_in_scene = true
+    if skin.palette > 0 && skin.palette <= scene.skins.count {
+        scene.skins[skin.palette - 1].active = false
+    }
+}
+
+// The mesh's vertices in the scene return to the bind pose the GPU skins.
+SceneSkinBindPose :: (scene: *Scene, skin: *SceneSkin) {
+    if !skin.posed_in_scene {
+        return
+    }
+    mesh := scene.meshes[scene.nodes[skin.node].mesh]
+    if mesh.first_vertex < 0 || mesh.first_vertex + cast(s64)skin.positions.count > scene.positions.count {
+        return
+    }
+    for index: 0..skin.positions.count - 1 {
+        scene.positions[mesh.first_vertex + index] = skin.positions[index]
+        scene.normals[mesh.first_vertex + index] = skin.normals[index]
+    }
+    skin.posed_in_scene = false
+    scene.geometry_frozen = false
 }
 
 #scope_file

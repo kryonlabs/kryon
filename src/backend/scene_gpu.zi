@@ -37,6 +37,12 @@ SceneGpuCapabilities :: struct {
  max_texture_size: s32
  texture_units: s32
  max_samples: s32; highp_bits: s32; highp_range: s32
+ // Texture units the vertex shaders can read; GPU skinning needs unit 15.
+ // Some drivers report none although their vertex stage samples textures:
+ // a linked probe program that reads a texture in the vertex shader decides.
+ vertex_texture_units: s32; vertex_texture_fetch: bool
+ // GL_MAX_VERTEX_UNIFORM_VECTORS: the palette size a uniform array allows.
+ vertex_uniform_vectors: s32
  vendor: [256]u8
  renderer: [256]u8
  version: [256]u8
@@ -49,11 +55,15 @@ SceneGpuFrame :: struct {
  submit_ms: float64; readback_ms: float64; conversion_ms: float64
  prepare_ms: float64; shadow_ms: float64; draw_ms: float64
  draw_calls: s32; shadow_passes: s64
+ // GPU execution of the previous frame between two timestamp queries, or
+ // -1 while the backend reports none.
+ gpu_ms: float64
  profile: SceneGpuProfile
 }
 SceneGpuProfile :: struct {
  shader_setup_ms: float64; texture_upload_ms: float64
  gpu_completion_ms: float64; pixel_transfer_ms: float64; image_copy_ms: float64
+ geometry_compare_ms: float64; geometry_upload_ms: float64; geometry_snapshot_ms: float64
  direct_resolve: bool
 }
 SceneGpuResources :: struct {
@@ -63,6 +73,8 @@ SceneGpuResources :: struct {
  // Vertices sent to the GPU so far. A node that only moves sends its own.
  geometry_vertices: s64
  fences: s32; pending_frames: s32; submitted_frames: s64; cancelled_frames: s64
+ // Poses sent to a skin palette texture.
+ skin_uploads: s64
 }
 // ok means a valid nonblocking operation; queued/completed distinguish progress.
 // IDs must be positive and increase until Release. A busy submit accepts nothing.
@@ -78,13 +90,16 @@ GpuTransfer :: struct {
  opaque: bool; straight: bool; frame: SceneGpuFrame; submitted_at: float64; fence_at: float64
 }
 GpuVertex :: struct { p: [3]float32; n: [3]float32; c: [3]float32; uv: [2]float32; face: [3]float32 }
-GpuDraw :: struct { first: s32; count: s32; mesh: s32; node: s32; receive: bool; cast_shadow: bool; shown: bool; origin: Vector3 }
+// skin is the scene.skins entry that poses these vertices on the GPU, -1 for none.
+GpuDraw :: struct { first: s32; count: s32; mesh: s32; node: s32; receive: bool; cast_shadow: bool; shown: bool; origin: Vector3; skin: s32 }
 // An indexed draw's first/count address the element stream. The other draws
 // still address the interleaved vertices with per-face normals.
 GpuIndexedGeometry :: struct {
  attributes: u32; elements: u32; bound: bool
  vertex_count: s64
  indices: Vec(u32); scratch: Vec(float32)
+ // One skin record per indexed vertex, in the stream's own order.
+ skin: Vec(SkinAttribute); skin_attributes: u32
 }
 GpuLocations :: struct {
  vp: s32; view: s32; base: s32; glow: s32; material: s32; flags: s32; settings: s32; transparent: s32
@@ -94,20 +109,53 @@ GpuLocations :: struct {
  sampler: [8]s32; sampler_size: [8]s32; sampler_repeat: [8]s32
  graded: s32; grade_tint: s32; grade_lamp: [4]s32; grade_lamp_color: [4]s32; grade_beam_centre: s32; grade_beam_u: s32
  grade_beam_v: s32; grade_beam_normal: s32; grade_beam_direction: s32; grade_beam_color: s32; grade_beam_shadow: s32
+ model: s32; skin_mode: s32; bones: s32; bone_stride: s32; bones_texture: s32; bones_in_texture: s32
 }
 GPU_RECENT_PROGRAMS :: 8
 GpuProgram :: struct { features: s32; key: *ShaderProgram; saved: ShaderProgram; id: u32; last_frame: u64; frame_uniforms_set: bool; locations: GpuLocations }
 GpuTexture :: struct { key: *u8; cache_key: u64; width: s32; height: s32; id: u32; used: bool; bytes: Vec(u8) }
 GpuShadow :: struct { texture: u32; framebuffer: u32; size: s32; source: SceneLight }
+// One scene skin palette on the GPU: bones*rows packed vec4 rows in a uniform
+// array, or a texture six RGBA float texels wide with one row per joint where
+// the joint count exceeds the array. Primitives of one glTF skin carry
+// identical joints: alias names the first palette with the same pose, so each
+// program receives the pose once per frame.
+GpuSkin :: struct {
+ texture: u32; bones: s32; version: u64; active: bool; dual: bool; uploaded: bool
+ rows: s32; alias: s32; uniform: Vec(float32)
+}
 GpuBindingCheck :: struct {program: *ShaderProgram; uniforms: *ShaderValue; uniform_count: s64; samplers: *ShaderSampler; sampler_count: s64}
+// One rung of the window ladder: the internal size as a percent of the window
+// and its coverage samples, with the GPU time of the rung relative to the full
+// one. The rungs run from the best the GPU may hold to the smallest.
+ScaleStep :: struct {percent: s32; samples: s32; cost: float64}
+SCALE_STEPS :: 6
 SceneGpuContext :: struct {
  capabilities: SceneGpuCapabilities
  display: *void; context: *void; attempted: bool
+ // A window host may lend the renderer its context and window surface;
+ // the renderer then presents into the window's default framebuffer.
+ window_surface: *void; adopted: bool
+ timer_start: u32; timer_end: u32; timer_pending: bool; last_gpu_ms: float64
+ // 0 no timestamp entry points, 1 a frame is pending, 2 a frame was measured.
+ timer_state: s32
+ timer_wait: s32
+ finish_at: float64
+ // Window frames render into a target of scale_percent of the window with
+ // scale_samples coverage when the GPU cannot hold the refresh period at the
+ // full one; the present scales the resolve. A positive scale_fixed holds that
+ // percent and scale_fixed_samples, 0 adapts both.
+ scale_fixed: s32; scale_fixed_samples: s32; scale_percent: s32; scale_samples: s32; scale_level: s32
+ scale_warm: s32; scale_probe: s32; scale_count: s32; scale_fail: [SCALE_STEPS]s32
+ scale_idle: s32; scale_late: s32; scale_hold: s32; scale_sum: float64; scale_cpu_sum: float64; last_frame_at: float64; scale_start: float64
+ // GPU time is measured while the owner asks for it or a scale step probes.
+ measure_gpu: bool; gpu_time: bool
  #if OS == .WEB {
   canvas: s32; canvas_texture: s32
  }
  width: s32; height: s32
  framebuffer: u32; color: u32; depth: u32; resolve: u32; resolved: u32
+ samples: s32
  straight_framebuffer: u32; straight_texture: u32; straight_program: u32
  buffer: u32; shadow_program: u32; dfg: u32
  #if OS == .ANDROID {
@@ -116,8 +164,19 @@ SceneGpuContext :: struct {
  }
  vertices: Vec(GpuVertex); draws: Vec(GpuDraw)
  indexed: GpuIndexedGeometry
+ skins: Vec(GpuSkin); skin_bound: bool
+ // The palette the vertex shaders read: a texture, or this many vec4 rows of
+ // a uniform array where the vertex stage cannot fetch textures (0 = texture).
+ skin_uniform_vectors: s32
+ // The vertex source every material program shares, composed once per probe.
+ vertex_source: string
+ // The uniform palette already sent to a program; the same pose on the same
+ // program is not sent again.
+ skin_uniform_program: u32; skin_uniform_index: s32; skin_uniform_version: u64
  // Each node's starting vertex in its stream and the transform used to bake it.
  node_first: Vec(s32); node_count: Vec(s32); node_world: Vec(M.GpuMatrix); node_shown: Vec(bool)
+ // Each node's posing palette (scene.skins index), -1 for none.
+ node_skin: Vec(s32)
  snapshot: Vec(u8); readback: Vec(u8); order: Vec(s32); keys: Vec(float64)
  programs: Vec(GpuProgram); program_frame: u64; textures: Vec(GpuTexture); shadows: [4]GpuShadow
  bindings: Vec(GpuBindingCheck)
@@ -125,7 +184,9 @@ SceneGpuContext :: struct {
  transfers: [2]GpuTransfer; last_request: u64
  direct_readback: bool
  profile_enabled: bool; texture_upload_ms: float64
- shadow_geometry: s64
+ // Per-frame owner time of the geometry phases, filled while profiling.
+ profile_compare_ms: float64; profile_upload_ms: float64; profile_snapshot_ms: float64
+ shadow_geometry: s64; shadow_skin: s64
  geometry_valid: bool
  // The snapshot was taken of a scene whose geometry was frozen.
  snapshot_frozen: bool
@@ -139,7 +200,93 @@ SceneGpuSetProfiling :: (gpu: *SceneGpuContext, enabled: bool) {
  gpu.profile_enabled=enabled
 }
 
+// Whether GPU skinning (SceneSkinUseGpu) poses meshes on this backend: it is
+// available and its vertex shaders read the palette, from texture unit 15 as
+// GLES 3 promises or from a uniform array where the vertex stage cannot fetch.
+SceneGpuSkinningAvailable :: (gpu: *SceneGpuContext)->bool {
+ c:=SceneGpuProbe(gpu)
+ return c.available&&(c.vertex_texture_fetch||gpu.skin_uniform_vectors>=64)
+}
+// The joints one palette holds: a texture column per joint, or the uniform
+// rows that fit beside the shader's own uniforms.
+SceneGpuPoseCapacity :: (gpu: *SceneGpuContext,dual: bool)->s32 {
+ c:=SceneGpuProbe(gpu)
+ if !c.available {return 0}
+ capacity: s32 = 0
+ if gpu.skin_uniform_vectors>=64 {capacity=gpu.skin_uniform_vectors/BoneRows(false,dual)}
+ if c.vertex_texture_fetch&&c.max_texture_size>capacity {capacity=cast(s32)c.max_texture_size}
+ return capacity
+}
+// Rows of one joint in its palette: six in a texture, two (dual quaternions)
+// or three (linear blend skinning) packed in a uniform array.
+BoneRows :: (texture: bool,dual: bool)->s32 {
+ if texture {return 6}
+ return ifx dual then 2 else 3
+}
+// The uniform array is the palette whenever the joints fit it, the same on
+// every backend; only a larger skin takes the texture of a backend whose
+// vertex stage reads textures.
+PaletteUsesTexture :: (gpu: *SceneGpuContext,p: *SceneSkinPalette)->bool {
+ if gpu.skin_uniform_vectors>=64&&p.joint_count*BoneRows(false,p.dual_quaternion)<=gpu.skin_uniform_vectors {return false}
+ return gpu.capabilities.vertex_texture_fetch
+}
+// The vertex shader every material program links: the shared attributes and
+// skin main around the palette this GPU's vertex stage can read.
+SceneVertexSource :: (gpu: *SceneGpuContext)->string {
+ if gpu.vertex_source.count>0 {return gpu.vertex_source}
+ code: Vec(u8)
+ unused BuilderAppend(code,GpuVertexVersion)
+ unused BuilderAppend(code,GpuVertexBody)
+ if gpu.capabilities.vertex_texture_fetch {
+  if gpu.skin_uniform_vectors>=64 {
+   BuilderPrint(*code,"#define KRYON_BONE_VECTORS %\n",gpu.skin_uniform_vectors)
+   unused BuilderAppend(code,GpuBonesBoth)
+  } else {unused BuilderAppend(code,GpuBonesTexture)}
+ } else {
+  BuilderPrint(*code,"#define KRYON_BONE_VECTORS %\n",gpu.skin_uniform_vectors)
+  unused BuilderAppend(code,GpuBonesUniform)
+ }
+ unused BuilderAppend(code,GpuVertexSkin)
+ gpu.vertex_source=BuilderFinish(code)
+ return gpu.vertex_source
+}
+
 #if OS != .WEB || #defined(KRYON_WEBGL2) {
+// Binds the renderer's context. An adopted window context binds with its
+// surface so the frame can end in the window; a private context is surfaceless.
+BindContext :: (gpu: *SceneGpuContext)->bool {
+ #if OS == .WEB {
+  unused gpu
+  return true
+ } else {
+  if gpu.context==null { return false }
+  if gpu.adopted && gpu.window_surface!=null {
+   if G.EGetCurrentContext()==gpu.context && G.EGetCurrentSurface(0x3059)==gpu.window_surface { return true }
+   return G.EMakeCurrent(gpu.display,gpu.window_surface,gpu.window_surface,gpu.context)!=0
+  }
+  if G.EGetCurrentContext()==gpu.context && G.EGetCurrentSurface(0x3059)==null { return true }
+  return G.MakeSceneCurrent(gpu.display,gpu.context)
+ }
+}
+
+// The window host lends the renderer its current EGL context and surface.
+// Everything the renderer creates lives in that context; the host swaps.
+SceneGpuAdoptWindow :: (gpu: *SceneGpuContext,display: *void,context: *void,surface: *void) {
+ if gpu.adopted && gpu.display==display && gpu.context==context { gpu.window_surface=surface; return }
+ if gpu.attempted { SceneGpuRelease(gpu) }
+ gpu.display=display; gpu.context=context; gpu.window_surface=surface; gpu.adopted=true
+}
+
+// The window host is about to destroy the context it lent. Nothing of the
+// renderer survives it, so the next render probes the next window afresh.
+SceneGpuWindowLost :: (gpu: *SceneGpuContext) {
+ if gpu.attempted { SceneGpuRelease(gpu) }
+ gpu.adopted=false; gpu.window_surface=null; gpu.context=null; gpu.display=null
+}
+
+// The GL phases that left an error flag set since the process started.
+SceneGpuErrorTrace :: () -> string { return TextView(note_buffer[0:cast(s64)trace_used]) }
+
 // Calling again after Release retries detection, including after context loss.
 SceneGpuProbe :: (gpu: *SceneGpuContext)->SceneGpuCapabilities {
  if gpu.attempted { return gpu.capabilities }
@@ -152,18 +299,20 @@ SceneGpuProbe :: (gpu: *SceneGpuContext)->SceneGpuCapabilities {
   gpu.context=context;gpu.canvas=canvas
  } else {
   gpu.capabilities.diagnostic="EGL surfaceless ES3 context unavailable"
-  gpu.display=G.ESceneDisplay()
-  if gpu.display==null { return gpu.capabilities }
-  major: s32;minor: s32
-  if G.EInitialize(gpu.display,*major,*minor)==0 { gpu.display=null;return gpu.capabilities }
-  unused G.EBindAPI(0x30a0)
-  attrs: [9]s32=.[0x3033,1,0x3040,0x40,0x3024,8,0x3025,8,0x3038]
-  config: *void;count: s32
-  if G.EChooseConfig(gpu.display,*attrs[0],*config,1,*count)==0||count==0 { return gpu.capabilities }
-  context_attrs: [3]s32=.[0x3098,3,0x3038]
-  gpu.context=G.ECreateContext(gpu.display,config,null,*context_attrs[0])
+  if !gpu.adopted {
+   gpu.display=G.ESceneDisplay()
+   if gpu.display==null { return gpu.capabilities }
+   major: s32;minor: s32
+   if G.EInitialize(gpu.display,*major,*minor)==0 { gpu.display=null;return gpu.capabilities }
+   unused G.EBindAPI(0x30a0)
+   attrs: [9]s32=.[0x3033,1,0x3040,0x40,0x3024,8,0x3025,8,0x3038]
+   config: *void;count: s32
+   if G.EChooseConfig(gpu.display,*attrs[0],*config,1,*count)==0||count==0 { return gpu.capabilities }
+   context_attrs: [3]s32=.[0x3098,3,0x3038]
+   gpu.context=G.ECreateContext(gpu.display,config,null,*context_attrs[0])
+  }
  }
- if gpu.context==null||!G.MakeSceneCurrent(gpu.display,gpu.context) { return gpu.capabilities }
+ if gpu.context==null||!BindContext(gpu) { return gpu.capabilities }
  CopyLabel(gpu.capabilities.renderer[: ],G.GetString(0x1f01))
  CopyLabel(gpu.capabilities.version[: ],G.GetString(0x1f02))
  CopyLabel(gpu.capabilities.vendor[: ],G.GetString(0x1f00))
@@ -172,6 +321,11 @@ SceneGpuProbe :: (gpu: *SceneGpuContext)->SceneGpuCapabilities {
  }
  G.GetInteger(0x0d33,*gpu.capabilities.max_texture_size)
  G.GetInteger(0x8872,*gpu.capabilities.texture_units)
+ // MAX_VERTEX_TEXTURE_IMAGE_UNITS.
+ G.GetInteger(0x8b4c,*gpu.capabilities.vertex_texture_units)
+ TraceError("caps_vtunits",G.GetError())
+ G.GetInteger(0x8dfb,*gpu.capabilities.vertex_uniform_vectors)
+ TraceError("caps_vuniforms",G.GetError())
  maximum: s32;G.GetInteger(0x8d57,*maximum)
  range: [2]s32;precision: s32;G.GetPrecision(0x8b30,0x8df2,*range[0],*precision)
  gpu.capabilities.max_samples=maximum;gpu.capabilities.highp_bits=precision;gpu.capabilities.highp_range=range[1]
@@ -181,10 +335,28 @@ SceneGpuProbe :: (gpu: *SceneGpuContext)->SceneGpuCapabilities {
   directory: [4096]u8
   gpu.program_cache=G.InitProgramCache(Android.AndroidPrivateDataPath(directory[:]))
  }
- if !Resize(gpu,4,4) { return gpu.capabilities }
+ if !Resize(gpu,4,4,4) { return gpu.capabilities }
  gpu.capabilities.pcf_available=ProbePCF(gpu)
- gpu.shadow_program=LoadSceneProgram(gpu,GpuVertexSource,GpuShadowFragment,true)
- if gpu.shadow_program==0 { gpu.capabilities.diagnostic="shadow GLSL program rejected";return gpu.capabilities }
+ TraceError("pcf",G.GetError())
+ gpu.capabilities.vertex_texture_fetch=gpu.capabilities.vertex_texture_units>=16||ProbeVTF(gpu)
+ TraceError("vtf",G.GetError())
+ // The palette is a uniform array whenever the joints fit it, whether or not
+ // the vertex stage reads textures. Leave room for the shader's own matrices
+ // and refuse a program the driver will not take.
+ gpu.skin_uniform_vectors=0
+ if gpu.capabilities.vertex_uniform_vectors>=128 {
+  vectors:=gpu.capabilities.vertex_uniform_vectors-24;if vectors>384 {vectors=384}
+  gpu.skin_uniform_vectors=(vectors/64)*64
+ }
+ gpu.vertex_source=""
+ gpu.shadow_program=LoadSceneProgram(gpu,SceneVertexSource(gpu),GpuShadowFragment,true)
+ if gpu.shadow_program==0&&gpu.skin_uniform_vectors>0 {
+  TraceError("uniform_palette",G.GetError())
+  gpu.skin_uniform_vectors=0;gpu.vertex_source=""
+  gpu.shadow_program=LoadSceneProgram(gpu,SceneVertexSource(gpu),GpuShadowFragment,true)
+ }
+ TraceError("shadow",G.GetError())
+ if gpu.shadow_program==0 { gpu.capabilities.diagnostic=ifx gpu.log[0]==0 then "shadow GLSL program rejected" else TextView(gpu.log[0:cast(s64)gpu.log.count]);return gpu.capabilities }
  G.GenBuffers(1,*gpu.buffer)
  // The shader and framebuffer probes do not exercise the vertex buffer ABI.
  // Allocate and update a small buffer with the same calls as indexed meshes.
@@ -203,14 +375,15 @@ SceneGpuProbe :: (gpu: *SceneGpuContext)->SceneGpuCapabilities {
   gpu.capabilities.async_available=ProbeAsync(gpu)
   if !gpu.capabilities.async_available {gpu.capabilities.async_diagnostic="pixel pack buffers, fences and read mapping unavailable"}
  }
+ TraceError("probe",G.GetError())
  return gpu.capabilities
 }
 
 SceneGpuResize :: (gpu: *SceneGpuContext,width: s32,height: s32)->bool {
  if !SceneGpuProbe(gpu).available { return false }
  saved:=G.SaveContext();defer G.RestoreContext(saved,gpu.display)
- if !G.MakeSceneCurrent(gpu.display,gpu.context) { return false }
- return Resize(gpu,width,height)
+ if !BindContext(gpu) { return false }
+ return Resize(gpu,width,height,4)
 }
 
 // Strict GPU call never reports a CPU frame as accelerated. It leaves the
@@ -219,8 +392,8 @@ SceneGpuRender :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,image
  if !SceneGpuProbe(gpu).available { return .{diagnostic=gpu.capabilities.diagnostic} }
  if scene.failed||scene.open.count!=0||image.width<=0||image.height<=0 { return .{diagnostic="invalid Scene or Image"} }
  saved:=G.SaveContext();defer G.RestoreContext(saved,gpu.display)
- if !G.MakeSceneCurrent(gpu.display,gpu.context) { return .{diagnostic="GPU context lost"} }
- if !Resize(gpu,image.width,image.height) { return .{diagnostic=gpu.capabilities.diagnostic} }
+ if !BindContext(gpu) { return .{diagnostic="GPU context lost"} }
+ if !Resize(gpu,image.width,image.height,4) { return .{diagnostic=gpu.capabilities.diagnostic} }
  bytes:=cast(s64)gpu.width*gpu.height*4
  if !VecResizeBounded(gpu.readback,bytes,bytes) {return .{diagnostic="readback allocation failed"}}
  frame:=RenderTarget(gpu,scene,camera)
@@ -265,6 +438,8 @@ SceneGpuRender :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,image
 RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->SceneGpuFrame {
  start:=Now()
  gpu.texture_upload_ms=0.0
+ gpu.profile_compare_ms=0.0;gpu.profile_upload_ms=0.0;gpu.profile_snapshot_ms=0.0
+ if SkinsChanged(gpu,scene) {gpu.geometry_valid=false}
  if !PrepareGeometry(gpu,scene) { return .{diagnostic="invalid geometry or allocation failure"} }
  gpu.program_frame+=1
  for at: 0..gpu.textures.count-1 { gpu.textures[at].used=false }
@@ -282,6 +457,7 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
  }
  shader_setup_ms:=ifx gpu.profile_enabled then Now()-setup else 0.0
  BindVertices(gpu)
+ if !PrepareSkins(gpu,scene) { return .{diagnostic="skin palette texture unavailable"} }
  prepared:=Now();shadows_before:=gpu.resources.shadow_renders
  if !RenderShadows(gpu,scene) { return .{diagnostic="shadow framebuffer unavailable"} }
  shadowed:=Now()
@@ -321,7 +497,7 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
  return .{ok=true,accelerated=true,submit_ms=submitted-start,
   prepare_ms=prepared-start,shadow_ms=shadowed-prepared,draw_ms=submitted-shadowed,
   draw_calls=draw_calls,shadow_passes=gpu.resources.shadow_renders-shadows_before,
-  profile=.{shader_setup_ms=shader_setup_ms,texture_upload_ms=gpu.texture_upload_ms}}
+  profile=.{shader_setup_ms=shader_setup_ms,texture_upload_ms=gpu.texture_upload_ms,geometry_compare_ms=gpu.profile_compare_ms,geometry_upload_ms=gpu.profile_upload_ms,geometry_snapshot_ms=gpu.profile_snapshot_ms}}
 }
 // Use integer arithmetic on the quantized resolved texel, matching the CPU
 // formula exactly even at alpha 1, 127, 128 and 254. This pass also flips rows.
@@ -427,9 +603,9 @@ SceneGpuSubmit :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,width
  if !caps.async_available {return .{diagnostic=caps.async_diagnostic}}
  if scene.failed||scene.open.count!=0||width<=0||height<=0||request_id==0||request_id<=gpu.last_request {return .{diagnostic="invalid Scene, size or non-increasing request ID"}}
  saved:=G.SaveContext();defer G.RestoreContext(saved,gpu.display)
- if !G.MakeSceneCurrent(gpu.display,gpu.context) {SceneGpuRelease(gpu);return .{diagnostic="GPU context lost; pending requests cancelled"}}
+ if !BindContext(gpu) {SceneGpuRelease(gpu);return .{diagnostic="GPU context lost; pending requests cancelled"}}
  defer G.BindBuffer(0x88eb,0)
- if !Resize(gpu,width,height) {return .{diagnostic=gpu.capabilities.diagnostic}}
+ if !Resize(gpu,width,height,4) {return .{diagnostic=gpu.capabilities.diagnostic}}
  index: s32=-1
  for at:0..1 {if gpu.transfers[at].fence==null {index=cast(s32)at;break}}
  if index<0 {return .{ok=true,busy=true}}
@@ -494,7 +670,7 @@ SceneGpuPoll :: (gpu: *SceneGpuContext,image: *Image)->SceneGpuAsyncResult {
  }
  if index<0 {return .{ok=true}}
  saved:=G.SaveContext();defer G.RestoreContext(saved,gpu.display)
- if !G.MakeSceneCurrent(gpu.display,gpu.context) {SceneGpuRelease(gpu);return .{diagnostic="GPU context lost; pending requests cancelled"}}
+ if !BindContext(gpu) {SceneGpuRelease(gpu);return .{diagnostic="GPU context lost; pending requests cancelled"}}
  defer G.BindBuffer(0x88eb,0)
  slot:=*gpu.transfers[index]
  status:=G.ClientWaitSync(slot.fence,0,0)
@@ -538,7 +714,7 @@ SceneGpuPoll :: (gpu: *SceneGpuContext,image: *Image)->SceneGpuAsyncResult {
 SceneGpuCancel :: (gpu: *SceneGpuContext) {
  if gpu.context==null {return}
  saved:=G.SaveContext();defer G.RestoreContext(saved,gpu.display)
- if G.MakeSceneCurrent(gpu.display,gpu.context) {DropTransfers(gpu)}
+ if BindContext(gpu) {DropTransfers(gpu)}
  else {SceneGpuRelease(gpu)}
 }
 
@@ -565,7 +741,7 @@ SceneGpuRenderCanvas :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera
  saved:=G.SaveContext();defer G.RestoreContext(saved,null)
  if !G.MakeSceneCurrent(null,gpu.context) {return .{diagnostic="WebGL context lost"},.{}}
  Core.PageFlushPaint()
- if !Resize(gpu,width,height)||!Surface.ResizeCanvas(gpu.canvas,width,height) {return .{diagnostic="WebGL canvas extent unavailable"},.{}}
+ if !Resize(gpu,width,height,4)||!Surface.ResizeCanvas(gpu.canvas,width,height) {return .{diagnostic="WebGL canvas extent unavailable"},.{}}
  frame:=RenderTarget(gpu,scene,camera)
  if !frame.ok {return frame,.{}}
  G.BindFramebuffer(0x8ca8,gpu.resolve);G.BindFramebuffer(0x8ca9,0)
@@ -588,13 +764,137 @@ SceneGpuRenderOrCPU :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,
  return result
 }
 
+scale_steps: [SCALE_STEPS]ScaleStep = .[.{100,4,1.0},.{75,4,0.6},.{100,1,0.5},.{75,1,0.3},.{50,1,0.17},.{35,1,0.1}];
+// The internal resolution of window frames follows the GPU. A rung whose
+// frame cannot hold the refresh period renders the next one smaller; one with
+// room for the rung above, which failed at most twice, climbs back. Each rung
+// is measured over a few frames: timestamp queries where the driver has them,
+// otherwise a finish that drains the pipeline, and never between rungs unless
+// frames keep missing the refresh. The first frames upload shaders and
+// textures, so the first measurement waits for the scene to run.
+WindowScale :: (gpu: *SceneGpuContext)->s32 {
+ now:=Now()
+ if gpu.scale_fixed>0 {gpu.scale_percent=gpu.scale_fixed;gpu.scale_samples=gpu.scale_fixed_samples;gpu.gpu_time=gpu.measure_gpu;gpu.last_frame_at=now;return gpu.scale_fixed}
+ if gpu.scale_level<0||gpu.scale_level>=SCALE_STEPS {gpu.scale_level=0}
+ if gpu.scale_percent==0 {gpu.scale_warm=3;gpu.scale_probe=0;gpu.scale_hold=0;gpu.scale_start=now}
+ if gpu.last_frame_at>0.0 {if now-gpu.last_frame_at>25.0 {gpu.scale_late+=1}}
+ gpu.last_frame_at=now
+ if gpu.scale_hold>0 {gpu.scale_hold-=1}
+ else if now-gpu.scale_start<2.0 {gpu.scale_late=0}
+ else {
+  gpu.scale_idle+=1
+  if gpu.scale_idle>=60 {
+   if gpu.scale_late>=3&&gpu.scale_probe<=0 {gpu.scale_warm=1;gpu.scale_probe=10}
+   gpu.scale_idle=0;gpu.scale_late=0
+  }
+ }
+ gpu.scale_percent=scale_steps[gpu.scale_level].percent
+ gpu.scale_samples=scale_steps[gpu.scale_level].samples
+ gpu.gpu_time=gpu.measure_gpu||gpu.scale_probe>0
+ return gpu.scale_percent
+}
+// gpu_ms is the frame's wall time through the finish, cpu_ms the part of it
+// the CPU spent submitting: only a frame that waits for the GPU beyond its
+// submission says the GPU is behind.
+WindowScaleMeasured :: (gpu: *SceneGpuContext,gpu_ms: float64,cpu_ms: float64) {
+ if gpu.scale_fixed>0||gpu.scale_probe<=0||gpu_ms<=0.0 {return}
+ if gpu.scale_warm>0 {gpu.scale_warm-=1;return}
+ gpu.scale_sum+=gpu_ms;gpu.scale_cpu_sum+=cpu_ms;gpu.scale_count+=1;gpu.scale_probe-=1
+ if gpu.scale_probe>0 {return}
+ average:=gpu.scale_sum/cast(float64)gpu.scale_count
+ submitted:=gpu.scale_cpu_sum/cast(float64)gpu.scale_count
+ gpu.scale_sum=0.0;gpu.scale_cpu_sum=0.0;gpu.scale_count=0
+ if average>14.5&&average>submitted+4.0&&gpu.scale_level<SCALE_STEPS-1 {
+  gpu.scale_fail[gpu.scale_level]+=1
+  // A frame that misses the period by far skips a rung.
+  down: s32 = ifx average>40.0&&gpu.scale_level+2<SCALE_STEPS then 2 else 1
+  gpu.scale_level+=down;gpu.scale_warm=3;gpu.scale_probe=10
+  return
+ }
+ gpu.scale_hold=240
+ if gpu.scale_level>0&&gpu.scale_fail[gpu.scale_level-1]<2 {
+  above:=scale_steps[gpu.scale_level-1].cost/scale_steps[gpu.scale_level].cost
+  if average*above<13.5 {gpu.scale_level-=1;gpu.scale_warm=3;gpu.scale_probe=10}
+ }
+}
+// The internal resolution of window frames as a percent of the window and its
+// coverage samples: a positive percent holds both, 0 lets the renderer hold
+// the refresh period.
+SceneGpuWindowScale :: (gpu: *SceneGpuContext,percent: s32,samples: s32) {
+ gpu.scale_fixed=ifx percent<0 then 0 else percent
+ gpu.scale_fixed_samples=ifx samples<1||samples>4 then 4 else samples
+ gpu.scale_percent=0
+}
+// Renders into the adopted window's context and presents the resolve into the
+// window's default framebuffer. No pixel leaves the GPU; the window host swaps
+// the surface once the frame callback returns.
+SceneGpuRenderWindow :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,width: s32,height: s32)->SceneGpuFrame {
+ if !gpu.adopted||gpu.window_surface==null { return .{diagnostic="scene renderer has no window"} }
+ if !SceneGpuProbe(gpu).available { return .{diagnostic=gpu.capabilities.diagnostic} }
+ if scene.failed||scene.open.count!=0||width<=0||height<=0 { return .{diagnostic="invalid Scene or window"} }
+ saved:=G.SaveContext();defer G.RestoreContext(saved,gpu.display)
+ if !BindContext(gpu) { return .{diagnostic="window context lost"} }
+ TraceError("window",G.GetError())
+ percent:=WindowScale(gpu)
+ inner_width:=width*percent/100;inner_height:=height*percent/100
+ if !Resize(gpu,inner_width,inner_height,gpu.scale_samples) { return .{diagnostic=gpu.capabilities.diagnostic} }
+ // The GPU time of a frame: between two GL timestamp queries where the
+ // driver has them, otherwise the wall time through a finish at the end of
+ // the frame, which drains the pipeline. Only while it is measured.
+ #if OS != .WEB {
+ if gpu.gpu_time {
+ if TimerQueries() {
+  gpu.timer_state=1
+  if gpu.timer_pending {
+   ready: u64
+   query_object(gpu.timer_end,0x8867,*ready)
+   gpu.timer_wait+=1
+   // A driver that never reports a timestamp ready gets one blocking read.
+   if ready==0&&gpu.timer_wait>3 {ready=1;gpu.timer_state=3}
+   if ready!=0 {
+    start_ns: u64;end_ns: u64
+    query_object(gpu.timer_start,0x8866,*start_ns);query_object(gpu.timer_end,0x8866,*end_ns)
+    if gpu.timer_state!=3 {gpu.timer_state=2}
+    gpu.last_gpu_ms=cast(float64)(end_ns-start_ns)/1000000.0;gpu.timer_pending=false;gpu.timer_wait=0
+   }
+  }
+  if gpu.timer_start==0 {G.GenQueries(1,*gpu.timer_start);G.GenQueries(1,*gpu.timer_end)}
+  if gpu.timer_start!=0 {query_counter(gpu.timer_start,0x8e28)}
+ } else {gpu.finish_at=Now()}
+ }
+ }
+ frame:=RenderTarget(gpu,scene,camera)
+ if !frame.ok {return frame}
+ // The resolve is the frame; the present scales it into the window without a
+ // scissor. A multisampled source copies only at its own size, so the present
+ // reads the resolve.
+ G.BindFramebuffer(0x8ca9,0);G.BindFramebuffer(0x8ca8,gpu.resolve)
+ G.Disable(0x0c11)
+ G.BlitFramebuffer(0,0,gpu.width,gpu.height,0,0,width,height,0x4000,0x2600)
+ G.BindFramebuffer(0x8ca8,0)
+ code:=G.GetError()
+ if code!=0 {return .{diagnostic=Note("GLES window present failed",width,height,0,0,code)}}
+ #if OS != .WEB {
+ if gpu.timer_end!=0&&gpu.timer_start!=0 {query_counter(gpu.timer_end,0x8e28);gpu.timer_pending=true;frame.gpu_ms=gpu.last_gpu_ms}
+ else if gpu.finish_at>0.0 {G.Finish();frame.gpu_ms=Now()-gpu.finish_at;gpu.finish_at=0.0}
+ }
+ WindowScaleMeasured(gpu,frame.gpu_ms,frame.profile.shader_setup_ms+frame.prepare_ms+frame.shadow_ms+frame.draw_ms)
+ return frame
+}
+
 SceneGpuRelease :: (gpu: *SceneGpuContext) {
  saved:=G.SaveContext()
- if gpu.context!=null&&G.MakeSceneCurrent(gpu.display,gpu.context) {
+ if gpu.context!=null&&BindContext(gpu) {
   DropTargets(gpu)
+  #if OS != .WEB {
+  if gpu.timer_start!=0 {G.DeleteQueries(1,*gpu.timer_start);G.DeleteQueries(1,*gpu.timer_end);gpu.timer_start=0;gpu.timer_end=0;gpu.timer_pending=false}
+  }
   if gpu.buffer!=0 {G.DeleteBuffers(1,*gpu.buffer)}
   if gpu.indexed.attributes!=0 {G.DeleteBuffers(1,*gpu.indexed.attributes)}
   if gpu.indexed.elements!=0 {G.DeleteBuffers(1,*gpu.indexed.elements)}
+  if gpu.skin_bound {G.DisableAttribute(5);G.DisableAttribute(6);gpu.skin_bound=false}
+  if gpu.indexed.skin_attributes!=0 {G.DeleteBuffers(1,*gpu.indexed.skin_attributes)}
+  for at:0..gpu.skins.count-1 {if gpu.skins[at].texture!=0 {G.DeleteTextures(1,*gpu.skins[at].texture)}}
   if gpu.shadow_program!=0 {G.DeleteProgram(gpu.shadow_program)}
   if gpu.straight_program!=0 {G.DeleteProgram(gpu.straight_program)}
   #if OS == .ANDROID {
@@ -611,13 +911,17 @@ SceneGpuRelease :: (gpu: *SceneGpuContext) {
   Page.PageTextureFree(gpu.canvas_texture);gpu.canvas_texture=0
   Surface.DestroyContext(gpu.context,gpu.canvas);gpu.canvas=0
  } else {
-  if gpu.context!=null {unused G.EDestroyContext(gpu.display,gpu.context)}
+  // An adopted context belongs to the window host, which destroys it.
+  if gpu.context!=null&&!gpu.adopted {unused G.EDestroyContext(gpu.display,gpu.context)}
  }
  // EGLDisplay is process-shared, including with foreign hosts. eglTerminate
  // invalidates their contexts too; release only the context/objects we own.
  VecFree(gpu.vertices);VecFree(gpu.draws);VecFree(gpu.snapshot);VecFree(gpu.readback)
- VecFree(gpu.indexed.indices);VecFree(gpu.indexed.scratch)
+ VecFree(gpu.indexed.indices);VecFree(gpu.indexed.scratch);VecFree(gpu.indexed.skin)
  gpu.indexed.attributes=0;gpu.indexed.elements=0;gpu.indexed.bound=false;gpu.indexed.vertex_count=0
+ gpu.indexed.skin_attributes=0;gpu.skin_bound=false
+ for at:0..gpu.skins.count-1 {VecFree(gpu.skins[at].uniform)}
+ VecFree(gpu.skins);VecFree(gpu.node_skin)
  VecFree(gpu.node_first);VecFree(gpu.node_count);VecFree(gpu.node_world);VecFree(gpu.node_shown)
  VecFree(gpu.order);VecFree(gpu.keys);VecFree(gpu.programs);VecFree(gpu.textures)
  VecFree(gpu.bindings)
@@ -626,11 +930,14 @@ SceneGpuRelease :: (gpu: *SceneGpuContext) {
   gpu.program_cache=G.ProgramCache.{}
   gpu.scene_vertex_shader=0
  }
+ gpu.shadow_skin=0
  for at:0..1 {gpu.transfers[at]=GpuTransfer.{}}
  gpu.last_request=0;gpu.program_frame=0
  gpu.direct_readback=false;gpu.texture_upload_ms=0.0
  gpu.context=null;gpu.display=null;gpu.attempted=false
+ gpu.adopted=false;gpu.window_surface=null
  gpu.buffer=0;gpu.shadow_program=0;gpu.straight_program=0;gpu.dfg=0;gpu.shadow_geometry=0
+ gpu.skin_uniform_vectors=0;gpu.vertex_source="";gpu.skin_uniform_program=0;gpu.skin_uniform_index=-1;gpu.skin_uniform_version=0
  gpu.width=0;gpu.height=0
  gpu.framebuffer=0;gpu.resolve=0;gpu.color=0;gpu.depth=0;gpu.resolved=0
  gpu.straight_framebuffer=0;gpu.straight_texture=0
@@ -651,8 +958,11 @@ SceneGpuMemoryUsage :: (gpu: *SceneGpuContext)->SceneGpuResources {
  if gpu.straight_framebuffer!=0 {r.framebuffers+=1;r.textures+=1;r.gpu_bytes+=cast(s64)gpu.width*gpu.height*4}
  if gpu.dfg!=0 {r.textures+=1;r.gpu_bytes+=2048}
  if gpu.buffer!=0 {r.buffers+=1;r.gpu_bytes+=gpu.vertices.count*cast(s64)size_of(GpuVertex)}
- r.cpu_bytes+=4*(gpu.indexed.indices.capacity+gpu.indexed.scratch.capacity)
+ r.cpu_bytes+=4*(gpu.indexed.indices.capacity+gpu.indexed.scratch.capacity)+gpu.node_skin.capacity*4+gpu.skins.capacity*cast(s64)size_of(GpuSkin)
+ r.cpu_bytes+=gpu.indexed.skin.capacity*cast(s64)size_of(SkinAttribute)
  if gpu.indexed.attributes!=0 {r.buffers+=1;r.gpu_bytes+=gpu.indexed.vertex_count*44}
+ if gpu.indexed.skin_attributes!=0 {r.buffers+=1;r.gpu_bytes+=gpu.indexed.skin.count*cast(s64)size_of(SkinAttribute)}
+ for at:0..gpu.skins.count-1 {if gpu.skins[at].texture!=0 {r.textures+=1;r.gpu_bytes+=cast(s64)gpu.skins[at].bones*96};r.cpu_bytes+=gpu.skins[at].uniform.capacity*4}
  if gpu.indexed.elements!=0 {r.buffers+=1;r.gpu_bytes+=gpu.indexed.indices.count*4}
  for at:0..1 {
   slot:=gpu.transfers[at]
@@ -700,13 +1010,40 @@ SceneGpuRenderOrCPU :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,
  result.ok=RenderScene(scene,camera,image)
  return result
 }
+SceneGpuSkinningAvailable :: (gpu: *SceneGpuContext)->bool {unused gpu; return false}
+SceneGpuPoseCapacity :: (gpu: *SceneGpuContext,dual: bool)->s32 {unused gpu; unused dual; return 0}
 SceneGpuRelease :: (gpu: *SceneGpuContext) { gpu.attempted=false }
+SceneGpuAdoptWindow :: (gpu: *SceneGpuContext,display: *void,context: *void,surface: *void) { unused gpu; unused display; unused context; unused surface }
+SceneGpuWindowLost :: (gpu: *SceneGpuContext) { unused gpu }
+SceneGpuRenderWindow :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,width: s32,height: s32)->SceneGpuFrame {
+ unused gpu; unused scene; unused camera; unused width; unused height
+ return SceneGpuFrame.{.diagnostic="no GPU scene renderer on the web"}
+}
 SceneGpuMemoryUsage :: (gpu: *SceneGpuContext)->SceneGpuResources { return gpu.resources }
 }
 #scope_file
 #if OS != .WEB || #defined(KRYON_WEBGL2) {
 Timer :: #import "std/timer_linux";
 Now :: () -> float64 { return cast(float64)Timer.MonotonicNanoseconds() / 1000000.0 }
+// GL_TIMESTAMP queries measure the GPU execution of a frame. The ES 3.1
+// entry points resolve through EGL once per process; without them the
+// window path reports no GPU time.
+QueryCounterProc :: #type (id: u32, target: u32) #c_call;
+QueryObjectProc :: #type (id: u32, pname: u32, params: *u64) #c_call;
+query_counter: QueryCounterProc;
+query_object: QueryObjectProc;
+query_counter_slot: *void;
+query_object_slot: *void;
+queries_resolved: bool;
+TimerQueries :: () -> bool {
+ if !queries_resolved {
+  queries_resolved=true
+  counter:=G.TimerProcAddress("glQueryCounter");object:=G.TimerProcAddress("glGetQueryObjectui64v")
+  if counter!=null {unused G.CopyMemory(cast(*void)*query_counter,counter,size_of(*void));query_counter_slot=counter}
+  if object!=null {unused G.CopyMemory(cast(*void)*query_object,object,size_of(*void));query_object_slot=object}
+ }
+ return query_counter_slot!=null&&query_object_slot!=null
+}
 #if OS != .WEB {
 ProbeAsync :: (gpu: *SceneGpuContext)->bool {
  buffer: u32;G.GenBuffers(1,*buffer);defer G.DeleteBuffers(1,*buffer)
@@ -769,6 +1106,35 @@ ProbePCF :: (gpu: *SceneGpuContext)->bool {
  }}
  return true
 }
+// Draws one point whose color is a texel read by the vertex shader, then
+// reads that point back: vertex texture fetch works only if the color arrives.
+ProbeVTF :: (gpu: *SceneGpuContext)->bool {
+ program:=LoadSceneProgram(gpu,GpuVTFVertex,GpuVTFVertexFragment)
+ if program==0 {TraceError("vtf_program",1);return false}
+ defer G.DeleteProgram(program)
+ texel: [4]u8=.[200,100,50,255]
+ G.ActiveTexture(0x84c0)
+ texture:=G.Texture(1,1,0x8058,0x1908,0x1401,cast(*void)*texel[0],false)
+ defer G.DeleteTextures(1,*texture)
+ G.BindTexture(0x0de1,texture)
+ G.BindFramebuffer(0x8d40,gpu.resolve);G.Viewport(0,0,4,4)
+ G.Disable(0x0b71);G.Disable(0x0be2);G.Disable(0x0b44)
+ G.UseProgram(program)
+ at:=G.Location(program,"texel");if at>=0 {G.Uniform1i(at,0)}
+ G.DrawArrays(0x0000,0,1)
+ G.BindBuffer(0x88eb,0)
+ pixels: [64]u8;G.ReadPixels(0,0,4,4,0x1908,0x1401,cast(*void)*pixels[0])
+ if G.GetError()!=0 {TraceError("vtf_error",G.GetError());return false}
+ for pixel: 0..15 {
+  same:=true
+  for at: 0..3 {delta:=cast(s32)pixels[pixel*4+at]-cast(s32)texel[at];if delta < -1||delta>1 {same=false}}
+  if same {return true}
+ }
+ for pixel: 0..15 {
+  if pixels[pixel*4+3]!=0 {TraceError("vtf_pixel",cast(u32)pixels[pixel*4]+(cast(u32)pixels[pixel*4+1]<<8)+(cast(u32)pixels[pixel*4+2]<<16))}
+ }
+ return false
+}
 Name :: (pattern: string,index: s64)->Text {
  b: Vec(u8)
  for at: 0..pattern.count-1 {
@@ -809,33 +1175,68 @@ CreateDFG :: (gpu: *SceneGpuContext)->bool {
  gpu.dfg=G.Texture(16,16,0x8230,0x8227,0x1406,cast(*void)*values[0])
  return at==512&&G.GetError()==0
 }
+note_buffer: [192]u8;
+trace_used: s32;
+// Records which GL phase left an error flag set, so a later failure names it.
+TraceError :: (label: string,code: u32) {
+ if code==0 {return}
+ piece: Vec(u8)
+ BuilderPrint(*piece,"%=% ",label,code)
+ text:=BuilderFinish(piece)
+ for at: 0..text.count-1 {
+  if trace_used<note_buffer.count {note_buffer[trace_used]=text[at];trace_used+=1}
+ }
+}
+Note :: (label: string,width: s32,height: s32,stale: u32,status: u32,code: u32)->string {
+ b: Vec(u8)
+ BuilderPrint(*b,"% %x% status=% error=% stale=% %",label,width,height,status,code,stale,TextView(note_buffer[0:cast(s64)trace_used]))
+ text:=BuilderFinish(b)
+ count:=text.count
+ if count>note_buffer.count {count=note_buffer.count}
+ for at: 0..count-1 {note_buffer[at]=text[at]}
+ return TextView(note_buffer[0:count])
+}
 DropTargets :: (gpu: *SceneGpuContext) {
  DropTransfers(gpu)
  G.DeleteFramebuffers(1,*gpu.framebuffer);G.DeleteFramebuffers(1,*gpu.resolve)
  G.DeleteRenderbuffers(1,*gpu.color);G.DeleteRenderbuffers(1,*gpu.depth);G.DeleteTextures(1,*gpu.resolved)
  DropReadbackTarget(*gpu.straight_framebuffer,*gpu.straight_texture)
- gpu.framebuffer=0;gpu.resolve=0;gpu.color=0;gpu.depth=0;gpu.resolved=0;gpu.width=0;gpu.height=0
+ gpu.framebuffer=0;gpu.resolve=0;gpu.color=0;gpu.depth=0;gpu.resolved=0;gpu.width=0;gpu.height=0;gpu.samples=0
 }
-Resize :: (gpu: *SceneGpuContext,width: s32,height: s32)->bool {
+// The storage of the renderbuffer bound on the context with the coverage asked
+// for: multisampled, or plain when one sample is wanted.
+RenderbufferCoverage :: (samples: s32,format: u32,width: s32,height: s32) {
+ if samples>1 {G.RenderbufferMS(0x8d41,samples,format,width,height)} else {G.RenderbufferStorage(0x8d41,format,width,height)}
+}
+// Whether the renderbuffer bound on the context carries the coverage asked for.
+RenderbufferHasCoverage :: (samples: s32)->bool {
+ if samples<=1 {return true}
+ given: s32;G.GetRenderbuffer(0x8d41,0x8cab,*given)
+ return given==samples
+}
+Resize :: (gpu: *SceneGpuContext,width: s32,height: s32,samples: s32)->bool {
+ stale:=G.GetError()
+ TraceError("resize",stale)
  if width<=0||height<=0||width>gpu.capabilities.max_texture_size||height>gpu.capabilities.max_texture_size {gpu.capabilities.diagnostic="target exceeds full-quality framebuffer limits";return false}
- if width==gpu.width&&height==gpu.height {return true}
+ if samples<1||samples>gpu.capabilities.max_samples {samples=gpu.capabilities.max_samples}
+ if width==gpu.width&&height==gpu.height&&samples==gpu.samples {return true}
  DropTargets(gpu)
  G.GenFramebuffers(1,*gpu.framebuffer);G.BindFramebuffer(0x8d40,gpu.framebuffer)
- G.GenRenderbuffers(1,*gpu.color);G.BindRenderbuffer(0x8d41,gpu.color);G.RenderbufferMS(0x8d41,4,0x8058,width,height)
- samples: s32;G.GetRenderbuffer(0x8d41,0x8cab,*samples)
- if samples!=4 {gpu.capabilities.diagnostic="full 4x color coverage unavailable";DropTargets(gpu);return false}
+ G.GenRenderbuffers(1,*gpu.color);G.BindRenderbuffer(0x8d41,gpu.color)
+ RenderbufferCoverage(samples,0x8058,width,height)
+ if !RenderbufferHasCoverage(samples) {gpu.capabilities.diagnostic=Note("color coverage unavailable",width,height,cast(u32)samples,0,G.GetError());DropTargets(gpu);return false}
  G.FramebufferRenderbuffer(0x8d40,0x8ce0,0x8d41,gpu.color)
- G.GenRenderbuffers(1,*gpu.depth);G.BindRenderbuffer(0x8d41,gpu.depth);G.RenderbufferMS(0x8d41,4,0x8cac,width,height)
- G.GetRenderbuffer(0x8d41,0x8cab,*samples)
- if samples!=4 {gpu.capabilities.diagnostic="full 4x depth coverage unavailable";DropTargets(gpu);return false}
+ G.GenRenderbuffers(1,*gpu.depth);G.BindRenderbuffer(0x8d41,gpu.depth)
+ RenderbufferCoverage(samples,0x81a6,width,height)
+ if !RenderbufferHasCoverage(samples) {gpu.capabilities.diagnostic=Note("depth coverage unavailable",width,height,cast(u32)samples,0,G.GetError());DropTargets(gpu);return false}
  G.FramebufferRenderbuffer(0x8d40,0x8d00,0x8d41,gpu.depth)
- if G.CheckFramebuffer(0x8d40)!=0x8cd5 {gpu.capabilities.diagnostic="4x framebuffer incomplete";DropTargets(gpu);return false}
+ if G.CheckFramebuffer(0x8d40)!=0x8cd5 {gpu.capabilities.diagnostic=Note("framebuffer incomplete",width,height,stale,G.CheckFramebuffer(0x8d40),G.GetError());DropTargets(gpu);return false}
  G.GenFramebuffers(1,*gpu.resolve);G.BindFramebuffer(0x8d40,gpu.resolve)
  gpu.resolved=G.Texture(width,height,0x8058,0x1908,0x1401,null)
  G.FramebufferTexture(0x8d40,0x8ce0,0x0de1,gpu.resolved,0)
- if G.CheckFramebuffer(0x8d40)!=0x8cd5||G.GetError()!=0 {gpu.capabilities.diagnostic="resolve framebuffer incomplete";DropTargets(gpu);return false}
+ if G.CheckFramebuffer(0x8d40)!=0x8cd5||G.GetError()!=0 {gpu.capabilities.diagnostic=Note("resolve framebuffer incomplete",width,height,stale,G.CheckFramebuffer(0x8d40),G.GetError());DropTargets(gpu);return false}
  if cast(s64)width*height*4<gpu.readback.count {VecFree(gpu.readback)}
- gpu.width=width;gpu.height=height;gpu.capabilities.samples=4
+ gpu.width=width;gpu.height=height;gpu.samples=samples;gpu.capabilities.samples=samples
  return true
 }
 
@@ -857,6 +1258,8 @@ GeometryParts :: (scene: *Scene)->[7]GpuScenePart {
  return parts
 }
 GeometrySnapshot :: (gpu: *SceneGpuContext,parts: [7]GpuScenePart,frozen: bool,mask: s32)->bool {
+ started:=ifx gpu.profile_enabled then Now() else 0.0
+ defer {if gpu.profile_enabled {gpu.profile_snapshot_ms+=Now()-started}}
  if mask==GPU_ALL_GEOMETRY && !VecResize(gpu.snapshot,parts[6].offset+parts[6].bytes) {return false}
  for at: 0..6 {
   if (mask & (1<<cast(s32)at))==0 {continue}
@@ -868,6 +1271,8 @@ GeometrySnapshot :: (gpu: *SceneGpuContext,parts: [7]GpuScenePart,frozen: bool,m
  return true
 }
 GeometryChange :: (gpu: *SceneGpuContext,parts: [7]GpuScenePart,frozen: bool)->s32 {
+ started:=ifx gpu.profile_enabled then Now() else 0.0
+ defer {if gpu.profile_enabled {gpu.profile_compare_ms+=Now()-started}}
  for at:0..6 {if parts[at].bytes!=gpu.snapshot_counts[at] {return GPU_ALL_GEOMETRY}}
  last:=ifx gpu.snapshot_frozen&&frozen then 0 else 6
  mask: s32
@@ -977,6 +1382,8 @@ WriteIndexedAttribute :: (gpu: *SceneGpuContext,scene: *Scene,mesh: SceneMesh,ma
 // Four contiguous streams let an animated pose replace positions or normals
 // without sending the untouched colors, UVs or element buffer again.
 UploadIndexed :: (gpu: *SceneGpuContext,scene: *Scene,mask: s32,full: bool)->bool {
+ started:=ifx gpu.profile_enabled then Now() else 0.0
+ defer {if gpu.profile_enabled {gpu.profile_upload_ms+=Now()-started}}
  count:=gpu.indexed.vertex_count
  if count==0 {return true}
  if !VecResize(gpu.indexed.scratch,count*3) {return false}
@@ -997,7 +1404,7 @@ UploadIndexed :: (gpu: *SceneGpuContext,scene: *Scene,mask: s32,full: bool)->boo
    if node.mesh<0 {continue}
    mesh:=scene.meshes[node.mesh]
    if !MeshIndexed(mesh) {continue}
-   WriteIndexedAttribute(gpu,scene,mesh,gpu.node_world[at],channel,cast(s64)gpu.node_first[at])
+   WriteIndexedAttribute(gpu,scene,mesh,NodeMatrix(gpu,scene,at),channel,cast(s64)gpu.node_first[at])
   }
   G.BufferSubData(0x8892,channel*count*12,count*width*4,cast(*void)*gpu.indexed.scratch[0])
  }
@@ -1049,6 +1456,116 @@ UpdateIndexed :: (gpu: *SceneGpuContext,scene: *Scene,parts: [7]GpuScenePart,cha
 // The changed node records only moved nodes: every node keeps its parent, its
 // mesh, whether it is shown and how it takes part in shadows, so the batches
 // made from them still hold.
+// The palette that poses the vertices of MESH on the GPU, or -1.
+SkinPaletteForMesh :: (scene: *Scene,mesh: s32)->s32 {
+ for at: 0..scene.skins.count-1 {
+  if scene.skins[at].mesh==mesh&&scene.skins[at].joint_count>0 {return cast(s32)at}
+ }
+ return -1
+}
+// The mesh of a node is posed on the GPU: its vertices in the buffers keep the
+// bind pose and the vertex shader places them through the matrix of the node.
+NodeSkinned :: (gpu: *SceneGpuContext,scene: *Scene,at: s64)->bool {
+ if at>=gpu.node_skin.count {return false}
+ skin:=gpu.node_skin[at]
+ return skin>=0&&skin<scene.skins.count&&scene.skins[skin].active
+}
+NodeMatrix :: (gpu: *SceneGpuContext,scene: *Scene,at: s64)->M.GpuMatrix {
+ if NodeSkinned(gpu,scene,at) {return M.Identity()}
+ return gpu.node_world[at]
+}
+// Every indexed vertex gets its skin record in the order of the vertex stream,
+// so the element buffer addresses it like the vertices. A mesh without a
+// palette gets blank records.
+PackSkin :: (gpu: *SceneGpuContext,scene: *Scene,mesh: SceneMesh,skin: s32)->bool {
+ if scene.skins.count==0 {return true}
+ empty: SkinAttribute
+ if mesh.vertex_count<0 {return false}
+ if skin<0 {
+  for vertex: 0..mesh.vertex_count-1 {if !VecPush(gpu.indexed.skin,empty) {return false}}
+  return true
+ }
+ palette:=*scene.skins[skin]
+ if palette.attributes.count<mesh.vertex_count {return false}
+ for vertex: 0..mesh.vertex_count-1 {if !VecPush(gpu.indexed.skin,palette.attributes[vertex]) {return false}}
+ return true
+}
+// A palette that starts or stops posing on the GPU changes what the vertex
+// buffers must hold, the bind pose or posed vertices: that frame rebuilds them.
+SkinsChanged :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
+ for at: 0..scene.skins.count-1 {
+  live:=scene.skins[at].mesh>=0&&scene.skins[at].active
+  if at>=gpu.skins.count||gpu.skins[at].active!=live {return true}
+ }
+ return false
+}
+DropSkin :: (s: *GpuSkin) {
+ if s.texture!=0 {G.DeleteTextures(1,*s.texture)}
+ VecFree(s.uniform)
+ s.texture=0;s.bones=0;s.version=0;s.active=false;s.dual=false;s.uploaded=false;s.rows=0;s.alias=0
+}
+// Keeps every palette on the GPU: the rows each joint uses packed into a
+// uniform array, or a texture six texels wide with one row per joint, sent on
+// texture unit 15. Every new pose is sent once; the palettes of one glTF skin
+// share one send.
+PrepareSkins :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
+ for at: gpu.skins.count..scene.skins.count-1 {
+  empty: GpuSkin
+  if !VecPush(gpu.skins,empty) {return false}
+ }
+ for at: 0..gpu.skins.count-1 {
+  s:=*gpu.skins[at]
+  if at>=scene.skins.count||scene.skins[at].mesh<0||scene.skins[at].joint_count<=0 {DropSkin(s);continue}
+  p:=*scene.skins[at]
+  texture:=PaletteUsesTexture(gpu,p)
+  rows:=BoneRows(texture,p.dual_quaternion)
+  fits:=ifx texture then p.joint_count<=gpu.capabilities.max_texture_size else gpu.skin_uniform_vectors>=64
+  s.active=p.active
+  if !fits {DropSkin(s);continue}
+  if s.uploaded&&s.version==p.version {continue}
+  // The primitives of one glTF skin pose the same joints: the first palette
+  // of that skin holds them and the others name it. Palettes without a source
+  // share only when their floats are identical.
+  s.alias=cast(s32)at
+  for prior: 0..at-1 {
+   q:=*gpu.skins[prior]
+   if !q.uploaded||!q.active||q.bones!=p.joint_count||q.rows!=rows||q.dual!=p.dual_quaternion||(q.texture!=0)!=texture||q.version<p.version {continue}
+   shared:=p.source>=0||scene.skins[prior].source>=0
+   if shared {shared=p.source==scene.skins[prior].source} else if p.values.count>0&&scene.skins[prior].values.count==p.values.count {
+    shared=G.CompareMemory(cast(*void)*scene.skins[prior].values[0],cast(*void)*p.values[0],cast(usize)(p.values.count*4))==0
+   }
+   if shared {s.alias=cast(s32)prior;break}
+  }
+  // A palette that follows another of its source has no rows to send: without
+  // that palette it waits in the bind pose.
+  if s.alias==at&&p.follows {DropSkin(s);continue}
+  s.bones=p.joint_count;s.rows=rows;s.dual=p.dual_quaternion;s.version=p.version;s.uploaded=true
+  if s.alias!=at {continue}
+  if (s.texture!=0)!=texture||(s.texture==0&&s.uniform.count!=cast(s64)p.joint_count*rows*4) {
+   // Another storage or joint count: only the storage goes. The palette
+   // stays live, so its followers find it and the vertex buffers keep.
+   if texture {
+    G.ActiveTexture(0x84cf)
+    // Six texels wide, one row per joint: the palette's joint-major floats
+    // upload as they are and the vertex shader reads texel (row, joint).
+    if s.texture!=0 {G.DeleteTextures(1,*s.texture);s.texture=0}
+    s.texture=G.Texture(6,p.joint_count,0x8814,0x1908,0x1406,null)
+   } else if !VecResize(s.uniform,cast(s64)p.joint_count*rows*4) {DropSkin(s);return false}
+  }
+  if s.texture!=0 {
+   G.ActiveTexture(0x84cf);G.BindTexture(0x0de1,s.texture)
+   G.TexSubImage(0x0de1,0,0,0,6,s.bones,0x1908,0x1406,cast(*void)*p.values[0])
+  } else {
+   // Dual quaternions keep rows 0-1 of a joint, linear blend skinning 0-2.
+   for joint: 0..s.bones-1 {
+    source:=cast(s64)joint*24;target:=cast(s64)joint*cast(s64)s.rows*4
+    for value: 0..s.rows*4-1 {s.uniform[target+value]=p.values[source+value]}
+   }
+  }
+  s.version=p.version;s.uploaded=true;gpu.resources.skin_uploads+=1
+ }
+ return G.GetError()==0
+}
 OnlyMoved :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
  if gpu.node_first.count!=scene.nodes.count||gpu.node_world.count!=scene.nodes.count||gpu.node_shown.count!=scene.nodes.count {return false}
  kept:=cast(*SceneNode)cast(*void)*gpu.snapshot[0]
@@ -1075,7 +1592,7 @@ UpdateMoved :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
   if MeshIndexed(mesh) {
    // Crossing zero scale can flip winding and requires new elements.
    if (M.Determinant3(matrix)<0.0)!=(M.Determinant3(previous)<0.0) {return false}
-   if mesh.vertex_count>0 {
+   if mesh.vertex_count>0&&!NodeSkinned(gpu,scene,at) {
     G.BindBuffer(0x8892,gpu.indexed.attributes)
     for channel: 0..1 {
      WriteIndexedAttribute(gpu,scene,mesh,matrix,channel,0)
@@ -1114,8 +1631,8 @@ PrepareGeometry :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
  gpu.geometry_valid=false
  if scene.normals.count!=scene.positions.count||scene.colors.count!=scene.positions.count||scene.uvs.count!=scene.positions.count {return false}
  VecClear(gpu.vertices);VecClear(gpu.draws)
- VecClear(gpu.indexed.indices);gpu.indexed.vertex_count=0
- VecClear(gpu.node_first);VecClear(gpu.node_count);VecClear(gpu.node_world);VecClear(gpu.node_shown)
+ VecClear(gpu.indexed.indices);gpu.indexed.vertex_count=0;VecClear(gpu.indexed.skin)
+ VecClear(gpu.node_first);VecClear(gpu.node_count);VecClear(gpu.node_world);VecClear(gpu.node_shown);VecClear(gpu.node_skin)
  for at: 0..scene.nodes.count-1 {
   node:=scene.nodes[at];matrix:=M.Compose(node.position,node.rotation,node.scale);visible:=node.visible
   if node.parent>=0 {
@@ -1124,8 +1641,13 @@ PrepareGeometry :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
   }
   first:=cast(s32)gpu.vertices.count
   if !VecPush(gpu.node_world,matrix)||!VecPush(gpu.node_shown,visible)||!VecPush(gpu.node_first,first)||!VecPush(gpu.node_count,0) {return false}
+  skin: s32 = -1
+  if node.mesh>=0 {
+   if node.mesh>=scene.meshes.count {return false}
+   skin=SkinPaletteForMesh(scene,node.mesh)
+  }
+  if !VecPush(gpu.node_skin,skin) {return false}
   if node.mesh<0 {continue}
-  if node.mesh>=scene.meshes.count {return false}
   mesh:=scene.meshes[node.mesh]
   indexed:=MeshIndexed(mesh)
   count: s32
@@ -1133,15 +1655,17 @@ PrepareGeometry :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
    gpu.node_first[at]=cast(s32)gpu.indexed.vertex_count
    first=cast(s32)gpu.indexed.indices.count
    count=IndexNode(gpu,scene,mesh,matrix)
+   if !PackSkin(gpu,scene,mesh,skin) {return false}
   } else {count=BakeNode(gpu,scene,node,matrix,first)}
   if count<0 {return false}
   gpu.node_count[at]=count
-  draw: GpuDraw=.{first,count,node.mesh,cast(s32)at,node.receive_shadow,node.cast_shadow,visible,M.Point(matrix,.{})}
+  draw: GpuDraw=.{first,count,node.mesh,cast(s32)at,node.receive_shadow,node.cast_shadow,visible,M.Point(matrix,.{}),skin}
   merged:=false
   if gpu.draws.count>0&&!mesh.material.transparent {
    last:=*gpu.draws[gpu.draws.count-1];other_mesh:=scene.meshes[last.mesh];other:=other_mesh.material
+   // Only draws posed alike batch into one.
    if MeshIndexed(other_mesh)==indexed&&!other.transparent&&last.receive==draw.receive&&last.cast_shadow==draw.cast_shadow&&last.shown==draw.shown&&
-    MaterialEqual(other,mesh.material) {
+    last.skin==draw.skin&&MaterialEqual(other,mesh.material) {
     last.count+=draw.count;merged=true
    }
   }
@@ -1153,6 +1677,14 @@ PrepareGeometry :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
   G.DeleteBuffers(1,*gpu.indexed.attributes);gpu.indexed.attributes=0
   G.DeleteBuffers(1,*gpu.indexed.elements);gpu.indexed.elements=0
  }
+ if gpu.skin_bound {DisableSkin(gpu)}
+ if gpu.indexed.skin.count>0 {
+  if gpu.indexed.skin_attributes==0 {G.GenBuffers(1,*gpu.indexed.skin_attributes)}
+  G.BindBuffer(0x8892,gpu.indexed.skin_attributes)
+  G.BufferData(0x8892,gpu.indexed.skin.count*cast(s64)size_of(SkinAttribute),cast(*void)*gpu.indexed.skin[0],0x88e4)
+ } else if gpu.indexed.skin_attributes!=0 {
+  G.DeleteBuffers(1,*gpu.indexed.skin_attributes);gpu.indexed.skin_attributes=0
+ }
  if G.GetError()!=0||!UploadIndexed(gpu,scene,15,true)||!GeometrySnapshot(gpu,parts,scene.geometry_frozen,GPU_ALL_GEOMETRY) {return false}
  gpu.resources.geometry_uploads+=1
  gpu.resources.geometry_vertices+=gpu.vertices.count+gpu.indexed.vertex_count
@@ -1161,6 +1693,7 @@ PrepareGeometry :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
 }
 BindVertices :: (gpu: *SceneGpuContext) {
  gpu.indexed.bound=false
+ if gpu.skin_bound {DisableSkin(gpu)}
  G.BindBuffer(0x8892,gpu.buffer)
  offsets: [5]s64=.[0,12,24,36,44]
  for at: 0..4 {
@@ -1168,10 +1701,39 @@ BindVertices :: (gpu: *SceneGpuContext) {
   G.AttributePointer(cast(u32)at,ifx at==3 then 2 else 3,0x1406,0,cast(s32)size_of(GpuVertex),cast(*void)offsets[at])
  }
 }
-DrawGeometry :: (gpu: *SceneGpuContext,mesh: SceneMesh,draw: GpuDraw) {
+DisableSkin :: (gpu: *SceneGpuContext) {
+ G.DisableAttribute(5);G.DisableAttribute(6)
+ gpu.skin_bound=false
+}
+// 0 when the vertices of a draw are posed already, or are world space; 1 or 2
+// is the mode of its palette, which the vertex shader reads.
+DrawSkinMode :: (gpu: *SceneGpuContext,scene: *Scene,draw: GpuDraw)->s32 {
+ if draw.skin<0||draw.skin>=scene.skins.count||draw.skin>=gpu.skins.count {return 0}
+ if !scene.skins[draw.skin].active||!gpu.skins[draw.skin].uploaded {return 0}
+ return ifx gpu.skins[draw.skin].dual then 2 else 1
+}
+// The skin uniforms of the shared vertex shader PROGRAM for one draw: the
+// palette texture on unit 15, or the packed rows sent once per program and
+// pose. The palette the draw's skin names holds the data.
+BindSkinAt :: (gpu: *SceneGpuContext,scene: *Scene,draw: GpuDraw,program: u32,mode: s32,model: s32,bones: s32,bones_texture: s32,bones_in_texture: s32,stride: s32) {
+ skin_mode:=DrawSkinMode(gpu,scene,draw)
+ G.Uniform1i(mode,skin_mode)
+ if skin_mode==0 {return}
+ MatrixAt(model,gpu.node_world[draw.node])
+ root:=gpu.skins[draw.skin].alias
+ s:=*gpu.skins[root]
+ if s.texture!=0 {G.Uniform1i(bones_texture,15);BindTexture(15,s.texture);G.Uniform1i(bones_in_texture,1);return}
+ G.Uniform1i(bones_in_texture,0)
+ if gpu.skin_uniform_program!=program||gpu.skin_uniform_index!=root||gpu.skin_uniform_version!=s.version {
+  G.Uniform1i(stride,s.rows)
+  G.Uniform4fv(bones,s.bones*s.rows,*s.uniform[0])
+  gpu.skin_uniform_program=program;gpu.skin_uniform_index=root;gpu.skin_uniform_version=s.version
+ }
+}
+DrawGeometry :: (gpu: *SceneGpuContext,scene: *Scene,mesh: SceneMesh,draw: GpuDraw) {
  if draw.count==0 {return}
  if !MeshIndexed(mesh) {
-  if gpu.indexed.bound {BindVertices(gpu)}
+  if gpu.indexed.bound||gpu.skin_bound {BindVertices(gpu)}
   G.DrawArrays(4,draw.first,draw.count)
   return
  }
@@ -1187,6 +1749,16 @@ DrawGeometry :: (gpu: *SceneGpuContext,mesh: SceneMesh,draw: GpuDraw) {
    G.AttributePointer(cast(u32)at,width,0x1406,0,0,cast(*void)(channel*gpu.indexed.vertex_count*12))
   }
  }
+ // A posed draw reads its joints and weights from the skin stream next to
+ // the vertices; every other draw leaves those arrays off.
+ skinned:=DrawSkinMode(gpu,scene,draw)!=0
+ if skinned&&!gpu.skin_bound {
+  gpu.skin_bound=true
+  weights_offset: s64 = 8
+  G.BindBuffer(0x8892,gpu.indexed.skin_attributes)
+  G.EnableAttribute(5);G.AttributePointer(5,4,0x1403,0,24,null)
+  G.EnableAttribute(6);G.AttributePointer(6,4,0x1406,0,24,cast(*void)weights_offset)
+ } else if !skinned&&gpu.skin_bound {DisableSkin(gpu)}
  G.DrawElements(4,draw.count,0x1405,cast(s64)draw.first*4)
 }
 // A finite set of exact branches, never quantized material values. Binding
@@ -1264,9 +1836,11 @@ ProgramFor :: (gpu: *SceneGpuContext,key: *ShaderProgram,features: s32)->*GpuPro
  } else {unused BuilderAppend(code,"vec4 kryonMaterial(vec4 c,vec4 p,vec4 n,vec4 uv){return c;}\n")}
  unused BuilderAppend(code,GpuFragmentMain)
  source: Text=BuilderFinish(code)
- id:=LoadSceneProgram(gpu,GpuVertexSource,TextView(source),true)
+ id:=LoadSceneProgram(gpu,SceneVertexSource(gpu),TextView(source),true)
  if id==0 {return null}
- value: GpuProgram;value.key=key;value.features=features;value.id=id;value.last_frame=gpu.program_frame;value.locations=CacheLocations(id)
+ // A new program number may reuse a deleted one's: the palette goes again.
+ gpu.skin_uniform_program=0
+ value: GpuProgram;value.key=key;value.features=features;value.id=id;value.last_frame=gpu.program_frame;value.locations=CacheLocations(gpu,id)
  if key!=null {value.saved=key[0]}
  if slot>=0 {gpu.programs[slot]=value;return *gpu.programs[slot]}
  if !VecPush(gpu.programs,value) {G.DeleteProgram(id);return null}
@@ -1324,6 +1898,7 @@ Sweep :: (gpu: *SceneGpuContext) {
   for i:1..GPU_RECENT_PROGRAMS-1 {if recent[i].last_frame<recent[oldest].last_frame {oldest=i}}
   discard:=p
   if p.last_frame>recent[oldest].last_frame {discard=recent[oldest];recent[oldest]=p}
+  if gpu.skin_uniform_program==discard.id {gpu.skin_uniform_program=0}
   G.DeleteProgram(discard.id);discard.id=0
  }
  for at: 0..gpu.textures.count-1 {t:=*gpu.textures[at];if t.id!=0&&!t.used {G.DeleteTextures(1,*t.id);t.id=0;VecFree(t.bytes)}}
@@ -1341,7 +1916,7 @@ VectorAt :: (location: s32,v: Vector3) {G.Uniform3f(location,cast(float32)v.x,ca
 Linear :: (v: u8)->float64 {c:=cast(float64)v/255.0;return ifx c<0.04045 then c/12.92 else Pow((c+0.055)/1.055,2.4)}
 LinearColor :: (v: Color)->Vector3 {return .{Linear(v.r),Linear(v.g),Linear(v.b)}}
 BindTexture :: (unit: s32,id: u32) {G.ActiveTexture(cast(u32)(0x84c0+unit));G.BindTexture(0x0de1,id)}
-CacheLocations :: (id: u32)->GpuLocations {
+CacheLocations :: (gpu: *SceneGpuContext,id: u32)->GpuLocations {
  l: GpuLocations
  l.vp=G.Location(id,"vp");l.view=G.Location(id,"view");l.base=G.Location(id,"base");l.glow=G.Location(id,"glow")
  l.material=G.Location(id,"material");l.flags=G.Location(id,"flags");l.settings=G.Location(id,"settings")
@@ -1351,6 +1926,10 @@ CacheLocations :: (id: u32)->GpuLocations {
  l.light_count=G.Location(id,"lightCount");l.uniforms=G.Location(id,"kryonUniforms[0]")
  l.cookie=G.Location(id,"cookie");l.cookie_matrix=G.Location(id,"cookieMatrix");l.cookie_transform=G.Location(id,"cookieTransform")
  l.cookie_size=G.Location(id,"cookieSize");l.cookie_light=G.Location(id,"cookieLight")
+ l.model=G.Location(id,"kryonModel");l.skin_mode=G.Location(id,"kryonSkinMode")
+ // The palette names the program lacks are -1, which the GL ignores.
+ l.bones=G.Location(id,"kryonBones[0]");l.bone_stride=G.Location(id,"kryonBoneStride")
+ l.bones_texture=G.Location(id,"kryonBonesTexture");l.bones_in_texture=G.Location(id,"kryonBonesInTexture")
  l.graded=G.Location(id,"graded");l.grade_tint=G.Location(id,"gradeTint");l.grade_beam_centre=G.Location(id,"gradeBeamCentre")
  l.grade_beam_u=G.Location(id,"gradeBeamU");l.grade_beam_v=G.Location(id,"gradeBeamV");l.grade_beam_normal=G.Location(id,"gradeBeamNormal")
  l.grade_beam_direction=G.Location(id,"gradeBeamDirection");l.grade_beam_color=G.Location(id,"gradeBeamColor")
@@ -1455,7 +2034,8 @@ Draw :: (gpu: *SceneGpuContext,scene: *Scene,d: GpuDraw,view: M.GpuMatrix,vp: M.
    G.Uniform1f(locations.sampler_repeat[slot],ifx s.repeat then 1.0 else 0.0)
   }
  }
- DrawGeometry(gpu,scene.meshes[d.mesh],d)
+ BindSkinAt(gpu,scene,d,program.id,locations.skin_mode,locations.model,locations.bones,locations.bones_texture,locations.bones_in_texture,locations.bone_stride)
+ DrawGeometry(gpu,scene,scene.meshes[d.mesh],d)
  return true
 }
 // The first light whose cookie can project binds it to unit 14, after the
@@ -1495,12 +2075,19 @@ RenderShadows :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
  albedo_size:=G.Location(gpu.shadow_program,"albedoSize")
  albedo_sampling:=G.Location(gpu.shadow_program,"albedoSampling")
  G.Uniform1i(G.Location(gpu.shadow_program,"albedo"),0)
+ skin_mode:=G.Location(gpu.shadow_program,"kryonSkinMode")
+ skin_model:=G.Location(gpu.shadow_program,"kryonModel")
+ skin_bones:=G.Location(gpu.shadow_program,"kryonBones[0]")
+ skin_bones_texture:=G.Location(gpu.shadow_program,"kryonBonesTexture")
+ skin_bones_in_texture:=G.Location(gpu.shadow_program,"kryonBonesInTexture")
+ skin_stride:=G.Location(gpu.shadow_program,"kryonBoneStride")
  for at: 0..3 {
   s:=*gpu.shadows[at]
   if at>=scene.lights.count||!scene.lights[at].shadow||scene.lights[at].shadow_size<=0 {if s.texture!=0 {DropShadow(s)};continue}
   l:=scene.lights[at]
   if l.shadow_size>gpu.capabilities.max_texture_size {return false}
-  redraw:=gpu.resources.geometry_uploads!=gpu.shadow_geometry||s.texture==0
+  // A new pose moves the casters as surely as new vertices do.
+  redraw:=gpu.resources.geometry_uploads!=gpu.shadow_geometry||gpu.resources.skin_uploads!=gpu.shadow_skin||s.texture==0
   if !ShadowSpaceEqual(s.source,l) {redraw=true}
   if s.size!=l.shadow_size {
    DropShadow(s);s.size=l.shadow_size
@@ -1536,7 +2123,8 @@ RenderShadows :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
      G.BindTexture(0x0de1,texture);G.Uniform2f(albedo_size,cast(float32)t.width,cast(float32)t.height)
      G.Uniform2f(albedo_sampling,cast(float32)cast(s32)m.texture_filter,cast(float32)cast(s32)m.texture_wrap)
     }
-    DrawGeometry(gpu,scene.meshes[d.mesh],d)
+    BindSkinAt(gpu,scene,d,gpu.shadow_program,skin_mode,skin_model,skin_bones,skin_bones_texture,skin_bones_in_texture,skin_stride)
+    DrawGeometry(gpu,scene,scene.meshes[d.mesh],d)
    }
    G.Disable(0x0b44)
    s.source=l
@@ -1544,6 +2132,7 @@ RenderShadows :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
   }
  }
  gpu.shadow_geometry=gpu.resources.geometry_uploads
+ gpu.shadow_skin=gpu.resources.skin_uploads
  return G.GetError()==0
 }
 }

@@ -13,6 +13,9 @@ android_composition_active: bool;
 android_composition_presented: bool;
 android_composition_width: s32;
 android_composition_height: s32;
+// A window host's program draws the whole window itself (a GPU Scene) and
+// the presenter swaps it: the host binds no Pixmap and presents every frame.
+android_composition_window: bool;
 
 BeginAndroidComposition :: (width: s32, height: s32) -> bool {
     return android_composition_begin != null && android_composition_begin(width, height)

@@ -2,9 +2,11 @@
 #import "std/vec"
 #if OS == .ANDROID {
     #import "std/byte_text_linux"
-    #import "std/c_string"
     #import "std/file_linux"
     #import "std/format"
+}
+#if OS != .WEB {
+    #import "std/c_string"
 }
 #if OS == .WEB {
     WebContext :: #import "scene_gpu_web_context";
@@ -71,6 +73,7 @@ RawBindTexture :: (target: u32, id: u32) #foreign gl "glBindTexture";
 RawActiveTexture :: (unit: u32) #foreign gl "glActiveTexture";
 RawTexParameter :: (target: u32, name: u32, value: s32) #foreign gl "glTexParameteri";
 RawTexImage :: (target: u32, level: s32, internal: s32, width: s32, height: s32, border: s32, format: u32, kind: u32, data: *void) #foreign gl "glTexImage2D";
+RawTexSubImage :: (target: u32, level: s32, xoffset: s32, yoffset: s32, width: s32, height: s32, format: u32, kind: u32, data: *void) #foreign gl "glTexSubImage2D";
 RawGenBuffers :: (count: s32, ids: *u32) #foreign gl "glGenBuffers";
 RawDeleteBuffers :: (count: s32, ids: *u32) #foreign gl "glDeleteBuffers";
 RawBindBuffer :: (target: u32, id: u32) #foreign gl "glBindBuffer";
@@ -83,8 +86,12 @@ RawFenceSync :: (condition: u32,flags: u32)->*void #foreign gl "glFenceSync";
 RawClientWaitSync :: (sync: *void,flags: u32,timeout: u64)->u32 #foreign gl "glClientWaitSync";
 RawDeleteSync :: (sync: *void) #foreign gl "glDeleteSync";
 RawFlush :: () #foreign gl "glFlush";
+RawGenQueries :: (count: s32, ids: *u32) #foreign gl "glGenQueries";
+RawDeleteQueries :: (count: s32, ids: *u32) #foreign gl "glDeleteQueries";
+RawGetProcAddress :: (name: *u8) -> *void #foreign egl "eglGetProcAddress";
 }
 RawEnableAttribute :: (index: u32) #foreign gl "glEnableVertexAttribArray";
+RawDisableAttribute :: (index: u32) #foreign gl "glDisableVertexAttribArray";
 RawAttributePointer :: (index: u32, count: s32, kind: u32, normalized: u8, stride: s32, offset: *void) #foreign gl "glVertexAttribPointer";
 RawCreateShader :: (kind: u32)->u32 #foreign gl "glCreateShader";
 RawShaderSource :: (id: u32, count: s32, texts: **u8, lengths: *s32) #foreign gl "glShaderSource";
@@ -185,12 +192,14 @@ BindTexture :: (target: u32, id: u32)  {RawBindTexture(target,id)}
 ActiveTexture :: (unit: u32)  {RawActiveTexture(unit)}
 TexParameter :: (target: u32, name: u32, value: s32)  {RawTexParameter(target,name,value)}
 TexImage :: (target: u32, level: s32, internal: s32, width: s32, height: s32, border: s32, format: u32, kind: u32, data: *void)  {RawTexImage(target,level,internal,width,height,border,format,kind,data)}
+TexSubImage :: (target: u32, level: s32, xoffset: s32, yoffset: s32, width: s32, height: s32, format: u32, kind: u32, data: *void)  {RawTexSubImage(target,level,xoffset,yoffset,width,height,format,kind,data)}
 GenBuffers :: (count: s32, ids: *u32)  {RawGenBuffers(count,ids)}
 DeleteBuffers :: (count: s32, ids: *u32)  {RawDeleteBuffers(count,ids)}
 BindBuffer :: (target: u32, id: u32)  {RawBindBuffer(target,id)}
 BufferData :: (target: u32, bytes: s64, data: *void, usage: u32)  {RawBufferData(target,cast(isize)bytes,data,usage)}
 BufferSubData :: (target: u32, offset: s64, bytes: s64, data: *void)  {RawBufferSubData(target,cast(isize)offset,cast(isize)bytes,data)}
 EnableAttribute :: (index: u32)  {RawEnableAttribute(index)}
+DisableAttribute :: (index: u32)  {RawDisableAttribute(index)}
 AttributePointer :: (index: u32, count: s32, kind: u32, normalized: u8, stride: s32, offset: *void)  {RawAttributePointer(index,count,kind,normalized,stride,offset)}
 CreateShader :: (kind: u32) ->u32 {return RawCreateShader(kind)}
 ShaderSource :: (id: u32, count: s32, texts: **u8, lengths: *s32)  {RawShaderSource(id,count,texts,lengths)}
@@ -236,6 +245,15 @@ FenceSync :: (condition: u32,flags: u32)->*void {return RawFenceSync(condition,f
 ClientWaitSync :: (sync: *void,flags: u32,timeout: u64)->u32 {return RawClientWaitSync(sync,flags,timeout)}
 DeleteSync :: (sync: *void) {RawDeleteSync(sync)}
 Flush :: () {RawFlush()}
+GenQueries :: (count: s32, ids: *u32) {RawGenQueries(count, ids)}
+DeleteQueries :: (count: s32, ids: *u32) {RawDeleteQueries(count, ids)}
+// An entry point beyond ES 3.0. The system GLES library exports the core ES
+// 3.0 set only, so the ES 3.1 timer queries resolve through EGL.
+TimerProcAddress :: (name: string) -> *void {
+    text: [40]u8
+    if !CopyCString(name, text[:]) { return null }
+    return RawGetProcAddress(*text[0])
+}
 }
 PixelStore :: (name: u32, value: s32)  {RawPixelStore(name,value)}
 Finish :: ()  {RawFinish()}

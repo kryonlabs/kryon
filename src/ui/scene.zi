@@ -176,6 +176,35 @@ SceneGradeNeutral :: () -> SceneGrade {
     return .{enabled = true, tint = .{255, 255, 255, 255}, saturation = 1.0}
 }
 
+// One skinned vertex: four joints of its mesh's palette and their weights.
+SkinAttribute :: struct {
+    joint: [4]u16
+    weight: [4]float32
+}
+
+// The posed joints of one skinned mesh for the GPU scene backend (see
+// SceneSkinUseGpu). values holds, joint by joint, six rows of four floats:
+// linear blend skinning keeps the affine in rows 0-2 (x, y and z basis with
+// the translation) and the inverse transpose that turns normals in rows 3-5;
+// dual-quaternion skinning keeps the real quaternion in row 0 and the dual
+// quaternion in row 1. version changes with every pose. source names the model
+// skin the joints come from, -1 for none: the palettes of one source hold the
+// same pose, and follows marks one that takes the pose of another palette of
+// its source (SceneSkinFollowPose) and holds no rows of its own. While active
+// is false the mesh's vertices in the scene are posed on the CPU and the
+// palette is not used.
+SceneSkinPalette :: struct {
+    mesh: s32
+    joint_count: s32
+    dual_quaternion: bool
+    active: bool
+    version: u64
+    source: s32
+    follows: bool
+    values: Vec(float32)
+    attributes: Vec(SkinAttribute)
+}
+
 Scene :: struct {
     nodes: Vec(SceneNode)
     meshes: Vec(SceneMesh)
@@ -188,6 +217,7 @@ Scene :: struct {
     texels: Vec(u8)
     lights: Vec(SceneLight)
     open: Vec(s32)
+    skins: Vec(SceneSkinPalette)
     sky: Color
     ground: Color
     hemisphere: float64      // hemisphere light intensity, 0 for none
@@ -241,6 +271,11 @@ SceneClear :: (scene: *Scene) {
     VecClear(scene.texels)
     VecClear(scene.lights)
     VecClear(scene.open)
+    for at: 0..scene.skins.count - 1 {
+        VecFree(scene.skins[at].values)
+        VecFree(scene.skins[at].attributes)
+    }
+    VecClear(scene.skins)
     scene.sky = .{255, 255, 255, 255}
     scene.ground = .{0, 0, 0, 255}
     scene.hemisphere = 0.0
@@ -273,6 +308,11 @@ SceneFree :: (scene: *Scene) {
     VecFree(scene.texels)
     VecFree(scene.lights)
     VecFree(scene.open)
+    for at: 0..scene.skins.count - 1 {
+        VecFree(scene.skins[at].values)
+        VecFree(scene.skins[at].attributes)
+    }
+    VecFree(scene.skins)
 }
 
 // ---------------------------------------------------------------- materials

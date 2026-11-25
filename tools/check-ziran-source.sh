@@ -23,10 +23,12 @@ actual_src=$(cd "$repo" && rg --files -uu src -g '!*.zi' -g '!modules.txt' |
         printf '%s\n' "$path"
     done |
     LC_ALL=C sort)
+# `build/` and the generated Android project (`droid/`, written by
+# `kryon build --profile android`) hold generated C and Java, not sources.
 actual_programs=$(cd "$repo" &&
     rg --files -uu src examples tests tools \
         -g '*.c' -g '*.cc' -g '*.cpp' -g '*.go' -g '*.java' \
-        -g '*.kry' -g '*.kir' -g '*.krb' -g '!**/build/**' |
+        -g '*.kry' -g '*.kir' -g '*.krb' -g '!**/build/**' -g '!**/droid/**' |
     LC_ALL=C sort)
 
 

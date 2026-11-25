@@ -124,14 +124,19 @@
         gles := BeginAndroidComposition(width, height)
         if gles != previous_gles || (gles && !android_composition_presented) { reuse = false }
         defer CancelAndroidComposition()
+        // A window host's program draws the window itself: no Pixmap takes
+        // part in the frame and every frame is presented.
+        window := gles && android_composition_window
 
         pixels: []u32
         if !gles {
             if !AndroidNativeEnsurePixels(width, height) { return false }
             pixels = AndroidNativePixels()
         }
-        if !PixmapScale(zoom, zoom) ||
-        !PixmapResumeInto(width, height, pixels, true) { return false }
+        if !window {
+            if !PixmapScale(zoom, zoom) ||
+                !PixmapResumeInto(width, height, pixels, true) { return false }
+        }
 
         ok: bool = true
         finished: PixmapFrameResult
@@ -168,9 +173,14 @@
                 // may capture them before the queued paint replaces them.
                 if !reuse {
                     if !gles { AndroidNativeFill(cast(u32)0xff000000) }
-                    ClearAndroidFrame(viewport, AndroidCanvas())
+                    if !window { ClearAndroidFrame(viewport, AndroidCanvas()) }
                 }
-                finished = EndPixmapFrame(session, reuse, AndroidCanvas())
+                if window {
+                    // The tree commits; the window carries the program's frame.
+                    finished.status = CommitFrame(session)
+                } else {
+                    finished = EndPixmapFrame(session, reuse, AndroidCanvas())
+                }
                 if finished.status != cast(FrameStatus)FrameOk {
                     AndroidFrameFailure(session, "the frame could not finish")
                     ok = false
@@ -181,7 +191,7 @@
             ok = false
         }
         AndroidTouchFrameEnd()
-        PixmapEndInto()
+        if !window { PixmapEndInto() }
         if ok && (!reuse || !finished.paint_unchanged) {
             if !composition_enabled && android_composition_begin != null {
                 // The app enabled GLES in its first Frame call. The CPU
@@ -199,7 +209,11 @@
             if surface_presented != null { surface_presented[0] = ok }
         }
         if ok { TestDriverFrame(session) }
-        if paint_unchanged != null { paint_unchanged[0] = ok && reuse && finished.paint_unchanged }
+        if paint_unchanged != null {
+            // A window frame is quiet only when its program asked for no motion.
+            if window { paint_unchanged[0] = ok && !FrameMotionMoving(session) }
+            else { paint_unchanged[0] = ok && reuse && finished.paint_unchanged }
+        }
         return ok
     }
 
