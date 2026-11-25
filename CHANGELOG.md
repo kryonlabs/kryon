@@ -41,6 +41,8 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Avoid a duplicate C entry for plain `src/main.zi` programs on desktop and web. Android supplies its native host bridge in generated sources, so application entries need no `#program_export` annotation.
+
 - The HTML DOM host is removed: no owner project, template or the editor preview selected it (the `web` template and previews use Canvas). Deleted `frames_dom.zi`, `dom.zi`, `dom_tree.zi`, `dom_metrics.zi`, `dom_raster.zi`, the `dom` profile and `KRYON_DOM` define in `kryon/app` and `mk/ziran-project.mk`, `mk/dom-shell.html`, `dom-profile-test` and its fixtures, and the DOM profile documentation. The browser story is the Canvas2D host (`frames_web.zi`); a `backend = "dom"` profile now fails with the ordinary unavailable-backend error.
 
 ## [0.7.0] - 2026-11-25

@@ -86,8 +86,8 @@ def main():
         (project / "src").mkdir()
         toolchain = tomllib.loads((ROOT / "ziran.toml").read_text())["toolchain"]
         (project / "ziran.toml").write_text(
-            '[package]\nname = "desktop_probe"\nentry = "src/app.zi"\n'
-            'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
+            '[package]\nname = "desktop_probe"\nentry = "src/main.zi"\n'
+            'module_roots = ["src"]\nbridge_modules = ["main"]\n\n'
             f'[toolchain]\ngit = {json.dumps(toolchain["git"])}\n'
             f'ref = {json.dumps(toolchain["ref"])}\n\n'
             '[dependencies.kryon]\ngit = "https://git.waozi.xyz/kryonlabs/kryon.git"\n'
@@ -101,7 +101,9 @@ def main():
         (project / "ziran.local.toml").write_text(
             "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
         )
-        (project / "src/app.zi").write_text(
+        # main:main already emits C's process entry; a generated host would
+        # collide with it. Other module names are covered by the examples.
+        (project / "src/main.zi").write_text(
             'App :: #import "kryon/app";\n'
             '#import "Window"\n'
             'Image :: #import "kryon/image";\n'

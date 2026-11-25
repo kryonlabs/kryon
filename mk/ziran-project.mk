@@ -126,17 +126,17 @@ PROJECT_ENTRY_LINK :=
 HOST_ROOT_SOURCES := $(PROJECT_ENTRY)
 else ifneq ($(PROJECT_CODEGEN),c99)
 $(error a program entry ($(PROJECT_ENTRY) declares main) needs codegen c99 or zx)
-else ifneq ($(PROJECT_EXPORTED_MAIN),)
-# An exported main already supplies the process entry; do not add another.
+else ifneq ($(strip $(PROJECT_EXPORTED_MAIN) $(filter main,$(PROJECT_ENTRY_MODULE))),)
+# Ziran emits both an exported main and main:main as the C process entry.
+# Wrapping main:main would produce a second C main.
 HOST_ID := $(PROJECT_ENTRY_MODULE)
 PROJECT_ENTRY_LINK :=
 HOST_ROOT_SOURCES := $(PROJECT_ENTRY)
 else
-# The generated host is the process entry; it only calls the program's main.
+# Other module names need a native process entry calling the program's main.
 PROGRAM_HOST := $(GEN_DIR)/program-host/kryon_program_host.zi
 HOST := $(PROGRAM_HOST)
 HOST_ID := kryon_program_host
-# Its folder is a module path, so the host is saved under its own name.
 PROJECT_ENTRY_LINK := --module-path $(dir $(PROGRAM_HOST))
 HOST_ROOT_SOURCES := $(PROGRAM_HOST) $(PROJECT_ENTRY)
 endif
