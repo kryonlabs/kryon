@@ -1,0 +1,31 @@
+[package]
+name = "workout"
+entry = "src/workout.zi"
+module_roots = ["src"]
+tool = "kryon"
+links = ["GL", "EGL"]
+
+[toolchain]
+git = "https://git.waozi.xyz/ziranlang/ziran.git"
+ref = "ba28d7c0a3f5583958a126a30006d92b506e96fb"
+
+[tool.kryon]
+default_profile = "desktop"
+entry = "src/workout.zi"
+
+[tool.kryon.profiles.desktop]
+backend = "desktop"
+assets = "assets"
+
+[tool.kryon.profiles.android]
+backend = "android"
+assets = "assets"
+
+[tool.kryon.android]
+package = "xyz.waozi.kryon.workout"
+abis = "armeabi-v7a"
+frame_mode = "events"
+
+[dependencies.kryon]
+git = "https://git.waozi.xyz/kryonlabs/kryon.git"
+ref = "master"
