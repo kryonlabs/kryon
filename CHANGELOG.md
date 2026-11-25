@@ -41,6 +41,8 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Keep native GPU timestamp queries out of WebGL builds so applications using the scene renderer compile for the web.
+
 - Recognize readable package identities in hosted widget and record module names, so existing bundles start alongside hosts built with newer package naming.
 
 - Reduce simple text programs' dependency graph by separating container measurement, paint operations, style facts, color values, bitmap metadata and portable editor policy. Keep `Text.Draw` and container APIs unchanged; layout-only programs still require no renderer, and editing buffers load with editing widgets.

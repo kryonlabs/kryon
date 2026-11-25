@@ -1023,6 +1023,7 @@ SceneGpuMemoryUsage :: (gpu: *SceneGpuContext)->SceneGpuResources { return gpu.r
 #if OS != .WEB || #defined(KRYON_WEBGL2) {
 Timer :: #import "std/timer_linux";
 Now :: () -> float64 { return cast(float64)Timer.MonotonicNanoseconds() / 1000000.0 }
+#if OS != .WEB {
 // GL_TIMESTAMP queries measure the GPU execution of a frame. The ES 3.1
 // entry points resolve through EGL once per process; without them the
 // window path reports no GPU time.
@@ -1042,7 +1043,6 @@ TimerQueries :: () -> bool {
  }
  return query_counter_slot!=null&&query_object_slot!=null
 }
-#if OS != .WEB {
 ProbeAsync :: (gpu: *SceneGpuContext)->bool {
  buffer: u32;G.GenBuffers(1,*buffer);defer G.DeleteBuffers(1,*buffer)
  G.BindBuffer(0x88eb,buffer);defer G.BindBuffer(0x88eb,0)
