@@ -1010,8 +1010,6 @@ SceneGpuRenderOrCPU :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,
  result.ok=RenderScene(scene,camera,image)
  return result
 }
-SceneGpuSkinningAvailable :: (gpu: *SceneGpuContext)->bool {unused gpu; return false}
-SceneGpuPoseCapacity :: (gpu: *SceneGpuContext,dual: bool)->s32 {unused gpu; unused dual; return 0}
 SceneGpuRelease :: (gpu: *SceneGpuContext) { gpu.attempted=false }
 SceneGpuAdoptWindow :: (gpu: *SceneGpuContext,display: *void,context: *void,surface: *void) { unused gpu; unused display; unused context; unused surface }
 SceneGpuWindowLost :: (gpu: *SceneGpuContext) { unused gpu }
