@@ -256,8 +256,7 @@ SceneVertexSource :: (gpu: *SceneGpuContext)->string {
 // surface so the frame can end in the window; a private context is surfaceless.
 BindContext :: (gpu: *SceneGpuContext)->bool {
  #if OS == .WEB {
-  unused gpu
-  return true
+  return gpu.context!=null && G.MakeSceneCurrent(null,gpu.context)
  } else {
   if gpu.context==null { return false }
   if gpu.adopted && gpu.window_surface!=null {
