@@ -78,6 +78,12 @@ ifeq ($(shell uname -s),Linux)
 ZIRAN_MODULE_ARGS += --define KRYON_LINUX_DESKTOP
 endif
 endif
+ifeq ($(filter $(PROJECT_BACKEND),desktop),)
+# A non-desktop C build (terminal, canvas, dom, pixmap) hosts no desktop
+# window, and its capture never calls App.Run; kryon/app then maps the
+# program's window calls to app_unsupported so it carries no desktop modules.
+ZIRAN_MODULE_ARGS += --define KRYON_NO_DESKTOP_HOST
+endif
 HOST := $(KRYON_DIR)/src/backend/$(HOST_MODULE).zi
 ifneq ($(PROJECT_HOST),)
 PROJECT_HOST_PATH := $(realpath $(PROJECT_HOST))

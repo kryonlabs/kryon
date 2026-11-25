@@ -5,7 +5,7 @@
 // in the checked program.
 using Types :: #import "app_types";
 
-#if TARGET == .C && OS == .LINUX || TARGET == .C && OS == .WINDOWS {
+#if TARGET == .C && OS == .WINDOWS || TARGET == .C && OS == .LINUX && !#defined(KRYON_NO_DESKTOP_HOST) {
     Bare :: #import "desktop_window";
     Frames :: #import "frames_desktop";
 } else #if TARGET == .C && OS == .WEB {
