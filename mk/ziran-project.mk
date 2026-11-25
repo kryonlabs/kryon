@@ -18,7 +18,7 @@ ifndef ZIRAN_PACKAGE_ID
 $(error ZIRAN_PACKAGE_ID is required; run this through ziran tool kryon)
 endif
 
-ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 canvas/c99 dom/c99 pixmap/c99 desktop/zx pixmap/zx canvas/zx),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
+ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 canvas/c99 pixmap/c99 desktop/zx pixmap/zx canvas/zx),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
 $(error backend $(PROJECT_BACKEND) with codegen $(PROJECT_CODEGEN) is not available)
 endif
 
@@ -43,7 +43,7 @@ ifneq ($(strip $(PROJECT_LIBRARY)$(PROJECT_STATIC_ARCHIVE)$(PROJECT_NATIVE_ARTIF
 $(error a Zx profile cannot link a native library or static archive)
 endif
 endif
-BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas dom)
+BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas)
 ifneq ($(BROWSER_BACKEND),)
 ifeq ($(PROJECT_CODEGEN),c99)
 PROGRAM := $(PROJECT_BUILD_DIR)/$(PROJECT_NAME)-$(PROJECT_PROFILE).html
@@ -64,9 +64,6 @@ PROJECT_CONFIG_FILES := ziran.toml ziran.lock
 TEST_DRIVER_STATE := $(if $(KRYON_TEST_DRIVER),on,off)
 # A zx bundle's runtime pictures (kryon/bitmap_image) belong to its player.
 ZIRAN_MODULE_ARGS := --project $(if $(KRYON_TEST_DRIVER),--define KRYON_TEST_DRIVER) $(if $(filter zx,$(PROJECT_CODEGEN)),--define KRYON_ZX)
-ifeq ($(PROJECT_BACKEND),dom)
-ZIRAN_MODULE_ARGS += --define KRYON_DOM
-endif
 ifeq ($(PROJECT_BACKEND),terminal)
 ZIRAN_MODULE_ARGS += --define KRYON_TERMINAL
 endif
@@ -80,7 +77,7 @@ ZIRAN_MODULE_ARGS += --define KRYON_LINUX_DESKTOP
 endif
 endif
 ifeq ($(filter $(PROJECT_BACKEND),desktop),)
-# A non-desktop C build (terminal, canvas, dom, pixmap) hosts no desktop
+# A non-desktop C build (terminal, canvas, pixmap) hosts no desktop
 # window; kryon/app then maps the program's window calls to app_unsupported
 # so it carries no desktop modules.
 ZIRAN_MODULE_ARGS += --define KRYON_NO_DESKTOP_HOST

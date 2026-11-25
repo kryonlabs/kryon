@@ -109,8 +109,7 @@ sample into a copy of the state and keep the copy when the frame commits.
 A custom retained host can set monotonic seconds with
 `kryon/frame_motion.SetFrameMotionTime` before `BeginFrame` and use
 `FrameMotionMoving` after commit to keep the frame loop active during motion.
-Desktop, Android and Canvas frame hosts supply their own clocks. The web DOM
-backend uses CSS motion through the browser.
+Desktop, Android and Canvas frame hosts supply their own clocks.
 
 ## Widget motion
 

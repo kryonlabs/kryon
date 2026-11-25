@@ -37,7 +37,7 @@ Frame :: (frame: App.Frame) {
     viewport := frame.viewport
     page: PageLayout = PageFor(viewport, 640.0)
     Heading(session, "{{name}}", 1, NextRow(*page, 44.0), FontSize(*page, 34))
-    Paragraph(session, "This page is a Kryon application. The same Ziran source runs as semantic HTML, on a canvas, and in a desktop window.",
+    Paragraph(session, "This page is a Kryon application. The same Ziran source runs on a canvas and in a desktop window.",
         NextRow(*page, 48.0), FontSize(*page, 17))
     Heading(session, "Why Kryon", 2, NextRow(*page, 30.0), FontSize(*page, 22))
     Paragraph(session, "One interface, declared every frame from your state. No HTML templates and no JavaScript.",

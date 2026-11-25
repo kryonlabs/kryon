@@ -12,7 +12,7 @@ them with Emscripten, and Ziran's Web bridge:
 
 The browser hosts (`page_core.zi`,
 `page_paint.zi`, `page_texture.zi`, `page_font.zi`, `page_events.zi`,
-`page_files.zi`, `page_input.zi`, `page_mesh.zi`, `canvas_audio_host.zi`, `dom_host.zi`) are
+`page_files.zi`, `page_input.zi`, `page_mesh.zi`, `canvas_audio_host.zi`) are
 written in Ziran and reach the page through `std/web.zi`; the one JavaScript
 file is the generic, Kryon-agnostic bridge in the Ziran repository.
 

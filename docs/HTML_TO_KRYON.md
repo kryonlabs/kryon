@@ -251,8 +251,7 @@ Use `color-mix(in srgb, #2076c0 35%, transparent)` in a native color
 declaration or custom property to derive a tint from two literal colors.
 For native `@media (prefers-reduced-motion: reduce)` rules, set
 `env.reduced_motion` from `Theme.CurrentTheme().motion.reduced_motion` and
-reinstall the parsed sheet when that preference changes. DOM output uses
-the browser's live preference.
+reinstall the parsed sheet when that preference changes.
 
 ### CSS and layout motion
 
@@ -279,8 +278,7 @@ button.save:hover { background-color: #2443ac; }
 
 See the [retained motion API](MOTION.md#retained-style-and-layout-motion) for
 supported native widget properties and the [scalar motion API](MOTION.md#timed-motion-and-keyframes)
-for application-owned tracks. The DOM backend applies motion directly through
-browser CSS.
+for application-owned tracks.
 
 ---
 

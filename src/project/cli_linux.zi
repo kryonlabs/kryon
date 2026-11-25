@@ -286,7 +286,6 @@ BackendDescription :: (profile: ProjectProfile) -> string {
     backend := profile.backend
     if backend == "desktop" { return "SDL2/Cairo window" }
     if backend == "canvas" { return "Canvas2D browser page" }
-    if backend == "dom" { return "HTML DOM browser page" }
     if backend == "terminal" { return "terminal" }
     if backend == "pixmap" { return "headless image, PPM on standard output" }
     if backend == "android" { return "Android package (NativeActivity)" }
@@ -974,8 +973,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
         return AndroidCommand(config, profile, installed_kryon, installed_ziran, verb)
     }
     if (profile.backend != "terminal" && profile.backend != "desktop" &&
-        profile.backend != "canvas" && profile.backend != "dom" &&
-        profile.backend != "pixmap") ||
+        profile.backend != "canvas" && profile.backend != "pixmap") ||
     (profile.codegen != "c99" &&
         !(profile.codegen == "zx" &&
         (profile.backend == "desktop" || profile.backend == "pixmap" ||

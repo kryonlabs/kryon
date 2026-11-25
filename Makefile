@@ -828,11 +828,6 @@ canvas-project-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/canvas_project_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/web_simd_page_test.py
 
-.PHONY: dom-profile-test
-dom-profile-test: project-toolchain build/bin/kryon
-	@sh tests/dom_profile_test.sh
-test: dom-profile-test
-
 # A program entry (main plus App.Run) built by the project tool for the page
 # and for the desktop.
 .PHONY: program-entry-project-test

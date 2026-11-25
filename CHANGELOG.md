@@ -41,6 +41,8 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- The HTML DOM host is removed: no owner project, template or the editor preview selected it (the `web` template and previews use Canvas). Deleted `frames_dom.zi`, `dom.zi`, `dom_tree.zi`, `dom_metrics.zi`, `dom_raster.zi`, the `dom` profile and `KRYON_DOM` define in `kryon/app` and `mk/ziran-project.mk`, `mk/dom-shell.html`, `dom-profile-test` and its fixtures, and the DOM profile documentation. The browser story is the Canvas2D host (`frames_web.zi`); a `backend = "dom"` profile now fails with the ordinary unavailable-backend error.
+
 ## [0.7.0] - 2026-11-25
 
 - Desktop windows, the native ZX runner (`zx-desktop`), `zx2native` executables (`libkryon-desktop.so`), and SDL pixel hosts now render on the GPU by default instead of CPU software rendering: `pixmap_sdl.zi` (`CreatePixmapRenderer`) requests `SDL_RENDERER_ACCELERATED` first on real GPU desktops (honoring `SDL_RENDER_DRIVER`, `KRYON_PIXMAP_GPU=0` opt-out, and avoiding `llvmpipe`/`softpipe` on headless Xvfb), and `desktop_gpu.zi` draws rectangles, rounded rectangles, outlines, lines, triangles, cached Pango/Cairo text runs, cached images and warped image meshes directly on the GPU via `SDL_RenderGeometry` into a retained `SDL_TEXTUREACCESS_TARGET` texture with zero full-frame CPU framebuffer uploads (`SDL_RenderReadPixels` is used only on demand for PNG captures and frame snapshots).

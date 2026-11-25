@@ -407,7 +407,7 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
             config.error = "invalid profile static archive"
             return config
         }
-        browser := profile.backend == "canvas" || profile.backend == "dom"
+        browser := profile.backend == "canvas"
         if profile.native_artifacts != "" || profile.native_platform != "" {
             if !ProjectArtifactsValid(profile.native_artifacts) ||
             !ProjectNameValid(profile.native_platform) {
@@ -426,7 +426,7 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
         }
         if (profile.platform != "" && (profile.platform != "web" || !browser ||
             (profile.codegen != "" && profile.codegen != "c99"))) ||
-            ((profile.backend == "dom" || profile.platform == "web") &&
+            (profile.platform == "web" &&
             (profile.library != "" || profile.static_archive != "")) {
             config.error = "platform web needs a browser c99 profile without native libraries"
             return config

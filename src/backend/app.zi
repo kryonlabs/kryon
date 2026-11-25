@@ -11,9 +11,6 @@ using Types :: #import "app_types";
 } else #if TARGET == .C && OS == .WINDOWS || TARGET == .C && OS == .LINUX && !#defined(KRYON_NO_DESKTOP_HOST) {
     Bare :: #import "desktop_window";
     Frames :: #import "frames_desktop";
-} else #if TARGET == .C && #defined(KRYON_DOM) {
-    Bare :: #import "app_unsupported";
-    Frames :: #import "frames_dom";
 } else #if TARGET == .C && OS == .WEB {
     Bare :: #import "page_window";
     Frames :: #import "frames_web";
