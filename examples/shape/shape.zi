@@ -1,3 +1,4 @@
+App :: #import "kryon/app";
 #import "kryon/geometry"
 #import "kryon/session"
 #import "kryon/frame_snapshot"
@@ -38,14 +39,15 @@ SetGalleryViewport :: (view: Rectangle, live: bool, now: float32, reduced_motion
 
 color: [4]float32 = .{0.18, 0.52, 0.68, 1.0};
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
     page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
         .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
-    if !page.opened { return 0 }
+    if !page.opened { return }
     Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Circle Ring Triangle Line", .size = 23})
     disabled := example_input.disabled
 
@@ -54,15 +56,16 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     unused Shape.Triangle(session, Shape.TriangleProps.{.first = .{292.0, 166.0}, .second = .{330.0, 90.0}, .third = .{368.0, 166.0}, .color = .{30, 115, 138, 255}})
     unused Shape.Draw(session, Shape.Props.{.start = .{28.0, 220.0}, .end = .{432.0, 220.0}, .thickness = 2.0, .color = .{30, 115, 138, 255}})
     unused End(session)
-    return 0
+    return
 }
 
 example_disabled: bool;
 example_reduced_motion: bool;
 
-// Hosts publish these options before the unchanged application entry point.
-#program_export
+// The gallery host calls this before drawing the example's frames.
 SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
     example_disabled = disabled
     example_reduced_motion = reduced_motion
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "shape"}, Frame) }

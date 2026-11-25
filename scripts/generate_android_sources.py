@@ -101,8 +101,8 @@ kryon = args.kryon.resolve()
 entry = (root / args.entry).resolve()
 if not entry.is_file() or entry.suffix != ".zi":
     parser.error(f"selected application entry is not a Zi source: {entry}")
-needs_frame = args.host is None and args.codegen == "c99"
-if needs_frame and not args.package_id:
+needs_program = args.host is None and args.codegen == "c99"
+if needs_program and not args.package_id:
     parser.error("--package-id is required unless ZIRAN_PACKAGE_ID is supplied by ziran tool kryon")
 entry_module = entry.parent.name if entry.stem == "module" else entry.stem
 sources = sorted((root / "src").rglob("*.zi"))
@@ -117,10 +117,10 @@ host_roots = [
     root / "src/android_glue.zi",
 ]
 bindings = []
-if needs_frame:
-    host_roots.extend([entry, kryon / "src/backend/frame_entry.zi"])
+if needs_program:
+    host_roots.append(entry)
     bindings = ["--bind",
-                f"{args.package_id}_frame_entry:ProjectFrame={entry_module}:Frame"]
+                f"{args.package_id}_android_run:AndroidProgramMain={entry_module}:main"]
 for path in host_roots:
     if not path.is_file():
         raise SystemExit(f"Missing host source {path}; run scripts/android_scaffold.py")
@@ -191,7 +191,7 @@ if bundled_fonts is True or bundled_fonts == "true":
 frame_mode = android_options.get("frame_mode", "adaptive")
 if frame_mode not in ("adaptive", "events"):
     parser.error("[tool.kryon.android] frame_mode must be 'adaptive' or 'events'")
-if frame_mode == "events" and needs_frame:
+if frame_mode == "events" and needs_program:
     defines.extend(["--define", "KRYON_ANDROID_EVENT_FRAMES"])
 if args.codegen == "zx":
     defines.extend(["--define", "KRYON_ZX_APP", "--define", "BUNDLE_NATIVE_RENDERER"])

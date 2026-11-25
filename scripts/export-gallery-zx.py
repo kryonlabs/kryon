@@ -10,14 +10,6 @@ import tomllib
 import gallery
 
 
-def scoped(package, module):
-    """Name a module loaded through `--module-path PACKAGE=DIR`, as Ziran does."""
-    digest = 1469598103934665603
-    for byte in package.encode():
-        digest = ((digest ^ byte) * 1099511628211) & 0xffffffffffffffff
-    return f'p{digest:016x}_{module}'
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=gallery.ROOT / 'build/gallery-zx')
@@ -96,10 +88,9 @@ def main():
         app.write_text(source)
         bundle = output / (entry['id'] + '.zx')
         bundle.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run([compiler, 'bundle', *paths, '--entry', scoped('kryon', 'zx_run') + ':main',
-                        '--bind', scoped('kryon', 'frame_entry') + ':ProjectFrame=app:Frame',
+        subprocess.run([compiler, 'bundle', *paths, '--entry', 'app:main',
                         '--asset-dir', 'assets=' + str(gallery.PROJECT / 'assets'),
-                        '-o', str(bundle), str(gallery.ROOT / 'src/backend/zx_run.zi'), str(app)],
+                        '-o', str(bundle), str(app)],
                        cwd=gallery.PROJECT, env=compile_env, check=True)
         index.append({**entry, 'bundle': bundle.relative_to(output).as_posix()})
         print('Exported ' + entry['id'] + ': ' + entry['name'], flush=True)

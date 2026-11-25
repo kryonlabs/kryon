@@ -398,8 +398,8 @@ Usage :: () -> s32 {
 PreviewUsage :: () -> s32 {
     PrintFd(1, "usage: kryon preview FIXTURE --theme light|dark --width PX[,PX...] --height PX --output FILE.png|PREFIX [--profile NAME]\n")
     PrintFd(1, "       Builds previews/FIXTURE.zi once and writes PNG and JSON. Multiple widths append -PX to the prefix.\n")
-    PrintFd(1, "       The fixture exports Frame; it imports the module that draws the screen, never the entry\n")
-    PrintFd(1, "       module that exports the app's own Frame. To shoot the app itself: kryon run --png FILE.png\n")
+    PrintFd(1, "       The fixture is a program: its main runs App.Run with the module that draws the screen\n")
+    PrintFd(1, "       as the frame. To shoot the app itself: kryon run --png FILE.png\n")
     return 0
 }
 
@@ -592,13 +592,13 @@ PreviewCapture :: (prefix: string, width: string, height: string, args: []string
     }
     // Build under the preview lock on the first capture only.
     if args[5] == "build" {
-        if RunChild(args) != 0 { return Error(failure) }
+        if RunChild(args[0:23]) != 0 { return Error(failure) }
         args[5] = "run-built"
     }
-    if RunChild(args) != 0 { return Error(failure) }
+    if RunChild(args[0:23]) != 0 { return Error(failure) }
     if !Exists(staged_tree) || !PreviewPngSizeMatches(*staged_png_bytes[0],
         PreviewDimension(width), PreviewDimension(height)) {
-        return Error("no widget tree and PNG of the requested size were drawn; export Frame from the entry")
+        return Error("no widget tree and PNG of the requested size were drawn; the entry's main must run App.Run from kryon/app")
     }
     if !CString(parent, parent_bytes[:]) { return Error("preview output directory is too long") }
     publish_lock := PreviewLockDirectory(*parent_bytes[0])
@@ -626,9 +626,9 @@ PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string)
         return Error("the capture output must name a file or prefix")
     }
     area := ifx options.fixture == "" then "build/shot" else "build/preview"
-    failure := "preview build or render failed; see diagnostics above, add previews to [package] module_roots, export Frame from the fixture and import the drawing module, not the entry that exports Frame"
+    failure := "preview build or render failed; see diagnostics above, add previews to [package] module_roots, and give the fixture a main that runs App.Run with its drawing module"
     if options.fixture == "" {
-        failure = "run --png build or render failed; see diagnostics above and export Frame from the project entry"
+        failure = "run --png build or render failed; see diagnostics above and give the project entry a main that runs App.Run"
     }
 
     build_root_bytes: [4096]u8
@@ -644,7 +644,7 @@ PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string)
     }
     args[5] = "build"
     args[22] = Join("PROJECT_BUILD_DIR=", build_root, build_option_bytes[:])
-    args[23] = "PROJECT_CAPTURE=1" // Render Frame even for a program entry.
+    // Slot 23 stays reserved for the watch command; captures run slots 0..22.
     if args[22] == "" { return Error("capture build directory is too long") }
     mkdir: [4]string = .["mkdir", "-p", "--", build_root]
     if RunChild(mkdir[:]) != 0 { return Error("cannot create the capture build directory") }

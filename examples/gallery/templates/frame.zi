@@ -1,9 +1,11 @@
 // @declarations
+App :: #import "kryon/app";
 #import "palette"
 #import "preview_protocol"
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     example_input := PreviewInputRead()
     InstallCatalogPalette(example_input.theme == 2)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
@@ -11,5 +13,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     Text(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "// @title", .size = 23})
     disabled := example_input.disabled
     // @example
-    return 0
+    return
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "frame"}, Frame) }

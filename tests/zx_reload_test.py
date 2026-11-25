@@ -77,24 +77,25 @@ def main():
                    ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS')}
     environment['YUE_DESKTOP_RECOVERY'] = '0'
     # Watching replaces a frame bundle's release; a console program bundle runs
-    # once by design, so the fixtures export Frame through Kryon's zx_run host.
+    # once by design, so the fixtures are main programs whose frames draw.
     guest = OUTPUT / 'app-project'
-    package_id = kryon_test_project(guest)
+    kryon_test_project(guest)
     app = guest / 'src'
     for name in ('one', 'two'):
         source = app / (name + '.zi')
-        source.write_text('#import "kryon/geometry"\n#import "kryon/session"\n'
-                          'started: bool;\n#program_export\n'
-                          'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
-                          f' if !started {{ print("module {name}\\n"); started = true }}\n return 0\n}}\n')
+        source.write_text('App :: #import "kryon/app";\n'
+                          'started: bool;\n'
+                          'Frame :: (frame: App.Frame) {\n'
+                          f' if !started {{ print("module {name}\\n"); started = true }}\n'
+                          '}\n'
+                          f'main :: () -> s32 {{ return App.Run(App.Window.{{.title = "{name}"}}, Frame) }}\n')
         assets = OUTPUT / ('assets-' + name)
         assets.mkdir(exist_ok=True)
         (assets / 'version.txt').write_text(name)
-        run([ZIRAN, 'bundle', '--project', '--bind',
-             f'{package_id}_frame_entry:ProjectFrame={name}:Frame', '--root', str(app),
-             '--entry', f'{package_id}_zx_run:main',
+        run([ZIRAN, 'bundle', '--project',
+             '--entry', name + ':main',
              '--asset-dir', 'assets=' + str(assets), '-o', OUTPUT / (name + '.zx'),
-             ROOT / 'src/backend/zx_run.zi', source], cwd=guest, env=environment)
+             source], cwd=guest, env=environment)
     (OUTPUT / 'broken.zx').write_bytes(b'ZX\0\0')
     unsupported = OUTPUT / 'unsupported.zi'
     unsupported.write_text('host_api :: #system_library "host_api";\n'

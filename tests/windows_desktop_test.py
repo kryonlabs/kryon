@@ -232,10 +232,8 @@ def main():
         shutil.copyfile(path, WORK / path.name)
     compile_source(ROOT / 'examples/window.zi', 'window')
     compile_source(ROOT / 'tests/windows_desktop_widgets.zi', 'widgets')
-    compile_source(ROOT / 'src/backend/desktop_run.zi', 'frame', options=[
-        '--module-path', ROOT / 'tests',
-        '--bind', 'frame_entry:ProjectFrame=windows_desktop_frame:Frame'],
-        sources=[ROOT / 'tests/windows_desktop_frame.zi'])
+    compile_source(ROOT / 'tests/windows_desktop_frame.zi', 'frame', options=[
+        '--module-path', ROOT / 'tests'])
     compile_source(ROOT / 'tests/windows_desktop_audio.zi', 'audio')
     compile_source(ROOT / 'tests/windows_desktop_services.zi', 'services')
     compile_source(ROOT / 'tests/windows_file_dialog.zi', 'dialog')

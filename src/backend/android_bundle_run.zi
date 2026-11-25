@@ -45,6 +45,18 @@ AndroidBundleHost :: struct {
     text_session: Session
     hosted: bool
     media_slot: s32
+    // The portable bundle owns its event loop; this state carries the
+    // player's wait callback between its frames.
+    frames: s32
+    reuse: bool
+    frame_reuse: bool
+    quiet_frames: s32
+    was_paused: bool
+    next_frame_ms: s64
+    swap_pending: bool
+    first_pending: bool
+    selected: [4096]u8
+    selected_count: s32
 }
 
 android_bundle_hosts: [2]AndroidBundleHost;
@@ -196,6 +208,7 @@ AndroidBundleOpen :: (host: *AndroidBundleHost, data: string,
     }
     Player.PlayerUseTextEditor(*host.player, AndroidBundleEditorPresent,
         AndroidBundleEditorRequest, cast(*void)host)
+    Player.PlayerUseWait(*host.player, AndroidBundleWait, cast(*void)host)
     return true
 }
 
@@ -210,7 +223,7 @@ AndroidBundlePresent :: () -> bool {
 }
 
 AndroidBundleDraw :: (host: *AndroidBundleHost, session: Session,
-    viewport: AndroidViewport, bounds: Rectangle, zoom: float32, reuse: bool) -> bool {
+    viewport: AndroidViewport, bounds: Rectangle, zoom: float32) -> bool {
     width := viewport.x + viewport.width
     height := viewport.y + viewport.height
     if !AndroidNativeSurfaceSize(*width, *height) ||
@@ -234,32 +247,18 @@ AndroidBundleDraw :: (host: *AndroidBundleHost, session: Session,
     if AndroidTextInputKeyPressed(257) { key = 257 }
     codepoint := AndroidTextInputCharacter()
     while codepoint != 0 {
-        if host.hosted { unused TypedCodepointSend(session, codepoint) }
-        else { Player.PlayerTyped(*host.player, codepoint) }
+        unused TypedCodepointSend(session, codepoint)
         codepoint = AndroidTextInputCharacter()
     }
     pointer := PollPointer()
     secondary := PollSecondaryPointer()
 
-    if host.hosted {
-        typed: [1024]u8
-        text := TypedTextTake(session, typed[:])
-        ok = BundleAppFrame(*host.app, bounds, pointer, secondary, key, 0, 0.0,
-            text, cast(float64)Clock.MonotonicMilliseconds() / 1000.0)
-        host.player.keyboard = host.app.app.keyboard
-        host.player.failed = host.app.failed
-    } else {
-        host.text_session = session
-        host.raster.x = bounds.x
-        host.raster.y = bounds.y
-        ok = Player.PlayerFrameNative(*host.player, Player.Input.{
-            .width = cast(s32)bounds.width, .height = cast(s32)bounds.height,
-            .x = pointer.x - bounds.x, .y = pointer.y - bounds.y,
-            .down = pointer.down, .pressed = pointer.pressed,
-            .released = pointer.released, .secondary_down = secondary.down,
-            .secondary_pressed = secondary.pressed,
-            .secondary_released = secondary.released, .key = key})
-    }
+    typed: [1024]u8
+    text := TypedTextTake(session, typed[:])
+    ok = BundleAppFrame(*host.app, bounds, pointer, secondary, key, 0, 0.0,
+        text, cast(float64)Clock.MonotonicMilliseconds() / 1000.0)
+    host.player.keyboard = host.app.app.keyboard
+    host.player.failed = host.app.failed
     if !ok { AndroidNativeLog(ifx host.player.failed then "Android portable VM failed" else "Android guest frame rejected") }
     FrameInputEnd(session)
     AndroidTouchFrameEnd()
@@ -267,33 +266,144 @@ AndroidBundleDraw :: (host: *AndroidBundleHost, session: Session,
     return ok && AndroidBundlePresent()
 }
 
-AndroidBundleRunMain :: () -> s32 {
-    AndroidNativeLog("Android portable host starting")
-    AndroidJniKeepHostThread()
-    defer { AndroidJniReleaseHostThread() }
-    AndroidProcessPrepare()
-
-    input_session := SessionOpen()
-    if !SessionValid(input_session) { AndroidNativeLog("Android input session failed"); return 1 }
-    defer { CloseSession(input_session) }
-    AndroidTextInputOpen(input_session)
-    defer { AndroidTextInputClose(input_session) }
-
-    android_bundle_data[0] = AndroidBundleRead("app.zx")
-    if android_bundle_data[0].count == 0 { AndroidNativeLog("Android app.zx asset is missing"); return 1 }
-    defer {
-        AndroidBundleClose(*android_bundle_hosts[0])
-        AndroidBundleClose(*android_bundle_hosts[1])
-        AndroidBundleFree(android_bundle_data[0])
-        AndroidBundleFree(android_bundle_data[1])
-        android_bundle_data[0] = ""
-        android_bundle_data[1] = ""
-        android_bundle_active = 0
+// Finishes the portable frame the bundle just drew: input bracketing, the
+// pixel flush and the window's next present.
+AndroidBundleFrameEnd :: (host: *AndroidBundleHost, session: Session) -> bool {
+    FrameInputEnd(session)
+    AndroidTouchFrameEnd()
+    PixmapEndInto()
+    present := AndroidBundlePresent()
+    if present && host.first_pending {
+        host.first_pending = false
+        AndroidNotifyFirstFrame()
     }
-    android_bundle_hosts[0].media_slot = 0
-    android_bundle_hosts[1].media_slot = 1
-    if !AndroidBundleOpen(*android_bundle_hosts[0], android_bundle_data[0]) { AndroidNativeLog("Android app.zx failed to open"); return 1 }
+    AndroidTextInputFrame(session, host.player.keyboard)
+    return present
+}
 
+// The portable bundle's wait callback: presents the previous frame, paces,
+// then prepares the next frame's surface and fills its input record.
+// Android owns the window, lifecycle and pixels; the bundle owns its loop.
+AndroidBundleWait :: (context: *void, input: *Player.Input) -> bool {
+    host := cast(*AndroidBundleHost)context
+    session := host.text_session
+    if host.frames > 0 {
+        host.quiet_frames = ifx host.frame_reuse then host.quiet_frames + 1 else 0
+        host.reuse = true
+        host.next_frame_ms = Clock.MonotonicMilliseconds() +
+            ifx host.quiet_frames >= 2 then cast(s64)100 else cast(s64)16
+        if !AndroidBundleFrameEnd(host, session) { return false }
+    }
+    width: s32
+    height: s32
+    loop {
+        now := Clock.MonotonicMilliseconds()
+        timeout := ifx host.next_frame_ms > now then cast(s32)(host.next_frame_ms - now) else 0
+        if timeout > 1000 { timeout = 1000 }
+        unused AndroidNativePoll(timeout)
+        if AndroidNativeDestroyRequested() { return false }
+        if AndroidNativePaused() || !AndroidNativeWindowReady() ||
+        !AndroidNativeSurfaceSize(*width, *height) {
+            if !host.was_paused && host.media.state == 2 {
+                AndroidBundleMediaPausePlayback(*host.media)
+            }
+            host.was_paused = true
+            AndroidTextInputFrame(session, false)
+            host.reuse = false
+            host.quiet_frames = 0
+            host.next_frame_ms = Clock.MonotonicMilliseconds() + 1000
+            continue
+        }
+        break
+    }
+    host.was_paused = false
+    host.selected_count = AndroidBundleTakeFile(host.selected[:]).count
+    if host.selected_count > 0 {
+        // The loop ends here; the runner swaps the selected bundle in.
+        host.swap_pending = true
+        return false
+    }
+    if AndroidNativeTakeResized() || AndroidTakeGraphicsInvalidate() != 0 ||
+    AndroidNativeTakeRedraw() { host.frame_reuse = false }
+    viewport: AndroidViewport
+    SyncAndroidViewport(*viewport)
+    if viewport.ready == 0 || viewport.width <= 0 || viewport.height <= 0 {
+        viewport.x = 0; viewport.y = 0
+        viewport.width = width; viewport.height = height
+    }
+    zoom := AndroidLayoutZoom()
+    AndroidTouchSetZoom(zoom)
+    bounds := Rectangle.{cast(float32)viewport.x / zoom,
+        cast(float32)viewport.y / zoom, cast(float32)viewport.width / zoom,
+        cast(float32)viewport.height / zoom}
+    if !AndroidNativeEnsurePixels(viewport.x + viewport.width,
+    viewport.y + viewport.height) || !PixmapScale(zoom, zoom) ||
+    !PixmapResumeInto(viewport.x + viewport.width, viewport.y + viewport.height,
+    AndroidNativePixels(), true) { AndroidNativeLog("Android pixmap surface failed"); return false }
+    // These VM frames replay their paint; the caller clears their canvas.
+    AndroidNativeFill(cast(u32)0xff000000)
+    ClearAndroidFrame(viewport, cast(u32)0xfff8fafc)
+    AndroidBundleMediaTick(*host.media, host.media_slot)
+    AndroidTextInputBeginFrame(session)
+    if !AndroidTouchFrameInputBegin(session, zoom) {
+        AndroidNativeLog("Android frame input failed")
+        PixmapEndInto()
+        return false
+    }
+
+    key := AndroidTouchTakeKey()
+    if AndroidTextInputKeyPressed(259) { key = 259 }
+    if AndroidTextInputKeyPressed(257) { key = 257 }
+    codepoint := AndroidTextInputCharacter()
+    while codepoint != 0 {
+        Player.PlayerTyped(*host.player, codepoint)
+        codepoint = AndroidTextInputCharacter()
+    }
+    pointer := PollPointer()
+    secondary := PollSecondaryPointer()
+    host.frame_reuse = host.reuse
+    host.frames += 1
+    input.* = Player.Input.{
+        .width = cast(s32)bounds.width, .height = cast(s32)bounds.height,
+        .x = pointer.x - bounds.x, .y = pointer.y - bounds.y,
+        .down = pointer.down, .pressed = pointer.pressed,
+        .released = pointer.released, .secondary_down = secondary.down,
+        .secondary_pressed = secondary.pressed,
+        .secondary_released = secondary.released, .key = key}
+    return true
+}
+
+// Swaps the active bundle to a selected file when it is valid.
+AndroidBundleSwapTo :: (path: string, input_session: Session) {
+    incoming := AndroidBundleRead(path)
+    candidate_index := 1 - android_bundle_active
+    candidate := *android_bundle_hosts[candidate_index]
+    accepted := incoming.count > 0 && AndroidBundleOpen(candidate, incoming,
+        *android_bundle_hosts[android_bundle_active])
+    if accepted {
+        active := *android_bundle_hosts[android_bundle_active]
+        old_session := ifx active.hosted then active.app.app.session else input_session
+        AndroidTextInputClose(old_session)
+        AndroidBundleClose(active)
+        AndroidBundleFree(android_bundle_data[android_bundle_active])
+        android_bundle_data[android_bundle_active] = ""
+        android_bundle_data[candidate_index] = incoming
+        android_bundle_active = candidate_index
+        new_session := ifx candidate.hosted then candidate.app.app.session else input_session
+        AndroidTextInputOpen(new_session)
+        AndroidBundleResult(true)
+    } else {
+        AndroidBundleClose(candidate)
+        active := *android_bundle_hosts[android_bundle_active]
+        unused AndroidBundleImagesRegister(*active.images,
+            ifx active.media_slot == 0 then 384 else 512)
+        AndroidBundleFree(incoming)
+        print("kryon: selected ZX is invalid or needs unavailable services\n")
+        AndroidBundleResult(false)
+    }
+}
+
+AndroidBundleRunHosted :: (input_session: Session) -> s32 {
     ok := true
     first_frame := true
     reuse := false
@@ -309,39 +419,12 @@ AndroidBundleRunMain :: () -> s32 {
 
         selected: [4096]u8
         path := AndroidBundleTakeFile(selected[:])
-        if path.count > 0 {
-            incoming := AndroidBundleRead(path)
-            candidate_index := 1 - android_bundle_active
-            candidate := *android_bundle_hosts[candidate_index]
-            accepted := incoming.count > 0 && AndroidBundleOpen(candidate, incoming,
-                *android_bundle_hosts[android_bundle_active])
-            if accepted {
-                active := *android_bundle_hosts[android_bundle_active]
-                old_session := ifx active.hosted then active.app.app.session else input_session
-                AndroidTextInputClose(old_session)
-                AndroidBundleClose(active)
-                AndroidBundleFree(android_bundle_data[android_bundle_active])
-                android_bundle_data[android_bundle_active] = ""
-                android_bundle_data[candidate_index] = incoming
-                android_bundle_active = candidate_index
-                new_session := ifx candidate.hosted then candidate.app.app.session else input_session
-                AndroidTextInputOpen(new_session)
-                AndroidBundleResult(true)
-            } else {
-                AndroidBundleClose(candidate)
-                active := *android_bundle_hosts[android_bundle_active]
-                unused AndroidBundleImagesRegister(*active.images,
-                    ifx active.media_slot == 0 then 384 else 512)
-                AndroidBundleFree(incoming)
-                print("kryon: selected ZX is invalid or needs unavailable services\n")
-                AndroidBundleResult(false)
-            }
-        }
+        if path.count > 0 { AndroidBundleSwapTo(path, input_session) }
 
         width: s32
         height: s32
         active := *android_bundle_hosts[android_bundle_active]
-        session := ifx active.hosted then active.app.app.session else input_session
+        session := active.app.app.session
         paused := AndroidNativePaused() || !AndroidNativeWindowReady() ||
             !AndroidNativeSurfaceSize(*width, *height)
         if paused {
@@ -371,7 +454,7 @@ AndroidBundleRunMain :: () -> s32 {
             cast(float32)viewport.y / zoom, cast(float32)viewport.width / zoom,
             cast(float32)viewport.height / zoom}
         AndroidTextInputBeginFrame(session)
-        ok = AndroidBundleDraw(active, session, viewport, bounds, zoom, reuse)
+        ok = AndroidBundleDraw(active, session, viewport, bounds, zoom)
         AndroidTextInputFrame(session, active.player.keyboard)
         if ok && first_frame {
             first_frame = false
@@ -388,6 +471,74 @@ AndroidBundleRunMain :: () -> s32 {
     }
     active := *android_bundle_hosts[android_bundle_active]
     return ifx ok && !active.player.failed then 0 else 1
+}
+
+// The portable bundle runs its own event loop inside PlayerRun; the wait
+// callback above prepares each frame. A file selection ends that loop and
+// the runner swaps the selected bundle in.
+AndroidBundleRunPortable :: (input_session: Session) -> s32 {
+    ok := true
+    while ok && !AndroidNativeDestroyRequested() {
+        host := *android_bundle_hosts[android_bundle_active]
+        host.text_session = input_session
+        host.frames = 0
+        host.reuse = false
+        host.frame_reuse = false
+        host.quiet_frames = 0
+        host.was_paused = false
+        host.first_pending = true
+        host.next_frame_ms = Clock.MonotonicMilliseconds()
+        host.swap_pending = false
+        ok = Player.PlayerRun(*host.player)
+        if !ok {
+            // The VM failed inside a prepared frame; release its bracketing.
+            FrameInputEnd(input_session)
+            AndroidTouchFrameEnd()
+            PixmapEndInto()
+            unused AndroidJniFinishActivity()
+            break
+        }
+        if host.swap_pending {
+            AndroidBundleSwapTo(TextFromBytes(host.selected[0:host.selected_count]),
+                input_session)
+            continue
+        }
+        break
+    }
+    return ifx ok && !android_bundle_hosts[android_bundle_active].player.failed then 0 else 1
+}
+
+AndroidBundleRunMain :: () -> s32 {
+    AndroidNativeLog("Android portable host starting")
+    AndroidJniKeepHostThread()
+    defer { AndroidJniReleaseHostThread() }
+    AndroidProcessPrepare()
+
+    input_session := SessionOpen()
+    if !SessionValid(input_session) { AndroidNativeLog("Android input session failed"); return 1 }
+    defer { CloseSession(input_session) }
+    AndroidTextInputOpen(input_session)
+    defer { AndroidTextInputClose(input_session) }
+
+    android_bundle_data[0] = AndroidBundleRead("app.zx")
+    if android_bundle_data[0].count == 0 { AndroidNativeLog("Android app.zx asset is missing"); return 1 }
+    defer {
+        AndroidBundleClose(*android_bundle_hosts[0])
+        AndroidBundleClose(*android_bundle_hosts[1])
+        AndroidBundleFree(android_bundle_data[0])
+        AndroidBundleFree(android_bundle_data[1])
+        android_bundle_data[0] = ""
+        android_bundle_data[1] = ""
+        android_bundle_active = 0
+    }
+    android_bundle_hosts[0].media_slot = 0
+    android_bundle_hosts[1].media_slot = 1
+    if !AndroidBundleOpen(*android_bundle_hosts[0], android_bundle_data[0]) { AndroidNativeLog("Android app.zx failed to open"); return 1 }
+
+    if android_bundle_hosts[android_bundle_active].hosted {
+        return AndroidBundleRunHosted(input_session)
+    }
+    return AndroidBundleRunPortable(input_session)
 }
 
 #program_export

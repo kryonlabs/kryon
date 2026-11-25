@@ -492,7 +492,7 @@ SettingsModal :: (session: Session) {
     }
 }
 
-DashboardFrame :: (session: Session, viewport: Rectangle) -> s32 {
+DashboardFrame :: (session: Session, viewport: Rectangle) {
     EnsureInitialized()
     snapshot := CaptureFrameInput(session)
     unused EnsureDashboardTheme(dark_theme, compact_density, false, viewport.width)
@@ -510,5 +510,4 @@ DashboardFrame :: (session: Session, viewport: Rectangle) -> s32 {
         unused End(session)
     }
     if settings_open { SettingsModal(session) }
-    return 0
 }

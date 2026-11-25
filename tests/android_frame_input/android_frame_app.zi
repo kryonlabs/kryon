@@ -1,4 +1,5 @@
-// The application the canonical Android host calls back each frame.
+// The application frame the canonical Android host calls back each frame.
+App :: #import "app_types";
 #import "session"
 #import "geometry"
 #import "frame_snapshot"
@@ -6,7 +7,6 @@
 #import "android_touch"
 #import "paint_queue"
 
-fail: bool;
 frames: s32;
 seen: FrameInputSnapshot;
 foreign_seen: bool;
@@ -14,9 +14,8 @@ foreign: Session;
 pointer_matches: bool;
 paint_red: u8;
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    unused viewport
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
     frames += 1
     seen = CaptureFrameInput(session)
     first := PollPointer()
@@ -25,7 +24,5 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         first.pressed == seen.pointer.pressed && second.pressed == first.pressed &&
         first.released == seen.pointer.released && second.released == first.released
     if CaptureFrameInput(foreign).available { foreign_seen = true }
-    if fail { return 1 }
     if paint_red != 0 { PaintRoundedFill(session, -1, .{10.0, 10.0, 12.0, 8.0}, 0.0, 0, .{paint_red, 80, 120, 255}) }
-    return 0
 }

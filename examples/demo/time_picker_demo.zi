@@ -2,6 +2,7 @@
 // disabled, and in a small form, in light and dark palettes. The picker
 // keeps its popup, columns and keyboard column itself; this app keeps only
 // the times. desktop_time_picker.zi runs it in a window.
+App :: #import "kryon/app";
 Box :: #import "kryon/box";
 SegmentedControl :: #import "kryon/segmented_control";
 Text :: #import "kryon/text";
@@ -104,8 +105,9 @@ FastText :: (output: []u8) -> string {
     return TextView(output[0:length])
 }
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     want: s32 = ifx dark then 1 else 0
     if installed != want {
         unused SystemPaletteInstall(SystemPaletteFallback(dark))
@@ -164,5 +166,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         Label(session, TextView(last_change[0:last_change_length]),
             Rectangle.{x, y, width, 20.0}, 14, false)
     }
-    return 0
+    return
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "time_picker_demo"}, Frame) }

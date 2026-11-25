@@ -1,3 +1,4 @@
+App :: #import "kryon/app";
 Button :: #import "kryon/button";
 Link :: #import "kryon/link";
 Text :: #import "kryon/text";
@@ -31,8 +32,9 @@ WebLink :: (session: Session, text: string, url: string, bounds: Rectangle) {
         .link = url})
 }
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     page: PageLayout = PageFor(viewport, 640.0)
     Heading(session, "{{name}}", 1, NextRow(*page, 44.0), FontSize(*page, 34))
     Paragraph(session, "This page is a Kryon application. The same Ziran source runs as semantic HTML, on a canvas, and in a desktop window.",
@@ -55,5 +57,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     digits: [16]u8
     Paragraph(session, Joined(FormatInteger(cast(s64)likes, digits[:]), " likes so far",
         likes_text[:]), NextRow(*page, 24.0), FontSize(*page, 16))
-    return 0
+    return
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "{{name}}"}, Frame) }

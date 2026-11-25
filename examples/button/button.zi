@@ -1,3 +1,4 @@
+App :: #import "kryon/app";
 Button :: #import "kryon/button";
 Layout :: #import "kryon/layout";
 Text :: #import "kryon/text";
@@ -10,11 +11,12 @@ Text :: #import "kryon/text";
 
 clicks: s32;
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace5),
         .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
-    if !page.opened { return 0 }
+    if !page.opened { return }
     Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{height = 40}, .text = "Button", .size = 28})
     // Every tone in every emphasis, two to a row.
     grid := Layout.Grid(session, GridProps.{.columns = 2, .gap = Layout.Gap(.ThemeMetricSpace3)})
@@ -32,15 +34,16 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{height = 36},
         .text = FormatInteger(cast(s64)clicks, digits[:])})
     unused End(session)
-    return 0
+    return
 }
 
 example_disabled: bool;
 example_reduced_motion: bool;
 
-// Hosts publish these options before the unchanged application entry point.
-#program_export
+// The gallery host calls this before drawing the example's frames.
 SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
     example_disabled = disabled
     example_reduced_motion = reduced_motion
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "button"}, Frame) }

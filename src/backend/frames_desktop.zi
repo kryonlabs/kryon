@@ -9,6 +9,29 @@ using Geometry :: #import "geometry";
 #if OS == .LINUX {
     using Access :: #import "desktop_accessibility_linux";
 }
+#if #defined(KRYON_TEST_DRIVER) {
+    Inspect :: #import "test_driver_engine";
+    Theme :: #import "theme";
+    Env :: #import "std/environment_linux";
+    Raster :: #import "cairo_raster";
+    Titles :: #import "program_title";
+
+    RunPreview :: (path: string) -> s32 {
+        theme_bytes: [8]u8
+        scratch: [16]u8
+        theme := Env.EnvironmentRead("KRYON_PREVIEW_THEME", theme_bytes[:]).value
+        width := Env.EnvironmentRange("KRYON_PREVIEW_WIDTH", 1, 4096, scratch[:])
+        height := Env.EnvironmentRange("KRYON_PREVIEW_HEIGHT", 1, 4096, scratch[:])
+        if Env.EnvironmentRead("SDL_VIDEODRIVER", scratch[:]).value != "dummy" ||
+        !Raster.CaptureRequested() || (theme != "light" && theme != "dark") ||
+        !width.is_ok || !height.is_ok {
+            return Desktop.DesktopError("kryon: invalid headless capture settings; use kryon preview")
+        }
+        unused Theme.InstallDefaultTheme(theme == "dark", true)
+        return Desktop.RunTitled(DrawFrame, cast(s32)width.value, cast(s32)height.value, Titles.ProgramTitle(),
+            .{.background = DesktopThemeBackground}, .{.tree = Inspect.TestDriverWriteTree, .path = path})
+    }
+}
 
 active_draw: App.Draw;
 
@@ -24,10 +47,15 @@ Run :: (window: App.Window, draw: App.Draw) -> s32 {
     #if OS == .LINUX {
         Access.DesktopAccessibilityUse()
     }
+    active_draw = draw
+    #if #defined(KRYON_TEST_DRIVER) {
+        path_bytes: [4096]u8
+        path := Env.EnvironmentRead("KRYON_PREVIEW_TREE", path_bytes[:])
+        if path.is_ok { return RunPreview(path.value) }
+    }
     width := window.width
     height := window.height
     if width <= 0 { width = 960 }
     if height <= 0 { height = 600 }
-    active_draw = draw
     return Desktop.RunTitled(DrawFrame, width, height, window.title, .{.background = DesktopThemeBackground})
 }

@@ -20,23 +20,26 @@ profile is used unless `--profile NAME` selects another desktop C99 profile.
 
 Register `previews` in `[package] module_roots`, for example
 `module_roots = ["src", "previews"]`. Each fixture is a uniquely named module
-at `previews/<fixture>.zi`. Its entry is the same frame export used by the
-default desktop host:
+at `previews/<fixture>.zi`. Its entry is an ordinary program: `main` runs
+`App.Run` with the module that draws the screen:
 
 ```zi
+App :: #import "kryon/app";
 Button :: #import "kryon/button";
 #import "kryon/geometry"
 #import "kryon/session"
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     unused Button.Draw(session, .{.key = cast(u64)7,
         .bounds = .{16.0, 16.0, viewport.width - 32.0, 36.0}, .label = "Save"})
-    return 0
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "save_button"}, Frame) }
 ```
 
-Return zero after composing the frame. Fixture code can import the project's
+Compose the frame from ordinary widget calls. Fixture code can import the project's
 ordinary view modules and assets. Use explicit sample data and the supplied
 viewport. The preview runs offscreen with the native Cairo renderer, neutral
 input, zero frame time and a fixed light or dark palette with reduced motion.

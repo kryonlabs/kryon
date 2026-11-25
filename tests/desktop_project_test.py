@@ -102,6 +102,8 @@ def main():
             "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
         )
         (project / "src/app.zi").write_text(
+            'App :: #import "kryon/app";\n'
+            '#import "Window"\n'
             'Image :: #import "kryon/image";\n'
             'Scroll :: #import "kryon/scroll";\n'
             'Text :: #import "kryon/text";\n'
@@ -114,8 +116,9 @@ def main():
             '#import "kryon/tree_input"\n'
             'scroll_offset: s32;\n'
             'first_frame: bool = true;\n'
-            '#program_export\n'
-            'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
+            'Frame :: (frame: App.Frame) {\n'
+            '    session := Session.{.slot = frame.slot, .epoch = frame.epoch}\n'
+            '    viewport := frame.viewport\n'
             '    if first_frame {\n'
             '        first_frame = false\n'
             '        if Env.EnvironmentText("THEME_PROBE_OVERRIDE") == "light" {\n'
@@ -123,18 +126,18 @@ def main():
             '        }\n'
             '    }\n'
             '    key: s32 = KeyboardTake(session)\n'
-            '    if key == 65 { return 1 }\n'
+            '    if key == 65 { WindowQuit(); return }\n'
             '    control: bool = (KeyboardModifiers(session) & KeyModifierControl) != 0\n'
-            '    if key == 83 && control { return 1 }\n'
+            '    if key == 83 && control { WindowQuit(); return }\n'
             '    typed: s32 = TypedCodepointTake(session)\n'
-            '    if typed == 122 || typed == 233 { return 1 }\n'
-            '    if PointerWheelTake(session, viewport) > 0.0 { return 1 }\n'
-            '    if SecondaryPointerSample(session).released { return 1 }\n'
+            '    if typed == 122 || typed == 233 { WindowQuit(); return }\n'
+            '    if PointerWheelTake(session, viewport) > 0.0 { WindowQuit(); return }\n'
+            '    if SecondaryPointerSample(session).released { WindowQuit(); return }\n'
             '    scroll := Scroll.Draw(session, .{.key = 80, .bounds = .{700.0, 10.0, 200.0, 150.0},\n'
             '        .content_height = 600, .scroll_offset = scroll_offset})\n'
             '    scroll_offset = scroll.scroll_offset\n'
             '    if scroll.opened { End(session) }\n'
-            '    if scroll_offset > 0 { return 1 }\n'
+            '    if scroll_offset > 0 { WindowQuit(); return }\n'
             '    image: Image.Props\n'
             '    image.key = cast(u64)1\n'
             '    image.bounds = Rectangle.{80.0, 80.0, 240.0, 240.0}\n'
@@ -146,13 +149,12 @@ def main():
             '    label.text = "gjpqy"\n'
             '    label.size = 40\n'
             '    Text.Draw(session, label)\n'
-            '    return 0\n}\n'
+            '    return\n}\n'
+            'main :: () -> s32 { return App.Run(App.Window.{.title = "desktop_probe"}, Frame) }\n'
         )
         solid_png(project / "red.png", 32, 32, (230, 30, 40, 255))
         env = private_environment()
         env["XDG_CONFIG_HOME"] = str(project / "config")
-        # The frame-mode probe keeps its frame entry until phase 2 ports it.
-        env["KRYON_FRAME_ENTRY"] = "1"
         run([ZIRAN, "lock"], project, env)
         run([ZIRAN, "tool", "kryon", "build", "--profile", "desktop"],
             project, env)
@@ -300,8 +302,8 @@ def main():
             "        subprocess.run(['xdotool', 'mousemove', '--window', "
             "window, '780', '70', 'click', '5'], check=True)\n"
             "    stdout, stderr = app.communicate(timeout=10)\n"
-            "    assert app.returncode == 1, (app.returncode, stdout, stderr)\n"
-            "    assert 'desktop frame rendering failed' in stderr, stderr\n"
+            "    assert app.returncode == 0, (app.returncode, stdout, stderr)\n"
+            "    assert 'desktop frame rendering failed' not in stderr, stderr\n"
             "finally:\n"
             "    if app.poll() is None:\n"
             "        app.terminate()\n"

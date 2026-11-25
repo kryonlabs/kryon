@@ -14,7 +14,6 @@
     #import "android_process"
     #import "android_surface"
     #import "android_touch"
-    #import "frame_entry"
     #import "frame_texture_android"
     #import "std/byte_text_linux"
     #import "drawing_props"
@@ -41,8 +40,22 @@
 
     using FrameStatus;
 
+    App :: #import "app_types";
+
     android_log :: #system_library "log";
     AndroidLogWrite :: (priority: s32, tag: *u8, text: *u8) -> s32 #foreign android_log "__android_log_write";
+
+    // The program's main. Generated sources bind it to the selected entry
+    // module's `main`; the program opens its window through kryon/app, whose
+    // Android branch hands the frame callback back to this host.
+    host_api :: #system_library "host_api";
+    AndroidProgramMain :: () -> s32 #foreign host_api;
+
+    active_draw: App.Draw;
+
+    AndroidUseDraw :: (draw: App.Draw) {
+        active_draw = draw
+    }
 
     AndroidError :: (message: string) -> s32 {
         output: [256]u8
@@ -149,11 +162,8 @@
             if BeginFrame(session, cast(u64)1, bounds) != cast(FrameStatus)FrameOk {
                 AndroidFrameFailure(session, "the frame could not begin")
                 ok = false
-            } else if Frame(session, bounds) != 0 {
-                unused AndroidError("kryon: the application's frame failed")
-                TreeCancel(session)
-                ok = false
             } else {
+                App.CallDraw(active_draw, session.slot, session.epoch, bounds)
                 // Compose against the last presented pixels; route changes
                 // may capture them before the queued paint replaces them.
                 if !reuse {
@@ -219,7 +229,14 @@
         AndroidJniKeepHostThread()
         defer { AndroidJniReleaseHostThread() }
         AndroidProcessPrepare()
+        // The program's main opens its window through kryon/app, which runs
+        // the frame loop below on this activity thread.
+        unused AndroidProgramMain()
+    }
 
+    // The Android frame loop App.Run runs: the session, the widget tree's
+    // frames, input, IME, damage presentation and pacing.
+    AndroidFrameLoop :: () {
         session: Session = SessionOpen()
         if !SessionValid(session) {
             unused AndroidError("kryon: could not open a UI session")

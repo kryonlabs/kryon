@@ -97,14 +97,8 @@ def main():
     run(ROOT / "build/bin/kryon", "preview", "responsive", "--theme", "dark", "--width", "550,1200",
         "--height", str(HEIGHT), "--output", PREVIEW, cwd=APP, env=env)
     check_previews()
-    api = run(ZIRAN, "api", "--project", "--json", "--imports-only", "--module", "responsive",
-              "previews/responsive.zi", cwd=APP, env=env, capture_output=True, text=True)
-    imports = json.loads(api.stdout)["modules"][0]["imports"]
-    layout = next(declaration["resolved_module"] for declaration in imports if declaration["name"] == "Layout")
-    package = layout.removesuffix("_layout")
-    run(ZIRAN, "bundle", "--project", "--define", "KRYON_ZX", "--bind",
-        f"{package}_frame_entry:ProjectFrame=responsive:Frame", "--entry", f"{package}_zx_run:main",
-        "-o", BUNDLE, ROOT / "src/backend/zx_run.zi", "previews/responsive.zi", cwd=APP, env=env)
+    run(ZIRAN, "bundle", "--project", "--define", "KRYON_ZX", "--entry", "responsive:main",
+        "-o", BUNDLE, "previews/responsive.zi", cwd=APP, env=env)
     run(PLAYER, "--check", BUNDLE, env=env)
     env["SDL_VIDEODRIVER"] = "x11"
     run("xvfb-run", "-a", "-s", "-screen 0 1400x1000x24", sys.executable, __file__, "--input", env=env)

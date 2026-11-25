@@ -19,7 +19,8 @@ from toolchain import ZIRAN_ROOT, pinned, kryon_only
 ROOT = Path(__file__).resolve().parents[1]
 ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
 
-APP = '''Text :: #import "kryon/text";
+APP = '''App :: #import "kryon/app";
+Text :: #import "kryon/text";
 #import "kryon/geometry"
 #import "kryon/session"
 #import "Window"
@@ -28,22 +29,22 @@ frames: s32;
 hidden_at: s32;
 intercepting: bool;
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
     frames += 1
     // Hosts that cannot intercept closing (the terminal) only draw.
     if frames == 1 { intercepting = WindowInterceptClose(true) }
-    if frames > 3000 { return 1 }
+    if frames > 3000 { WindowQuit(); return }
     if intercepting && hidden_at == 0 && WindowTakeCloseRequest() {
         WindowHide()
         hidden_at = frames
     }
     if hidden_at > 0 && frames == hidden_at + 1 && WindowVisible() {
-        return 1
+        WindowQuit()
     }
     if hidden_at > 0 && frames == hidden_at + 20 { WindowShow() }
     if hidden_at > 0 && frames == hidden_at + 22 {
-        if !WindowVisible() { return 1 }
+        if !WindowVisible() { WindowQuit(); return }
         WindowQuit()
     }
     text: Text.Props
@@ -51,8 +52,9 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     text.bounds = Rectangle.{20.0, 20.0, 300.0, 30.0}
     text.text = "window probe"
     Text.Draw(session, text)
-    return 0
+    return
 }
+main :: () -> s32 { return App.Run(App.Window.{.title = "window probe"}, Frame) }
 '''
 
 DRIVER = '''import subprocess
@@ -146,8 +148,6 @@ def main():
         (project / "src/app.zi").write_text(APP)
         (project / "driver.py").write_text(DRIVER)
         env = private_environment()
-        # The frame-mode probe keeps its frame entry until phase 2 ports it.
-        env["KRYON_FRAME_ENTRY"] = "1"
         run([ZIRAN, "lock"], project, env)
         run([ZIRAN, "tool", "kryon", "build", "--profile", "desktop"],
             project, env)

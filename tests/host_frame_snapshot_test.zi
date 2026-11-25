@@ -8,8 +8,10 @@
 #import "frame_input_provider"
 #import "tree_frame"
 Probe :: #import "snapshot_app";
+App :: #import "kryon/app";
+#import "geometry"
 #if #defined(PLATFORM_WEB) {
-    Host :: #import "canvas_run";
+    Host :: #import "frames_web";
     #import "canvas_host"
     #import "canvas_raster"
     #import "canvas_input"
@@ -139,11 +141,19 @@ Step :: (session: Session, flags: u8, focused: bool = true, legacy: s32 = 0,
     if key != 0 { unused KeyboardSend(session, key) }
     drawn: bool
     #if #defined(PLATFORM_WEB) {
-        drawn = Host.DrawCanvasFrame(session, CanvasViewport())
+        drawn = Host.DrawCanvasFrame(session, CanvasViewport(), Probe.Frame)
     } else {
-        drawn = Host.DrawFrame(session, Probe.Frame)
+        drawn = Host.DrawFrame(session, HostFrame)
     }
-    return drawn != fail && Probe.failure == 0 && !CaptureFrameInput(session).available
+    return drawn && Probe.callback_failed == fail && Probe.failure == 0 &&
+    !CaptureFrameInput(session).available
+}
+
+// The app's frames are App.Draw calls now; the desktop loop still draws one
+// (session, bounds) frame, so adapt between them.
+HostFrame :: (session: Session, bounds: Rectangle) -> s32 {
+    App.CallDraw(Probe.Frame, session.slot, session.epoch, bounds)
+    return 0
 }
 
 RunProbe :: () -> s32 {

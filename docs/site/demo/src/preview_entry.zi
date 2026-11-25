@@ -1,4 +1,5 @@
 Scroll :: #import "kryon/scroll";
+App :: #import "kryon/app_types";
 #import "kryon/geometry"
 #import "kryon/input_protocol"
 #import "kryon/session"
@@ -53,7 +54,7 @@ Tick :: () -> s32 {
     scroll := Scroll.Draw(preview_session, Scroll.Props.{.key = 190000001, .bounds = viewport,
         .content_height = cast(s32)height, .scroll_offset = preview_scroll})
     preview_scroll = scroll.scroll_offset
-    if Frame(preview_session, scroll.content) != 0 { return 1 }
+    App.CallDraw(Frame, preview_session.slot, preview_session.epoch, scroll.content)
     if scroll.opened { End(preview_session) }
     if EndFrame(preview_session) != FrameStatus.FrameOk { return 1 }
     for index: 0..TreeCount(preview_session) - 1 {

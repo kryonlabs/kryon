@@ -1,8 +1,8 @@
 // The desktop frame loop every desktop host runs: the window's events, the
-// app's frame and presenting. desktop_run is the default host; a program can
-// pass its frame directly to Run. A host that runs frames registers the
-// widget tree's frame driver first (TreeFrameUse, see frame_driver); without
-// one the window only clears and presents.
+// app's frame and presenting. A program's main passes its frame to App.Run
+// (kryon/app), whose frames_desktop host calls Run. A host that runs frames
+// registers the widget tree's frame driver first (TreeFrameUse, see
+// frame_driver); without one the window only clears and presents.
 #import "secondary_pointer"
 #import "desktop_accessibility"
 #import "cairo_raster"

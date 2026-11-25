@@ -1,3 +1,4 @@
+App :: #import "kryon/app";
 #import "kryon/geometry"
 #import "kryon/session"
 #import "kryon/frame_snapshot"
@@ -46,14 +47,15 @@ menu_initialized: bool;
 b: Rectangle;
 example_motion: TransitionMotionState;
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
     page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
         .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
-    if !page.opened { return 0 }
+    if !page.opened { return }
     Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Menu", .size = 23})
     b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
     disabled := example_input.disabled
@@ -65,15 +67,16 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     if !menu_initialized { Menu.MenuStateInit(*menu_state); menu_state.open_index = 0; menu_initialized = true }
     if Menu.Draw(session, Menu.Props.{.motion = *example_motion, .now = now, .reduced_motion = example_input.reduced_motion, .bounds = b}, groups[:], *menu_state).activated_id > 0 { clicks += 1 }
     unused End(session)
-    return 0
+    return
 }
 
 example_disabled: bool;
 example_reduced_motion: bool;
 
-// Hosts publish these options before the unchanged application entry point.
-#program_export
+// The gallery host calls this before drawing the example's frames.
 SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
     example_disabled = disabled
     example_reduced_motion = reduced_motion
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "menu"}, Frame) }

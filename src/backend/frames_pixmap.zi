@@ -1,34 +1,34 @@
-#import "session"
-#import "frame_entry"
-#import "geometry"
+// The headless raster frame loop App.Run runs: two retained frames (the
+// second after any layout the first settled) and the second as a PPM image:
+//
+//   kryon run shot > frame.ppm
+App :: #import "app_types";
+using SessionModule :: #import "session";
+using Geometry :: #import "geometry";
 #import "pixmap"
 #import "tree"
 #import "tree_draw"
 
 using FrameStatus;
 
-// Runs the application headlessly for two frames, the second after any
-// layout the first settled, and prints that frame as a PPM image:
-//
-//   kryon run shot > frame.ppm
-#program_export
-main :: () -> s32 {
+active_draw: App.Draw;
+
+// Runs the program's frames headlessly and prints the second as a PPM image.
+Run :: (window: App.Window, draw: App.Draw) -> s32 {
+    unused window
     session: Session = SessionOpen()
     if !SessionValid(session) { return 1 }
     defer { PixmapCloseWorkers(); CloseSession(session) }
     viewport: Rectangle = Rectangle.{0.0, 0.0, cast(float32)PixmapWidth,
         cast(float32)PixmapHeight}
+    active_draw = draw
     frame: s32 = 0
     while frame < 2 {
         PixmapBegin(cast(u32)PixmapBackground)
         if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
             return 1
         }
-        result: s32 = Frame(session, viewport)
-        if result != 0 {
-            TreeCancel(session)
-            return result
-        }
+        App.CallDraw(active_draw, session.slot, session.epoch, viewport)
         if EndFrame(session) != cast(FrameStatus)FrameOk { return 1 }
         frame += 1
     }

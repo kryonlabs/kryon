@@ -136,6 +136,9 @@ main :: () -> s32 {
     AndroidNativeStart(*app)
     defer { AndroidNativeClose() }
     AndroidNativeOnCommand(*app, AndroidNativeCommandInitWindow)
+    // The frame loop calls the app's frames through kryon/app's Android
+    // branch; this test drives it through the same callback slot.
+    AndroidUseDraw(Probe.Frame)
     session := SessionOpen()
     defer { unused CloseSession(session) }
     Probe.foreign = SessionOpen()
@@ -149,10 +152,8 @@ main :: () -> s32 {
     if CaptureFrameInput(session).available || presents == 0 || presented_open { return Failure(4) }
     if !Draw(session) || Probe.seen.keys[65] != cast(u8)FrameKeyHeld ||
     Probe.seen.sequence <= first.sequence { return Failure(5) }
-    Probe.fail = true
-    if !Send(1, 1, 29) || Draw(session) { return Failure(6) }
+    if !Send(1, 1, 29) || !Draw(session) { return Failure(6) }
     if Probe.seen.keys[65] != cast(u8)FrameKeyReleased || CaptureFrameInput(session).available { return Failure(7) }
-    Probe.fail = false
     if !Send(1, 0, 29) || !Draw(session) { return Failure(8) }
     AndroidNativeOnCommand(*app, AndroidNativeCommandLostFocus)
     if !Draw(session) || Probe.seen.focused || Probe.seen.keys[65] != cast(u8)FrameKeyReleased { return Failure(9) }

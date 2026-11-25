@@ -9,7 +9,12 @@ Probe :: struct {
     identity: u64; bytes: [128]u8; count: s32; cursor: s32; anchor: s32;
     flags: s32; pending: bool; requests: s32; revocations: s32
 }
-pixels: [192000]u32;
+Scene :: struct {
+    probe: Probe
+    step: s32
+    stage: s32
+    failed: s32
+}
 Present :: (context: *void, identity: u64, value: string, cursor: s32, anchor: s32, flags: s32) {
     probe := cast(*Probe)context
     probe.identity = identity; probe.count = cast(s32)value.count
@@ -29,8 +34,64 @@ Take :: (context: *void, identity: u64, output: []u8) -> TextRequest {
     probe.pending = false; probe.requests += 1
     return result
 }
-Render :: (player: *Player.Player, input: Player.Input) -> bool {
-    return Player.PlayerFrame(player, input, 320, 600, pixels[:])
+// The bundle owns its loop: each wait call checks the frame that just
+// finished and scripts the next one. Stage 1 drives press, release, re-tap
+// and foreign presses; stage 2 lets a pending request reach the bundle;
+// stage 3 renders one frame for the isolation check.
+Wait :: (context: *void, input: *Player.Input) -> bool {
+    scene := cast(*Scene)context
+    input.width = 320; input.height = 600
+    step := scene.step
+    scene.step += 1
+    if scene.stage == 2 {
+        if step >= 3 { input.closed = true; return false }
+        return true
+    }
+    if scene.stage == 3 {
+        if step >= 1 { input.closed = true; return false }
+        return true
+    }
+    if step == 0 { return true }
+    if step == 1 {
+        input.x = 80.0; input.y = 40.0; input.down = true; input.pressed = true
+        return true
+    }
+    if step == 2 {
+        if (scene.probe.flags & 16) == 0 { scene.failed = 12 }
+        if scene.failed != 0 { input.closed = true; return false }
+        input.down = false; input.pressed = false; input.released = true
+        return true
+    }
+    if step == 3 {
+        committed: [128]u8
+        committed_count: s32
+        for at: 0..scene.probe.count - 1 { committed[committed_count] = scene.probe.bytes[at]; committed_count += 1 }
+        if scene.probe.identity == 0 || TextView(committed[:committed_count]) != "start水😀" {
+            scene.failed = 7
+        }
+        if (scene.probe.flags & 16) != 0 { scene.failed = 13 }
+        if scene.failed != 0 { input.closed = true; return false }
+        input.pressed = true; input.down = true
+        return true
+    }
+    if step == 4 {
+        if (scene.probe.flags & 16) == 0 { scene.failed = 14 }
+        if scene.failed != 0 { input.closed = true; return false }
+        input.x = 310.0; input.y = 100.0
+        return true
+    }
+    if step == 5 {
+        if (scene.probe.flags & 16) != 0 { scene.failed = 15 }
+        if scene.failed != 0 { input.closed = true; return false }
+        input.x = 80.0; input.y = 40.0
+        return true
+    }
+    if step == 6 {
+        input.down = false; input.pressed = false; input.released = true
+        return true
+    }
+    input.closed = true
+    return false
 }
 #program_export
 main :: (argc: s32, argv: **u8) -> s32 {
@@ -41,45 +102,34 @@ main :: (argc: s32, argv: **u8) -> s32 {
     source := BytesFromPointer(descriptor.data, cast(u64)data.count)
     first: Player.Player; second: Player.Player
     defer { Player.PlayerClose(*first); Player.PlayerClose(*second) }
-    // Use the empty callback from the zero-initialized player on a headless surface.
     if !Player.PlayerOpen(*first, source, first.platform, null) ||
     !Player.PlayerOpen(*second, source, second.platform, null) { return 3 }
-    a: Probe; b: Probe
-    Player.PlayerUseTextEditor(*first, Present, Take, cast(*void)(*a))
-    Player.PlayerUseTextEditor(*second, Present, Take, cast(*void)(*b))
-    input := Player.Input.{.width = 320, .height = 600}
-    if !Render(*first, input) || !Render(*second, input) { return 4 }
-    input.x = 80.0; input.y = 40.0; input.down = true; input.pressed = true
-    if !Render(*first, input) || !Render(*second, input) { return 5 }
-    if (a.flags & 16) == 0 || (b.flags & 16) == 0 { return 12 }
-    input.down = false; input.pressed = false; input.released = true
-    if !Render(*first, input) || !Render(*second, input) { return 6 }
-    input.released = false
-    if a.identity == 0 || b.identity == 0 || TextView(a.bytes[:a.count]) != "start水😀" ||
-    TextView(b.bytes[:b.count]) != "start水😀" { return 7 }
-    if (a.flags & 16) != 0 || (b.flags & 16) != 0 { return 13 }
-    // A fresh press inside the committed field carries re-tap intent; a
-    // press elsewhere does not, even though a field may retain selection.
-    input.pressed = true; input.down = true
-    if !Render(*first, input) || (a.flags & 16) == 0 { return 14 }
-    input.x = 310.0; input.y = 100.0
-    if !Render(*first, input) || (a.flags & 16) != 0 { return 15 }
-    input.x = 80.0; input.y = 40.0
-    if !Render(*first, input) { return 16 }
-    input.down = false; input.pressed = false; input.released = true
-    if !Render(*first, input) { return 17 }
-    input.released = false
-    a.pending = true
-    stale: [1]HostValue = .[HostScalar("u64", cast(s64)(a.identity + 1))]
+    a: Scene; b: Scene
+    Player.PlayerUseTextEditor(*first, Present, Take, cast(*void)(*a.probe))
+    Player.PlayerUseTextEditor(*second, Present, Take, cast(*void)(*b.probe))
+    if !Player.PlayerUseWait(*first, Wait, cast(*void)(*a)) ||
+    !Player.PlayerUseWait(*second, Wait, cast(*void)(*b)) { return 4 }
+    if !Player.PlayerRun(*first) { return 5 }
+    if !Player.PlayerRun(*second) { return 5 }
+    if a.failed != 0 { return a.failed }
+    if b.failed != 0 { return b.failed }
+    a.probe.pending = true
+    stale: [1]HostValue = .[HostScalar("u64", cast(s64)(a.probe.identity + 1))]
     answer: HostValue
-    if Player.PlayerCall(cast(*void)(*first), HostTextData("zx_run"), HostTextData("BundleTextRequestHost"),
-    *stale[0], 1, *answer) != 1 || answer.fields[4].value.integer != 0 || !a.pending { return 8 }
-    if !Render(*first, input) || !Render(*first, input) || !Render(*second, input) { return 9 }
-    if TextView(a.bytes[:a.count]) != "水😀XYZ" || a.cursor != 3 || a.anchor != 7 || a.requests != 1 ||
-    TextView(b.bytes[:b.count]) != "start水😀" || b.requests != 0 { return 10 }
-    before := b.identity
+    if Player.PlayerCall(cast(*void)(*first), HostTextData("frames_zx"), HostTextData("BundleTextRequestHost"),
+    *stale[0], 1, *answer) != 1 || answer.fields[4].value.integer != 0 || !a.probe.pending { return 8 }
+    a.stage = 2; a.step = 0; b.stage = 2; b.step = 0
+    first.closed = false; second.closed = false
+    if !Player.PlayerRun(*first) { return 9 }
+    if !Player.PlayerRun(*second) { return 9 }
+    if TextView(a.probe.bytes[:a.probe.count]) != "水😀XYZ" || a.probe.cursor != 3 || a.probe.anchor != 7 || a.probe.requests != 1 ||
+    TextView(b.probe.bytes[:b.probe.count]) != "start水😀" || b.probe.requests != 0 { return 10 }
+    before := b.probe.identity
     Player.PlayerClose(*first)
-    if a.identity != 0 || b.identity != before || !Render(*second, input) || b.identity != before { return 11 }
+    if a.probe.identity != 0 || b.probe.identity != before { return 11 }
+    b.stage = 3; b.step = 0
+    second.closed = false
+    if !Player.PlayerRun(*second) || b.probe.identity != before { return 11 }
     print("Native VM editor UTF8 selection, copied snapshots, stale request and foreign-session rejection, committed re-tap and per-player isolation passed\n")
     return 0
 }

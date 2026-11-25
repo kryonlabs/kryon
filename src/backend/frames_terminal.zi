@@ -1,7 +1,9 @@
+// The terminal frame loop App.Run runs: the application's frames on the
+// alternate screen, keyed input and presentation.
+App :: #import "app_types";
 #import "byte_text_linux"
-#import "session"
-#import "frame_entry"
-#import "geometry"
+using SessionModule :: #import "session";
+using Geometry :: #import "geometry";
 #import "terminal"
 #import "terminal_keys"
 #import "tree"
@@ -30,6 +32,8 @@ TerminalState :: struct {
     active: bool
     original: [128]u8
 }
+
+active_draw: App.Draw;
 
 WriteControl :: (value: string) -> bool {
     bytes: [64]u8
@@ -75,19 +79,16 @@ LeaveTerminal :: (state: *TerminalState) {
     state.active = false
 }
 
-// The application supplies Frame(session, viewport). The Kryon host owns
-// entry, screen storage, rendering effects, and presentation.
+// The application's draw builds the frame. The terminal host owns entry,
+// screen storage, rendering effects, and presentation.
 RenderFrame :: (session: Session, viewport: Rectangle, interactive: bool) -> s32 {
     TerminalBegin(80, 24)
     if BeginFrame(session, cast(u64)1, viewport) !=
         cast(FrameStatus)FrameOk {
         return 1
     }
-    result: s32 = Frame(session, viewport)
-    if result != 0 {
-        TreeCancel(session)
-        return result
-    }
+    App.CallDraw(active_draw, session.slot, session.epoch, viewport)
+    result: s32 = 0
     if EndFrame(session) != cast(FrameStatus)FrameOk { result = 1 }
     if result == 0 && interactive && !WriteControl("\x1b[2J\x1b[H") {
         result = 1
@@ -96,8 +97,10 @@ RenderFrame :: (session: Session, viewport: Rectangle, interactive: bool) -> s32
     return result
 }
 
-#program_export
-main :: () -> s32 {
+// Runs the program's frames in the terminal until it closes. The window's
+// title and size are the host terminal's own; the loop keys on raw input.
+Run :: (window: App.Window, draw: App.Draw) -> s32 {
+    unused window
     session: Session = SessionOpen()
     if !SessionValid(session) { return 1 }
     viewport: Rectangle = Rectangle.{0.0, 0.0, 80.0, 24.0}
@@ -107,6 +110,7 @@ main :: () -> s32 {
         CloseSession(session)
         return 1
     }
+    active_draw = draw
     result: s32 = RenderFrame(session, viewport, interactive)
     if interactive {
         input: TerminalPollDescriptor

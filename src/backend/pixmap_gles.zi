@@ -59,12 +59,13 @@ target: u32;
 width: s32;
 height: s32;
 failed: bool;
-seen_revision: u64;
 present_width: s32;
 present_height: s32;
 presented: bool;
 images: [P.PixmapImageLimit]u32;
 image_revisions: [P.PixmapImageLimit]u64;
+image_widths: [P.PixmapImageLimit]s32;
+image_heights: [P.PixmapImageLimit]s32;
 staging: Vec(u32);
 no_flush: PixmapGpuFlushCall;
 
@@ -89,27 +90,50 @@ DropImage :: (slot: s64) {
     image_revisions[slot] = 0
 }
 
-ImageTexture :: (slot: s32) -> u32 {
-    if slot < 0 || slot >= P.PixmapImageLimit { return 0 }
-    if images[slot] != 0 { return images[slot] }
-    image_width := P.pixmap_image_widths[slot]; image_height := P.pixmap_image_heights[slot]
-    count := cast(s64)image_width * image_height
-    // Staging keeps the capacity of its largest upload, which a smaller image
-    // reuses. A bound below that capacity would refuse the smaller image and
-    // drop the whole presenter to software.
-    limit := ifx staging.capacity > count then staging.capacity else count
-    if image_width <= 0 || image_height <= 0 || count > P.PixmapSourceCount(slot) ||
-        !VecResizeBounded(staging, count, limit) { return 0 }
+// Premultiplies COUNT pixels of SLOT into staging. Opaque and empty pixels
+// skip the arithmetic, and an animated figure is almost entirely one of them.
+Premultiply :: (slot: s32, count: s64) {
     for index: 0..count - 1 {
         pixel := P.PixmapSourcePixel(slot, index); alpha := pixel >> 24
+        if alpha == 255 { staging[index] = pixel; continue }
+        if alpha == 0 { staging[index] = 0; continue }
         red := ((pixel >> 16) & cast(u32)255) * alpha / cast(u32)255
         green := ((pixel >> 8) & cast(u32)255) * alpha / cast(u32)255
         blue := (pixel & cast(u32)255) * alpha / cast(u32)255
         staging[index] = (alpha << 24) | (red << 16) | (green << 8) | blue
     }
-    id := NewTexture(image_width, image_height, cast(*void)*staging[0])
-    if id != 0 { images[slot] = id; image_revisions[slot] = P.pixmap_image_revisions[slot] }
-    return id
+}
+
+// One texture per image slot. A changed revision refills the existing
+// texture, so an animated image never reallocates GPU storage; only a real
+// size change drops it.
+ImageTexture :: (slot: s32) -> u32 {
+    if slot < 0 || slot >= P.PixmapImageLimit { return 0 }
+    image_width := P.pixmap_image_widths[slot]; image_height := P.pixmap_image_heights[slot]
+    count := cast(s64)image_width * image_height
+    if image_width <= 0 || image_height <= 0 || count > P.PixmapSourceCount(slot) { return 0 }
+    revision := P.pixmap_image_revisions[slot]
+    if images[slot] != 0 {
+        if image_revisions[slot] == revision { return images[slot] }
+        if image_widths[slot] != image_width || image_heights[slot] != image_height { DropImage(slot) }
+    }
+    // Staging keeps the capacity of its largest upload, which a smaller image
+    // reuses. A bound below that capacity would refuse the smaller image and
+    // drop the whole presenter to software.
+    limit := ifx staging.capacity > count then staging.capacity else count
+    if !VecResizeBounded(staging, count, limit) { return 0 }
+    Premultiply(slot, count)
+    if images[slot] == 0 {
+        images[slot] = NewTexture(image_width, image_height, cast(*void)*staging[0])
+        if images[slot] == 0 { return 0 }
+    } else {
+        G.BindTexture(Texture2DTarget, images[slot])
+        UploadRectangle(Texture2DTarget, 0, 0, 0, image_width, image_height,
+            Rgba, ByteType, cast(*void)*staging[0])
+    }
+    image_widths[slot] = image_width; image_heights[slot] = image_height
+    image_revisions[slot] = revision
+    return images[slot]
 }
 
 Flush :: () { unused Draw() }
@@ -187,13 +211,7 @@ Draw :: () -> bool {
             Rgba, ByteType, cast(*void)*pixmap_gpu_staged[upload.start])
     }
     if pixmap_gpu_batches.count > 0 {
-        revision := P.PixmapImageRevision()
-        if revision != seen_revision {
-            seen_revision = revision
-            for slot: 0..images.count - 1 {
-                if images[slot] != 0 && image_revisions[slot] != P.pixmap_image_revisions[slot] { DropImage(slot) }
-            }
-        }
+        P.PixmapSyncBitmaps()
         // The composition is drawn straight into the window surface; the
         // offscreen target is only the snapshot Read() publishes.
         G.BindFramebuffer(0x8ca9, 0)
@@ -272,6 +290,9 @@ Close :: (current: bool) {
     }
     VecFree(staging)
     program = 0; vertices = 0; atlas = 0; framebuffer = 0; target = 0
-    width = 0; height = 0; seen_revision = 0; failed = false
+    width = 0; height = 0; failed = false
+    for slot: 0..image_widths.count - 1 {
+        image_widths[slot] = 0; image_heights[slot] = 0
+    }
     present_width = 0; present_height = 0; presented = false
 }

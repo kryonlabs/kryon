@@ -37,8 +37,7 @@ def main():
     define = ['--define', 'PLATFORM_WEB'] if args.platform == 'canvas' else []
     # The Canvas host is selected by OS == .WEB, so the page names its target.
     target = ['--target-os', 'web', '--target-cpu', 'wasm32'] if args.platform == 'canvas' else []
-    # The Canvas host calls the app through the ProjectFrame capability.
-    bind = ['--bind', 'frame_entry:ProjectFrame=snapshot_app:Frame'] if args.platform == 'canvas' else []
+    bind = []
     ir = WORK / (args.platform + '-ir')
     gen = WORK / (args.platform + '-c')
     shutil.rmtree(ir, ignore_errors=True)

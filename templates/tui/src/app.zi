@@ -1,3 +1,4 @@
+App :: #import "kryon/app";
 ListBox :: #import "kryon/list_box";
 using Layout :: #import "layout";
 #import "kryon/geometry"
@@ -37,8 +38,9 @@ Start :: () {
     tasks[5].label = "Install it with kryon install"
 }
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     if !started { Start(); started = true }
     move: s32 = 0
     key: s32 = KeyboardTake(session)
@@ -92,5 +94,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
 
     Label(session, "Up/Down move  Space toggles  Ctrl+C quits", NextRow(*page, 22.0),
         FontSize(*page, 14))
-    return 0
+    return
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "{{name}}"}, Frame) }

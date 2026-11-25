@@ -1,21 +1,24 @@
+App :: #import "kryon/app";
 TextField :: #import "kryon/text_field";
-#import "geometry"
-#import "key_input"
-#import "session"
-#import "tree"
-#import "tree_input"
-#import "text_host"
-#import "text_request"
-#import "widget_kind"
+#import "kryon/geometry"
+#import "kryon/key_input"
+#import "kryon/session"
+#import "kryon/tree"
+#import "kryon/tree_input"
+#import "kryon/text_host"
+#import "kryon/text_request"
+#import "kryon/widget_kind"
 using WidgetKind;
 foreign_session: Session;
+failed: s32;
 bytes: [64]u8;
 length: s32;
 cursor: s32;
 anchor: s32;
 started: bool;
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     if !started {
         initial := "start水😀"
         for at: 0..initial.count - 1 { bytes[at] = initial[at] }
@@ -46,12 +49,17 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     TreeSetSelected(foreign_session, other, true)
     TreeSetTextValue(foreign_session, other, "FOREIGN", 7, 0, false, false)
     if TreeSubmittedNodeAt(foreign_session, other).identity_generation !=
-    TreeSubmittedNodeAt(session, 1).identity_generation { return 20 }
-    if TextRequestTake(foreign_session, other).pending { return 21 }
+    TreeSubmittedNodeAt(session, 1).identity_generation { failed = 20; return }
+    if TextRequestTake(foreign_session, other).pending { failed = 21; return }
     TextHostPresent(foreign_session, other, "FOREIGN", 7, 0, false, false, false, false)
     stale := Session.{session.slot, session.epoch + 1}
     TextHostPresent(stale, 1, "STALE", 5, 0, false, false, false, false)
-    if !TreeFinish(foreign_session) { return 22 }
+    if !TreeFinish(foreign_session) { failed = 22; return }
     unused TreeFocusAt(foreign_session, other)
-    return 0
+}
+
+main :: () -> s32 {
+    code := App.Run(App.Window.{.title = "editor_app"}, Frame)
+    if failed != 0 { print("editor isolation failed %\n", failed); return failed }
+    return code
 }

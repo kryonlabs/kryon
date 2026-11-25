@@ -1,13 +1,19 @@
-// A project frame linked through the stock desktop_run entry.
+// A project frame program: main runs App.Run.
+App :: #import "app";
 #import "session"
 #import "geometry"
-Text :: #import "kryon/text";
+Text :: #import "text";
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
     props: Text.Props
     props.bounds = .{20.0, 15.0, 280.0, 38.0}
     props.text = "Windows project frame"
     Text.Draw(session, props)
-    return 0
+    return
 }
+
+// The Windows SDK test links the generated C itself, so the entry is the
+// exported program main, like every other fixture in this suite.
+#program_export
+main :: () -> s32 { return App.Run(App.Window.{.title = "windows_desktop_frame"}, Frame) }

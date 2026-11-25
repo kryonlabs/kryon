@@ -21,11 +21,16 @@ Input :: struct {
     down: bool; pressed: bool; released: bool;
     secondary_down: bool; secondary_pressed: bool; secondary_released: bool;
     modifiers: s32; key: s32; wheel: float32;
+    closed: bool
 }
 PlayerEditorPresent :: #type (context: *void, identity: u64, value: string, cursor: s32, anchor: s32, flags: s32) -> void;
 PlayerEditorRequest :: #type (context: *void, identity: u64, output: []u8) -> TextRequest;
+// Prepares one frame's input: presents the previous frame, waits for the
+// frame budget, and fills the window events and size. Returning false ends
+// the bundle's loop.
+PlayerWait :: #type (context: *void, input: *Input) -> bool;
 Player :: struct {
-    fields: [13]HostField; names: [27]Name; bindings: [128]HostBinding;
+    fields: [14]HostField; names: [29]Name; bindings: [128]HostBinding;
     bundle: *void; instance: *void; input: Input;
     codepoints: [256]s32; typed_count: s32; typed_at: s32;
     platform: HostCall; context: *void; closed: bool; keyboard: bool;
@@ -40,9 +45,12 @@ Player :: struct {
     editor_request_bytes: [65536]u8
     editor_fields: [5]HostField
     renderer_active: bool
+    wait: PlayerWait
+    wait_context: *void
+    wait_ready: bool
 }
 Supported :: (module: string, function: string) -> bool {
-    if ModuleName(module,"zx_run") { return function=="ReadBundleInput" || function=="TakeBundleCodepoint" || function=="BundleTextInputHost" || function=="BundleFrameFinishedHost" || function=="BundleFrameCursorHost" || function=="BundleFrameReusableHost" || function=="BundleTextEditorHost" || function=="BundleTextRequestHost" }
+    if ModuleName(module,"frames_zx") { return function=="ReadBundleInput" || function=="TakeBundleCodepoint" || function=="BundleTextInputHost" || function=="BundleFrameFinishedHost" || function=="BundleFrameCursorHost" || function=="BundleFrameReusableHost" || function=="BundleTextEditorHost" || function=="BundleTextRequestHost" }
     if ModuleName(module,"font_metrics") { return function=="MeasureGlyphWidth" || function=="MeasureGlyphLineHeight" }
     if ModuleName(module,"raster_text") { return function=="RasterText" || function=="RasterTextClipped" || function=="RasterTextRotated" }
     if ModuleName(module,"raster_shape") { return function=="RasterRoundedRectangle" || function=="RasterRoundedRectangleOutline" }
@@ -125,13 +133,18 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         result.kind = HostInteger; result.integer = 0; return 1
     }
     if function=="ReadBundleInput" && count==0 {
+        ok := !player.closed && player.wait_ready && player.wait != null
+        player.typed_count = 0; player.typed_at = 0
+        if ok { ok = player.wait(player.wait_context, *player.input) }
+        if !ok { player.closed = true }
         input:=player.input
         player.fields[0].value.integer = cast(s64)input.width; player.fields[1].value.integer = cast(s64)input.height
         player.fields[2].value.real = cast(float64)input.x; player.fields[3].value.real = cast(float64)input.y
         player.fields[4].value.integer = cast(s64)input.down; player.fields[5].value.integer = cast(s64)input.pressed; player.fields[6].value.integer = cast(s64)input.released
         player.fields[7].value.integer = cast(s64)input.secondary_down; player.fields[8].value.integer = cast(s64)input.secondary_pressed; player.fields[9].value.integer = cast(s64)input.secondary_released
         player.fields[10].value.integer = cast(s64)input.modifiers; player.fields[11].value.integer = cast(s64)input.key; player.fields[12].value.real = cast(float64)input.wheel
-        result.kind = HostRecord; result.type_name = *player.names[26].bytes[0]; result.fields = *player.fields[0]; result.field_count = cast(usize)13; return 1
+        player.fields[13].value.integer = cast(s64)player.closed
+        result.kind = HostRecord; result.type_name = *player.names[28].bytes[0]; result.fields = *player.fields[0]; result.field_count = cast(usize)14; return 1
     }
     if function=="TakeBundleCodepoint" && count==0 {
         result.kind = HostInteger
@@ -239,33 +252,30 @@ PlayerUseRenderer :: (player: *Player, renderer: HostCall, context: *void) -> bo
     return true
 }
 
-// The caller opens and presents its normal platform frame around this call.
+// Selects who prepares each frame's input. Without a wait callback the
+// bundle's loop stops before its first frame.
 #program_export
-PlayerFrameNative :: (player: *Player, input: Input) -> bool {
-    if player.instance == null || player.closed || !player.renderer_active ||
-    input.width <= 0 || input.height <= 0 { return false }
-    player.input = input
-    player.typed_at = 0
+PlayerUseWait :: (player: *Player, wait: PlayerWait, context: *void) -> bool {
+    if player.bundle == null || wait == null { return false }
+    player.wait = wait
+    player.wait_context = context
+    player.wait_ready = true
+    return true
+}
+
+// Runs the bundle's main once. The bundle's own loop reads one frame's
+// input through the wait callback at a time and returns when the callback
+// ends it; the caller presents each finished frame's pixels there.
+#program_export
+PlayerRun :: (player: *Player) -> bool {
+    if player.instance == null || player.closed || !player.wait_ready { return false }
     result: s64
     has_result: s32
     player.failed = RunBundleInstance(player.instance, *result, *has_result) == 0
-    ok := !player.failed && (has_result == 0 || result == 0)
+    ok := !player.failed
+    if ok && has_result != 0 && result != 0 { player.closed = true }
     player.typed_count = 0
-    if !ok { player.closed = true }
     return ok
-}
-#if !#defined(BUNDLE_NATIVE_RENDERER) {
-    #program_export
-    PlayerFrame :: (player: *Player, input: Input, width: s32, height: s32, pixels: []u32) -> bool {
-        if player.instance==null || player.closed || input.width<=0 || input.height<=0 { return false }
-        if !PixmapScale(cast(float32)width/cast(float32)input.width,cast(float32)height/cast(float32)input.height) || !PixmapBeginInto(4279242768,width,height,pixels,true) { return false }
-        player.input = input; player.typed_at = 0
-        result: s64; has_result: s32
-        ok:=RunBundleInstance(player.instance,*result,*has_result)!=0 && (has_result==0 || result==0)
-        player.typed_count = 0; PixmapEndInto()
-        if !ok { player.closed = true }; return ok
-    }
-
 }
 
 // Optional native editor callbacks belong to this player instance only.

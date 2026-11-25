@@ -1,3 +1,4 @@
+App :: #import "kryon/app";
 Box :: #import "kryon/box";
 Checkbox :: #import "kryon/checkbox";
 ListBox :: #import "kryon/list_box";
@@ -50,9 +51,10 @@ PrepareGalleryInput :: (session: Session) {
     }
 }
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    if Shot.CatalogShotActive() { return Shot.CatalogShotFrame(session, viewport) }
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
+    if Shot.CatalogShotActive() { Shot.CatalogShotFrame(session, viewport); return }
     snapshot := CaptureFrameInput(session)
     SetGalleryPreview(Rectangle.{0.0, 0.0, 480.0, viewport.height - 88.0}, true,
         cast(float32)snapshot.elapsed_ms / 1000.0, GalleryTheme.CurrentTheme().motion.reduced_motion)
@@ -61,7 +63,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     if embedded {
         Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = GallerySceneName(scene), .size = 23})
         DrawScene(session)
-        return 0
+        return
     }
     restore_focus := navigation_focus_pending
     navigation_focus_pending = false
@@ -101,9 +103,10 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     disabled_controls = Checkbox.Draw(session, Checkbox.Props.{.key = 9004, .bounds = .{24.0, controls_y, 208.0, 40.0}, .label = "Disabled", .checked = disabled_controls}).checked
     dark = Toggle.Draw(session, Toggle.Props.{.key = 9005, .bounds = .{344.0, controls_y, 96.0, 40.0}, .label = "Dark", .value = dark}).value
     if controls_scope { End(session) }
-    return 0
 }
 
 DrawScene :: (session: Session) {
     ComposeGallery(session, scene, disabled_controls)
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "app"}, Frame) }

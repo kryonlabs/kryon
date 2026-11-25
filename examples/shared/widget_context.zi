@@ -34,8 +34,7 @@ GalleryBounds :: (bounds: Rectangle) -> Rectangle {
 example_disabled: bool;
 example_reduced_motion: bool;
 
-// Hosts publish these options before the unchanged application entry point.
-#program_export
+// The gallery host calls this before drawing the example's frames.
 SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
     example_disabled = disabled
     example_reduced_motion = reduced_motion

@@ -1,3 +1,4 @@
+App :: #import "kryon/app";
 #import "kryon/geometry"
 #import "kryon/session"
 #import "kryon/frame_snapshot"
@@ -69,14 +70,15 @@ Prepare :: (session: Session, scene: s32) {
     bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0})
 }
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box.Draw(session, Box.Props.{.bounds = viewport, .fill = StyleTokenColor("canvas")})
     page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace6),
         .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
-    if !page.opened { return 0 }
+    if !page.opened { return }
     Text.Draw(session, Text.Props.{.bounds = .{height = 36}, .text = "Plot · lines", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 0
@@ -84,15 +86,16 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     Prepare(session, scene)
     unused Plot.Plot(session, Plot.PlotProps.{.bounds = bounds, .semantic_label = "Eight example values", .scale_min = 0.0, .scale_max = 12.0, .mode = cast(Plot.PlotMode)scene}, values[:])
     unused End(session)
-    return 0
+    return
 }
 
 example_disabled: bool;
 example_reduced_motion: bool;
 
-// Hosts publish these options before the unchanged application entry point.
-#program_export
+// The gallery host calls this before drawing the example's frames.
 SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
     example_disabled = disabled
     example_reduced_motion = reduced_motion
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "plotlines"}, Frame) }

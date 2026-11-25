@@ -40,6 +40,46 @@ picker_fetch: s32;
 requested_bundle: bool;
 file_ready: bool;
 status: s32;
+player_input: Session;
+
+// Prepares one bundle frame per browser tick: it presents the finished
+// frame, yields to the page, drains its ordered keys and text, and fills
+// the window event record the bundle reads. Returning false ends the
+// bundle's loop, handing control back to the shell (a new file, or the
+// page closing).
+WebPlayerWait :: (context: *void, input: *Player.Input) -> bool {
+    player := cast(*Player.Player)context
+    scope := WebScope()
+    unused EndCanvasFrame()
+    if !PollCanvas() { WebEnd(scope); return false }
+    if requested_bundle { WebEnd(scope); return false }
+    BeginCanvasFrame()
+    BundleMediaTick(*media)
+    key, modifiers := CanvasInputTake(player_input)
+    point := TypedCodepointTake(player_input)
+    while point != 0 {
+        Player.PlayerTyped(player, point)
+        point = TypedCodepointTake(player_input)
+    }
+    viewport := CanvasViewport()
+    pointer := PollPointer()
+    secondary := PollSecondaryPointer()
+    input.width = cast(s32)viewport.width
+    input.height = cast(s32)viewport.height
+    input.x = pointer.x
+    input.y = pointer.y
+    input.down = pointer.down
+    input.pressed = pointer.pressed
+    input.released = pointer.released
+    input.secondary_down = secondary.down
+    input.secondary_pressed = secondary.pressed
+    input.secondary_released = secondary.released
+    input.modifiers = modifiers
+    input.key = key
+    input.wheel = CanvasWheelMove()
+    WebEnd(scope)
+    return true
+}
 
 ShowStatus :: (message: string) {
     if status != 0 { WebSet(status, WebName("textContent"), WebText(message)) }
@@ -229,7 +269,8 @@ LoadSelected :: (player: *Player.Player, assets: *AppFiles, raster: *RasterHost)
     media.bundle = player.bundle
     if !BundleWriteAssets(player.bundle, assets) ||
     !Player.PlayerUseRenderer(player, RasterHostCall, cast(*void)raster) ||
-    !Player.PlayerStart(player) {
+    !Player.PlayerStart(player) ||
+    !Player.PlayerUseWait(player, WebPlayerWait, cast(*void)player) {
         Player.PlayerClose(player)
         ShowStatus("The ZX could not start.")
         return false
@@ -267,7 +308,7 @@ main :: () -> s32 {
     defer { Player.PlayerClose(*player) }
     // A raw player has no UI session; this one receives the page's ordered
     // keys and text for it.
-    player_input := SessionOpen()
+    player_input = SessionOpen()
     if !SessionValid(player_input) { return 1 }
     defer { TreeInputReset(player_input); unused SessionClose(player_input) }
     initial, found := ReadEntireFile("/app.zx")
@@ -283,13 +324,18 @@ main :: () -> s32 {
         if requested_bundle && file_ready && (BundleStorageReady() || BundleStorageFailed()) {
             requested_bundle = false
             load_failed = !LoadSelected(*player, *assets, *raster)
+            if load_failed && player.instance != null && player.closed {
+                // The load rejected the file without replacing the app; the
+                // running instance only paused for the load, so resume it.
+                player.closed = false
+            }
         }
-        BeginCanvasFrame()
         if hosted {
             app := *apps[active_app]
             key, modifiers := CanvasInputTake(app.app.session)
             typed: [1024]u8
             text := TypedTextTake(app.app.session, typed[:])
+            BeginCanvasFrame()
             if !BundleAppFrame(app, CanvasViewport(), PollPointer(), PollSecondaryPointer(),
                 key, modifiers, CanvasWheelMove(), text, PageNow() / 1000.0) {
                 ShowStatus("The app frame failed.")
@@ -300,25 +346,14 @@ main :: () -> s32 {
                 last_saved = PageNow()
             }
         } else if player.instance != null && !player.closed {
-            viewport := CanvasViewport()
-            pointer := PollPointer()
-            secondary := PollSecondaryPointer()
-            key, modifiers := CanvasInputTake(player_input)
-            point := TypedCodepointTake(player_input)
-            while point != 0 {
-                Player.PlayerTyped(*player, point)
-                point = TypedCodepointTake(player_input)
-            }
-            if !Player.PlayerFrameNative(*player, Player.Input.{
-                    .width = cast(s32)viewport.width, .height = cast(s32)viewport.height,
-                    .x = pointer.x, .y = pointer.y, .down = pointer.down,
-                    .pressed = pointer.pressed, .released = pointer.released,
-                    .secondary_down = secondary.down, .secondary_pressed = secondary.pressed,
-                    .secondary_released = secondary.released, .modifiers = modifiers,
-                    .key = key, .wheel = CanvasWheelMove()}) {
+            // The bundle owns the loop: the wait callback yields to the
+            // browser each frame, drains the page's keys and text, and
+            // presents each finished frame.
+            if !Player.PlayerRun(*player) || player.closed {
                 ShowStatus("The ZX finished or its frame failed. Choose a file to open another app.")
             }
         } else {
+            BeginCanvasFrame()
             if embedded {
                 RasterText(ifx load_failed then "Could not start this app." else "Loading…", 24, 48, 22, Color.{30, 41, 59, 255})
             } else {

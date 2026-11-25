@@ -1,3 +1,4 @@
+App :: #import "kryon/app";
 Button :: #import "kryon/button";
 Checkbox :: #import "kryon/checkbox";
 ListBox :: #import "kryon/list_box";
@@ -121,8 +122,9 @@ Settings :: (session: Session, page: *PageLayout) {
     if changed.changed { show_authors = changed.checked }
 }
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     page: PageLayout = PageFor(viewport, 560.0)
     Label(session, "{{name}}", NextRow(*page, 36.0), FontSize(*page, 28))
     tabs: Rectangle = NextRow(*page, 40.0)
@@ -132,5 +134,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     if current == PageHome { Home(session, *page) }
     if current == PageLibrary { Library(session, *page) }
     if current == PageSettings { Settings(session, *page) }
-    return 0
+    return
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "{{name}}"}, Frame) }

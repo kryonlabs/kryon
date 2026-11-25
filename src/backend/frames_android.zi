@@ -1,0 +1,12 @@
+// The Android frame loop App.Run runs: NativeActivity's window and frames.
+App :: #import "app_types";
+Android :: #import "android_run";
+
+// Runs the program's frames on the activity's own thread until the activity
+// is destroyed. The window fills the screen; Android owns its size.
+Run :: (window: App.Window, draw: App.Draw) -> s32 {
+    unused window
+    Android.AndroidUseDraw(draw)
+    Android.AndroidFrameLoop()
+    return 0
+}

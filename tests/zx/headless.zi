@@ -16,6 +16,10 @@ ImageMemory :: struct { pixels: *u32 }
 PixelDescriptor :: struct { data: *u32; count: s64 }
 images: [128]ImageMemory;
 pixels: [576000]u32;
+frames: s32;
+failed: s32;
+interactive: bool;
+original: u64;
 
 CloseImages :: () {
     for image: images { Release(cast(*u8)image.pixels) }
@@ -66,6 +70,35 @@ TextFingerprint :: () -> u64 {
     return result
 }
 
+// The bundle owns its loop: each wait call finishes the previous frame's
+// surface, checks it, and scripts the next frame's input.
+Wait :: (context: *void, input: *Player.Input) -> bool {
+    player := cast(*Player.Player)context
+    if frames > 0 { PixmapEndInto() }
+    step := frames
+    frames += 1
+    input.width = 960; input.height = 600
+    if step == 1 {
+        ink: s32
+        for pixel: pixels { if (pixel & cast(u32)0xffffff) != cast(u32)0x101010 { ink += 1 } }
+        if ink < 20 { failed = 5; input.closed = true; return false }
+        if !interactive { input.closed = true; return false }
+        if pixels[130 * 960 + 550] != cast(u32)0xffe61e28 { failed = 6; input.closed = true; return false }
+        original = TextFingerprint()
+        input.x = 100.0; input.y = 70.0; input.pressed = true; input.down = true
+    } else if step == 2 {
+        input.pressed = false; input.down = false; input.released = true
+    } else if step == 3 {
+        if TextFingerprint() == original { failed = 9; input.closed = true; return false }
+        Player.PlayerTyped(player, 233)
+    } else if step >= 4 {
+        input.closed = true
+        return false
+    }
+    PixmapBeginInto(cast(u32)0x101010, 960, 600, pixels[:], true)
+    return true
+}
+
 #program_export
 main :: (argc: s32, argv: **u8) -> s32 {
     if argc < 2 { return 1 }
@@ -78,25 +111,13 @@ main :: (argc: s32, argv: **u8) -> s32 {
         Player.PlayerClose(*player)
         CloseImages()
     }
-    // Use the empty callback from the zero-initialized player on a headless surface.
     if !Player.PlayerLoad(*player, BytesFromPointer(descriptor.data, cast(u64)data.count), player.platform, null) ||
     !LoadImages(player.bundle) || !Player.PlayerStart(*player) { return 3 }
-    input := Player.Input.{.width = 960, .height = 600}
-    if !Player.PlayerFrame(*player, input, 960, 600, pixels[:]) { return 4 }
-    ink: s32
-    for pixel: pixels { if (pixel & cast(u32)0xffffff) != cast(u32)0x101010 { ink += 1 } }
-    if ink < 20 { return 5 }
+    interactive = argc > 2
+    if !Player.PlayerUseWait(*player, Wait, cast(*void)(*player)) { return 4 }
+    if !Player.PlayerRun(*player) { return 5 }
+    if failed != 0 { return failed }
     if argc == 2 { print("Headless ZX rendered\n"); return 0 }
-    if pixels[130 * 960 + 550] != cast(u32)0xffe61e28 { return 6 }
-    original := TextFingerprint()
-    input.x = 100.0; input.y = 70.0; input.pressed = true; input.down = true
-    if !Player.PlayerFrame(*player, input, 960, 600, pixels[:]) { return 7 }
-    input.pressed = false; input.down = false; input.released = true
-    if !Player.PlayerFrame(*player, input, 960, 600, pixels[:]) { return 8 }
-    if TextFingerprint() == original { return 9 }
-    input.released = false
-    Player.PlayerTyped(*player, 233)
-    if Player.PlayerFrame(*player, input, 960, 600, pixels[:]) || !player.closed { return 10 }
     print("Headless ZX pixels, packed PNG, retained clicks and Unicode passed\n")
     return 0
 }

@@ -1,7 +1,8 @@
 # Kryon cheat sheet
 
-Kryon is a Ziran UI library: Kryon calls the app's `Frame` every frame, which
-declares every widget from the app's state; widgets report what the user did.
+Kryon is a Ziran UI library: the app's `main` runs `App.Run(window, Frame)`
+from `kryon/app`, and Kryon calls `Frame` every frame, which declares every
+widget from the app's state; widgets report what the user did.
 `make cheatsheet-test` builds, shoots and drives every `// file:` block below.
 
 ## Start and see
@@ -82,6 +83,7 @@ NoteCountText :: () -> string { return ifx note_count == 0 then "No notes yet" e
 
 ```zi
 // file: src/app.zi
+App :: #import "kryon/app";
 Button :: #import "kryon/button";
 Card :: #import "kryon/card";            // .variant .clickable -> .opened .activated; then End
 CSS :: #import "css/Css";                // StyleClass, CssSheetParse, CssSheetInstall
@@ -106,12 +108,13 @@ draft: TextField.State;
 no_menu: []Dropdown.Option;
 sheet: CSS.CssSheet;
 NOTE_CSS :: "Card.note { border-radius: 14px; gap: 4px; }";
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     if !started { draft.bytes = draft_bytes[:]; dark = Theme.CurrentTheme().dark; started = true
         if CSS.CssSheetParse(*sheet, NOTE_CSS, "app.css", CSS.CssNoImports) { unused CSS.CssSheetInstall(*sheet, CSS.CssDefaultEnvironment(), null) } }
     screen := Layout.Draw(session, Layout.Props.{.bounds = viewport})
-    if !screen.opened { return 0 }
+    if !screen.opened { return }
     AppBar(session)
     body := Layout.Draw(session, Layout.Props.{.gap = Layout.Gap(.ThemeMetricSpace3),
         .gap_override = true, .padding = Layout.Gap(.ThemeMetricSpace4), .padding_override = true})
@@ -120,8 +123,8 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         unused End(session)
     }
     unused End(session)
-    return 0
 }
+main :: () -> s32 { return App.Run(App.Window.{.title = "Notes"}, Frame) }
 AppBar :: (session: Session) {
     height := Theme.CurrentThemeMetric(.ThemeMetricControlHeightLarge) + Theme.CurrentThemeMetric(.ThemeMetricSpace3)
     bar := TitleBar.Draw(session, TitleBar.Props.{.bounds = .{height = height}, .title = "Notes", .strong_title = true, .trailing_width = 120}, no_menu)

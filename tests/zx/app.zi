@@ -1,15 +1,18 @@
+App :: #import "kryon/app";
 Button :: #import "kryon/button";
 Image :: #import "kryon/image";
 Text :: #import "kryon/text";
 #import "kryon/geometry"
 #import "kryon/session"
 #import "kryon/tree_input"
+#import "Window"
 
 clicks: s32;
 frames: s32;
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     frames += 1
     button: Button.Props
     button.key = cast(u64)1
@@ -37,8 +40,11 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         } else {
             print("zx interaction failed: clicks=% frames=%\n", clicks, frames)
         }
-        return 1
+        WindowQuit()
+        return
     }
     unused viewport
-    return 0
+    return
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "app"}, Frame) }

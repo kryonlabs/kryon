@@ -1,3 +1,4 @@
+App :: #import "kryon/app";
 #import "session"
 #import "std/bundle_host"
 #import "geometry"
@@ -20,6 +21,7 @@ expected_modifiers: s32;
 expected_pointer: bool;
 expected_sequence: u64;
 callback_fail: bool;
+callback_failed: bool;
 failure: s32;
 saved: FrameInputSnapshot;
 last: FrameInputSnapshot;
@@ -29,8 +31,9 @@ Print :: (format: *u8, sequence: s32, failure: s32, actual: s32, expected: s32) 
 
 AllowAsset :: (path: string) -> bool { unused path; return false }
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     unused viewport
     first := CaptureFrameInput(session)
     if !first.available || first.sequence != expected_sequence ||
@@ -73,5 +76,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         if failure != 0 { unused Print(HostTextData("sequence %d failure %d key %d expected %d\n"), cast(s32)first.sequence, failure, cast(s32)keys.elements[65].integer, cast(s32)expected_flags) }
     }
     last = first
-    return ifx callback_fail then 1 else failure
+    callback_failed = callback_fail
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "snapshot_app"}, Frame) }

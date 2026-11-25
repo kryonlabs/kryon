@@ -1,3 +1,4 @@
+App :: #import "kryon/app";
 Layout :: #import "kryon/layout";
 ListItem :: #import "kryon/list_item";
 Text :: #import "kryon/text";
@@ -8,10 +9,11 @@ Text :: #import "kryon/text";
 // A settings list: an avatar row, a switch row, a badge row and a chevron row.
 notifications: bool = true;
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     list := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace3), .padding_override = true})
-    if !list.opened { return 0 }
+    if !list.opened { return }
     unused ListItem.Draw(session, ListItem.Props.{.title = "Ada Lovelace", .subtitle = "Account and profile",
         .leading_name = "Ada Lovelace", .trailing = .ListTrailingChevron, .disabled = example_disabled})
     row := ListItem.Draw(session, ListItem.Props.{.title = "Notifications", .trailing = .ListTrailingSwitch,
@@ -22,15 +24,16 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     unused ListItem.Draw(session, ListItem.Props.{.title = "Storage", .subtitle = "4.2 GB of 15 GB",
         .trailing = .ListTrailingText, .trailing_text = "28%", .disabled = example_disabled})
     unused End(session)
-    return 0
+    return
 }
 
 example_disabled: bool;
 example_reduced_motion: bool;
 
-// Hosts publish these options before the unchanged application entry point.
-#program_export
+// The gallery host calls this before drawing the example's frames.
 SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
     example_disabled = disabled
     example_reduced_motion = reduced_motion
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "listitem"}, Frame) }

@@ -1,11 +1,13 @@
+App :: #import "kryon/app";
 Text :: #import "kryon/text";
 #import "kryon/geometry"
 #import "kryon/session"
 #import "std/web"
 #import "kryon/paint_queue"
 frames: s32;
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     unused viewport
     frames += 1
     WebSet(WebGlobal,WebName("__fixtureFrames"),WebNumber(cast(float64)frames))
@@ -14,5 +16,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     Text.Draw(session,Text.Props.{.key=cast(u64)11,.bounds=.{100.0,260.0,180.0,40.0},
         .text="Horizontal",.size=32,.wrap=.TextWrapNone})
     WebSet(WebGlobal,WebName("__fixturePaint"),WebNumber(cast(float64)PendingPaintCount(session)))
-    return 0
+    return
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "rotated_text"}, Frame) }

@@ -16,7 +16,7 @@ parser.add_argument('--gallery-index', type=Path)
 args = parser.parse_args()
 output = ROOT / 'build/scratch/zx-headless'
 guest_project = output / 'app-project'
-package_id = kryon_test_project(guest_project)
+kryon_test_project(guest_project)
 app = guest_project / 'src'
 (output / 'assets').mkdir(exist_ok=True)
 solid_png(output / 'assets/red.png', 32, 32, (230, 30, 40, 255))
@@ -26,9 +26,9 @@ for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRES
     env.pop(key, None)
 paths = ['--project']
 bundle = output / 'app.zx'
-subprocess.run([str(ZIRAN), 'bundle', '--bind', package_id + '_frame_entry:ProjectFrame=app:Frame', '--root', str(app), *paths, '--entry', package_id + '_zx_run:main',
+subprocess.run([str(ZIRAN), 'bundle', *paths, '--root', str(app), '--entry', 'app:main',
                 '--asset-dir', 'assets=' + str(output / 'assets'), '-o', str(bundle),
-                str(ROOT / 'src/backend/zx_run.zi'), str(app / 'app.zi')], cwd=guest_project, env=env, check=True, timeout=120)
+                str(app / 'app.zi')], cwd=guest_project, env=env, check=True, timeout=120)
 generated = output / 'host'
 shutil.rmtree(generated, ignore_errors=True)
 defines = []
@@ -52,12 +52,12 @@ assert 'zx interaction passed' in result.stdout, result.stdout + result.stderr
 print(result.stdout, end='')
 # Exercise the actual VM/native-editor exchange through source and saved IR.
 editor_root = output / 'editor-app'
-editor_root.mkdir(exist_ok=True)
-(editor_root / 'app.zi').write_text((ROOT / 'tests/zx/editor_app.zi').read_text())
+kryon_test_project(editor_root)
+(editor_root / 'src/app.zi').write_text((ROOT / 'tests/zx/editor_app.zi').read_text())
 editor_bundle = output / 'editor.zx'
-subprocess.run([str(ZIRAN), 'bundle', '--bind', 'frame_entry:ProjectFrame=app:Frame', '--root', str(editor_root), *paths,
-                '--entry', 'zx_run:main', '-o', str(editor_bundle),
-                str(ROOT / 'src/backend/zx_run.zi'), str(editor_root / 'app.zi')], env=env, check=True, timeout=120)
+subprocess.run([str(ZIRAN), 'bundle', *paths, '--entry', 'app:main',
+                '-o', str(editor_bundle), str(editor_root / 'src/app.zi')],
+               cwd=editor_root, env=env, check=True, timeout=120)
 editor_ir = output / 'editor-ir'
 editor_c = output / 'editor-c'
 editor_program = output / 'editor'

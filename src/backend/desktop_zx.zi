@@ -48,8 +48,8 @@ PlayerReadlink :: (path: *u8, output: *u8, count: u64) -> s64 #foreign libc "rea
 Name :: struct { bytes: [128]u8 }
 Player :: struct {
     editor_fields: [5]HostField
-    fields: [13]HostField
-    names: [27]Name
+    fields: [14]HostField
+    names: [29]Name
     // A raw bundle has no UI session; this one receives the window's ordered
     // keys and text, and the bundle reads one key and its modifiers a frame.
     input: Session
@@ -57,6 +57,14 @@ Player :: struct {
     modifiers: s32
     media: BundleMedia
     closed: bool
+    // The bundle owns its event loop. Between its frames the player finishes
+    // the previous one, paces, and takes the window's next events; the input
+    // record's stop flag ends the loop.
+    frames: s32
+    ui: bool
+    reload_due: bool
+    reload_at: s64
+    watch_path: string
 }
 
 Names :: #import "bundle_names";
@@ -72,7 +80,7 @@ Supported :: (module: string, function: string) -> bool {
             function == "VideoSeekHost" || function == "VideoSpeedHost" || function == "VideoVolumeHost" ||
             function == "VideoLeaseHost" || function == "VideoFrameHost" || function == "VideoMessageHost"
     }
-    if ModuleName(module, "zx_run") {
+    if ModuleName(module, "frames_zx") {
         return function == "ReadBundleInput" || function == "TakeBundleCodepoint" ||
             function == "BundleTextInputHost" || function == "BundleFrameFinishedHost" ||
             function == "BundleFrameReusableHost" || function == "BundleFrameCursorHost" ||
@@ -263,6 +271,38 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     }
     }
     if function == "ReadBundleInput" && count == 0 {
+        ok := true
+        // Between frames: finish the previous one, then pace and take the
+        // window's next events. A capture renders two frames and stops.
+        if player.frames > 0 {
+            ok = EndDesktopFrame()
+            if ok && !CaptureRequested() { PauseDesktop() }
+        }
+        if ok && !CaptureRequested() { ok = PollDesktop() }
+        if ok && CaptureRequested() && player.frames >= 2 { ok = false }
+        if ok && !CaptureRequested() && player.watch_path != "" {
+            now := MonotonicMilliseconds()
+            if now >= player.reload_at {
+                player.reload_at = now + 1000
+                player.reload_due = true
+                ok = false
+            }
+        }
+        if !ok {
+            player.closed = true
+            player.fields[13].value.integer = 1
+            result.kind = HostRecord
+            result.type_name = *player.names[28].bytes[0]
+            result.fields = *player.fields[0]
+            result.field_count = cast(usize)14
+            return 1
+        }
+        key, modifiers := DesktopInputTake(player.input)
+        player.key = key
+        player.modifiers = modifiers
+        BundleMediaTick(*player.media)
+        BeginDesktopFrame()
+        SetRasterBackground(BundleThemeBackground)
         viewport := DesktopViewport()
         pointer := PollPointer()
         secondary := PollSecondaryPointer()
@@ -280,10 +320,12 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         player.fields[11].value.integer = cast(s64)player.key
         player.key = 0
         player.fields[12].value.real = cast(float64)DesktopWheelMove()
+        player.fields[13].value.integer = 0
+        player.frames += 1
         result.kind = HostRecord
-        result.type_name = *player.names[26].bytes[0]
+        result.type_name = *player.names[28].bytes[0]
         result.fields = *player.fields[0]
-        result.field_count = cast(usize)13
+        result.field_count = cast(usize)14
         return 1
     }
     if function == "TakeBundleCodepoint" && count == 0 {
@@ -432,15 +474,14 @@ BundleThemeBackground :: (refresh: bool) -> u32 {
     return UiTheme.CurrentBackground()
 }
 
-RunFrame :: (instance: *void, player: *Player) -> bool {
-    BundleMediaTick(*player.media)
-    BeginDesktopFrame()
-    SetRasterBackground(BundleThemeBackground)
+// Runs the bundle's main once. A UI bundle's main is its whole event loop;
+// it returns when the window closed or a frame failed.
+RunUIBundle :: (instance: *void, player: *Player) -> bool {
     result: s64
     has_result: s32
     if RunBundleInstance(instance, *result, *has_result) == 0 { return false }
     if has_result != 0 && result != 0 { player.closed = true }
-    return EndDesktopFrame()
+    return true
 }
 
 CollectBindings :: (bundle: *void, player: *Player, grants: []HostBinding,
@@ -452,6 +493,7 @@ CollectBindings :: (bundle: *void, player: *Player, grants: []HostBinding,
         module_name := TextFromCString(module)
         function_name := TextFromCString(function)
         binding := HostBinding.{.module = module, .function = function}
+        if ModuleName(module_name, "frames_zx") { player.ui = true }
         if Supported(module_name, function_name) {
             binding.call = PlayerCall
             binding.context = cast(*void)player
@@ -712,6 +754,7 @@ RunFrameBundle :: (bundle_path: string, opened_bundle: *void, check: bool,
     }
     player: Player
     player.media.bundle = bundle
+    player.watch_path = pointer_path
     instance, ok := OpenInstance(bundle, *player, grants, check)
     if check { return ifx ok then 0 else 1 }
     if !ok {
@@ -727,12 +770,11 @@ RunFrameBundle :: (bundle_path: string, opened_bundle: *void, check: bool,
             ok = ExtractAssets(bundle, assets_root) && ChangeDirectory(*temporary[0]) == 0
         }
     }
-    // Kryon's frame host (zx_run) and a Frame export are drawn each frame.
-    // Any other entry is a program: it runs once and prints its result, as
-    // `ziran run` does for a console bundle.
-    program := !ModuleName(TextFromCString(BundleEntryModule(bundle)), "zx_run") &&
-        TextFromCString(BundleEntryFunction(bundle)) != "Frame"
-    if ok && !check && program {
+    // A UI bundle declares the frames_zx loop's host capabilities: its main
+    // runs the whole event loop and the player pumps the window between its
+    // frames. Any other entry is a program that runs once and prints its
+    // result, as `ziran run` does for a console bundle.
+    if !player.ui {
         result: s64
         has_result: s32
         ok = RunBundleInstance(instance, *result, *has_result) != 0
@@ -750,22 +792,18 @@ RunFrameBundle :: (bundle_path: string, opened_bundle: *void, check: bool,
     }
     if ok {
         if CaptureRequested() {
-            ok = RunFrame(instance, *player)
-            if ok && !player.closed { ok = RunFrame(instance, *player) }
+            ok = RunUIBundle(instance, *player)
             if ok { ok = CaptureConfigured() }
         } else {
-            next_check: s64
-            while ok && !player.closed && PollDesktop() {
-                key, modifiers := DesktopInputTake(player.input)
-                player.key = key
-                player.modifiers = modifiers
-                now := MonotonicMilliseconds()
-                if pointer_path != "" && now >= next_check {
-                    next_check = now + 1000
+            running := true
+            while ok && running {
+                ok = RunUIBundle(instance, *player)
+                if ok && player.reload_due {
+                    player.reload_due = false
                     Reload(pointer_path, *current, *bundle, *instance, *player, *assets_root, temporary[:])
+                } else {
+                    running = false
                 }
-                ok = RunFrame(instance, *player)
-                if ok { PauseDesktop() }
             }
         }
     }

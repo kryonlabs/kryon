@@ -197,7 +197,6 @@ project-test: project-toolchain build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_artifact_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_host_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_entry_test.py
-	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/frame_entry_binding_test.py
 	@$(MAKE) --no-print-directory templates-test
 
 # This native-link regression uses GTK development libraries, supplied by
@@ -1281,11 +1280,6 @@ window-runtime-test: $(ZI2C_BIN)
 
 test: window-runtime-test
 
-.PHONY: application-entry-test
-application-entry-test: $(ZI2C_BIN)
-	ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/application_entry_test.sh
-
-test: application-entry-test
 
 # Cross-build and execute the Windows SDL/Cairo host on a private Wine display.
 .PHONY: windows-desktop-host-test

@@ -204,10 +204,10 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
                     if not following: break
                     wanted |= following
                     used += '\n' + '\n'.join(declarations[key] for key in following)
-                native_code = imports_code + '\n#import "widget_context"\n#import "palette"\n'
+                native_code = 'App :: #import "kryon/app";\n' + imports_code + '\n#import "widget_context"\n#import "palette"\n'
                 native_code += '\n\n'.join(value for key, value in declarations.items() if key in wanted) + '\n\n'
-                frame = template[template.index('#program_export'):]
-                frame = frame.replace('// @title', name).replace('PreviewInputRead()', 'WidgetInput(session)')
+                frame = template[template.index('Frame ::'):]
+                frame = frame.replace('// @title', name).replace('PreviewInputRead()', 'WidgetInput(session)').replace('.title = "frame"', '.title = "' + slug + '"')
                 frame = frame.replace('    // @example', setup_code + textwrap.indent(textwrap.dedent(preamble_code).strip(), '    ') + '\n' + textwrap.indent(textwrap.dedent(fragment).strip(), '    '))
                 write(entry, native_code + frame)
             code = entry.read_text()
@@ -290,11 +290,11 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
             alias = 'Usage' + str(len(render_modules))
             module_name = 'usage_' + Path(path).stem
             code = (ROOT / path).read_text()
-            write(output / (module_name + '.zi'), code.replace('#program_export\n', ''))
+            write(output / (module_name + '.zi'), re.sub(r'\nmain :: \(\) -> s32 \{ return App\.Run\(App\.Window\.\{\.title = "[^"]*"\}, Frame\) \}(?:\n|\Z)', '\n', code))
             imports.append(f'{alias} :: #import "{module_name}";')
             render_modules[path] = alias
         alias = render_modules[path]
-        dispatch.append(f"    if scene == {entry['index']} {{ {alias}.SetExampleOptions(disabled, catalog_reduced_motion); unused {alias}.Frame(session, catalog_viewport); return }}")
+        dispatch.append(f"    if scene == {entry['index']} {{ {alias}.SetExampleOptions(disabled, catalog_reduced_motion); App.CallDraw({alias}.Frame, session.slot, session.epoch, catalog_viewport); return }}")
     # This directory contains generated examples only. Drop sources whose
     # module or example is no longer part of this build.
     expected = {Path(site) / entry['code'] for entry in entries}
@@ -310,7 +310,7 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
             else:
                 result += f"    if index == {entry['index']} {{ return {json.dumps(text, ensure_ascii=False)} }}\n"
         return result + '    return ""\n}\n'
-    registry = '#import "kryon/geometry"\n#import "kryon/session"\n#import "palette"\n' + '\n'.join(imports) + '\n'
+    registry = 'App :: #import "kryon/app_types";\n#import "kryon/geometry"\n#import "kryon/session"\n#import "palette"\n' + '\n'.join(imports) + '\n'
     registry += 'catalog_viewport: Rectangle = .{0.0, 0.0, 480.0, 320.0};\n'
     registry += f'GallerySceneCount :: {len(entries)};\n'
     registry += 'GalleryCompilerSearch :: () -> string {\n    return #string GALLERY_COMPILER_SEARCH\n' + '\n'.join(compiler_paths(modules)) + '\nGALLERY_COMPILER_SEARCH\n}\n'

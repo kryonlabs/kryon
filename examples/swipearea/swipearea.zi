@@ -1,3 +1,4 @@
+App :: #import "kryon/app";
 Box :: #import "kryon/box";
 Joystick :: #import "kryon/joystick";
 Text :: #import "kryon/text";
@@ -10,11 +11,12 @@ Layout :: #import "kryon/layout";
 #import "std/number_text"
 
 swipes: s32;
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     page := Layout.Draw(session, Layout.Props.{.bounds = viewport, .padding = Layout.Gap(.ThemeMetricSpace5),
         .gap = Layout.Gap(.ThemeMetricSpace4), .gap_override = true})
-    if !page.opened { return 0 }
+    if !page.opened { return }
     Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{height = 40}, .text = "Swipe area", .size = 28})
     input := CaptureFrameInput(session)
     now := cast(float64)input.elapsed_ms / 1000.0
@@ -34,15 +36,16 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     digits: [24]u8
     Text.Draw(session, Text.Props.{.disabled = example_disabled, .bounds = .{height = 36}, .text = FormatInteger(cast(s64)swipes, digits[:])})
     unused End(session)
-    return 0
+    return
 }
 
 example_disabled: bool;
 example_reduced_motion: bool;
 
-// Hosts publish these options before the unchanged application entry point.
-#program_export
+// The gallery host calls this before drawing the example's frames.
 SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
     example_disabled = disabled
     example_reduced_motion = reduced_motion
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "swipearea"}, Frame) }

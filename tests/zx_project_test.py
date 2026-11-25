@@ -141,11 +141,13 @@ backend = "desktop"
     bundle = project / "build/zx_probe-portable.zx"
     assert bundle.is_file()
     ir = project / "build/generated/portable/ir"
-    module = next(ir.glob("*_zx_run.zir")).stem
+    # A zx program's bundle is its own entry module; the manifest names it.
+    module = Path(tomllib.loads((project / "ziran.toml").read_text())
+                  ["package"]["entry"]).stem
     saved = OUTPUT / "saved.zx"
     run([ZIRAN, "bundle", "--root", ir, "--entry", module + ":main",
          "--asset-dir", "assets=" + str(project / "assets"),
-         "-o", saved, ir / (module + ".zir"), ir / "app.zir"], project, env)
+         "-o", saved, *sorted(ir.glob("*.zir"))], project, env)
     assert saved.read_bytes() == bundle.read_bytes()
 
     # A download contains no source, lock, project manifest or generated code.

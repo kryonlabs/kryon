@@ -49,10 +49,10 @@ in the application.
 
 | Profile backend | Ziran entry | Presentation |
 | --- | --- | --- |
-| `terminal` | `src/backend/terminal_run.zi` | 80 × 24 terminal cells via `terminal.zi` |
-| `desktop` | `src/backend/desktop_run.zi` | SDL2 window with Cairo raster |
-| `canvas` | `src/backend/canvas_run.zi` | Canvas2D page with Emscripten and Asyncify |
-| `dom` | `src/backend/dom_run.zi` | HTML elements with browser layout and CSS |
+| `terminal` | `frames_terminal.zi` | 80 × 24 terminal cells via `terminal.zi` |
+| `desktop` | `frames_desktop.zi` | SDL2 window with Cairo raster |
+| `canvas` | `frames_web.zi` | Canvas2D page with Emscripten and Asyncify |
+| `dom` | `frames_dom.zi` | HTML elements with browser layout and CSS |
 | `android` | app `src/main.zi` → `android_run.zi` | Android NativeActivity package with direct `ANativeWindow` pixel presentation |
 
 The small application surface selects the host from the compile-time target.
@@ -88,9 +88,10 @@ backend = "dom"
 ```
 
 Run `ziran tool kryon build --profile web`. The C99 profile produces a
-self-contained `build/<package>-web.html`. It calls the app's exported
-`Frame(session: Session, viewport: Rectangle) -> s32` with the viewport in
-CSS pixels. Submit the retained widgets with their ordinary package APIs.
+self-contained `build/<package>-web.html`. The app's `main` runs
+`App.Run(window, draw)`, and the DOM frame loop calls `draw` with an
+`App.Frame` whose viewport is in CSS pixels. Submit the retained widgets
+with their ordinary package APIs.
 Give widgets stable `key` values to retain their HTML elements as labels and
 sibling order change. Changing a node's parent, widget kind or tag creates a
 new element. Close widget scopes with `kryon/tree`'s `End(session)`.
@@ -807,10 +808,12 @@ for ownership, lifecycle, capability requirements and local test targets.
 
 ## Custom application entry
 
-Applications that own their frame lifecycle import `kryon/application_entry`
-and export `KryonApplicationMain(argc: s32, argv: **u8) -> s32` with
-`#program_export "KryonApplicationMain"`. The adapter owns `main`: native
-hosts forward their exact command line and browser hosts pass `(0, null)`.
-The callback retains initialization, frame scheduling and shutdown policy;
-Android's NativeActivity host can call the same native entry. Do not define
-an additional application `main` when importing this adapter.
+`main` is the only program entry. An application that owns its frame
+lifecycle defines `main` itself and drives the host APIs directly (open the
+desktop runtime, poll and draw), instead of handing its frames to
+`App.Run`. `#program_export` stays a Ziran language feature for exporting
+plain C-ABI symbols to foreign hosts; Kryon has no frame-entry binding, so
+a UI program always enters through `main`. Android's NativeActivity package
+keeps `android_run.zi`: the generated `src/main.zi` delegates to
+`AndroidRunMain`, which owns Android's looper, window and lifecycle, while
+the application's `main` drives it through `App.Run` (`kryon/app`).

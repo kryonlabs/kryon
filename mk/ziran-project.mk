@@ -49,10 +49,6 @@ ifeq ($(PROJECT_CODEGEN),c99)
 PROGRAM := $(PROJECT_BUILD_DIR)/$(PROJECT_NAME)-$(PROJECT_PROFILE).html
 endif
 endif
-HOST_MODULE := $(PROJECT_BACKEND)_run
-ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),desktop/zx canvas/zx),)
-HOST_MODULE := zx_run
-endif
 # The program's name for its window, page and menu entry: the install name or
 # else the package name. The kryon tool passes it as KRYON_PROGRAM_TITLE, read
 # only as a shell variable, so the text cannot change a recipe. Native and ZX
@@ -61,7 +57,6 @@ endif
 PROGRAM_TITLE_FILE := $(if $(filter %.html,$(PROGRAM)),,$(if $(filter %.zx,$(PROGRAM)),$(PROGRAM:.zx=.title),$(PROGRAM).title))
 PAGE_SHELL := $(if $(BROWSER_BACKEND),$(GEN_DIR)/page-shell.html)
 PAGE_SHELL_SOURCE := $(KRYON_DIR)/mk/$(if $(filter zx,$(PROJECT_CODEGEN)),zx,$(PROJECT_BACKEND))-shell.html
-HOST_ID := $(ZIRAN_PACKAGE_ID)_$(HOST_MODULE)
 PROJECT_CONFIG_FILES := ziran.toml ziran.lock
 # The test driver is test code: a build includes it only when
 # KRYON_TEST_DRIVER is set in its environment, as it is when the program runs
@@ -72,6 +67,12 @@ ZIRAN_MODULE_ARGS := --project $(if $(KRYON_TEST_DRIVER),--define KRYON_TEST_DRI
 ifeq ($(PROJECT_BACKEND),dom)
 ZIRAN_MODULE_ARGS += --define KRYON_DOM
 endif
+ifeq ($(PROJECT_BACKEND),terminal)
+ZIRAN_MODULE_ARGS += --define KRYON_TERMINAL
+endif
+ifeq ($(PROJECT_BACKEND),pixmap)
+ZIRAN_MODULE_ARGS += --define KRYON_PIXMAP
+endif
 ifeq ($(PROJECT_BACKEND)/$(PROJECT_CODEGEN),desktop/c99)
 ifeq ($(shell uname -s),Linux)
 # The desktop host needs Linux settings even when the frame IR has no target OS.
@@ -80,11 +81,10 @@ endif
 endif
 ifeq ($(filter $(PROJECT_BACKEND),desktop),)
 # A non-desktop C build (terminal, canvas, dom, pixmap) hosts no desktop
-# window, and its capture never calls App.Run; kryon/app then maps the
-# program's window calls to app_unsupported so it carries no desktop modules.
+# window; kryon/app then maps the program's window calls to app_unsupported
+# so it carries no desktop modules.
 ZIRAN_MODULE_ARGS += --define KRYON_NO_DESKTOP_HOST
 endif
-HOST := $(KRYON_DIR)/src/backend/$(HOST_MODULE).zi
 ifneq ($(PROJECT_HOST),)
 PROJECT_HOST_PATH := $(realpath $(PROJECT_HOST))
 ifeq ($(filter $(CURDIR)/%,$(PROJECT_HOST_PATH)),)
@@ -92,10 +92,11 @@ $(error the profile host must stay inside the project directory)
 endif
 HOST := $(PROJECT_HOST)
 HOST_ID := $(basename $(notdir $(PROJECT_HOST)))
+HOST_ROOT_SOURCES := $(HOST)
 # Ziran's byte-pointer argv has the C argv layout. GCC's hosted-main
 # spelling warning does not apply to that generated entry signature.
 HOST_CFLAGS := -Wno-main
-endif
+else
 APP_SOURCES := $(shell find . -type d \( -name build -o -name .git -o -name vendor \) -prune -o -type f -name '*.zi' -print)
 UI_SOURCES := $(shell find $(KRYON_DIR)/src/ui -type f -name '*.zi')
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi $(KRYON_DIR)/src/backend/avif*.zi)
@@ -106,61 +107,32 @@ endif
 ifneq ($(filter $(PROJECT_BACKEND),desktop canvas),)
 HOST_SOURCES += $(KRYON_DIR)/src/ui/frame_input_provider.zi
 endif
-HOST_ROOT_SOURCES := $(HOST)
-ifeq ($(PROJECT_HOST),)
-# Bind the host frame through Ziran's generic capability API.
-# The selected source remains one ordinary module with its own filename.
+# Every entry is a program: it declares `main` and opens its window through
+# kryon/app, which selects the host for the compiled target.
 PROJECT_ENTRY_MODULE := $(basename $(notdir $(PROJECT_ENTRY)))
 ifeq ($(PROJECT_ENTRY_MODULE),module)
 PROJECT_ENTRY_MODULE := $(notdir $(patsubst %/,%,$(dir $(PROJECT_ENTRY))))
 endif
-# A program entry owns `main` and opens its window through kryon/app, which
-# selects the host for the compiled target. A frame entry declares Frame and
-# the profile's host owns main.
 PROJECT_PROGRAM := $(shell grep -Eqs '^main[[:space:]]*::' '$(PROJECT_ENTRY)' && echo program)
-# Capture builds (kryon preview / run --png) render a fixture's or the
-# entry's Frame even when it declares a main; fixtures are drawing modules,
-# not programs.
-PROJECT_CAPTURE := $(PROJECT_CAPTURE)
-ifeq ($(PROJECT_CAPTURE),)
-ifeq ($(PROJECT_BACKEND),dom)
-ifneq ($(PROJECT_PROGRAM),)
-$(error backend dom needs an exported Frame rather than main)
-endif
-endif
-# A desktop or portable UI program declares main; frame entries are being
-# retired. The deprecated KRYON_FRAME_ENTRY=1 escape keeps not-yet-migrated
-# frame-mode fixtures building until their host capabilities move into
-# kryon/app (see plans/enforce-main-ui-programs.md).
-ifneq ($(filter $(PROJECT_BACKEND),desktop),)
 ifeq ($(PROJECT_PROGRAM),)
-ifeq ($(KRYON_FRAME_ENTRY),)
-$(error $(PROJECT_ENTRY) has no main. Kryon UI programs declare one: add `main :: () -> s32` that runs App.Run from kryon/app, as docs/APPS.md shows. A frame entry still builds during the migration with KRYON_FRAME_ENTRY=1)
-endif
-endif
-endif
+$(error $(PROJECT_ENTRY) has no main. Kryon programs declare one: add `main :: () -> s32` that runs App.Run from kryon/app, as docs/APPS.md shows)
 endif
 # Track the export annotation belonging to main, rather than unrelated exports.
 # Every make version reads \# in an assignment as a literal number sign.
 PROJECT_HASH := \#
 PROJECT_EXPORTED_MAIN := $(shell awk '/^$(PROJECT_HASH)program_export([[:space:]]*("main")?[[:space:]]*;?[[:space:]]*)$$/ { exported=1; next } /^main[[:space:]]*::/ { if (exported) print "main"; exit } !/^[[:space:]]*($$|\/\/|$(PROJECT_HASH))/ { exported=0 }' '$(PROJECT_ENTRY)')
-ifneq ($(PROJECT_CAPTURE),)
-# A capture renders Frame even for a program entry.
-PROJECT_FRAME_BIND := --bind $(ZIRAN_PACKAGE_ID)_frame_entry:ProjectFrame=$(PROJECT_ENTRY_MODULE):Frame
-HOST_ROOT_SOURCES += $(PROJECT_ENTRY) $(KRYON_DIR)/src/backend/frame_entry.zi
-else ifneq ($(PROJECT_PROGRAM),)
 ifeq ($(PROJECT_CODEGEN),zx)
 # A portable program's bundle is its own main, which kryon/app gives the
 # window ZX bundles have; the profile's player runs it.
 HOST_ID := $(PROJECT_ENTRY_MODULE)
-PROJECT_FRAME_BIND :=
+PROJECT_ENTRY_LINK :=
 HOST_ROOT_SOURCES := $(PROJECT_ENTRY)
 else ifneq ($(PROJECT_CODEGEN),c99)
 $(error a program entry ($(PROJECT_ENTRY) declares main) needs codegen c99 or zx)
 else ifneq ($(PROJECT_EXPORTED_MAIN),)
 # An exported main already supplies the process entry; do not add another.
 HOST_ID := $(PROJECT_ENTRY_MODULE)
-PROJECT_FRAME_BIND :=
+PROJECT_ENTRY_LINK :=
 HOST_ROOT_SOURCES := $(PROJECT_ENTRY)
 else
 # The generated host is the process entry; it only calls the program's main.
@@ -168,12 +140,8 @@ PROGRAM_HOST := $(GEN_DIR)/program-host/kryon_program_host.zi
 HOST := $(PROGRAM_HOST)
 HOST_ID := kryon_program_host
 # Its folder is a module path, so the host is saved under its own name.
-PROJECT_FRAME_BIND := --module-path $(dir $(PROGRAM_HOST))
+PROJECT_ENTRY_LINK := --module-path $(dir $(PROGRAM_HOST))
 HOST_ROOT_SOURCES := $(PROGRAM_HOST) $(PROJECT_ENTRY)
-endif
-else
-PROJECT_FRAME_BIND := --bind $(ZIRAN_PACKAGE_ID)_frame_entry:ProjectFrame=$(PROJECT_ENTRY_MODULE):Frame
-HOST_ROOT_SOURCES += $(PROJECT_ENTRY) $(KRYON_DIR)/src/backend/frame_entry.zi
 endif
 endif
 ifeq ($(PROJECT_CODEGEN)/$(PROJECT_BACKEND),zx/canvas)
@@ -195,7 +163,7 @@ HOST_ROOT_SOURCES += $(KRYON_DIR)/src/backend/canvas_raster.zi
 endif
 # Browser hosts resolve the app's packages like native ones; every saved
 # module is lowered because the browser runtime calls into the page.
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) $(WEB_TARGET) --define PLATFORM_WEB \
+IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_ENTRY_LINK) $(WEB_TARGET) --define PLATFORM_WEB \
 	--entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
 C_COMMAND := $(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
@@ -203,7 +171,7 @@ C_COMMAND := $(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB \
 else
 # A program selects its kryon/app host by compiled target, so a C program's
 # IR names the native C target; a ZX program's and frame IR stay portable.
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) $(if $(PROJECT_PROGRAM),$(if $(filter c99,$(PROJECT_CODEGEN)),--target=c)) $(if $(filter c99,$(PROJECT_CODEGEN)),--define POSIX_THREADS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
+IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_ENTRY_LINK) $(if $(filter c99,$(PROJECT_CODEGEN)),--target=c --define POSIX_THREADS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
 C_COMMAND := $(ZIRAN) build --target=c --entry $(HOST_ID):main \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
 endif
@@ -468,7 +436,7 @@ endif
 
 # Check the complete bound graph through the same IR route as a build.
 check: toolchain $(PROGRAM_HOST)
-	$(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) -o $(GEN_DIR)/check-ir --entry $(HOST_ID):main $(if $(filter c99,$(PROJECT_CODEGEN)),$(if $(BROWSER_BACKEND),$(WEB_TARGET) --define PLATFORM_WEB,$(if $(PROJECT_PROGRAM),--target=c))) $(HOST_ROOT_SOURCES)
+	$(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_ENTRY_LINK) -o $(GEN_DIR)/check-ir --entry $(HOST_ID):main $(if $(filter c99,$(PROJECT_CODEGEN)),$(if $(BROWSER_BACKEND),$(WEB_TARGET) --define PLATFORM_WEB,--target=c)) $(HOST_ROOT_SOURCES)
 
 # `ziran install` copies the built program to PREFIX/bin and describes it to
 # the desktop. The KRYON_INSTALL_* values come from [tool.kryon.install] and

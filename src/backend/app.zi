@@ -5,16 +5,28 @@
 // in the checked program.
 using Types :: #import "app_types";
 
-#if TARGET == .C && OS == .WINDOWS || TARGET == .C && OS == .LINUX && !#defined(KRYON_NO_DESKTOP_HOST) {
+#if TARGET == .C && OS == .ANDROID || TARGET == .C && #defined(ANDROID_BUILD) || TARGET == .C && #defined(PLATFORM_ANDROID) || TARGET == .C && #defined(__ANDROID__) {
+    Bare :: #import "app_unsupported";
+    Frames :: #import "frames_android";
+} else #if TARGET == .C && OS == .WINDOWS || TARGET == .C && OS == .LINUX && !#defined(KRYON_NO_DESKTOP_HOST) {
     Bare :: #import "desktop_window";
     Frames :: #import "frames_desktop";
+} else #if TARGET == .C && #defined(KRYON_DOM) {
+    Bare :: #import "app_unsupported";
+    Frames :: #import "frames_dom";
 } else #if TARGET == .C && OS == .WEB {
     Bare :: #import "page_window";
     Frames :: #import "frames_web";
 } else #if TARGET == .ZX {
     // The installed desktop player hosts a bundle's window.
     Bare :: #import "zx_window";
-    Frames :: #import "app_unsupported";
+    Frames :: #import "frames_zx";
+} else #if TARGET == .C && #defined(KRYON_TERMINAL) {
+    Bare :: #import "app_unsupported";
+    Frames :: #import "frames_terminal";
+} else #if TARGET == .C && #defined(KRYON_PIXMAP) {
+    Bare :: #import "app_unsupported";
+    Frames :: #import "frames_pixmap";
 } else {
     Bare :: #import "app_unsupported";
     Frames :: #import "app_unsupported";

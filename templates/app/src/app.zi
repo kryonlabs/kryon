@@ -8,6 +8,7 @@
 //   kryon run shot --png build/shot.png --width 390 --height 844 --theme dark
 //   kryon run tui                 the same interface in a terminal
 //   kryon run web                 a Canvas2D browser page (needs Emscripten)
+App :: #import "kryon/app";
 Button :: #import "kryon/button";
 Card :: #import "kryon/card";
 Checkbox :: #import "kryon/checkbox";
@@ -28,13 +29,14 @@ started: bool;
 dark: bool;
 no_menu: []Dropdown.Option;
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     // Start in the mode the host chose: the system's, or kryon run --theme.
     if !started { dark = Theme.CurrentTheme().dark; StartTasks(); started = true }
     unused ApplyLook(dark)
     screen := Layout.Draw(session, Layout.Props.{.bounds = viewport})
-    if !screen.opened { return 0 }
+    if !screen.opened { return }
     AppBar(session)
     body := Layout.Draw(session, Layout.Props.{
         .gap = Layout.Gap(.ThemeMetricSpace3), .gap_override = true,
@@ -49,7 +51,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         unused End(session)
     }
     unused End(session)
-    return 0
+    return
 }
 
 // The app bar: the title, and a dark mode switch at its right.
@@ -86,3 +88,5 @@ Line :: (session: Session, text: string, role: Theme.ThemeMetricRole) {
 LineHeight :: (role: Theme.ThemeMetricRole) -> float32 {
     return Theme.CurrentThemeMetric(role) * 1.4
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "{{name}}"}, Frame) }

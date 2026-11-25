@@ -18,7 +18,8 @@ source = (ROOT / 'tests/zx/app.zi').read_text()
 source = ('#import "kryon/image_raster"\n'
           'startup_width: s32 = AssetWidth("assets/red.png");\n'
           'outside_width: s32 = AssetWidth("private.png");\n') + source
-source = source.replace('    frames += 1', '    if startup_width != 32 || outside_width != 0 { return 1 }\n    frames += 1')
+source = source.replace('    frames += 1',
+                        '    if startup_width != 32 || outside_width != 0 { WindowQuit(); return }\n    frames += 1')
 (project / 'src/app.zi').write_text(source)
 solid_png(project / 'assets/red.png', 32, 32, (230, 30, 40, 255))
 (project / 'ziran.toml').write_text(pinned('''[package]
@@ -70,7 +71,7 @@ run([ROOT / 'build/bin/zx', '--check', portable])
 generated = project / 'build/generated/web/player/generated/c'
 assert all(re.fullmatch(r'(?:p[0-9a-f]{16}_)?(?:bundle_app|hosted_app)\.c', path.name)
            for path in generated.glob('*_app.c'))
-assert not list(generated.glob('*_zx_run.c'))
+assert not list(generated.glob('*_frames_zx.c'))
 for mode in ('keyboard', 'unicode'):
     run([JS_RUNTIME, ROOT / 'tests/zx_canvas_browser.mjs',
          project / 'build/zx_canvas_probe-web.html', mode])

@@ -44,6 +44,7 @@ backend = "desktop"
 TOML;
 
 App :: #string ZI
+App :: #import "kryon/app";
 Chip :: #import "kryon/chip";
 Layout :: #import "kryon/layout";
 ListItem :: #import "kryon/list_item";
@@ -58,11 +59,12 @@ dismissed: bool;
 opened: bool;
 wifi: bool;
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     column := Layout.Draw(session, Layout.Props.{.bounds = viewport, .gap = 8, .gap_override = true,
         .padding = 16, .padding_override = true})
-    if !column.opened { return 0 }
+    if !column.opened { return }
     chip := Chip.Draw(session, Chip.Props.{.label = "Design", .selectable = true, .selected = design})
     if chip.changed { design = chip.selected }
     if !dismissed {
@@ -83,8 +85,9 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     Text.Draw(session, Text.Props.{.bounds = .{height = 24}, .text = ifx opened then "Profile opened" else "Closed"})
     Text.Draw(session, Text.Props.{.bounds = .{height = 24}, .text = ifx wifi then "Wi-Fi on" else "Wi-Fi off"})
     unused End(session)
-    return 0
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "widgets"}, Frame) }
 ZI;
 
 Run :: (arguments: []string, directory: string, environment: []string, log: string) -> bool {

@@ -80,12 +80,20 @@ def template_program(work, name, env):
     identity = next(package["id"] for package in json.loads(lock)["packages"]
                     if package["name"] == "kryon")
     ir = project / "build/parity-ir"
-    host = ROOT / "src/backend/pixmap_run.zi"
-    # The IR command Kryon's build rules use for a native profile.
-    run([ZIRAN, "ir", "--project", "--bind", f"{identity}_frame_entry:ProjectFrame=app:Frame",
-         "--entry", f"{identity}_pixmap_run:main",
-         "-o", ir, host, project / "src/app.zi"], project, env)
-    return Program(name, ir, f"{identity}_pixmap_run:main", [f"{identity}_pixmap"])
+    # The template app declares main; a shot runner draws its frames through
+    # the pixmap loop, the way `kryon run shot` hosts an app.
+    # Project modules live under src/; the shot runner is one of them.
+    runner = project / "src/shot.zi"
+    runner.write_text('Loop :: #import "kryon/frames_pixmap";\n'
+                      'Program :: #import "app";\n'
+                      'Kryon :: #import "kryon/app";\n'
+                      '\n'
+                      'main :: () -> s32 {\n'
+                      '    return Loop.Run(Kryon.Window.{.title = "shot"}, Program.Frame)\n'
+                      '}\n')
+    run([ZIRAN, "ir", "--project", "--define", "KRYON_NO_DESKTOP_HOST",
+         "--entry", "shot:main", "-o", ir, runner], project, env)
+    return Program(name, ir, "shot:main", [f"{identity}_pixmap"])
 
 
 def example_program(work, name, env):

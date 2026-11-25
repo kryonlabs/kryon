@@ -121,28 +121,35 @@ def main():
         custom = []
         if kind == "native":
             entry.write_text('\n'.join([
+                'App :: #import "kryon/app";',
                 '#import "kryon/session"', '#import "kryon/geometry"',
                 '#import "std/thread_linux"',
-                '#program_export',
-                'Frame :: (session: Session, viewport: Rectangle) -> s32 {',
-                '    unused session; unused viewport',
-                '    return ifx ThreadFinished(null) then 1 else 0', '}\n']))
+                'Frame :: (frame: App.Frame) {',
+                '    session := Session.{.slot = frame.slot, .epoch = frame.epoch}',
+                '    unused ThreadFinished(null)',
+                '    unused session', '}',
+                'main :: () -> s32 { return App.Run(App.Window.{}, Frame) }\n']))
         elif kind == "native-gles":
             entry.write_text('\n'.join([
-                '#import "kryon/session"', '#import "kryon/geometry"',
-                '#import "kryon/android_egl"', '#program_export',
-                'Frame :: (session: Session, viewport: Rectangle) -> s32 {',
-                '    unused session; unused viewport',
+                'App :: #import "kryon/app";',
+                '#import "kryon/geometry"',
+                '#import "kryon/android_egl"',
+                'Frame :: (frame: App.Frame) {',
+                '    unused frame',
                 '    EnableAndroidGlesComposition()',
-                '    return 0', '}\n']))
+                '}',
+                'main :: () -> s32 { return App.Run(App.Window.{}, Frame) }\n']))
         elif kind in PICTURE_MODES:
             codec = f'#import "kryon/android_{kind}"' if kind != "pictures" else ""
             entry.write_text('\n'.join([
+                'App :: #import "kryon/app";',
                 '#import "kryon/session"', '#import "kryon/geometry"',
-                'Image :: #import "kryon/image";', codec, '#program_export',
-                'Frame :: (session: Session, viewport: Rectangle) -> s32 {',
-                '    Image.Draw(session, Image.Props.{ .key = 1, .bounds = viewport, .asset_path = "image.png" })',
-                '    return 0', '}\n']))
+                'Image :: #import "kryon/image";', codec,
+                'Frame :: (frame: App.Frame) {',
+                '    session := Session.{.slot = frame.slot, .epoch = frame.epoch}',
+                '    Image.Draw(session, Image.Props.{ .key = 1, .bounds = frame.viewport, .asset_path = "image.png" })',
+                '}',
+                'main :: () -> s32 { return App.Run(App.Window.{}, Frame) }\n']))
         if kind in ("runtime", "runtime-gles", "runtime-gles-armv7"):
             enable_gles = kind in GLES_MODES
             (source / "main.zi").write_text(
@@ -179,9 +186,9 @@ def main():
              "--manifest", manifest, "--define", "ANDROID_BUILD",
              "--define", cpu_define,
              "--codegen", "zx" if kind == "zx" else "c99", *custom])
-        adapter = ir / (identity + "_frame_entry.zir")
-        if adapter.is_file() != native_frame:
-            raise AssertionError(kind + " has the wrong native Frame adapter graph")
+        host_module = ir / (identity + "_android_run.zir")
+        if host_module.is_file() != (kind != "custom" and not kind.startswith("runtime")):
+            raise AssertionError(kind + " has the wrong Android program host graph")
         if native_frame and not (ir / "selected.zir").is_file():
             raise AssertionError("selected native Frame provider was omitted")
         if kind == "native":

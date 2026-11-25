@@ -1,4 +1,5 @@
 // See examples/dashboard/README.md for the native preview and ZX commands.
+App :: #import "kryon/app";
 CSS :: #import "css/Css";
 Box :: #import "kryon/box";
 Button :: #import "kryon/button";
@@ -141,9 +142,10 @@ Ledger :: (session: Session) {
     unused End(session)
 }
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    if !Install(viewport) { print("responsive styles failed\n"); return 1 }
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
+    if !Install(viewport) { print("responsive styles failed\n"); return }
     unused Box.Draw(session, Box.Props.{.key = 1, .bounds = viewport, .fill = ColorFromPacked(0x0d1420ff)})
     bounds := viewport
     if bounds.width > 1480.0 {
@@ -151,7 +153,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         bounds.width = 1480.0
     }
     page := Layout.Draw(session, .{.bounds = bounds, .key = 2, .class_name = CSS.StyleClass("dashboard")})
-    if !page.opened { return 1 }
+    if !page.opened { return }
     Label(session, Rectangle.{0.0, 0.0, 0.0, 20.0}, 3, "AUTOTRADE · OFFLINE RESEARCH", "eyebrow")
     Page.Heading(session, .{.key = 4, .text = "Strategy DNA", .bounds = .{0.0, 0.0, 0.0, 50.0},
         .level = 1, .class_name = CSS.StyleClass("title")})
@@ -167,5 +169,6 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     }
     if show_costs { Label(session, Rectangle.{0.0, 0.0, 0.0, 20.0}, 44, "Fees included in net P&L", "muted") }
     unused End(session)
-    return 0
 }
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "responsive dashboard"}, Frame) }

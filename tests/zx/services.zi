@@ -1,3 +1,4 @@
+App :: #import "kryon/app";
 Shape :: #import "kryon/shape";
 Text :: #import "kryon/text";
 #import "kryon/drawing_props"
@@ -10,19 +11,22 @@ Text :: #import "kryon/text";
 
 stage: s32;
 started: s64;
+failed: s32;
 
-Failure :: (code: s32) -> s32 {
+Failure :: (code: s32) -> bool {
     print("ZX service failure % at stage % (media %, fetch %)\n", code, stage, MediaState(), FetchTextState())
     if ServiceKeepOpen() {
         stage = -code
-        return 0
+        return false
     }
-    return 1
+    failed = code
+    return true
 }
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    if !CursorSet(session, CursorProps.{.shape = cast(s32)CursorShape.CursorCrosshair}) { return Failure(18) }
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
+    if !CursorSet(session, CursorProps.{.shape = cast(s32)CursorShape.CursorCrosshair}) { if Failure(18) { return } }
     label: Text.Props
     label.bounds = Rectangle.{20.0, 20.0, 800.0, 50.0}
     label.text = "Portable audio and asynchronous HTTP"
@@ -31,52 +35,57 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         if stage < 0 || stage == 4 {
             unused Shape.Circle(session, Shape.CircleProps.{.center = Vector2.{160.0, 160.0},
                 .radius = 60.0, .fill = ifx stage == 4 then Color.{20, 180, 80, 255} else Color.{220, 30, 40, 255}})
-            return 0
+            return
         }
     }
     if stage == 0 {
         started = Milliseconds()
-        if started < 0 { return Failure(1) }
-        if !MediaOpen("assets/tone.wav") || MediaState() != 2 { return Failure(2) }
+        if started < 0 { if Failure(1) { return } }
+        if !MediaOpen("assets/tone.wav") || MediaState() != 2 { if Failure(2) { return } }
         MediaPause()
-        if MediaState() != 3 { return Failure(3) }
+        if MediaState() != 3 { if Failure(3) { return } }
         MediaPause()
-        if MediaState() != 2 { return Failure(4) }
-        if !FetchText(TEXT_URL) { return Failure(5) }
+        if MediaState() != 2 { if Failure(4) { return } }
+        if !FetchText(TEXT_URL) { if Failure(5) { return } }
         stage = 1
     } else if stage == 1 {
-        if FetchTextState() < 0 { return Failure(6) }
+        if FetchTextState() < 0 { if Failure(6) { return } }
         if FetchTextState() == 2 {
-            if FetchTextResult() != "portable response" { return Failure(7) }
-            if Milliseconds() <= started { return Failure(8) }
+            if FetchTextResult() != "portable response" { if Failure(7) { return } }
+            if Milliseconds() <= started { if Failure(8) { return } }
             MediaStop()
-            if MediaState() != 0 { return Failure(9) }
-            if MediaOpen("../private.wav") { return Failure(10) }
-            if FetchText("file:///etc/passwd") { return Failure(11) }
-            if !MediaOpen(AUDIO_URL) || MediaState() != 1 { return Failure(12) }
+            if MediaState() != 0 { if Failure(9) { return } }
+            if MediaOpen("../private.wav") { if Failure(10) { return } }
+            if FetchText("file:///etc/passwd") { if Failure(11) { return } }
+            if !MediaOpen(AUDIO_URL) || MediaState() != 1 { if Failure(12) { return } }
             stage = 2
         }
     } else if stage == 2 {
-        if MediaState() < 0 { return Failure(13) }
+        if MediaState() < 0 { if Failure(13) { return } }
         if MediaState() == 2 {
             MediaPause()
-            if MediaState() != 3 { return Failure(14) }
+            if MediaState() != 3 { if Failure(14) { return } }
             MediaStop()
-            if !FetchText(MISSING_URL) { return Failure(15) }
+            if !FetchText(MISSING_URL) { if Failure(15) { return } }
             stage = 3
         }
     } else if stage == 3 {
-        if FetchTextState() == 2 { return Failure(16) }
+        if FetchTextState() == 2 { if Failure(16) { return } }
         if FetchTextState() == -1 {
             print("ZX media, HTTP and clock passed\n")
             if ServiceKeepOpen() {
                 stage = 4
-                return 0
+                return
             }
-            return 1
+            return
         }
     }
-    if Milliseconds() - started > 15000 { return Failure(17) }
+    if Milliseconds() - started > 15000 { if Failure(17) { return } }
     unused viewport
-    return 0
+}
+
+main :: () -> s32 {
+    code := App.Run(App.Window.{.title = "services"}, Frame)
+    if failed != 0 { return failed }
+    return code
 }

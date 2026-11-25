@@ -1,3 +1,4 @@
+App :: #import "kryon/app";
 Button :: #import "kryon/button";
 Image :: #import "kryon/image";
 Progress :: #import "kryon/progress";
@@ -18,10 +19,16 @@ cursor: s32;
 anchor: s32;
 scroll: s32;
 typed: [256]u8;
+failed: s32;
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    if startup_width != 32 || outside_width != 0 { return 1 }
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
+    if startup_width != 32 || outside_width != 0 {
+        print("zx mobile: asset isolation failed (embedded %, outside %)\n", startup_width, outside_width)
+        failed = 1
+        return
+    }
     current: [256]u8
     for index: 0..length - 1 { current[index] = bytes[index] }
     accepted := TextView(current[:length]) == "portable"
@@ -53,5 +60,10 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     Progress.Draw(session, Progress.Props.{.key = cast(u64)5, .bounds = .{40.0, 240.0, 120.0, 24.0},
             .min = 0, .max = 100, .value = ifx accepted && clicks == 1 then 100 else 0})
     unused viewport
-    return 0
+}
+
+main :: () -> s32 {
+    code := App.Run(App.Window.{.title = "zx mobile probe"}, Frame)
+    if failed != 0 { return failed }
+    return code
 }

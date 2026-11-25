@@ -70,7 +70,7 @@ InputField :: (player: *Player, index: s32, name: string,
     return true
 }
 PrepareInput :: (player: *Player) -> bool {
-    return CopyCString("BundleInput", player.names[26].bytes[:]) &&
+    return CopyCString("BundleInput", player.names[28].bytes[:]) &&
     InputField(player, 0, "width", "s32", HostInteger) &&
     InputField(player, 1, "height", "s32", HostInteger) &&
     InputField(player, 2, "x", "float32", HostReal) &&
@@ -83,7 +83,8 @@ PrepareInput :: (player: *Player) -> bool {
     InputField(player, 9, "secondary_released", "bool", HostInteger) &&
     InputField(player, 10, "modifiers", "s32", HostInteger) &&
     InputField(player, 11, "key", "s32", HostInteger) &&
-    InputField(player, 12, "wheel", "float32", HostReal)
+    InputField(player, 12, "wheel", "float32", HostReal) &&
+    InputField(player, 13, "closed", "bool", HostInteger)
 }
 
 #if !#defined(BUNDLE_NATIVE_RENDERER) {

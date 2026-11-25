@@ -46,8 +46,8 @@ copy_changed "$repo/tests/dom_profile_app.zi" "$project/src/app.zi"
     "$ziran" lock --offline
     "$ziran" tool kryon build --profile web
     test -s build/dom_profile-web.html
-    test -s build/generated/web/ir/*_dom_run.zir
-    test -s build/generated/web/c/*_dom_run.c
+    test -s build/generated/web/ir/*_app.zir
+    test -s build/generated/web/c/*_app.c
 )
 
 # Profile socket names fit Chromium's Unix-domain socket path limit.
