@@ -10,11 +10,8 @@ using SessionModule :: #import "session";
 MotionClock :: #import "clock";
 #import "tree_input"
 #import "cursor"
-#import "widget_kind"
-using WidgetKind;
 #import "text_host"
-#import "text_request"
-#import "text_input_platform"
+#import "text_editing"
 Clock :: #import "frame_clock";
 
 host_api :: #system_library "host_api";
@@ -44,9 +41,20 @@ BundleFrameCursorHost :: (shape: s32, asset_path: string, width: s32,
     height: s32, hotspot_x: s32, hotspot_y: s32, hidden: bool) #foreign host_api;
 BundleFrameFinishedHost :: (unchanged: bool) #foreign host_api;
 BundleFrameReusableHost :: () -> bool #foreign host_api;
+
 BundleTextEditorHost :: (identity: u64, value: string, cursor: s32,
     anchor: s32, flags: s32) #foreign host_api;
 BundleTextRequestHost :: (identity: u64) -> TextRequest #foreign host_api;
+
+// Ordinary procedure slots adapt the host ABI for the optional UI editor.
+BundleEditorSend :: (identity: u64, value: string, cursor: s32,
+    anchor: s32, flags: s32) {
+    BundleTextEditorHost(identity, value, cursor, anchor, flags)
+}
+
+BundleEditorReceive :: (identity: u64) -> TextRequest {
+    return BundleTextRequestHost(identity)
+}
 
 using FrameStatus;
 
@@ -57,46 +65,6 @@ bundle_activity: Clock.FrameActivity;
 bundle_last_x: float32; bundle_last_y: float32;
 bundle_last_width: s32; bundle_last_height: s32; bundle_last_modifiers: s32;
 
-bundle_editor_identity: u64;
-bundle_editor_bytes: [65536]u8;
-bundle_editor_count: s32;
-bundle_editor_cursor: s32;
-bundle_editor_anchor: s32;
-bundle_editor_flags: s32;
-
-BundleEditorPresent :: (session: Session, index: s32, value: string,
-    cursor: s32, anchor: s32, secure: bool, numeric: bool, read_only: bool,
-    edited: bool) {
-    if !TextInputOwnerMatches(bundle_session, session) { return }
-    node := TreeSubmittedNodeAt(session, index)
-    if read_only || !node.selected || node.disabled || !node.has_text ||
-    value.count > bundle_editor_bytes.count { return }
-    for at: 0..value.count - 1 { bundle_editor_bytes[at] = value[at] }
-    bundle_editor_count = cast(s32)value.count
-    bundle_editor_identity = node.identity_generation
-    // On an edit frame the caller still owns the preceding value. Native
-    // editors defer acknowledgement until the next value is submitted.
-    bundle_editor_cursor = ifx edited then 0 else cursor
-    bundle_editor_anchor = ifx edited then 0 else anchor
-    bundle_editor_flags = (ifx secure then 1 else 0) | (ifx numeric then 2 else 0) |
-        (ifx node.kind == WidgetKindTextArea then 4 else 0) | (ifx edited then 8 else 0)
-}
-
-BundleEditorRequest :: () {
-    request := BundleTextRequestHost(bundle_editor_identity)
-    if !request.pending || bundle_editor_identity == 0 { return }
-    for index: cast(s32)1..TreeCount(bundle_session) - 1 {
-        node := TreeNodeAt(bundle_session, index)
-        if node.identity_generation == bundle_editor_identity && node.selected &&
-        TreeInputAllowedAt(bundle_session, index) &&
-        (!TreeHasFocus(bundle_session) || TreeFocusedAt(bundle_session, index)) {
-            unused TextRequestSend(bundle_session, index, request.value,
-                request.replace, request.cursor, request.anchor)
-            return
-        }
-    }
-}
-
 // Runs the program's frames in the player's window until the player closes
 // it. A bundle frame's result reaches the player through the finished-host
 // call; a failed frame closes the window instead of returning a status.
@@ -106,16 +74,13 @@ Run :: (window: App.Window, draw: App.Draw) -> s32 {
         bundle_session = SessionOpen()
         if !SessionValid(bundle_session) { return 1 }
         bundle_started = true
-        TextHostInstall(BundleEditorPresent)
+        TextHostUseTransport(BundleEditorSend, BundleEditorReceive)
     }
     active_draw = draw
     result: s32 = 0
     running := true
     while running {
-        BundleEditorRequest()
-        bundle_editor_identity = 0
-        bundle_editor_count = 0
-        bundle_editor_cursor = 0; bundle_editor_anchor = 0; bundle_editor_flags = 0
+        TextHostFrameBegin(bundle_session)
         input := ReadBundleInput()
         if input.closed { break }
         active := input.down || input.pressed || input.released ||
@@ -151,27 +116,7 @@ Run :: (window: App.Window, draw: App.Draw) -> s32 {
         App.CallDraw(active_draw, bundle_session.slot, bundle_session.epoch, viewport)
         finished := EndFrameRetained(bundle_session, BundleFrameReusableHost(), Clock.Observe(*bundle_activity, active))
         if finished.status != cast(FrameStatus)FrameOk { return 1 }
-        // A platform sees only committed, still-focused field identities.
-        if bundle_editor_identity != 0 {
-            found := false
-            for index: cast(s32)1..TreeCount(bundle_session) - 1 {
-                node := TreeNodeAt(bundle_session, index)
-                if node.identity_generation == bundle_editor_identity && node.selected &&
-                TreeInputAllowedAt(bundle_session, index) &&
-                (!TreeHasFocus(bundle_session) || TreeFocusedAt(bundle_session, index)) {
-                    found = true
-                    // Reopening an OS keyboard needs a fresh hit on the actual
-                    // committed guest field, including clipping/overlay routing.
-                    if input.pressed && TreeHitAt(bundle_session, input.x, input.y) == index {
-                        bundle_editor_flags = bundle_editor_flags | 16
-                    }
-                    break
-                }
-            }
-            if !found { bundle_editor_identity = 0; bundle_editor_count = 0; bundle_editor_cursor = 0; bundle_editor_anchor = 0 }
-        }
-        BundleTextEditorHost(bundle_editor_identity, TextView(bundle_editor_bytes[:bundle_editor_count]),
-            bundle_editor_cursor, bundle_editor_anchor, bundle_editor_flags)
+        TextHostFrameEnd(bundle_session, input.x, input.y, input.pressed)
         BundleFrameFinishedHost(finished.paint_unchanged)
         props := CursorResolve(bundle_session, TreeCursor(bundle_session))
         BundleFrameCursorHost(props.shape, props.asset_path, props.width, props.height,

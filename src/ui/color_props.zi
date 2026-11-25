@@ -1,0 +1,31 @@
+// Shared color values and opacity math; no material or motion policy.
+FillStates :: struct {
+    normal: bool
+    hover: bool
+    press: bool
+    focus: bool
+    normal_start: u32
+    normal_end: u32
+    hover_start: u32
+    hover_end: u32
+    press_start: u32
+    press_end: u32
+    focus_start: u32
+    focus_end: u32
+    hover_amount: float32
+    press_amount: float32
+    focus_amount: float32
+}
+
+#program_export
+Unit :: (value: float32) -> float32 {
+    if value < 0.0 { return 0.0 }
+    if value > 1.0 { return 1.0 }
+    return value
+}
+
+#program_export
+Opacity :: (color: u32, opacity: float32) -> u32 {
+    alpha: u32 = cast(u32)(cast(float32)(color & cast(u32)255) * Unit(opacity))
+    return ((color >> cast(u32)8) << cast(u32)8) | alpha
+}

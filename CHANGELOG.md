@@ -41,6 +41,9 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Reduce simple text programs' dependency graph by separating container measurement, paint operations, style facts, color values, bitmap metadata and portable editor policy. Keep `Text.Draw` and container APIs unchanged; layout-only programs still require no renderer, and editing buffers load with editing widgets.
+- Pin starter projects to the current Ziran toolchain and recognize its dependency-alias module names in portable hosts.
+
 - Avoid a duplicate C entry for plain `src/main.zi` programs on desktop and web. Android supplies its native host bridge in generated sources, so application entries need no `#program_export` annotation.
 
 - Keep CPU-only web scene builds compiling: the shared skinning capability queries already return unavailable through the web probe and need no duplicate fallback declarations.

@@ -58,13 +58,17 @@ main :: () -> s32 {
     if TextArea.TextAreaRowCount(TextView(large[:300]), 5, 10, "") != 300 { return 32 }
     if TextArea.TextAreaRowCount(TextView(large[:300]), 5, 10, "") != 300 { return 33 }
     unused TextArea.TextAreaNextRow(TextView(large[:]), 0, 10, 10, "")
-    before = Host.MeasureCalls()
-    if !CheckRow(TextView(large[:]), 0, 10, 10, "", 2, 2, true) || Host.MeasureCalls() <= before { return 18 }
+    // Glyph widths may be cached independently. Oversized values must bypass
+    // the owned row cache without advancing its replacement clock.
+    row_clock := TextArea.text_area_cache_clock
+    if !CheckRow(TextView(large[:]), 0, 10, 10, "", 2, 2, true) ||
+        TextArea.text_area_cache_clock != row_clock { return 18 }
     long_face: [129]u8
     for i: 0..cast(s32)128 { long_face[i] = cast(u8)120 }
     unused TextArea.TextAreaNextRow("abcd", 0, 20, 10, TextView(long_face[:]))
-    before = Host.MeasureCalls()
-    if !CheckRow("abcd", 0, 20, 10, TextView(long_face[:]), 4, 5, false) || Host.MeasureCalls() <= before { return 31 }
+    row_clock = TextArea.text_area_cache_clock
+    if !CheckRow("abcd", 0, 20, 10, TextView(long_face[:]), 4, 5, false) ||
+        TextArea.text_area_cache_clock != row_clock { return 31 }
     if !CheckRow("Aé\r\nBC", 0, 10, 10, "", 1, 1, true) { return 19 }
     if !CheckRow("Aé\r\nBC", 1, 10, 10, "", 3, 5, false) { return 20 }
     if !CheckRow("Aé\r\nBC", 5, 10, 10, "", 7, 8, false) { return 21 }

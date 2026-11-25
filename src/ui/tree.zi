@@ -144,6 +144,9 @@ NodeGeometry :: struct {
     TreePlacement :: #type (session: Session, parent_index: s32,
         bounds: Rectangle) -> Rectangle;
 
+    TreeChildWidth :: #type (session: Session, parent_index: s32) -> float32;
+    tree_no_child_width: TreeChildWidth;
+
     // A content-sized container settles its height when its scope closes.
     TreeClose :: #type (session: Session, index: s32) -> void;
 
@@ -298,6 +301,7 @@ NodeGeometry :: struct {
 
     LayoutData :: struct {
         placement: TreePlacement
+        child_width: TreeChildWidth
         gap: s32
         row_gap: s32
         padding: s32
@@ -330,6 +334,7 @@ NodeGeometry :: struct {
 
     LayoutInfo :: struct {
         bounds: Rectangle
+        child_width: TreeChildWidth
         gap: s32
         row_gap: s32
         padding: s32
@@ -836,6 +841,7 @@ NodeGeometry :: struct {
         info.bounds = node.bounds
         if node.layout_index >= 0 {
             layout: LayoutData = trees[slot].layouts[node.layout_index]
+            info.child_width = layout.child_width
             info.gap = layout.gap
             info.row_gap = layout.row_gap
             info.padding = layout.padding
@@ -1218,7 +1224,8 @@ NodeGeometry :: struct {
     #program_export
     TreeSetLayout :: (session: Session, index: s32, gap: s32, padding: s32,
         columns: s32, min_item_width: s32,
-        max_columns: s32, padding_y: s32 = -1, row_gap: s32 = -1) {
+        max_columns: s32, padding_y: s32 = -1, row_gap: s32 = -1,
+        child_width: TreeChildWidth = tree_no_child_width) {
         slot: s32 = SessionIndex(session)
         if !trees[slot].building || index < 0 ||
         index >= trees[slot].submitted_count { return }
@@ -1231,6 +1238,7 @@ NodeGeometry :: struct {
         trees[slot].layouts[layout].columns = columns
         trees[slot].layouts[layout].min_item_width = min_item_width
         trees[slot].layouts[layout].max_columns = max_columns
+        trees[slot].layouts[layout].child_width = child_width
     }
 
     #program_export

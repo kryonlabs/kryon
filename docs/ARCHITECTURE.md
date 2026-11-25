@@ -21,6 +21,21 @@ each widget package by name, such as `Text :: #import "kryon/text";`, and the
 shared core modules they use. Optional packages
 have separate imports and build targets; the core UI does not import them.
 
+Leaf widgets ask `layout_width` for the width supplied by their parent's
+measurement callback. Container builders own that callback alongside their
+placement policy; a label does not import rows, grids or their painters.
+`paint_primitives` connects container painting to the frame's queue without
+requiring a renderer for layout-only programs. Shared `style_facts` and
+`color_props` hold values independently of installed rule tables and material
+effects.
+
+Sessions and retained paint consult `bitmap_state`; the bitmap store registers
+metadata and disposal callbacks only after allocating an image. Portable
+editing widgets install `text_editor_zx` through `text_host` frame and transport
+slots. Plain label frames carry neither editor buffers nor edit-request queues.
+These are ordinary module and procedure boundaries, without compiler cases or
+feature flags.
+
 ## Widget and host boundary
 
 The host observes input and submits it to a `Session`. Kryon widget modules

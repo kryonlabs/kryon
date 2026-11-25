@@ -29,7 +29,7 @@ Theme :: #import "theme";
     #import "tree"
     #import "tree_input"
     #import "widget_kind"
-    Layout :: #import "layout";
+    Layout :: #import "layout_width";
 
     using ArrowDirection;
     using WidgetKind;

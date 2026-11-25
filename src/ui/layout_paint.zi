@@ -2,7 +2,7 @@
 #import "drawing_props"
 #import "geometry"
 #import "layout_paint_slot"
-#import "paint_queue"
+#import "paint_primitives"
 #import "session"
 #import "style"
 #import "style_sheet"
@@ -17,23 +17,23 @@ using StyleBoxField;
 // paint square edges; with a radius the box keeps its uniform border.
 LayoutPaintBox :: (session: Session, bounds: Rectangle, face: StyleData, box: StyleBoxData, mark: s64,
     node: s32) {
-    PaintOwner(node)
-    defer { PaintOwner(-1) }
-    from := PaintMark(session)
+    paint_primitives.owner(node)
+    defer { paint_primitives.owner(-1) }
+    from := paint_primitives.mark(session)
     opacity := StyleOpacityValue(face.fields, face.opacity)
     radius := ifx StyleHasField(face, cast(u32)StyleRadius) && face.radius > 0.0 then face.radius else 0.0
     if StyleHasField(face, cast(u32)StyleElevation) && face.elevation != .ElevationRoleNone {
-        PaintElevationForRole(session, -1, bounds, radius, opacity, cast(s32)face.elevation)
+        paint_primitives.elevation(session, -1, bounds, radius, opacity, cast(s32)face.elevation)
     }
     if StyleHasField(face, cast(u32)StyleBackground) {
         top := ColorFromPacked(Opacity(face.background, opacity))
         if StyleHasField(face, cast(u32)StyleBackgroundEnd) && (box.fields & cast(u32)StyleBoxGradient) != 0 {
             LayoutPaintGradient(session, bounds, face, box, opacity)
         } else if StyleHasField(face, cast(u32)StyleBackgroundEnd) {
-            PaintVerticalGradient(session, -1, bounds, top,
+            paint_primitives.gradient(session, -1, bounds, top,
                 ColorFromPacked(Opacity(face.background_end, opacity)))
         } else if top.a != cast(u8)0 {
-            PaintRoundedFill(session, -1, bounds, radius, 8, top)
+            paint_primitives.fill(session, -1, bounds, radius, 8, top)
         }
     }
     uniform := ifx StyleHasField(face, cast(u32)StyleBorderWidth) && face.border_width > 0.0 then face.border_width else 0.0
@@ -41,9 +41,9 @@ LayoutPaintBox :: (session: Session, bounds: Rectangle, face: StyleData, box: St
     if (box.fields & cast(u32)StyleBoxBorderSides) != 0 && radius == 0.0 {
         LayoutPaintSides(session, bounds, face, box, opacity, uniform)
     } else if uniform > 0.0 && border.a != cast(u8)0 {
-        PaintRoundedOutline(session, -1, bounds, radius, 8, uniform, border)
+        paint_primitives.outline(session, -1, bounds, radius, 8, uniform, border)
     }
-    if mark >= 0 { PaintMoveBelow(session, mark, from) }
+    if mark >= 0 { paint_primitives.move_below(session, mark, from) }
 }
 
 LayoutGradientStops :: struct {
@@ -129,7 +129,7 @@ LayoutPaintGradient :: (session: Session, bounds: Rectangle, face: StyleData, bo
         // t(y) = (along + (y - cy) * dy) / length + 0.5 down the strip.
         if LayoutAbs(dy) * h < 0.000001 * length {
             color := LayoutGradientAt(*stops, along / length + 0.5)
-            PaintRoundedFill(session, -1, Rectangle.{cast(float32)left, bounds.y, cast(float32)(right - left), bounds.height},
+            paint_primitives.fill(session, -1, Rectangle.{cast(float32)left, bounds.y, cast(float32)(right - left), bounds.height},
                 0.0, 4, color)
             continue
         }
@@ -153,7 +153,7 @@ LayoutPaintGradient :: (session: Session, bounds: Rectangle, face: StyleData, bo
             if y1 - y0 <= 0.0 { continue }
             upper := LayoutGradientAt(*stops, (along + (y0 - cy) * dy) / length + 0.5)
             lower := LayoutGradientAt(*stops, (along + (y1 - cy) * dy) / length + 0.5)
-            PaintVerticalGradient(session, -1, Rectangle.{cast(float32)left, cast(float32)y0,
+            paint_primitives.gradient(session, -1, Rectangle.{cast(float32)left, cast(float32)y0,
                 cast(float32)(right - left), cast(float32)(y1 - y0)}, upper, lower)
         }
     }
@@ -181,11 +181,11 @@ LayoutPaintSides :: (session: Session, bounds: Rectangle, face: StyleData, box: 
 
 LayoutPaintBand :: (session: Session, band: Rectangle, color: Color) {
     if band.width > 0.0 && band.height > 0.0 && color.a != cast(u8)0 {
-        PaintRoundedFill(session, -1, band, 0.0, 8, color)
+        paint_primitives.fill(session, -1, band, 0.0, 8, color)
     }
 }
 
 LayoutPaintInstall :: () {
+    if paint_primitives.mark == null { return }
     layout_box_paint = LayoutPaintBox
-    layout_paint_mark = PaintMark
 }

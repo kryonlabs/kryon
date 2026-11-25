@@ -1,0 +1,14 @@
+#import "session"
+#import "tree"
+
+// Containers supply their sizing policy with their placement policy. A leaf
+// only asks for its available width; it need not import container builders.
+#program_export
+LayoutChildWidth :: (session: Session) -> float32 {
+    index := TreeCurrentParent(session)
+    node := TreeSubmittedNodeAt(session, index)
+    if !node.places_children { return 0.0 }
+    info := TreeLayoutAt(session, index)
+    if info.child_width == null { return 0.0 }
+    return info.child_width(session, index)
+}

@@ -40,7 +40,10 @@ Group :: (session: Session, props: PropsModule.Props) -> LayoutContainer {
 #import "control_props"
 #import "grid"
 #import "grid_props"
+#import "layout_paint"
 #import "layout_paint_slot"
+#import "paint_primitives"
+using WidthModule :: #import "layout_width";
 #import "math"
 #import "style"
 #import "style_sheet"
@@ -528,6 +531,7 @@ OpenContainer :: (session: Session, props: PropsModule.Props,
     result: LayoutContainer, box: StyleBoxData, available: float32,
     content_sized: bool = false, face: StyleData = StyleData.{}, own_face: bool = false) -> LayoutContainer {
     if !TreeIsBuilding(session) { return result }
+    if layout_box_paint == null { LayoutPaintInstall() }
     key: u64 = props.key
     if key == cast(u64)0 { key = TreeNextKey(session) }
     parent := TreeSubmittedNodeAt(session, TreeCurrentParent(session))
@@ -544,13 +548,14 @@ OpenContainer :: (session: Session, props: PropsModule.Props,
     }
     result.bounds = placed
     result.content = LayoutMetricsFor(result.bounds, result.gap, result.padding, result.padding_y).content
-    TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0, result.padding_y)
+    TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0,
+        result.padding_y, -1, LayoutContentChildWidth)
     size := LayoutContentSizeFor(face, box)
     if LayoutPaintsBox(face, box) {
         if !content_sized {
             layout_box_paint(session, result.bounds, face, box, -1, result.node)
         } else if !own_face || layout_box_face_count < LayoutBoxFaceLimit {
-            size.paint_mark = layout_paint_mark(session)
+            size.paint_mark = paint_primitives.mark(session)
             if own_face {
                 // Node indices grow within a frame: an entry at or past this
                 // node is left from an earlier frame.
@@ -755,17 +760,17 @@ AutoGridChildWidth :: (session: Session, bounds: Rectangle) -> float32 {
     return track.item.width
 }
 
-// The width the current container gives a child it places that has none:
-// a column's or stack's content width or a grid's track; zero in a row or
-// flow, where the child keeps its own width, and outside placing parents.
-#program_export
-LayoutChildWidth :: (session: Session) -> float32 {
-    index := TreeCurrentParent(session)
+// A container owns its width policy, just as it owns child placement.
+LayoutContentChildWidth :: (session: Session, index: s32) -> float32 {
     node := TreeSubmittedNodeAt(session, index)
-    if !node.places_children || node.kind == WidgetKindRow { return 0.0 }
-    if node.kind == WidgetKindGrid { return AutoGridChildWidth(session, Rectangle.{}) }
+    if node.kind == WidgetKindRow { return 0.0 }
     info := TreeLayoutAt(session, index)
     return LayoutMetricsFor(info.bounds, info.gap, info.padding, info.padding_y).content.width
+}
+
+LayoutGridChildWidth :: (session: Session, index: s32) -> float32 {
+    track := GridStep(LayoutGridCursor(TreeLayoutAt(session, index)), 0, 1)
+    return track.item.width
 }
 
 #program_export
@@ -820,7 +825,7 @@ Grid :: (session: Session, props: GridProps, items: []GridItem = EmptyGridItems(
         .padding_y = props.padding_y}
     container = OpenContainer(session, scope, container, box, parent.width, content_sized, face)
     TreeSetLayout(session, container.node, props.gap, props.padding, metrics.columns,
-        0, 0, props.padding_y, props.row_gap)
+        0, 0, props.padding_y, props.row_gap, LayoutGridChildWidth)
     if items.count == 0 { TreeSetPlacement(session, container.node, TreePlaceGrid) }
     props.bounds = container.bounds
     cursor := BeginGridCursor(props)

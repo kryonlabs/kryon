@@ -13,6 +13,7 @@
 #import "std/file"
 #import "std/text_tools"
 #import "std/environment_linux"
+#import "toolchain_pin"
 using Vectors :: #import "vec";
 
 // What an empty window must never carry: the frame loop and desktop
@@ -301,8 +302,8 @@ ExpectChecked :: (example: string, directory: string, modules: []string) {
 // A frame example's own lock pins a published Kryon, and a developer's
 // ziran.local.toml may point anywhere. The test builds a copy of the example
 // in its scratch folder instead, whose own ziran.local.toml points kryon at
-// this checkout and keeps the example's pinned toolchain. Returns the copy,
-// or "" when it cannot be made.
+// this checkout and uses the same toolchain as the starter projects. Returns
+// the copy, or "" when it cannot be made.
 PrepareFrame :: (ziran: string, name: string) -> string {
     source := JoinPath("examples", name)
     copy := JoinPath("build/test/pay-per-import/examples", name)
@@ -317,6 +318,11 @@ PrepareFrame :: (ziran: string, name: string) -> string {
         copied = copied && (ifx IsDirectory(from) then CopyTree(from, to) else CopyFile(from, to))
     }
     FreeDirectoryNames(*entries)
+    manifest_path := JoinPath(copy, "ziran.toml")
+    manifest, readable := ReadEntireFile(manifest_path)
+    manifest_bytes: [65536]u8
+    pins: [1]TablePin = .[.{table = "[toolchain]", git = KryonZiranGit, ref = KryonZiranRef}]
+    if !readable || !WriteEntireFile(manifest_path, PinTables(manifest, pins[:], manifest_bytes[:])) { return "" }
     overrides: Vec(u8)
     BuilderPrint(*overrides, "[overrides]\nkryon = \"%\"\n", WorkingDirectory())
     lock: [2]string = .[ziran, "lock"]
@@ -401,6 +407,20 @@ main :: () -> s32 {
         Fail("hello", "does not build", "examples/hello.zi")
     } else {
         Expect("hello", "build/test/pay-per-import/hello", hello_present[:], not_without_pictures[:])
+    }
+
+    // A label asks its parent for width and the frame for paint operations.
+    // It does not build containers, own pictures or edit text.
+    zx_hello_present: [3]string = .["text", "tree", "paint_queue"]
+    zx_hello_absent: [14]string = .["layout", "layout_props", "layout_behavior",
+        "grid", "grid_props", "layout_paint", "layout_paint_slot", "bitmap_store",
+        "text_request", "text_input_platform", "text_editor_zx", "style_sheet",
+        "surface", "image"]
+    if !CheckZxProgram(ziran, "hello:main", "examples/hello.zi", "build/test/pay-per-import/hello-zx-ir") {
+        Fail("hello (zx)", "does not check", "examples/hello.zi")
+    } else {
+        ExpectCheckedModules("hello (zx)", "build/test/pay-per-import/hello-zx-ir",
+            zx_hello_present[:], zx_hello_absent[:])
     }
 
     box := PrepareFrame(ziran, "box")

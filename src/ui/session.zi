@@ -1,4 +1,4 @@
-Bitmaps :: #import "bitmap_store";
+Bitmaps :: #import "bitmap_state";
 
 // A value handle is portable across native code and Ziran bundles.
 // Slot zero is invalid; an epoch rejects handles after their slot closes.

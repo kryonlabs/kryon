@@ -6,6 +6,15 @@
 // field or area carries neither module.
 #import "session"
 
+// The platform edit record is small; request storage stays in text_request.
+TextRequest :: struct {
+    value: string
+    cursor: s32
+    anchor: s32
+    replace: bool
+    pending: bool
+}
+
 TextEditingSend :: #type (session: Session, index: s32, value: string,
     replace: bool, cursor: s32, anchor: s32) -> bool;
 TextEditingSession :: #type (session: Session) -> void;

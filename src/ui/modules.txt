@@ -4,6 +4,8 @@ accessibility_policy.zi
 accessibility_props.zi
 bevel.zi
 bitmap_store.zi
+bitmap_state.zi
+color_props.zi
 box/box_props.zi
 box/box.zi
 breadcrumb/breadcrumb.zi
@@ -186,10 +188,13 @@ spinbox/spinbox_behavior.zi
 spinbox/spinbox_props.zi
 spinbox/spinbox.zi
 style.zi
+style_facts.zi
 style_sheet.zi
 style_motion_slot.zi
 layout_motion_slot.zi
 layout_paint_slot.zi
+layout_width.zi
+paint_primitives.zi
 layout_paint.zi
 paint_matrix.zi
 paint_transform.zi
@@ -218,6 +223,7 @@ text_touch.zi
 text_emphasis.zi
 textfield/textfield.zi
 text_host.zi
+text_editor_zx.zi
 text_input.zi
 text_input_platform.zi
 text_editing.zi

@@ -62,7 +62,7 @@ project-toolchain:
 $(ZIRAN_DIR)/build/bin/zi2c:
 	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
 
-build/project/gen/cli_linux.c: src/project/cli_linux.zi src/project/options.zi $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN_DIR)/build/bin/ziran
+build/project/gen/cli_linux.c: $(wildcard src/project/*.zi) $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN_DIR)/build/bin/ziran
 	mkdir -p build/project/gen
 	rm -f build/project/gen/*.c build/project/gen/*.h
 	$(ZIRAN_DIR)/build/bin/ziran build --target=c --root src/project \
@@ -703,7 +703,7 @@ test: gamepad-test
 pay-per-import-test:
 	@rm -rf build/test/pay-per-import
 	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_BIN="$(ZIRAN_BIN)" \
-		"$(ZIRAN_BIN)" run --target=c --root tests tests/pay_per_import_test.zi
+		"$(ZIRAN_BIN)" run --target=c --root tests --module-path src/project tests/pay_per_import_test.zi
 test: pay-per-import-test
 
 # The desktop host's windows on a private Xvfb with real X input: each

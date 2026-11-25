@@ -81,7 +81,8 @@ Draw :: (session: Session, props: PropsModule.Props, location := #caller_locatio
     result.bounds = TreeSubmittedNodeAt(session, result.node).bounds
     metrics = LayoutMetricsFor(result.bounds, result.gap, result.padding)
     result.content = metrics.content
-    TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0)
+    TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0,
+        -1, -1, Layout.LayoutContentChildWidth)
     TreeSetPlacement(session, result.node, Layout.TreePlaceColumn)
     TreeSetLabel(session, result.node, props.title)
     TreeSetStyleClass(session, result.node, props.class_name)
@@ -111,7 +112,8 @@ Section :: (session: Session, props: SectionProps) -> SectionResult {
     result.bounds = TreeSubmittedNodeAt(session, result.node).bounds
     metrics = LayoutMetricsFor(result.bounds, result.gap, result.padding)
     result.content = metrics.content
-    TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0)
+    TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0,
+        -1, -1, Layout.LayoutContentChildWidth)
     TreeSetPlacement(session, result.node, Layout.TreePlaceColumn)
     TreeSetLabel(session, result.node, props.label)
     TreeSetStyleClass(session, result.node, props.class_name)

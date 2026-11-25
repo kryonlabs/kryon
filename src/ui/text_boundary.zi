@@ -3,6 +3,9 @@
 // only programs that can edit text carry the Unicode tables.
 Grapheme :: #import "std/grapheme";
 #import "text_request"
+#if TARGET == .ZX {
+    #import "text_editor_zx"
+}
 
 GraphemeBoundary :: (value: string, at: s32) -> s32 {
     return Grapheme.Boundary(value, at)

@@ -2,6 +2,9 @@
 // package build. An underscore in a module's own name is not a namespace.
 ModuleName :: (value: string, name: string) -> bool {
     if value == name { return true }
+    if value.count == name.count + 7 && value[:7] == "kryon__" {
+        return value[7:] == name
+    }
     if value.count == name.count + 6 && value[:6] == "kryon_" {
         return value[6:] == name
     }

@@ -1,5 +1,4 @@
 #import "geometry"
-#import "layout_paint"
 #import "paint_matrix"
 #import "style_tree"
 #import "paint_queue"
@@ -52,7 +51,7 @@ BeginFrame :: (session: Session, screen_key: u64,
     TextEditingFrameBegin(session)
     PaintClear(session)
     PaintSetViewport(session, bounds)
-    LayoutPaintInstall()
+    PaintPrimitivesInstall()
     StyleTreeInstall(session)
     if paint_matrix_frame != null { paint_matrix_frame(session, false) }
     frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, SessionIndex(session), false)

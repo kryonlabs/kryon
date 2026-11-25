@@ -2,6 +2,7 @@
 // this module deliberately does not import session or the paint queue.
 #import "drawing_props"
 #import "std/vec"
+using State :: #import "bitmap_state";
 
 BITMAP_IMAGE_LIMIT :: 64
 BITMAP_IMAGE_MAX_DIMENSION :: 4096
@@ -34,7 +35,6 @@ BitmapStorage :: struct {
 }
 bitmap_images: [BITMAP_IMAGE_LIMIT]BitmapStorage;
 bitmap_next_id: u32 = 1;
-bitmap_revision: u64;
 bitmap_bytes: s64;
 bitmap_changed: BitmapChanged;
 bitmap_upload: BitmapUpload;
@@ -60,6 +60,11 @@ BitmapSlot :: (id: u32) -> s32 {
         if bitmap_images[at].image.id == id { return at }
     }
     return -1
+}
+BitmapStoredRevision :: (id: u32) -> u64 {
+    at := BitmapSlot(id)
+    if at < 0 { return 0 }
+    return bitmap_images[at].revision
 }
 BitmapOwnedSlot :: (slot: s32, epoch: u64, image: Texture2D) -> s32 {
     at := BitmapSlot(image.id)
@@ -91,7 +96,7 @@ BitmapDrop :: (at: s32) {
     item.provider_id = 0
     BitmapPublish(at)
 }
-BitmapDisposeOwner :: (slot: s32, epoch: u64) {
+BitmapDisposeStoredOwner :: (slot: s32, epoch: u64) {
     for at: cast(s32)0..BITMAP_IMAGE_LIMIT - 1 {
         if bitmap_images[at].owner_slot == slot && bitmap_images[at].owner_epoch == epoch {
             BitmapDrop(at)
@@ -164,6 +169,8 @@ BitmapCreateOwned :: (slot: s32, epoch: u64, width: s32, height: s32, rgba: []u8
     item.owner_slot = slot; item.owner_epoch = epoch; item.provider_id = provider_id
     BitmapCopyPixels(free_slot, rgba)
     bitmap_bytes += required
+    bitmap_revision_query = BitmapStoredRevision
+    bitmap_owner_disposal = BitmapDisposeStoredOwner
     BitmapPublish(free_slot)
     return item.image
 }

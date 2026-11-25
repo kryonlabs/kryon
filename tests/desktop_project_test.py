@@ -84,7 +84,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="kryon-desktop-") as directory:
         project = Path(directory)
         (project / "src").mkdir()
-        toolchain = tomllib.loads((ROOT / "ziran.toml").read_text())["toolchain"]
+        toolchain = tomllib.loads((ROOT / "templates/app/ziran.toml").read_text())["toolchain"]
         (project / "ziran.toml").write_text(
             '[package]\nname = "desktop_probe"\nentry = "src/main.zi"\n'
             'module_roots = ["src"]\nbridge_modules = ["main"]\n\n'

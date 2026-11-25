@@ -1,3 +1,4 @@
+using Colors :: #import "color_props";
 #import "control_props"
 
 using MaterialKind;
@@ -126,23 +127,6 @@ SurfaceLayer :: struct {
 // Coverage is separate so the same color policy works with any rasterizer.
 // Missing custom endpoints mean the live material, not transparent black.
 // Keep every state's presence through the fade, including when leaving it.
-FillStates :: struct {
-    normal: bool
-    hover: bool
-    press: bool
-    focus: bool
-    normal_start: u32
-    normal_end: u32
-    hover_start: u32
-    hover_end: u32
-    press_start: u32
-    press_end: u32
-    focus_start: u32
-    focus_end: u32
-    hover_amount: float32
-    press_amount: float32
-    focus_amount: float32
-}
 
 #program_export
 FillState :: (fields: u32, start: u32, end: u32) -> FillStates {
@@ -296,13 +280,6 @@ DepthColor :: (color: u32, amount: float32) -> u32 {
 }
 
 #program_export
-Unit :: (value: float32) -> float32 {
-    if value < 0.0 { return 0.0 }
-    if value > 1.0 { return 1.0 }
-    return value
-}
-
-#program_export
 ColorChroma :: (color: u32) -> u32 {
     lowest: u32 = cast(u32)255
     highest: u32 = cast(u32)0
@@ -314,12 +291,6 @@ ColorChroma :: (color: u32) -> u32 {
         shift += cast(u32)8
     }
     return highest - lowest
-}
-
-#program_export
-Opacity :: (color: u32, opacity: float32) -> u32 {
-    alpha: u32 = cast(u32)(cast(float32)(color & cast(u32)255) * Unit(opacity))
-    return ((color >> cast(u32)8) << cast(u32)8) | alpha
 }
 
 // Cubic ease-out with an exact endpoint; elapsed is measured from the last

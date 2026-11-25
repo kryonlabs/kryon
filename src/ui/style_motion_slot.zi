@@ -1,6 +1,6 @@
 #import "session"
 #import "style"
-#import "style_sheet"
+#import "style_facts"
 
 StyleMotionSample :: #type (Session, u64, StyleFacts, StyleData) -> StyleData;
 style_motion_sample: StyleMotionSample;

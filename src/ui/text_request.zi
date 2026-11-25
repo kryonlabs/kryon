@@ -1,5 +1,5 @@
 #import "session"
-#import "text_editing"
+using Editing :: #import "text_editing";
 #import "tree"
 #import "tree_input"
 Utf8 :: #import "std/utf8";
@@ -19,13 +19,6 @@ TextRequestUseBoundary :: (boundary: TextBoundary) -> bool {
 // A platform asks for an edit; the widget still validates its value limits
 // and returns the ordinary caller-owned replacement. One outstanding request
 // per session prevents a platform from overwriting an unconsumed request.
-TextRequest :: struct {
-    value: string
-    cursor: s32
-    anchor: s32
-    replace: bool
-    pending: bool
-}
 
 PendingTextRequest :: struct {
     session: Session

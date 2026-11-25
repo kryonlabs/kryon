@@ -1,5 +1,6 @@
+#import "paint_primitives"
 ImageSchema :: #import "image_props";
-Bitmaps :: #import "bitmap_store";
+Bitmaps :: #import "bitmap_state";
 #import "drawing_props"
 #import "control_props"
 #import "geometry"
@@ -1339,9 +1340,7 @@ TextureEqual :: (left: Texture2D, right: Texture2D) -> bool {
 }
 
 PaintBitmapRevision :: (texture_id: u32) -> u64 {
-    at := Bitmaps.BitmapSlot(texture_id)
-    if at < 0 { return 0 }
-    return Bitmaps.bitmap_images[at].revision
+    return Bitmaps.BitmapRevisionFor(texture_id)
 }
 
 // RetainFrame can reuse a snapshot without composing again. Only updates to
@@ -1889,4 +1888,13 @@ PaintElevationForRole :: (session: Session, node: s32, bounds: Rectangle,
         PaintRoundedFill(session, node, ElevationEdgeBounds(bounds, layer, radius),
             0.0, 4, Color.{0, 0, 0, cast(u8)(cast(float32)alpha * opacity)})
     }
+}
+
+// Install the generic drawing operations, without importing any container
+// painter. Layout-only programs leave these empty and keep their geometry.
+PaintPrimitivesInstall :: () {
+    paint_primitives = PaintPrimitives.{.mark = PaintMark,
+        .move_below = PaintMoveBelow, .owner = PaintOwner,
+        .fill = PaintRoundedFill, .outline = PaintRoundedOutline,
+        .gradient = PaintVerticalGradient, .elevation = PaintElevationForRole}
 }

@@ -1,4 +1,5 @@
 #import "session"
+#import "text_editing"
 
 // A platform may stage editor presentation while the widget builds a frame.
 // It must publish it only after that frame commits. Values (including secure
@@ -9,6 +10,51 @@ TextPresentation :: #type (session: Session, node: s32, value: string,
     edited: bool) -> void;
 text_presentation: TextPresentation;
 text_presentation_ready: bool;
+
+// Portable editors opt into the frame boundary as well as presentation.
+// Native hosts keep owning their own editor lifecycle.
+TextHostBegin :: #type (session: Session) -> void;
+TextHostEnd :: #type (session: Session, x: float32, y: float32, pressed: bool) -> void;
+text_host_begin: TextHostBegin;
+text_host_end: TextHostEnd;
+
+TextHostUseFrames :: (begin: TextHostBegin, end: TextHostEnd) {
+    text_host_begin = begin
+    text_host_end = end
+}
+
+TextHostFrameBegin :: (session: Session) {
+    if text_host_begin != null { text_host_begin(session) }
+}
+
+TextHostFrameEnd :: (session: Session, x: float32, y: float32, pressed: bool) {
+    if text_host_end != null { text_host_end(session, x, y, pressed) }
+}
+
+// The frame supplies host effects; editor policy and buffers arrive with
+// editing widgets. Keeping the wire record here requires no request queue.
+TextEditorPresentation :: #type (identity: u64, value: string, cursor: s32,
+    anchor: s32, flags: s32) -> void;
+TextEditorRequest :: #type (identity: u64) -> TextRequest;
+text_editor_presentation: TextEditorPresentation;
+text_editor_request: TextEditorRequest;
+
+TextHostUseTransport :: (present: TextEditorPresentation, request: TextEditorRequest) {
+    text_editor_presentation = present
+    text_editor_request = request
+}
+
+TextHostEditorRequest :: (identity: u64) -> TextRequest {
+    if text_editor_request == null { return TextRequest.{} }
+    return text_editor_request(identity)
+}
+
+TextHostEditorPresent :: (identity: u64, value: string, cursor: s32,
+    anchor: s32, flags: s32) {
+    if text_editor_presentation != null {
+        text_editor_presentation(identity, value, cursor, anchor, flags)
+    }
+}
 
 TextHostInstall :: (presentation: TextPresentation) {
     text_presentation = presentation; text_presentation_ready = true

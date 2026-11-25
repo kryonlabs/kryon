@@ -3,7 +3,7 @@
 // parent: it is the first when that parent has none yet, and its ancestors
 // are the open scopes. Rules without such context never call this.
 #import "session"
-#import "style_sheet"
+#import "style_facts"
 #import "tree"
 
 using StyleContext;

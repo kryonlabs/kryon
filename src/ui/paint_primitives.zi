@@ -1,0 +1,28 @@
+#import "drawing_props"
+#import "geometry"
+#import "session"
+
+// Rendering clients can describe their paint without importing a queue or
+// a raster host. BeginFrame supplies these operations for queued rendering.
+PaintPrimitiveMark :: #type (session: Session) -> s64;
+PaintPrimitiveMove :: #type (session: Session, mark: s64, from: s64) -> void;
+PaintPrimitiveOwner :: #type (node: s32) -> void;
+PaintPrimitiveFill :: #type (session: Session, node: s32, bounds: Rectangle,
+    radius: float32, segments: s32, color: Color) -> void;
+PaintPrimitiveOutline :: #type (session: Session, node: s32, bounds: Rectangle,
+    radius: float32, segments: s32, width: float32, color: Color) -> void;
+PaintPrimitiveGradient :: #type (session: Session, node: s32, bounds: Rectangle,
+    top: Color, bottom: Color) -> void;
+PaintPrimitiveElevation :: #type (session: Session, node: s32, bounds: Rectangle,
+    radius: float32, opacity: float32, role: s32) -> void;
+
+PaintPrimitives :: struct {
+    mark: PaintPrimitiveMark
+    move_below: PaintPrimitiveMove
+    owner: PaintPrimitiveOwner
+    fill: PaintPrimitiveFill
+    outline: PaintPrimitiveOutline
+    gradient: PaintPrimitiveGradient
+    elevation: PaintPrimitiveElevation
+}
+paint_primitives: PaintPrimitives;

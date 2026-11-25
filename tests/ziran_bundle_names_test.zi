@@ -9,5 +9,7 @@ main :: () -> s32 {
     if ModuleName("some_image_raster", "image_raster") { return 6 }
     if ModuleName("p0123456789abcdeg_image_raster", "image_raster") { return 7 }
     if ModuleName("", "raster") { return 8 }
+    if !ModuleName("kryon__image_raster", "image_raster") { return 9 }
+    if ModuleName("kryon__image_raster", "raster") { return 10 }
     return 0
 }

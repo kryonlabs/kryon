@@ -31,15 +31,15 @@ using Text :: #import "text_props";
     #import "semantic"
     #import "style"
     #import "style_motion_slot"
-    #import "style_sheet"
-    #import "surface"
+    #import "style_facts"
+    #import "color_props"
     #import "text_behavior"
     #import "text_align"
     #import "text_style"
     #import "tree"
     #import "text_selection_host"
     #import "widget_kind"
-    Layout :: #import "layout";
+    Layout :: #import "layout_width";
     Grapheme :: #import "std/grapheme";
 
     using WidgetKind;

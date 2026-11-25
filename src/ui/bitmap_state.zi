@@ -1,0 +1,16 @@
+// Managed images install these when their first allocation succeeds. Session
+// lifetime and retained paint need metadata, not the pixel store itself.
+BitmapRevisionQuery :: #type (id: u32) -> u64;
+BitmapOwnerDisposal :: #type (slot: s32, epoch: u64) -> void;
+bitmap_revision: u64;
+bitmap_revision_query: BitmapRevisionQuery;
+bitmap_owner_disposal: BitmapOwnerDisposal;
+
+BitmapRevisionFor :: (id: u32) -> u64 {
+    if bitmap_revision_query == null { return 0 }
+    return bitmap_revision_query(id)
+}
+
+BitmapDisposeOwner :: (slot: s32, epoch: u64) {
+    if bitmap_owner_disposal != null { bitmap_owner_disposal(slot, epoch) }
+}
