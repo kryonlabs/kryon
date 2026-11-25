@@ -602,7 +602,7 @@ $(HOST_REGISTRY)/kryon-desktop.host: $(PLAYER) $(ZIRAN_BIN)
 	@mv -f "$@.new" "$@"
 
 PREFIX ?= $(HOME)/.local
-install-user: build/bin/kryon zx-player zx-window-host
+install-user: build/bin/kryon zx-player zx-window-host zx-pixmap-host
 	mkdir -p "$(PREFIX)/bin"
 	cp build/bin/kryon "$(PREFIX)/bin/kryon.new"
 	mv -f "$(PREFIX)/bin/kryon.new" "$(PREFIX)/bin/kryon"
@@ -612,6 +612,8 @@ install-user: build/bin/kryon zx-player zx-window-host
 	mv -f "$(PREFIX)/lib/kryon/zx-desktop.new" "$(PREFIX)/lib/kryon/zx-desktop"
 	cp $(WINDOW_HOST) "$(PREFIX)/lib/kryon/libkryon-desktop.so.new"
 	mv -f "$(PREFIX)/lib/kryon/libkryon-desktop.so.new" "$(PREFIX)/lib/kryon/libkryon-desktop.so"
+	cp $(PIXMAP_HOST) "$(PREFIX)/lib/kryon/libkryon-pixmap.so.new"
+	mv -f "$(PREFIX)/lib/kryon/libkryon-pixmap.so.new" "$(PREFIX)/lib/kryon/libkryon-pixmap.so"
 	mkdir -p "$(PREFIX)/share/ziran/hosts"
 	@provider=$$(CDPATH= cd -- "$(PREFIX)/lib/kryon" && pwd -P) && \
 		identity=$$("$(ZIRAN_BIN)" version --identity) && \
@@ -620,6 +622,9 @@ install-user: build/bin/kryon zx-player zx-window-host
 	@library=$$(CDPATH= cd -- "$(PREFIX)/lib/kryon" && pwd -P) && \
 		printf '%s/libkryon-desktop.so\n' "$$library" > "$(PREFIX)/share/ziran/hosts/kryon-desktop.library.new"
 	mv -f "$(PREFIX)/share/ziran/hosts/kryon-desktop.library.new" "$(PREFIX)/share/ziran/hosts/kryon-desktop.library"
+	@library=$$(CDPATH= cd -- "$(PREFIX)/lib/kryon" && pwd -P) && \
+		printf '%s/libkryon-pixmap.so\n' "$$library" > "$(PREFIX)/share/ziran/hosts/kryon-pixmap.library.new"
+	mv -f "$(PREFIX)/share/ziran/hosts/kryon-pixmap.library.new" "$(PREFIX)/share/ziran/hosts/kryon-pixmap.library"
 	$(RM) "$(PREFIX)/bin/zib"
 
 # Laws state policy independently of its implementation; `ziran check`

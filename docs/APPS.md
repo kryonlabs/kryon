@@ -45,8 +45,12 @@ window.zx` opens the window. The same capabilities are a host library,
 `libkryon-desktop.so` from `zx_window_host.zi` (`make zx-window-host`), which
 `make install-user` registers as `kryon-desktop.library`, so `zx2native
 window.zx` writes a Linux executable that links them and opens the window
-itself. `make zx-window-test` checks both on a private Xvfb, and that with no
-library registered `zx2native` stops at the gap naming `ZxWindowOpenHost`. In
+itself. The headless raster host registers the same way: `libkryon-pixmap.so`
+from `src/backend/pixmap.zi` (`make zx-pixmap-host`) lands as
+`kryon-pixmap.library`, so a window-less `zx2native` executable links text
+measure and render (`MeasureGlyphWidth`) by name. `make zx-window-test`
+checks both on a private Xvfb, and that with no library registered `zx2native`
+stops at the gap naming `ZxWindowOpenHost`. In
 the browser, a project profile with `backend = "canvas"` and `codegen = "zx"`
 takes a program entry too: its bundle is the program's own `main`, and the ZX
 canvas player binds the window to the page's canvas (`window_page_player`),

@@ -55,3 +55,25 @@ $(WINDOW_HOST): $(wildcard $(KRYON_DIR)/src/backend/*.zi) $(wildcard $(ZIRAN_DIR
 		-I$(ZIRAN_DIR)/include -I$(WINDOW_HOST_DIR) $(WINDOW_HOST_DIR)/*.c -Wl,--gc-sections \
 		$$(pkg-config --libs sdl2) -o "$$temporary" && \
 		chmod 755 "$$temporary" && mv "$$temporary" $@
+
+# The pixmap host library: the headless rasterizer's capabilities, which a
+# ZX program's native executable links by name once install-user registers
+# it. Only pixmap.zi and what it imports go in, so `zx2native` programs that
+# never open a window can still measure and render text.
+PIXMAP_HOST_DIR := $(KRYON_DIR)/build/zx-pixmap-host
+PIXMAP_HOST := $(KRYON_DIR)/build/lib/libkryon-pixmap.so
+
+.PHONY: zx-pixmap-host
+zx-pixmap-host: $(PIXMAP_HOST)
+
+$(PIXMAP_HOST): $(wildcard $(KRYON_DIR)/src/backend/*.zi) $(wildcard $(ZIRAN_DIR)/std/*.zi) $(KRYON_DIR)/mk/zx-player.mk \
+	$(KRYON_DIR)/ziran.toml $(KRYON_DIR)/ziran.lock $(ZIRAN)
+	mkdir -p $(PIXMAP_HOST_DIR) $(KRYON_DIR)/build/lib
+	cd "$(KRYON_DIR)" && $(ZIRAN) build --project --target=c --prune-stale --define PLATFORM_DESKTOP \
+		--root $(KRYON_DIR)/src/backend -o $(PIXMAP_HOST_DIR) $(KRYON_DIR)/src/backend/pixmap.zi
+	@temporary=$$(mktemp $(KRYON_DIR)/build/lib/libkryon-pixmap.XXXXXX); \
+		trap 'rm -f "$$temporary"' EXIT; \
+		$(CC) -std=c99 -pedantic-errors -O2 -fPIC -shared -ffunction-sections -fdata-sections \
+		-I$(ZIRAN_DIR)/include -I$(PIXMAP_HOST_DIR) $(PIXMAP_HOST_DIR)/*.c -Wl,--gc-sections \
+		$$(pkg-config --libs cairo freetype2 fontconfig) -lm -lpthread -o "$$temporary" && \
+		chmod 755 "$$temporary" && mv "$$temporary" $@

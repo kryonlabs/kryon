@@ -41,6 +41,8 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- `zx2native` programs can link the headless raster host by name: `make zx-pixmap-host` builds `libkryon-pixmap.so` from `src/backend/pixmap.zi` and `make install-user` registers it as `kryon-pixmap.library` next to `kryon-desktop.library`, so a native ELF that measures and renders text without a window (`MeasureGlyphWidth`, `MeasureGlyphLineHeight` and the pixmap exports) stops failing with `machine ELF does not implement host capability MeasureGlyphWidth`.
+
 - Kryon enforces `main` on desktop UI programs: a desktop entry without `main :: () -> s32` (opening its window through `kryon/app`) fails with a migration error; `KRYON_FRAME_ENTRY=1` keeps frame-mode fixtures building until their host capabilities move into `kryon/app`. Capture builds (`kryon` preview, `run --png`) bind the entry's `Frame` even for a program entry, so fixtures stay drawing modules, and `App.Frame` carries the `viewport` its draw runs in.
 
 - A program entry builds on non-desktop C backends without carrying desktop modules: terminal, canvas, dom and pixmap builds define `KRYON_NO_DESKTOP_HOST`, and `kryon/app` then maps `App.Show`/`App.Run` to `app_unsupported` on Linux C targets, so `kryon run shot` links a program entry (which imports `kryon/app`) without the desktop window and accessibility libraries.
