@@ -41,6 +41,9 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Pin the compiler with readable direct C foreign bindings and closed-program
+  pruning of unused optional hooks; keep generated modules in separate files.
+
 - Keep widget key derivation independent of sessions and bitmap ownership.
   Duplicate-key recovery uses the stateless `widget_key` module.
 
