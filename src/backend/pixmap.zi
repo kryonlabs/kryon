@@ -1560,8 +1560,8 @@ PixmapGpuSnapEdge :: (edge: float32, size: float32) -> float32 {
 }
 
 // A plain image is one textured quad. The texture holds premultiplied pixels,
-// as the raster's smooth sampling does. Rotated or rounded images, and sources
-// past the image's edge, keep the pixel path.
+// as the raster's smooth sampling does. Rotated images and sources past the
+// image's edge keep the pixel path; rounded images clip textured row spans.
 PixmapGpuImageQuad :: (slot: s32, source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32, tint: Color, smooth: bool = false) -> bool {
     width := cast(float32)pixmap_image_widths[slot]; height := cast(float32)pixmap_image_heights[slot]
@@ -1569,7 +1569,7 @@ PixmapGpuImageQuad :: (slot: s32, source: Rectangle, destination: Rectangle, cli
     source_right := PixmapGpuSnapEdge(source.x + source.width, width)
     source_bottom := PixmapGpuSnapEdge(source.y + source.height, height)
     source = .{source_left, source_top, source_right - source_left, source_bottom - source_top}
-    if rotation != 0.0 || (radius > 0.0 && smooth) || pixmap_image_widths[slot] > pixmap_gpu_max_image ||
+    if rotation != 0.0 || pixmap_image_widths[slot] > pixmap_gpu_max_image ||
         pixmap_image_heights[slot] > pixmap_gpu_max_image ||
         source.x < 0.0 || source.y < 0.0 || source_right < 0.0 || source_bottom < 0.0 ||
         source.x > width || source.y > height || source_right > width || source_bottom > height { return false }
@@ -1619,14 +1619,14 @@ PixmapGpuImageQuad :: (slot: s32, source: Rectangle, destination: Rectangle, cli
             }
             if start != span_left || finish != span_right {
                 if span_right > span_left {
-                    PixmapGpuQuad(left, top, right, bottom, u0, v0, u1, v1, ink, slot, false,
+                    PixmapGpuQuad(left, top, right, bottom, u0, v0, u1, v1, ink, slot, smooth,
                         span_left, span_top, span_right, cast(s32)y)
                 }
                 span_top = cast(s32)y; span_left = start; span_right = finish
             }
         }
         if span_right > span_left {
-            PixmapGpuQuad(left, top, right, bottom, u0, v0, u1, v1, ink, slot, false,
+            PixmapGpuQuad(left, top, right, bottom, u0, v0, u1, v1, ink, slot, smooth,
                 span_left, span_top, span_right, clip_bottom)
         }
         return true
