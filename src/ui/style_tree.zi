@@ -1,7 +1,15 @@
-// Tree context for CSS selectors with an ancestor, a parent or
-// :first-child. The widget being styled is the next child of the current
-// parent: it is the first when that parent has none yet, and its ancestors
-// are the open scopes. Rules without such context never call this.
+// Tree context for CSS selectors with an ancestor, a parent or a sibling
+// position (:first-child family). The widget being styled is the next child
+// of the current parent: pending position facts read the children submitted
+// so far, while late facts (:last-child family) read the previous frame's
+// committed children, because the frame cannot know which siblings follow.
+// A structure change therefore converges on the next frame; paint is
+// immediate, so no same-frame repaint exists. Rules without such context
+// never call this.
+//
+// The passed kind is a style kind (StyleKind*, as rules name them); tree
+// nodes store widget kinds, so of-type positions compare through
+// StyleKindForWidget.
 #if #defined(KRYON_HOSTED_UI) {
     // The containing host owns the retained tree and matches its selectors.
     StyleTreeInstall :: () {}
@@ -16,14 +24,72 @@
     // Ancestors deeper than this never match; a retained tree is far shallower.
     StyleTreeDepthLimit :: 256
 
-    StyleTreeMatches :: (selector: StyleSelector) -> bool {
+    // An ordinal p matches an + b with n >= 0.
+    StyleTreeNth :: (a: s32, b: s32, ordinal: s32) -> bool {
+        if a == 0 { return ordinal == b }
+        if a > 0 { return ordinal >= b && (ordinal - b) % a == 0 }
+        return ordinal <= b && (b - ordinal) % -a == 0
+    }
+
+    StyleTreeMatches :: (selector: StyleSelector, kind: s32) -> bool {
         session := style_frame_session
         if !TreeIsBuilding(session) { return false }
         parent := TreeCurrentParent(session)
         if parent < 0 { return false }
         entry := TreeSubmittedNodeAt(session, parent)
-        if (selector.context & cast(u32)StyleContextFirstChild) != 0 && entry.first_child >= 0 { return false }
-        if (selector.context & (cast(u32)StyleContextAncestor | cast(u32)StyleContextParent)) == 0 { return true }
+        context := selector.context
+
+        // Position of the widget being styled among the children submitted
+        // so far. Pending facts are exactly known from this.
+        ordinal: s32 = 1
+        if (context & (cast(u32)StyleContextFirstChild | cast(u32)StyleContextNthChild |
+        cast(u32)StyleContextLastChild | cast(u32)StyleContextOnlyChild)) != 0 &&
+        entry.last_child >= 0 {
+            ordinal = TreeSubmittedNodeAt(session, entry.last_child).sibling_ordinal + 1
+        }
+        type_ordinal: s32 = 1
+        if (context & (cast(u32)StyleContextFirstOfType | cast(u32)StyleContextNthOfType |
+        cast(u32)StyleContextLastOfType | cast(u32)StyleContextOnlyOfType)) != 0 {
+            sibling: s32 = entry.first_child
+            while sibling >= 0 {
+                node := TreeSubmittedNodeAt(session, sibling)
+                if StyleKindForWidget(node.kind) == kind { type_ordinal += 1 }
+                sibling = node.next_sibling
+            }
+        }
+        if (context & cast(u32)StyleContextFirstChild) != 0 && ordinal != 1 { return false }
+        if (context & cast(u32)StyleContextFirstOfType) != 0 && type_ordinal != 1 { return false }
+        if (context & cast(u32)StyleContextNthChild) != 0 &&
+        !StyleTreeNth(selector.nth_a, selector.nth_b, ordinal) { return false }
+        if (context & cast(u32)StyleContextNthOfType) != 0 &&
+        !StyleTreeNth(selector.nth_a, selector.nth_b, type_ordinal) { return false }
+
+        // Late positions: the parent's committed child list from the last
+        // accepted frame. An absent committed parent (a container new this
+        // frame) has no child list yet, so late facts wait one frame.
+        if (context & (cast(u32)StyleContextLastChild | cast(u32)StyleContextOnlyChild |
+        cast(u32)StyleContextLastOfType | cast(u32)StyleContextOnlyOfType)) != 0 {
+            committed_parent: s32 = TreeCommittedParent(session, parent)
+            if committed_parent < 0 { return false }
+            count: s32 = 0
+            type_count: s32 = 0
+            sibling: s32 = TreeCommittedNodeAt(session, committed_parent).first_child
+            while sibling >= 0 {
+                node := TreeCommittedNodeAt(session, sibling)
+                count += 1
+                if StyleKindForWidget(node.kind) == kind { type_count += 1 }
+                sibling = node.next_sibling
+            }
+            if (context & cast(u32)StyleContextLastChild) != 0 && count != ordinal { return false }
+            if (context & cast(u32)StyleContextOnlyChild) != 0 &&
+            (count != 1 || ordinal != 1) { return false }
+            if (context & cast(u32)StyleContextLastOfType) != 0 &&
+            type_count != type_ordinal { return false }
+            if (context & cast(u32)StyleContextOnlyOfType) != 0 &&
+            (type_count != 1 || type_ordinal != 1) { return false }
+        }
+
+        // The open scopes are the widget's ancestors.
         for depth: 0..StyleTreeDepthLimit - 1 {
             if (selector.ancestor_class == 0 || entry.style_class == selector.ancestor_class) &&
                 (selector.ancestor_id == 0 || entry.style_id == selector.ancestor_id) { return true }

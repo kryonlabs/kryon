@@ -306,15 +306,7 @@ TransformPicture :: (session: Session, data: *PaintCommand, map: TransformMap) {
 
 // The style kind a tree node is styled as for transforms, or 0.
 TransformStyleKind :: (kind: s32) -> s32 {
-    if kind == cast(s32)WidgetKind.WidgetKindRow { return StyleKindRow() }
-    if kind == cast(s32)WidgetKind.WidgetKindColumn { return StyleKindColumn() }
-    if kind == cast(s32)WidgetKind.WidgetKindGrid { return StyleKindGrid() }
-    if kind == cast(s32)WidgetKind.WidgetKindButton { return StyleKindButton() }
-    if kind == cast(s32)WidgetKind.WidgetKindCard { return StyleKindCard() }
-    if kind == cast(s32)WidgetKind.WidgetKindImage { return StyleKindImage() }
-    if kind == cast(s32)WidgetKind.WidgetKindLink { return StyleKindLink() }
-    if kind == cast(s32)WidgetKind.WidgetKindText { return StyleKindText() }
-    return 0
+    return StyleKindForWidget(kind)
 }
 
 // Gives every styled node the transform of its rules. Rules match by kind,

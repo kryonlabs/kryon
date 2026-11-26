@@ -569,7 +569,15 @@ StyleSelectorSpecificity :: (selector: StyleSelector) -> s32 {
     if selector.context != 0 {
         if selector.ancestor_class != 0 { classes += 1 }
         if selector.ancestor_id != 0 { names += 2 }
-        if (selector.context & cast(u32)StyleContextFirstChild) != 0 { classes += 1 }
+        positions := selector.context & (cast(u32)StyleContextFirstChild |
+            cast(u32)StyleContextLastChild | cast(u32)StyleContextOnlyChild |
+            cast(u32)StyleContextNthChild | cast(u32)StyleContextFirstOfType |
+            cast(u32)StyleContextLastOfType | cast(u32)StyleContextOnlyOfType |
+            cast(u32)StyleContextNthOfType)
+        while positions != 0 {
+            if (positions & cast(u32)1) != 0 { classes += 1 }
+            positions = positions >> 1
+        }
         if selector.not_class != 0 { classes += 1 }
         if selector.not_state != 0 { classes += 1 }
     }
@@ -583,7 +591,7 @@ StyleContextMatches :: (selector: StyleSelector, facts: StyleFacts, active_state
     if selector.not_class != 0 && selector.not_class == facts.class_name { return false }
     if selector.not_state != 0 && selector.not_state == active_state { return false }
     if (selector.context & ~cast(u32)StyleContextNot) == 0 { return true }
-    return style_tree_match != null && style_tree_match(selector)
+    return style_tree_match != null && style_tree_match(selector, facts.kind)
 }
 #program_export
 StyleRuleMatchesState :: (rule_state: s32, active_state: s32) -> bool {

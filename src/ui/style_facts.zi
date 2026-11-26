@@ -1,3 +1,5 @@
+#import "widget_kind"
+
 // Widget identity and selector context do not require a style sheet.
 // The optional rule resolver consumes the same records.
 #program_export
@@ -339,6 +341,22 @@ StyleKindColumn :: () -> s32 { return 65 }
 #program_export
 StyleKindGrid :: () -> s32 { return 66 }
 
+// Rule selectors name style kinds (StyleKind*), while tree nodes store
+// widget kinds (WidgetKind*). Translate the node kind into the selector
+// namespace; unknown widgets match no type selector.
+#program_export
+StyleKindForWidget :: (kind: s32) -> s32 {
+    if kind == cast(s32)WidgetKind.WidgetKindRow { return StyleKindRow() }
+    if kind == cast(s32)WidgetKind.WidgetKindColumn { return StyleKindColumn() }
+    if kind == cast(s32)WidgetKind.WidgetKindGrid { return StyleKindGrid() }
+    if kind == cast(s32)WidgetKind.WidgetKindButton { return StyleKindButton() }
+    if kind == cast(s32)WidgetKind.WidgetKindCard { return StyleKindCard() }
+    if kind == cast(s32)WidgetKind.WidgetKindImage { return StyleKindImage() }
+    if kind == cast(s32)WidgetKind.WidgetKindLink { return StyleKindLink() }
+    if kind == cast(s32)WidgetKind.WidgetKindText { return StyleKindText() }
+    return 0
+}
+
 StyleFacts :: struct {
     kind: s32
     name: s32
@@ -376,6 +394,8 @@ StyleSelector :: struct {
     ancestor_id: s32
     not_class: s32
     not_state: s32
+    nth_a: s32
+    nth_b: s32
 }
 
 StyleContext :: enum {
@@ -383,13 +403,21 @@ StyleContext :: enum {
     StyleContextParent :: 2
     StyleContextFirstChild :: 4
     StyleContextNot :: 8
+    StyleContextLastChild :: 16
+    StyleContextOnlyChild :: 32
+    StyleContextNthChild :: 64
+    StyleContextFirstOfType :: 128
+    StyleContextLastOfType :: 256
+    StyleContextOnlyOfType :: 512
+    StyleContextNthOfType :: 1024
 }
 using StyleContext;
 
-// Ancestor, parent and first-child context of the widget being styled.
+// Ancestor, parent and sibling-position context of the widget being styled.
 // BeginFrame installs it, so a program without a frame carries none, and
-// rules without context never call it.
-StyleTreeMatch :: #type (selector: StyleSelector) -> bool;
+// rules without context never call it. Kind distinguishes the of-type
+// positions.
+StyleTreeMatch :: #type (selector: StyleSelector, kind: s32) -> bool;
 style_tree_match: StyleTreeMatch;
 
 #program_export

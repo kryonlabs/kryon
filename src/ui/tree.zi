@@ -200,6 +200,7 @@ NodeGeometry :: struct {
         first_child: s32
         last_child: s32
         next_sibling: s32
+        sibling_ordinal: s32
         identity_generation: u64
         interactive: bool
         disabled: bool
@@ -394,6 +395,11 @@ NodeGeometry :: struct {
         submitted_count: s32
         committed_modal_layer: s32
         submitted_modal_layer: s32
+        // Memo for TreeCommittedParent during one build, keyed by the
+        // submitted parent's identity generation.
+        committed_parent_generation: u64
+        committed_parent_index: s32
+        committed_parent_memo: bool
         next_identity_generation: u64
         staged_identity_generation: u64
         identity_index_valid: bool
@@ -670,6 +676,7 @@ NodeGeometry :: struct {
         entry.first_child = node.first_child
         entry.last_child = node.last_child
         entry.next_sibling = node.next_sibling
+        entry.sibling_ordinal = node.sibling_ordinal
         entry.identity_generation = node.identity_generation
         if node.semantic_index >= 0 {
             semantic: SemanticData
@@ -934,6 +941,9 @@ NodeGeometry :: struct {
         trees[slot].submitted_count = 0
         trees[slot].submitted_modal_layer = 0
         trees[slot].scope_depth = 0
+        trees[slot].committed_parent_generation = 0
+        trees[slot].committed_parent_index = -1
+        trees[slot].committed_parent_memo = false
         trees[slot].building = true
         CursorHoverFrameStart(session)
         trees[slot].error = cast(FrameStatus)FrameOk
@@ -1304,6 +1314,46 @@ NodeGeometry :: struct {
     #program_export
     TreeSubmittedNodeAt :: (session: Session, index: s32) -> TreeEntry {
         return TreeRead(session, index, false)
+    }
+
+    // The committed node behind this frame's submitted parent. Late sibling
+    // facts (:last-child and family) read it: while building, the parent's
+    // remaining children are not known yet, so those facts match the
+    // previous frame's child list and converge one frame after a structure
+    // change. Memoized per frame, keyed by the parent's identity generation.
+    #program_export
+    TreeCommittedParent :: (session: Session, parent_index: s32) -> s32 {
+        slot: s32 = SessionIndex(session)
+        if parent_index < 0 || parent_index >= trees[slot].submitted_count {
+            return -1
+        }
+        parent := trees[slot].submitted[parent_index]
+        if trees[slot].committed_parent_memo && parent.identity_generation ==
+        trees[slot].committed_parent_generation {
+            return trees[slot].committed_parent_index
+        }
+        index: s32 = -1
+        if parent.parent >= 0 {
+            index = TreeFindOld(session,
+                trees[slot].submitted[parent.parent].identity_generation,
+                parent.key, parent.kind, parent.auto_key, parent.auto_ordinal)
+        } else {
+            // A root parent has no parent generation to hash under; roots
+            // are few, so the scan runs once per frame through the memo.
+            for search: 0..trees[slot].committed_count - 1 {
+                if trees[slot].committed[search].identity_generation ==
+                parent.identity_generation { index = search; break }
+            }
+        }
+        trees[slot].committed_parent_generation = parent.identity_generation
+        trees[slot].committed_parent_index = index
+        trees[slot].committed_parent_memo = true
+        return index
+    }
+
+    #program_export
+    TreeCommittedNodeAt :: (session: Session, index: s32) -> TreeEntry {
+        return TreeRead(session, index, true)
     }
 
     // Native skins inspect this frame's submitted geometry without reading the
