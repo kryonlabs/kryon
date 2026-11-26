@@ -48,7 +48,8 @@ def compile_source(source, name, *, library=False, options=(), sources=(), libra
     return binary
 
 
-def test_window(binary, title, *, widgets=False, services=False, size=(320, 160), text=False):
+def test_window(binary, title, *, widgets=False, services=False, size=(320, 160),
+                text=False, background=(248, 250, 252)):
     from Xlib import X, display, protocol
     from PIL import Image
     with (WORK / (binary.stem + '.log')).open('wb') as log:
@@ -76,14 +77,15 @@ def test_window(binary, title, *, widgets=False, services=False, size=(320, 160)
             raw = window.get_image(0, 0, *size, X.ZPixmap, 0xffffffff)
             image = Image.frombytes('RGB', size, raw.data, 'raw', 'BGRX')
             image.save(WORK / (binary.stem + '.png'))
-            assert image.getpixel((size[0] - 10, size[1] - 10)) == (248, 250, 252), 'window clear colour'
+            actual = image.getpixel((size[0] - 10, size[1] - 10))
+            assert actual == background, f'{binary.name}: clear colour {actual}, expected {background}'
             if widgets or text:
                 dark = lambda box: sum(sum(image.getpixel((x, y))) < 450
                                        for y in range(box[1], box[3]) for x in range(box[0], box[2]))
                 assert dark((20, 15, 300, 53)) > 80, 'Text glyphs missing'
             if widgets:
                 assert dark((30, 70, 210, 118)) > 40, 'Button glyphs missing'
-                assert any(image.getpixel((30, y)) != (248, 250, 252) for y in range(75, 113)), 'Button surface missing'
+                assert any(image.getpixel((30, y)) != background for y in range(75, 113)), 'Button surface missing'
             if services:
                 found = subprocess.check_output(['xdotool', 'search', '--onlyvisible', '--name', '^Kryon Windows Secondary$'], env=ENV, text=True)
                 secondary = connection.create_resource_object('window', int(found.split()[0]))
@@ -182,8 +184,12 @@ def private(zx_linked):
     try:
         run(['wine', 'wineboot.exe', '--init'], timeout=90)
         test_window(WORK / 'window.exe', 'Window')
-        test_window(WORK / 'widgets.exe', 'Kryon Windows Text Button', widgets=True)
-        test_window(WORK / 'frame.exe', 'frame', size=(960, 600), text=True)
+        # App.Run uses the widget theme's white canvas; bare windows retain
+        # the desktop host's neutral clear colour.
+        test_window(WORK / 'widgets.exe', 'Kryon Windows Text Button', widgets=True,
+                    background=(255, 255, 255))
+        test_window(WORK / 'frame.exe', 'windows_desktop_frame', size=(960, 600),
+                    text=True, background=(255, 255, 255))
         test_window(WORK / 'services.exe', 'Kryon Windows Services', services=True)
         if zx_linked:
             test_window(WORK / 'window-zx.exe', 'Window')
