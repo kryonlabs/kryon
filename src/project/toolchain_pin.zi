@@ -3,7 +3,7 @@
 // [toolchain] floats on a branch (`ziran new` writes "master") this pin,
 // and keeps a project's own exact commit.
 KryonZiranGit :: "https://git.waozi.xyz/ziranlang/ziran.git";
-KryonZiranRef :: "5167dd5fd08bf51078bb0310e15c51b6b998f9c3";
+KryonZiranRef :: "0f3cb63c9c658ed8d6b9484fae9ff4b52a11db51";
 
 // The Kryon and CSS the app template pins with that Ziran. A CSS package is
 // built on one Kryon, so an app pins the same one; `kryon upgrade` moves an

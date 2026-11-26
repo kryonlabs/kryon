@@ -7,7 +7,7 @@ tool = "kryon"
 
 [toolchain]
 git = "https://git.waozi.xyz/ziranlang/ziran.git"
-ref = "5167dd5fd08bf51078bb0310e15c51b6b998f9c3"
+ref = "0f3cb63c9c658ed8d6b9484fae9ff4b52a11db51"
 
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
