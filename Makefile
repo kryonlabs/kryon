@@ -240,6 +240,13 @@ zx-test: build/bin/kryon zx-player zx-linked-test zx-nested-test
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zx_project_test.py
 
+# The optional WebKit island: a real staged-page round-trip through the
+# player on a private display; skipped where WebKitGTK is unavailable.
+.PHONY: webview-island-test
+webview-island-test: zx-player
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/webview_island_test.py
+
 ZX_LINKED_TEST := build/test/zx-linked
 zx-linked-test: zx-player
 	mkdir -p $(ZX_LINKED_TEST)
@@ -609,6 +616,12 @@ install-user: build/bin/kryon zx-player zx-window-host
 	mkdir -p "$(PREFIX)/lib/kryon"
 	cp $(PLAYER) "$(PREFIX)/lib/kryon/zx-desktop.new"
 	mv -f "$(PREFIX)/lib/kryon/zx-desktop.new" "$(PREFIX)/lib/kryon/zx-desktop"
+	mkdir -p "$(PREFIX)/lib/kryon/webview-assets"
+	cp $(KRYON_DIR)/scripts/island.py "$(PREFIX)/lib/kryon/kryon-island.py.new"
+	mv -f "$(PREFIX)/lib/kryon/kryon-island.py.new" "$(PREFIX)/lib/kryon/kryon-island.py"
+	cp $(KRYON_DIR)/assets/webview/bridge.js $(KRYON_DIR)/assets/webview/island.css \
+		$(KRYON_DIR)/assets/webview/scene.html $(KRYON_DIR)/assets/webview/scene.js \
+		"$(PREFIX)/lib/kryon/webview-assets/"
 	cp $(WINDOW_HOST) "$(PREFIX)/lib/kryon/libkryon-desktop.so.new"
 	mv -f "$(PREFIX)/lib/kryon/libkryon-desktop.so.new" "$(PREFIX)/lib/kryon/libkryon-desktop.so"
 	$(RM) "$(PREFIX)/lib/kryon/libkryon-pixmap.so"

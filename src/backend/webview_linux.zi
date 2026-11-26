@@ -1,0 +1,138 @@
+// Optional transport to Kryon's reusable WebKit island: an exact owned child
+// process, bounded JSON packets, literal argv, no shell and no listening
+// port. The staged script and pages live beside the player executable, or
+// where KRYON_WEBVIEW_ASSETS names them.
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/text"
+#import "std/vec"
+Background :: #import "background_window_linux";
+libc :: #system_library "libc";
+glib :: #system_library "glib-2.0";
+Setup :: #type (data: *void) #c_call;
+Argument :: struct { value: *u8 }
+ParentDeath :: (option: s32, signal: u64, b: u64, c: u64, d: u64) -> s32 #foreign libc "prctl";
+GetPid :: () -> s32 #foreign libc "getpid";
+GetParent :: () -> s32 #foreign libc "getppid";
+Exit :: (code: s32) #foreign libc "_exit";
+Wait :: (pid: s32, status: *s32, options: s32) -> s32 #foreign libc "waitpid";
+CloseFd :: (fd: s32) #foreign libc "close";
+PidFd :: (pid: s32, flags: u32) -> s32 #foreign libc "pidfd_open";
+SignalFd :: (fd: s32, signal: s32, info: *void, flags: u32) -> s32 #foreign libc "pidfd_send_signal";
+Kill :: (pid: s32, signal: s32) -> s32 #foreign libc "kill";
+Spawn :: (cwd: *u8, args: *Argument, env: *Argument, flags: s32, setup: Setup, data: *void, input_fd: s32, output_fd: s32, error_fd: s32, source_fds: *s32, target_fds: *s32, fd_count: usize, pid: *s32, input: *s32, output: *s32, error_pipe: *s32, error: **void) -> s32 #foreign glib "g_spawn_async_with_pipes_and_fds";
+Environment :: (name: *u8) -> *u8 #foreign libc "getenv";
+owner: s32;
+OwnedChild :: (data: *void) { unused data; if ParentDeath(1, 9, 0, 0, 0) != 0 || GetParent() != owner { Exit(126) } }
+
+SocketPair :: (domain: s32, kind: s32, protocol: s32, fds: *s32) -> s32 #foreign libc "socketpair";
+Send :: (fd: s32, bytes: *u8, count: usize, flags: s32) -> s64 #foreign libc "send";
+Receive :: (fd: s32, bytes: *u8, count: usize, flags: s32) -> s64 #foreign libc "recv";
+ReadLink :: (path: *u8, bytes: *u8, count: usize) -> s64 #foreign libc "readlink";
+Access :: (path: *u8, mode: s32) -> s32 #foreign libc "access";
+Free :: (pointer: *void) #foreign libc "free";
+FreeText :: (value: string) { if value.count > 0 { descriptor := cast(*TextDescriptor)(*value); Free(cast(*void)descriptor.data) } }
+pid: s32;
+handle: s32 = -1;
+transport: s32 = -1;
+event_bytes: [4096]u8;
+assets_bytes: [4096]u8;
+last_x: s32 = -1;
+last_y: s32;
+last_width: s32;
+last_height: s32;
+last_visible: bool;
+Join :: (a: string, b: string) -> string { v: Vec(u8); unused BuilderAppend(v, a); unused BuilderAppend(v, b); return BuilderFinish(v) }
+
+
+#program_export
+WebViewTickHost :: () {
+    if pid <= 0 { return }
+    status: s32;
+    if Wait(pid, *status, 1) != 0 {
+        if handle >= 0 { CloseFd(handle) }; if transport >= 0 { CloseFd(transport) }
+        pid = 0; handle = -1; transport = -1;
+    }
+}
+#program_export
+WebViewSendHost :: (command: string) -> bool {
+    WebViewTickHost(); if transport < 0 || command.count == 0 || command.count > 4096 { return false }
+    descriptor := cast(*TextDescriptor)(*command);
+    return Send(transport, descriptor.data, cast(usize)command.count, 16448) == command.count
+}
+#program_export
+WebViewBoundsHost :: (x: s32, y: s32, width: s32, height: s32, visible: bool) {
+    if x == last_x && y == last_y && width == last_width && height == last_height && visible == last_visible { return }
+    v: Vec(u8); BuilderPrint(*v, "{\"v\":1,\"type\":\"host-bounds\",\"x\":%,\"y\":%,\"width\":%,\"height\":%,\"visible\":%}", x, y, width, height, ifx visible then "true" else "false");
+    message := BuilderFinish(v); accepted := WebViewSendHost(message); FreeText(message);
+    if accepted { last_x = x; last_y = y; last_width = width; last_height = height; last_visible = visible }
+}
+#program_export
+WebViewCloseHost :: () {
+    if pid > 0 {
+        if handle >= 0 { unused SignalFd(handle, 15, null, 0) }
+        status: s32; unused Wait(pid, *status, 0)
+    }
+    if handle >= 0 { CloseFd(handle) }; if transport >= 0 { CloseFd(transport) }
+    pid = 0; handle = -1; transport = -1; last_x = -1
+}
+assets_size: s64;
+AssetsFromExecutable :: (directory_bytes: []u8) -> bool {
+    if directory_bytes.count > 4080 { return false }
+    assets_size = 0;
+    for byte: directory_bytes { assets_bytes[assets_size] = byte; assets_size += 1 }
+    for byte: "webview-assets" { assets_bytes[assets_size] = byte; assets_size += 1 }
+    return true
+}
+#program_export
+WebViewOpenHost :: (content: string, x: s32, y: s32, width: s32, height: s32) -> bool {
+    WebViewTickHost(); if pid > 0 || width <= 0 || height <= 0 || content.count == 0 || content.count > 64 { return false }
+    // Content names one staged page; the island serves only that allowlist.
+    for byte: content {
+        lower := byte >= cast(u8)97 && byte <= cast(u8)122
+        dash := byte == cast(u8)45
+        if !lower && !dash { return false }
+    }
+    info: Background.BackgroundInfo; if !Background.BackgroundConnection(*info) { return false }
+    path: [4096]u8; link: [32]u8; unused CopyCString("/proc/self/exe", link[:]);
+    size := ReadLink(*link[0], *path[0], 4095); if size <= 0 { return false }
+    end := size - 1; while end >= 0 && path[end] != cast(u8)47 { end -= 1 }
+    if end < 0 { return false }
+    script := Join(TextFromBytes(path[:end + 1]), "kryon-island.py"); script_bytes: [4096]u8;
+    if !CopyCString(script, script_bytes[:]) { FreeText(script); return false }
+    if Access(*script_bytes[0], 4) != 0 { FreeText(script); return false }
+    name: [32]u8; unused CopyCString("KRYON_WEBVIEW_ASSETS", name[:]);
+    override_pointer := Environment(*name[0]);
+    if override_pointer != null {
+        assets_size = 0;
+        while assets_size < 4095 && override_pointer[assets_size] != 0 { assets_size += 1 }
+        if assets_size == 0 { FreeText(script); return false }
+        for i: 0..cast(s32)assets_size - 1 { assets_bytes[i] = override_pointer[i] }
+    } else if !AssetsFromExecutable(path[:end + 1]) { FreeText(script); return false }
+    if Access(*assets_bytes[0], 4) != 0 { FreeText(script); return false }
+    assets := TextFromBytes(assets_bytes[:assets_size]);
+    values: [11][4096]u8; arguments: [12]Argument;
+    parent: Vec(u8); BuilderPrint(*parent, "%", info.window); parent_text := BuilderFinish(parent);
+    script_text := TextFromBytes(script_bytes[:script.count]);
+    labels: [11]string = .{"/usr/bin/python3", script_text, "--fd", "3", "--parent", parent_text, "--content", content, "--assets", assets, "--embedded"};
+    for i: 0..10 {
+        if !CopyCString(labels[i], values[i][:]) { FreeText(script); FreeText(parent_text); return false }
+        arguments[i].value = *values[i][0]
+    }
+    FreeText(script); FreeText(parent_text);
+    pair: [2]s32; if SocketPair(1, 524293, 0, *pair[0]) != 0 { return false }
+    source: [1]s32 = .{pair[1]}; target: [1]s32 = .{3};
+    owner = GetPid(); setup: Setup = OwnedChild;
+    started := Spawn(null, *arguments[0], null, 6, setup, null, -1, -1, -1, *source[0], *target[0], 1, *pid, null, null, null, null);
+    CloseFd(pair[1]);
+    if started == 0 { CloseFd(pair[0]); pid = 0; return false }
+    transport = pair[0]; handle = PidFd(pid, 0);
+    if handle < 0 { unused Kill(pid, 15); status: s32; unused Wait(pid, *status, 0); CloseFd(transport); transport = -1; pid = 0; return false }
+    last_x = -1; WebViewBoundsHost(x, y, width, height, true); return true
+}
+#program_export
+WebViewEventHost :: () -> string {
+    WebViewTickHost(); if transport < 0 { return "" }
+    size := Receive(transport, *event_bytes[0], 4096, 64);
+    if size <= 0 { return "" }; return TextFromBytes(event_bytes[:size])
+}

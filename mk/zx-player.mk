@@ -22,7 +22,7 @@ PLAYER := $(KRYON_DIR)/build/bin/zx
 PLAYER_SOURCES := $(KRYON_DIR)/tools/zx.zi $(wildcard $(KRYON_DIR)/src/backend/*.zi) $(shell find $(KRYON_DIR)/src/ui -name '*.zi') $(wildcard $(ZIRAN_DIR)/std/*.zi)
 
 .PHONY: zx-player
-zx-player: $(PLAYER)
+zx-player: $(PLAYER) webview-stage
 
 $(PLAYER): $(PLAYER_SOURCES) $(KRYON_DIR)/mk/zx-player.mk $(KRYON_DIR)/ziran.toml $(KRYON_DIR)/ziran.lock $(ZIRAN_DIR)/build/libziran.a $(ZIRAN) $(OPUS_A)
 	mkdir -p $(PLAYER_DIR) $(KRYON_DIR)/build/bin
@@ -34,6 +34,16 @@ $(PLAYER): $(PLAYER_SOURCES) $(KRYON_DIR)/mk/zx-player.mk $(KRYON_DIR)/ziran.tom
 		-I$(ZIRAN_DIR)/include -I$(PLAYER_DIR) $(PLAYER_DIR)/*.c \
 		$(PLAYER_LIBS) -o "$$temporary" && \
 		chmod 755 "$$temporary" && mv "$$temporary" $@
+
+# The optional island: its owned child script and approved staged pages live
+# beside the player executable, with KRYON_WEBVIEW_ASSETS as an override.
+.PHONY: webview-stage
+webview-stage:
+	mkdir -p $(KRYON_DIR)/build/bin/webview-assets
+	cp $(KRYON_DIR)/scripts/island.py $(KRYON_DIR)/build/bin/kryon-island.py
+	cp $(KRYON_DIR)/assets/webview/bridge.js $(KRYON_DIR)/assets/webview/island.css \
+		$(KRYON_DIR)/assets/webview/scene.html $(KRYON_DIR)/assets/webview/scene.js \
+		$(KRYON_DIR)/build/bin/webview-assets/
 
 # The desktop host library: Kryon's native SDL2/GPU/Cairo window, frame-loop,
 # raster, font, clipboard, theme, clock and service capabilities, which a ZX

@@ -1,0 +1,61 @@
+// The webview island probe: opens the staged demo scene through the host
+// bridge, waits for the page ready event, spins it, checks that the ack
+// reports rendered frames, then closes the island and quits for the harness.
+App :: #import "kryon/app";
+Clock :: #import "kryon/Clock";
+WebView :: #import "kryon/WebView";
+#import "Window"
+#import "std/text_tools"
+
+// 1 opening, 2 ready, 3 spin sent, 4 passed, 5 failed.
+phase: s32;
+deadline: s64;
+
+Frame :: (frame: App.Frame) {
+    if frame.first && phase == 0 {
+        deadline = Clock.Milliseconds() + 30000
+        if WebView.Open("scene", 40, 40, 480, 320) {
+            phase = 1
+            print("probe: island opening\n")
+        } else {
+            phase = 5
+            print("probe: island failed to open\n")
+        }
+    }
+    for attempt: 0..31 {
+        event := WebView.Event()
+        if event == "" { break }
+        print("probe: event %\n", event)
+        if TextContains(event, "\"type\":\"error\"") && phase < 4 {
+            phase = 5
+            print("probe: island reported an error\n")
+        }
+        if TextContains(event, "\"type\":\"ready\"") && phase == 1 {
+            phase = 2
+            if !WebView.Send("{\"v\":1,\"id\":7,\"type\":\"spin\",\"speed\":3}") {
+                phase = 5
+                print("probe: spin send failed\n")
+            }
+        }
+        if TextContains(event, "\"command\":\"spin\"") && phase == 2 {
+            if TextFind(event, "\"frames\":") < 0 || TextContains(event, "\"frames\":0") {
+                phase = 5
+                print("probe: spin ack reports no rendered frames\n")
+            } else {
+                phase = 4
+                print("probe: webview island passed\n")
+            }
+        }
+    }
+    if phase > 0 && phase < 4 && Clock.Milliseconds() > deadline {
+        phase = 5
+        print("probe: island timed out in phase %\n", phase)
+    }
+    if phase >= 4 || phase == 5 {
+        WebView.Close()
+        WindowQuit()
+    }
+}
+
+main :: () -> s32 { return App.Run(App.Window.{.title = "Webview island probe",
+    .width = 640, .height = 480}, Frame) }

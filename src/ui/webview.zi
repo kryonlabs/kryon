@@ -1,0 +1,25 @@
+// Optional native web view: the host serves approved staged pages in an
+// owned WebKit child and exchanges versioned JSON, never scripts or URLs.
+// Coordinates are host window coordinates. Content selects one staged page
+// by name; pages declare their own commands inside the shared vocabulary.
+host_api :: #system_library "host_api";
+WebViewOpenHost :: (content: string, x: s32, y: s32, width: s32, height: s32) -> bool #foreign host_api;
+WebViewBoundsHost :: (x: s32, y: s32, width: s32, height: s32, visible: bool) #foreign host_api;
+WebViewSendHost :: (command: string) -> bool #foreign host_api;
+WebViewEventHost :: () -> string #foreign host_api;
+WebViewCloseHost :: () #foreign host_api;
+
+#program_export
+Open :: (content: string, x: s32, y: s32, width: s32, height: s32) -> bool {
+    return WebViewOpenHost(content, x, y, width, height)
+}
+#program_export
+Bounds :: (x: s32, y: s32, width: s32, height: s32, visible: bool) {
+    WebViewBoundsHost(x, y, width, height, visible)
+}
+#program_export
+Send :: (command: string) -> bool { return WebViewSendHost(command) }
+#program_export
+Event :: () -> string { return WebViewEventHost() }
+#program_export
+Close :: () { WebViewCloseHost() }

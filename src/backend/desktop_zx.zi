@@ -22,6 +22,7 @@ UiTheme :: #import "theme";
     Service :: #import "service_linux";
     Theme :: #import "system_theme_host_linux";
     Background :: #import "background_window_linux";
+    WebView :: #import "webview_linux";
 }
 Watch :: #import "bundle_watch";
 AppPlayer :: #import "app_player";
@@ -125,6 +126,13 @@ Supported :: (module: string, function: string) -> bool {
             function == "MediaMessageHost" || function == "FetchTextHost" ||
             function == "FetchTextStateHost" || function == "FetchTextResultHost"
     }
+    #if OS == .LINUX {
+        if ModuleName(module, "webview") {
+            return function == "WebViewOpenHost" || function == "WebViewBoundsHost" ||
+                function == "WebViewSendHost" || function == "WebViewEventHost" ||
+                function == "WebViewCloseHost"
+        }
+    }
     if ModuleName(module, "bitmap_image") {
         return function == "BitmapImageCreateHost" || function == "BitmapImageUpdateHost" || function == "BitmapImageReleaseHost"
     }
@@ -146,6 +154,33 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     result.kind = HostVoid
     if ModuleName(module, "media") {
         return BundleMediaCall(*player.media, module, function, args, count, result)
+    }
+    #if OS == .LINUX {
+    if ModuleName(module, "webview") {
+        if function == "WebViewOpenHost" && count == 5 && args[0].kind == HostString &&
+        args[1].kind == HostInteger && args[2].kind == HostInteger &&
+        args[3].kind == HostInteger && args[4].kind == HostInteger {
+            result.kind = HostInteger
+            result.integer = cast(s64)WebView.WebViewOpenHost(TextValue(args[0]), cast(s32)args[1].integer, cast(s32)args[2].integer, cast(s32)args[3].integer, cast(s32)args[4].integer)
+            return 1
+        }
+        if function == "WebViewBoundsHost" && count == 5 && args[0].kind == HostInteger &&
+        args[1].kind == HostInteger && args[2].kind == HostInteger &&
+        args[3].kind == HostInteger && args[4].kind == HostInteger {
+            WebView.WebViewBoundsHost(cast(s32)args[0].integer, cast(s32)args[1].integer, cast(s32)args[2].integer, cast(s32)args[3].integer, args[4].integer != 0)
+            return 1
+        }
+        if function == "WebViewSendHost" && count == 1 && args[0].kind == HostString {
+            result.kind = HostInteger; result.integer = cast(s64)WebView.WebViewSendHost(TextValue(args[0])); return 1
+        }
+        if function == "WebViewEventHost" && count == 0 {
+            value := WebView.WebViewEventHost()
+            result.kind = HostString; result.length = cast(usize)value.count
+            descriptor := cast(*TextDescriptor)(*value)
+            result.data = descriptor.data; return 1
+        }
+        if function == "WebViewCloseHost" && count == 0 { WebView.WebViewCloseHost(); return 1 }
+    }
     }
     if ModuleName(module, "clock") && function == "ClockMillisecondsHost" && count == 0 {
         result.kind = HostInteger; result.integer = MonotonicMilliseconds(); return 1
@@ -309,6 +344,9 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         player.key = key
         player.modifiers = modifiers
         BundleMediaTick(*player.media)
+        #if OS == .LINUX {
+            WebView.WebViewTickHost()
+        }
         BeginDesktopFrame()
         SetRasterBackground(BundleThemeBackground)
         viewport := DesktopViewport()
@@ -823,6 +861,7 @@ RunFrameBundle :: (bundle_path: string, opened_bundle: *void, check: bool,
     BundleMediaClose(*player.media)
     Video.VideoStopHost()
     #if OS == .LINUX {
+        WebView.WebViewCloseHost()
         Service.CloseService()
     }
     CloseDesktop()
