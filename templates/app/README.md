@@ -19,6 +19,11 @@ every widget from the app's state. Layout containers place their children
 slot to a composite widget) and theme tokens size them, so no code computes
 a position. `src/tasks.zi` holds the state and imports no Kryon module, so
 tests can call it directly.
+Each container's `End` is a `defer` right after it opens, so it runs when the
+block exits even on an early return. `frame.first` marks a session's first
+frame: the draft's bytes are wired and the first tasks are started there. The
+new-task field keeps its text in a `TextField.State` over fixed bytes;
+`TextField.Value` reads it and `TextField.Clear` empties it.
 
 `src/look.zi` keeps Kryon's default theme in light mode and opts into the
 Material preset from the pinned CSS package (`[dependencies.css]`) in dark

@@ -24,7 +24,6 @@ KeyUp :: 265;
 Space :: 32;
 
 tasks: [6]Task;
-started: bool;
 selected: s32;
 scroll: s32;
 
@@ -41,7 +40,7 @@ Start :: () {
 Frame :: (frame: App.Frame) {
     session := Session.{.slot = frame.slot, .epoch = frame.epoch}
     viewport := frame.viewport
-    if !started { Start(); started = true }
+    if frame.first { Start() }
     move: s32 = 0
     key: s32 = KeyboardTake(session)
     if key == KeyDown { move = 1 }

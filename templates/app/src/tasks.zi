@@ -1,15 +1,27 @@
-// The app's state and its text, apart from any widget, so tests can use it.
+// The app's state and its text, apart from any widget, so tests can use
+// it. Every task owns its bytes: AddTask copies the strings it is given,
+// so a view into a widget's draft buffer never dangles.
 #import "std/number_text"
+#import "std/text_tools"
 
 Task :: struct {
-    title: string
-    detail: string
+    title: [48]u8
+    title_length: s32
+    detail: [64]u8
+    detail_length: s32
     done: bool
 }
 
 tasks: [12]Task;
 task_count: s32;
 summary_text: [48]u8;
+
+// Copies text into fixed storage; returns the length that fit.
+Stored :: (output: []u8, text: string) -> s32 {
+    length := ifx text.count > output.count then output.count else text.count
+    for index: 0..length - 1 { output[index] = text[index] }
+    return cast(s32)length
+}
 
 // The first tasks, once.
 StartTasks :: () {
@@ -22,14 +34,27 @@ StartTasks :: () {
 
 TaskCount :: () -> s32 { return task_count }
 
-TaskAt :: (index: s32) -> Task { return tasks[index] }
+TaskTitle :: (index: s32) -> string {
+    return TextView(tasks[index].title[0:tasks[index].title_length])
+}
+
+TaskDetail :: (index: s32) -> string {
+    return TextView(tasks[index].detail[0:tasks[index].detail_length])
+}
+
+TaskDone :: (index: s32) -> bool { return tasks[index].done }
 
 SetTaskDone :: (index: s32, done: bool) { tasks[index].done = done }
 
-// Adds a task while there is room; false when the list is full.
+// Adds a task while there is room, copying both strings; false when the
+// title is empty or the list is full.
 AddTask :: (title: string, detail: string) -> bool {
-    if task_count >= cast(s32)tasks.count { return false }
-    tasks[task_count] = .{title = title, detail = detail}
+    title_text := TextTrim(title)
+    if title_text.count == 0 || task_count >= cast(s32)tasks.count { return false }
+    stored: Task
+    stored.title_length = Stored(stored.title[:], title_text)
+    stored.detail_length = Stored(stored.detail[:], detail)
+    tasks[task_count] = stored
     task_count += 1
     return true
 }
@@ -38,7 +63,7 @@ AddTask :: (title: string, detail: string) -> bool {
 Summary :: () -> string {
     done: s64 = 0
     for index: 0..task_count - 1 { if tasks[index].done { done += 1 } }
-    length := 0
+    length: s32 = 0
     digits: [24]u8
     length = Append(summary_text[:], length, FormatInteger(done, digits[:]))
     length = Append(summary_text[:], length, " of ")
@@ -47,7 +72,7 @@ Summary :: () -> string {
     return TextView(summary_text[0:length])
 }
 
-Append :: (output: []u8, length: s64, text: string) -> s64 {
+Append :: (output: []u8, length: s32, text: string) -> s32 {
     at := length
     for byte: text {
         if at >= output.count { return at }

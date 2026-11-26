@@ -11,7 +11,7 @@ KryonZiranRef :: "bb0323cef6c7b144eeea5ad1670ccf7a3fbde253";
 KryonGit :: "https://git.waozi.xyz/kryonlabs/kryon.git";
 KryonRef :: "2f9b5db29bcfe10a0bb124ac7d1f6d316a16f148";
 KryonCssGit :: "https://git.waozi.xyz/kryonlabs/css.git";
-KryonCssRef :: "d55590a6cd97fc22096227d619e13f656f12c5b3";
+KryonCssRef :: "2be03f3826bd31fcde3ace00bc1234bdbd34b5c4";
 
 // A manifest table's git and ref, as `kryon init` and `kryon upgrade` set them.
 TablePin :: struct {

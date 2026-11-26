@@ -189,3 +189,27 @@ StateApplyResult :: (state: *State,
     state.focused = result.focused
     return true
 }
+
+// The field's text, viewing the state's bytes. The view lasts until those
+// bytes change; copy it into app storage to keep it. Unwired state (no
+// bytes) reads as empty.
+#program_export
+Value :: (state: State) -> string {
+    if state.length <= 0 || state.length > state.bytes.count { return "" }
+    return TextView(state.bytes[:state.length])
+}
+
+// Empties the field: its text, selection, scroll and any composition. The
+// field keeps its wired bytes and its focus, so typing can continue.
+#program_export
+Clear :: (state: *State) {
+    if state == null { return }
+    state.length = 0
+    state.cursor = 0
+    state.anchor = 0
+    state.scroll_x = 0
+    state.preedit_length = 0
+    state.preedit_cursor = 0
+    state.preedit_selection = 0
+    state.preedit_active = false
+}

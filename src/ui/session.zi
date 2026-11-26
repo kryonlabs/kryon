@@ -8,8 +8,12 @@ Session :: struct {
     epoch: u64
 }
 
+// How many sessions can be open at once; every per-slot table sizes itself
+// with this.
+SessionSlotCount :: 9;
+
 session_active: u32;
-session_epochs: [9]u64;
+session_epochs: [SessionSlotCount]u64;
 
 #program_export
 SessionValid :: (session: Session) -> bool {
@@ -18,7 +22,7 @@ SessionValid :: (session: Session) -> bool {
 
 #program_export
 SessionIndex :: (session: Session) -> s32 {
-    if session.slot > 0 && session.slot < 9 &&
+    if session.slot > 0 && session.slot < SessionSlotCount &&
         (session_active & (cast(u32)1 << cast(u32)session.slot)) != cast(u32)0 &&
         session_epochs[session.slot] == session.epoch {
         return session.slot
@@ -30,7 +34,7 @@ SessionIndex :: (session: Session) -> s32 {
 SessionOpen :: () -> Session {
     result: Session
     slot: s32 = 1
-    while slot < 9 {
+    while slot < SessionSlotCount {
         mask := cast(u32)1 << cast(u32)slot
         if (session_active & mask) == cast(u32)0 &&
             session_epochs[slot] != cast(u64)18446744073709551615 {
@@ -55,12 +59,12 @@ SessionClose :: (session: Session) -> bool {
 
 // Slot flags include the invalid slot zero, matching per-session storage.
 SessionFlagGet :: (flags: u32, slot: s32) -> bool {
-    if slot < 0 || slot >= 9 { return false }
+    if slot < 0 || slot >= SessionSlotCount { return false }
     return (flags & (cast(u32)1 << cast(u32)slot)) != cast(u32)0
 }
 
 SessionFlagSet :: (flags: u32, slot: s32, value: bool) -> u32 {
-    if slot < 0 || slot >= 9 { return flags }
+    if slot < 0 || slot >= SessionSlotCount { return flags }
     mask := cast(u32)1 << cast(u32)slot
     if value { return flags | mask }
     return flags & ~mask

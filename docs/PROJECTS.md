@@ -76,13 +76,15 @@ widget packages it uses:
 ```zi
 App  :: #import "kryon/app";
 Text :: #import "kryon/text";
+#import "kryon/session"
 
 main :: () -> s32 {
     return App.Run(App.Window.{.title="Hello", .width=320, .height=160}, Draw)
 }
 
 Draw :: (frame: App.Frame) {
-    Text.Draw(frame, Text.Props.{.text="Hello, world!", .size=32})
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    Text.Draw(session, Text.Props.{.text="Hello, world!", .size=32, .bounds=frame.viewport})
 }
 ```
 
