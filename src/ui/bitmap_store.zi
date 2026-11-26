@@ -119,23 +119,29 @@ BitmapRgbaPixel :: (rgba: []u8, at: s64) -> u32 {
 }
 BitmapCopyPixels :: (at: s32, rgba: []u8) {
     item := *bitmap_images[at]
-    for pixel: cast(s64)0..item.pixels.count - 1 {
+    // No allocation or callback runs while these views are borrowed. Local
+    // views let the native compiler prove the bounds of the packed writes;
+    // re-reading a global Vec for every channel prevents that on ARM.
+    pixels := item.pixels[:]
+    premultiplied := item.premultiplied[:]
+    count := cast(s32)pixels.count
+    for pixel: cast(s32)0..count - 1 {
         offset := pixel * 4
         packed := BitmapRgbaPixel(rgba, offset)
-        item.pixels[pixel] = packed
-        alpha := cast(u32)rgba[offset + 3]
+        pixels[pixel] = packed
+        alpha := packed >> 24
         if alpha == 0 {
-            item.premultiplied[pixel] = 0
+            premultiplied[pixel] = 0
             continue
         }
         if alpha == 255 {
-            item.premultiplied[pixel] = packed
+            premultiplied[pixel] = packed
             continue
         }
-        item.premultiplied[pixel] = (alpha << 24) |
-            (((cast(u32)rgba[offset] * alpha + 127) / 255) << 16) |
-            (((cast(u32)rgba[offset + 1] * alpha + 127) / 255) << 8) |
-            ((cast(u32)rgba[offset + 2] * alpha + 127) / 255)
+        premultiplied[pixel] = (alpha << 24) |
+            (((((packed >> 16) & cast(u32)255) * alpha + 127) / 255) << 16) |
+            (((((packed >> 8) & cast(u32)255) * alpha + 127) / 255) << 8) |
+            (((packed & cast(u32)255) * alpha + 127) / 255)
     }
 }
 BitmapCreateOwned :: (slot: s32, epoch: u64, width: s32, height: s32, rgba: []u8) -> Texture2D {
@@ -184,8 +190,10 @@ BitmapUpdateOwned :: (slot: s32, epoch: u64, image: Texture2D, rgba: []u8) -> bo
     item := *bitmap_images[at]
     if rgba.count != item.pixels.count * 4 { return false }
     changed := false
-    for pixel: cast(s64)0..item.pixels.count - 1 {
-        if item.pixels[pixel] != BitmapRgbaPixel(rgba, pixel * 4) { changed = true; break }
+    pixels := item.pixels[:]
+    count := cast(s32)pixels.count
+    for pixel: cast(s32)0..count - 1 {
+        if pixels[pixel] != BitmapRgbaPixel(rgba, pixel * 4) { changed = true; break }
     }
     if !changed { return true }
     if bitmap_replace != null && !bitmap_replace(item.provider_id, image.width, image.height, rgba) { return false }
