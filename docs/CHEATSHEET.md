@@ -53,7 +53,7 @@ git = "https://git.waozi.xyz/ziranlang/ziran.git"
 ref = "bb0323cef6c7b144eeea5ad1670ccf7a3fbde253"
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
-ref = "2f9b5db29bcfe10a0bb124ac7d1f6d316a16f148"
+ref = "a0efdfbdf21ebceff3d5f1e4367d33557b565247"
 [dependencies.css]
 git = "https://git.waozi.xyz/kryonlabs/css.git"
 ref = "2be03f3826bd31fcde3ace00bc1234bdbd34b5c4"
