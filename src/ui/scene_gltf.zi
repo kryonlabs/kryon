@@ -2693,7 +2693,10 @@ GltfSetGpuSkinning :: (scene: *Scene, instance: *GltfSceneInstance, enabled: boo
 // Evaluates world matrices, morph target blending and skinning for INSTANCE
 // into SCENE. A skin made a GPU skin publishes its joints instead of deforming
 // vertices, unless its material or an active morph target needs them posed.
-GltfUpdateScene :: (model: *GltfModel, instance: *GltfSceneInstance, scene: *Scene) -> bool {
+// SKIP_HIDDEN leaves hidden, non-shadow-casting primitives at their last pose.
+// Node transforms still update; showing a primitive poses it on that update.
+GltfUpdateScene :: (model: *GltfModel, instance: *GltfSceneInstance, scene: *Scene,
+    skip_hidden: bool = false) -> bool {
     if model == null || instance == null || scene == null || !model.valid || !instance.ready {
         return false
     }
@@ -2732,6 +2735,12 @@ GltfUpdateScene :: (model: *GltfModel, instance: *GltfSceneInstance, scene: *Sce
 
     for m: 0..instance.meshes.count - 1 {
         inst := *instance.meshes[m]
+        if skip_hidden && inst.scene_node >= 0 && inst.scene_node < scene.nodes.count {
+            node := scene.nodes[inst.scene_node]
+            if !node.visible && !node.cast_shadow {
+                continue
+            }
+        }
         prim := *model.meshes[inst.mesh_index].primitives[inst.primitive_index]
         v_count := inst.source_vertices.count
         t_count := prim.targets.count

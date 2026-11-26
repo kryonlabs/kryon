@@ -270,6 +270,24 @@ CheckSkinned :: () -> s32 {
     fail += Check(GltfAnimateScene(*model, *instance, *scene, 0, 0.0) &&
         Near(scene.positions[4].x, -0.35) && Near(scene.positions[4].y, 2.0),
         "rest keyframe restores bind pose")
+    node := instance.meshes[0].scene_node
+    unused SetVisible(*scene, node, false)
+    scene.nodes[node].cast_shadow = false
+    fail += Check(GltfSampleAnimation(*model, *instance, 0, 0.5) &&
+        GltfUpdateScene(*model, *instance, *scene, true) && Near(scene.positions[4].x, -0.35),
+        "opt-in hidden primitive skips deformation")
+    scene.nodes[node].cast_shadow = true
+    fail += Check(GltfUpdateScene(*model, *instance, *scene, true) &&
+        Near(scene.positions[4].x, -0.70604115), "hidden shadow caster still poses")
+    scene.nodes[node].cast_shadow = false
+    unused SetVisible(*scene, node, true)
+    fail += Check(GltfSampleAnimation(*model, *instance, 0, 0.0) &&
+        GltfUpdateScene(*model, *instance, *scene, true) && Near(scene.positions[4].x, -0.35),
+        "shown primitive catches up to current pose")
+    unused SetVisible(*scene, node, false)
+    fail += Check(GltfSampleAnimation(*model, *instance, 0, 0.5) &&
+        GltfUpdateScene(*model, *instance, *scene) && Near(scene.positions[4].x, -0.70604115),
+        "default update still poses hidden primitives")
     return fail
 }
 

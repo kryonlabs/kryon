@@ -78,6 +78,12 @@ returns the current bind-to-pose `SkinAffine` array for one skin, and
 `GltfSetDualQuaternion` switches skinned primitives to volume-preserving dual
 quaternion skinning. `GltfPoseReset` returns to the document's rest pose.
 
+`GltfUpdateScene(model, instance, scene, skip_hidden = true)` can leave hidden
+primitives that do not cast shadows at their last pose, avoiding morph and skin
+work for unused outfits. Transforms still update and a newly visible primitive
+receives the current pose on its next update. The default continues to pose
+every primitive, including hidden surfaces used for CPU measurements.
+
 Material conversion maps base colour, metallic, roughness, emissive, alpha
 mask/blend, double-sided and unlit into `SceneMaterial`, uploads the base
 colour texture with its sampler, and flips V so glTF's top-down UVs match the

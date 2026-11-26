@@ -41,6 +41,8 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Allow glTF updates to skip hidden non-shadow-casting primitives while preserving transform updates and posing newly shown meshes.
+
 - Filter managed runtime bitmaps on the GPU rather than continually rebuilding CPU Lanczos copies for animated frames.
 - Retain Android GPU composition across swapped window buffers, preventing stale pixels after partial redraws and rotation without CPU readback.
 
