@@ -581,7 +581,10 @@ OpenInstance :: (bundle: *void, player: *Player, grants: []HostBinding, check: b
     if bindings.count > 0 { first = *bindings[0] }
     instance := InstantiateBundle(bundle, first, cast(u64)bindings.count)
     if instance != null {
-        LimitBundleSteps(instance, 5000000)
+        // A UI bundle's main is its whole event loop, so a per-run ceiling
+        // would end every long session; console bundles run once and keep
+        // their runaway guard.
+        if !player.ui { LimitBundleSteps(instance, 5000000) }
     } else {
         print("zx: could not initialize app instance\n")
     }
