@@ -41,6 +41,9 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Fix one-pixel gaps in GPU-rendered pills and rounded rectangles at
+  fractional positions.
+
 - Complete native flex layout: `flex-direction` with reversal, `wrap` and
   `wrap-reverse` lines, `flex-grow`/`flex-shrink`/`flex-basis` (px, rem and
   percentage bases), `justify-content`, `align-items`, `align-content` and

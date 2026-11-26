@@ -290,32 +290,41 @@ CornerMask :: (radius: s32, out_x: *s32, out_y: *s32) -> bool {
             return true
         }
     }
+    // A mirrored quad can sample exactly on its atlas edge when the join
+    // falls on a pixel center. Repeat the edge texels so it samples the mask.
+    side := radius + 2
     ax: s32; ay: s32
-    if !AtlasReserve(radius, radius, *ax, *ay) { return false }
-    total := cast(s64)radius * cast(s64)radius
+    if !AtlasReserve(side, side, *ax, *ay) { return false }
+    total := cast(s64)side * cast(s64)side
     limit := ifx gpu_scratch_pixels.capacity > total then gpu_scratch_pixels.capacity else total
     if !VecResizeBounded(gpu_scratch_pixels, total, limit) { return false }
     rf := cast(float64)radius
     // 4x4 supersampled quarter-circle coverage (top-left corner: circle center at (r, r)).
-    for py: cast(s32)0..radius - 1 {
-        for px: cast(s32)0..radius - 1 {
+    for py: cast(s32)0..side - 1 {
+        sample_y := ifx py == 0 then 0 else py - 1
+        if sample_y >= radius { sample_y = radius - 1 }
+        for px: cast(s32)0..side - 1 {
+            sample_x := ifx px == 0 then 0 else px - 1
+            if sample_x >= radius { sample_x = radius - 1 }
             hits: s32 = 0
             for sy: cast(s32)0..3 {
-                dy := rf - (cast(float64)py + (cast(float64)sy + 0.5) * 0.25)
+                dy := rf - (cast(float64)sample_y + (cast(float64)sy + 0.5) * 0.25)
                 for sx: cast(s32)0..3 {
-                    dx := rf - (cast(float64)px + (cast(float64)sx + 0.5) * 0.25)
+                    dx := rf - (cast(float64)sample_x + (cast(float64)sx + 0.5) * 0.25)
                     if dx * dx + dy * dy <= rf * rf { hits += 1 }
                 }
             }
             cov := cast(u32)((hits * 255 + 8) / 16)
             // Premultiplied white (cov, cov, cov, cov) in ARGB8888.
-            gpu_scratch_pixels[cast(s64)py * cast(s64)radius + cast(s64)px] =
+            gpu_scratch_pixels[cast(s64)py * cast(s64)side + cast(s64)px] =
                 (cov << cast(u32)24) | (cov << cast(u32)16) | (cov << cast(u32)8) | cov
         }
     }
-    area: DesktopGpuRect = .{ax, ay, radius, radius}
+    area: DesktopGpuRect = .{ax, ay, side, side}
     if UpdateTexture(gpu_atlas, cast(*void)*area, cast(*void)*gpu_scratch_pixels[0],
-        radius * 4) != 0 { return false }
+        side * 4) != 0 { return false }
+    ax += 1
+    ay += 1
     if gpu_corner_count < DESKTOP_GPU_CORNER_SLOTS {
         gpu_corners[gpu_corner_count] = DesktopGpuCorner.{radius, ax, ay}
         gpu_corner_count += 1
