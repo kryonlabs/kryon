@@ -30,15 +30,14 @@ using Model :: #import "tasks";
 dark: bool;
 no_menu: []Dropdown.Option;
 
-// A new task's draft: the state, and the bytes it edits.
-draft_bytes: [64]u8;
+// A new task's draft: the field owns and keeps its bytes until AddTask
+// copies the text into the model.
 draft: TextField.State;
 
 Frame :: (frame: App.Frame) {
     session := Session.{.slot = frame.slot, .epoch = frame.epoch}
-    // First frame: wire the draft's bytes and start in the host's theme.
+    // First frame: start in the host's theme with the seed tasks.
     if frame.first {
-        draft.bytes = draft_bytes[:]
         dark = Theme.CurrentTheme().dark
         StartTasks()
     }

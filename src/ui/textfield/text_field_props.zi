@@ -4,8 +4,14 @@ Text :: #import "text";
 Utf8 :: #import "std/utf8"
 using Vectors :: #import "std/vec"
 
+// The bytes a field edits when the application wires none: Bind points
+// state.bytes at state.storage on first use. A field needing another
+// capacity or shared bytes wires state.bytes itself (usually frame.first).
+DefaultCapacity :: 256;
+
 // The caller owns bytes; length excludes unused capacity, with no trailing
-// zero required. Bind keeps preedit bytes separately from the value.
+// zero required. Bind keeps preedit bytes separately from the value. A
+// zeroed State is ready to edit: its bytes view storage.
 State :: struct {
     bytes: []u8
     length: s32
@@ -18,6 +24,7 @@ State :: struct {
     preedit_cursor: s32
     preedit_selection: s32
     preedit_active: bool
+    storage: [DefaultCapacity]u8
 }
 
 Input :: struct {

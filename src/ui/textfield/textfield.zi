@@ -110,6 +110,10 @@ Theme :: #import "theme";
         props.bounds = TreePlaceAhead(session, props.bounds)
         bound: BindingResult = .{.node = -1}
         if state == null { return bound }
+        // A state without wired bytes edits its own storage from the first
+        // frame; an application wanting another capacity or shared bytes
+        // wires state.bytes before this call (usually frame.first).
+        if state.bytes.count == 0 { state.bytes = state.storage[:] }
         props = TextField.StatePropsFor(state, props)
         parent := TreeCurrentParent(session)
         previous := TreePrevious(session, parent, TextFieldKey(session, props), WidgetKindTextField)

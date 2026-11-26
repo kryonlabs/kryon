@@ -31,9 +31,9 @@ come from `make install-user`: an old `kryon` makes an old starter, so reinstall
   survives an early return, and cannot be missed — a missing or extra `End` fails the whole frame.
 - Size and space come from theme tokens; act on a result in the same frame (`Button.Draw` returns 1 on
   a click; value widgets return `.changed` and the value).
-- A text field edits `TextField.State` bytes you wire on `frame.first`; `TextField.Value` views them
-  (empty until wired), so copy them into app storage to keep them, then `TextField.Clear(*state)`
-  empties the field in the same frame.
+- A text field edits its own `TextField.State` storage: declare one, bind it, and it keeps its bytes;
+  custom capacity or shared bytes wire `state.bytes` on `frame.first`. `TextField.Value` views them,
+  so copy into app storage to keep them, then `TextField.Clear(*state)` empties the field.
 - A returned `string` must view file-scope bytes (as `NoteAt` does), never a local buffer.
 - `ziran lock` refused "checked package metadata": `[toolchain]` must be the exact Ziran Kryon pins (`kryon init` sets it). No window under the driver: build with `KRYON_TEST_DRIVER=1`.
 
@@ -50,7 +50,7 @@ links = ["X11"]           # private_display in the driver test uses Xlib
 tool = "kryon"
 [toolchain]
 git = "https://git.waozi.xyz/ziranlang/ziran.git"
-ref = "bb0323cef6c7b144eeea5ad1670ccf7a3fbde253"
+ref = "4413456221aa5a9bc00a368762e9e50aaf6e7b6b"
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
 ref = "a0efdfbdf21ebceff3d5f1e4367d33557b565247"
@@ -108,15 +108,13 @@ Toggle :: #import "kryon/toggle";
 #import "widgets"
 dark: bool;
 showcase: bool;
-draft_bytes: [64]u8;
 draft: TextField.State;
 no_menu: []Dropdown.Option;
 sheet: CSS.CssSheet;
 NOTE_CSS :: "Card.note { border-radius: 14px; gap: 4px; }";
 Frame :: (frame: App.Frame) {
     session := Session.{.slot = frame.slot, .epoch = frame.epoch}
-    if frame.first {                        // once: wire the bytes, parse the look, read the theme
-        draft.bytes = draft_bytes[:]
+    if frame.first {                        // once: parse the look and read the theme
         dark = Theme.CurrentTheme().dark
         if CSS.CssSheetParse(*sheet, NOTE_CSS, "app.css", CSS.CssNoImports) {
             unused CSS.CssSheetInstall(*sheet, CSS.CssDefaultEnvironment(), null)
