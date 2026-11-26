@@ -41,6 +41,7 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Filter managed runtime bitmaps on the GPU rather than continually rebuilding CPU Lanczos copies for animated frames.
 - Retain Android GPU composition across swapped window buffers, preventing stale pixels after partial redraws and rotation without CPU readback.
 
 - Decode hosted records and slices imported through a dependency's module alias, including Plot's band charts.

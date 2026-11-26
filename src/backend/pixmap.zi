@@ -439,6 +439,10 @@ PixmapPrepareImage :: (slot: s32, source: *Rectangle, width: float32, height: fl
     PixmapLanczosSlot :: (slot: s32, source: Rectangle, destination: Rectangle,
         copy_source: *Rectangle, snapped: *Rectangle, smooth: *bool) -> s32 {
         if slot < 0 || (slot >= PixmapCopyImageStart && slot < PixmapManagedImageStart) { return -1 }
+        // Runtime bitmaps may change every frame. Filtering their pixels on
+        // a CPU worker copies and resizes a revision that the next frame
+        // immediately discards. The GPU already filters these textures.
+        if pixmap_gpu_active && slot >= PixmapManagedImageStart { return -1 }
         width := pixmap_image_widths[slot]; height := pixmap_image_heights[slot]
         count := cast(s64)width * height
         if width <= 0 || height <= 0 || PixmapSourceCount(slot) < count { return -1 }

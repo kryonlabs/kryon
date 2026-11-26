@@ -540,6 +540,10 @@ LRU budgets, so a large cover and its small marker do not evict each other.
   scaled transforms, meshes, polygon strips and render targets keep the
   backend's own filter. A whole-pixel draw at the source's own size needs no
   copy.
+- On a GPU pixmap host, managed runtime bitmaps also keep the GPU's linear
+  filter. Animated bitmaps otherwise spend CPU time copying and resizing
+  revisions that the next frame discards. Static asset pictures and CPU
+  pixmap hosts retain their Lanczos copies.
 - Limits: a copy is at most 4096 pixels per side and 4,194,304 pixels; all
   copies together take at most 64 MiB, and one session at most 32 MiB.
 - Like Pillow, filtering works on the stored sRGB bytes, not in linear

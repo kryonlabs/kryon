@@ -1,6 +1,8 @@
 Pixels :: #import "pixmap";
 Texture :: #import "paint_texture";
 Lanczos :: #import "lanczos_cache";
+Bitmaps :: #import "bitmap_store";
+Gpu :: #import "pixmap_gpu";
 #import "geometry"
 #import "drawing_props"
 #import "std/byte_text_linux"
@@ -60,6 +62,25 @@ CopySlots :: () -> s32 {
         if Pixels.pixmap_image_widths[slot] != 0 { count += 1 }
     }
     return count
+}
+
+ManagedFiltering :: () -> bool {
+    rgba: [16]u8 = .[255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255]
+    image := Bitmaps.BitmapCreateOwned(1, 1, 2, 2, rgba[:])
+    if image.id == cast(u32)0 { return false }
+    defer Bitmaps.BitmapDisposeOwner(1, 1)
+    Pixels.PixmapSyncBitmaps()
+    slot := Pixels.PixmapManagedImageStart + Bitmaps.BitmapSlot(image.id)
+    source: Rectangle = .{0.0, 0.0, 2.0, 2.0}
+    target: Rectangle = .{0.0, 0.0, 8.0, 8.0}
+    copy: Rectangle; snapped: Rectangle; smooth: bool
+    Gpu.pixmap_gpu_active = true
+    gpu_copy := Pixels.PixmapLanczosSlot(slot, source, target, *copy, *snapped, *smooth)
+    Gpu.pixmap_gpu_active = false
+    if gpu_copy >= 0 || Pixels.PixmapLanczosPending() { return false }
+    unused Pixels.PixmapLanczosSlot(slot, source, target, *copy, *snapped, *smooth)
+    if !Pixels.PixmapLanczosWait() { return false }
+    return Pixels.PixmapLanczosSlot(slot, source, target, *copy, *snapped, *smooth) >= 0
 }
 
 // Pixel 96 has its center on the shared x=96.5 edge at Android's 2.75x
@@ -154,6 +175,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
         if !DrawMesh(sources[1]) || !Same() || Pixels.PixmapLanczosPending() { return 15 }
         print("Android pixmap reuses a Lanczos-prefiltered source across warped draws\n")
     }
+    if !ManagedFiltering() { print("managed image GPU/CPU filtering policy failed\n"); return 28 }
+    Pixels.PixmapSyncBitmaps()
     Pixels.PixmapCloseWorkers()
     print("Pixmap draws settled Lanczos copies 1:1 and keeps them stable across frames\n")
     return 0
