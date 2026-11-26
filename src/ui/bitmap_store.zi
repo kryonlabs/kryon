@@ -124,6 +124,10 @@ BitmapCopyPixels :: (at: s32, rgba: []u8) {
         packed := BitmapRgbaPixel(rgba, offset)
         item.pixels[pixel] = packed
         alpha := cast(u32)rgba[offset + 3]
+        if alpha == 0 {
+            item.premultiplied[pixel] = 0
+            continue
+        }
         if alpha == 255 {
             item.premultiplied[pixel] = packed
             continue

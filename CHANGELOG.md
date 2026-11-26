@@ -41,6 +41,8 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Update only changed indexed mesh ranges during mixed CPU/GPU animation, and skip transparent pixel premultiplication.
+
 - Allow glTF updates to skip hidden non-shadow-casting primitives while preserving transform updates and posing newly shown meshes.
 
 - Filter managed runtime bitmaps on the GPU rather than continually rebuilding CPU Lanczos copies for animated frames.

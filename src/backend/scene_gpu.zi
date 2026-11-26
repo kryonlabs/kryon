@@ -1408,46 +1408,68 @@ UploadIndexed :: (gpu: *SceneGpuContext,scene: *Scene,mask: s32,full: bool)->boo
  return G.GetError()==0
 }
 
-// A flat or non-indexed mesh still needs its original expansion when its
-// own source range changes, even when other nodes can keep their elements.
+// Compare only this mesh's source range before regenerating its GPU stream.
+// GPU skins and hidden wardrobe meshes retain their bind vertices while a
+// contact solver changes a small CPU-posed part of the same Scene.
+IndexedSourceChanged :: (gpu: *SceneGpuContext,part: GpuScenePart,mesh: SceneMesh,channel: s64)->bool {
+ stride:=ifx channel==3 then cast(s64)size_of(ShapePoint) else cast(s64)size_of(Vector3)
+ offset:=cast(s64)mesh.first_vertex*stride
+ bytes:=cast(s64)mesh.vertex_count*stride
+ if bytes==0 {return false}
+ current:=cast(*u8)part.data
+ return G.CompareMemory(cast(*void)*gpu.snapshot[part.offset+offset],cast(*void)*current[offset],cast(usize)bytes)!=0
+}
+
 UpdateIndexed :: (gpu: *SceneGpuContext,scene: *Scene,parts: [7]GpuScenePart,change: s32)->bool {
- mask:=change>>2
- if (change&GPU_NODES_CHANGED)!=0 {
-  if !OnlyMoved(gpu,scene) {return false}
-  for at: 0..scene.nodes.count-1 {
-   node:=scene.nodes[at];matrix:=M.Compose(node.position,node.rotation,node.scale)
-   if node.parent>=0 {matrix=M.Multiply(gpu.node_world[node.parent],matrix)}
-   previous:=gpu.node_world[at]
-   if MatrixSame(matrix,previous) {continue}
-   if node.mesh>=0 {
-    mesh:=scene.meshes[node.mesh]
-    if !MeshIndexed(mesh)||(M.Determinant3(matrix)<0.0)!=(M.Determinant3(previous)<0.0) {return false}
-   }
-   gpu.node_world[at]=matrix
-   mask|=3
+ if (change&GPU_NODES_CHANGED)!=0&&!OnlyMoved(gpu,scene) {return false}
+ started:=ifx gpu.profile_enabled then Now() else 0.0
+ defer {if gpu.profile_enabled {gpu.profile_upload_ms+=Now()-started}}
+ count:=gpu.indexed.vertex_count
+ if !VecResize(gpu.indexed.scratch,count*3) {return false}
+ G.BindBuffer(0x8892,gpu.indexed.attributes)
+ sent: s64
+ for at: 0..scene.nodes.count-1 {
+  node:=scene.nodes[at]
+  matrix:=M.Compose(node.position,node.rotation,node.scale)
+  if node.parent>=0 {matrix=M.Multiply(gpu.node_world[node.parent],matrix)}
+  previous:=gpu.node_world[at]
+  moved:=!MatrixSame(matrix,previous)
+  gpu.node_world[at]=matrix
+  if moved {
    for d: 0..gpu.draws.count-1 {if gpu.draws[d].node==cast(s32)at {gpu.draws[d].origin=M.Point(matrix,.{})}}
   }
- }
- for node: scene.nodes {
   if node.mesh<0 {continue}
   mesh:=scene.meshes[node.mesh]
-  if MeshIndexed(mesh) {
-   if (mask&3)!=0&&mesh.material.texture_projection==.SceneTextureBox {mask|=8}
+  if !MeshIndexed(mesh) {
+   if moved {return false}
+   for channel: 0..2 {
+    if (change&(1<<cast(s32)(channel+2)))!=0&&IndexedSourceChanged(gpu,parts[channel+2],mesh,channel) {return false}
+   }
    continue
   }
-  if mesh.vertex_count==0 {continue}
-  for at: 2..4 {
-   if (change&(1<<cast(s32)at))==0 {continue}
-   part:=parts[at]
-   offset:=cast(s64)mesh.first_vertex*cast(s64)size_of(Vector3)
-   bytes:=cast(usize)(cast(s64)mesh.vertex_count*cast(s64)size_of(Vector3))
-   current:=cast(*u8)part.data
-   if G.CompareMemory(cast(*void)*gpu.snapshot[part.offset+offset],cast(*void)*current[offset],bytes)!=0 {return false}
+  if moved&&(M.Determinant3(matrix)<0.0)!=(M.Determinant3(previous)<0.0) {return false}
+  changed: [4]bool
+  for channel: 0..3 {
+   if (change&(1<<cast(s32)(channel+2)))!=0 {
+    changed[channel]=IndexedSourceChanged(gpu,parts[channel+2],mesh,channel)
+   }
   }
+  if mesh.material.texture_projection==.SceneTextureBox&&(changed[0]||changed[1]) {changed[3]=true}
+  if moved&&!NodeSkinned(gpu,scene,at) {changed[0]=true;changed[1]=true}
+  wrote:=false
+  for channel: 0..3 {
+   if !changed[channel] {continue}
+   width:=ifx channel==3 then 2 else 3
+   WriteIndexedAttribute(gpu,scene,mesh,NodeMatrix(gpu,scene,at),channel,0)
+   offset:=channel*count*12+cast(s64)gpu.node_first[at]*width*4
+   G.BufferSubData(0x8892,offset,cast(s64)mesh.vertex_count*width*4,cast(*void)*gpu.indexed.scratch[0])
+   wrote=true
+  }
+  if wrote {sent+=mesh.vertex_count}
  }
- if !UploadIndexed(gpu,scene,mask,false)||!GeometrySnapshot(gpu,parts,scene.geometry_frozen,change) {return false}
+ if G.GetError()!=0||!GeometrySnapshot(gpu,parts,scene.geometry_frozen,change) {return false}
  gpu.resources.geometry_uploads+=1
- gpu.resources.geometry_vertices+=gpu.indexed.vertex_count
+ gpu.resources.geometry_vertices+=sent
  return true
 }
 // The changed node records only moved nodes: every node keeps its parent, its
