@@ -2,6 +2,7 @@
 // The caller owns a current context and presents the retained framebuffer.
 G :: #import "scene_gpu_gl";
 P :: #import "pixmap";
+Bitmaps :: #import "bitmap_store";
 #import "pixmap_gpu"
 #import "std/vec"
 
@@ -89,15 +90,18 @@ DropImage :: (slot: s64) {
 
 // Premultiplies COUNT pixels of SLOT into staging. Opaque and empty pixels
 // skip the arithmetic, and an animated figure is almost entirely one of them.
-Premultiply :: (slot: s32, count: s64) {
-    for index: 0..count - 1 {
-        pixel := P.PixmapSourcePixel(slot, index); alpha := pixel >> 24
-        if alpha == 255 { staging[index] = pixel; continue }
-        if alpha == 0 { staging[index] = 0; continue }
+PremultiplyPixels :: (source: []u32, count: s64) {
+    // No callback or allocation can invalidate these frame-local views.
+    destination := staging[:]
+    pixels := cast(s32)count
+    for index: cast(s32)0..pixels - 1 {
+        pixel := source[index]; alpha := pixel >> 24
+        if alpha == 255 { destination[index] = pixel; continue }
+        if alpha == 0 { destination[index] = 0; continue }
         red := ((pixel >> 16) & cast(u32)255) * alpha / cast(u32)255
         green := ((pixel >> 8) & cast(u32)255) * alpha / cast(u32)255
         blue := (pixel & cast(u32)255) * alpha / cast(u32)255
-        staging[index] = (alpha << 24) | (red << 16) | (green << 8) | blue
+        destination[index] = (alpha << 24) | (red << 16) | (green << 8) | blue
     }
 }
 
@@ -119,7 +123,12 @@ ImageTexture :: (slot: s32) -> u32 {
     // drop the whole presenter to software.
     limit := ifx staging.capacity > count then staging.capacity else count
     if !VecResizeBounded(staging, count, limit) { return 0 }
-    Premultiply(slot, count)
+    if slot >= P.PixmapManagedImageStart {
+        item := *Bitmaps.bitmap_images[slot - P.PixmapManagedImageStart]
+        PremultiplyPixels(item.pixels[:], count)
+    } else {
+        PremultiplyPixels(P.pixmap_image_pixels[slot].value, count)
+    }
     if images[slot] == 0 {
         images[slot] = NewTexture(image_width, image_height, cast(*void)*staging[0])
         if images[slot] == 0 { return 0 }
