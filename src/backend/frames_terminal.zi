@@ -35,6 +35,12 @@ TerminalState :: struct {
 
 active_draw: App.Draw;
 
+// The structural probe's draw: the app's own draw into the probe frame.
+StructuralProbeDraw :: (session: Session, bounds: Rectangle) -> s32 {
+    App.CallDraw(active_draw, session.slot, session.epoch, bounds)
+    return 0
+}
+
 WriteControl :: (value: string) -> bool {
     bytes: [64]u8
     if value.count > 64 { return false }
@@ -83,6 +89,7 @@ LeaveTerminal :: (state: *TerminalState) {
 // screen storage, rendering effects, and presentation.
 RenderFrame :: (session: Session, viewport: Rectangle, interactive: bool) -> s32 {
     TerminalBegin(80, 24)
+    unused StyleStructuralProbeFrame(session, cast(u64)1, viewport, StructuralProbeDraw)
     if BeginFrame(session, cast(u64)1, viewport) !=
         cast(FrameStatus)FrameOk {
         return 1

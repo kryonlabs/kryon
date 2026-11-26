@@ -16,7 +16,9 @@ from Xlib.display import Display
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BINARY = ROOT / 'examples/gallery/build/gallery-desktop'
+# Examples share the owning repository's output tree, so the widget-catalog
+# build from `make -C examples widget-catalog` lands here.
+BINARY = ROOT / 'build/examples/gallery/gallery-desktop'
 OUTPUT = ROOT / 'build/scratch/gallery-desktop-shell'
 SCRUB = {
     'DISPLAY', 'WAYLAND_DISPLAY', 'WAYLAND_SOCKET', 'XAUTHORITY',
@@ -66,8 +68,10 @@ def private_drive():
     assert BINARY.is_file() and os.access(BINARY, os.X_OK), BINARY
     data = (ROOT / 'docs/site/gallery-data.js').read_text()
     names = [item['name'] for item in json.loads(data.split('window.galleryScenes = ', 1)[1].rstrip(';\n'))]
-    assert len(names) == 101
-    assert 'GallerySceneCount :: 101;' in (
+    # The scene count grows with the gallery; both generated views must
+    # agree on it rather than pinning a literal that drifts with additions.
+    assert len(names) >= 100
+    assert f'GallerySceneCount :: {len(names)};' in (
         ROOT / 'examples/gallery/build/catalog/catalog.zi').read_text()
 
     x11 = C.CDLL('libX11.so.6')
@@ -122,7 +126,8 @@ def private_drive():
     def selected_scene(name):
         nodes = tree()
         sidebar = next(node for node in nodes if node['key'] == 9003)
-        assert sidebar['x'] == 500 and sidebar['height'] == 652, sidebar
+        # The picker fills the flex row's sidebar slot of the canonical shell.
+        assert sidebar['x'] == 696 and sidebar['height'] == 544, sidebar
         assert any(node['label'] == name and node['selected'] for node in nodes), (name, nodes)
         return nodes
 
@@ -152,7 +157,7 @@ def private_drive():
             time.sleep(0.08)
 
         def choose_scene(steps):
-            row = next(node for node in tree() if node['selected'] and node['x'] == 500 and node['visible'])
+            row = next(node for node in tree() if node['selected'] and node['x'] == 696 and node['visible'])
             click(row['visible_x'] + 40, row['visible_y'] + row['visible_height'] / 2)
             for step in steps:
                 xdo('key', '--window', window, '--delay', '40', step)
@@ -197,7 +202,9 @@ def private_drive():
 
             move(480, 100)
             background = steady_cursor()
-            move(550, 39)
+            # The shell header is a plain title; the pointer cursor belongs
+            # to the scene's Button, the same shape the palette trigger draws.
+            move(buttons[1]['x'] + 40, buttons[1]['y'] + 20)
             navigation = steady_cursor()
             assert navigation != background, (background, navigation)
             assert 'text' not in navigation[-1].lower(), navigation
@@ -209,20 +216,26 @@ def private_drive():
             second_scene = capture('second-scene')
             assert rms(initial, second_scene) > 2
 
-            click(392, 656)
+            toggle = next(node for node in tree() if node['key'] == 9005)
+            click(toggle['x'] + 24, toggle['y'] + 20)
             dark = capture('dark')
             assert rms(second_scene, dark) > 2
-            click(392, 656)
+            toggle = next(node for node in tree() if node['key'] == 9005)
+            click(toggle['x'] + 24, toggle['y'] + 20)
 
             palette_closed = capture('palette-closed')
-            move(101, 145)
+            trigger = next(node for node in tree()
+                           if node['label'] == 'Open palette' and node['kind'] == 'button')
+            trigger_x = trigger['visible_x'] + trigger['visible_width'] / 2
+            trigger_y = trigger['visible_y'] + trigger['visible_height'] / 2
+            move(trigger_x, trigger_y)
             trigger = steady_cursor()
             assert trigger == navigation, (navigation, trigger)
-            click(101, 145)
+            click(trigger_x, trigger_y)
             palette_open = capture('palette-open')
             assert any(node['label'] == 'Search commands' for node in tree())
             query = next(node for node in tree() if node['label'] == 'Search commands')
-            assert query['y'] >= 64 and query['y'] + query['height'] <= 272, query
+            assert query['y'] >= 140 and query['y'] + query['height'] <= 348, query
             for letter in 'format':
                 xdo('key', '--window', window, '--delay', '40', letter)
                 time.sleep(0.04)
@@ -233,17 +246,22 @@ def private_drive():
             time.sleep(0.15)
             capture('palette-closed-again')
             assert not any(node['label'] == 'format' for node in tree())
-            click(101, 145)
+            trigger = next(node for node in tree()
+                           if node['label'] == 'Open palette' and node['kind'] == 'button')
+            click(trigger['visible_x'] + trigger['visible_width'] / 2,
+                  trigger['visible_y'] + trigger['visible_height'] / 2)
             time.sleep(0.15)
             palette_reopened = capture('palette-reopened')
             assert any(node['label'] == 'format' for node in tree())
 
-            assert rms(palette_closed, palette_open, (24, 64, 456, 272)) > 2
-            assert rms(palette_open, palette_typed, (24, 64, 456, 272)) > 1
-            assert rms(palette_typed, palette_reopened, (24, 64, 456, 272)) < 1
+            assert rms(palette_closed, palette_open, (24, 100, 480, 360)) > 2
+            assert rms(palette_open, palette_typed, (24, 100, 480, 360)) > 1
+            assert rms(palette_typed, palette_reopened, (24, 100, 480, 360)) < 1
             assert rms(palette_closed, palette_open, (0, 620, 480, 700)) < 1
             assert rms(palette_closed, palette_open, (0, 0, 1000, 64)) < 1
-            move(240, 160)
+            item = next(node for node in tree() if node['label'] == 'Format source')
+            move(item['visible_x'] + item['visible_width'] / 2,
+                 item['visible_y'] + item['visible_height'] / 2)
             option = steady_cursor()
             assert option == navigation, (navigation, option)
 
@@ -251,26 +269,29 @@ def private_drive():
             time.sleep(0.15)
             choose_scene(('Home', 'Down'))
             selected_scene('TextField')
-            move(100, 86)
+            field = next(node for node in tree() if node['kind'] == 'text_field' and node['visible'])
+            field_x = field['visible_x'] + field['visible_width'] / 2
+            field_y = field['visible_y'] + field['visible_height'] / 2
+            move(field_x, field_y)
             editable = steady_cursor()
             assert editable != navigation, (navigation, editable)
             assert ('text' in editable[-1].lower() or
                     editable[:4] != navigation[:4]), editable
-            click(100, 86)
+            click(field_x, field_y)
             before = [node['value'] for node in tree() if node['focused']]
             xdo('type', '--window', window, '--delay', '40', 'native input')
             time.sleep(0.15)
             after = [node['value'] for node in tree() if node['focused']]
             assert after != before and any('native input' in value for value in after), after
 
-            option = next(node for node in tree() if node['label'] == 'TextArea' and node['x'] == 500 and node['visible'])
+            option = next(node for node in tree() if node['label'] == 'TextArea' and node['x'] == 696 and node['visible'])
             click(option['visible_x'] + 40, option['visible_y'] + option['visible_height'] / 2)
             selected_scene('TextArea')
 
             def visible_rows():
-                return [node['label'] for node in tree() if node['x'] == 500 and node['kind'] == 'selectable' and node['visible']]
+                return [node['label'] for node in tree() if node['x'] == 696 and node['kind'] == 'selectable' and node['visible']]
             rows_before = visible_rows()
-            move(700, 350)
+            move(800, 350)
             xdo('click', '--repeat', 5, '--delay', 40, 5)
             time.sleep(0.15)
             assert visible_rows() != rows_before, 'Sidebar wheel did not scroll'
@@ -302,7 +323,7 @@ def private_drive():
                     assert any(n['label'] == 'Project created' for n in tree()), 'reenabled action did not fire'
                     click(checkbox['x'] + 20, checkbox['y'] + 20)
                 if name == 'Breadcrumb':
-                    buttons = [n for n in nodes if n['kind'] == 'button' and n['x'] < 500]
+                    buttons = [n for n in nodes if n['kind'] == 'button' and n['x'] < 680]
                     assert buttons and all(not n['enabled'] for n in buttons), 'disabled flag lost on scene change'
                     checkbox = next(n for n in nodes if n['key'] == 9004)
                     click(checkbox['x'] + 20, checkbox['y'] + 20)
@@ -334,7 +355,7 @@ def private_drive():
             tab_until(names[-1], backwards=True)
             choose_scene(('Home',))
             selected_scene('Button')
-            print('All 101 scenes selected through the native sidebar')
+            print(f'All {len(names)} scenes selected through the native sidebar')
             print('Native gallery private-display shell, sidebar navigation, cursors '
                   'and persistent palette passed')
             print('Review images:', OUTPUT / 'gallery-shell.webp',

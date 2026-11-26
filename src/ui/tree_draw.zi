@@ -9,6 +9,8 @@
 #import "text_selection_host"
 #import "scroll_sampling"
 #import "frame_motion"
+#import "frame_driver"
+#import "style_sheet"
 
 using FrameStatus;
 
@@ -112,6 +114,27 @@ CommitFrame :: (session: Session) -> FrameStatus {
     FrameMotionCommit(session)
     FrameInputCommit(session)
     return cast(FrameStatus)FrameOk
+}
+
+// One throwaway probe frame, so the presented frame's late structural
+// selector facts (:last-child family) read a committed tree of the same
+// structure. Runs only when the installed sheet carries such rules; the
+// probe suspends the frame's device input, keeps its motion time for the
+// presented frame, and never emits paint. Hosts call it right before their
+// real frame and ignore the result.
+#program_export
+StyleStructuralProbeFrame :: (session: Session, screen_key: u64,
+    bounds: Rectangle, draw: FrameDraw) -> bool {
+    if !StyleStructuralLateActive() { return false }
+    snapshot := TreeInputSuspend(session)
+    ok := BeginFrame(session, screen_key, bounds) == cast(FrameStatus)FrameOk
+    if ok {
+        if draw(session, bounds) != 0 { ok = false }
+        if CommitFrame(session) != cast(FrameStatus)FrameOk { ok = false }
+    }
+    if ok { FrameMotionHoldNext(session) }
+    unused TreeInputResume(session, snapshot)
+    return ok
 }
 
 FrameEndResult :: struct {

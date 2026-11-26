@@ -310,7 +310,9 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
             else:
                 result += f"    if index == {entry['index']} {{ return {json.dumps(text, ensure_ascii=False)} }}\n"
         return result + '    return ""\n}\n'
-    registry = 'App :: #import "kryon/app_types";\n#import "kryon/geometry"\n#import "kryon/session"\n#import "palette"\n' + '\n'.join(imports) + '\n'
+    # The typed entry `kryon/app_types` is package-internal; `kryon/app`
+    # re-exports Window, Frame, Draw and CallDraw for consumers.
+    registry = 'App :: #import "kryon/app";\n#import "kryon/geometry"\n#import "kryon/session"\n#import "palette"\n' + '\n'.join(imports) + '\n'
     registry += 'catalog_viewport: Rectangle = .{0.0, 0.0, 480.0, 320.0};\n'
     registry += f'GallerySceneCount :: {len(entries)};\n'
     registry += 'GalleryCompilerSearch :: () -> string {\n    return #string GALLERY_COMPILER_SEARCH\n' + '\n'.join(compiler_paths(modules)) + '\nGALLERY_COMPILER_SEARCH\n}\n'

@@ -53,6 +53,12 @@
 
     active_draw: App.Draw;
 
+    // The structural probe's draw: the app's own draw into the probe frame.
+    AndroidProbeDraw :: (session: Session, bounds: Rectangle) -> s32 {
+        App.CallDraw(active_draw, session.slot, session.epoch, bounds)
+        return 0
+    }
+
     AndroidUseDraw :: (draw: App.Draw) {
         active_draw = draw
     }
@@ -168,6 +174,8 @@
                 AndroidFrameFailure(session, "the frame could not begin")
                 ok = false
             } else {
+                unused StyleStructuralProbeFrame(session, cast(u64)1, bounds,
+                    AndroidProbeDraw)
                 App.CallDraw(active_draw, session.slot, session.epoch, bounds)
                 // Compose against the last presented pixels; route changes
                 // may capture them before the queued paint replaces them.

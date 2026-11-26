@@ -20,7 +20,8 @@ independently of palette selection.
 Typed style rules and optional CSS remain available for application-specific
 colors and control styling, using the same components and interaction behavior.
 Optional CSS also covers structural selectors (`:first-child`, `:last-child`,
-`:nth-child()` and their of-type family), complete flexbox layout and
+`:nth-child()` and their of-type family), sibling combinators (`+`, `~`),
+complete flexbox layout and
 `linear-gradient()`/`radial-gradient()` fills; the exact native subset and the
 remaining browser-only features are listed in [HTML_TO_KRYON.md](HTML_TO_KRYON.md).
 

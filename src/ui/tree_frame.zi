@@ -37,6 +37,7 @@ TreeFrameRun :: (session: Session, input: FrameDriverInput) -> FrameDriverResult
     published := session
     defer { FrameInputEnd(published) }
     SetFrameMotionTime(session, input.seconds)
+    unused StyleStructuralProbeFrame(session, cast(u64)1, input.viewport, input.draw)
     if BeginFrame(session, cast(u64)1, input.viewport) != cast(FrameStatus)FrameOk { return result }
     if input.draw(session, input.viewport) != 0 {
         TreeCancel(session)

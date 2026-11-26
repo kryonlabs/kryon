@@ -327,8 +327,18 @@ SurfaceBeginInput :: (session: Session, input: FrameInputSnapshot) -> bool {
     return true
 }
 
+surface_probe_draw: Draw;
+
+// The structural probe's draw: the app's own draw into the probe frame.
+SurfaceProbeDraw :: (session: Session, bounds: Rectangle) -> s32 {
+    App.CallDraw(surface_probe_draw, session.slot, session.epoch, bounds)
+    return 0
+}
+
 SurfaceCompose :: (session: Session, draw: Draw, width: s32, height: s32) -> bool {
     bounds: Rectangle = .{0.0, 0.0, cast(float32)width, cast(float32)height}
+    surface_probe_draw = draw
+    unused StyleStructuralProbeFrame(session, cast(u64)1, bounds, SurfaceProbeDraw)
     if BeginFrame(session, cast(u64)1, bounds) != cast(FrameStatus)FrameOk { return false }
     App.CallDraw(draw, session.slot, session.epoch, bounds)
     return true

@@ -388,7 +388,9 @@ StyleSelector :: struct {
     // Tree context (StyleContext bits): an ancestor, or with
     // StyleContextParent the parent, carrying ancestor_class and
     // ancestor_id; being its parent's first child; not carrying not_class
-    // and not being in not_state.
+    // and not being in not_state; a preceding sibling carrying
+    // sibling_class, sibling_id and sibling_kind (the '+' adjacent or
+    // '~' general sibling combinator).
     context: u32
     ancestor_class: s32
     ancestor_id: s32
@@ -396,6 +398,9 @@ StyleSelector :: struct {
     not_state: s32
     nth_a: s32
     nth_b: s32
+    sibling_class: s32
+    sibling_id: s32
+    sibling_kind: s32
 }
 
 StyleContext :: enum {
@@ -410,6 +415,8 @@ StyleContext :: enum {
     StyleContextLastOfType :: 256
     StyleContextOnlyOfType :: 512
     StyleContextNthOfType :: 1024
+    StyleContextPrevSibling :: 2048
+    StyleContextAnyPrevSibling :: 4096
 }
 using StyleContext;
 

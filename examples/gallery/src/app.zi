@@ -2,6 +2,7 @@ App :: #import "kryon/app";
 Box :: #import "kryon/box";
 Checkbox :: #import "kryon/checkbox";
 ListBox :: #import "kryon/list_box";
+Layout :: #import "kryon/layout";
 Text :: #import "kryon/text";
 Toggle :: #import "kryon/toggle";
 #import "kryon/drawing_props"
@@ -9,6 +10,7 @@ Toggle :: #import "kryon/toggle";
 #import "kryon/input_protocol"
 #import "kryon/key_input"
 #import "kryon/session"
+#import "kryon/style_sheet"
 #import "kryon/tree"
 #import "kryon/tree_input"
 using Scenes :: #import "scenes";
@@ -56,17 +58,49 @@ Frame :: (frame: App.Frame) {
     viewport := frame.viewport
     if Shot.CatalogShotActive() { Shot.CatalogShotFrame(session, viewport); return }
     snapshot := CaptureFrameInput(session)
-    SetGalleryPreview(Rectangle.{0.0, 0.0, 480.0, viewport.height - 88.0}, true,
-        cast(float32)snapshot.elapsed_ms / 1000.0, GalleryTheme.CurrentTheme().motion.reduced_motion)
     InstallGalleryPalette(dark)
     Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
     if embedded {
         Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = GallerySceneName(scene), .size = 23})
+        SetGalleryPreview(Rectangle.{0.0, 0.0, 480.0, viewport.height - 88.0}, true,
+            cast(float32)snapshot.elapsed_ms / 1000.0, GalleryTheme.CurrentTheme().motion.reduced_motion)
         DrawScene(session)
         return
     }
     restore_focus := navigation_focus_pending
     navigation_focus_pending = false
+    // Canonical responsive shell: a measured page column computes its three
+    // bands (header, scene row, controls). The row inside sizes the scene
+    // stage against the scene picker. Every rectangle below is a slot the
+    // flex engine produced, not a pinned rectangle: the scene keeps the root
+    // scope because its overlays anchor to the viewport, while the header,
+    // stage, picker and controls fill the slots computed for them.
+    gap := Layout.Gap(.ThemeMetricSpace4)
+    page_items: [3]Layout.FlexItem = .[
+        .{.kind = StyleKindText(), .basis = 36.0, .has_basis = true},
+        .{.kind = StyleKindColumn(), .grow = 1.0, .grow_override = true},
+        .{.kind = StyleKindRow(), .basis = 40.0, .has_basis = true}]
+    bands: [3]Layout.FlexPlacement
+    page := Layout.Draw(session, Layout.Props.{.key = 9006, .bounds = viewport,
+        .padding = Layout.Gap(.ThemeMetricSpace6), .padding_override = true,
+        .gap = gap, .gap_override = true}, page_items[:], bands[:])
+    if !page.opened { return }
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = bands[0].bounds,
+        .text = GallerySceneName(scene), .size = 23})
+    flex_items: [2]Layout.FlexItem = .[
+        .{.kind = StyleKindColumn(), .basis = 480.0, .has_basis = true, .grow = 1.0,
+            .grow_override = true, .min_width = 240.0},
+        .{.kind = StyleKindColumn(), .basis = 280.0, .has_basis = true, .grow = 0.0,
+            .grow_override = true}]
+    slots: [2]Layout.FlexPlacement
+    row := Layout.Row(session, Layout.Props.{.bounds = bands[1].bounds,
+        .gap = gap, .gap_override = true}, flex_items[:], slots[:])
+    if row.opened { unused End(session) }
+    stage := slots[0].bounds
+    sidebar := slots[1].bounds
+    unused End(session)
+    SetGalleryPreview(stage, true,
+        cast(float32)snapshot.elapsed_ms / 1000.0, GalleryTheme.CurrentTheme().motion.reduced_motion)
     DrawScene(session)
     // Modal examples own the content's input layer. Keep the gallery controls
     // in that same layer so an example cannot trap the sidebar.
@@ -75,11 +109,10 @@ Frame :: (frame: App.Frame) {
         if TreeSubmittedNodeAt(session, index).kind == cast(s32)WidgetKind.WidgetKindModal { modal = index }
     }
     controls_scope := modal >= 0 && TreePushScope(session, modal)
-    controls_y := viewport.height - 64.0
-    items: [GallerySceneCount]ListBox.ListBoxItem
+    picker_items: [GallerySceneCount]ListBox.ListBoxItem
     for index: cast(s32)0..GallerySceneCount - 1 {
-        items[index].key = cast(u64)(index + 1)
-        items[index].label = GallerySceneName(index)
+        picker_items[index].key = cast(u64)(index + 1)
+        picker_items[index].label = GallerySceneName(index)
     }
     navigation: s32
     if picker_key == KeyHome { navigation = ListBox.ListBoxKeyHome() }
@@ -87,9 +120,9 @@ Frame :: (frame: App.Frame) {
     else if picker_key == KeyUp { navigation = ListBox.ListBoxKeyUp() }
     else if picker_key == KeyDown { navigation = ListBox.ListBoxKeyDown() }
     picked := ListBox.Draw(session, ListBox.Props.{.key = 9003, .id = 9003,
-        .bounds = .{500.0, 24.0, viewport.width - 524.0, viewport.height - 48.0},
+        .bounds = sidebar,
         .selected_index = scene, .scroll_offset = catalog_scroll,
-        .row_height = 30, .focused = picker_focused, .navigation = navigation}, items[:])
+        .row_height = 30, .focused = picker_focused, .navigation = navigation}, picker_items[:])
     catalog_scroll = picked.scroll_offset
     if picked.changed { scene = picked.selected_index; dismissed = false; navigation_focus_pending = true }
     if navigation != 0 || restore_focus {
@@ -100,8 +133,15 @@ Frame :: (frame: App.Frame) {
             }
         }
     }
-    disabled_controls = Checkbox.Draw(session, Checkbox.Props.{.key = 9004, .bounds = .{24.0, controls_y, 208.0, 40.0}, .label = "Disabled", .checked = disabled_controls}).checked
-    dark = Toggle.Draw(session, Toggle.Props.{.key = 9005, .bounds = .{344.0, controls_y, 96.0, 40.0}, .label = "Dark", .value = dark}).value
+    controls := Layout.Row(session, Layout.Props.{.bounds = bands[2].bounds,
+        .gap = gap, .gap_override = true})
+    if controls.opened {
+        disabled_controls = Checkbox.Draw(session, Checkbox.Props.{.key = 9004,
+            .bounds = .{width = 208.0, height = 40.0}, .label = "Disabled", .checked = disabled_controls}).checked
+        dark = Toggle.Draw(session, Toggle.Props.{.key = 9005,
+            .bounds = .{width = 96.0, height = 40.0}, .label = "Dark", .value = dark}).value
+        unused End(session)
+    }
     if controls_scope { End(session) }
 }
 

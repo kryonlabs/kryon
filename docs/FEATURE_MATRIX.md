@@ -17,7 +17,7 @@ Ziran hosts in `tests/*_host.zi`. Code generation verifies that a module lowers
 for a target; it does not prove that every native host runs on that target.
 
 Core UI includes measured flex/grid layout (`src/ui/layout.zi`), the style
-sheet with structural selectors (`src/ui/style_tree.zi`) and gradient box
+sheet with structural selectors and sibling combinators (`src/ui/style_tree.zi`) and gradient box
 painting (`src/ui/layout_paint.zi`); the supported CSS subset and remaining
 browser-only features are documented in
 [HTML_TO_KRYON.md](HTML_TO_KRYON.md#4-kryon-css-support-kryonlabscss).

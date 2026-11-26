@@ -1,11 +1,11 @@
 // Tree context for CSS selectors with an ancestor, a parent or a sibling
-// position (:first-child family). The widget being styled is the next child
-// of the current parent: pending position facts read the children submitted
-// so far, while late facts (:last-child family) read the previous frame's
-// committed children, because the frame cannot know which siblings follow.
-// A structure change therefore converges on the next frame; paint is
-// immediate, so no same-frame repaint exists. Rules without such context
-// never call this.
+// position (:first-child family) and sibling combinators. The widget being
+// styled is the next child of the current parent: pending position facts and
+// the preceding siblings a '+ '~' combinator names read the children
+// submitted so far, exactly. Late facts (:last-child family) read the
+// previous frame's committed children, because the frame cannot know which
+// siblings follow; a host running a structural probe frame commits this
+// frame's own tree first, so the presented frame reads its exact structure.
 //
 // The passed kind is a style kind (StyleKind*, as rules name them); tree
 // nodes store widget kinds, so of-type positions compare through
@@ -29,6 +29,20 @@
         if a == 0 { return ordinal == b }
         if a > 0 { return ordinal >= b && (ordinal - b) % a == 0 }
         return ordinal <= b && (b - ordinal) % -a == 0
+    }
+
+    // One submitted sibling against a '+' or '~' left compound: its type,
+    // class and id, each optional.
+    StyleTreeSiblingMatches :: (selector: StyleSelector, node: TreeEntry) -> bool {
+        if selector.sibling_kind != StyleKindAny() &&
+        StyleKindForWidget(node.kind) != selector.sibling_kind { return false }
+        if selector.sibling_class != 0 && node.style_class != selector.sibling_class {
+            return false
+        }
+        if selector.sibling_id != 0 && node.style_id != selector.sibling_id {
+            return false
+        }
+        return true
     }
 
     StyleTreeMatches :: (selector: StyleSelector, kind: s32) -> bool {
@@ -63,6 +77,29 @@
         !StyleTreeNth(selector.nth_a, selector.nth_b, ordinal) { return false }
         if (context & cast(u32)StyleContextNthOfType) != 0 &&
         !StyleTreeNth(selector.nth_a, selector.nth_b, type_ordinal) { return false }
+
+        // Sibling combinators name the submitted siblings before this widget,
+        // so they are exact at draw time. '+' needs the immediately
+        // preceding sibling; '~' accepts any one of them.
+        if (context & (cast(u32)StyleContextPrevSibling | cast(u32)StyleContextAnyPrevSibling)) != 0 {
+            matched := false
+            if (context & cast(u32)StyleContextPrevSibling) != 0 {
+                if entry.last_child >= 0 {
+                    matched = StyleTreeSiblingMatches(selector,
+                        TreeSubmittedNodeAt(session, entry.last_child))
+                }
+            } else {
+                sibling: s32 = entry.first_child
+                while sibling >= 0 {
+                    if StyleTreeSiblingMatches(selector, TreeSubmittedNodeAt(session, sibling)) {
+                        matched = true
+                        break
+                    }
+                    sibling = TreeSubmittedNodeAt(session, sibling).next_sibling
+                }
+            }
+            if !matched { return false }
+        }
 
         // Late positions: the parent's committed child list from the last
         // accepted frame. An absent committed parent (a container new this

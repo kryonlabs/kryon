@@ -227,6 +227,7 @@ StyleIndexInstall :: () {
     installed_fields = 0
     installed_flex_fields = 0
     installed_box_fields = 0
+    installed_structural_late = false
     priorities: [StyleRuleCapacity]StylePriority
     scratch: [StyleRuleCapacity]s32
     for i: 0..installed_rules.count - 1 {
@@ -282,6 +283,10 @@ StyleIndexInstall :: () {
         else { installed_class_bits[StyleBucket(selector.class_name) * StyleIndexWords + word] |= bit }
         if state == StyleStateAny() || state == ButtonStateNormal { installed_any_state[word] |= bit }
         else { installed_state_bits[StyleBucket(state) * StyleIndexWords + word] |= bit }
+        if (selector.context & (cast(u32)StyleContextLastChild | cast(u32)StyleContextOnlyChild |
+        cast(u32)StyleContextLastOfType | cast(u32)StyleContextOnlyOfType)) != 0 {
+            installed_structural_late = true
+        }
     }
 }
 
@@ -537,6 +542,9 @@ StyleSelectorSpecificity :: (selector: StyleSelector) -> s32 {
     if selector.kind != StyleKindAny() {
         kinds = 1
     }
+    if selector.sibling_kind != StyleKindAny() {
+        kinds += 1
+    }
     if selector.role != StyleAny() {
         attributes += 1
     }
@@ -584,8 +592,21 @@ StyleSelectorSpecificity :: (selector: StyleSelector) -> s32 {
         }
         if selector.not_class != 0 { classes += 1 }
         if selector.not_state != 0 { classes += 1 }
+        if selector.sibling_class != 0 { classes += 1 }
+        if selector.sibling_id != 0 { names += 2 }
     }
     return StyleSpecificity(kinds, attributes, classes, names)
+}
+
+// Whether any installed rule carries a late structural fact (:last-child,
+// :only-child, :last-of-type or :only-of-type). Those rules need a host's
+// structural probe frame to read this frame's committed tree; sibling
+// combinators are early facts and never set it.
+installed_structural_late: bool;
+
+#program_export
+StyleStructuralLateActive :: () -> bool {
+    return installed_structural_late
 }
 
 // A selector's tree context: the :not() exclusions, then the ancestors and

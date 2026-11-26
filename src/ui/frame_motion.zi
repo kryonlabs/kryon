@@ -24,6 +24,10 @@ frame_motion_time: [9]float64;
 frame_motion_active: u32;
 frame_motion_next: u32;
 frame_motion_dirty: u32;
+// Set between a structural probe frame and the presented frame that follows
+// it: BeginFrame keeps the probe's observed motion time, so transitions and
+// animations advance once per displayed frame.
+frame_motion_hold: u32;
 
 #program_export
 SetFrameMotionTime :: (session: Session, seconds: float64) {
@@ -45,10 +49,22 @@ FrameMotionMark :: (session: Session) {
 }
 
 FrameMotionBegin :: (session: Session) {
-    frame_motion_observed = SessionFlagSet(frame_motion_observed, session.slot, false)
+    slot := session.slot
+    held := SessionFlagGet(frame_motion_hold, slot)
+    frame_motion_hold = SessionFlagSet(frame_motion_hold, slot, false)
+    frame_motion_observed = SessionFlagSet(frame_motion_observed, slot,
+        SessionFlagGet(frame_motion_observed, slot) && held)
     frame_motion_next = SessionFlagSet(frame_motion_next, session.slot, false)
     if frame_style_motion != null { frame_style_motion(session, false) }
     if frame_layout_motion != null { frame_layout_motion(session, false) }
+}
+
+// The next frame on this session reuses the motion time the current frame
+// observed. A structural probe frame calls this after its commit so the
+// presented frame does not advance animations a second time.
+#program_export
+FrameMotionHoldNext :: (session: Session) {
+    frame_motion_hold = SessionFlagSet(frame_motion_hold, session.slot, true)
 }
 
 FrameMotionCommit :: (session: Session) {

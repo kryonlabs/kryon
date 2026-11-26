@@ -13,6 +13,12 @@ using FrameStatus;
 
 active_draw: App.Draw;
 
+// The structural probe's draw: the app's own draw into the probe frame.
+StructuralProbeDraw :: (session: Session, bounds: Rectangle) -> s32 {
+    App.CallDraw(active_draw, session.slot, session.epoch, bounds)
+    return 0
+}
+
 // Runs the program's frames headlessly and prints the second as a PPM image.
 Run :: (window: App.Window, draw: App.Draw) -> s32 {
     unused window
@@ -25,6 +31,7 @@ Run :: (window: App.Window, draw: App.Draw) -> s32 {
     frame: s32 = 0
     while frame < 2 {
         PixmapBegin(cast(u32)PixmapBackground)
+        unused StyleStructuralProbeFrame(session, cast(u64)1, viewport, StructuralProbeDraw)
         if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
             return 1
         }
