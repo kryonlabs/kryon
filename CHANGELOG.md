@@ -41,6 +41,8 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Retain Android GPU composition across swapped window buffers, preventing stale pixels after partial redraws and rotation without CPU readback.
+
 - Decode hosted records and slices imported through a dependency's module alias, including Plot's band charts.
 
 - Keep full styles, selector matching, shadow policy and theme tables out of plain portable labels. Text carries typography through optional stylesheet and motion adapters; installed themes supply live colors. Hello's dependency modules fall from 57 to 53 and its portable bundle from 1,555,437 to 1,470,285 bytes, with the same `Text.Draw` call.

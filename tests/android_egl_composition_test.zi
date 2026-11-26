@@ -50,6 +50,12 @@ main :: () -> s32 {
     if !Pixel(rgba[:], 128, 48, 64) || Swap(display, surface) == 0 { return 10 }
     if !Paint.Read(0, 3, 1, 1, rgba[:]) || !Pixel(rgba[:], 32, 64, 128) { return 11 }
 
+    // A swapped window buffer may be discarded or recycled on Android.
+    // Overwrite it before a partial frame; undamaged pixels must come from
+    // the retained composition, independently of the window's old contents.
+    G.BindFramebuffer(0x8d40, 0)
+    G.ClearColor(1.0, 0.0, 1.0, 1.0)
+    G.Clear(0x4000)
     Gpu.PixmapGpuRect(3, 0, 4, 1, Color.{24, 200, 40, 255})
     if !Paint.PresentToWindow(4, 4) || Swap(display, surface) == 0 { return 12 }
     if !Paint.Read(0, 0, 1, 1, rgba[:]) || !Pixel(rgba[:], 128, 48, 64) { return 13 }
