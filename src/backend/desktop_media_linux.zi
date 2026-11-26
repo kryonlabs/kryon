@@ -1,0 +1,51 @@
+// Process audio for desktop ZX bundles: the supervised ffplay and yt-dlp
+// processes (literal argv, parent-death signal) play the local files, HTTP
+// links and YouTube sources a desktop guest names, while packed assets keep
+// the in-process bundle decoder. Exactly one track plays at a time, whichever
+// backend owns it, and text fetching stays on the bundle HTTP path.
+#import "std/byte_text_linux"
+#import "std/bundle_host"
+#import "bundle_media"
+#import "hosted_values"
+Media :: #import "media_linux";
+
+#scope_file
+host_audio: bool;
+
+#scope_export
+DesktopMediaCall :: (media: *BundleMedia, function: string,
+    args: *HostValue, count: s32, result: *HostValue) -> s32 {
+    if function == "MediaOpenHost" && count == 1 &&
+    HostScalarValid(args[0], "string", cast(s32)HostValueKind.HostString) {
+        source := TextFromBytes(BytesFromPointer(args[0].data, cast(u64)args[0].length))
+        hosted := Media.SafeSource(source)
+        if hosted != host_audio {
+            if host_audio { Media.MediaStopHost() } else { BundleMediaStop(media) }
+            host_audio = hosted
+        }
+        ready := ifx hosted then Media.MediaOpenHost(source) else BundleMediaOpen(media, source)
+        result.* = HostScalar("bool", ifx ready then 1 else 0)
+        return 1
+    }
+    if host_audio {
+        if count == 0 && function == "MediaStopHost" { Media.MediaStopHost(); return 1 }
+        if count == 0 && function == "MediaPauseHost" { Media.MediaPauseHost(); return 1 }
+        if count == 0 && function == "MediaStateHost" {
+            result.* = HostScalar("s32", Media.MediaStateHost()); return 1
+        }
+        if count == 0 && function == "MediaMessageHost" {
+            value := Media.MediaMessageHost()
+            result.* = HostValue.{.kind = cast(s32)HostValueKind.HostString,
+                .type_name = HostTextData("string"), .data = HostTextData(value),
+                .length = cast(usize)value.count}
+            return 1
+        }
+    }
+    return BundleMediaCall(media, "media", function, args, count, result)
+}
+
+#scope_export
+DesktopMediaClose :: () {
+    if host_audio { Media.CloseMedia() }
+    host_audio = false
+}

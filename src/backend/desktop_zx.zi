@@ -23,6 +23,7 @@ UiTheme :: #import "theme";
     Theme :: #import "system_theme_host_linux";
     Background :: #import "background_window_linux";
     WebView :: #import "webview_linux";
+    DesktopMedia :: #import "desktop_media_linux";
 }
 Watch :: #import "bundle_watch";
 AppPlayer :: #import "app_player";
@@ -153,6 +154,9 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     if !Supported(module, function) { return 0 }
     result.kind = HostVoid
     if ModuleName(module, "media") {
+        #if OS == .LINUX {
+            return DesktopMedia.DesktopMediaCall(*player.media, function, args, count, result)
+        }
         return BundleMediaCall(*player.media, module, function, args, count, result)
     }
     #if OS == .LINUX {
@@ -861,6 +865,7 @@ RunFrameBundle :: (bundle_path: string, opened_bundle: *void, check: bool,
     BundleMediaClose(*player.media)
     Video.VideoStopHost()
     #if OS == .LINUX {
+        DesktopMedia.DesktopMediaClose()
         WebView.WebViewCloseHost()
         Service.CloseService()
     }
