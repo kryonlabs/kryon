@@ -38,7 +38,7 @@ ObjectClass :: (input: *Jni.JniEnv, object: *void) -> *void {
 }
 Method :: (input: *Jni.JniEnv, klass: *void, name: *u8, signature: *u8) -> *void {
     unused input; unused klass
-    if bridge_missing || TextFromCString(name) != "decodeBundleImage" || TextFromCString(signature) != "([B)[I" { return null }
+    if bridge_missing || TextFromCString(name) != "decodeBundleImage" || TextFromCString(signature) != "([BI)[I" { return null }
     return cast(*void)cast(usize)2
 }
 Delete :: (input: *Jni.JniEnv, object: *void) { unused input; unused object; references -= 1 }

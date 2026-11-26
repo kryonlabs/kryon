@@ -98,9 +98,13 @@ AndroidPictureInstall :: (path: string, data: string, file_type: string, width: 
         }
     }
     if slot < 0 { return false }
-    image := AndroidImageDecodeEncoded(data, file_type, false, true)
+    natural := AndroidImageEncodedSize(data)
+    image := AndroidImageDecodeEncoded(data, file_type, false, true, width, height)
     if image.pixels == null { return false }
     natural_width := image.width; natural_height := image.height
+    if AndroidImageSizeAllowed(natural) {
+        natural_width = cast(s32)natural.width; natural_height = cast(s32)natural.height
+    }
     image = ReduceDecodedImage(image, width, height)
     size := cast(s64)image.width * image.height * 4
     if image.width > 16384 || image.height > 16384 ||
@@ -108,7 +112,7 @@ AndroidPictureInstall :: (path: string, data: string, file_type: string, width: 
         DecodedImageFree(image); return false
     }
     words := cast(*u32)image.pixels
-    for at: cast(s64)0..size / 4 - 1 {
+    for at: cast(s32)0..image.width * image.height - 1 {
         pixel := at * 4
         color := (cast(u32)image.pixels[pixel + 3] << 24) | (cast(u32)image.pixels[pixel] << 16) |
             (cast(u32)image.pixels[pixel + 1] << 8) | cast(u32)image.pixels[pixel + 2]

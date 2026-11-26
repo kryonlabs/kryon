@@ -164,20 +164,20 @@ AndroidImageDecodePNG :: (data: []u8, width: *s32, height: *s32) -> *u32 {
 }
 
 // The activity decodes formats the linked codecs do not, such as JPEG, with
-// decodeBundleImage(byte[]): width, height, then ARGB_8888 pixels, or null.
+// decodeBundleImage(byte[], sample): width, height, then ARGB_8888 pixels, or null.
 android_bitmap_bridge_reported: bool;
-AndroidImageDecodeBitmap :: (data: string, width: *s32, height: *s32) -> *u32 {
+AndroidImageDecodeBitmap :: (data: string, width: *s32, height: *s32, sample: s32 = 1) -> *u32 {
     width.* = 0
     height.* = 0
     session: AndroidJniSession
     if AndroidJniAttachCurrent(*session) == 0 { return null }
     defer { AndroidJniDetachCurrent(*session) }
-    method := AndroidJniMethod(*session, "decodeBundleImage", "([B)[I")
+    method := AndroidJniMethod(*session, "decodeBundleImage", "([BI)[I")
     if method == null {
         #if OS == .ANDROID || #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
             if !android_bitmap_bridge_reported {
                 android_bitmap_bridge_reported = true
-                AndroidNativeLog("The activity has no decodeBundleImage(byte[]); Android Bitmap fallback is unavailable")
+                AndroidNativeLog("The activity has no decodeBundleImage(byte[], int); Android Bitmap fallback is unavailable")
             }
         }
         return null
@@ -196,9 +196,10 @@ AndroidImageDecodeBitmap :: (data: string, width: *s32, height: *s32) -> *u32 {
         unused env.functions.ExceptionClear(env)
         return null
     }
-    argument: JniValue
-    argument.reference = array
-    result := env.functions.CallObjectMethodA(env, session.activity, method, *argument)
+    arguments: [2]JniValue
+    arguments[0].reference = array
+    arguments[1].integer = sample
+    result := env.functions.CallObjectMethodA(env, session.activity, method, *arguments[0])
     if result == null || env.functions.ExceptionCheck(env) != 0 {
         unused env.functions.ExceptionClear(env)
         return null

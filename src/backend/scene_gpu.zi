@@ -1358,21 +1358,26 @@ IndexNode :: (gpu: *SceneGpuContext,scene: *Scene,mesh: SceneMesh,matrix: M.GpuM
 }
 
 WriteIndexedAttribute :: (gpu: *SceneGpuContext,scene: *Scene,mesh: SceneMesh,matrix: M.GpuMatrix,channel: s64,first: s64) {
- width:=ifx channel==3 then 2 else 3
+ width: s32=ifx channel==3 then 2 else 3
  normal:=ifx channel==1 then M.NormalMatrix(matrix) else M.GpuMatrix.{}
- for vertex: 0..mesh.vertex_count-1 {
+ // Borrow the arrays once; mesh vertex ranges were validated before upload.
+ // A 32-bit loop avoids widened multiplies for every vertex on ARM phones.
+ positions:=scene.positions[:];normals:=scene.normals[:]
+ colors:=scene.colors[:];uvs:=scene.uvs[:];destination:=gpu.indexed.scratch[:]
+ target:=first*width
+ for vertex: cast(s32)0..mesh.vertex_count-1 {
   source:=mesh.first_vertex+vertex
-  target:=(first+vertex)*width
   if channel==3 {
-   uv:=SceneTextureCoordinate(mesh.material,scene.positions[source],scene.normals[source],scene.uvs[source])
-   gpu.indexed.scratch[target]=cast(float32)uv.x
-   gpu.indexed.scratch[target+1]=cast(float32)uv.y
+   uv:=SceneTextureCoordinate(mesh.material,positions[source],normals[source],uvs[source])
+   destination[target]=cast(float32)uv.x
+   destination[target+1]=cast(float32)uv.y
   } else {
-   value:=ifx channel==0 then M.Point(matrix,scene.positions[source]) else ifx channel==1 then M.Normalize(M.Direction(normal,scene.normals[source])) else scene.colors[source]
-   gpu.indexed.scratch[target]=cast(float32)value.x
-   gpu.indexed.scratch[target+1]=cast(float32)value.y
-   gpu.indexed.scratch[target+2]=cast(float32)value.z
+   value:=ifx channel==0 then M.Point(matrix,positions[source]) else ifx channel==1 then M.Normalize(M.Direction(normal,normals[source])) else colors[source]
+   destination[target]=cast(float32)value.x
+   destination[target+1]=cast(float32)value.y
+   destination[target+2]=cast(float32)value.z
   }
+  target+=width
  }
 }
 

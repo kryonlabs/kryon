@@ -145,8 +145,11 @@ copying the original straight pixels before Cairo premultiplies them. Android re
 through the current NativeActivity's asset manager, or absolute filesystem
 paths. It decodes PNG, WebP and AVIF in process with the linked codecs, on every
 supported API level. Other formats, such as JPEG with its orientation, need the
-activity's `decodeBundleImage(byte[])` method: it returns width, height and
-then ARGB_8888 pixels, or null, and the droid template provides it. Without
+activity's `decodeBundleImage(byte[], int sample)` method: it returns decoded
+width, height and then ARGB_8888 pixels, or null, and the droid template provides
+it. The picture cache supplies a power-of-two sample for thumbnail draws, then
+retains a final premultiplied Lanczos reduction; intrinsic dimensions and later
+larger draws continue to use the original image size. Without
 it those formats fail empty and Kryon logs once that the method is missing.
 Unsupported formats fail empty; this API does not promise WebAssembly AVIF
 support.

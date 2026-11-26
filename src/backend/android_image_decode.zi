@@ -77,7 +77,7 @@ AndroidImageEncodedSize :: (data: string) -> AndroidImageSize {
 // APK picture and preview callers keep their preflight dimension requirement.
 AndroidImageDecodeEncoded :: (data: string, file_type: string,
     allow_platform_bitmap: bool = false,
-    prefer_platform_bitmap: bool = false) -> DecodedImage {
+    prefer_platform_bitmap: bool = false, target_width: s32 = 0, target_height: s32 = 0) -> DecodedImage {
     unused file_type
     if data.count <= 0 || data.count > 268435456 { return .{} }
     image: DecodedImage
@@ -109,8 +109,22 @@ AndroidImageDecodeEncoded :: (data: string, file_type: string,
         words: *u32
         orientation: s32 = 1
         bridge_tried := false
+        sample: s32 = 1
+        decoded_sample: s32 = 1
+        if prefer_platform_bitmap && target_width > 0 && target_height > 0 && AndroidImageSizeAllowed(size) {
+            // Sampling happens inside BitmapFactory, before any full-sized
+            // pixels cross JNI or enter the final premultiplied reduction.
+            orientation = ImageExifOrientation(data)
+            if orientation >= 5 && orientation <= 8 {
+                swap := target_width; target_width = target_height; target_height = swap
+            }
+            while size.width / (sample * 2) >= target_width && size.height / (sample * 2) >= target_height {
+                sample *= 2
+            }
+        }
         if prefer_platform_bitmap {
-            words = Images.AndroidImageDecodeBitmap(data, *width, *height)
+            words = Images.AndroidImageDecodeBitmap(data, *width, *height, sample)
+            if words != null { decoded_sample = sample }
             orientation = ImageExifOrientation(data)
             bridge_tried = true
         }
@@ -124,7 +138,10 @@ AndroidImageDecodeEncoded :: (data: string, file_type: string,
         }
         if words == null { return .{} }
         if !AndroidImageSizeAllowed(.{cast(s64)width, cast(s64)height}) ||
-            (bounded && (cast(s64)width != size.width || cast(s64)height != size.height)) {
+            (bounded && (cast(s64)width < size.width / decoded_sample ||
+                cast(s64)width > (size.width + decoded_sample - 1) / decoded_sample ||
+                cast(s64)height < size.height / decoded_sample ||
+                cast(s64)height > (size.height + decoded_sample - 1) / decoded_sample)) {
             ImagePixelsFree(cast(*u8)words); return .{}
         }
         words = Images.AndroidImageOrient(words, width, height, orientation)
@@ -133,7 +150,7 @@ AndroidImageDecodeEncoded :: (data: string, file_type: string,
         image = .{cast(*u8)words, width, height}
         // The PNG/Bitmap bridge owns ARGB words; convert that same allocation
         // in place to the shared preview contract's straight RGBA bytes.
-        for at: cast(s64)0..cast(s64)width * height - 1 {
+        for at: cast(s32)0..width * height - 1 {
             pixel := words[at]
             image.pixels[at * 4] = cast(u8)((pixel >> 16) & cast(u32)255)
             image.pixels[at * 4 + 1] = cast(u8)((pixel >> 8) & cast(u32)255)

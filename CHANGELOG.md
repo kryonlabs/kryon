@@ -41,6 +41,9 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Decode Android thumbnails with bounded bitmap sampling before final reduction,
+  retain intrinsic dimensions, and reduce ARM indexed-animation upload overhead.
+
 - Honor `App.Window` title and dimensions in portable desktop frame programs
   and direct native executables, rather than silently using player defaults.
 
