@@ -1588,21 +1588,46 @@ PixmapGpuImageQuad :: (slot: s32, source: Rectangle, destination: Rectangle, cli
     u0 := source.x / width; v0 := source.y / height
     u1 := source_right / width; v1 := source_bottom / height
     if radius > 0.0 {
+        // A rounded rectangle has one contiguous span on each row. Find
+        // its two edges instead of visiting every covered pixel, and join
+        // equal spans so its rectangular middle is a single quad.
+        span_top := clip_top
+        span_left := clip_left
+        span_right := clip_left
+        middle := cast(s32)(clip.x + clip.width * 0.5)
+        if middle < clip_left { middle = clip_left }
+        if middle >= clip_right { middle = clip_right - 1 }
         for y: clip_top..clip_bottom - 1 {
             center_y := cast(float32)y + 0.5
-            x := clip_left
-            while x < clip_right {
-                center_x := cast(float32)x + 0.5
-                if !ImageCanvas.InsideRoundedClip(center_x, center_y, clip, radius) { x += 1; continue }
-                start := x
-                while x < clip_right {
-                    center_x = cast(float32)x + 0.5
-                    if !ImageCanvas.InsideRoundedClip(center_x, center_y, clip, radius) { break }
-                    x += 1
+            start := clip_left
+            finish := clip_left
+            if middle >= clip_left && ImageCanvas.InsideRoundedClip(cast(float32)middle + 0.5, center_y, clip, radius) {
+                low := clip_left; high := middle
+                while low < high {
+                    candidate := low + (high - low) / 2
+                    if ImageCanvas.InsideRoundedClip(cast(float32)candidate + 0.5, center_y, clip, radius) { high = candidate }
+                    else { low = candidate + 1 }
                 }
-                PixmapGpuQuad(left, top, right, bottom, u0, v0, u1, v1, ink, slot, false,
-                    start, y, x, y + 1)
+                start = low
+                low = middle; high = clip_right
+                while low < high {
+                    candidate := low + (high - low) / 2
+                    if ImageCanvas.InsideRoundedClip(cast(float32)candidate + 0.5, center_y, clip, radius) { low = candidate + 1 }
+                    else { high = candidate }
+                }
+                finish = low
             }
+            if start != span_left || finish != span_right {
+                if span_right > span_left {
+                    PixmapGpuQuad(left, top, right, bottom, u0, v0, u1, v1, ink, slot, false,
+                        span_left, span_top, span_right, cast(s32)y)
+                }
+                span_top = cast(s32)y; span_left = start; span_right = finish
+            }
+        }
+        if span_right > span_left {
+            PixmapGpuQuad(left, top, right, bottom, u0, v0, u1, v1, ink, slot, false,
+                span_left, span_top, span_right, clip_bottom)
         }
         return true
     }
