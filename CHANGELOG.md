@@ -41,6 +41,8 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Let Android hosts load embedded bundle pictures through the lazy, size-aware picture cache.
+
 - Decode Android thumbnails with bounded bitmap sampling before final reduction,
   retain intrinsic dimensions, and reduce ARM indexed-animation upload overhead.
 

@@ -20,6 +20,27 @@ android_picture_ready: bool;
 android_picture_shipped: [1024]bool;
 android_picture_failed: [1024]bool;
 
+// Embedded bundle bytes are borrowed only during the current load/prepare.
+// Empty results fall back to APK assets and ordinary files.
+AndroidPictureAssetRead :: #type (path: string) -> string;
+android_picture_asset_read: AndroidPictureAssetRead;
+
+#program_export
+AndroidPicturesUseAssets :: (read: AndroidPictureAssetRead) {
+    android_picture_asset_read = read
+    PixmapImageSourceRetry()
+}
+
+AndroidPictureRead :: (path: string, owned: *bool) -> string {
+    owned.* = false
+    if android_picture_asset_read != null {
+        data := android_picture_asset_read(path)
+        if data.count > 0 { return data }
+    }
+    owned.* = true
+    return ReadAppAsset(path)
+}
+
 AndroidPictureReplacing :: (slot: s32, next: *u32) {
     android_picture_shipped[slot] = false; android_picture_failed[slot] = false
     previous := android_picture_pixels[slot]
@@ -45,9 +66,10 @@ AndroidPicturesUse :: () {
 // Layout probes headers only. First draw decodes and caches the requested
 // resolution; later larger draws upgrade once, smaller draws reuse it.
 AndroidPictureLoad :: (path: string) -> bool {
-    data := ReadAppAsset(path)
+    owned: bool
+    data := AndroidPictureRead(path, *owned)
     if data.count == 0 { return false }
-    defer FreeAppAsset(data)
+    defer { if owned { FreeAppAsset(data) } }
     AndroidPicturesUse()
     size := AndroidImageEncodedSize(data)
     slot: s32 = -1
@@ -75,9 +97,10 @@ AndroidPicturePrepare :: (slot: s32, width: s32, height: s32) -> bool {
     length := pixmap_image_lengths[slot]
     for at: cast(s32)0..length - 1 { name[at] = pixmap_image_paths[slot][at] }
     path := TextView(name[0:length])
-    data := ReadAppAsset(path)
+    owned: bool
+    data := AndroidPictureRead(path, *owned)
     loaded := AndroidPictureInstall(path, data, "", width, height)
-    FreeAppAsset(data)
+    if owned { FreeAppAsset(data) }
     android_picture_shipped[slot] = true
     android_picture_failed[slot] = !loaded
     return loaded || android_picture_pixels[slot] != null

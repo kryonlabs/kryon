@@ -151,6 +151,14 @@ it. The picture cache supplies a power-of-two sample for thumbnail draws, then
 retains a final premultiplied Lanczos reduction; intrinsic dimensions and later
 larger draws continue to use the original image size. Without
 it those formats fail empty and Kryon logs once that the method is missing.
+Android hosts with embedded bundles can install an `AndroidPictureAssetRead`
+callback through `AndroidPicturesUseAssets` in `pixmap_assets_android`, then
+use `AndroidPictureLoad` for their picture source. The callback lends immutable
+encoded bytes for the current call only; empty results fall back to APK assets
+or files. Both header probes and later size-aware decoding use that reader.
+Calling `PixmapLoadImageBytes` directly eagerly decodes the full image instead.
+Install the reader before loading pictures; invalidate existing cached pictures
+explicitly if their contents change.
 Unsupported formats fail empty; this API does not promise WebAssembly AVIF
 support.
 These are CPU images and survive presentation context teardown.
