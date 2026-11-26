@@ -41,6 +41,9 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Keep widget key derivation independent of sessions and bitmap ownership.
+  Duplicate-key recovery uses the stateless `widget_key` module.
+
 - Build and register the Windows native host with `make install-windows-host`,
   alongside its runtime DLLs, independently of the Linux host library.
 
