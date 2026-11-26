@@ -81,7 +81,8 @@ Supported :: (module: string, function: string) -> bool {
             function == "VideoLeaseHost" || function == "VideoFrameHost" || function == "VideoMessageHost"
     }
     if ModuleName(module, "frames_zx") {
-        return function == "ReadBundleInput" || function == "TakeBundleCodepoint" ||
+        return function == "BundleWindowHost" || function == "ReadBundleInput" ||
+            function == "TakeBundleCodepoint" ||
             function == "BundleTextInputHost" || function == "BundleFrameFinishedHost" ||
             function == "BundleFrameReusableHost" || function == "BundleFrameCursorHost" ||
             function == "BundleTextEditorHost" || function == "BundleTextRequestHost"
@@ -269,6 +270,13 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         Background.WindowBackgroundHost(cast(s32)args[0].integer, cast(s32)args[1].integer, cast(s32)args[2].integer, cast(s32)args[3].integer)
         return 1
     }
+    }
+    if function == "BundleWindowHost" {
+        if !WindowRequestValid(args, count) { return 0 }
+        result.kind = HostInteger
+        result.integer = cast(s64)(DesktopSetTitle(TextValue(args[0])) &&
+            ResizeDesktop(cast(s32)args[1].integer, cast(s32)args[2].integer))
+        return 1
     }
     if function == "ReadBundleInput" && count == 0 {
         ok := true

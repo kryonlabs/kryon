@@ -50,7 +50,13 @@ Player :: struct {
     wait_ready: bool
 }
 Supported :: (module: string, function: string) -> bool {
-    if ModuleName(module,"frames_zx") { return function=="ReadBundleInput" || function=="TakeBundleCodepoint" || function=="BundleTextInputHost" || function=="BundleFrameFinishedHost" || function=="BundleFrameCursorHost" || function=="BundleFrameReusableHost" || function=="BundleTextEditorHost" || function=="BundleTextRequestHost" }
+    if ModuleName(module, "frames_zx") {
+        return function == "BundleWindowHost" || function == "ReadBundleInput" ||
+            function == "TakeBundleCodepoint" || function == "BundleTextInputHost" ||
+            function == "BundleFrameFinishedHost" || function == "BundleFrameCursorHost" ||
+            function == "BundleFrameReusableHost" || function == "BundleTextEditorHost" ||
+            function == "BundleTextRequestHost"
+    }
     if ModuleName(module,"font_metrics") { return function=="MeasureGlyphWidth" || function=="MeasureGlyphLineHeight" }
     if ModuleName(module,"raster_text") { return function=="RasterText" || function=="RasterTextClipped" || function=="RasterTextRotated" }
     if ModuleName(module,"raster_shape") { return function=="RasterRoundedRectangle" || function=="RasterRoundedRectangleOutline" }
@@ -131,6 +137,13 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     if function=="BundleFrameReusableHost" && count==0 {
         // Caller-owned surfaces may have been cleared or changed between calls.
         result.kind = HostInteger; result.integer = 0; return 1
+    }
+    if function == "BundleWindowHost" {
+        if !WindowRequestValid(args, count) { return 0 }
+        // Embedded players keep the surface supplied by their containing app.
+        result.kind = HostInteger
+        result.integer = 1
+        return 1
     }
     if function=="ReadBundleInput" && count==0 {
         ok := !player.closed && player.wait_ready && player.wait != null

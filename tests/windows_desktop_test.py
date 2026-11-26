@@ -131,16 +131,17 @@ def test_dialog():
 
 
 def check_zx_host():
-    run([ZIRAN, 'bundle', '--project', '--root', ROOT / 'examples', '--entry', 'window:main',
-         '-o', WORK / 'window.zx', ROOT / 'examples/window.zi'])
     registrations = WORK / 'hosts'
     registrations.mkdir(exist_ok=True)
     (registrations / 'kryon-desktop.library').write_text(str(WORK / 'kryon-desktop.dll') + '\n')
-    result = subprocess.run([ZIRAN_ROOT / 'build/bin/zx2native', '--target', 'x86_64',
-                             '--platform', 'windows', '-o', WORK / 'window-zx.exe', WORK / 'window.zx'],
-                            cwd=ROOT, env={**ENV, 'ZIRAN_HOST_PATH': str(registrations)}, capture_output=True, text=True)
-    (WORK / 'zx-windows-host.log').write_text(result.stdout + result.stderr)
-    assert result.returncode == 0, result.stderr[:2000]
+    for name in ('window', 'hello'):
+        run([ZIRAN, 'bundle', '--project', '--root', ROOT / 'examples', '--entry', name + ':main',
+             '-o', WORK / (name + '.zx'), ROOT / 'examples' / (name + '.zi')])
+        result = subprocess.run([ZIRAN_ROOT / 'build/bin/zx2native', '--target', 'x86_64',
+                                 '--platform', 'windows', '-o', WORK / (name + '-zx.exe'), WORK / (name + '.zx')],
+                                cwd=ROOT, env={**ENV, 'ZIRAN_HOST_PATH': str(registrations)}, capture_output=True, text=True)
+        (WORK / (name + '-zx-windows-host.log')).write_text(result.stdout + result.stderr)
+        assert result.returncode == 0, result.stderr[:2000]
     print('PASS Windows ZX host link', flush=True)
     return True
 
@@ -193,6 +194,8 @@ def private(zx_linked):
         test_window(WORK / 'services.exe', 'Kryon Windows Services', services=True)
         if zx_linked:
             test_window(WORK / 'window-zx.exe', 'Window')
+            test_window(WORK / 'hello-zx.exe', 'Hello', text=True,
+                        background=(255, 255, 255))
         for form in ('source', 'saved'):
             run(['wine', WORK / ('frame-snapshot-' + form + '.exe')], timeout=25)
         print('PASS Wine source/saved owned frame snapshots and camera fade', flush=True)

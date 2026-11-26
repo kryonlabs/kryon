@@ -12,6 +12,7 @@ Desktop :: #import "desktop_window";
 #import "tree_input"
 #import "text_request"
 #import "frame_driver"
+#import "program_title"
 Timer :: #import "std/timer_linux";
 UiTheme :: #import "theme";
 #if OS == .LINUX {
@@ -94,21 +95,25 @@ BundleCloseHost :: () {
 }
 
 #program_export
+BundleWindowHost :: (title: string, width: s32, height: s32) -> bool {
+    if bundle_open || width <= 0 || width > 16384 || height <= 0 || height > 16384 { return false }
+    if !OpenDesktopTitled(width, height, title) { return false }
+    bundle_input = SessionOpen()
+    if !SessionValid(bundle_input) {
+        CloseDesktop()
+        return false
+    }
+    bundle_open = true
+    bundle_frames = 0
+    return true
+}
+
+#program_export
 ReadBundleInput :: () -> BundleInput {
     result: BundleInput
-    if !bundle_open {
-        if !OpenDesktop() {
-            result.closed = true
-            return result
-        }
-        bundle_input = SessionOpen()
-        if !SessionValid(bundle_input) {
-            CloseDesktop()
-            result.closed = true
-            return result
-        }
-        bundle_open = true
-        bundle_frames = 0
+    if !bundle_open && !BundleWindowHost(ProgramTitle(), 960, 600) {
+        result.closed = true
+        return result
     }
     ok := true
     if bundle_frames > 0 {

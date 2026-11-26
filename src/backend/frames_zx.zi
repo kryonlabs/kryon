@@ -13,6 +13,7 @@ using SessionModule :: #import "session";
 Clock :: #import "frame_clock";
 
 host_api :: #system_library "host_api";
+BundleWindowHost :: (title: string, width: s32, height: s32) -> bool #foreign host_api;
 BundleInput :: struct {
     width: s32
     height: s32
@@ -67,8 +68,10 @@ bundle_last_width: s32; bundle_last_height: s32; bundle_last_modifiers: s32;
 // it. A bundle frame's result reaches the player through the finished-host
 // call; a failed frame closes the window instead of returning a status.
 Run :: (window: App.Window, draw: App.Draw) -> s32 {
-    unused window
     if !bundle_started {
+        width := ifx window.width > 0 then window.width else 960
+        height := ifx window.height > 0 then window.height else 600
+        if !BundleWindowHost(window.title, width, height) { return 1 }
         bundle_session = SessionOpen()
         if !SessionValid(bundle_session) { return 1 }
         bundle_started = true

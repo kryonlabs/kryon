@@ -41,6 +41,9 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Honor `App.Window` title and dimensions in portable desktop frame programs
+  and direct native executables, rather than silently using player defaults.
+
 - Pin the compiler with readable direct C foreign bindings and closed-program
   pruning of unused optional hooks; keep generated modules in separate files.
 

@@ -1,6 +1,12 @@
 // Loaded into each player so its Player type, helpers and mesh
 // buffer retain their original module ownership.
 #scope_export
+WindowRequestValid :: (args: *HostValue, count: s32) -> bool {
+    return count == 3 && args[0].kind == HostString && args[0].length < cast(usize)512 &&
+        args[1].kind == HostInteger && args[1].integer > 0 && args[1].integer <= 16384 &&
+        args[2].kind == HostInteger && args[2].integer > 0 && args[2].integer <= 16384
+}
+
 TextValue :: (value: HostValue) -> string {
     if value.length == 0 { return "" }
     return TextFromBytes(BytesFromPointer(cast(*u8)value.data, cast(u64)value.length))
