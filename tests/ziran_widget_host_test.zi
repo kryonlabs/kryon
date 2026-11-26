@@ -904,7 +904,7 @@ main :: () -> s32 {
     if Call("widget_palette", "WidgetPaletteHostedHost", colors[:], *result) != 1 || result.integer != 1 { return 77 }
     if StyleTokenColor("canvas").r != cast(u8)0x26 || StyleTokenColor("surface").r != cast(u8)0x3a ||
     StyleTokenColor("text").r != cast(u8)0xe0 || StyleTokenColor("accent").g != cast(u8)0xb9 { return 82 }
-    themed := TextStyleFor(TextStyleRequest.{}, StyleData.{})
+    themed := TextStyleFor(TextStyleRequest.{}, TextFace.{})
     if themed.foreground != cast(u32)0xe0e4e3ff || ActiveStyleRules().count == host_rules { return 78 }
     // A palette inside that one, such as a button's, gives the outer
     // palette back when it ends, not the host's style.
@@ -913,10 +913,10 @@ main :: () -> s32 {
     inner[3] = HostScalar("u32", cast(s64)0x10203fff)
     if Call("widget_palette", "WidgetPaletteHostedHost", inner[:], *result) != 1 ||
     StyleTokenColor("canvas").r != cast(u8)0xf7 ||
-    TextStyleFor(TextStyleRequest.{}, StyleData.{}).foreground != cast(u32)0x10203fff { return 84 }
+    TextStyleFor(TextStyleRequest.{}, TextFace.{}).foreground != cast(u32)0x10203fff { return 84 }
     if Call("widget_palette", "WidgetPaletteRestoreHostedHost", restore[:], *result) != 1 ||
     StyleTokenColor("canvas").r != cast(u8)0x26 || StyleTokenColor("text").r != cast(u8)0xe0 ||
-    TextStyleFor(TextStyleRequest.{}, StyleData.{}).foreground != cast(u32)0xe0e4e3ff { return 85 }
+    TextStyleFor(TextStyleRequest.{}, TextFace.{}).foreground != cast(u32)0xe0e4e3ff { return 85 }
     if Call("widget_palette", "WidgetPaletteRestoreHostedHost", restore[:], *result) != 1 ||
     ActiveStyleRules().count != host_rules { return 79 }
     // The frame's end unwinds every palette the bundle left open.
@@ -924,7 +924,7 @@ main :: () -> s32 {
     Call("widget_palette", "WidgetPaletteHostedHost", inner[:], *result) != 1 { return 80 }
     WidgetHostEnd()
     if EndFrame(session) != cast(FrameStatus)FrameOk || ActiveStyleRules().count != host_rules ||
-    TextStyleFor(TextStyleRequest.{}, StyleData.{}).foreground == cast(u32)0xe0e4e3ff { return 81 }
+    TextStyleFor(TextStyleRequest.{}, TextFace.{}).foreground == cast(u32)0xe0e4e3ff { return 81 }
     restored_canvas := StyleTokenColorOr("canvas", Color.{1, 2, 3, 4})
     restored_accent := StyleTokenColorOr("accent", Color.{5, 6, 7, 8})
     if CaptureStyleTokenColors().count != host_tokens.count || restored_canvas.r != original_canvas.r ||

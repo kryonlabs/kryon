@@ -48,6 +48,7 @@ dialog.zi
 dpi.zi
 drawing_props.zi
 elevation.zi
+elevation_paint.zi
 dropdown/dropdown_behavior.zi
 dropdown/dropdown_props.zi
 dropdown/dropdown.zi
@@ -199,6 +200,7 @@ layout_paint.zi
 paint_matrix.zi
 paint_transform.zi
 style_tree.zi
+style_frame.zi
 surface.zi
 svgicon/svg_icon_behavior.zi
 svgicon/svg_icon_props.zi
@@ -238,6 +240,7 @@ text_boundary.zi
 text_request.zi
 text_rows.zi
 text/text_style.zi
+text_theme.zi
 text/text.zi
 theme.zi
 timepicker/time_picker_behavior.zi

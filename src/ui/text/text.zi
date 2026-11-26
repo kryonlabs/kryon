@@ -18,7 +18,7 @@ using Text :: #import "text_props";
         return TextLinkAtHostedHost(session, props, x, y)
     }
 } else {
-    Theme :: #import "theme";
+    Theme :: #import "text_theme";
     #import "session"
     #import "control_props"
     #import "drawing_props"
@@ -29,13 +29,10 @@ using Text :: #import "text_props";
     #import "paint_queue"
     #import "text_layout"
     #import "semantic"
-    #import "style"
-    #import "style_motion_slot"
-    #import "style_facts"
     #import "color_props"
     #import "text_behavior"
     #import "text_align"
-    #import "text_style"
+    using FaceModule :: #import "text_style";
     #import "tree"
     #import "text_selection_host"
     #import "widget_kind"
@@ -43,24 +40,17 @@ using Text :: #import "text_props";
     Grapheme :: #import "std/grapheme";
 
     using WidgetKind;
-    using StyleField;
     #program_export
     TextSpan :: (source: string, start: s32, length: s32) -> string {
         return source[start:start + length]
     }
 
-    TextFace :: struct {
-        value: StyleData
-        fallback_font: s32
-        align: s32
-    }
-
     #program_export
     DefaultTextFace :: () -> TextFace {
         face: TextFace
-        face.value.fields = cast(u32)StyleForeground | cast(u32)StyleFontSize
-        face.value.foreground = Theme.CurrentText()
-        face.value.font_size = 16.0
+        face.foreground_set = true
+        face.foreground = Theme.CurrentText()
+        face.font_size = 16.0
         face.fallback_font = 16
         return face
     }
@@ -72,9 +62,7 @@ using Text :: #import "text_props";
             .class_name = props.class_name,
             .disabled = props.disabled}
         face.align = cast(s32)props.align
-        if face.align == 0 { request.align = *face.align }
-        face.value = TextStyleFor(request, defaults.value)
-        return face
+        return TextStyleFor(request, face)
     }
 
     TextRangeValid :: (text: string, range: Range, previous_end: s32) -> bool {
@@ -242,18 +230,17 @@ using Text :: #import "text_props";
 
     TextAppearanceFor :: (props: Text.Props, face: TextFace) -> TextAppearance {
         return ResolveTextStyle(props.size, 0,
-            ResolveFont(0, StyleFontValue(face.value.fields,
-            face.value.font_size), face.fallback_font),
-            face.value.foreground, cast(u32)0, Theme.CurrentText(),
-            false, (face.value.fields & cast(u32)StyleForeground) != cast(u32)0,
+            ResolveFont(0, cast(s32)(face.font_size + 0.5), face.fallback_font),
+            face.foreground, cast(u32)0, Theme.CurrentText(),
+            false, face.foreground_set,
             // A stylesheet's opacity already supplies the disabled face;
             // the fallback must not fade it a second time.
-            props.disabled && (face.value.fields & cast(u32)StyleOpacity) == cast(u32)0, false)
+            props.disabled && !face.opacity_set, false)
     }
 
     TextPaintColor :: (face: TextFace, color: u32) -> Color {
         return ColorFromPacked(Opacity(color,
-            StyleOpacityValue(face.value.fields, face.value.opacity)))
+            ifx face.opacity_set then face.opacity else 1.0))
     }
 
     // The draw owns these borrowed plans only until its paint is queued.
@@ -263,16 +250,17 @@ using Text :: #import "text_props";
         prepared: PreparedText
         prepared.bounds = props.bounds
         prepared.align = ifx props.align != .TextAlignStart then cast(s32)props.align else face.align
-        prepared.typeface = ifx props.typeface != "" then props.typeface else face.value.typeface
+        prepared.typeface = ifx props.typeface != "" then props.typeface else face.typeface
         appearance := TextAppearanceFor(props, face)
         prepared.font = appearance.font
         prepared.color = TextPaintColor(face, appearance.color)
-        prepared.glyph_style = StyleTextGlyphs(face.value)
+        prepared.glyph_style = face.glyphs
         prepared.glyph_height = GlyphLineHeight(prepared.font, prepared.typeface, prepared.glyph_style)
         if prepared.glyph_height < 1 { prepared.glyph_height = prepared.font }
         prepared.line_height = prepared.glyph_height
         prepared.line_gap = ifx props.line_gap > 0 then props.line_gap else TextDefaultLineGap(1.0)
-        line_height := StyleTypedLineHeight(face.value, cast(float32)prepared.font,
+        line_height := TextLineHeightValue(face.line_height_set, face.line_height,
+            face.line_height_unit, cast(float32)prepared.font,
             cast(float32)prepared.glyph_height)
         if line_height >= 0.0 {
             prepared.line_height = cast(s32)(cast(float64)line_height + 0.5)
@@ -461,7 +449,7 @@ using Text :: #import "text_props";
         defaults: TextFace = DefaultTextFace()
         if props.fallback_font > 0 {
             defaults.fallback_font = props.fallback_font
-            defaults.value.font_size = cast(float32)props.fallback_font
+            defaults.font_size = cast(float32)props.fallback_font
         }
         return TextFaceFor(props, defaults)
     }
@@ -502,11 +490,10 @@ using Text :: #import "text_props";
             TreeSetLabel(session, node, props.text)
             TreeSetStyleClass(session, node, props.class_name)
             TreeSetStyleId(session, node, props.id)
-            if style_motion_sample != null {
-                state := ifx props.disabled then cast(s32)ButtonState.ButtonStateDisabled else cast(s32)ButtonState.ButtonStateNormal
-                kind := ifx props.style_kind > 0 then props.style_kind else StyleKindText()
-                face.value = style_motion_sample(session, TreeSubmittedIdentity(session, node),
-                    StyleTextFacts(props.id, props.class_name, kind, state), face.value)
+            if text_style_motion != null {
+                request := TextStyleRequest.{.kind = props.style_kind, .id = props.id,
+                    .class_name = props.class_name, .disabled = props.disabled}
+                face = text_style_motion(session, TreeSubmittedIdentity(session, node), request, face)
                 prepared.color = TextPaintColor(face, TextAppearanceFor(props, face).color)
             }
             TreeSetSemantic(session, node, props.semantic_kind, props.heading_level)

@@ -20,6 +20,7 @@ Theme :: #import "theme";
 #import "geometry"
 using BehaviorModule :: #import "modal_behavior";
 #import "paint_queue"
+#import "elevation_paint"
 #import "style"
 #import "style_sheet"
 #import "surface"

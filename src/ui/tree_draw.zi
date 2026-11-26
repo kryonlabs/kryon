@@ -1,6 +1,6 @@
 #import "geometry"
 #import "paint_matrix"
-#import "style_tree"
+#import "style_frame"
 #import "paint_queue"
 #import "session"
 #import "tree"
@@ -52,7 +52,7 @@ BeginFrame :: (session: Session, screen_key: u64,
     PaintClear(session)
     PaintSetViewport(session, bounds)
     PaintPrimitivesInstall()
-    StyleTreeInstall(session)
+    StyleFrameBegin(session)
     if paint_matrix_frame != null { paint_matrix_frame(session, false) }
     frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, SessionIndex(session), false)
     FrameMotionBegin(session)

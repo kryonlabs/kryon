@@ -150,7 +150,7 @@ using Modal :: #import "modal_props";
         message_props.bounds.width = cast(float32)content_width
         message_props.wrap = cast(Text.Wrap)TextWrapAuto
         face: Text.TextFace = Text.DefaultTextFace()
-        face.value = message.value
+        face = TextFaceFromStyle(face, message.value)
         face.fallback_font = 14
         prepared: Text.PreparedText = Text.PrepareText(message_props, face)
         message_height: s32 = cast(s32)prepared.bounds.height

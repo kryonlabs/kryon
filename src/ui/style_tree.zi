@@ -2,35 +2,38 @@
 // :first-child. The widget being styled is the next child of the current
 // parent: it is the first when that parent has none yet, and its ancestors
 // are the open scopes. Rules without such context never call this.
-#import "session"
-#import "style_facts"
-#import "tree"
+#if #defined(KRYON_HOSTED_UI) {
+    // The containing host owns the retained tree and matches its selectors.
+    StyleTreeInstall :: () {}
+} else {
+    #import "session"
+    #import "style_frame"
+    #import "style_facts"
+    #import "tree"
 
-using StyleContext;
+    using StyleContext;
 
-style_tree_session: Session;
+    // Ancestors deeper than this never match; a retained tree is far shallower.
+    StyleTreeDepthLimit :: 256
 
-// Ancestors deeper than this never match; a retained tree is far shallower.
-StyleTreeDepthLimit :: 256
-
-StyleTreeMatches :: (selector: StyleSelector) -> bool {
-    session := style_tree_session
-    if !TreeIsBuilding(session) { return false }
-    parent := TreeCurrentParent(session)
-    if parent < 0 { return false }
-    entry := TreeSubmittedNodeAt(session, parent)
-    if (selector.context & cast(u32)StyleContextFirstChild) != 0 && entry.first_child >= 0 { return false }
-    if (selector.context & (cast(u32)StyleContextAncestor | cast(u32)StyleContextParent)) == 0 { return true }
-    for depth: 0..StyleTreeDepthLimit - 1 {
-        if (selector.ancestor_class == 0 || entry.style_class == selector.ancestor_class) &&
-            (selector.ancestor_id == 0 || entry.style_id == selector.ancestor_id) { return true }
-        if (selector.context & cast(u32)StyleContextParent) != 0 || entry.parent < 0 { return false }
-        entry = TreeSubmittedNodeAt(session, entry.parent)
+    StyleTreeMatches :: (selector: StyleSelector) -> bool {
+        session := style_frame_session
+        if !TreeIsBuilding(session) { return false }
+        parent := TreeCurrentParent(session)
+        if parent < 0 { return false }
+        entry := TreeSubmittedNodeAt(session, parent)
+        if (selector.context & cast(u32)StyleContextFirstChild) != 0 && entry.first_child >= 0 { return false }
+        if (selector.context & (cast(u32)StyleContextAncestor | cast(u32)StyleContextParent)) == 0 { return true }
+        for depth: 0..StyleTreeDepthLimit - 1 {
+            if (selector.ancestor_class == 0 || entry.style_class == selector.ancestor_class) &&
+                (selector.ancestor_id == 0 || entry.style_id == selector.ancestor_id) { return true }
+            if (selector.context & cast(u32)StyleContextParent) != 0 || entry.parent < 0 { return false }
+            entry = TreeSubmittedNodeAt(session, entry.parent)
+        }
+        return false
     }
-    return false
-}
 
-StyleTreeInstall :: (session: Session) {
-    style_tree_session = session
-    style_tree_match = StyleTreeMatches
+    StyleTreeInstall :: () {
+        style_tree_match = StyleTreeMatches
+    }
 }

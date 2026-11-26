@@ -4,7 +4,6 @@ Bitmaps :: #import "bitmap_state";
 #import "drawing_props"
 #import "control_props"
 #import "geometry"
-#import "elevation"
 #import "image_behavior"
 #import "paint_matrix"
 #import "paint_texture"
@@ -39,7 +38,6 @@ PaintKind :: enum {
     PaintKindTransformed :: 12
 }
 using PaintKind;
-using ElevationRole;
 
 
 PaintCommand :: struct {
@@ -1869,32 +1867,11 @@ PaintDispose :: (session: Session) {
     frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, session.slot, false)
 }
 
-// Two narrow contact strips under an opaque floating surface. These
-// ordinary retained commands allocate no blur buffer or per-frame storage.
-#program_export
-PaintElevation :: (session: Session, node: s32, bounds: Rectangle,
-    radius: float32, opacity: float32) {
-    PaintElevationForRole(session, node, bounds, radius, opacity,
-        cast(s32)ElevationRoleFloating)
-}
-
-#program_export
-PaintElevationForRole :: (session: Session, node: s32, bounds: Rectangle,
-    radius: float32, opacity: float32, role: s32) {
-    if bounds.width <= 0.0 || bounds.height <= 0.0 || opacity <= 0.0 { return }
-    for layer: cast(s32)1..2 {
-        alpha := ElevationAlphaForRole(cast(ElevationRole)role, layer)
-        if alpha == cast(u32)0 { continue }
-        PaintRoundedFill(session, node, ElevationEdgeBounds(bounds, layer, radius),
-            0.0, 4, Color.{0, 0, 0, cast(u8)(cast(float32)alpha * opacity)})
-    }
-}
-
 // Install the generic drawing operations, without importing any container
 // painter. Layout-only programs leave these empty and keep their geometry.
 PaintPrimitivesInstall :: () {
     paint_primitives = PaintPrimitives.{.mark = PaintMark,
         .move_below = PaintMoveBelow, .owner = PaintOwner,
         .fill = PaintRoundedFill, .outline = PaintRoundedOutline,
-        .gradient = PaintVerticalGradient, .elevation = PaintElevationForRole}
+        .gradient = PaintVerticalGradient}
 }

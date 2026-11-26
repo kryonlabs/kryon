@@ -1,4 +1,26 @@
-#import "style"
+#import "control_props"
+#import "session"
+
+// Only typography crosses the optional stylesheet boundary. A label never
+// carries control backgrounds, box geometry, selector tables or materials.
+TextFace :: struct {
+    font_size: float32
+    foreground: u32
+    foreground_set: bool
+    opacity: float32
+    opacity_set: bool
+    typeface: string
+    glyphs: TextGlyphStyle
+    line_height: float32
+    line_height_unit: LineHeightUnit
+    line_height_set: bool
+    fallback_font: s32
+    align: s32
+    motion_reduced: bool
+}
+
+TextStyleMotion :: #type (Session, u64, TextStyleRequest, TextFace) -> TextFace;
+text_style_motion: TextStyleMotion;
 
 // A widget can use its default face without carrying a rule table. Installing
 // a style sheet supplies the optional resolver for later Text calls.
@@ -7,11 +29,10 @@ TextStyleRequest :: struct {
     id: s32
     class_name: s32
     disabled: bool
-    align: *s32
 }
 
 TextStyleResolver :: #type (request: TextStyleRequest,
-    base: StyleData) -> StyleData;
+    base: TextFace) -> TextFace;
 
 active_text_style_callback: TextStyleResolver;
 has_text_style_resolver: bool;
@@ -24,7 +45,7 @@ SetTextStyleResolver :: (resolver: TextStyleResolver) {
 
 #program_export
 TextStyleFor :: (request: TextStyleRequest,
-    base: StyleData) -> StyleData {
+    base: TextFace) -> TextFace {
     if !has_text_style_resolver { return base }
     resolver: TextStyleResolver = active_text_style_callback
     return resolver(request, base)

@@ -1,0 +1,21 @@
+// Plain labels need two colors, not a complete theme and its token tables.
+TextDefaultForeground :: 0x0b0b0bff
+TextDefaultAccent :: 0x00864bff
+TextThemeColor :: #type () -> u32;
+text_theme_foreground: TextThemeColor;
+text_theme_accent: TextThemeColor;
+
+TextThemeInstall :: (foreground: TextThemeColor, accent: TextThemeColor) {
+    text_theme_foreground = foreground
+    text_theme_accent = accent
+}
+
+CurrentText :: () -> u32 {
+    if text_theme_foreground == null { return cast(u32)TextDefaultForeground }
+    return text_theme_foreground()
+}
+
+CurrentAccent :: () -> u32 {
+    if text_theme_accent == null { return cast(u32)TextDefaultAccent }
+    return text_theme_accent()
+}

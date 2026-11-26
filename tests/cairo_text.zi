@@ -154,7 +154,7 @@ CheckTypography :: () -> s32 {
     if !DrawTypography(session, props) { return 48 }
 
     if !TypographyRules(600, normal, 0.0, 1.5, factor) { return 29 }
-    if Text.TextFaceOf(props).value.font_weight != 600 { return 45 }
+    if Text.TextFaceOf(props).glyphs.weight != 600 { return 45 }
     if Text.PrepareText(props, Text.TextFaceOf(props)).glyph_style.weight != 600 { return 46 }
     if !DrawTypography(session, props) { return 47 }
     semibold := ReadTypographyInk(0, 50)

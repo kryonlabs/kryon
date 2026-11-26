@@ -1,6 +1,6 @@
 TextSchema :: #import "text_props";
 #import "geometry"
-#import "style"
+#import "control_props"
 TextAppearance :: struct {
     font: s32
     color: u32

@@ -41,7 +41,7 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
-- Keep full styles, selector matching, shadow policy and theme tables out of plain portable labels. Text carries typography through optional stylesheet and motion adapters; imported themes supply live colors. Hello's dependency modules fall from 57 to 53 and its portable bundle from 1,555,437 to 1,470,285 bytes, with the same `Text.Draw` call.
+- Keep full styles, selector matching, shadow policy and theme tables out of plain portable labels. Text carries typography through optional stylesheet and motion adapters; installed themes supply live colors. Hello's dependency modules fall from 57 to 53 and its portable bundle from 1,555,437 to 1,470,285 bytes, with the same `Text.Draw` call.
 
 - Keep native GPU timestamp queries out of WebGL builds so applications using the scene renderer compile for the web.
 - Select the scene's WebGL context before probing or drawing, including when input prepares the scene before its first rendered frame.

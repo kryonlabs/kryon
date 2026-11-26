@@ -1,0 +1,6 @@
+#import "session"
+
+// The optional selector matcher reads the current frame, including a sheet
+// installed during that frame. Frames carry no selectors or matcher code.
+style_frame_session: Session;
+StyleFrameBegin :: (session: Session) { style_frame_session = session }

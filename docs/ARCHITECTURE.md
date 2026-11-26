@@ -29,6 +29,17 @@ requiring a renderer for layout-only programs. Shared `style_facts` and
 `color_props` hold values independently of installed rule tables and material
 effects.
 
+Plain text carries a typography-only `TextFace` through `text_style` resolver
+and motion slots. `style_sheet` projects full cascade results into that face;
+`style_motion` installs sampling only when used. Frames publish their session
+through `style_frame`; installing rules connects the optional `style_tree`
+selector matcher, including sheets installed during a frame. `text_theme`
+supplies the built-in text and link colors until an installed theme registers
+its live getters. Shadow painting belongs to `elevation_paint`, imported by
+containers and floating surfaces, rather than the generic paint queue. A plain
+portable label therefore imports neither full styles, selector matching,
+shadow policy nor theme tables.
+
 Sessions and retained paint consult `bitmap_state`; the bitmap store registers
 metadata and disposal callbacks only after allocating an image. Portable
 editing widgets install `text_editor_zx` through `text_host` frame and transport

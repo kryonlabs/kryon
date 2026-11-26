@@ -3,6 +3,7 @@ using Facts :: #import "style_facts";
 #import "control_props"
 #import "geometry"
 #import "text_style"
+#import "style_tree"
 using Vectors :: #import "std/vec"
 
 using ButtonState;
@@ -188,6 +189,7 @@ StyleBucket :: (value: s32) -> s32 {
 }
 
 StyleIndexInstall :: () {
+    StyleTreeInstall()
     for i: 0..cast(s32)(64 * StyleIndexWords - 1) {
         installed_kind_bits[i] = 0; installed_class_bits[i] = 0; installed_state_bits[i] = 0
     }
@@ -334,20 +336,61 @@ ActiveStyleRules :: () -> StyleRules {
     return installed_rules
 }
 
+// The cascade owns full styles; text only carries the typography it paints.
+TextFaceStyle :: (face: TextFace) -> StyleData {
+    style: StyleData
+    if face.foreground_set { style.fields |= cast(u32)StyleForeground }
+    if face.font_size > 0.0 { style.fields |= cast(u32)StyleFontSize }
+    if face.opacity_set { style.fields |= cast(u32)StyleOpacity }
+    if face.typeface != "" { style.fields |= cast(u32)StyleTypeface }
+    style.fields |= cast(u32)StyleFontWeight | cast(u32)StyleFontStyle | cast(u32)StyleLetterSpacing
+    if face.line_height_set { style.fields |= cast(u32)StyleLineHeight }
+    style.foreground = face.foreground
+    style.font_size = face.font_size
+    style.opacity = face.opacity
+    style.typeface = face.typeface
+    style.font_weight = face.glyphs.weight
+    style.font_style = face.glyphs.style
+    style.letter_spacing = face.glyphs.letter_spacing
+    style.line_height = face.line_height
+    style.line_height_unit = face.line_height_unit
+    style.motion_reduced = face.motion_reduced
+    return style
+}
+
+TextFaceFromStyle :: (base: TextFace, style: StyleData) -> TextFace {
+    face := base
+    face.foreground_set = (style.fields & cast(u32)StyleForeground) != 0
+    face.foreground = style.foreground
+    face.font_size = cast(float32)StyleFontValue(style.fields, style.font_size)
+    face.opacity_set = (style.fields & cast(u32)StyleOpacity) != 0
+    face.opacity = StyleOpacityValue(style.fields, style.opacity)
+    face.typeface = style.typeface
+    face.glyphs = StyleTextGlyphs(style)
+    face.line_height_set = (style.fields & cast(u32)StyleLineHeight) != 0
+    face.line_height = style.line_height
+    face.line_height_unit = style.line_height_unit
+    face.motion_reduced = style.motion_reduced
+    return face
+}
+
 ResolveInstalledTextStyle :: (request: TextStyleRequest,
-    base: StyleData) -> StyleData {
+    base: TextFace) -> TextFace {
     state: s32 = cast(s32)ButtonStateNormal
     if request.disabled { state = cast(s32)ButtonStateDisabled }
     kind: s32 = request.kind
     if kind <= 0 { kind = StyleKindText() }
     facts := StyleTextFacts(request.id, request.class_name, kind, state)
-    if request.align == null { return ResolveInstalledStyleRules(base, facts, state) }
+    style := TextFaceStyle(base)
+    if base.align != 0 {
+        return TextFaceFromStyle(base, ResolveInstalledStyleRules(style, facts, state))
+    }
     box: StyleBoxData
-    result := ResolveIndexedStyle(base, facts, state, true, null, cast(u32)0,
+    result := ResolveIndexedStyle(style, facts, state, true, null, cast(u32)0,
         *box, cast(u32)StyleBoxTextAlign)
-    align := request.align
-    if (box.fields & cast(u32)StyleBoxTextAlign) != 0 { <<align = box.text_align }
-    return result
+    face := TextFaceFromStyle(base, result)
+    if (box.fields & cast(u32)StyleBoxTextAlign) != 0 { face.align = box.text_align }
+    return face
 }
 
 StylePriority :: struct {

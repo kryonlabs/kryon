@@ -19,3 +19,9 @@ independently of palette selection.
 
 Typed style rules and optional CSS remain available for application-specific
 colors and control styling, using the same components and interaction behavior.
+
+Plain `Text.Draw` uses the built-in foreground and accent without importing the
+full theme. Installing a theme through `kryon/Theme` connects its current
+colors automatically; subsequent theme changes apply to labels and links.
+Stylesheets install their text resolver and tree selector matcher when used;
+motion installs its sampler independently. The public `Text.Draw` call stays the same in each case.

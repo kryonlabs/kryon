@@ -1,0 +1,31 @@
+#import "control_props"
+#import "drawing_props"
+#import "elevation"
+#import "geometry"
+#import "paint_primitives"
+#import "session"
+
+using ElevationRole;
+
+// Two narrow contact strips under an opaque floating surface. These
+// ordinary retained commands allocate no blur buffer or per-frame storage.
+#program_export
+PaintElevation :: (session: Session, node: s32, bounds: Rectangle,
+    radius: float32, opacity: float32) {
+    PaintElevationForRole(session, node, bounds, radius, opacity,
+        cast(s32)ElevationRoleFloating)
+}
+
+#program_export
+PaintElevationForRole :: (session: Session, node: s32, bounds: Rectangle,
+    radius: float32, opacity: float32, role: s32) {
+    if paint_primitives.fill == null { return }
+    if bounds.width <= 0.0 || bounds.height <= 0.0 || opacity <= 0.0 { return }
+    for layer: cast(s32)1..2 {
+        alpha := ElevationAlphaForRole(cast(ElevationRole)role, layer)
+        if alpha == cast(u32)0 { continue }
+        paint_primitives.fill(session, node, ElevationEdgeBounds(bounds, layer, radius),
+            0.0, 4, Color.{0, 0, 0, cast(u8)(cast(float32)alpha * opacity)})
+    }
+}
+

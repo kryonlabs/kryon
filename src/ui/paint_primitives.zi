@@ -13,8 +13,6 @@ PaintPrimitiveOutline :: #type (session: Session, node: s32, bounds: Rectangle,
     radius: float32, segments: s32, width: float32, color: Color) -> void;
 PaintPrimitiveGradient :: #type (session: Session, node: s32, bounds: Rectangle,
     top: Color, bottom: Color) -> void;
-PaintPrimitiveElevation :: #type (session: Session, node: s32, bounds: Rectangle,
-    radius: float32, opacity: float32, role: s32) -> void;
 
 PaintPrimitives :: struct {
     mark: PaintPrimitiveMark
@@ -23,6 +21,5 @@ PaintPrimitives :: struct {
     fill: PaintPrimitiveFill
     outline: PaintPrimitiveOutline
     gradient: PaintPrimitiveGradient
-    elevation: PaintPrimitiveElevation
 }
 paint_primitives: PaintPrimitives;

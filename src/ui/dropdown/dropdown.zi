@@ -23,6 +23,7 @@ Scroll :: #import "scroll";
     #import "geometry"
     #import "image_behavior"
     #import "paint_queue"
+    #import "elevation_paint"
     #import "semantic"
     #import "style"
     #import "style_sheet"

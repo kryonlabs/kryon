@@ -5,6 +5,7 @@
 #import "style"
 #import "style_motion_slot"
 #import "style_sheet"
+#import "text_style"
 #import "vec"
 Motion :: #import "motion";
 
@@ -317,6 +318,14 @@ Sample :: (session: Session, identity: u64, facts: StyleFacts, target: StyleData
     return output
 }
 
+SampleText :: (session: Session, identity: u64, request: TextStyleRequest, base: TextFace) -> TextFace {
+    state := ifx request.disabled then cast(s32)ButtonState.ButtonStateDisabled else cast(s32)ButtonState.ButtonStateNormal
+    kind := ifx request.kind > 0 then request.kind else StyleKindText()
+    sampled := Sample(session, identity,
+        StyleTextFacts(request.id, request.class_name, kind, state), TextFaceStyle(base))
+    return TextFaceFromStyle(base, sampled)
+}
+
 FiniteTime :: (time: float64) -> bool {
     return time >= -1.7976931348623157e308 && time <= 1.7976931348623157e308
 }
@@ -370,6 +379,7 @@ Install :: (source: []Rule, reduced_motion: bool) -> bool {
     reduce_motion = reduced_motion
     frame_style_motion = StyleMotionFrame
     style_motion_sample = Sample
+    text_style_motion = SampleText
     FrameMotionInvalidate()
     return true
 }

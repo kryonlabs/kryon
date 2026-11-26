@@ -1,4 +1,5 @@
 #import "control_props"
+#import "elevation_paint"
 #import "drawing_props"
 #import "geometry"
 #import "layout_paint_slot"
@@ -23,7 +24,7 @@ LayoutPaintBox :: (session: Session, bounds: Rectangle, face: StyleData, box: St
     opacity := StyleOpacityValue(face.fields, face.opacity)
     radius := ifx StyleHasField(face, cast(u32)StyleRadius) && face.radius > 0.0 then face.radius else 0.0
     if StyleHasField(face, cast(u32)StyleElevation) && face.elevation != .ElevationRoleNone {
-        paint_primitives.elevation(session, -1, bounds, radius, opacity, cast(s32)face.elevation)
+        PaintElevationForRole(session, -1, bounds, radius, opacity, cast(s32)face.elevation)
     }
     if StyleHasField(face, cast(u32)StyleBackground) {
         top := ColorFromPacked(Opacity(face.background, opacity))

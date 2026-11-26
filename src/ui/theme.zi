@@ -1,3 +1,5 @@
+TextColors :: #import "text_theme";
+
 ThemePolicy :: enum {
     ThemePolicySystem :: 0
     ThemePolicyLight :: 1
@@ -167,7 +169,7 @@ LightPalette :: () -> Palette {
     palette: Palette
     palette.background = cast(u32)0xffffffff; palette.surface = cast(u32)0xffffffff
     palette.surface_raised = cast(u32)0xffffffff; palette.surface_muted = cast(u32)0xf8f8f8ff
-    palette.surface_sunken = cast(u32)0xf3f3f3ff; palette.foreground = cast(u32)0x0b0b0bff
+    palette.surface_sunken = cast(u32)0xf3f3f3ff; palette.foreground = cast(u32)TextColors.TextDefaultForeground
     palette.text_secondary = cast(u32)0x585858ff; palette.text_muted = cast(u32)0x767676ff
     palette.text_disabled = cast(u32)0x76767692; palette.icon = palette.foreground
     palette.icon_muted = palette.text_muted; palette.border = cast(u32)0xe3e3e3ff
@@ -175,7 +177,7 @@ LightPalette :: () -> Palette {
     palette.focus = cast(u32)0x1f7dcfe6; palette.hover_layer = cast(u32)0x0b0b0b0d
     palette.active_layer = cast(u32)0x0b0b0b13; palette.scrim = cast(u32)0x0a0a0c52
     palette.selection = cast(u32)0x00864b21; palette.selection_text = cast(u32)0x006c36ff
-    palette.accent = cast(u32)0x00864bff; palette.accent_strong = cast(u32)0x006c36ff
+    palette.accent = cast(u32)TextColors.TextDefaultAccent; palette.accent_strong = cast(u32)0x006c36ff
     palette.accent_subtle = cast(u32)0x00864b21; palette.on_accent = cast(u32)0xffffffff
     palette.control_on = cast(u32)0x00864bff; palette.control_glyph = cast(u32)0xffffffff
     palette.control_track = cast(u32)0xdcdcdcff; palette.control_track_hover = cast(u32)0xd1d1d1ff
@@ -351,7 +353,10 @@ active_theme_ready: bool;
 explicit_palette: bool;
 
 StoreTheme :: (theme: ThemeTokens) -> bool {
-    active_theme = theme; active_theme_ready = true; return true
+    active_theme = theme
+    active_theme_ready = true
+    TextColors.TextThemeInstall(CurrentText, CurrentAccent)
+    return true
 }
 
 #program_export
