@@ -1,3 +1,4 @@
+Layout :: #import "std/text_layout";
 using Text :: #import "text_props";
 // The width a line of text takes, so a caller can place controls right
 // beside a label, and the height a wrapped paragraph takes, so it can place
@@ -34,7 +35,7 @@ using Text :: #import "text_props";
     TextHeight :: (session: Session, props: Text.Props) -> s32 {
         unused session
         prepared: PreparedText = PrepareText(props, TextFaceOf(props))
-        return TextLayoutTotalHeight(prepared.line_count, prepared.line_height,
+        return Layout.TotalHeight(prepared.line_count, prepared.line_height,
             prepared.line_gap)
     }
 }

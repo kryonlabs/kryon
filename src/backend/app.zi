@@ -4,37 +4,45 @@
 // loops import app_types by name: a `using` import would keep an unrun loop
 // in the checked program.
 using Types :: #import "app_types";
+ANDROID_HOST :: OS == .ANDROID || #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__)
+DESKTOP_HOST :: OS == .WINDOWS || OS == .LINUX
 
-#if TARGET == .C && OS == .ANDROID || TARGET == .C && #defined(ANDROID_BUILD) || TARGET == .C && #defined(PLATFORM_ANDROID) || TARGET == .C && #defined(__ANDROID__) {
-    Bare :: #import "app_unsupported";
-    Frames :: #import "frames_android";
-} else #if TARGET == .C && OS == .WINDOWS || TARGET == .C && OS == .LINUX && !#defined(KRYON_NO_DESKTOP_HOST) {
-    Bare :: #import "desktop_window";
-    Frames :: #import "frames_desktop";
-} else #if TARGET == .C && OS == .WEB {
-    Bare :: #import "page_window";
-    Frames :: #import "frames_web";
-} else #if TARGET == .ZX {
+#if TARGET == .ZX {
     // The installed desktop player hosts a bundle's window.
-    Bare :: #import "zx_window";
-    Frames :: #import "frames_zx";
-} else #if TARGET == .C && #defined(KRYON_TERMINAL) {
-    Bare :: #import "app_unsupported";
-    Frames :: #import "frames_terminal";
-} else #if TARGET == .C && #defined(KRYON_PIXMAP) {
-    Bare :: #import "app_unsupported";
-    Frames :: #import "frames_pixmap";
+    WindowHost :: #import "zx_window";
+    FrameHost :: #import "frames_zx";
+} else #if TARGET == .C {
+    #if ANDROID_HOST {
+        WindowHost :: #import "app_unsupported";
+        FrameHost :: #import "frames_android";
+    } else #if OS == .WEB {
+        WindowHost :: #import "page_window";
+        FrameHost :: #import "frames_web";
+    } else #if #defined(KRYON_TERMINAL) {
+        WindowHost :: #import "app_unsupported";
+        FrameHost :: #import "frames_terminal";
+    } else #if #defined(KRYON_PIXMAP) {
+        // The explicit headless profile renders frames to a PPM image.
+        WindowHost :: #import "app_unsupported";
+        FrameHost :: #import "frames_pixmap";
+    } else #if DESKTOP_HOST && !#defined(KRYON_NO_DESKTOP_HOST) {
+        WindowHost :: #import "desktop_window";
+        FrameHost :: #import "frames_desktop";
+    } else {
+        WindowHost :: #import "app_unsupported";
+        FrameHost :: #import "app_unsupported";
+    }
 } else {
-    Bare :: #import "app_unsupported";
-    Frames :: #import "app_unsupported";
+    WindowHost :: #import "app_unsupported";
+    FrameHost :: #import "app_unsupported";
 }
 
 // Shows the window, cleared, until it closes.
 Show :: (window: Window) -> s32 {
-    return Bare.Show(window)
+    return WindowHost.Show(window)
 }
 
 // Runs the program's frames: `draw` builds each frame's widgets.
 Run :: (window: Window, draw: Draw) -> s32 {
-    return Frames.Run(window, draw)
+    return FrameHost.Run(window, draw)
 }

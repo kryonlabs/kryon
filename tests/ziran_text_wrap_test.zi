@@ -1,3 +1,4 @@
+Layout :: #import "std/text_layout";
 #import "text_layout"
 Text :: #import "kryon/text";
 #import "ziran_text_wrap_host"
@@ -18,7 +19,7 @@ WrapWith :: (value: string, width: float32, policy: Text.Wrap) -> s32 {
     count: s32 = 0
     start: s32 = 0
     while start < cast(s32)value.count && count < 64 {
-        line: TextLinePlan = NextTextLine(value, start, width,
+        line: Layout.Line = NextTextLine(value, start, width,
             policy, 14, "")
         if line.next <= start { return -1 }
         wrapped[count] = value[line.start:line.end]
@@ -75,29 +76,29 @@ AnywhereTests :: () -> s32 {
 TokenTests :: () -> bool {
     // ASCII runs, punctuation attached to ideographs, and script changes
     // must keep the same borrowed byte ranges as full UTF-8 decoding.
-    token := TextTokenNext(" \tfoo(bar),baz", -1, false)
+    token := Layout.NextToken(" \tfoo(bar),baz", -1, "")
     if !token.valid || token.start != 2 || token.end != 14 ||
-        token.next != 14 || token.icon || token.line_break { return false }
-    token = TextTokenNext("abあcd", 0, false)
+        token.next != 14 || token.marker || token.line_break { return false }
+    token = Layout.NextToken("abあcd", 0, "")
     if token.start != 0 || token.end != 2 { return false }
-    token = TextTokenNext("abあcd", token.next, false)
+    token = Layout.NextToken("abあcd", token.next, "")
     if token.start != 2 || token.end != 5 { return false }
-    token = TextTokenNext("abあcd", token.next, false)
+    token = Layout.NextToken("abあcd", token.next, "")
     if token.start != 5 || token.end != 7 { return false }
-    token = TextTokenNext("A(あ)", 0, false)
+    token = Layout.NextToken("A(あ)", 0, "")
     if token.end != 6 { return false }
-    token = TextTokenNext("x😀é", 0, false)
+    token = Layout.NextToken("x😀é", 0, "")
     if token.end != 7 { return false }
     invalid: [4]u8 = .[128, 255, 97, 32]
-    token = TextTokenNext(TextView(invalid[:]), 0, false)
+    token = Layout.NextToken(TextView(invalid[:]), 0, "")
     if token.end != 3 { return false }
-    token = TextTokenNext("%iword", 0, true)
-    if !token.icon || token.end != 2 || token.next != 2 { return false }
-    token = TextTokenNext("%iword", 0, false)
-    if token.icon || token.end != 6 { return false }
-    token = TextTokenNext("\r\nword", 0, false)
+    token = Layout.NextToken("%iword", 0, "%i")
+    if !token.marker || token.end != 2 || token.next != 2 { return false }
+    token = Layout.NextToken("%iword", 0, "")
+    if token.marker || token.end != 6 { return false }
+    token = Layout.NextToken("\r\nword", 0, "")
     if !token.line_break || token.next != 2 { return false }
-    token = TextTokenNext("word", 4, false)
+    token = Layout.NextToken("word", 4, "")
     return !token.valid && token.start == 4 && token.end == 4 && token.next == 4
 }
 

@@ -42,6 +42,15 @@ $(PLAYER): $(PLAYER_SOURCES) $(KRYON_DIR)/mk/zx-player.mk $(KRYON_DIR)/ziran.tom
 WINDOW_HOST_DIR := $(KRYON_DIR)/build/zx-window-host
 WINDOW_HOST := $(KRYON_DIR)/build/lib/libkryon-desktop.so
 
+# Cross-platform native linking needs a PE provider, independently of the
+# build machine's ELF provider. Keep its runtime DLLs beside the registration.
+.PHONY: windows-window-host install-windows-host
+windows-window-host:
+	python3 $(KRYON_DIR)/scripts/windows_host.py --ziran "$(ZIRAN_DIR)"
+
+install-windows-host:
+	python3 $(KRYON_DIR)/scripts/windows_host.py --ziran "$(ZIRAN_DIR)" --prefix "$(PREFIX)"
+
 .PHONY: zx-window-host
 zx-window-host: $(WINDOW_HOST)
 

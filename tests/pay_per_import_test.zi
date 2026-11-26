@@ -412,11 +412,11 @@ main :: () -> s32 {
     // A label asks its parent for width and the frame for paint operations.
     // It does not build containers, own pictures or edit text.
     zx_hello_present: [3]string = .["text", "tree", "paint_queue"]
-    zx_hello_absent: [20]string = .["layout", "layout_props", "layout_behavior",
+    zx_hello_absent: [24]string = .["layout", "layout_props", "layout_behavior",
         "grid", "grid_props", "layout_paint", "layout_paint_slot", "bitmap_store",
         "text_request", "text_input_platform", "text_editor_zx", "style_sheet",
         "surface", "image", "style", "style_facts", "style_tree", "style_motion_slot",
-        "elevation", "theme"]
+        "elevation", "theme", "clock", "motion_clock", "style_motion", "layout_motion"]
     if !CheckZxProgram(ziran, "hello:main", "examples/hello.zi", "build/test/pay-per-import/hello-zx-ir") {
         Fail("hello (zx)", "does not check", "examples/hello.zi")
     } else {

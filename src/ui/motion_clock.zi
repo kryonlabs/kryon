@@ -1,0 +1,13 @@
+// The concrete portable clock belongs to motion, never to the app loop.
+#import "frame_motion"
+#import "session"
+#if TARGET == .ZX {
+    Clock :: #import "clock";
+    MotionSeconds :: () -> float64 { return cast(float64)Clock.Milliseconds() / 1000.0 }
+    MotionTime :: (session: Session) -> float64 {
+        return FrameMotionTime(session, MotionSeconds)
+    }
+} else {
+    // Native frame hosts already supply time with the input record.
+    MotionTime :: (session: Session) -> float64 { return frame_motion_time[SessionIndex(session)] }
+}

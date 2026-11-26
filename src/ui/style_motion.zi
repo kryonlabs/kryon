@@ -1,3 +1,4 @@
+#import "motion_clock"
 #import "control_props"
 #import "frame_motion"
 #import "motion_history"
@@ -286,7 +287,7 @@ Sample :: (session: Session, identity: u64, facts: StyleFacts, target: StyleData
     if history.epoch != session.epoch { MotionHistoryStart(history, session.epoch) }
     row: Row
     initialized := MotionHistoryRead(history, identity, *row)
-    now := frame_motion_time[session.slot]
+    now := MotionTime(session)
     if now > row.now { row.now = now }
     reduced := reduce_motion || target.motion_reduced
     empty: Rule

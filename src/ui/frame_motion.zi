@@ -5,7 +5,21 @@
 FrameMotionHook :: #type (Session, bool) -> void;
 frame_style_motion: FrameMotionHook;
 frame_layout_motion: FrameMotionHook;
+FrameMotionClock :: #type () -> float64;
 
+// Optional motion observes portable host time once per frame, at first use.
+// Hosts that already supply frame time need no concrete clock here.
+FrameMotionTime :: (session: Session, clock: FrameMotionClock) -> float64 {
+    slot := SessionIndex(session)
+    if slot == 0 { return 0.0 }
+    if !SessionFlagGet(frame_motion_observed, slot) {
+        SetFrameMotionTime(session, clock())
+        frame_motion_observed = SessionFlagSet(frame_motion_observed, slot, true)
+    }
+    return frame_motion_time[slot]
+}
+
+frame_motion_observed: u32;
 frame_motion_time: [9]float64;
 frame_motion_active: u32;
 frame_motion_next: u32;
@@ -31,6 +45,7 @@ FrameMotionMark :: (session: Session) {
 }
 
 FrameMotionBegin :: (session: Session) {
+    frame_motion_observed = SessionFlagSet(frame_motion_observed, session.slot, false)
     frame_motion_next = SessionFlagSet(frame_motion_next, session.slot, false)
     if frame_style_motion != null { frame_style_motion(session, false) }
     if frame_layout_motion != null { frame_layout_motion(session, false) }
@@ -47,6 +62,7 @@ FrameMotionCommit :: (session: Session) {
 FrameMotionClose :: (session: Session) {
     slot := session.slot
     frame_motion_time[slot] = 0.0
+    frame_motion_observed = SessionFlagSet(frame_motion_observed, slot, false)
     frame_motion_active = SessionFlagSet(frame_motion_active, slot, false)
     expired := Session.{.slot = slot}
     if frame_style_motion != null { frame_style_motion(expired, false) }

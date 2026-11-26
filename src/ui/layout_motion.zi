@@ -1,3 +1,4 @@
+#import "motion_clock"
 #import "frame_motion"
 #import "geometry"
 #import "layout_motion_slot"
@@ -49,7 +50,7 @@ LayoutMotionPlace :: (session: Session, parent: s32, identity: u64,
     if parent >= scopes.count || !scopes.*[parent].enabled { return target }
     options := scopes.*[parent].options
     if !retained && !options.enter { return target }
-    now := frame_motion_time[session.slot]
+    now := MotionTime(session)
     row: LayoutTransition
     history := *layout_history[session.slot]
     if !MotionHistoryRead(history, identity, *row) {
@@ -136,7 +137,7 @@ Presence :: (session: Session, state: *PresenceState, present: bool,
     motion := Theme.CurrentTheme().motion
     seconds := options.seconds * cast(float64)motion.multiplier
     reduced := options.reduced_motion || motion.reduced_motion
-    sample := Motion.TweenTo(*state.tween, target, frame_motion_time[session.slot],
+    sample := Motion.TweenTo(*state.tween, target, MotionTime(session),
         seconds, options.timing, reduced)
     if sample.active { FrameMotionMark(session) }
     fraction := sample.value

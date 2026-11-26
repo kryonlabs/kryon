@@ -27,7 +27,7 @@ main :: () -> s32 {
     output: [1024]u8
     pinned := PinToolchain(floating, output[:])
     Expect(ToolchainRef(pinned) == KryonZiranRef, "a floating ref becomes Kryon's Ziran")
-    Expect(pinned == "[package]\nname = \"tool\"\n\n[toolchain]\ngit = \"https://git.waozi.xyz/ziranlang/ziran.git\"\nref = \"23b4bc9a92ce202582cb2bf0368810e94a43be2c\"\n\n[dependencies.x]\nref = \"main\"\n",
+    Expect(pinned == "[package]\nname = \"tool\"\n\n[toolchain]\ngit = \"https://git.waozi.xyz/ziranlang/ziran.git\"\nref = \"6edbcebbf7907e1a2e3032ba21a31247ff9afcf3\"\n\n[dependencies.x]\nref = \"main\"\n",
         "only the [toolchain] git and ref lines change")
 
     exact := "[toolchain]\ngit = \"https://git.waozi.xyz/ziranlang/ziran.git\"\nref = \"2684af8d22b623c52bfd19ce785523b50ad83c5e\"\n"

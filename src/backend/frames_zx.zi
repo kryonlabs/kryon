@@ -6,8 +6,6 @@ App :: #import "app_types";
 using SessionModule :: #import "session";
 #import "tree"
 #import "tree_draw"
-#import "frame_motion"
-MotionClock :: #import "clock";
 #import "tree_input"
 #import "cursor"
 #import "text_host"
@@ -109,7 +107,6 @@ Run :: (window: App.Window, draw: App.Draw) -> s32 {
             TypedCodepointSend(bundle_session, codepoint)
             codepoint = TakeBundleCodepoint()
         }
-        SetFrameMotionTime(bundle_session, cast(float64)MotionClock.Milliseconds() / 1000.0)
         if BeginFrame(bundle_session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
             return 1
         }

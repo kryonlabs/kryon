@@ -1,146 +1,27 @@
 TextSchema :: #import "text_props";
+Layout :: #import "std/text_layout";
 #import "font_metrics"
 #import "control_props"
 #import "text_align"
-#import "utf8"
-Grapheme :: #import "std/grapheme";
 
 using TextAlign;
 using TextSchema.Wrap;
 
-TextLinePlan :: struct {
-    start: s32
-    end: s32
-    next: s32
-    width: s32
+TextMeasurement :: struct { font: s32; typeface: string; style: TextGlyphStyle; }
+TextLineMeasure :: #type (string, TextMeasurement) -> s32 #reads;
+MeasureTextLine :: (value: string, request: TextMeasurement) -> s32 {
+    return GlyphWidth(value, request.font, request.typeface, request.style)
 }
 
-TextToken :: struct {
-    start: s32
-    end: s32
-    next: s32
-    valid: bool
-    line_break: bool
-    icon: bool
-}
-
-TextIsSpace :: (value: u8) -> bool {
-    return value == cast(u8)32 || value == cast(u8)9 ||
-    value == cast(u8)11 || value == cast(u8)12
-}
-
-// Japanese and Chinese are written without spaces, so a line may break
-// between their characters. Kana, ideographs, and the fullwidth forms count;
-// Hangul is spaced and breaks at its spaces.
-TextIdeographic :: (point: u32) -> bool {
-    code: s32 = cast(s32)point
-    return (code >= 12288 && code <= 12543) ||
-        (code >= 13312 && code <= 19903) ||
-        (code >= 19968 && code <= 40959) ||
-        (code >= 63744 && code <= 64255) ||
-        (code >= 65280 && code <= 65519) ||
-        (code >= 131072 && code <= 262143)
-}
-
-// Closing punctuation, the prolonged sound mark, and small kana never start
-// a line.
-TextNoBreakBefore :: (point: u32) -> bool {
-    code: s32 = cast(s32)point
-    if code == 33 || code == 37 || code == 41 || code == 44 || code == 46 ||
-        code == 58 || code == 59 || code == 63 || code == 93 || code == 125 {
-        return true
-    }
-    if code == 12289 || code == 12290 || code == 12293 || code == 12297 ||
-        code == 12299 || code == 12301 || code == 12303 || code == 12305 ||
-        code == 12309 || code == 12539 || code == 12540 || code == 12443 ||
-        code == 12444 { return true }
-    if code == 65281 || code == 65289 || code == 65292 || code == 65294 ||
-        code == 65306 || code == 65307 || code == 65311 || code == 65341 ||
-        code == 65373 { return true }
-    if code == 12353 || code == 12355 || code == 12357 || code == 12359 ||
-        code == 12361 || code == 12387 || code == 12419 || code == 12421 ||
-        code == 12423 || code == 12430 || code == 12449 || code == 12451 ||
-        code == 12453 || code == 12455 || code == 12457 || code == 12483 ||
-        code == 12515 || code == 12517 || code == 12519 || code == 12526 ||
-        code == 12533 || code == 12534 { return true }
-    return false
-}
-
-// Opening brackets never end a line.
-TextNoBreakAfter :: (point: u32) -> bool {
-    code: s32 = cast(s32)point
-    return code == 40 || code == 91 || code == 123 || code == 12296 ||
-        code == 12298 || code == 12300 || code == 12302 || code == 12304 ||
-        code == 12308 || code == 65288 || code == 65339 || code == 65371
-}
-
-// Whether a line may break between two adjacent characters of one word.
-TextBreaksBetween :: (before: u32, after: u32) -> bool {
-    if !TextIdeographic(before) && !TextIdeographic(after) { return false }
-    return !TextNoBreakBefore(after) && !TextNoBreakAfter(before)
-}
-
-// Whitespace and line breaks delimit borrowed UTF-8 byte ranges, and so do
-// the places between characters where spaceless text may wrap. Optional
-// inline icon markers are used by richer text layouts.
-#program_export
-TextTokenNext :: (value: string, offset: s32, icons: bool) -> TextToken {
-    token: TextToken
-    if offset < 0 { offset = 0 }
-    while offset < cast(s32)value.count && TextIsSpace(value[offset]) {
-        offset += 1
-    }
-    token.start = offset
-    token.end = offset
-    token.next = offset
-    if offset >= cast(s32)value.count { return token }
-    token.valid = true
-    current: u8 = value[offset]
-    if current == cast(u8)10 || current == cast(u8)13 {
-        token.line_break = true
-        offset += 1
-        if current == cast(u8)13 && offset < cast(s32)value.count &&
-            value[offset] == cast(u8)10 { offset += 1 }
-    } else if icons && current == cast(u8)37 &&
-        offset + 1 < cast(s32)value.count && value[offset + 1] == cast(u8)105 {
-        token.icon = true
-        offset += 2
-    } else {
-        previous: u32 = cast(u32)0
-        previous_ideographic: bool = false
-        have_previous: bool = false
-        while offset < cast(s32)value.count {
-            current = value[offset]
-            if TextIsSpace(current) || current == cast(u8)10 ||
-                current == cast(u8)13 { break }
-            if icons && current == cast(u8)37 &&
-                offset + 1 < cast(s32)value.count &&
-                value[offset + 1] == cast(u8)105 { break }
-            // ASCII cannot introduce an ideographic break. Decode only the
-            // multibyte characters, and retain the previous classification so
-            // ordinary words do not repeat Unicode range checks per letter.
-            point: u32 = cast(u32)current
-            after := offset + 1
-            ideographic: bool = false
-            if current >= cast(u8)128 {
-                decoded := Decode(value, offset)
-                point = decoded.value
-                after = decoded.after
-                ideographic = TextIdeographic(point)
-            }
-            if have_previous && (previous_ideographic || ideographic) &&
-                !TextNoBreakBefore(point) && !TextNoBreakAfter(previous) {
-                break
-            }
-            previous = point
-            previous_ideographic = ideographic
-            have_previous = true
-            offset = after
-        }
-    }
-    token.end = offset
-    token.next = offset
-    return token
+MeasureNextTextLine :: (value: string, start: s32, max_width: float32,
+    wrap: TextSchema.Wrap, font: s32, typeface: string, style: TextGlyphStyle) -> Layout.Line {
+    request := TextMeasurement.{font, typeface, style}
+    measure: TextLineMeasure = MeasureTextLine
+    mode: Layout.Wrap = .TextWrapNone
+    if wrap == cast(TextSchema.Wrap)TextWrapAuto { mode = .TextWrapAuto }
+    else if wrap == cast(TextSchema.Wrap)TextWrapAnywhere { mode = .TextWrapAnywhere }
+    return Layout.NextLine(value, start, max_width, mode,
+        measure, request)
 }
 
 // A text laid out every frame measured each line again for every word in
@@ -160,7 +41,7 @@ TextLineCache :: struct {
     wrap: s32
     used: u64
     rows: s32
-    lines: [TEXT_LINE_ROWS]TextLinePlan
+    lines: [TEXT_LINE_ROWS]Layout.Line
 }
 text_line_cache: [TEXT_LINE_SLOTS]TextLineCache;
 text_line_clock: u64;
@@ -179,15 +60,15 @@ TextLineCacheMatches :: (entry: *TextLineCache, revision: u64, hash: u64, count:
         SameTextGlyphStyle(entry.glyph_style, glyph_style)
 }
 
-// Auto keeps oversized words intact and uses TextTokenNext's word boundaries.
+// Auto keeps oversized words intact and uses the core's word boundaries.
 // Anywhere instead wraps between complete extended grapheme clusters.
 #program_export
 NextTextLine :: (value: string, start: s32, max_width: float32,
     wrap: TextSchema.Wrap, font: s32, typeface: string,
-    glyph_style: TextGlyphStyle = TextGlyphStyle.{}) -> TextLinePlan {
+    glyph_style: TextGlyphStyle = TextGlyphStyle.{}) -> Layout.Line {
     revision := GlyphMetricsRevision()
     if revision == cast(u64)0 || start < 0 || start > cast(s32)value.count {
-        return NextTextLineUncached(value, start, max_width, wrap, font, typeface, glyph_style)
+        return MeasureNextTextLine(value, start, max_width, wrap, font, typeface, glyph_style)
     }
     hash := TextLineHash(value)
     face := TextLineHash(typeface)
@@ -222,7 +103,7 @@ NextTextLine :: (value: string, start: s32, max_width: float32,
         else { high = middle }
     }
     if low < entry.rows && entry.lines[low].start == start { return entry.lines[low] }
-    line := NextTextLineUncached(value, start, max_width, wrap, font, typeface, glyph_style)
+    line := MeasureNextTextLine(value, start, max_width, wrap, font, typeface, glyph_style)
     // Measuring can load a fallback font, which moves the revision.
     if entry.rows < TEXT_LINE_ROWS && GlyphMetricsRevision() == revision {
         row := entry.rows
@@ -236,87 +117,10 @@ NextTextLine :: (value: string, start: s32, max_width: float32,
     return line
 }
 
-NextTextLineUncached :: (value: string, start: s32, max_width: float32,
-    wrap: TextSchema.Wrap, font: s32, typeface: string, glyph_style: TextGlyphStyle) -> TextLinePlan {
-    line: TextLinePlan = .{.start = start, .end = start, .next = cast(s32)value.count + 1}
-    if start >= cast(s32)value.count { return line }
-    if wrap == cast(TextSchema.Wrap)TextWrapAnywhere && max_width > 0.0 {
-        offset := start
-        while offset < cast(s32)value.count {
-            after := Grapheme.Next(value, offset)
-            if value[offset] == cast(u8)10 || value[offset] == cast(u8)13 {
-                line.next = after
-                return line
-            }
-            width := GlyphWidth(value[start:after], font, typeface, glyph_style)
-            if line.end > start && cast(float32)width > max_width {
-                line.next = offset
-                return line
-            }
-            // Even a cluster wider than the bounds occupies a whole line,
-            // so arbitrarily narrow widths always make progress.
-            line.end = after
-            line.width = width
-            offset = after
-        }
-        return line
-    }
-    wrapped: bool = wrap == cast(TextSchema.Wrap)TextWrapAuto && max_width > 0.0
-    offset: s32 = start
-    while offset < cast(s32)value.count {
-        token: TextToken = TextTokenNext(value, offset, false)
-        if !token.valid { break }
-        if token.line_break {
-            line.next = token.next
-            if !wrapped && line.end > line.start { line.width = GlyphWidth(value[line.start:line.end], font, typeface, glyph_style) }
-            return line
-        }
-        candidate: string = value[line.start:token.end]
-        width: s32 = 0
-        if wrapped { width = GlyphWidth(candidate, font, typeface, glyph_style) }
-        if wrapped &&
-            line.end > line.start && cast(float32)width > max_width {
-            line.next = token.start
-            return line
-        }
-        line.end = token.end
-        line.width = width
-        offset = token.next
-    }
-    // Without wrapping, measure the complete line once, preserving the same
-    // token boundaries and trailing-space policy as wrapped text.
-    if !wrapped && line.end > line.start { line.width = GlyphWidth(value[line.start:line.end], font, typeface, glyph_style) }
-    return line
-}
-
-// The byte offset just after the first count characters of value. A
-// character is a grapheme cluster, so typed text never splits an accent, an
-// emoji or a multibyte letter. No characters end at 0; a count past the
-// last character ends at the whole text.
-#program_export
-TextCharactersEnd :: (value: string, count: s32) -> s32 {
-    end: s32 = 0
-    while count > 0 && end < cast(s32)value.count {
-        end = Grapheme.Next(value, end)
-        count -= 1
-    }
-    return end
-}
-
 #program_export
 TextDefaultLineGap :: (scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
     return cast(s32)(4.0 * scale)
-}
-
-#program_export
-TextLayoutTotalHeight :: (line_count: s32, drawn_line_height: s32,
-    line_gap: s32) -> s32 {
-    if line_count <= 0 { return 0 }
-    height := cast(s64)line_count * drawn_line_height + cast(s64)(line_count - 1) * line_gap
-    if height < 0 { return 0 }
-    if height > 2147483647 { return 2147483647 }
-    return cast(s32)height
 }
 
 #program_export

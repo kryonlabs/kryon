@@ -41,7 +41,17 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Build and register the Windows native host with `make install-windows-host`,
+  alongside its runtime DLLs, independently of the Linux host library.
+
 - Update only changed indexed mesh ranges during mixed CPU/GPU animation, and skip transparent pixel premultiplication.
+
+- Select `App.Run` hosts by code generator, then platform or explicit profile.
+  Terminal and headless pixmap profiles take priority over the desktop default
+  on both Linux and Windows; desktop suppression now applies to Windows too.
+
+- Move font-independent UTF-8 tokenization, word/grapheme wrapping and line-height arithmetic into Ziran `std/text_layout`; Kryon supplies measurement and font-revision caches.
+- Load portable host time only through optional motion modules. Static Hello World no longer imports the clock service.
 
 - Allow glTF updates to skip hidden non-shadow-casting primitives while preserving transform updates and posing newly shown meshes.
 

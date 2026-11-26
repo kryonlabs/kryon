@@ -50,6 +50,7 @@ in the application.
 | Profile backend | Ziran entry | Presentation |
 | --- | --- | --- |
 | `terminal` | `frames_terminal.zi` | 80 × 24 terminal cells via `terminal.zi` |
+| `pixmap` | `frames_pixmap.zi` | Explicit headless profile; renders two frames and writes the final PPM image |
 | `desktop` | `frames_desktop.zi` | SDL2 window with Cairo raster |
 | `canvas` | `frames_web.zi` | Canvas2D page with Emscripten and Asyncify |
 | `android` | app `src/main.zi` → `android_run.zi` | Android NativeActivity package with direct `ANativeWindow` pixel presentation |
@@ -59,6 +60,15 @@ Import `kryon/app` and call `App.Run(window, draw)`: C/Linux uses
 `kryon/host/desktop`, while C/Web uses `kryon/host/web`. Advanced hosts can
 import those named host packages directly. The desktop implementation uses
 `cairo_raster.zi` and `desktop_loop.zi`.
+
+Direct native Windows builds need a Windows host DLL even when compiled on
+Linux. With MinGW installed, run `make install-windows-host` from the Kryon
+checkout. This builds the current source and registers
+`kryon-desktop-windows.library` alongside the Linux provider, keeping its
+runtime DLLs together under `~/.local/lib/kryon/windows`. A PE executable
+needs its imported DLLs beside it or on the Windows DLL search path; the
+Ziran extension copies the required registered DLLs beside its PE output.
+
 After `PollDesktop()`, custom loops call `DesktopInputTake(session)` to transfer
 the next ordered editing action or printable-key/text run into that session.
 The returned key uses shared codes, including 320–329 for numeric-keypad

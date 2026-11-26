@@ -1,3 +1,4 @@
+TextLayout :: #import "std/text_layout";
 using Text :: #import "text_props";
 // Portable compositions can submit the same public widget contract to a
 // retained UI host. The host binds this effect to the ordinary implementation;
@@ -76,19 +77,19 @@ using Text :: #import "text_props";
         return range.end == text.count || (text[range.end] & cast(u8)192) != cast(u8)128
     }
 
-    TextLineCaret :: (props: Text.Props, prepared: PreparedText, line: TextLinePlan, at: s32) -> s32 {
+    TextLineCaret :: (props: Text.Props, prepared: PreparedText, line: TextLayout.Line, at: s32) -> s32 {
         return GlyphCaret(props.text[line.start:line.end], at - line.start,
             prepared.font, prepared.typeface, prepared.glyph_style)
     }
 
-    TextLineSpans :: (props: Text.Props, prepared: PreparedText, line: TextLinePlan,
+    TextLineSpans :: (props: Text.Props, prepared: PreparedText, line: TextLayout.Line,
         first: s32, last: s32) -> GlyphSpans {
         return GlyphSpansFor(props.text[line.start:line.end], first - line.start, last - line.start,
             prepared.font, prepared.typeface, prepared.glyph_style)
     }
 
     PaintTextEmphasis :: (session: Session, node: s32, props: Text.Props,
-        prepared: PreparedText, line: TextLinePlan, x: s32, y: s32, clip: Rectangle) {
+        prepared: PreparedText, line: TextLayout.Line, x: s32, y: s32, clip: Rectangle) {
         previous_end: s32 = 0
         for range: props.strong {
             if !TextRangeValid(props.text, range, previous_end) {
@@ -175,7 +176,7 @@ using Text :: #import "text_props";
     // characters in the link color and underlined, the others in the text's
     // color.
     PaintTextLineRuns :: (session: Session, node: s32, props: Text.Props,
-        prepared: PreparedText, line: TextLinePlan, x: s32, y: s32, clip: Rectangle) {
+        prepared: PreparedText, line: TextLayout.Line, x: s32, y: s32, clip: Rectangle) {
         origin := TextOrigin(props, prepared)
         value := props.text[line.start:line.end]
         at := line.start
@@ -224,7 +225,7 @@ using Text :: #import "text_props";
 
     #program_export
     PrepareText :: (props: Text.Props, face: TextFace) -> PreparedText {
-        lines: []TextLinePlan
+        lines: []TextLayout.Line
         return PrepareTextWithLines(props, face, lines)
     }
 
@@ -246,7 +247,7 @@ using Text :: #import "text_props";
     // The draw owns these borrowed plans only until its paint is queued.
     // Overflow keeps the ordinary line-at-a-time layout path.
     PrepareTextWithLines :: (props: Text.Props, face: TextFace,
-        lines: []TextLinePlan) -> PreparedText {
+        lines: []TextLayout.Line) -> PreparedText {
         prepared: PreparedText
         prepared.bounds = props.bounds
         prepared.align = ifx props.align != .TextAlignStart then cast(s32)props.align else face.align
@@ -273,7 +274,7 @@ using Text :: #import "text_props";
         start: s32 = 0
         maximum: s32 = 0
         while start <= (cast(s32)props.text.count) {
-            line: TextLinePlan = NextTextLine(props.text, start,
+            line: TextLayout.Line = NextTextLine(props.text, start,
                 props.bounds.width, prepared.wrap, prepared.font,
                 prepared.typeface, prepared.glyph_style)
             if prepared.line_count < lines.count { lines[prepared.line_count] = line }
@@ -282,7 +283,7 @@ using Text :: #import "text_props";
             start = line.next
         }
         prepared.bounds.width = TextExtent(props.bounds.width, cast(float32)maximum)
-        height: s32 = TextLayoutTotalHeight(prepared.line_count,
+        height: s32 = TextLayout.TotalHeight(prepared.line_count,
             prepared.line_height, prepared.line_gap)
         prepared.bounds.height = TextExtent(props.bounds.height, cast(float32)height)
         return prepared
@@ -307,7 +308,7 @@ using Text :: #import "text_props";
     #program_export
     TextHiddenLines :: (props: Text.Props, prepared: PreparedText) -> s32 {
         if props.bounds.height <= 0.0 { return 0 }
-        total_height: s32 = TextLayoutTotalHeight(prepared.line_count,
+        total_height: s32 = TextLayout.TotalHeight(prepared.line_count,
             prepared.line_height, prepared.line_gap)
         y: s32 = cast(s32)prepared.bounds.y +
         cast(s32)TextAlignmentOffset(prepared.bounds.height,
@@ -328,13 +329,13 @@ using Text :: #import "text_props";
     #program_export
     PaintTextLines :: (session: Session, node: s32, props: Text.Props,
         prepared: PreparedText) {
-        lines: []TextLinePlan
+        lines: []TextLayout.Line
         PaintTextLinesWithPlans(session, node, props, prepared, lines, GlyphMetricsRevision())
     }
 
     PaintTextLinesWithPlans :: (session: Session, node: s32, props: Text.Props,
-        prepared: PreparedText, lines: []TextLinePlan, revision: u64) {
-        total_height: s32 = TextLayoutTotalHeight(prepared.line_count,
+        prepared: PreparedText, lines: []TextLayout.Line, revision: u64) {
+        total_height: s32 = TextLayout.TotalHeight(prepared.line_count,
             prepared.line_height, prepared.line_gap)
         y: s32 = cast(s32)prepared.bounds.y +
         cast(s32)TextAlignmentOffset(prepared.bounds.height,
@@ -343,12 +344,12 @@ using Text :: #import "text_props";
         // its typed characters, so no word moves while it is typed.
         typed_end: s32 = cast(s32)props.text.count
         if props.typing {
-            typed_end = TextCharactersEnd(props.text, props.typed)
+            typed_end = TextLayout.CharactersEnd(props.text, props.typed)
         }
         start: s32 = 0
         line_index: s32 = 0
         while start <= (cast(s32)props.text.count) {
-            line: TextLinePlan
+            line: TextLayout.Line
             if line_index < lines.count && GlyphMetricsRevision() == revision {
                 line = lines[line_index]
             } else {
@@ -473,13 +474,13 @@ using Text :: #import "text_props";
             }
             if props.bounds.height <= 0.0 {
                 sized := PrepareText(props, face)
-                props.bounds.height = cast(float32)TextLayoutTotalHeight(sized.line_count,
+                props.bounds.height = cast(float32)TextLayout.TotalHeight(sized.line_count,
                     sized.line_height, sized.line_gap)
             }
         } else if props.bounds.width == 0.0 && props.bounds.height == 0.0 {
             props.bounds = TreeRootBounds(session)
         }
-        lines: [8]TextLinePlan
+        lines: [8]TextLayout.Line
         revision := GlyphMetricsRevision()
         prepared: PreparedText = PrepareTextWithLines(props, face, lines[:])
         node: s32 = -1
@@ -567,7 +568,7 @@ using Text :: #import "text_props";
     }
 
     TextFirstLineY :: (props: Text.Props, prepared: PreparedText) -> s32 {
-        height := TextLayoutTotalHeight(prepared.line_count, prepared.line_height, prepared.line_gap)
+        height := TextLayout.TotalHeight(prepared.line_count, prepared.line_height, prepared.line_gap)
         return cast(s32)prepared.bounds.y + cast(s32)TextAlignmentOffset(
             prepared.bounds.height, cast(float32)height, cast(s32)props.vertical_align)
     }
