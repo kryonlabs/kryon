@@ -1,0 +1,77 @@
+// Markdown image references for embedded editors. Hosts supply image bytes and
+// asset keys; parsing and source ranges belong to the reusable document module.
+Preview :: #import "kryon/markdown_preview";
+#import "std/text"
+Reference :: struct { span: Preview.ImageSpan; destination: string; alt: string; }
+References :: struct { items: [Preview.PREVIEW_IMAGES]Reference; count: s32; }
+Escaped :: (text: string, at: s32) -> bool {
+    before:=at-1; count: s32
+    while before>=0 && text[before]==92 { count+=1; before-=1 }
+    return count%2==1
+}
+Scan :: (text: string) -> References {
+    result: References; at: s32; fence: u8; fence_size: s32
+    while at<cast(s32)text.count && result.count<Preview.PREVIEW_IMAGES {
+        if at==0 || text[at-1]==10 {
+            end:=Preview.LineEnd(text,at); first:=at
+            while first<end && (text[first]==32 || text[first]==9) { first+=1 }
+            if first-at<=3 && first+2<end && (text[first]==96 || text[first]==126) && text[first+1]==text[first] && text[first+2]==text[first] {
+                run:=first; while run<end && text[run]==text[first] { run+=1 }
+                if fence==0 { fence=text[first]; fence_size=run-first }
+                else if fence==text[first] && run-first>=fence_size {
+                    tail:=run; while tail<end && (text[tail]==32 || text[tail]==9 || text[tail]==13) { tail+=1 }
+                    if tail==end { fence=0 }
+                }
+                at=end+1; continue
+            }
+        }
+        if fence!=0 { at=Preview.LineEnd(text,at)+1; continue }
+        if text[at]==96 && !Escaped(text,at) {
+            run:=at; while run<cast(s32)text.count && text[run]==96 { run+=1 }
+            length:=run-at; scan:=run; closed: s32=-1
+            while scan<cast(s32)text.count {
+                if text[scan]!=96 { scan+=1; continue }
+                finish:=scan; while finish<cast(s32)text.count && text[finish]==96 { finish+=1 }
+                if finish-scan==length { closed=finish; break }; scan=finish
+            }
+            at=ifx closed>=0 then closed else run; continue
+        }
+        if at+3>=cast(s32)text.count || text[at]!=33 || text[at+1]!=91 || Escaped(text,at) { at+=1; continue }
+        end:=Preview.LineEnd(text,at); close:=at+2
+        while close<end && (text[close]!=93 || Escaped(text,close)) { close+=1 }
+        if close+2>=end || text[close+1]!=40 { at+=1; continue }
+        first:=close+2; last:=first; finish: s32=-1
+        if text[first]==60 {
+            first+=1; last=first
+            while last<end && text[last]!=62 { last+=1 }
+            if last+1<end && text[last+1]==41 { finish=last+2 }
+        } else {
+            depth: s32=1
+            while last<end {
+                if !Escaped(text,last) {
+                    if text[last]==40 { depth+=1 }
+                    if text[last]==41 { depth-=1; if depth==0 { finish=last+1; break } }
+                }
+                last+=1
+            }
+        }
+        if finish<0 || last<=first { at+=1; continue }
+        result.items[result.count]=.{.{true,at,finish,Preview.LineStart(text,at),end,close},text[first:last],text[at+2:close]}
+        result.count+=1; at=finish
+    }
+    return result
+}
+// Inserted images occupy their own line and remain ordinary portable Markdown.
+Embed :: (destination: string, alt: string = "Image") -> string {
+    out: Vec(u8); BuilderPrint(*out,"\n![")
+    for byte: alt { if byte==91 || byte==93 || byte==92 { BuilderPrint(*out,"\\") }; if byte!=10 && byte!=13 { VecPush(out,byte) } }
+    BuilderPrint(*out,"](<")
+    for byte: destination {
+        if byte==60 { BuilderPrint(*out,"%%3C") }
+        else if byte==62 { BuilderPrint(*out,"%%3E") }
+        else if byte==10 { BuilderPrint(*out,"%%0A") }
+        else if byte==13 { BuilderPrint(*out,"%%0D") }
+        else { VecPush(out,byte) }
+    }
+    BuilderPrint(*out,">)\n"); return BuilderFinish(out)
+}

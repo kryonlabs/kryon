@@ -66,3 +66,15 @@ retained controls from it while input continues using the committed tree.
 | Renderer performance benchmark | [PERFORMANCE.md](PERFORMANCE.md#renderer-performance-benchmark) |
 | HTML and CSS mapping | [HTML_TO_KRYON.md](HTML_TO_KRYON.md) |
 | Runnable HTML and CSS example | [HTML_EXAMPLES.md](HTML_EXAMPLES.md) |
+
+## Embedded Markdown documents
+
+Import `kryon/markdown_editor` for a WYSIWYG Markdown text area, and
+`kryon/markdown_images` for reusable image-reference scanning and insertion.
+`markdown_images.Scan(text)` returns borrowed destinations, alt text and
+`markdown_preview.ImageSpan` byte ranges, including inline images, escaped
+labels, balanced URL parentheses and angle-bracket destinations. Code spans
+and fenced code are excluded. `Embed(destination, alt)` creates an escaped
+image line. The application owns uploads, authenticated downloads and decoded
+assets; pass resolved spans in `MarkdownEditor.Props.images` and matching image
+blocks in `area.blocks`. Unresolved references remain editable Markdown.
