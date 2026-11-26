@@ -28,4 +28,3 @@ PaintElevationForRole :: (session: Session, node: s32, bounds: Rectangle,
             0.0, 4, Color.{0, 0, 0, cast(u8)(cast(float32)alpha * opacity)})
     }
 }
-
