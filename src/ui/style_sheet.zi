@@ -95,6 +95,10 @@ StyleBoxData :: struct {
     radial_size: s32
     radial_cx: float32
     radial_cy: float32
+    // Explicit radii: 0 takes the size keyword above, a positive value is
+    // px, and a negative one is a fraction of the box's width or height.
+    radial_rx: float32
+    radial_ry: float32
     // The gradient line's direction for a CSS angle (sin, -cos: 0 degrees
     // points up), or a corner: 1 top right, 2 bottom right, 3 bottom left,
     // 4 top left, which follows the box's diagonal.
@@ -1001,6 +1005,13 @@ ApplyBoxFields :: (target: *StyleBoxData, value: *StyleBoxData, fields: u32) {
         target.radial_size = value.radial_size
         target.radial_cx = value.radial_cx
         target.radial_cy = value.radial_cy
+        target.radial_rx = value.radial_rx
+        target.radial_ry = value.radial_ry
+        // A radial gradient keeps its stops in the box's shared gradient
+        // stop storage; its first and last colors stay on the face.
+        target.gradient_count = value.gradient_count
+        target.gradient_stops = value.gradient_stops
+        target.gradient_colors = value.gradient_colors
     }
     if (fields & cast(u32)StyleBoxOutlineWidth) != 0 { target.outline_width = value.outline_width }
     if (fields & cast(u32)StyleBoxOutlineOffset) != 0 { target.outline_offset = value.outline_offset }

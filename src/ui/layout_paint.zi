@@ -5,6 +5,7 @@
 #import "layout_paint_slot"
 #import "paint_primitives"
 #import "session"
+#import "std/math"
 #import "style"
 #import "style_sheet"
 #import "surface"
@@ -28,7 +29,9 @@ LayoutPaintBox :: (session: Session, bounds: Rectangle, face: StyleData, box: St
     }
     if StyleHasField(face, cast(u32)StyleBackground) {
         top := ColorFromPacked(Opacity(face.background, opacity))
-        if StyleHasField(face, cast(u32)StyleBackgroundEnd) && (box.fields & cast(u32)StyleBoxGradient) != 0 {
+        if StyleHasField(face, cast(u32)StyleBackgroundEnd) && (box.fields & cast(u32)StyleBoxRadial) != 0 {
+            LayoutPaintRadial(session, bounds, face, box, opacity)
+        } else if StyleHasField(face, cast(u32)StyleBackgroundEnd) && (box.fields & cast(u32)StyleBoxGradient) != 0 {
             LayoutPaintGradient(session, bounds, face, box, opacity)
         } else if StyleHasField(face, cast(u32)StyleBackgroundEnd) {
             paint_primitives.gradient(session, -1, bounds, top,
@@ -156,6 +159,142 @@ LayoutPaintGradient :: (session: Session, bounds: Rectangle, face: StyleData, bo
             lower := LayoutGradientAt(*stops, (along + (y1 - cy) * dy) / length + 0.5)
             paint_primitives.gradient(session, -1, Rectangle.{cast(float32)left, cast(float32)y0,
                 cast(float32)(right - left), cast(float32)(y1 - y0)}, upper, lower)
+        }
+    }
+}
+
+// A radial gradient paints the box as horizontal bands, each exact along
+// its center line: bands are about 2px tall (up to 256), split at the stop
+// radii's crossings, with each ring between stops cut at most an eighth of
+// a stop span wide. Beyond the ending shape the last stop's color extends.
+LayoutPaintRadial :: (session: Session, bounds: Rectangle, face: StyleData, box: StyleBoxData, opacity: float32) {
+    if bounds.width <= 0.0 || bounds.height <= 0.0 { return }
+    stops: LayoutGradientStops
+    stops.count = ifx box.gradient_count >= 2 && box.gradient_count <= 6 then box.gradient_count else 2
+    last := stops.count - 1
+    for index: 0..last {
+        stops.positions[index] = cast(float64)box.gradient_stops[index]
+        packed := face.background_end
+        if index == 0 { packed = face.background }
+        else if index < last { packed = box.gradient_colors[index - 1] }
+        stops.colors[index] = ColorFromPacked(Opacity(packed, opacity))
+    }
+    w := cast(float64)bounds.width
+    h := cast(float64)bounds.height
+    cx := cast(float64)bounds.x + cast(float64)box.radial_cx * w
+    cy := cast(float64)bounds.y + cast(float64)box.radial_cy * h
+    // The radii: explicit ones win, otherwise the extent keyword measures
+    // the side and corner distances, as CSS sizes its ending shape. An
+    // ellipse's corner sizes run the closest or farthest side distances out
+    // to the corner, sqrt(2) about the box's center; a circle takes the
+    // corner's straight distance or the nearer or farther side distance.
+    rx := 0.0
+    ry := 0.0
+    if box.radial_rx < 0.0 { rx = -cast(float64)box.radial_rx * w }
+    else if box.radial_rx > 0.0 { rx = cast(float64)box.radial_rx }
+    if box.radial_ry < 0.0 { ry = -cast(float64)box.radial_ry * h }
+    else if box.radial_ry > 0.0 { ry = cast(float64)box.radial_ry }
+    left := cx - cast(float64)bounds.x
+    right := cast(float64)bounds.x + w - cx
+    top := cy - cast(float64)bounds.y
+    bottom := cast(float64)bounds.y + h - cy
+    if rx <= 0.0 || ry <= 0.0 {
+        near_x := ifx left < right then left else right
+        near_y := ifx top < bottom then top else bottom
+        far_x := ifx left > right then left else right
+        far_y := ifx top > bottom then top else bottom
+        corner := 1.4142135623730951
+        if box.radial_shape == 1 {
+            radius := 0.0
+            if box.radial_size == 1 { radius = Sqrt(near_x * near_x + near_y * near_y) }
+            else if box.radial_size == 2 { radius = ifx near_x < near_y then near_x else near_y }
+            else if box.radial_size == 3 { radius = ifx far_x > far_y then far_x else far_y }
+            else { radius = Sqrt(far_x * far_x + far_y * far_y) }
+            if rx <= 0.0 { rx = radius }
+            if ry <= 0.0 { ry = radius }
+        } else {
+            if box.radial_size == 1 { rx = near_x * corner; ry = near_y * corner }
+            else if box.radial_size == 2 { rx = near_x; ry = near_y }
+            else if box.radial_size == 3 { rx = far_x; ry = far_y }
+            else { rx = far_x * corner; ry = far_y * corner }
+        }
+    }
+    if rx < 0.01 { rx = 0.01 }
+    if ry < 0.01 { ry = 0.01 }
+    // The ring boundaries between 0 and 1: each stop span cut into steps of
+    // at most an eighth, ending at 1.
+    ring: [48]float64
+    ring_count: s32 = 0
+    for index: 0..last - 1 {
+        from := stops.positions[index]
+        span := stops.positions[index + 1] - from
+        if span <= 0.0 { continue }
+        steps := cast(s32)(span * 8.0 + 0.999)
+        if steps > 8 { steps = 8 }
+        for step: 0..steps - 1 {
+            if ring_count >= 47 { break }
+            ring[ring_count] = from + span * cast(float64)step / cast(float64)steps
+            ring_count += 1
+        }
+    }
+    ring[ring_count] = 1.0
+    ring_count += 1
+    bands := cast(s32)(h / 2.0 + 0.999)
+    if bands < 1 { bands = 1 }
+    if bands > 256 { bands = 256 }
+    for band: 0..bands - 1 {
+        band_top := LayoutRound(cast(float64)bounds.y + h * cast(float64)band / cast(float64)bands)
+        band_bottom := LayoutRound(cast(float64)bounds.y + h * cast(float64)(band + 1) / cast(float64)bands)
+        if band == bands - 1 { band_bottom = cast(float64)bounds.y + h }
+        if band_bottom <= band_top { continue }
+        v := ((band_top + band_bottom) / 2.0 - cy) / ry
+        distance := LayoutAbs(v)
+        band_rect := Rectangle.{bounds.x, cast(float32)band_top, bounds.width, cast(float32)(band_bottom - band_top)}
+        if distance >= 1.0 {
+            paint_primitives.fill(session, -1, band_rect, 0.0, 4, stops.colors[last])
+            continue
+        }
+        // Inward on the left: beyond the ending shape one color, then each
+        // ring between two boundaries, then the core holding the center.
+        edge := cast(float64)bounds.x
+        inner := 1.0
+        for index: 0..ring_count - 1 {
+            at := ring[ring_count - 1 - index]
+            if at < distance { break }
+            half := rx * Sqrt(at * at - v * v)
+            crossing := cx - half
+            if crossing > edge + 0.01 {
+                color := LayoutGradientAt(*stops, (at + inner) / 2.0)
+                paint_primitives.fill(session, -1, Rectangle.{cast(float32)edge, cast(float32)band_top,
+                    cast(float32)(crossing - edge), cast(float32)(band_bottom - band_top)}, 0.0, 4, color)
+            }
+            edge = crossing
+            inner = at
+        }
+        core_half := rx * Sqrt(inner * inner - v * v)
+        if core_half > 0.01 {
+            color := LayoutGradientAt(*stops, (distance + inner) / 2.0)
+            paint_primitives.fill(session, -1, Rectangle.{cast(float32)(cx - core_half), cast(float32)band_top,
+                cast(float32)(core_half * 2.0), cast(float32)(band_bottom - band_top)}, 0.0, 4, color)
+        }
+        // Out again on the right.
+        edge = cx + core_half
+        for index: 0..ring_count - 1 {
+            at := ring[index]
+            if at <= inner { continue }
+            half := rx * Sqrt(at * at - v * v)
+            crossing := cx + half
+            if crossing > edge + 0.01 {
+                color := LayoutGradientAt(*stops, (at + ring[index - 1]) / 2.0)
+                paint_primitives.fill(session, -1, Rectangle.{cast(float32)edge, cast(float32)band_top,
+                    cast(float32)(crossing - edge), cast(float32)(band_bottom - band_top)}, 0.0, 4, color)
+            }
+            edge = crossing
+        }
+        if cast(float64)bounds.x + w > edge + 0.01 {
+            paint_primitives.fill(session, -1, Rectangle.{cast(float32)edge, cast(float32)band_top,
+                cast(float32)(cast(float64)bounds.x + w - edge), cast(float32)(band_bottom - band_top)},
+                0.0, 4, stops.colors[last])
         }
     }
 }
