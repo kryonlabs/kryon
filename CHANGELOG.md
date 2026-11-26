@@ -41,6 +41,26 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Complete native flex layout: `flex-direction` with reversal, `wrap` and
+  `wrap-reverse` lines, `flex-grow`/`flex-shrink`/`flex-basis` (px, rem and
+  percentage bases), `justify-content`, `align-items`, `align-content` and
+  `align-self` including baseline, `order`, and min/max sizing constraints
+  on flex items.
+
+- Match structural sibling selectors (`:first-child`, `:last-child`,
+  `:only-child`, `:nth-child()` and the of-type family) against the frame's
+  tree: early positions match while the frame builds, late positions read
+  the committed tree and converge on the next frame after a structure
+  change.
+
+- Parse and paint `radial-gradient()` backgrounds on layout containers:
+  circle and ellipse shapes, extent keywords, explicit radii, `at`
+  positions, and two to six percentage stops.
+
+- Place the gallery demo scenes in measured Layout containers instead of
+  manual `GalleryBounds` rectangles, keeping explicit rectangles for
+  overlays and control canvases.
+
 - Let Android hosts load embedded bundle pictures through the lazy, size-aware picture cache.
 
 - Decode Android thumbnails with bounded bitmap sampling before final reduction,

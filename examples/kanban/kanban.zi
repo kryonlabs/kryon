@@ -113,24 +113,24 @@ Frame :: (frame: App.Frame) {
     config.min_width = 130.0; config.gap = 10.0
     config.background = StyleTokenColor("surface")
     config.card_background = StyleTokenColor("button")
-    frame := Board.BeginKanban(session, *board_cell, config, bounds, Board.KanbanInput.{.disabled = disabled})
+    kanban := Board.BeginKanban(session, *board_cell, config, bounds, Board.KanbanInput.{.disabled = disabled})
     titles: [3]string = .{"To do", "Doing", "Done"}
     labels: [3]string = .{"Explore", "Try widgets", "Build"}
     for lane: cast(s32)0..2 {
         count: s32
         for index: cast(s32)0..2 { if card_lanes[index] == lane { count += 1 } }
-        column := Board.KanbanColumn(session, *board_cell, frame, lane, titles[lane], count, count * 64)
+        column := Board.KanbanColumn(session, *board_cell, kanban, lane, titles[lane], count, count * 64)
         if column.visible {
             for index: cast(s32)0..2 {
                 if card_lanes[index] == lane {
-                    card := Board.KanbanCard(session, *board_cell, frame, *column, index, cast(u64)(700 + index), 64.0)
+                    card := Board.KanbanCard(session, *board_cell, kanban, *column, index, cast(u64)(700 + index), 64.0)
                     Text.Draw(session, Text.Props.{.bounds = .{card.x + 8.0, card.y + 8.0, card.width - 16.0, card.height - 16.0}, .text = labels[index], .size = 14})
                 }
             }
         }
         Board.EndKanbanColumn(session, column)
     }
-    Board.EndKanban(session, frame)
+    Board.EndKanban(session, kanban)
     pointer := PointerSample(session)
     if !disabled {
         gesture := Board.PointerKanban(*board_cell, bounds, 3, .{pointer.x, pointer.y}, pointer.down, pointer.pressed, pointer.released)

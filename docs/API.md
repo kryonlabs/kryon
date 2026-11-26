@@ -65,6 +65,7 @@ retained controls from it while input continues using the committed tree.
 | AVIF compression and RGBA previews | [BACKENDS.md](BACKENDS.md#avif-compression-and-rgba-previews) |
 | Renderer performance benchmark | [PERFORMANCE.md](PERFORMANCE.md#renderer-performance-benchmark) |
 | HTML and CSS mapping | [HTML_TO_KRYON.md](HTML_TO_KRYON.md) |
+| Measured flex/grid layout and the native CSS subset | [HTML_TO_KRYON.md](HTML_TO_KRYON.md) |
 | Runnable HTML and CSS example | [HTML_EXAMPLES.md](HTML_EXAMPLES.md) |
 
 ## Embedded Markdown documents

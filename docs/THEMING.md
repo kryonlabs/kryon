@@ -19,6 +19,10 @@ independently of palette selection.
 
 Typed style rules and optional CSS remain available for application-specific
 colors and control styling, using the same components and interaction behavior.
+Optional CSS also covers structural selectors (`:first-child`, `:last-child`,
+`:nth-child()` and their of-type family), complete flexbox layout and
+`linear-gradient()`/`radial-gradient()` fills; the exact native subset and the
+remaining browser-only features are listed in [HTML_TO_KRYON.md](HTML_TO_KRYON.md).
 
 Plain `Text.Draw` uses the built-in foreground and accent without importing the
 full theme. Installing a theme through `kryon/Theme` connects its current
