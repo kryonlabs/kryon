@@ -46,10 +46,26 @@ AlignItems :: enum {
     AlignCenter
     AlignEnd
     AlignStretch
+    // CSS baseline: items with a measured baseline share it, other items
+    // of the line keep their own cross placement.
+    AlignBaseline
 }
 using FlexDirection;
 using JustifyContent;
 using AlignItems;
+
+// CSS align-content: how wrapped lines (or the single line of a row or
+// column) distribute the cross space left over after their natural sizes.
+AlignContent :: enum {
+    AlignContentStretch :: 0
+    AlignContentStart
+    AlignContentCenter
+    AlignContentEnd
+    AlignContentSpaceBetween
+    AlignContentSpaceAround
+    AlignContentSpaceEvenly
+}
+using AlignContent;
 
 
 FlexProps :: struct {
@@ -57,10 +73,14 @@ FlexProps :: struct {
     direction: FlexDirection
     justify_content: JustifyContent
     align_items: AlignItems
+    // Cross-axis distribution of the lines; unset is AlignContentStretch.
+    align_content: AlignContent
     gap: s32
     padding: s32
     cross_gap: s32
     wrap: bool
+    // `wrap-reverse`: the lines stack bottom to top.
+    wrap_reverse: bool
     reverse: bool
 }
 
@@ -78,6 +98,17 @@ FlexItem :: struct {
     class_name: s32
     grow_override: bool
     shrink_override: bool
+    // Placement order inside the container; a nonzero order wins over the
+    // style's. Earlier siblings precede on ties.
+    order: s32
+    // The item's first-baseline ascent from its top; at most zero places
+    // its bottom edge on the line's baseline.
+    baseline: float32
+    // Main-axis clamps in logical pixels; at most zero is CSS `none`.
+    min_width: float32
+    max_width: float32
+    min_height: float32
+    max_height: float32
     // The basis is a percentage of the container's inner main size.
     basis_percent: bool
 }
@@ -89,6 +120,13 @@ FlexPlacement :: struct {
     grow: float32
     shrink: float32
     align: AlignItems
+    // The clamped main sizes: bounds.width never leaves them.
+    min_main: float32
+    max_main: float32
+    baseline: float32
+    order: s32
+    // The caller's item index; placement permutes and restores it.
+    slot: s32
 }
 
 FlexCursor :: struct {
@@ -286,16 +324,39 @@ FlexBasis :: (item: FlexItem, horizontal: bool, main: float32) -> float32 {
     return FlexNonnegative(ifx horizontal then item.width else item.height)
 }
 
-// During distribution, each box's width holds its main extent even in a column.
-// Freeze items at zero, then redistribute the space to items that can shrink.
+// During distribution, each box's width holds its main extent even in a
+// column. Growth shares the free space in rounds, freezing an item at its
+// maximum so the rest absorb what it leaves; shrinkage freezes an item at
+// its minimum and redistributes over the items that can still shrink.
 FlexDistribute :: (boxes: []FlexPlacement, free: float32,
     total: float32, grow: float32, shrink: float32, weight: float32) -> float32 {
     if free > 0.0 && grow > 0.0 {
-        unit := free / (ifx grow > 1.0 then grow else 1.0)
-        for i: cast(s32)0..cast(s32)boxes.count - 1 {
-            boxes[i].bounds.width += boxes[i].grow * unit
+        rounds: s32 = 0
+        while rounds < 4 {
+            rounds += 1
+            unit := free / (ifx grow > 1.0 then grow else 1.0)
+            if unit <= 0.0 { break }
+            frozen: bool = false
+            for i: cast(s32)0..cast(s32)boxes.count - 1 {
+                if boxes[i].grow <= 0.0 { continue }
+                next := boxes[i].bounds.width + boxes[i].grow * unit
+                if boxes[i].max_main > 0.0 && next > boxes[i].max_main {
+                    free -= boxes[i].max_main - boxes[i].bounds.width
+                    boxes[i].bounds.width = boxes[i].max_main
+                    grow -= boxes[i].grow
+                    boxes[i].grow = 0.0
+                    frozen = true
+                }
+            }
+            if !frozen {
+                for i: cast(s32)0..cast(s32)boxes.count - 1 {
+                    if boxes[i].grow > 0.0 { boxes[i].bounds.width += boxes[i].grow * unit }
+                }
+                return total + unit * grow
+            }
+            if free <= 0.0 || grow <= 0.0 { break }
         }
-        return total + unit * grow
+        return total
     }
     if free >= 0.0 || weight <= 0.0 { return total }
 
@@ -307,12 +368,16 @@ FlexDistribute :: (boxes: []FlexPlacement, free: float32,
         for i: cast(s32)0..cast(s32)boxes.count - 1 {
             basis := boxes[i].bounds.width
             factor := boxes[i].shrink
-            if basis > 0.0 && factor > 0.0 && 1.0 + factor * unit <= 0.0 {
+            scaled := 1.0 + factor * unit
+            if basis > 0.0 && factor > 0.0 && (scaled <= 0.0 || basis * scaled < boxes[i].min_main) {
+                floor := boxes[i].min_main
+                drop := basis - floor
                 weight -= basis * factor
                 shrink -= factor
-                free += basis
-                total -= basis
-                boxes[i].bounds.width = 0.0
+                free += drop
+                total -= drop
+                boxes[i].bounds.width = floor
+                boxes[i].shrink = 0.0
                 frozen = true
             }
         }
@@ -329,8 +394,48 @@ FlexDistribute :: (boxes: []FlexPlacement, free: float32,
 
 KeepFlexItem :: (item: FlexItem) -> FlexItem { return item }
 
-// Place a measured batch using caller-owned storage. The result is the natural
-// cross extent including padding, or -1 when there is insufficient storage.
+// One wrapped line: the sorted item range it covers and its cross geometry.
+FlexLineSpan :: struct {
+    top: float32
+    cross: float32
+    baseline: float32
+    start: s32
+    end: s32
+}
+
+// Wrapped lines beyond this fold into the last one; a measured batch of a
+// page never comes close.
+FlexLineLimit :: 64
+
+// The natural cross extent of a line and its baseline: the tallest item
+// sets the cross, a baseline item's ascent sets the baseline, and a
+// baseline item must fit below the shared baseline.
+FlexLineMeasure :: (boxes: []FlexPlacement, line: *FlexLineSpan) {
+    line.cross = 0.0
+    line.baseline = 0.0
+    for i: line.start..line.end - 1 {
+        extent := boxes[i].bounds.height
+        if extent > line.cross { line.cross = extent }
+        ascent := boxes[i].baseline
+        if ascent <= 0.0 { ascent = extent }
+        if boxes[i].align == cast(AlignItems)AlignBaseline && ascent > line.baseline {
+            line.baseline = ascent
+        }
+    }
+    for i: line.start..line.end - 1 {
+        if boxes[i].align != cast(AlignItems)AlignBaseline { continue }
+        ascent := boxes[i].baseline
+        if ascent <= 0.0 { ascent = boxes[i].bounds.height }
+        fit := line.baseline + boxes[i].bounds.height - ascent
+        if fit > line.cross { line.cross = fit }
+    }
+}
+
+// Place a measured batch using caller-owned storage. The result is the
+// natural cross extent including padding, or -1 when there is insufficient
+// storage. Items are placed in `order` first and document order on ties,
+// wrapped into lines when `wrap` asks, distributed per line on the main
+// axis, and stacked on the cross axis by `align_content`.
 #program_export
 PlaceFlexItems :: (props: FlexProps, items: []FlexItem, boxes: []FlexPlacement,
     resolve: FlexItemResolver = KeepFlexItem) -> float32 {
@@ -341,55 +446,125 @@ PlaceFlexItems :: (props: FlexProps, items: []FlexItem, boxes: []FlexPlacement,
     available_cross := ifx horizontal then metrics.content.height else metrics.content.width
     main_gap := cast(float32)metrics.gap
     cross_gap := FlexNonnegative(cast(float32)props.cross_gap)
-    cross_used: float32 = 0.0
-    start: s32 = 0
     count := cast(s32)items.count
+    if count == 0 { return cast(float32)metrics.padding * 2.0 }
     natural_main: float32 = 0.0
     definite_main := ifx horizontal || props.bounds.height > 0.0 then available else 0.0
     for i: cast(s32)0..count - 1 {
         item := items[i]
         if resolve != null { item = resolve(item) }
         basis := FlexBasis(item, horizontal, definite_main)
+        min_main := FlexNonnegative(ifx horizontal then item.min_width else item.min_height)
+        max_main: float32 = 0.0
+        limit := ifx horizontal then item.max_width else item.max_height
+        if limit > 0.0 { max_main = limit }
+        if max_main > 0.0 && basis > max_main { basis = max_main }
+        if basis < min_main { basis = min_main }
         extent := FlexNonnegative(ifx horizontal then item.height else item.width)
         boxes[i] = .{.bounds = .{0.0, 0.0, basis, extent},
             .grow = FlexNonnegative(item.grow), .shrink = FlexNonnegative(item.shrink),
-            .align = ifx item.has_align_self then item.align_self else props.align_items}
+            .align = ifx item.has_align_self then item.align_self else props.align_items,
+            .min_main = min_main, .max_main = max_main,
+            .baseline = FlexNonnegative(item.baseline), .order = item.order, .slot = i}
         natural_main += basis
     }
-    if !horizontal && props.bounds.height <= 0.0 && count > 0 {
+    // Placement order: `order` first, earlier siblings on ties.
+    for i: cast(s32)1..count - 1 {
+        box := boxes[i]
+        j := i - 1
+        while j >= 0 && (boxes[j].order > box.order ||
+            (boxes[j].order == box.order && boxes[j].slot > box.slot)) {
+            boxes[j + 1] = boxes[j]
+            j -= 1
+        }
+        boxes[j + 1] = box
+    }
+    if !horizontal && props.bounds.height <= 0.0 {
         available = natural_main + main_gap * cast(float32)(count - 1)
         metrics.content.height = available
     }
+    lines: [FlexLineLimit]FlexLineSpan
+    line_count: s32 = 0
+    start: s32 = 0
     while start < count {
         end := start
         total: float32 = 0.0
-        cross: float32 = 0.0
+        while end < count {
+            basis := boxes[end].bounds.width
+            if props.wrap && end > start && total + basis + main_gap * cast(float32)(end - start) > available { break }
+            total += basis
+            end += 1
+        }
+        if line_count >= FlexLineLimit {
+            lines[FlexLineLimit - 1].end = end
+            FlexLineMeasure(boxes, *lines[FlexLineLimit - 1])
+        } else {
+            lines[line_count] = .{.start = start, .end = end}
+            FlexLineMeasure(boxes, *lines[line_count])
+            line_count += 1
+        }
+        start = end
+    }
+    natural_cross: float32 = 0.0
+    for line: 0..line_count - 1 {
+        if line > 0 { natural_cross += cross_gap }
+        natural_cross += lines[line].cross
+    }
+    extra := available_cross - natural_cross
+    if extra < 0.0 { extra = 0.0 }
+    content := props.align_content
+    if content == cast(AlignContent)AlignContentStretch && extra > 0.0 {
+        share := extra / cast(float32)line_count
+        for line: 0..line_count - 1 { lines[line].cross += share }
+    }
+    top: float32 = 0.0
+    between: float32 = cross_gap
+    if content == cast(AlignContent)AlignContentCenter {
+        top = extra / 2.0
+    } else if content == cast(AlignContent)AlignContentEnd {
+        top = extra
+    } else if content == cast(AlignContent)AlignContentSpaceBetween && line_count > 1 {
+        between = cross_gap + extra / cast(float32)(line_count - 1)
+    } else if content == cast(AlignContent)AlignContentSpaceAround {
+        around := extra / cast(float32)line_count
+        top = around / 2.0
+        between = cross_gap + around
+    } else if content == cast(AlignContent)AlignContentSpaceEvenly {
+        around := extra / (cast(float32)line_count + 1.0)
+        top = around
+        between = cross_gap + around
+    }
+    for line: 0..line_count - 1 {
+        lines[line].top = top
+        top += lines[line].cross + between
+    }
+    if props.wrap_reverse && line_count > 1 {
+        block := lines[line_count - 1].top + lines[line_count - 1].cross
+        base := lines[0].top
+        for line: 0..line_count - 1 {
+            lines[line].top = base + block - lines[line].top - lines[line].cross
+        }
+    }
+    for line: 0..line_count - 1 {
+        span := lines[line]
+        line_bounds := metrics.content
+        if horizontal { line_bounds.y += span.top; line_bounds.height = span.cross }
+        else { line_bounds.x += span.top; line_bounds.width = span.cross }
+        total: float32 = 0.0
         grow: float32 = 0.0
         shrink: float32 = 0.0
         weight: float32 = 0.0
-        while end < count {
-            item := boxes[end]
-            basis := item.bounds.width
-            if props.wrap && end > start && total + basis + main_gap * cast(float32)(end - start) > available { break }
-            total += basis
-            grow += item.grow
-            shrink += item.shrink
-            weight += item.shrink * basis
-            extent := item.bounds.height
-            if extent > cross { cross = extent }
-            end += 1
+        for i: span.start..span.end - 1 {
+            total += boxes[i].bounds.width
+            grow += boxes[i].grow
+            shrink += boxes[i].shrink
+            weight += boxes[i].shrink * boxes[i].bounds.width
         }
-        if start > 0 { cross_used += cross_gap }
-        line_cross := cross
-        if !props.wrap && available_cross > 0.0 { line_cross = available_cross }
-        line := metrics.content
-        if horizontal { line.y += cross_used; line.height = line_cross }
-        else { line.x += cross_used; line.width = line_cross }
-        free := available - main_gap * cast(float32)(end - start - 1) - total
-        adjusted := FlexDistribute(boxes[start:end], free, total, grow, shrink, weight)
-        cursor := BeginFlexCursor(FlexProps.{.bounds = line, .direction = props.direction,
-            .justify_content = props.justify_content, .gap = metrics.gap}, end - start, adjusted)
-        for i: start..end - 1 {
+        free := available - main_gap * cast(float32)(span.end - span.start - 1) - total
+        adjusted := FlexDistribute(boxes[span.start:span.end], free, total, grow, shrink, weight)
+        cursor := BeginFlexCursor(FlexProps.{.bounds = line_bounds, .direction = props.direction,
+            .justify_content = props.justify_content, .gap = metrics.gap}, span.end - span.start, adjusted)
+        for i: span.start..span.end - 1 {
             cursor.align_items = boxes[i].align
             main := boxes[i].bounds.width
             extent := boxes[i].bounds.height
@@ -398,15 +573,28 @@ PlaceFlexItems :: (props: FlexProps, items: []FlexItem, boxes: []FlexPlacement,
             cursor = FlexStep(cursor, width, height)
             box := cursor.item
             if props.reverse {
-                if horizontal { box.x = line.x + line.width - (box.x - line.x) - box.width }
-                else { box.y = line.y + line.height - (box.y - line.y) - box.height }
+                if horizontal { box.x = line_bounds.x + line_bounds.width - (box.x - line_bounds.x) - box.width }
+                else { box.y = line_bounds.y + line_bounds.height - (box.y - line_bounds.y) - box.height }
+            }
+            if horizontal && boxes[i].align == cast(AlignItems)AlignBaseline {
+                ascent := boxes[i].baseline
+                if ascent <= 0.0 { ascent = extent }
+                box.y = line_bounds.y + span.baseline - ascent
             }
             boxes[i].bounds = box
         }
-        cross_used += cross
-        start = end
     }
-    return cross_used + cast(float32)metrics.padding * 2.0
+    // Undo the order permutation: the caller reads its own item indices.
+    for i: cast(s32)0..count - 1 {
+        target := i
+        while boxes[target].slot != i { target += 1 }
+        if target != i {
+            swap := boxes[i]
+            boxes[i] = boxes[target]
+            boxes[target] = swap
+        }
+    }
+    return natural_cross + cast(float32)metrics.padding * 2.0
 }
 
 CenteredBands :: struct {

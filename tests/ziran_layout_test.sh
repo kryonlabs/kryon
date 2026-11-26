@@ -44,6 +44,60 @@ CheckBatch :: () -> bool {
     cross = PlaceFlexItems(props, items[:2], boxes[:])
     if cross != 20.0 || boxes[0].bounds.width != 0.0 || boxes[1].bounds.width != 40.0 { return false }
 
+    // `order` places items first and restores the caller's indices.
+    props = .{.bounds = .{0.0, 0.0, 300.0, 0.0}, .gap = 10}
+    items[0] = .{.width = 40.0, .height = 20.0}
+    items[1] = .{.width = 40.0, .height = 20.0, .order = -1}
+    items[2] = .{.width = 40.0, .height = 20.0, .order = 5}
+    cross = PlaceFlexItems(props, items[:3], boxes[:3])
+    if cross != 20.0 || boxes[0].bounds.x != 50.0 || boxes[1].bounds.x != 0.0 ||
+        boxes[2].bounds.x != 100.0 { return false }
+
+    // A growing item stops at its max-width; the rest take what it leaves.
+    props.bounds.width = 300.0
+    items[0] = .{.width = 100.0, .height = 20.0, .grow = 1.0, .max_width = 120.0}
+    items[1] = .{.width = 100.0, .height = 20.0, .grow = 1.0}
+    cross = PlaceFlexItems(props, items[:2], boxes[:3])
+    if cross != 20.0 || boxes[0].bounds.width != 120.0 || boxes[1].bounds.width != 170.0 ||
+        boxes[1].bounds.x != 130.0 { return false }
+
+    // A shrinking item freezes at its min-width.
+    props.bounds.width = 100.0
+    props.gap = 0
+    items[0] = .{.width = 100.0, .height = 20.0, .shrink = 4.0, .min_width = 40.0}
+    items[1] = .{.width = 60.0, .height = 20.0}
+    cross = PlaceFlexItems(props, items[:2], boxes[:3])
+    if cross != 20.0 || boxes[0].bounds.width != 40.0 || boxes[1].bounds.width != 60.0 ||
+        boxes[1].bounds.x != 40.0 { return false }
+
+    // align-content spreads wrapped lines over the leftover cross space.
+    props = .{.bounds = .{0.0, 0.0, 100.0, 100.0}, .cross_gap = 10, .wrap = true,
+        .align_items = .AlignStart, .align_content = .AlignContentSpaceBetween}
+    items[0] = .{.width = 40.0, .height = 20.0}
+    items[1] = .{.width = 40.0, .height = 30.0}
+    items[2] = .{.width = 40.0, .height = 12.0}
+    cross = PlaceFlexItems(props, items[:3], boxes[:3])
+    if cross != 52.0 || boxes[0].bounds.y != 0.0 || boxes[1].bounds.y != 0.0 ||
+        boxes[2].bounds.y != 88.0 { return false }
+    props.align_content = .AlignContentCenter
+    cross = PlaceFlexItems(props, items[:3], boxes[:3])
+    if cross != 52.0 || boxes[2].bounds.y != 64.0 { return false }
+
+    // wrap-reverse stacks the lines bottom to top.
+    props = .{.bounds = .{0.0, 0.0, 100.0, 100.0}, .cross_gap = 10, .wrap = true,
+        .wrap_reverse = true, .align_items = .AlignStart, .align_content = .AlignContentStart}
+    cross = PlaceFlexItems(props, items[:3], boxes[:3])
+    if cross != 52.0 || boxes[0].bounds.y != 22.0 || boxes[2].bounds.y != 0.0 { return false }
+
+    // Baseline items share their highest ascent.
+    props = .{.bounds = .{0.0, 0.0, 300.0, 60.0}, .align_items = .AlignBaseline}
+    items[0] = .{.width = 40.0, .height = 30.0, .baseline = 10.0}
+    items[1] = .{.width = 40.0, .height = 20.0, .baseline = 12.0}
+    items[2] = .{.width = 40.0, .height = 8.0}
+    cross = PlaceFlexItems(props, items[:3], boxes[:3])
+    if cross != 32.0 || boxes[0].bounds.y != 2.0 || boxes[1].bounds.y != 0.0 ||
+        boxes[2].bounds.y != 4.0 { return false }
+
     props = .{.bounds = .{10.0, 20.0, 70.0, 100.0}, .direction = .FlexColumn, .reverse = true,
         .padding = 5, .gap = 4, .align_items = .AlignStretch, .justify_content = .JustifyEnd}
     items[0] = .{.height = 20.0}

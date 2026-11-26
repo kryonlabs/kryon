@@ -628,6 +628,25 @@ ResolveLayoutFlexItem :: (item: FlexItem) -> FlexItem {
         item.align_self = cast(AlignItems)flex.align_self
         item.has_align_self = true
     }
+    if item.order == 0 && (flex.fields & cast(u32)StyleFlexOrder) != 0 {
+        item.order = flex.order
+    }
+    box: StyleBoxData
+    ResolveIndexedStyle(StyleData.{}, facts, StyleStateAny(), false, null, cast(u32)0,
+        *box, cast(u32)StyleBoxMinWidth | cast(u32)StyleBoxMaxWidth | cast(u32)StyleBoxMaxHeight)
+    if item.min_width <= 0.0 && (box.fields & cast(u32)StyleBoxMinWidth) != 0 {
+        item.min_width = box.min_width
+    }
+    if item.max_width <= 0.0 && (box.fields & cast(u32)StyleBoxMaxWidth) != 0 && box.max_width > 0.0 {
+        item.max_width = box.max_width
+    }
+    if item.max_height <= 0.0 && (box.fields & cast(u32)StyleBoxMaxHeight) != 0 && box.max_height > 0.0 {
+        item.max_height = box.max_height
+    }
+    if item.min_height <= 0.0 {
+        face := ResolveIndexedStyle(StyleData.{}, facts, StyleStateAny(), true, null, cast(u32)0)
+        if StyleHasField(face, cast(u32)StyleMinHeight) { item.min_height = face.min_height }
+    }
     return item
 }
 
@@ -666,7 +685,8 @@ MeasuredFlex :: (session: Session, props: PropsModule.Props, kind: s32,
     content := metrics.content
     cross := PlaceFlexItems(FlexProps.{.bounds = content, .direction = cast(FlexDirection)(direction & 1),
         .reverse = direction >= 2, .justify_content = cast(JustifyContent)style.justify_content,
-        .align_items = align, .wrap = style.wrap, .gap = result.gap,
+        .align_items = align, .align_content = cast(AlignContent)style.align_content,
+        .wrap = style.wrap, .wrap_reverse = style.wrap_reverse, .gap = result.gap,
         .cross_gap = ifx horizontal then row_gap else column_gap}, items, boxes, ResolveLayoutFlexItem)
     if result.bounds.height <= 0.0 {
         height := cross

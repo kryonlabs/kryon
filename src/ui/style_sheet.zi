@@ -59,6 +59,9 @@ StyleBoxField :: enum {
     StyleBoxOriginY :: 16777216
     StyleBoxTransformMotion :: 33554432
     StyleBoxTranslate :: 67108864
+    // A radial gradient: its shape, size keywords and center point join
+    // the box's linear gradient stops.
+    StyleBoxRadial :: 134217728
 }
 using StyleBoxField;
 
@@ -85,6 +88,13 @@ StyleBoxData :: struct {
     border_colors: [4]u32
     outline_width: float32
     outline_offset: float32
+    // The radial gradient's shape (0 ellipse, 1 circle) and size keyword
+    // (0 farthest-corner, 1 closest-corner, 2 closest-side, 3
+    // farthest-side); its center as fractions of the box, 0.5 the middle.
+    radial_shape: s32
+    radial_size: s32
+    radial_cx: float32
+    radial_cy: float32
     // The gradient line's direction for a CSS angle (sin, -cos: 0 degrees
     // points up), or a corner: 1 top right, 2 bottom right, 3 bottom left,
     // 4 top left, which follows the box's diagonal.
@@ -114,7 +124,7 @@ StyleBoxData :: struct {
 }
 
 // Every box field but text-align, which only Text reads.
-StyleBoxContainerFields :: 655343
+StyleBoxContainerFields :: 134873071
 // Transform, rotate, scale, translate, their origin and their transition;
 // then only the four that set a transform.
 StyleBoxTransformFields :: 133169152
@@ -132,6 +142,12 @@ StyleFlexField :: enum {
     StyleFlexGrow :: 32
     StyleFlexShrink :: 64
     StyleFlexSelf :: 128
+    // A Row or Column's line distribution on the cross axis.
+    StyleFlexAlignContent :: 256
+    // `flex-wrap: wrap-reverse` stacks wrapped lines bottom to top.
+    StyleFlexWrapReverse :: 512
+    // An item's placement order inside its container.
+    StyleFlexOrder :: 1024
 }
 using StyleFlexField;
 
@@ -140,19 +156,25 @@ StyleFlexData :: struct {
     // 0/1 select row/column, 2/3 reverse their main direction.
     direction: s32
     wrap: bool
+    wrap_reverse: bool
     justify_content: s32
     align_items: s32
+    // 0 stretch (the default), 1 start, 2 center, 3 end, 4 space-between,
+    // 5 space-around, 6 space-evenly.
+    align_content: s32
     // Negative basis and self-alignment represent auto.
     basis: float32
     grow: float32
     shrink: float32
     align_self: s32
+    // The item's placement order; earlier siblings precede on ties.
+    order: s32
     // StyleFlexBasis when the basis is a percentage of the container's size.
     percent: u32
 }
 
-StyleFlexContainerFields :: 15
-StyleFlexItemFields :: 240
+StyleFlexContainerFields :: 783
+StyleFlexItemFields :: 1264
 
 // Leave room for app and user rules after a complete shared style pack.
 StyleRuleCapacity :: 512
@@ -915,13 +937,23 @@ ResolveInstalledFlexItem :: (facts: StyleFacts) -> StyleFlexData {
 
 ApplyFlexFields :: (target: *StyleFlexData, value: *StyleFlexData, fields: u32) {
     if (fields & cast(u32)StyleFlexDirection) != 0 { target.direction = value.direction }
-    if (fields & cast(u32)StyleFlexWrap) != 0 { target.wrap = value.wrap }
     if (fields & cast(u32)StyleFlexJustify) != 0 { target.justify_content = value.justify_content }
     if (fields & cast(u32)StyleFlexAlign) != 0 { target.align_items = value.align_items }
     if (fields & cast(u32)StyleFlexBasis) != 0 { target.basis = value.basis }
     if (fields & cast(u32)StyleFlexGrow) != 0 { target.grow = value.grow }
     if (fields & cast(u32)StyleFlexShrink) != 0 { target.shrink = value.shrink }
     if (fields & cast(u32)StyleFlexSelf) != 0 { target.align_self = value.align_self }
+    if (fields & cast(u32)StyleFlexWrap) != 0 {
+        target.wrap = value.wrap
+        // A wrap value clears a wrap-reverse set earlier in the cascade.
+        target.wrap_reverse = false
+    }
+    if (fields & cast(u32)StyleFlexWrapReverse) != 0 {
+        target.wrap = true
+        target.wrap_reverse = true
+    }
+    if (fields & cast(u32)StyleFlexAlignContent) != 0 { target.align_content = value.align_content }
+    if (fields & cast(u32)StyleFlexOrder) != 0 { target.order = value.order }
     target.percent = (target.percent & ~fields) | (value.percent & fields)
     target.fields |= fields
 }
@@ -955,6 +987,12 @@ ApplyBoxFields :: (target: *StyleBoxData, value: *StyleBoxData, fields: u32) {
         target.gradient_count = value.gradient_count
         target.gradient_stops = value.gradient_stops
         target.gradient_colors = value.gradient_colors
+    }
+    if (fields & cast(u32)StyleBoxRadial) != 0 {
+        target.radial_shape = value.radial_shape
+        target.radial_size = value.radial_size
+        target.radial_cx = value.radial_cx
+        target.radial_cy = value.radial_cy
     }
     if (fields & cast(u32)StyleBoxOutlineWidth) != 0 { target.outline_width = value.outline_width }
     if (fields & cast(u32)StyleBoxOutlineOffset) != 0 { target.outline_offset = value.outline_offset }
