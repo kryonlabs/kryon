@@ -201,6 +201,13 @@ Call :: (module: string, function: string, arguments: []HostValue, result: *Host
 
 #program_export
 main :: () -> s32 {
+    if !HostTypeSame("plot__band_chart_props.BandChartProps", "band_chart_props.BandChartProps") ||
+    !HostTypeSame("[]plot__band_chart_props.BandChartPoint", "[]band_chart_props.BandChartPoint") ||
+    !HostTypeSame("band_chart_props.BandChartBand", "plot__band_chart_props.BandChartBand") ||
+    HostTypeSame("plot__other_band_chart_props.BandChartProps", "band_chart_props.BandChartProps") ||
+    HostTypeSame("[2]plot__band_chart_props.BandChartPoint", "[]band_chart_props.BandChartPoint") {
+        return 121
+    }
     if HostTypeSame("Text.Props", "Image.Props") ||
     HostTypeSame("p0123456789abcdef_text_props.Props", WidgetTypeImageProps) ||
     HostTypeSame("p0123456789abcdef_title_bar_props.Props", "pfedcba9876543210_title_bar_props.Props") {

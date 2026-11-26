@@ -28,6 +28,25 @@ HostTypeFlatSame :: (qualified: string, plain: string) -> bool {
     return qualified_at == qualified.count && plain_at == plain.count
 }
 
+// A dependency import names its defining module as alias__module. Strip only
+// that explicit namespace separator; underscores inside a module stay intact.
+HostTypeModuleSame :: (actual: string, expected: string) -> bool {
+    if ModuleName(actual, expected) || ModuleName(expected, actual) {
+        return true
+    }
+    for index: cast(s64)1..actual.count - 3 {
+        if actual[index] == cast(u8)95 && actual[index + 1] == cast(u8)95 {
+            return actual[index + 2:] == expected
+        }
+    }
+    for index: cast(s64)1..expected.count - 3 {
+        if expected[index] == cast(u8)95 && expected[index + 1] == cast(u8)95 {
+            return expected[index + 2:] == actual
+        }
+    }
+    return false
+}
+
 HostFieldAt :: (value: HostValue, position: s32, name: string) -> s32 {
     count := cast(s32)value.field_count
     if position < count && value.fields[position].name != null &&
@@ -87,7 +106,7 @@ HostTypeSame :: (actual: string, expected: string) -> bool {
         if actual[actual_leaf:] != expected[expected_leaf:] { return false }
         actual_module := actual[actual_at:actual_leaf - 1]
         expected_module := expected[expected_at:expected_leaf - 1]
-        return ModuleName(actual_module, expected_module) || ModuleName(expected_module, actual_module)
+        return HostTypeModuleSame(actual_module, expected_module)
     }
     if actual[actual_leaf:] == expected[expected_leaf:] { return true }
     if actual_qualified {
