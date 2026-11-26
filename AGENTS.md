@@ -74,8 +74,9 @@ Xvfb/Xephyr display, as the test targets above do.
   temporary Kryon/Ziran checkouts; change dependencies upstream first.
 - The git index is shared and often stale, so `git status` lists hundreds of
   false edits. Check `git diff HEAD -- <file>` before touching a file, skip
-  files another lane is editing, and stage only your own files through a
-  private `GIT_INDEX_FILE` built from HEAD; never `git add -A`.
+  files another lane is editing, and stage only your own paths
+  (`git add <paths>`, then `git commit -- <paths>` when others staged files);
+  never `git add -A` and never a private `GIT_INDEX_FILE`.
 - Commit as Waozi <waozi@proton.me> with no AI attribution. Keep ordinary
   changes in `Unreleased`; release only on explicit request.
 - Put one-off experiment builds in `build/scratch/<name>/`; `make clean-scratch` removes idle output.

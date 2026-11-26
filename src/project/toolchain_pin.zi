@@ -9,9 +9,9 @@ KryonZiranRef :: "4413456221aa5a9bc00a368762e9e50aaf6e7b6b";
 // built on one Kryon, so an app pins the same one; `kryon upgrade` moves an
 // app to this set.
 KryonGit :: "https://git.waozi.xyz/kryonlabs/kryon.git";
-KryonRef :: "ddb7c1940b662abebb55d6b70177f550e94971c3";
+KryonRef :: "c2fb38c4fb10f99210500b1aa3e1eb98a0b171c8";
 KryonCssGit :: "https://git.waozi.xyz/kryonlabs/css.git";
-KryonCssRef :: "2be03f3826bd31fcde3ace00bc1234bdbd34b5c4";
+KryonCssRef :: "dde6411bc0503d2b0d4aa69d0a31c3b581c3ebd5";
 
 // A manifest table's git and ref, as `kryon init` and `kryon upgrade` set them.
 TablePin :: struct {

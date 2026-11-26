@@ -11,12 +11,12 @@ ref = "4413456221aa5a9bc00a368762e9e50aaf6e7b6b"
 
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
-ref = "ddb7c1940b662abebb55d6b70177f550e94971c3"
+ref = "c2fb38c4fb10f99210500b1aa3e1eb98a0b171c8"
 
 # Look presets (classic, lightfield, material), pinned with the same Kryon.
 [dependencies.css]
 git = "https://git.waozi.xyz/kryonlabs/css.git"
-ref = "2be03f3826bd31fcde3ace00bc1234bdbd34b5c4"
+ref = "dde6411bc0503d2b0d4aa69d0a31c3b581c3ebd5"
 
 [install]
 bin = "{{name}}"
