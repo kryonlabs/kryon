@@ -16,7 +16,6 @@ binding=kryon/text_input_platform:SetPlatformTextKeyboardVisible=text_input_plat
     "$work/ir/text_input_platform_behavior.zir"
 cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 0
-test "$("$ziran" run "$work/saved.zx")" = 0
 
 for target in c; do
     "$ziran" build --target="$target" --root "$repo/tests" \

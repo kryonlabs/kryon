@@ -87,9 +87,23 @@ BundleEditorEnd :: (session: Session, x: float32, y: float32, pressed: bool) {
         bundle_editor_cursor, bundle_editor_anchor, bundle_editor_flags)
 }
 
+BundleEditorClose :: (session: Session) {
+    if bundle_editor_owner.slot != session.slot || bundle_editor_owner.epoch != session.epoch { return }
+    for at: 0..bundle_editor_count - 1 { bundle_editor_bytes[at] = 0 }
+    bundle_editor_owner = Session.{}
+    bundle_editor_identity = 0
+    bundle_editor_count = 0
+    bundle_editor_cursor = 0
+    bundle_editor_anchor = 0
+    bundle_editor_flags = 0
+    // FrameBegin clears staging before the host can report a closed window;
+    // revoke the last committed host editor even when staging is empty.
+    TextHostEditorPresent(0, "", 0, 0, 0)
+}
+
 BundleEditorInstall :: () -> bool {
     TextHostInstall(BundleEditorPresent)
-    TextHostUseFrames(BundleEditorBegin, BundleEditorEnd)
+    TextHostUseFrames(BundleEditorBegin, BundleEditorEnd, BundleEditorClose)
     return true
 }
 

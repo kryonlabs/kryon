@@ -23,6 +23,7 @@ solid_png(output / 'assets/red.png', 32, 32, (230, 30, 40, 255))
 (app / 'app.zi').unlink(missing_ok=True)
 shutil.copyfile(ROOT / 'tests/zx/app.tsx', app / 'app.tsx')
 env = {**os.environ, 'ZIRAN_ROOT': str(ZIRAN_ROOT)}
+env['HARMONY_DESKTOP_RECOVERY'] = '0'
 for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
     env.pop(key, None)
 paths = ['--project']
@@ -54,10 +55,12 @@ print(result.stdout, end='')
 # Exercise the actual VM/native-editor exchange through source and saved IR.
 editor_root = output / 'editor-app'
 kryon_test_project(editor_root)
-(editor_root / 'src/app.zi').write_text((ROOT / 'tests/zx/editor_app.zi').read_text())
+(editor_root / 'src/app.zi').unlink(missing_ok=True)
+shutil.copyfile(ROOT / 'tests/zx/editor_app.tsx', editor_root / 'src/app.tsx')
+shutil.copyfile(ROOT / 'tests/zx/editor_state.zi', editor_root / 'src/editor_state.zi')
 editor_bundle = output / 'editor.zx'
 subprocess.run([str(ZIRAN), 'bundle', *paths, '--entry', 'app:main',
-                '-o', str(editor_bundle), str(editor_root / 'src/app.zi')],
+                '-o', str(editor_bundle), str(editor_root / 'src/app.tsx')],
                cwd=editor_root, env=env, check=True, timeout=120)
 editor_ir = output / 'editor-ir'
 editor_c = output / 'editor-c'

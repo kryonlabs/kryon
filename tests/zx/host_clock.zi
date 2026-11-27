@@ -1,0 +1,17 @@
+// Loaded by the native fixture hosts: the player's platform hook for a
+// caller-owned pixel surface. Answers the guest's monotonic clock with the
+// host's real time and accepts the already-validated frame cursor (no OS
+// cursor exists on a caller-owned surface); other calls stay unhandled.
+// Module names arrive packaged, so matching goes through bundle_names like
+// the production player.
+FixturePlatform :: (context: *void, module: *u8, function: *u8,
+    args: *HostValue, count: s32, result: *HostValue) -> s32 {
+    if Names.ModuleName(TextFromCString(module), "clock") && count == 0 &&
+    TextFromCString(function) == "ClockMillisecondsHost" {
+        result.kind = HostInteger
+        result.integer = MonotonicMilliseconds()
+        return 1
+    }
+    if TextFromCString(function) == "BundleFrameCursorHost" { return 1 }
+    return 0
+}

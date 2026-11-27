@@ -2,26 +2,37 @@ Player :: #import "bundle_player";
 #import "std/bundle_host"
 #import "std/byte_text_linux"
 #import "std/file"
+#import "std/timer_linux"
+Names :: #import "bundle_names";
 #import "text_request"
 #import "hosted_values"
 using HostValueKind;
+#load "host_clock.zi";
 Probe :: struct {
     identity: u64; bytes: [128]u8; count: s32; cursor: s32; anchor: s32;
     flags: s32; pending: bool; requests: s32; revocations: s32
 }
 Scene :: struct {
     probe: Probe
+    peer: *Player.Player
     step: s32
     stage: s32
+    request: bool
     failed: s32
 }
 Present :: (context: *void, identity: u64, value: string, cursor: s32, anchor: s32, flags: s32) {
     probe := cast(*Probe)context
-    probe.identity = identity; probe.count = cast(s32)value.count
+    probe.flags = flags
+    // Keep the last owned snapshot after revocation; no editor remains active.
+    if identity == 0 {
+        if probe.identity != 0 { probe.revocations += 1 }
+        probe.identity = 0
+        return
+    }
+    probe.identity = identity
+    probe.count = cast(s32)value.count
     for at: 0..value.count - 1 { probe.bytes[at] = value[at] }
     probe.cursor = cursor; probe.anchor = anchor
-    if identity == 0 { probe.revocations += 1 }
-    probe.flags = flags
 }
 Take :: (context: *void, identity: u64, output: []u8) -> TextRequest {
     probe := cast(*Probe)context
@@ -36,19 +47,31 @@ Take :: (context: *void, identity: u64, output: []u8) -> TextRequest {
 }
 // The bundle owns its loop: each wait call checks the frame that just
 // finished and scripts the next one. Stage 1 drives press, release, re-tap
-// and foreign presses; stage 2 lets a pending request reach the bundle;
-// stage 3 renders one frame for the isolation check.
+// and foreign presses. Re-entry mounts a fresh editor: stages 2 and 3
+// focus it before testing requests or disposing its peer.
 Wait :: (context: *void, input: *Player.Input) -> bool {
     scene := cast(*Scene)context
     input.width = 320; input.height = 600
     step := scene.step
     scene.step += 1
-    if scene.stage == 2 {
-        if step >= 3 { input.closed = true; return false }
-        return true
-    }
-    if scene.stage == 3 {
-        if step >= 1 { input.closed = true; return false }
+    if scene.stage == 2 || scene.stage == 3 {
+        input.pressed = false; input.released = false
+        if step == 1 {
+            input.x = 80.0; input.y = 40.0; input.down = true; input.pressed = true
+        } else if step == 2 {
+            input.x = 80.0; input.y = 40.0; input.down = false; input.released = true
+            // Submit after the pointer release; the next frame applies the
+            // native selection without a click moving its cursor again.
+            scene.probe.pending = scene.request
+            scene.request = false
+        } else if step == 3 && scene.stage == 3 {
+            before := scene.probe.identity
+            if before == 0 { scene.failed = 11 }
+            Player.PlayerClose(scene.peer)
+            if scene.probe.identity != before { scene.failed = 11 }
+        } else if step >= 5 {
+            input.closed = true; return false
+        }
         return true
     }
     if step == 0 { return true }
@@ -102,8 +125,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
     source := BytesFromPointer(descriptor.data, cast(u64)data.count)
     first: Player.Player; second: Player.Player
     defer { Player.PlayerClose(*first); Player.PlayerClose(*second) }
-    if !Player.PlayerOpen(*first, source, first.platform, null) ||
-    !Player.PlayerOpen(*second, source, second.platform, null) { return 3 }
+    if !Player.PlayerOpen(*first, source, FixturePlatform, null) ||
+    !Player.PlayerOpen(*second, source, FixturePlatform, null) { return 3 }
     a: Scene; b: Scene
     Player.PlayerUseTextEditor(*first, Present, Take, cast(*void)(*a.probe))
     Player.PlayerUseTextEditor(*second, Present, Take, cast(*void)(*b.probe))
@@ -113,23 +136,27 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if !Player.PlayerRun(*second) { return 5 }
     if a.failed != 0 { return a.failed }
     if b.failed != 0 { return b.failed }
+    if a.probe.identity != 0 || b.probe.identity != 0 ||
+    a.probe.revocations != 1 || b.probe.revocations != 1 { return 11 }
     a.probe.pending = true
     stale: [1]HostValue = .[HostScalar("u64", cast(s64)(a.probe.identity + 1))]
     answer: HostValue
     if Player.PlayerCall(cast(*void)(*first), HostTextData("frames_zx"), HostTextData("BundleTextRequestHost"),
     *stale[0], 1, *answer) != 1 || answer.fields[4].value.integer != 0 || !a.probe.pending { return 8 }
+    a.probe.pending = false; a.request = true
     a.stage = 2; a.step = 0; b.stage = 2; b.step = 0
     first.closed = false; second.closed = false
     if !Player.PlayerRun(*first) { return 9 }
     if !Player.PlayerRun(*second) { return 9 }
     if TextView(a.probe.bytes[:a.probe.count]) != "水😀XYZ" || a.probe.cursor != 3 || a.probe.anchor != 7 || a.probe.requests != 1 ||
     TextView(b.probe.bytes[:b.probe.count]) != "start水😀" || b.probe.requests != 0 { return 10 }
-    before := b.probe.identity
-    Player.PlayerClose(*first)
-    if a.probe.identity != 0 || b.probe.identity != before { return 11 }
+    if a.probe.identity != 0 || b.probe.identity != 0 ||
+    a.probe.revocations != 2 || b.probe.revocations != 2 { return 11 }
     b.stage = 3; b.step = 0
+    b.peer = *first
     second.closed = false
-    if !Player.PlayerRun(*second) || b.probe.identity != before { return 11 }
+    if !Player.PlayerRun(*second) || b.failed != 0 || b.probe.identity != 0 ||
+    b.probe.revocations != 3 { return 11 }
     print("Native VM editor UTF8 selection, copied snapshots, stale request and foreign-session rejection, committed re-tap and per-player isolation passed\n")
     return 0
 }

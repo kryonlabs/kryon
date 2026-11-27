@@ -18,9 +18,10 @@ TextHostEnd :: #type (session: Session, x: float32, y: float32, pressed: bool) -
 text_host_begin: TextHostBegin;
 text_host_end: TextHostEnd;
 
-TextHostUseFrames :: (begin: TextHostBegin, end: TextHostEnd) {
+TextHostUseFrames :: (begin: TextHostBegin, end: TextHostEnd, dispose: TextEditingSession) {
     text_host_begin = begin
     text_host_end = end
+    TextEditingUseDisposal(dispose)
 }
 
 TextHostFrameBegin :: (session: Session) {

@@ -39,6 +39,13 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
+- Revoke the portable native editor when its owning session closes. Keep
+  selection and snapshots isolated between players, including re-entry and
+  closing a peer while another editor remains active. Author the existing
+  editor fixture in TSX with native state; retain source and saved-IR checks.
+- Remove duplicate VM runs of byte-identical composition-input and
+  text-keyboard bundles while retaining both frontend paths and native/Go checks.
+
 - Author the hosted surface, animated chart, loading preview, image demo and
   time-picker demo in TSX. Keep native state, plotting, scheduling and
   capture/input harnesses in Ziran; use the existing behavior checks.

@@ -1,4 +1,4 @@
-App :: #import "kryon/app";
+// Owned editor storage and the existing low-level session-isolation assertions.
 TextField :: #import "kryon/text_field";
 #import "kryon/geometry"
 #import "kryon/key_input"
@@ -9,6 +9,7 @@ TextField :: #import "kryon/text_field";
 #import "kryon/text_request"
 #import "kryon/widget_kind"
 using WidgetKind;
+
 foreign_session: Session;
 failed: s32;
 bytes: [64]u8;
@@ -16,22 +17,30 @@ length: s32;
 cursor: s32;
 anchor: s32;
 started: bool;
-Frame :: (frame: App.Frame) {
-    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
-    viewport := frame.viewport
-    if !started {
-        initial := "start水😀"
-        for at: 0..initial.count - 1 { bytes[at] = initial[at] }
-        length = cast(s32)initial.count; cursor = length; anchor = length
-        foreign_session = SessionOpen()
-        started = true
-    }
-    current: [64]u8
-    for at: 0..length - 1 { current[at] = bytes[at] }
-    typed: [64]u8
-    input := TextFieldInputFor(KeyboardTake(session), KeyboardModifiers(session), TypedTextTake(session, typed[:]))
-    field := TextField.Draw(session, TextField.Props.{.key = 1, .bounds = .{20.0, 20.0, 280.0, 44.0},
-        .value = TextView(current[:length]), .cursor = cursor, .anchor = anchor, .max_bytes = 64, .input = input})
+
+EditorFrame :: struct { current: [64]u8; typed: [64]u8 }
+
+Init :: () {
+    if started { return }
+    initial := "start水😀"
+    for at: 0..initial.count - 1 { bytes[at] = initial[at] }
+    length = cast(s32)initial.count; cursor = length; anchor = length
+    foreign_session = SessionOpen()
+    started = true
+}
+
+Snapshot :: () -> EditorFrame {
+    snapshot: EditorFrame
+    for at: 0..length - 1 { snapshot.current[at] = bytes[at] }
+    return snapshot
+}
+
+ReadInput :: (session: Session, typed: []u8) -> TextField.Input {
+    return TextFieldInputFor(KeyboardTake(session), KeyboardModifiers(session),
+        TypedTextTake(session, typed))
+}
+
+Apply :: (field: TextField.Result) {
     cursor = field.cursor; anchor = field.anchor
     if field.edit.changed {
         next: [64]u8
@@ -41,6 +50,9 @@ Frame :: (frame: App.Frame) {
         for at: field.edit.end..length - 1 { next[count] = bytes[at]; count += 1 }
         bytes = next; length = count
     }
+}
+
+VerifyIsolation :: (session: Session, viewport: Rectangle) {
     // A second live tree intentionally shares the primary field's numeric
     // generation, but cannot stage its editor or consume primary requests.
     TreeStart(foreign_session, 1, viewport)
@@ -58,8 +70,7 @@ Frame :: (frame: App.Frame) {
     unused TreeFocusAt(foreign_session, other)
 }
 
-main :: () -> s32 {
-    code := App.Run(App.Window.{.title = "editor_app"}, Frame)
+Result :: (code: s32) -> s32 {
     if failed != 0 { print("editor isolation failed %\n", failed); return failed }
     return code
 }

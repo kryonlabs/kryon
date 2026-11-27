@@ -22,6 +22,7 @@ TextEditingQuery :: #type (session: Session) -> bool;
 
 text_editing_send: TextEditingSend;
 text_editing_clear: TextEditingSession;
+text_editing_dispose: TextEditingSession;
 text_editing_frame_begin: TextEditingSession;
 text_editing_focused: TextEditingQuery;
 
@@ -36,6 +37,10 @@ TextEditingUseFocus :: (frame_begin: TextEditingSession, focused: TextEditingQue
     text_editing_focused = focused
 }
 
+TextEditingUseDisposal :: (dispose: TextEditingSession) {
+    text_editing_dispose = dispose
+}
+
 // A platform's edit of node INDEX (see TextRequestSend); false when no
 // editing widget could take it.
 TextEditingRequest :: (session: Session, index: s32, value: string,
@@ -47,6 +52,7 @@ TextEditingRequest :: (session: Session, index: s32, value: string,
 // The session closes: its outstanding request goes with it.
 TextEditingClear :: (session: Session) {
     if text_editing_clear != null { text_editing_clear(session) }
+    if text_editing_dispose != null { text_editing_dispose(session) }
 }
 
 // A new frame starts (see TextInputFocusFrameBegin).

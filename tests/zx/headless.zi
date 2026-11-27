@@ -5,7 +5,11 @@ Player :: #import "bundle_player";
 #import "std/file"
 #import "std/bundle_host"
 #import "std/byte_text_linux"
+#import "std/timer_linux"
+Names :: #import "bundle_names";
+using HostValueKind;
 PNG :: #import "png";
+#load "host_clock.zi";
 
 memory :: #system_library "c";
 Allocate :: (count: usize, size: usize) -> *u8 #foreign memory "calloc";
@@ -111,7 +115,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
         Player.PlayerClose(*player)
         CloseImages()
     }
-    if !Player.PlayerLoad(*player, BytesFromPointer(descriptor.data, cast(u64)data.count), player.platform, null) ||
+    if !Player.PlayerLoad(*player, BytesFromPointer(descriptor.data, cast(u64)data.count), FixturePlatform, null) ||
     !LoadImages(player.bundle) || !Player.PlayerStart(*player) { return 3 }
     interactive = argc > 2
     if !Player.PlayerUseWait(*player, Wait, cast(*void)(*player)) { return 4 }
