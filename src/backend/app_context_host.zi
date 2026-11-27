@@ -35,8 +35,8 @@ HostInputDesktop :: () -> bool {
     return false
 }
 
-AppServiceAllows :: #type (context: *void, function: string) -> bool;
-AppWidgetAllows :: #type (context: *void, module: string, function: string) -> bool;
+AppServiceAllows :: #type (context: *void, function: string) -> bool #reads;
+AppWidgetAllows :: #type (context: *void, module: string, function: string) -> bool #reads;
 
 AppContext :: struct {
     app: HostedApp

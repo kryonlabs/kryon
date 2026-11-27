@@ -27,7 +27,7 @@ HostedApp :: struct {
 
 // Whether the bundle may call module.function. context is the one given to
 // every call of the bundle.
-HostedAppAllows :: #type (context: *void, module: string, function: string) -> bool;
+HostedAppAllows :: #type (context: *void, module: string, function: string) -> bool #reads;
 // The host's handshake for a started instance, such as a first run whose
 // answer identifies the app.
 HostedAppAccepts :: #type (context: *void) -> bool;

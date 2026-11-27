@@ -15,15 +15,19 @@ ReplayRelease :: (memory: *void) #foreign replay_c "free";
 ReplayResize :: (memory: *void, size: usize) -> *void #foreign replay_c "realloc";
 ReplayCopyBytes :: (destination: *void, source: *void, size: usize) -> *void #foreign replay_c "memcpy";
 ReplayCompareBytes :: (first: *void, second: *void, size: usize) -> s32 #foreign replay_c "memcmp";
-ReplayCompareText :: (first: *u8, second: *u8) -> s32 #foreign replay_c "strcmp";
-ReplayTextLength :: (text: *u8) -> usize #foreign replay_c "strlen";
+ReplayCompareText :: (first: *u8, second: *u8) -> s32 #reads #foreign replay_c "strcmp";
+ReplayTextLength :: (text: *u8) -> usize #reads #foreign replay_c "strlen";
 
 // The names a call passes live only for that call.
 ReplayCopyText :: (text: *u8) -> *u8 {
     if text == null { return null }
     length := ReplayTextLength(text) + cast(usize)1
     copy := cast(*u8)ReplayAllocate(length, cast(usize)1)
-    if copy != null { unused ReplayCopyBytes(cast(*void)copy, cast(*void)text, length) }
+    if copy != null {
+        for index: cast(usize)0..length - cast(usize)1 {
+            copy[index] = text[index]
+        }
+    }
     return copy
 }
 
