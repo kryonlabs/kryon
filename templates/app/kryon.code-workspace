@@ -1,0 +1,15 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "js/ts.validate.enabled": false
+  },
+  "extensions": {
+    "recommendations": [
+      "kryonlabs.ziran-language"
+    ]
+  }
+}

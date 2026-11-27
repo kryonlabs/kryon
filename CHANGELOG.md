@@ -41,6 +41,9 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Open native apps through `kryon.code-workspace` and use the current
+  `js/ts.validate.enabled` setting, including multi-root workspace folders.
+
 - Configure VS Code and TSX starters to use built-in TypeScript React editing
   with native Ziran diagnostics, rather than JavaScript/React assumptions.
   Document why native syntax and checked imports need the Ziran extension

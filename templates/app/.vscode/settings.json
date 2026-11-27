@@ -3,6 +3,6 @@
     "*.ts": "typescript",
     "*.tsx": "typescriptreact"
   },
-  "typescript.validate.enable": false,
-  "typescript.preferences.jsxAttributeCompletionStyle": "braces"
+  "typescript.preferences.jsxAttributeCompletionStyle": "braces",
+  "js/ts.validate.enabled": false
 }

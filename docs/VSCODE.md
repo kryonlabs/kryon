@@ -1,10 +1,12 @@
 # Editing native TSX in VS Code
 
-Open the Kryon repository folder (or a generated app's folder) in VS Code and
-install **Ziran Language** (`kryonlabs.ziran-language`) from
+Open `kryon.code-workspace` from the repository or a generated app in VS Code
+and install **Ziran Language** (`kryonlabs.ziran-language`) from
 [ziranlang/ziran-vscode](https://git.waozi.xyz/ziranlang/ziran-vscode).
 The repository and the `app`, `pages`, `tui` and `web` starters carry the same
 editor settings. An extension update requires reloading an already open window.
+Opening a file by itself does not load project settings; the workspace file selects this folder
+and its native checking configuration explicitly.
 
 ## What is declared
 
@@ -30,10 +32,12 @@ React declarations are installed here.
 
 ## What checks the files
 
-The workspace setting `typescript.validate.enable: false` disables the
+The workspace setting `js/ts.validate.enabled: false` disables the
 JavaScript TypeScript checker's incompatible diagnostics for this native
-project. It does not change user settings or other workspaces. Built-in TSX
-highlighting, brackets, indentation and editing remain available. TypeScript
+project. This is the current editor setting; the deprecated
+`typescript.validate.enable` is window scoped and is ignored as a folder setting
+in a multi-root workspace. It does not change user settings or other workspaces.
+Built-in TSX highlighting, brackets, indentation and editing remain available. TypeScript
 IntelliSense only understands the standard TypeScript portion; native API
 information comes from the Ziran extension.
 
