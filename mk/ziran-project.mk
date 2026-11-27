@@ -328,7 +328,7 @@ $(ZIRAN_DIR)/build/bin/zi2zx $(ZIRAN_DIR)/build/libziran.a:
 
 $(PROGRAM): $(IR_STAMP) $(ASSET_DEPENDENCY) $(ZIRAN_DIR)/build/bin/zi2zx
 	$(ZIRAN) bundle --root $(IR_DIR) --entry $(HOST_ID):main \
-		$(if $(filter pixmap,$(PROJECT_BACKEND)),--bind-host $(ZIRAN_PACKAGE_ID)_pixmap) \
+		$(if $(filter pixmap,$(PROJECT_BACKEND)),$(if $(PROJECT_HOST),--bind-host kryon__pixmap)) \
 		$(if $(PROJECT_ASSETS),--asset-dir $(PROJECT_ASSETS)=$(PROJECT_ASSETS)) \
 		-o $@ $(IR_DIR)/*.zir
 endif

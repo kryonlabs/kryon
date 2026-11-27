@@ -10,6 +10,9 @@ import tomllib
 from image_test_tools import png_pixels, rgb
 from toolchain import ROOT, ZIRAN, ZIRAN_ROOT, kryon_test_project
 
+# `ziran run` hands a bundle only to a provider registered for its toolchain.
+IDENTITY = subprocess.check_output([str(ZIRAN), "version", "--identity"], text=True).strip()
+
 
 def run(arguments, project, expected=0):
     environment = os.environ.copy()
@@ -71,6 +74,8 @@ def check_ui_map(project):
 def preview_test():
     scratch = ROOT / 'build/scratch'
     scratch.mkdir(parents=True, exist_ok=True)
+    # The preview driver captures offscreen and refuses other SDL drivers.
+    os.environ['SDL_VIDEODRIVER'] = 'dummy'
     with tempfile.TemporaryDirectory(prefix='project-preview-', dir=scratch) as temporary:
         project = Path(temporary)
         kryon_test_project(project)
@@ -93,25 +98,29 @@ backend = "terminal"
         fixture = fixtures / 'controls.zi'
         source = r'''Button :: #import "kryon/button";
 Snapshot :: #import "kryon/frame_snapshot";
-Env :: #import "std/environment_linux";
+App :: #import "kryon/app";
 #import "kryon/geometry"
 #import "kryon/session"
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    scratch: [64]u8
-    if Env.EnvironmentRead("DISPLAY", scratch[:]).is_ok ||
-        Env.EnvironmentRead("WAYLAND_DISPLAY", scratch[:]).is_ok ||
-        Env.EnvironmentRead("SDL_VIDEODRIVER", scratch[:]).value != "dummy" { return 2 }
+// The preview driver captures this frame offscreen. A non-neutral input
+// report draws nothing, so the preview fails loudly instead of lying.
+neutral: bool;
+
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    viewport := frame.viewport
     input := Snapshot.CaptureFrameInput(session)
-    if !input.available || input.elapsed_ms != 0 || input.delta_ms != 0 ||
-        input.focused || input.pointer.x != -1.0 || input.pointer.y != -1.0 {
-        print("preview input was not neutral\n")
-        return 1
-    }
+    neutral = input.available && input.elapsed_ms == 0 && input.delta_ms == 0 &&
+        !input.focused && input.pointer.x == -1.0 && input.pointer.y == -1.0
+    if !neutral { return }
     unused Button.Draw(session, .{.key = cast(u64)9007199254740993,
         .bounds = .{viewport.width - 135.0, 20.0, 120.0, 36.0},
         .label = "Save \"café\"", .id = 19})
+    return
+}
+
+main :: () -> s32 {
+    App.Run(App.Window.{.title = "preview"}, Frame)
     return 0
 }
 '''
@@ -124,7 +133,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         light = ['controls', '--width', '321', '--height', '179', '--theme', 'light']
         args = [*light, '--output', 'output space/light.png']
         run(['env', f"PATH={ZIRAN.parent}:{os.environ['PATH']}", 'DISPLAY=invalid-for-preview',
-             'WAYLAND_DISPLAY=invalid-for-preview', 'SDL_VIDEODRIVER=invalid-for-preview',
+             'WAYLAND_DISPLAY=invalid-for-preview', 'SDL_VIDEODRIVER=dummy',
              front_door, 'preview', *args], project)
         run([*cli, *light, '--output', 'output space/repeat'], project)
         run([*cli, 'controls', '--theme', 'dark', '--width', '173', '--height', '97',
@@ -183,6 +192,12 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
 def main():
     scratch = ROOT / 'build/scratch'
     scratch.mkdir(parents=True, exist_ok=True)
+    # Register this checkout's zx player for its exact toolchain identity;
+    # an installed runtime from another ziran build must not decide here.
+    providers = scratch / 'entry runtime providers'
+    providers.mkdir(parents=True, exist_ok=True)
+    (providers / 'kryon-desktop.host').write_text(f'{ROOT / "build/bin/zx"}\nziran {IDENTITY}\n')
+    os.environ['ZIRAN_HOST_PATH'] = str(providers)
     with tempfile.TemporaryDirectory(prefix='project-entry-', dir=scratch) as temporary:
         project = Path(temporary)
         # Checked packages lock only against the exact toolchain Kryon pins;
@@ -215,11 +230,25 @@ codegen = "zx"
 '''
             (project / 'ziran.toml').write_text(manifest)
             selected = project / entry
-            selected.write_text(r'''#import "kryon/geometry"
+            selected.write_text(r'''App :: #import "kryon/app"
 #import "kryon/session"
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    print("selected frame\n")
+#import "Window"
+
+announced: bool;
+
+Frame :: (frame: App.Frame) {
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    unused session
+    if !announced {
+        announced = true
+        print("selected frame\n")
+        WindowQuit()
+    }
+    return
+}
+
+main :: () -> s32 {
+    App.Run(App.Window.{.title = "entry probe"}, Frame)
     return 42
 }
 ''')
@@ -231,9 +260,11 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
             result = run([project / 'build/entry_probe-native'], project, expected=42)
             assert 'selected frame' in result.stdout, result.stdout
             run([ZIRAN, 'tool', 'kryon', 'build', 'portable'], project)
+            # The window player owns the bundle's event loop and exit path,
+            # so the frame announcement is the portable-run observable.
             result = run([ZIRAN, 'run', project / 'build/entry_probe-portable.zx'],
                          project)
-            assert 'selected frame' in result.stdout and result.stdout.strip().endswith('42'), result.stdout
+            assert 'selected frame' in result.stdout, result.stdout
             selected.write_text('Frame :: ( {\n')
             result = run([ZIRAN, 'check'], project, expected=2)
             assert entry in result.stderr, result.stderr
@@ -266,6 +297,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         run([ZIRAN, 'tool', 'kryon', 'build', 'portable'], project)
         result = run([ZIRAN, 'run', project / 'build/entry_probe-portable.zx'], project)
         assert result.stdout.strip() == '0', result.stdout
+    os.environ.pop('ZIRAN_HOST_PATH', None)
     print('Selected entries and custom host: native and portable local tests passed')
 
 

@@ -142,8 +142,11 @@ A host supplies typed `HostBinding` callbacks for the four capabilities in
 [`zx_surface.zi`](../src/backend/zx_surface.zi). Bind the exact module name
 from the bundle's capability metadata. The module is `zx_surface` in the
 in-tree build and may be package-qualified in a consumer build.
-For a consumer project, use `--bind-host <kryon-package-id>_pixmap`, where
-`<kryon-package-id>` is the Kryon package's `id` in the project's `ziran.lock`.
+For a consumer project whose host imports the raster, use `--bind-host
+kryon__pixmap`: dependency modules bundle under the dependency's module
+prefix (`kryon__` for the usual `kryon` dependency alias), not the package id
+in `ziran.lock`. A bundle without a project host runs on the ZX player, which
+supplies rendering, so it binds nothing.
 
 | Function | Signature | Host behavior |
 | --- | --- | --- |

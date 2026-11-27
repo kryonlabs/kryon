@@ -24,7 +24,7 @@ li{margin:.25rem 0}
 <tr><td class="">Core UI (<code>src/ui</code>)</td><td class="ok">✅ <code>.zi</code> modules listed in <code>modules.txt</code> and named package exports</td><td class="ok">✅ C and Go generation in <code>make</code></td><td class="ok">✅ <code>make test</code> builds the library and runs source, saved <code>.zir</code>, and <code>.zx</code> behavior tests</td></tr>
 </table>
 <p>The generated C archive is a build output of Ziran source. Behavior tests use Ziran hosts in <code>tests/*_host.zi</code>. Code generation verifies that a module lowers for a target; it does not prove that every native host runs on that target.</p>
-<p>Core UI includes measured flex/grid layout (<code>src/ui/layout.zi</code>), the style sheet with structural selectors (<code>src/ui/style_tree.zi</code>) and gradient box painting (<code>src/ui/layout_paint.zi</code>); the supported CSS subset and remaining browser-only features are documented in <a href="HTML_TO_KRYON.md#4-kryon-css-support-kryonlabscss">HTML_TO_KRYON.md</a>.</p>
+<p>Core UI includes measured flex/grid layout (<code>src/ui/layout.zi</code>), the style sheet with structural selectors and sibling combinators (<code>src/ui/style_tree.zi</code>) and gradient box painting (<code>src/ui/layout_paint.zi</code>); the supported CSS subset and remaining browser-only features are documented in <a href="HTML_TO_KRYON.md#4-kryon-css-support-kryonlabscss">HTML_TO_KRYON.md</a>.</p>
 <h2>Application hosts</h2>
 <table>
 <tr><th>Backend</th><th>Implementation</th><th>Input and presentation verification</th><th>Current status</th></tr>
