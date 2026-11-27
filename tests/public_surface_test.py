@@ -34,7 +34,6 @@ for mode in ("source", "saved"):
     bundle = work / ("scene-" + mode + ".zx")
     subprocess.run([str(ZIRAN), "bundle", *source_args, "--entry", "public_scene_materials:main",
                     "-o", str(bundle), str(module)], cwd=project, check=True)
-    assert subprocess.check_output([str(ZIRAN), "run", str(bundle)], cwd=project, text=True).strip() == "0"
     material_bundles.append(bundle)
     generated = work / ("scene-c-" + mode)
     shutil.rmtree(generated, ignore_errors=True)
@@ -48,4 +47,6 @@ for mode in ("source", "saved"):
                     "-lm", "-lpthread", "-o", str(generated / "test")], check=True)
     subprocess.run([str(generated / "test")], check=True)
 assert material_bundles[0].read_bytes() == material_bundles[1].read_bytes()
+assert subprocess.check_output([str(ZIRAN), "run", str(material_bundles[1])],
+                               cwd=project, text=True).strip() == "0"
 print("Public scene/material/GLSL exports: matching source/saved ZX and native/VM pixels passed without EGL")

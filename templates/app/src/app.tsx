@@ -4,7 +4,7 @@
 // children and theme tokens size them, so no code here computes a position.
 //
 //   kryon run                     the desktop window (ziran run does the same)
-//   kryon run tui                 the same interface in a terminal
+//   kryon run portable            the same interface through the ZX player
 //   kryon run web                 a Canvas2D browser page (needs Emscripten)
 import * as App from "kryon/app";
 import { ButtonEmphasis, ButtonTone, ControlSize } from "kryon/control_props";
@@ -66,9 +66,9 @@ interface TaskCardProps { session: Session; index: s32; }
 
 function TaskCard(task: TaskCardProps): void {
     <Card session={task.session} props={{variant: CardVariant.CardOutlined}}>
-        <TaskBox session={task.session} index={task.index}/>;
+        <TaskBox session={task.session} index={task.index}/>
         <Line session={task.session} text={Model.TaskDetail(task.index)}
-            role={ThemeMetricRole.ThemeMetricTextSM}/>;
+            role={ThemeMetricRole.ThemeMetricTextSM}/>
     </Card>;
 }
 
@@ -82,8 +82,7 @@ function TaskList(list: TaskListProps): void {
 }
 
 // The new-task row: the draft field, and the button that adds it. The
-// button or the Enter key adds the draft. Value copies into the task, so
-// Clear can empty the field in the same frame.
+// button or Enter adds the draft. The model copies its text before clearing it.
 interface AddTaskProps { session: Session; }
 
 function AddTask(row: AddTaskProps): void {
@@ -109,14 +108,14 @@ export function Frame(frame: App.Frame): void {
     }
     Look.ApplyLook(Look.Dark());
     <Column session={session} props={{bounds: frame.viewport}}>
-        <AppBar session={session}/>;
+        <AppBar session={session}/>
         <Column session={session} props={{gap: Gap(ThemeMetricRole.ThemeMetricSpace3),
             gap_override: true, padding: Gap(ThemeMetricRole.ThemeMetricSpace4),
             padding_override: true}}>
             <Line session={session} text={Model.Summary()}
-                role={ThemeMetricRole.ThemeMetricHeading3}/>;
-            <TaskList session={session}/>;
-            <AddTask session={session}/>;
+                role={ThemeMetricRole.ThemeMetricHeading3}/>
+            <TaskList session={session}/>
+            <AddTask session={session}/>
         </Column>
     </Column>;
 }

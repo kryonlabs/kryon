@@ -5,14 +5,8 @@
 // Run from the Kryon root: make toolchain-pin-test
 #import "toolchain_pin"
 #import "std/file"
-
-Contains :: (text: string, part: string) -> bool {
-    if part.count > text.count { return false }
-    for at: 0..text.count - part.count {
-        if text[at:at + part.count] == part { return true }
-    }
-    return false
-}
+#import "std/text_tools"
+#import "std/vec"
 
 failures: s32;
 
@@ -27,8 +21,11 @@ main :: () -> s32 {
     output: [1024]u8
     pinned := PinToolchain(floating, output[:])
     Expect(ToolchainRef(pinned) == KryonZiranRef, "a floating ref becomes Kryon's Ziran")
-    Expect(pinned == "[package]\nname = \"tool\"\n\n[toolchain]\ngit = \"https://git.waozi.xyz/ziranlang/ziran.git\"\nref = \"4596187a757f0810c80e607d6c1c96f08ba8a934\"\n\n[dependencies.x]\nref = \"main\"\n",
-        "only the [toolchain] git and ref lines change")
+    expected_parts: [5]string = .["[package]\nname = \"tool\"\n\n[toolchain]\ngit = \"",
+        KryonZiranGit, "\"\nref = \"", KryonZiranRef,
+        "\"\n\n[dependencies.x]\nref = \"main\"\n"]
+    expected: Text = TextJoin(expected_parts[:], "")
+    Expect(pinned == TextView(expected), "only the [toolchain] git and ref lines change")
 
     exact := "[toolchain]\ngit = \"https://git.waozi.xyz/ziranlang/ziran.git\"\nref = \"2684af8d22b623c52bfd19ce785523b50ad83c5e\"\n"
     other: [1024]u8
@@ -50,9 +47,9 @@ main :: () -> s32 {
     upgraded: [1024]u8
     moved := PinTables(old_app, pins[0:count], upgraded[:])
     Expect(ToolchainRef(moved) == KryonZiranRef, "upgrade pins Kryon's Ziran")
-    Expect(Contains(moved, KryonRef) && Contains(moved, KryonGit), "upgrade pins Kryon's Kryon")
-    Expect(Contains(moved, "[dependencies.other]\nref = \"main\""), "upgrade keeps other tables")
-    Expect(!Contains(moved, "[dependencies.css]"), "upgrade adds no table the app lacks")
+    Expect(TextContains(moved, KryonRef) && TextContains(moved, KryonGit), "upgrade pins Kryon's Kryon")
+    Expect(TextContains(moved, "[dependencies.other]\nref = \"main\""), "upgrade keeps other tables")
+    Expect(!TextContains(moved, "[dependencies.css]"), "upgrade adds no table the app lacks")
 
     app, app_ok := ReadEntireFile("templates/app/ziran.toml")
     same: [4096]u8

@@ -11,15 +11,15 @@ command (`make install-user` here), then:
 ```sh
 kryon new hello              # a desktop app; kryon new hello --template tui
 cd hello
-kryon run                    # the default profile; kryon run tui picks another
+kryon run                    # the default profile; kryon run web picks another
 ```
 
 | Template | What it starts | Profiles |
 | --- | --- | --- |
-| `app` (default) | counter with buttons, a step slider, and progress | `desktop`, `tui`, `web` (canvas) |
-| `tui` | keyboard-driven task list | `tui`, `desktop` |
-| `pages` | Home, Library, and Settings behind a tab row, sharing state | `desktop`, `tui`, `web` (canvas) |
-| `web` | page: headings, paragraphs, links, a button | `web` (Canvas2D), `desktop` |
+| `app` (default) | task list with controlled input, checkboxes and a theme switch | `desktop`, `portable` (ZX), `web` (canvas) |
+| `tui` | keyboard-driven task list | `tui`, `desktop`, `portable` (ZX) |
+| `pages` | Home, Library, and Settings behind a tab row, sharing state | `desktop`, `portable` (ZX), `tui`, `web` (canvas) |
+| `web` | page: headings, paragraphs, links, a button | `web` (Canvas2D), `desktop`, `portable` (ZX) |
 
 Each template's `src/app.tsx` uses the same `Frame` across its profiles. The
 frame's viewport measures pixels in a window or browser and character cells on

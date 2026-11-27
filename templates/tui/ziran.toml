@@ -7,11 +7,11 @@ tool = "kryon"
 
 [toolchain]
 git = "https://git.waozi.xyz/ziranlang/ziran.git"
-ref = "fac8a39688135feb38671553fb288887170575ab"
+ref = "4ae21503f282f77c4c83df81fcea70bbbb5392aa"
 
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
-ref = "39f7540d193ccaa2096e1115df608da8116b32b7"
+ref = "f4bda4733366bea32e64fa632906410242230122"
 
 [install]
 bin = "{{name}}"

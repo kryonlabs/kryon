@@ -14,6 +14,7 @@ for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'GDK_DISPLAY',
              'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER', 'DESKTOP_SESSION',
              'XDG_SESSION_ID', 'XDG_SESSION_TYPE', 'KRYON_CAPTURE_PATH', 'KRYON_TEST_DRIVER'):
     ENV.pop(name, None)
+ENV['HARMONY_DESKTOP_RECOVERY'] = '0'
 ENV['YUE_DESKTOP_RECOVERY'] = '0'
 ENV['TMPDIR'] = str(WORK)
 ENV['SDL_VIDEODRIVER'] = 'x11'
@@ -39,6 +40,7 @@ def main():
             source = ROOT / 'tests' / (name + '.zi')
             ir = WORK / (name + '-ir')
             run([ZIRAN, 'ir', *common, '-o', ir, source])
+            bundles = []
             for form in ('source', 'saved'):
                 paths = common if form == 'source' else ['--root', ir]
                 entry = source if form == 'source' else ir / (name + '.zir')
@@ -57,11 +59,15 @@ def main():
                          '--entry', name + ':main', '-o', go, entry])
                     run(['go', 'build', '-o', go / 'test', *sorted(go.glob('*.go'))])
                     run([go / 'test'])
-                    bundle = WORK / (name + '.zx')
+                    bundle = WORK / (name + '-' + form + '.zx')
                     run([ZIRAN, 'bundle', *paths, '--entry', name + ':main', '-o', bundle, entry])
-                    result = subprocess.check_output([str(ZIRAN), 'run', str(bundle)], cwd=ROOT, env=ENV, text=True).strip()
-                    if result != '0':
-                        raise RuntimeError('portable mapping failed: ' + result)
+                    bundles.append(bundle)
+            if bundles:
+                assert bundles[0].read_bytes() == bundles[1].read_bytes(), name
+                result = subprocess.check_output([str(ZIRAN), 'run', str(bundles[1])],
+                                                 cwd=ROOT, env=ENV, text=True).strip()
+                if result != '0':
+                    raise RuntimeError('portable mapping failed: ' + result)
         run(['make', 'desktop-frame-input-test'])
         print('PASS: source/saved SDL virtual hotplug, bounded devices, navigation, held sources, focus and teardown; native/portable mappings')
 

@@ -1,7 +1,7 @@
 """Kryon's project templates and the kryon front door, display-free.
 
 Every template is created with `kryon new` from this checkout. The app's
-desktop profile is checked and its shot profile renders without a display.
+desktop profile builds and renders PNGs without a display.
 The web template is checked without building its browser profiles.
 """
 
@@ -22,20 +22,22 @@ KRYON = ROOT / "build/bin/kryon"
 # starter's look changes on purpose, check build/test/templates/*.png and
 # put the digests the failure prints here.
 STARTER_DIGESTS = {
-    "light": "9b06acb6dacf6a679d7c7710ba953f94775933b0b75fc06df59805b55d517be9",
-    "dark": "63e12cb41423bebdf4d5996498d5ed7889abec54baec0f5d36b12a2c478e969e",
+    "light": "106b594ffe37f34df3540e51d4c7aeb6a1d9a33e95dd3e1f9ea697d62622a616",
+    "dark": "04396a069a774432521b245ea26cd1356660e6f767f6f9a06d3476a99a078534",
 }
 
 
 def environment(work):
     env = os.environ.copy()
-    for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "KRYON_FRONT_DOOR",
+    for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS",
+                 "SESSION_MANAGER", "KRYON_FRONT_DOOR",
                  "MAKEFLAGS", "MFLAGS", "MAKELEVEL"):
         env.pop(name, None)
     # The front door runs `ziran` from PATH: the one beside this checkout.
     env["PATH"] = f"{ZIRAN_ROOT / 'build/bin'}:{env['PATH']}"
     env["KRYON_TEMPLATES"] = str(ROOT)
     env["ASAN_OPTIONS"] = "detect_leaks=0"
+    env["HARMONY_DESKTOP_RECOVERY"] = "0"
     # The projects and their build outputs are temporary. Reuse the prepared
     # package cache so their first lock can reuse the same dependency sources.
     # Install local checkout overrides before any template is locked.
@@ -71,7 +73,7 @@ def main():
         usage = run([KRYON, "help"], work, env)
         assert "app (window), tui (terminal), pages (navigation), web (browser page)" in usage
 
-        # Terminal rendering is not tested; each template is created and checked.
+        # Create and lock each scaffold; route execution is covered separately.
         for template in ("app", "tui", "pages"):
             name = f"demo-{template}"
             created = run([KRYON, "new", name, "--template", template,
@@ -82,15 +84,9 @@ def main():
             # new locks the project, so its first build needs no ziran lock.
             assert (work / name / "ziran.lock").is_file(), name
 
-        run([KRYON, "check", "desktop"], work / "demo-app", env)
         profiles = run([KRYON, "profiles"], work / "demo-app", env)
         assert profiles.splitlines() == ["* desktop  SDL2/Cairo window", "  portable  SDL2/Cairo window",
-                                         "  web  Canvas2D browser page",
-                                         "  shot  headless image, PPM on standard output"], profiles
-        # The shot profile draws a frame without any display.
-        shot = run([KRYON, "run", "shot"], work / "demo-app", env, separate=True)
-        assert shot.startswith("P3\n960 600\n255\n"), shot[:40]
-        assert len(shot.splitlines()) == 603, len(shot.splitlines())
+                                         "  web  Canvas2D browser page"], profiles
 
         # The starter's screen, offscreen at phone size in both themes.
         shots = ROOT / "build/test/templates"
@@ -145,13 +141,13 @@ def main():
         assert (tool / "ziran.lock").is_file()
         manifest = (tool / "ziran.toml").read_text()
         assert 'entry = "src/main.zi"' in manifest and 'tool = "kryon"' in manifest
-        assert "[tool.kryon]" in manifest and 'entry = "src/app.zi"' in manifest
+        assert "[tool.kryon]" in manifest and 'entry = "src/app.tsx"' in manifest
 
         # Without the settings ziran passes, the front door never loops.
         guarded = dict(env, KRYON_FRONT_DOOR="1")
         looped = run([KRYON, "build"], work / "demo-app", guarded, succeed=False)
         assert "without project settings" in looped, looped
-    print("Kryon templates: app, tui, pages, web ok")
+    print("Kryon templates: creation/pins, app rendering and web checking passed")
 
 
 if __name__ == "__main__":

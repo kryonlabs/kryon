@@ -39,6 +39,15 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
+- Align the root, examples and all four starters with Ziran 4ae21503, and the
+  app generator and upgrade defaults with Kryon f4bda473 and CSS 20b7c95d.
+  Check generated TSX entries and the supported desktop screenshot route;
+  remove the obsolete shot-profile invocation and redundant starter source check.
+- Run byte-identical source/saved portable bundles once in the scene and
+  gamepad checks; retain both native builds and all input assertions.
+- Restore public visibility for text-field state reads, edits and clearing;
+  keep internal draw and edit-staging operations private.
+
 - Forward repeatable `--module-path` folders through the ordinary build, check
   and run workflow, including Android C99. Preserve quoted paths and remove
   fixed command-line storage limits.

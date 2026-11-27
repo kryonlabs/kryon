@@ -142,8 +142,8 @@
     "name": "plotbars"
   },
   "toolchain": {
-    "commit": "fac8a39688135feb38671553fb288887170575ab",
-    "ref": "fac8a39688135feb38671553fb288887170575ab",
+    "commit": "4ae21503f282f77c4c83df81fcea70bbbb5392aa",
+    "ref": "4ae21503f282f77c4c83df81fcea70bbbb5392aa",
     "url": "https://git.waozi.xyz/ziranlang/ziran.git"
   }
 }

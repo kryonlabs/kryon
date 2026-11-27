@@ -188,6 +188,7 @@ StateValid :: (state: *State) -> bool {
 // Fill the existing widget's value and interaction props from caller state.
 // The value borrows bytes until the next mutation. Other props, including
 // composition and application limits, keep their supplied values.
+#scope_export
 #program_export
 StateProps :: (state: State,
     props: Props) -> Props {
@@ -273,6 +274,7 @@ StatePublishEdit :: (state: *State, joined: []u8) {
 // Cursor/anchor are clamped to scalar boundaries in the resulting value and
 // negative scroll becomes zero. Enter, Escape, clipboard and composition are
 // still decisions for the application using the original Result.
+#scope_export
 #program_export
 StateApplyResult :: (state: *State,
     result: Result) -> bool {
@@ -293,6 +295,7 @@ StateSetSelection :: (state: *State, cursor: s32, anchor: s32, scroll_x: s32, fo
 // The field's text, viewing the state's bytes. The view lasts until those
 // bytes change; copy it into app storage to keep it. Unwired state (no
 // bytes) reads as empty.
+#scope_export
 #program_export
 Value :: (state: State) -> string {
     if state.length <= 0 || state.length > state.bytes.count { return "" }
