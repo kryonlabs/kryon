@@ -3,15 +3,16 @@ set -eu
 
 repo=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 
-# Maintained src files are Ziran, the module inventory, or versioned API
-# example sidecars. Checked programs cannot reintroduce a handwritten
-# implementation language or a retired Kry format.
+# Native implementations remain Ziran. Typed UI bindings live under src/tsx;
+# the module inventory and versioned API example sidecars are metadata.
+# Handwritten target-language implementations and retired Kry formats stay banned.
 expected_src=''
 expected_programs=''
 
 actual_src=$(cd "$repo" && rg --files -uu src -g '!*.zi' -g '!modules.txt' |
     while IFS= read -r path; do
         case "$path" in
+            src/tsx/*.ts|src/tsx/*.tsx) continue ;;
             *.zi.examples)
                 if test -f "${path%.examples}" &&
                     IFS= read -r header < "$path" &&
@@ -33,13 +34,13 @@ actual_programs=$(cd "$repo" &&
 
 
 if test "$actual_src" != "$expected_src"; then
-    printf 'Unexpected files under src. Use .zi, modules.txt, or a versioned API example sidecar with matching .zi source.\n' >&2
+    printf 'Unexpected files under src. Use Ziran for native implementation, TS/TSX under src/tsx for UI bindings, modules.txt, or a versioned API example sidecar with matching .zi source.\n' >&2
     printf 'Expected:\n%s\nActual:\n%s\n' "$expected_src" "$actual_src" >&2
     exit 1
 fi
 
 if test "$actual_programs" != "$expected_programs"; then
-    printf 'Non-Ziran implementation files or retired formats remain.\n' >&2
+    printf 'Handwritten target-language implementation files or retired formats remain.\n' >&2
     printf 'Expected:\n%s\nActual:\n%s\n' "$expected_programs" "$actual_programs" >&2
     exit 1
 fi

@@ -1,0 +1,383 @@
+Components :: #import "component_lifecycle";
+Types :: #import "component_types";
+Component :: #import "component_runtime";
+State :: #import "component_state";
+#import "std/option"
+#import "session"
+#import "tree"
+#import "widget_kind"
+using WidgetKind;
+
+mounts: s64;
+calls: [128]s64;
+cleanup: Vec(u64);
+token: Types.Token;
+cleanup_dispatched: bool;
+reentered: bool;
+deferred_calls: s64;
+
+Late :: (session: Session) {
+    deferred_calls += 1
+    unused TreeSubmitCurrent(session, TreeNextKey(session), WidgetKindButton, .{0.0, 0.0, 20.0, 10.0})
+}
+
+DrawAutomatic :: (session: Session, key: u64) -> Types.Instance {
+    instance, fresh := Component.Begin(session, "Automatic", .{"screen.tsx", 90, 1}, .{true, key})
+    unused TreeSubmitCurrent(session, cast(u64)0, WidgetKindButton, .{0.0, 0.0, 20.0, 10.0})
+    unused TreeSubmitCurrent(session, TreeNextKey(session), WidgetKindButton, .{0.0, 0.0, 20.0, 10.0})
+    unused TreeDefer(session, Late)
+    unused Component.End(instance)
+    return instance
+}
+
+TryReentry :: (instance: Types.Instance) {
+    if Components.FrameStart(instance.session) || SessionClose(instance.session) { reentered = true }
+    count := TreeCount(instance.session)
+    TreeStart(instance.session, cast(u64)999, .{0.0, 0.0, 1.0, 1.0})
+    if cast(s32)TreeFrameStatus(instance.session) != 9 || TreeIsBuilding(instance.session) ||
+        TreeSubmitCurrent(instance.session, cast(u64)99, WidgetKindButton, .{}) >= 0 || TreeFinish(instance.session) { reentered = true }
+    TreeCancel(instance.session)
+    if TreeCount(instance.session) != count { reentered = true }
+}
+
+Act :: (instance: Types.Instance) { calls[instance.identity % cast(u64)128] += 1 }
+Clean :: (instance: Types.Instance) {
+    TryReentry(instance)
+    VecPush(cleanup, instance.identity)
+    if instance.identity == token.owner.identity && Components.Dispatch(token) { cleanup_dispatched = true }
+}
+
+Draw :: (session: Session, key: u64, line: s64 = 12, component: string = "Counter") -> Types.Instance {
+    instance, fresh := Component.Begin(session, component, .{"screen.tsx", line, 7}, .{true, key})
+    if Component.Current(session).identity != instance.identity { empty: Types.Instance; return empty }
+    if fresh { mounts += 1; unused Components.OnCleanup(instance, Clean) }
+    // Every instance uses exactly the same widget keys and native tree parent.
+    // The metadata namespace distinguishes them, with no layout wrapper node.
+    unused TreeSubmitCurrent(session, cast(u64)7, WidgetKindButton, .{0.0, 0.0, 20.0, 10.0})
+    unused Component.End(instance)
+    return instance
+}
+
+Start :: (session: Session) { TreeStart(session, cast(u64)1, .{0.0, 0.0, 200.0, 100.0}) }
+
+queued_calls: Vec(s64);
+queued_followup: Types.Token;
+queued_victim: Types.Token;
+QueueFirst :: (instance: Types.Instance) {
+    TryReentry(instance)
+    unused VecPush(queued_calls, cast(s64)1)
+    unused Components.Queue(queued_followup)
+}
+QueueSecond :: (instance: Types.Instance) {
+    unused instance
+    unused VecPush(queued_calls, cast(s64)2)
+}
+QueueCancel :: (instance: Types.Instance) {
+    TryReentry(instance)
+    unused VecPush(queued_calls, cast(s64)3)
+    unused Components.Cancel(queued_victim)
+}
+
+QueueChecks :: () -> s32 {
+    session := SessionOpen()
+    Start(session)
+    owner, fresh := Component.Begin(session, "Events", .{"events.tsx", 1, 1}, .{true, 1})
+    first := Components.Callback(owner, QueueFirst)
+    queued_followup = Components.Callback(owner, QueueSecond)
+    if !fresh || !Components.Queue(first) || !Components.Queue(queued_followup) ||
+        Components.Dispatch(first) || queued_calls.count != 0 { return 121 }
+    unused Component.End(owner)
+    if !TreeFinish(session) || queued_calls.count != 0 ||
+        Components.NextDeadline(session) != 0.0 || Components.NextDelay(session, 1.0) != 1 { return 122 }
+    Components.Tick(session, 1.0)
+    if reentered || queued_calls.count != 2 || queued_calls[0] != 1 ||
+        queued_calls[1] != 2 || Components.NextDeadline(session) != 0.0 { return 123 }
+    Start(session)
+    if queued_calls.count != 3 || queued_calls[2] != 2 ||
+        Components.NextDeadline(session) != -1.0 { return 124 }
+    same_frame, unused_same_frame := Component.Begin(session, "Events", .{"events.tsx", 1, 1}, .{true, 1})
+    unused Component.End(same_frame)
+    if !TreeFinish(session) { return 132 }
+
+    Start(session)
+    same, unused_fresh := Component.Begin(session, "Events", .{"events.tsx", 1, 1}, .{true, 1})
+    if !Components.Queue(first) { return 125 }
+    unused Component.End(same)
+    TreeCancel(session)
+    Components.Pump(session)
+    if queued_calls.count != 3 || Components.NextDeadline(session) != -1.0 { return 126 }
+
+    // The accepted frame removes the owner before its queued event is delivered.
+    Start(session)
+    if !Components.Queue(first) || !TreeFinish(session) { return 127 }
+    Components.Pump(session)
+    if queued_calls.count != 3 || Components.Queue(first) ||
+        Components.NextDeadline(session) != -1.0 { return 128 }
+
+    Start(session)
+    replacement, unused_replacement := Component.Begin(session, "Events", .{"events.tsx", 1, 1}, .{true, 1})
+    cancel := Components.Callback(replacement, QueueCancel)
+    queued_victim = Components.Callback(replacement, QueueSecond)
+    unused Components.Queue(cancel)
+    unused Components.Queue(queued_victim)
+    unused Component.End(replacement)
+    if !TreeFinish(session) { return 129 }
+    Components.Pump(session)
+    if reentered || queued_calls.count != 4 || queued_calls[3] != 3 ||
+        Components.NextDeadline(session) != -1.0 { return 130 }
+    unused Components.Queue(cancel)
+    if !SessionClose(session) || queued_calls.count != 4 || Components.Queue(cancel) { return 131 }
+    VecFree(queued_calls)
+    return 0
+}
+
+Presentation :: struct { count: s32; title: Text; }
+PresentationClone :: #type (value: *Presentation) -> Presentation;
+presentation: State.Store(Presentation);
+other_presentation: State.Store(Presentation);
+released_cells: s32;
+released_live_token: bool;
+
+CopyPresentation :: (value: *Presentation) -> Presentation {
+    return .{value.count, TextCopy(TextView(value.title))}
+}
+ReleasePresentation :: (token: Types.Token) {
+    if Components.ResourceIndex(token) >= 0 { released_live_token = true }
+    if State.Release(*presentation, token) { released_cells += 1 }
+}
+MountPresentation :: (instance: Types.Instance, key: u64, count: s32, title: string) -> State.Handle(Presentation) {
+    return State.Mount(*presentation, instance, key, Presentation.{count, TextCopy(title)}, ReleasePresentation)
+}
+ReadPresentation :: (handle: State.Handle(Presentation)) -> Option(State.Snapshot(Presentation)) {
+    clone: PresentationClone = CopyPresentation
+    return State.Read(*presentation, handle, clone)
+}
+
+PresentationChecks :: () -> s32 {
+    session := SessionOpen()
+    Start(session)
+    if Component.Current(session).identity != cast(u64)0 { return 114 }
+    first, first_fresh := Component.Begin(session, "Stateful", .{"state.tsx", 1, 1}, .{true, 1})
+    first_state := MountPresentation(first, cast(u64)1, 10, "first")
+    extra_state := MountPresentation(first, cast(u64)2, 20, "extra")
+    same_state := MountPresentation(first, cast(u64)1, 99, "ignored")
+    if !State.SameToken(first_state.token, same_state.token) ||
+        State.Set(*presentation, first_state, .{99, TextCopy("during render")}) { return 101 }
+    unused Component.End(first)
+    second, second_fresh := Component.Begin(session, "Stateful", .{"state.tsx", 1, 1}, .{true, 2})
+    second_state := MountPresentation(second, cast(u64)1, 30, "second")
+    unused Component.End(second)
+    if !first_fresh || !second_fresh || !TreeFinish(session) { return 102 }
+    original := ReadPresentation(first_state)
+    if !original.has_value || original.value.value.count != 10 ||
+        TextView(original.value.value.title) != "first" || original.value.revision != cast(u64)1 { return 103 }
+    if !State.Set(*presentation, first_state, .{17, TextCopy("updated")}) { return 104 }
+    updated := ReadPresentation(first_state)
+    if !updated.has_value || updated.value.value.count != 17 ||
+        TextView(updated.value.value.title) != "updated" || updated.value.revision != cast(u64)2 ||
+        original.value.value.count != 10 || TextView(original.value.value.title) != "first" { return 105 }
+    clone: PresentationClone = CopyPresentation
+    wrong_store := State.Read(*other_presentation, first_state, clone)
+    if wrong_store.has_value { return 106 }
+
+    // A new state cell in a cancelled frame must not drop this instance's
+    // already committed cells. Every cell has its own retirement token.
+    Start(session)
+    same_first, unused_fresh := Component.Begin(session, "Stateful", .{"state.tsx", 1, 1}, .{true, 1})
+    abandoned := MountPresentation(same_first, cast(u64)3, 40, "abandoned")
+    unused Component.End(same_first)
+    TreeCancel(session)
+    if released_cells != 1 || State.Index(*presentation, abandoned) >= 0 ||
+        State.Index(*presentation, first_state) < 0 || State.Index(*presentation, extra_state) < 0 { return 107 }
+
+    // Reordering keeps handles and independent state for the same type.
+    Start(session)
+    reordered_second, unused_second := Component.Begin(session, "Stateful", .{"state.tsx", 1, 1}, .{true, 2})
+    kept_second := MountPresentation(reordered_second, cast(u64)1, 88, "ignored")
+    unused Component.End(reordered_second)
+    reordered_first, unused_first := Component.Begin(session, "Stateful", .{"state.tsx", 1, 1}, .{true, 1})
+    kept_first := MountPresentation(reordered_first, cast(u64)1, 88, "ignored")
+    unused Component.End(reordered_first)
+    if !TreeFinish(session) || !State.SameToken(kept_first.token, first_state.token) ||
+        !State.SameToken(kept_second.token, second_state.token) { return 108 }
+    second_snapshot := ReadPresentation(second_state)
+    if !second_snapshot.has_value || second_snapshot.value.value.count != 30 { return 109 }
+
+    Start(session)
+    remaining, unused_remaining := Component.Begin(session, "Stateful", .{"state.tsx", 1, 1}, .{true, 2})
+    unused Component.End(remaining)
+    if !TreeFinish(session) || released_cells != 3 ||
+        State.Set(*presentation, first_state, .{99, TextCopy("stale")}) { return 110 }
+    stale := ReadPresentation(first_state)
+    if stale.has_value || State.Index(*presentation, second_state) < 0 { return 111 }
+    if !SessionClose(session) || released_cells != 4 || released_live_token ||
+        presentation.entries.count != 0 || State.Index(*presentation, second_state) >= 0 { return 112 }
+    // Independent snapshots survive state replacement, unmount and session close.
+    if TextView(original.value.value.title) != "first" ||
+        TextView(updated.value.value.title) != "updated" ||
+        TextView(second_snapshot.value.value.title) != "second" { return 113 }
+    return 0
+}
+
+main :: () -> s32 {
+    session := SessionOpen()
+    Start(session)
+    first := Draw(session, cast(u64)1)
+    second := Draw(session, cast(u64)2)
+    token = Components.Callback(first, Act)
+    timer := Components.Timer(second, 100.0, 0.0, Act)
+    unused Components.Timer(second, 50.0, 0.0, TryReentry)
+    if !TreeFinish(session) || first.identity == second.identity || mounts != 2 || TreeCount(session) != 3 { return 1 }
+    first_node := TreeNodeAt(session, 1).identity_generation
+    second_node := TreeNodeAt(session, 2).identity_generation
+    if !Components.Dispatch(token) || calls[first.identity % cast(u64)128] != 1 { return 2 }
+    Components.Tick(session, 99.0)
+    if reentered || !SessionValid(session) || calls[second.identity % cast(u64)128] != 0 ||
+        Components.NextDelay(session, 99.0) != 1000 || Components.NextDeadline(session) != 100.0 { return 3 }
+
+    // Insertion and reorder keep component and widget identities independently.
+    Start(session)
+    second_again := Draw(session, cast(u64)2)
+    third := Draw(session, cast(u64)3)
+    first_again := Draw(session, cast(u64)1)
+    if !TreeFinish(session) || second_again.identity != second.identity || first_again.identity != first.identity || mounts != 3 { return 4 }
+    if TreeNodeAt(session, 1).identity_generation != second_node || TreeNodeAt(session, 3).identity_generation != first_node { return 5 }
+    Components.Tick(session, 100.0)
+    if calls[second.identity % cast(u64)128] != 1 || Components.Dispatch(timer) || Components.NextDelay(session, 100.0) != 0 { return 6 }
+
+    // A failed frame preserves the previously committed instances and tree.
+    Start(session)
+    duplicate := Draw(session, cast(u64)1)
+    invalid := Draw(session, cast(u64)1)
+    if invalid.identity != cast(u64)0 || TreeFinish(session) || cast(s32)TreeFrameStatus(session) != 9 { return 7 }
+    if Components.FrameStatus(session) != .DuplicateKey || duplicate.identity != first.identity || !Components.Alive(second) || TreeCount(session) != 4 { return 8 }
+
+    // Cancelled mounts are cleaned and never regain their old generation.
+    Start(session)
+    abandoned := Draw(session, cast(u64)99)
+    abandoned_token := Components.Callback(abandoned, Act)
+    TreeCancel(session)
+    if Components.Alive(abandoned) || Components.Dispatch(abandoned_token) || cleanup.count != 1 { return 9 }
+    Start(session)
+    remount := Draw(session, cast(u64)99)
+    unused Draw(session, cast(u64)1)
+    if !TreeFinish(session) || remount.identity == abandoned.identity || Components.Alive(second) || Components.Alive(third) { return 10 }
+    if cleanup_dispatched || reentered { return 11 }
+
+    // Nested parents isolate identical keys/sites. Child cleanup precedes parent.
+    Start(session)
+    parent, parent_fresh := Component.Begin(session, "Parent", .{"screen.tsx", 40, 1}, .{true, 0})
+    if !parent_fresh { return 12 }
+    unused Components.OnCleanup(parent, Clean)
+    child := Draw(session, cast(u64)1)
+    unused Component.End(parent)
+    other_parent, other_fresh := Component.Begin(session, "Parent", .{"screen.tsx", 40, 1}, .{true, 1})
+    if !other_fresh { return 13 }
+    other_child := Draw(session, cast(u64)1)
+    unused Component.End(other_parent)
+    if !TreeFinish(session) || child.identity == other_child.identity || Components.Dispatch(token) { return 14 }
+    VecClear(cleanup)
+    Start(session)
+    if !TreeFinish(session) || cleanup.count != 3 || cleanup[0] != other_child.identity || cleanup[1] != child.identity || cleanup[2] != parent.identity { return 15 }
+
+    // Cross the native tree's hash-index threshold with identical hash inputs.
+    identities: [16]u64
+    nodes: [16]u64
+    for pass: 0..2 {
+        Start(session)
+        for ordinal: 0..15 {
+            at := ifx pass == 1 then 15 - ordinal else ordinal
+            instance := Draw(session, cast(u64)(at + 1), 70)
+            if pass == 0 { identities[at] = instance.identity }
+            else if instance.identity != identities[at] { return 16 }
+            if pass == 0 { nodes[at] = TreeSubmittedIdentity(session, cast(s32)(ordinal + 1)) }
+            else if TreeSubmittedIdentity(session, cast(s32)(ordinal + 1)) != nodes[at] { return 17 }
+        }
+        if !TreeFinish(session) || TreeFrameRepeatedKey(session) != cast(u64)0 { return 18 }
+    }
+    // Type and location changes mount new instances; regular redraws do not.
+    before := mounts
+    for 0..20 {
+        Start(session)
+        for at: 0..15 { unused Draw(session, cast(u64)(at + 1), 70) }
+        if !TreeFinish(session) { return 19 }
+    }
+    if mounts != before { return 20 }
+    Start(session)
+    changed := Draw(session, cast(u64)1, 70, "DifferentCounter")
+    location := Draw(session, cast(u64)1, 71)
+    if !TreeFinish(session) || changed.identity == identities[0] || location.identity == changed.identity { return 21 }
+    // Unkeyed repeats are positional at their site; automatic widget keys and
+    // deferred widgets retain the namespace of each reordered keyed instance.
+    Start(session)
+    unkeyed_a, a_fresh := Component.Begin(session, "Repeat", .{"screen.tsx", 85, 1}, .{})
+    unused Component.End(unkeyed_a)
+    unkeyed_b, b_fresh := Component.Begin(session, "Repeat", .{"screen.tsx", 85, 1}, .{})
+    unused Component.End(unkeyed_b)
+    if !a_fresh || !b_fresh || unkeyed_a.identity == unkeyed_b.identity || !TreeFinish(session) { return 26 }
+    Start(session)
+    unkeyed_again, again_fresh := Component.Begin(session, "Repeat", .{"screen.tsx", 85, 1}, .{})
+    unused Component.End(unkeyed_again)
+    if again_fresh || unkeyed_again.identity != unkeyed_a.identity || !TreeFinish(session) || Components.Alive(unkeyed_b) { return 27 }
+    automatic_nodes: [6]u64
+    for pass: 0..1 {
+        Start(session)
+        if pass == 0 { unused DrawAutomatic(session, cast(u64)1); unused DrawAutomatic(session, cast(u64)2) }
+        else { unused DrawAutomatic(session, cast(u64)2); unused DrawAutomatic(session, cast(u64)1) }
+        if !TreeFinish(session) || TreeCount(session) != 7 { return 28 }
+        for at: 0..5 {
+            if pass == 0 { automatic_nodes[at] = TreeNodeAt(session, cast(s32)(at + 1)).identity_generation }
+            else {
+                previous := ifx at < 4 then (at + 2) % 4 else 9 - at
+                if TreeNodeAt(session, cast(s32)(at + 1)).identity_generation != automatic_nodes[previous] { return 29 }
+            }
+        }
+    }
+    if deferred_calls != 4 { return 30 }
+    Start(session)
+    unused DrawAutomatic(session, cast(u64)1)
+    TreeCancel(session)
+    Start(session)
+    if !TreeFinish(session) || deferred_calls != 4 { return 31 }
+    Start(session)
+    unused DrawAutomatic(session, cast(u64)1)
+    // Starting a replacement frame also discards abandoned deferred work.
+    Start(session)
+    if !TreeFinish(session) || deferred_calls != 4 { return 32 }
+    Start(session)
+    changed = Draw(session, cast(u64)1, 70, "DifferentCounter")
+    if !TreeFinish(session) { return 33 }
+    stale := Components.Callback(changed, Act)
+    TreeDispose(session)
+    if Components.Alive(changed) || Components.Dispatch(stale) { return 22 }
+    if !SessionClose(session) { return 23 }
+    reopened := SessionOpen()
+    Start(reopened)
+    current := Draw(reopened, cast(u64)1)
+    if !TreeFinish(reopened) || reopened.slot != session.slot || Components.Alive(changed) || !Components.Alive(current) { return 24 }
+    // A replaced bundle retires only its namespace, including nested resources.
+    Start(reopened)
+    root, root_fresh := Component.Begin(reopened, "Bundle", .{"bundle", 1, 1}, .{true, cast(u64)1})
+    unused root_fresh
+    nested := Draw(reopened, cast(u64)7)
+    nested_token := Components.Callback(nested, Act)
+    unused Components.Timer(nested, 10.0, 0.0, Act)
+    unused Component.End(root)
+    sibling := Draw(reopened, cast(u64)8)
+    sibling_token := Components.Callback(sibling, Act)
+    unused Components.Timer(sibling, 20.0, 0.0, Act)
+    if !TreeFinish(reopened) { return 34 }
+    if !Components.DisposeInstance(root) || Components.Alive(root) ||
+        Components.Alive(nested) || Components.Dispatch(nested_token) ||
+        !Components.Alive(sibling) || !Components.Dispatch(sibling_token) ||
+        Components.NextDeadline(reopened) != 20.0 || Components.DisposeInstance(root) { return 35 }
+    if !SessionClose(reopened) || Components.Alive(current) ||
+        Components.Dispatch(sibling_token) || Components.NextDeadline(reopened) != -1.0 { return 25 }
+    VecFree(cleanup)
+    queue_status := QueueChecks()
+    if queue_status != 0 { return queue_status }
+    state_status := PresentationChecks()
+    if state_status != 0 { return state_status }
+    print("component lifecycle: passed\n")
+    return 0
+}

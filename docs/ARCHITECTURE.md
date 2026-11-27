@@ -11,15 +11,19 @@ library. The compiler and bundle loader have no Kryon-specific branches.
 | --- | --- |
 | `src/ui/*.zi` | Widget APIs, retained tree, layout, input decisions, styling, text, accessibility policy, and paint commands |
 | `src/backend/*.zi` | Terminal and window hosts: platform observations, native bindings, rasterization, and presentation |
+| `src/tsx/*.ts` and `src/tsx/*.tsx` | Typed composition bindings to the native widgets and containers |
 | `src/project/*.zi` | Kryon project tool that builds an app through Ziran |
 | `tests/*_host.zi` | Ziran behavior-test hosts; not part of the library or application hosts |
 | Application repositories | Screens, assets, translations, product data, and workflows |
 
-All maintained implementation files under `src/` are `.zi`. The core module
-inventory is [`src/ui/modules.txt`](../src/ui/modules.txt). Applications import
-each widget package by name, such as `Text :: #import "kryon/text";`, and the
-shared core modules they use. Optional packages
-have separate imports and build targets; the core UI does not import them.
+Native widget and host implementations remain `.zi`; their core module
+inventory is [`src/ui/modules.txt`](../src/ui/modules.txt). Applications compose
+screens in `.tsx`, importing typed bindings such as
+`import { Text } from "kryon/tsx/text"`. Those bindings call the same native
+widget implementations and submit to the same retained tree. Ziran application
+modules own domain state, resources and operations; their checked declarations
+are imported directly into TSX. Optional packages have separate imports and build
+targets; the core UI does not import them.
 
 Leaf widgets ask `layout_width` for the width supplied by their parent's
 measurement callback. Container builders own that callback alongside their
@@ -55,12 +59,19 @@ The host supplies system effects such as windows, terminal output, font and
 image loading, rasterization, and storage. A host should not implement a
 second set of widget decisions.
 
-An application owns `main` and calls `App.Show` or `App.Run`, or exports
-`Frame(session: Session, viewport: Rectangle) -> s32` for a profile host.
-A frame host calls it between `BeginFrame` and `EndFrame`. Package
+An application owns its TSX `main` and passes a typed `App.Frame` composition
+function to `App.Run`. A native frame host invokes that function between
+`BeginFrame` and `EndFrame`. Package
 profiles choose the terminal, desktop, Android or Canvas2D host;
 see [BACKENDS.md](BACKENDS.md). A non-graphical Ziran program can
 import a Kryon policy module without selecting any of these hosts.
+
+The generic Ziran frontend checks `.ts`, `.tsx` and `.zi` in one project.
+`ziran ir --project -o build/ir` saves the common checked IR used by the
+existing native and portable targets. JSX components are ordinary typed
+callables. Container bindings declare scoped child callbacks so composition
+runs inside the native container scope. The compiler has no widget catalogue,
+and the build does not generate Ziran screen sources.
 
 ## Build and verification
 

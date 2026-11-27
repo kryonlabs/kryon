@@ -4,9 +4,11 @@ using Fieldset :: #import "fieldset_props";
     #import "session"
     host_api :: #system_library "host_api";
     FieldsetHostedHost :: (session: Session, props: Fieldset.Props) -> s32 #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: Fieldset.Props) {
         unused FieldsetHostedHost(session, props)
     }
+        #scope_export
 } else {
     Theme :: #import "theme";
     #import "session"
@@ -62,6 +64,7 @@ using Fieldset :: #import "fieldset_props";
         return frame
     }
 
+        #scope_package
         Draw :: (session: Session, props: Fieldset.Props, location := #caller_location) {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }

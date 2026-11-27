@@ -16,6 +16,17 @@ if (kryonDir == null || ziranDir == null) {
 def androidAbis = (project.findProperty('app.abis') ?:
     System.getenv('KRYON_ANDROID_ABIS') ?: 'arm64-v8a').split(',').toList()
 def appCodegen = envOrProp('KRYON_PROJECT_CODEGEN', 'app.codegen') ?: 'c99'
+def appAssets = envOrProp('KRYON_PROJECT_ASSETS', 'app.assets')
+def syncAppAssets = tasks.register('syncKryonAssets', Sync) {
+    if (appAssets) {
+        def source = new File(appAssets)
+        if (!source.isAbsolute()) {
+            source = new File(rootProject.projectDir.parentFile, appAssets)
+        }
+        from source
+    }
+    into layout.buildDirectory.dir('generated/kryon-assets')
+}
 // One app, three editions: -Papp.edition=direct (the default), fdroid or
 // gplay. The Google Play edition adds Play Billing (kryon/play_billing) from
 // Kryon's templates/android-gplay.gradle and needs Android 6 and AndroidX
@@ -62,6 +73,7 @@ android {
         }
     }
 
+    sourceSets.main.assets.srcDir syncAppAssets
     if (appCodegen == 'zx') {
         sourceSets.main.assets.srcDir "${rootProject.projectDir}/../build/android/zx-assets"
         sourceSets.debug.manifest.srcFile 'src/zx/AndroidManifest.xml'
@@ -73,6 +85,10 @@ android {
             minifyEnabled false
         }
     }
+}
+
+tasks.named('preBuild').configure {
+    dependsOn syncAppAssets
 }
 
 if (googlePlay) {

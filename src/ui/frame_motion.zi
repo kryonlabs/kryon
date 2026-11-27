@@ -1,3 +1,4 @@
+Components :: #import "component_frame_slot";
 #import "session"
 
 // Hosts supply a monotonic clock. Optional motion modules own their history
@@ -6,6 +7,23 @@ FrameMotionHook :: #type (Session, bool) -> void;
 frame_style_motion: FrameMotionHook;
 frame_layout_motion: FrameMotionHook;
 FrameMotionClock :: #type () -> float64;
+frame_motion_clock: FrameMotionClock;
+
+FrameMotionUseClock :: (clock: FrameMotionClock) -> bool {
+    frame_motion_clock = clock
+    return true
+}
+
+// Optional portable providers fill the slot; native hosts supply input time.
+// Sample before composition so due timers run before model snapshots are read.
+FrameMotionSample :: (session: Session) -> bool {
+    if frame_motion_clock == null { return true }
+    seconds := frame_motion_clock()
+    if seconds < 0.0 { return false }
+    SetFrameMotionTime(session, seconds)
+    FrameMotionHoldNext(session)
+    return true
+}
 
 // Optional motion observes portable host time once per frame, at first use.
 // Hosts that already supply frame time need no concrete clock here.
@@ -33,7 +51,9 @@ frame_motion_hold: u32;
 SetFrameMotionTime :: (session: Session, seconds: float64) {
     slot := SessionIndex(session)
     if slot != 0 && seconds >= 0.0 && seconds <= 1.7976931348623157e308 {
+        Components.Tick(session, seconds)
         frame_motion_time[slot] = seconds
+        frame_motion_observed = SessionFlagSet(frame_motion_observed, slot, true)
     }
 }
 

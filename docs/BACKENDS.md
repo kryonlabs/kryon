@@ -1,11 +1,10 @@
 # Kryon hosts
 
-Kryon's reusable widget, layout, input, and composition code is written in
-Ziran under `src/ui/`. An application imports the widget packages it uses,
-such as `Text :: #import "kryon/text";`, and exports `Frame(session: Session, viewport: Rectangle) ->
-s32`. A selected host under `src/backend/` owns the process entry point,
-window or terminal, platform input, rasterization, and presentation. Ziran has
-no special knowledge of Kryon widgets.
+Kryon's reusable widgets, layout and input are implemented in Ziran under
+`src/ui/`. Applications compose their screens in typed TSX and call native
+Ziran logic through checked imports. A selected host under `src/backend/`
+owns the window or terminal, platform input, rasterization and presentation.
+The Ziran compiler has no special knowledge of Kryon widgets.
 
 Select a host with a profile in the application's `ziran.toml`:
 
@@ -47,13 +46,12 @@ in the application.
 
 ## Available hosts
 
-| Profile backend | Ziran entry | Presentation |
+| Profile backend | Native frame host | Presentation |
 | --- | --- | --- |
 | `terminal` | `frames_terminal.zi` | 80 × 24 terminal cells via `terminal.zi` |
-| `pixmap` | `frames_pixmap.zi` | Explicit headless profile; renders two frames and writes the final PPM image |
 | `desktop` | `frames_desktop.zi` | SDL2 window with Cairo raster |
 | `canvas` | `frames_web.zi` | WebGL2 page with Emscripten and Asyncify |
-| `android` | app `src/main.zi` → `android_run.zi` | Android NativeActivity package with direct `ANativeWindow` pixel presentation |
+| `android` | `android_run.zi` | Android NativeActivity package with direct `ANativeWindow` pixel presentation |
 
 The small application surface selects the host from the compile-time target.
 Import `kryon/app` and call `App.Run(window, draw)`: C/Linux uses

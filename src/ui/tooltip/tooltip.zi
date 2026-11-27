@@ -110,16 +110,20 @@ TooltipHostedReply :: struct {
 #if #defined(KRYON_HOSTED_UI) {
     tooltip_host_api :: #system_library "host_api";
     TooltipHostedHost :: (session: Session, props: Tooltip.Props, state: TooltipState) -> TooltipHostedReply #foreign tooltip_host_api;
+        #scope_package
         Draw :: (session: Session, props: Tooltip.Props,
     state: *TooltipState) -> TooltipResult {
         reply := TooltipHostedHost(session, props, state.*)
         state.* = reply.state
         return reply.result
     }
+        #scope_export
 } else {
     #import "paint_queue"
+        #scope_package
         Draw :: (session: Session, props: Tooltip.Props,
     state: *TooltipState, location := #caller_location) -> TooltipResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return TooltipCore(session, props, state, true) }
+        #scope_export
     #program_export
 TooltipCore :: (session: Session, props: Tooltip.Props,
     state: *TooltipState, effects: bool) -> TooltipResult {

@@ -117,6 +117,7 @@ PaintSeparatorForNode :: (session: Session, node: s32, props: PropsModule.Props,
             ColorFromPacked(prepared.line_color))
     }
 }
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
@@ -137,6 +138,7 @@ Draw :: (session: Session, props: PropsModule.Props, location := #caller_locatio
     PaintSeparatorForNode(session, node, placed, faces)
 }
 
+#scope_export
 #program_export
 Bullet :: (session: Session, bounds: Rectangle) {
     defaults: StyleData

@@ -160,6 +160,7 @@ ShortcutRecorderHostedReply :: struct { state: ShortcutRecorderState; result: Sh
     shortcutrecorder_host_api :: #system_library "host_api";
     ShortcutRecorderHostedHost :: (session: Session, props: Props,
         state: ShortcutRecorderState) -> ShortcutRecorderHostedReply #foreign shortcutrecorder_host_api;
+        #scope_package
         Draw :: (session: Session,
     props: Props,
     state: *ShortcutRecorderState) -> ShortcutRecorderResult {
@@ -167,10 +168,13 @@ ShortcutRecorderHostedReply :: struct { state: ShortcutRecorderState; result: Sh
         state.* = reply.state
         return reply.result
     }
+        #scope_export
 } else {
+        #scope_package
         Draw :: (session: Session,
     props: Props,
     state: *ShortcutRecorderState, location := #caller_location) -> ShortcutRecorderResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return ShortcutRecorderCore(session, props, state, true) }
+        #scope_export
     #program_export
     ShortcutRecorderCore :: (session: Session,
     props: Props,

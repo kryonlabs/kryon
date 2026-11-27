@@ -97,6 +97,7 @@ TimelineLayoutFor :: (props: Props) -> TimelineLayout {
     return layout
 }
 
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) -> TimelineResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

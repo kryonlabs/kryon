@@ -92,14 +92,14 @@ HoverCardApply :: (state: *HoverCardState,
     }
     duration := OverlayDuration(280.0, props.style,
         CurrentTheme().motion.reduced_motion)
-    target := 0.0
-    if state.open { target = 1.0 }
-    state.progress = OverlayProgressAt(state.transition_start_ms,
-        props.now_ms, duration)
-    if !state.open && state.progress <= 0.0 { state.transition_start_ms = -1 }
-    unused target
+    if state.open {
+        state.progress = OverlayProgressAt(state.transition_start_ms, props.now_ms, duration)
+    } else {
+        state.progress = 0.0
+        state.transition_start_ms = -1
+    }
     result.open = state.open
-    result.visible = state.open || state.progress > 0.0
+    result.visible = state.open
     return result
 }
 
@@ -110,16 +110,20 @@ HoverCardHostedReply :: struct {
 #if #defined(KRYON_HOSTED_UI) {
     hover_card_host_api :: #system_library "host_api";
     HoverCardHostedHost :: (session: Session, props: HoverCard.Props, state: HoverCardState) -> HoverCardHostedReply #foreign hover_card_host_api;
+        #scope_package
         Draw :: (session: Session, props: HoverCard.Props,
     state: *HoverCardState) -> HoverCardResult {
         reply := HoverCardHostedHost(session, props, state.*)
         state.* = reply.state
         return reply.result
     }
+        #scope_export
 } else {
     #import "paint_queue"
+        #scope_package
         Draw :: (session: Session, props: HoverCard.Props,
     state: *HoverCardState, location := #caller_location) -> HoverCardResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return HoverCardCore(session, props, state, true) }
+        #scope_export
     #program_export
 HoverCardCore :: (session: Session, props: HoverCard.Props,
     state: *HoverCardState, effects: bool) -> HoverCardResult {

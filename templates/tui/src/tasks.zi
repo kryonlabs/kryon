@@ -1,0 +1,129 @@
+// The terminal app's task list and its keyboard state, apart from any
+// widget draw calls, so tests can use it.
+ListBox :: #import "kryon/list_box";
+#import "kryon/geometry"
+using SharedLayout :: #import "kryon/PageLayout";
+#import "std/number_text"
+
+Task :: struct {
+    label: string
+    done: bool
+}
+
+KeyDown :: 264;
+KeyUp :: 265;
+Space :: 32;
+
+tasks: [6]Task;
+selected: s32;
+scroll: s32;
+
+// The page cursor the layout helpers advance through each frame.
+page: SharedLayout.PageLayout;
+
+// The cursor's storage, for the layout helpers to advance.
+Page :: () -> *SharedLayout.PageLayout { return *page }
+
+// Starts the centered page column for this frame's viewport.
+StartPage :: (viewport: Rectangle) { page = SharedLayout.PageFor(viewport, 560.0) }
+
+// The first tasks, once.
+Start :: () {
+    tasks[0].label = "Read the Kryon widgets guide"
+    tasks[1].label = "Add a task list to the app"
+    tasks[1].done = true
+    tasks[2].label = "Try kryon run desktop"
+    tasks[3].label = "Style the app with CSS"
+    tasks[4].label = "Write a test for the tasks"
+    tasks[5].label = "Install it with kryon install"
+}
+
+// Applies one frame's keyboard input: Up/Down become the list's
+// navigation codes (the list expects its own key values, not raw key
+// codes), Space toggles the selected task.
+HandleKey :: (key: s32, codepoint: s32) -> s32 {
+    move: s32 = 0
+    if key == KeyDown { move = ListBox.ListBoxKeyDown() }
+    if key == KeyUp { move = ListBox.ListBoxKeyUp() }
+    if codepoint == Space { tasks[selected].done = !tasks[selected].done }
+    return move
+}
+
+Selection :: () -> s32 { return selected }
+SetSelection :: (index: s32) { selected = index }
+Scroll :: () -> s32 { return scroll }
+SetScroll :: (offset: s32) { scroll = offset }
+
+// The list rows with their [x]/[ ] marks, rebuilt every call into
+// storage that outlives the frame, so the labels never dangle. The two
+// text sets take turns: each call writes the set whose views the list
+// no longer holds.
+rows: [6]ListBox.ListBoxItem;
+row_text_a: [6][96]u8;
+row_text_b: [6][96]u8;
+row_text_flip: bool;
+row_lengths: [6]s64;
+summary_text: [64]u8;
+done_count: s32;
+
+Rows :: () -> []ListBox.ListBoxItem {
+    // Write the text set the list no longer holds views of.
+    row_text_flip = !row_text_flip
+    done: s32 = 0
+    index: s32 = 0
+    while index < cast(s32)tasks.count {
+        if tasks[index].done { done += 1 }
+        mark: string = "[ ] "
+        if tasks[index].done { mark = "[x] " }
+        label := Joined(mark, tasks[index].label, RowText(index)[:])
+        row_lengths[index] = label.count
+        index += 1
+    }
+    for row: 0..5 { rows[row].label = TextView(RowText(cast(s32)row)[0:row_lengths[row]]) }
+    done_count = done
+    return rows[:]
+}
+
+// One row's byte storage in the active text set.
+RowText :: (index: s32) -> []u8 {
+    if row_text_flip { return row_text_b[index][:] }
+    return row_text_a[index][:]
+}
+
+// Copies text into fixed storage; returns the length that fit.
+Append :: (output: []u8, length: s32, text: string) -> s32 {
+    at := length
+    for byte: text {
+        if at >= output.count { return at }
+        output[at] = byte
+        at += 1
+    }
+    return at
+}
+
+// "N of 6 done", in storage that lives as long as the app.
+Summary :: () -> string {
+    digits: [16]u8
+    length: s32 = 0
+    length = Append(summary_text[:], length, FormatInteger(cast(s64)done_count, digits[:]))
+    length = Append(summary_text[:], length, " of 6 done")
+    return TextView(summary_text[0:length])
+}
+
+// first followed by second, in output.
+Joined :: (first: string, second: string, output: []u8) -> string {
+    length: s32 = 0
+    index: s32 = 0
+    while index < cast(s32)first.count && length < cast(s32)output.count {
+        output[length] = first[index]
+        length += 1
+        index += 1
+    }
+    index = 0
+    while index < cast(s32)second.count && length < cast(s32)output.count {
+        output[length] = second[index]
+        length += 1
+        index += 1
+    }
+    return TextView(output[0:length])
+}

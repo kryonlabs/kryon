@@ -9,7 +9,6 @@ RawOpen :: (path: *u8, flags: s32) -> s32 #foreign libc "open";
 RawRead :: (fd: s32, output: *u8, count: u64) -> s64 #foreign libc "read";
 RawWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
 RawClose :: (fd: s32) -> s32 #foreign libc "close";
-RawIsTty :: (fd: s32) -> s32 #foreign libc "isatty";
 RawExec :: (name: *u8, arguments: *PointerSlot) -> s32 #foreign libc "execvp";
 RawSetenv :: (name: *u8, value: *u8, overwrite: s32) -> s32 #foreign libc "setenv";
 RawGetenv :: (name: *u8) -> *u8 #foreign libc "getenv";
@@ -287,7 +286,6 @@ BackendDescription :: (profile: ProjectProfile) -> string {
     if backend == "desktop" { return "SDL2/Cairo window" }
     if backend == "canvas" { return "Canvas2D browser page" }
     if backend == "terminal" { return "terminal" }
-    if backend == "pixmap" { return "headless image, PPM on standard output" }
     if backend == "android" { return "Android package (NativeActivity)" }
     return backend
 }
@@ -328,41 +326,6 @@ AndroidCommand :: (config: ProjectConfig, profile: ProjectProfile, kryon_root: s
     return Execute(args[:])
 }
 
-ChooseProfile :: (config: ProjectConfig) -> s32 {
-    PrintFd(1, "Choose a profile:\n")
-    index: s32 = 0
-    while index < config.profile_count {
-        digit: [1]u8
-        digit[0] = cast(u8)(49 + index)
-        PrintFd(1, "  ")
-        PrintFd(1, TextFromBuffer(digit[:], 1))
-        PrintFd(1, ") ")
-        PrintFd(1, config.profiles[index].name)
-        PrintFd(1, " (")
-        PrintFd(1, BackendDescription(config.profiles[index]))
-        PrintFd(1, ")\n")
-        index += 1
-    }
-    PrintFd(1, "Selection: ")
-    chosen: u8 = cast(u8)0
-    extra: bool = false
-    while true {
-        byte: u8 = cast(u8)0
-        if RawRead(0, *byte, 1) != 1 { break }
-        if byte == cast(u8)10 || byte == cast(u8)13 { break }
-        if chosen == cast(u8)0 {
-            chosen = byte
-        } else {
-            extra = true
-        }
-    }
-    if RawIsTty(0) == 0 { PrintFd(1, "\n") }
-    if extra { return -1 }
-    index = cast(s32)chosen - 49
-    if index < 0 || index >= config.profile_count { return -1 }
-    return index
-}
-
 ListProfiles :: (config: ProjectConfig) -> s32 {
     index: s32 = 0
     while index < config.profile_count {
@@ -396,7 +359,7 @@ Usage :: () -> s32 {
 
 PreviewUsage :: () -> s32 {
     PrintFd(1, "usage: kryon preview FIXTURE --theme light|dark --width PX[,PX...] --height PX --output FILE.png|PREFIX [--profile NAME]\n")
-    PrintFd(1, "       Builds previews/FIXTURE.zi once and writes PNG and JSON. Multiple widths append -PX to the prefix.\n")
+    PrintFd(1, "       Builds previews/FIXTURE.tsx once and writes PNG and JSON. Multiple widths append -PX to the prefix.\n")
     PrintFd(1, "       The fixture is a program: its main runs App.Run with the module that draws the screen\n")
     PrintFd(1, "       as the frame. To shoot the app itself: kryon run --png FILE.png\n")
     return 0
@@ -614,7 +577,7 @@ PreviewCapture :: (prefix: string, width: string, height: string, args: []string
     return 0
 }
 
-// A preview builds previews/FIXTURE.zi into build/preview/PROFILE/FIXTURE;
+// A preview builds previews/FIXTURE.tsx into build/preview/PROFILE/FIXTURE;
 // a shot (no fixture) builds the entry into build/shot/PROFILE.
 PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string) -> s32 {
     prefix := options.output
@@ -627,7 +590,7 @@ PreviewRun :: (options: PreviewOptions, profile: ProjectProfile, args: []string)
     area := ifx options.fixture == "" then "build/shot" else "build/preview"
     failure := "preview build or render failed; see diagnostics above, add previews to [package] module_roots, and give the fixture a main that runs App.Run with its drawing module"
     if options.fixture == "" {
-        failure = "run --png build or render failed; see diagnostics above and give the project entry a main that runs App.Run"
+        failure = ifx profile.host == "" then "run --png build or render failed; see diagnostics above and give the project entry a main that runs App.Run" else "run --png build or render failed; see diagnostics above and give the profile host's main a frame to run"
     }
 
     build_root_bytes: [4096]u8
@@ -902,15 +865,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if profile_name == "" && verb == "install" {
         profile_name = config.install.profile
     }
-    if profile_name == "" {
-        if verb == "run" && shot.output == "" && !watch && config.profile_count > 1 && RawIsTty(0) != 0 {
-            chosen_profile: s32 = ChooseProfile(config)
-            if chosen_profile < 0 { return Error("invalid profile selection") }
-            profile_name = config.profiles[chosen_profile].name
-        } else {
-            profile_name = config.default_profile
-        }
-    }
+    if profile_name == "" { profile_name = config.default_profile }
     if verb == "install" {
         prefix_bytes: [4096]u8
         bin_bytes: [128]u8
@@ -945,7 +900,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
             return Error("preview requires a desktop C99 profile; select one with --profile NAME")
         }
         name: [128]u8
-        config.entry = Join(Join("previews/", preview.fixture, name[:]), ".zi", fixture_path[:])
+        config.entry = Join(Join("previews/", preview.fixture, name[:]), ".tsx", fixture_path[:])
         if !Exists(config.entry) {
             PrintFd(2, "kryon: fixture not found: ")
             PrintFd(2, config.entry)
@@ -956,12 +911,11 @@ main :: (argc: s32, argv: **u8) -> s32 {
         profile.host = ""
     }
     if shot.output != "" {
-        // The desktop renderer draws the PNG offscreen, for pixmap profiles too.
-        if profile.codegen != "c99" || (profile.backend != "desktop" && profile.backend != "pixmap") {
-            return Error("run --png needs a desktop or pixmap C99 profile; name one, as in kryon run shot --png FILE.png")
+        if profile.codegen != "c99" || profile.backend != "desktop" {
+            return Error("run --png needs a desktop C99 profile; name one, as in kryon run desktop --png FILE.png")
         }
-        profile.backend = "desktop"
-        profile.host = ""
+        // The profile's own host entry renders the shot when it names one;
+        // the standard frame host renders it otherwise.
     }
     if profile.backend == "android" {
         if verb == "install" {
@@ -973,11 +927,10 @@ main :: (argc: s32, argv: **u8) -> s32 {
         return AndroidCommand(config, profile, installed_kryon, installed_ziran, verb)
     }
     if (profile.backend != "terminal" && profile.backend != "desktop" &&
-        profile.backend != "canvas" && profile.backend != "pixmap") ||
+        profile.backend != "canvas") ||
     (profile.codegen != "c99" &&
         !(profile.codegen == "zx" &&
-        (profile.backend == "desktop" || profile.backend == "pixmap" ||
-        profile.backend == "canvas"))) {
+        (profile.backend == "desktop" || profile.backend == "canvas"))) {
         return Error("this backend/codegen pair is not available yet")
     }
     // Hosts name the program's window, page and menu entry after this.

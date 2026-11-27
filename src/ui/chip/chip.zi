@@ -55,6 +55,7 @@ Measure :: (props: Props) -> Rectangle {
     return Rectangle.{0.0, 0.0, width, size.height}
 }
 
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) -> ChipResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

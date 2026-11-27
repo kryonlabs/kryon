@@ -1,4 +1,4 @@
-// `kryon run shot --png`: a whole app rendered offscreen at any size, with
+// `kryon run desktop --png`: a whole app rendered offscreen at any size, with
 // no preview fixture and no display. The test shoots a scratch copy of
 // examples/dashboard at two sizes and checks each PNG's dimensions, then
 // edits the copy's stylesheet and checks that the picture changes.
@@ -49,14 +49,16 @@ PrepareCopy :: (ziran: string, source: string, copy: string) -> bool {
     if TextHasSuffix(ziran, tool_suffix) {
         BuilderPrint(*overrides, "ziran = \"%\"\n", ziran[:ziran.count - tool_suffix.count])
     }
-    return copied && WriteEntireFile(JoinPath(copy, "ziran.local.toml"), BuilderFinish(overrides))
+    if !copied || !WriteEntireFile(JoinPath(copy, "ziran.local.toml"), BuilderFinish(overrides)) { return false }
+    arguments := string.[ziran, "lock", "--offline"]
+    return Run(arguments[:], copy, JoinPath(copy, "build-lock.log"))
 }
 
-// One `kryon run shot --png` of the app in DIRECTORY, through the same
+// One `kryon run desktop --png` of the app in DIRECTORY, through the same
 // `ziran tool kryon` the kryon front door runs.
 Shoot :: (ziran: string, directory: string, png: string, width: string, height: string,
     theme: string, log: string) -> bool {
-    arguments: [13]string = .[ziran, "tool", "kryon", "run", "shot", "--png", png,
+    arguments: [13]string = .[ziran, "tool", "kryon", "run", "desktop", "--png", png,
         "--width", width, "--height", height, "--theme", theme]
     return Run(arguments[:], directory, log)
 }
@@ -107,10 +109,10 @@ main :: () -> s32 {
     narrow_width, narrow_height := PngSize(narrow)
     Expect(narrow_width == 390 && narrow_height == 844, "the narrow shot is 390x844")
 
-    no_png: [4]string = .["run", "shot", "--width", "800"]
+    no_png: [4]string = .["run", "desktop", "--width", "800"]
     Expect(Refused(ziran, copy, no_png[:], log, "need --png FILE.png"), "sizes without --png are refused")
     web: [4]string = .["run", "web", "--png", "web.png"]
-    Expect(Refused(ziran, copy, web[:], log, "needs a desktop or pixmap C99 profile"), "a canvas profile is refused")
+    Expect(Refused(ziran, copy, web[:], log, "needs a desktop C99 profile"), "a canvas profile is refused")
 
     styles := JoinPath(copy, "src/styles.zi")
     text, read := ReadEntireFile(styles)

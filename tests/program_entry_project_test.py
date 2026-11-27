@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Build a program entry (main plus App.Run) through the project tool.
 
-The entry is the maintained examples/window.zi. Its canvas profile must give a
+The entry is the maintained examples/window.tsx. Its canvas profile must give a
 page whose generated host runs that main, and its desktop profile an
 executable that maps the program's window. Both run on private displays.
 
-The editor preview marks a page's canvas `data-transparent`: window.zi's page
-then leaves every pixel at alpha 0, and the maintained examples/hello.zi still
+The editor preview marks a page's canvas `data-transparent`: window.tsx's page
+then leaves every pixel at alpha 0, and the maintained examples/hello.tsx still
 draws its text over a transparent background. Unmarked, both are opaque.
 """
 
@@ -104,7 +104,7 @@ for tool in ("xvfb-run", "xdotool"):
 
 with tempfile.TemporaryDirectory(prefix="program-entry-", dir=ROOT / "build") as directory:
     project = Path(directory) / "window"
-    project_from(project, "window_program", "window.zi")
+    project_from(project, "window_program", "window.tsx")
     (project / "driver.py").write_text(DRIVER)
 
     run([ZIRAN, "tool", "kryon", "build", "--profile", "web"], project)
@@ -121,7 +121,7 @@ with tempfile.TemporaryDirectory(prefix="program-entry-", dir=ROOT / "build") as
     browse(page, "Window", "clear")
 
     hello = Path(directory) / "hello"
-    project_from(hello, "hello_program", "hello.zi")
+    project_from(hello, "hello_program", "hello.tsx")
     run([ZIRAN, "tool", "kryon", "build", "--profile", "web"], hello)
     hello_page = hello / "build/hello_program-web.html"
     browse(hello_page, "Hello", "opaque")

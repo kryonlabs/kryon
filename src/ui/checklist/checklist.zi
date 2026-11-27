@@ -132,6 +132,7 @@ OnboardingChecklistDescription :: (done: s32, total: s32, output: []u8) -> strin
     return TextView(output[0:cast(s64)at])
 }
 
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) -> OnboardingChecklistResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

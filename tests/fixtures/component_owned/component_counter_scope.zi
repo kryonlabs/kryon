@@ -1,0 +1,29 @@
+// Shared lifecycle behavior keeps replacement fixtures on the counter's
+// actual capability ABI, so schema/resource/render cases reach their own gate.
+#import "component_protocol"
+#import "session"
+ComponentRuntime :: #import "kryon/component";
+OwnedActions :: #import "component_owned_actions";
+Lifecycle :: #import "component_lifecycle";
+Types :: #import "component_types";
+#scope_file
+owned_token: Types.Token;
+#scope_export
+Enter :: (session: Session) -> (owner: Types.Instance, ready: bool) {
+    instance, fresh := ComponentRuntime.Begin(session, "TestCounter", .{"counter.tsx", 1, 1}, .{true, cast(u64)18446744073709551615})
+    if instance.identity == cast(u64)0 { return instance, false }
+    if ComponentRuntime.Current(session).identity != instance.identity { return instance, false }
+    if fresh {
+        owned_token = OwnedActions.mount(instance, ComponentSeconds())
+        if owned_token.serial == cast(u64)0 || !Lifecycle.Queue(owned_token) { return instance, false }
+    }
+    if ComponentText() == "queue-fail" {
+        if !Lifecycle.Queue(owned_token) { return instance, false }
+        child, new_child := ComponentRuntime.Begin(session, "Cancelled", .{"counter.tsx", 2, 1}, .{true, 8})
+        if !new_child || child.identity == cast(u64)0 { return instance, false }
+        OwnedActions.cleanup(child)
+        unused ComponentRuntime.End(child)
+        return instance, false
+    }
+    return instance, true
+}

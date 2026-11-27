@@ -236,6 +236,7 @@ desktop_texture_dirty: bool;
 desktop_texture_reset: bool;
 // Scheduling activity is independent of retained paint and presentation.
 desktop_frame_requested: bool;
+desktop_component_due: s64 = -1;
 desktop_pixels_valid: bool;
 // A blank mapped window appears before the first application frame.
 desktop_first_frame: bool;
@@ -537,6 +538,7 @@ OpenDesktopWindow :: (width: s32, height: s32, title_text: string, options: u32)
     desktop_input_started = Timer.MonotonicMilliseconds()
     frame_frequency = PerformanceFrequency()
     frame_clock.deadline = cast(u64)0
+    desktop_component_due = -1
     // The click that focuses this window must still reach its widgets.
     // SDL's default swallows it, including the first right-click menu request.
     hint: [32]u8
@@ -741,6 +743,7 @@ DesktopApplyResize :: () -> bool {
 
 #program_export
 CloseDesktop :: () {
+    desktop_component_due = -1
     FrameInputProviderReset(*desktop_frame_input)
     desktop_physical_buttons=0; desktop_physical_sampled=false; desktop_foreign_buttons=0
     desktop_frame_input_pending_carry = false
@@ -1357,6 +1360,23 @@ DesktopRequestFrame :: () {
     desktop_frame_requested = true
 }
 
+// The frame driver owns this deadline. Replacing it also cancels a removed
+// component's timer. SDL input continues to wake the wait immediately.
+DesktopWakeAfter :: (milliseconds: s32) {
+    desktop_component_due = -1
+    if milliseconds > 0 { desktop_component_due = Timer.MonotonicMilliseconds() + cast(s64)milliseconds }
+}
+
+// Portable callers send an absolute deadline, so time spent crossing the
+// bundle boundary or presenting never extends a timer's requested delay.
+DesktopWakeAt :: (seconds: float64) {
+    desktop_component_due = -1
+    if seconds < 0.0 || seconds != seconds || seconds > 9007199254740.0 { return }
+    milliseconds := seconds * 1000.0
+    desktop_component_due = cast(s64)milliseconds
+    if cast(float64)desktop_component_due < milliseconds { desktop_component_due += 1 }
+}
+
 // Draws at most `fps` frames each second, or as fast as frames come with 0.
 // The default is 60, settling to 15 while nothing changes.
 #program_export
@@ -1393,6 +1413,18 @@ DesktopPrepareGlyphs :: (value: string) {
 PauseDesktop :: () {
     milliseconds := Clock.Wait(*frame_clock, PerformanceCounter(),
         frame_frequency, WindowVisibleHost() || desktop_always_run, desktop_frame_unchanged && !desktop_frame_requested)
+    if desktop_component_due >= 0 {
+        remaining := desktop_component_due - Timer.MonotonicMilliseconds()
+        if remaining <= 0 {
+            milliseconds = 0
+            frame_clock.deadline = 0
+        } else if cast(u64)remaining < cast(u64)milliseconds {
+            milliseconds = cast(u32)remaining
+            // Wait already advanced its regular deadline. A timer waking
+            // early starts a fresh budget without changing the quiet state.
+            frame_clock.deadline = 0
+        }
+    }
     if milliseconds > cast(u32)0 {
         // A null event pointer leaves the first event queued for PollDesktop.
         // Input wakes a stable screen immediately rather than waiting for its

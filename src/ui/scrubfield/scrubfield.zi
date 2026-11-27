@@ -238,15 +238,19 @@ ScrubFieldHostedReply :: struct { state: ScrubFieldState; result: ScrubFieldResu
     scrubfield_host_api :: #system_library "host_api";
     ScrubFieldHostedHost :: (session: Session, props: Props,
         state: ScrubFieldState) -> ScrubFieldHostedReply #foreign scrubfield_host_api;
+        #scope_package
         Draw :: (session: Session, props: Props,
     state: *ScrubFieldState) -> ScrubFieldResult {
         reply := ScrubFieldHostedHost(session, props, state.*)
         state.* = reply.state
         return reply.result
     }
+        #scope_export
 } else {
+        #scope_package
         Draw :: (session: Session, props: Props,
     state: *ScrubFieldState, location := #caller_location) -> ScrubFieldResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return ScrubFieldCore(session, props, state, true) }
+        #scope_export
     #program_export
     ScrubFieldCore :: (session: Session, props: Props,
     state: *ScrubFieldState, effects: bool) -> ScrubFieldResult {

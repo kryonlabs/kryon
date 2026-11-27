@@ -99,6 +99,7 @@ NavigationBarConfigButton :: (session: Session, key: u64, id: s32,
 
 // This editor mutates only the borrowed route slice and returns all retained
 // UI state. The caller owns save/cancel/reset effects and route persistence.
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props,
     routes: []s32, slot_labels: []string,
     options: []PropsModule.Option, location := #caller_location) -> PropsModule.Result {
@@ -106,6 +107,10 @@ Draw :: (session: Session, props: PropsModule.Props,
     defer { TreeCallSiteEnd(session, site) }
     result: PropsModule.Result = .{.node = -1, .scroll_offset = props.scroll_offset,
         .dropdown_open = props.dropdown_open, .dropdown_row = props.dropdown_row}
+    if props.disabled {
+        result.dropdown_open = false
+        result.dropdown_row = -1
+    }
     counts: NavigationBarConfigCounts =
         NavigationBarConfigCountsFor(props.route_count,
             props.max_route_count, (cast(s32)options.count), 16)
@@ -137,6 +142,8 @@ Draw :: (session: Session, props: PropsModule.Props,
     modal.scale = scale
     modal.has_right_action = true
     modal.right_label = props.close_label
+    modal.right_action_disabled = props.disabled
+    modal.dismiss_disabled = props.disabled
     frame: Modal.ModalFrameResult = Modal.Draw(session, modal)
     result.node = frame.node
     if frame.dismissed || frame.right_clicked {
@@ -152,7 +159,7 @@ Draw :: (session: Session, props: PropsModule.Props,
         cast(s32)layout.route_bounds.height)
     result.scroll_offset = ScrollClamp(result.scroll_offset,
         max_scroll)
-    if !result.dropdown_open && props.wheel != 0.0 {
+    if !props.disabled && !result.dropdown_open && props.wheel != 0.0 {
         result.scroll_offset = ScrollWheelOffsetFor(
             result.scroll_offset, props.wheel,
             max_scroll, metrics.row_height)
@@ -168,7 +175,7 @@ Draw :: (session: Session, props: PropsModule.Props,
         old: s32 = TreePrevious(session, frame.panel_node,
             key * cast(u64)65599 + cast(u64)5, WidgetKindSlider)
         drag: PointerDrag = TreeTakeDragAt(session, old)
-        if drag.active || drag.ended {
+        if !props.disabled && (drag.active || drag.ended) {
             result.scroll_offset = ScrollDragOffsetFor(drag.y,
                 bar.track_bounds.y, drag.grab_y,
                 max_scroll, bar)
@@ -182,7 +189,7 @@ Draw :: (session: Session, props: PropsModule.Props,
             key * cast(u64)65599 + cast(u64)5,
             WidgetKindSlider, bar.thumb_bounds)
         if thumb_node >= 0 {
-            TreeSetInteractive(session, thumb_node, false, false, 0)
+            TreeSetInteractive(session, thumb_node, props.disabled, false, 0)
             TreeSetStyleClass(session, thumb_node, props.class_name)
             TreeSetStyleId(session, thumb_node, props.id)
             PaintRoundedFill(session, thumb_node, bar.track_bounds,
@@ -231,7 +238,7 @@ Draw :: (session: Session, props: PropsModule.Props,
                     cast(u64)17 + cast(u64)1,
                 props.id + index + 1, props.class_name,
                 row.remove_bounds, props.remove_label,
-                false, true) {
+                props.disabled, true) {
                 removed = index
             }
             cx: float32 = row.remove_bounds.x +
@@ -261,7 +268,7 @@ Draw :: (session: Session, props: PropsModule.Props,
     if result.route_count < counts.max_route_count {
         if NavigationBarConfigButton(session, key * cast(u64)65599 +
             cast(u64)10, props.id, props.class_name,
-            layout.add_bounds, props.add_label, false, false) {
+            layout.add_bounds, props.add_label, props.disabled, false) {
             default_route: s32 = 0
             if counts.option_count > 0 {
                 default_route = options[0].route
@@ -276,15 +283,15 @@ Draw :: (session: Session, props: PropsModule.Props,
     if NavigationBarConfigButton(session, key * cast(u64)65599 +
         cast(u64)11, props.id, props.class_name,
         layout.reset_bounds, props.reset_label,
-        false, false) { result.action = 3 }
+        props.disabled, false) { result.action = 3 }
     if NavigationBarConfigButton(session, key * cast(u64)65599 +
         cast(u64)12, props.id, props.class_name,
         layout.cancel_bounds, props.cancel_label,
-        false, false) { result.action = 1 }
+        props.disabled, false) { result.action = 1 }
     if NavigationBarConfigButton(session, key * cast(u64)65599 +
         cast(u64)13, props.id, props.class_name,
         layout.save_bounds, props.save_label,
-        false, false) { result.action = 2 }
+        props.disabled, false) { result.action = 2 }
 
     dropdown_options: [16]Dropdown.Option
     index = 0
@@ -319,7 +326,8 @@ Draw :: (session: Session, props: PropsModule.Props,
                     routes[index])
             dropdown.open = result.dropdown_open &&
                 result.dropdown_row == index
-            if props.focused_row == index {
+            dropdown.disabled = props.disabled
+            if !props.disabled && props.focused_row == index {
                 dropdown.focused = true
                 dropdown.trigger_input = props.trigger_input
                 dropdown.menu_input = props.menu_input

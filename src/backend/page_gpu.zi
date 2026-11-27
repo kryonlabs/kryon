@@ -705,7 +705,8 @@ PageGpuTargetBind :: (framebuffer: s32, width: s32, height: s32) {
 
 // Reads `width` by `height` RGBA pixels of the current surface into
 // `pixels`, top-down with straight alpha like a canvas readback.
-PageGpuReadPixels :: (x: s32, y: s32, width: s32, height: s32, pixels: *u8) -> bool {
+PageGpuReadPixels :: (x: s32, y: s32, width: s32, height: s32,
+    pixels: *u8, premultiplied: bool) -> bool {
     if page_gpu_gl == 0 || page_gpu_lost || pixels == null { return false }
     if width <= 0 || height <= 0 { return false }
     scope: s32 = WebScope()
@@ -713,7 +714,10 @@ PageGpuReadPixels :: (x: s32, y: s32, width: s32, height: s32, pixels: *u8) -> b
     read_y := y
     flip := page_gpu_flip > 0.0
     if flip { read_y = page_gpu_target_height - (y + height) }
-    buffer := WebBytes(WebBytesUint8, cast(*void)pixels, width * height * 4)
+    // WebGL writes into its own typed array. Copy those bytes back before processing.
+    byte_count := width * height * 4
+    buffer := WebNew1(WebGetObject(WebGlobal, WebName("Uint8Array")), WebNumber(cast(float64)byte_count))
+    if buffer == 0 { WebEnd(scope); return false }
     args: [7]WebValue
     args[0] = WebNumber(cast(float64)x)
     args[1] = WebNumber(cast(float64)read_y)
@@ -723,7 +727,7 @@ PageGpuReadPixels :: (x: s32, y: s32, width: s32, height: s32, pixels: *u8) -> b
     args[5] = WebNumber(5121.0)
     args[6] = WebObject(buffer)
     unused WebCall(gl, page_gpu_names.read_pixels, *args[0], 7)
-    ok := !WebFailed()
+    ok := !WebFailed() && WebCopyOut(buffer, cast(*void)pixels, byte_count) == byte_count
     WebEnd(scope)
     if !ok { return false }
     row_bytes := width * 4
@@ -741,6 +745,7 @@ PageGpuReadPixels :: (x: s32, y: s32, width: s32, height: s32, pixels: *u8) -> b
             }
         }
     }
+    if !premultiplied { return true }
     count := width * height
     index: s32 = 0
     while index < count {
@@ -1245,14 +1250,13 @@ PageGpuTextureUpdateRgba :: (texture: s32, pixels: *u8, x: s32, y: s32,
     args: [9]WebValue
     args[0] = WebNumber(3553.0)
     args[1] = WebNumber(0.0)
-    args[2] = WebNumber(6408.0)
-    args[3] = WebNumber(cast(float64)x)
-    args[4] = WebNumber(cast(float64)y)
-    args[5] = WebNumber(cast(float64)width)
-    args[6] = WebNumber(cast(float64)height)
-    args[7] = WebNumber(6408.0)
-    args[8] = WebNumber(5121.0)
-    args[9] = WebObject(bytes)
+    args[2] = WebNumber(cast(float64)x)
+    args[3] = WebNumber(cast(float64)y)
+    args[4] = WebNumber(cast(float64)width)
+    args[5] = WebNumber(cast(float64)height)
+    args[6] = WebNumber(6408.0)
+    args[7] = WebNumber(5121.0)
+    args[8] = WebObject(bytes)
     unused WebCall(gl, page_gpu_names.tex_sub_image_2d, *args[0], 9)
     ok := !WebFailed()
     WebEnd(scope)
@@ -1368,7 +1372,7 @@ PageGpuTargetCreate :: (width: s32, height: s32, texture_out: *s32,
 
 // Reads a texture's pixels through the shared readback framebuffer.
 PageGpuTextureRead :: (texture: s32, width: s32, height: s32,
-    pixels: *u8, capacity: s32) -> bool {
+    pixels: *u8, capacity: s32, premultiplied: bool) -> bool {
     if page_gpu_gl == 0 || page_gpu_lost || texture == 0 || pixels == null { return false }
     if width * height * 4 > capacity { return false }
     scope: s32 = WebScope()
@@ -1389,7 +1393,7 @@ PageGpuTextureRead :: (texture: s32, width: s32, height: s32,
     page_gpu_flip = -1.0
     page_gpu_target_height = height
     complete := WebAsNumber(WebCall1(gl, page_gpu_names.check_framebuffer, WebNumber(36160.0)))
-    ok := complete == 36053.0 && PageGpuReadPixels(0, 0, width, height, pixels)
+    ok := complete == 36053.0 && PageGpuReadPixels(0, 0, width, height, pixels, premultiplied)
     page_gpu_flip = saved_flip
     page_gpu_target_height = saved_height
     args[3] = WebNull()

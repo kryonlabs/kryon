@@ -1,0 +1,60 @@
+#import "kryon/control_props"
+#import "kryon/geometry"
+#import "kryon/style_sheet"
+Theme :: #import "kryon/theme";
+
+installed_plot_style: s32 = -1;
+InstallPlotStyles :: (dark: bool) {
+    wanted: s32 = ifx dark then 1 else 0
+    if wanted == installed_plot_style { return }
+    installed_plot_style = wanted
+    palette := Theme.DefaultPalette(dark)
+    rules := ActiveStyleRules()
+    rule: StyleRule
+    rule.selector = StyleDefaultSelector(); rule.selector.kind = StyleKindPlot()
+    rule.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground | cast(u32)StyleField.StyleBorder
+    rule.style.background = palette.surface; rule.style.foreground = palette.accent; rule.style.border = palette.border
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    unused InstallStyleRules(rules)
+}
+
+installed_data_views_style: s32 = -1;
+InstallDataViewStyles :: (dark: bool) {
+    wanted: s32 = ifx dark then 1 else 0
+    if wanted == installed_data_views_style { return }
+    installed_data_views_style = wanted
+    palette := Theme.DefaultPalette(dark)
+    rules := ActiveStyleRules()
+    rule: StyleRule
+    rule.selector = StyleDefaultSelector(); rule.selector.kind = StyleKindTreeView()
+    rule.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground | cast(u32)StyleField.StyleBorder
+    rule.style.background = palette.surface; rule.style.foreground = palette.foreground; rule.style.border = palette.border
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    rule.selector.kind = StyleKindTreeViewItem()
+    rule.style.fields = cast(u32)StyleField.StyleForeground
+    rule.style.foreground = palette.foreground
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    rule.style.fields |= cast(u32)StyleField.StyleBackground
+    rule.style.background = palette.selection
+    rule.style.foreground = palette.selection_text
+    rule.state = cast(s32)ButtonState.ButtonStateHover
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    rule.state = cast(s32)ButtonState.ButtonStateSelected
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    rule.state = cast(s32)ButtonState.ButtonStateNormal
+    rule.selector.kind = StyleKindTableView()
+    rule.selector.role = StyleAny()
+    rule.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground | cast(u32)StyleField.StyleBorder
+    rule.style.background = palette.surface; rule.style.foreground = palette.foreground; rule.style.border = palette.border
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    rule.state = cast(s32)ButtonState.ButtonStateSelected
+    rule.style.background = palette.selection
+    rule.style.foreground = palette.selection_text
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    unused InstallStyleRules(rules)
+}
+
+ExampleBounds :: (viewport: Rectangle) -> Rectangle {
+    return .{viewport.x + 24.0 * viewport.width / 480.0, viewport.y + 64.0,
+        432.0 * viewport.width / 480.0, 208.0}
+}

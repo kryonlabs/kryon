@@ -1,43 +1,41 @@
 # Changelog
 
-## Moving an app to this Kryon
+## Moving an app to Unreleased
 
-Bump the Ziran toolchain, Kryon and CSS pins together: `kryon upgrade` in the
-app's directory pins the set this kryon knows (the starter's: Ziran e225a4fe,
-Kryon 2f9b5db2, CSS d55590a6) and locks afresh. A CSS package must pin the
-same Kryon as the app, or the build names the export both define. Then:
+Application composition moves to `.tsx`. Set the package and Kryon UI entries
+to the maintained TSX screen; native domain models, widget implementations,
+custom drawing and profile hosts remain `.zi`. The project tool rejects an old
+`.zi` UI entry with a migration diagnostic. The full breaking migration and its
+remaining verification are tracked in [the migration matrix](plans/tsx-migration.md).
 
-- **Card is a container.** Before: `c := Card.Draw(session, .{.bounds = slot.bounds}).content`
-  and children drawn at `c`. After: `card := Card.Draw(session, Card.Props.{.variant = .CardOutlined})`,
-  then `if card.opened { children; unused End(session) }`; without a height it grows to its
-  children. (atr src/ui/chrome.zi:30 uses the old form.)
-- **Child-rect helpers are gone:** `ColumnChildBounds`, `RowChildBounds`, `StackChildBoundsFor`,
-  `FlowChildBounds`, `CardContentBounds`. Draw children inside `Layout.Draw`, `Row`, `Stack`,
-  `Grid` or `Flow` and let it place them; a widget leaves its width (column) or height (row)
-  unset to fill. `FocusDefaultOutlineBounds` is gone: `FocusRingFor` sizes the focus ring
-  from the style's `:focus-visible` outline.
-- **No Stack slots for composites.** TitleBar sizes itself in a column; draw trailing widgets
-  at `bar.trailing_bounds`. Containers without a height size to their children at `End`, and
-  Row, Column and Grid paint their CSS background, border, radius and box-shadow.
-- **Widget keys are optional.** Before: `.key = cast(u64)(100 + index)`. After: no key; a
-  widget is known by its calling line and parent, and a loop's repeats count in order. Keep
-  `.key = item.id` only where rows reorder.
-- **Stricter CSS.** A plain `CssSheetParse` refuses browser-only declarations with the
-  reason; `CssSheetParseWithDiagnostics` reports them. A style pack in an older layout is
-  refused as stale: rebuild it with the pinned CSS package.
-- **Transforms are native and opt-in.** `transform`, `translate`, `rotate`, `scale` and
-  `transform-origin` paint on every host once the app calls `PaintTransformInstall()` from
-  `kryon/paint_transform`; `CssSheetInstall` refuses a sheet that sets one until then.
-- **`translate` moves the whole box.** Before: `NavigationBar[role=Panel] { translate: 340px 0; }`
-  set a widget part's offset or metric. After: `NavigationBar[role=Panel] { -kryon-content-offset: 340px 0; }`
-  keeps that metric, and `Button:hover { translate: 0 -2px; }` lifts the whole button at paint
-  time, as on the web. The old meaning has no alias: rename every `translate:` that set a part
-  metric (the CSS presets already use `-kryon-content-offset`). Apps' own sheets need the same
-  rename: Breeze's `assets/styles/inbe.css:243` `translate: 0 0` reset a part offset and now asks
-  for a transform, which `CssSheetInstall` refuses without `PaintTransformInstall()`; it should
-  read `-kryon-content-offset: 0 0`.
-- **Import `kryon/Frame`.** The old `kryon/tree_draw` name still works but is on its way out.
-- `kryon/swipe_row` stays: Breeze Lists uses it.
+Use typed component imports such as `kryon/tsx/button`, `kryon/tsx/card` and
+`kryon/tsx/layout`. JSX statements compose their real native widgets; use the
+same component's ordinary typed props call when consuming an immediate result.
+Container children execute inside the native container scope. Preserve explicit
+keys for reordered items and keep persistent domain state in its native owner.
+Update Ziran, Kryon and CSS through the normal package workflow after selecting
+the verified upstream milestones; generated declarations belong in build output.
+
+The earlier layout changes also apply:
+
+- Card is a container. Compose its children within `<Card ...>...</Card>`;
+  an omitted height grows to its children. Removed child-rectangle helpers
+  (`ColumnChildBounds`, `RowChildBounds`, `StackChildBoundsFor`,
+  `FlowChildBounds`, `CardContentBounds`) have no compatibility aliases.
+- Row, Column, Grid and other layout components place their children. Leave a
+  child's width or height unset to fill its column or row. TitleBar reports
+  `trailing_bounds` for controls in its trailing area. `FocusRingFor` replaces
+  the removed `FocusDefaultOutlineBounds` helper in native implementations.
+- A widget's source location and parent provide its ordinary identity. Use an
+  explicit item key where insertion or reordering must preserve that item.
+- `CssSheetParse` rejects browser-only declarations; use
+  `CssSheetParseWithDiagnostics` for the reason. Rebuild stale style packs with
+  the matching CSS package. Native skins use `kryon/Frame`; migrate the old
+  `kryon/tree_draw` imports along with their applications.
+- Native transforms remain opt-in through `PaintTransformInstall()` from
+  `kryon/paint_transform`. `translate` moves the whole styled box; use
+  `-kryon-content-offset` for an internal part offset. Update application
+  stylesheets along with the supplied CSS presets.
 
 ## Unreleased
 
@@ -60,6 +58,20 @@ same Kryon as the app, or the build names the export both define. Then:
   with native Ziran diagnostics, rather than JavaScript/React assumptions.
   Document why native syntax and checked imports need the Ziran extension
   instead of duplicate ambient widget declarations (docs/VSCODE.md).
+
+- Remove the pixmap application backend, headless frame host, starter profiles
+  and parity build route. Use a desktop C99 profile with `run --png` for
+  offscreen screenshots; pixmap profiles are rejected during project checking.
+
+- Begin the breaking TSX authoring migration with direct checked-IR compilation,
+  a TSX empty-window example and checked process entries without generated
+  Ziran source adapters. Pin maintained projects to the verified compiler.
+  The full widget, state, scaffold and consumer migration remains in progress.
+
+- Give native component instances independent retained-tree namespaces and
+  transactional keyed lifetimes. Dispose resources deterministically on removal
+  or rollback, reject stale tokens and cleanup/timer frame reentry, and cap
+  desktop and native Android waits at pending timer deadlines.
 
 - Resolve Android's program-entry binding through the public package import,
   so compiler module namespaces cannot break native application builds.
@@ -107,7 +119,7 @@ same Kryon as the app, or the build names the export both define. Then:
 - Update only changed indexed mesh ranges during mixed CPU/GPU animation, and skip transparent pixel premultiplication.
 
 - Select `App.Run` hosts by code generator, then platform or explicit profile.
-  Terminal and headless pixmap profiles take priority over the desktop default
+  Terminal profiles take priority over the desktop default
   on both Linux and Windows; desktop suppression now applies to Windows too.
 
 - Move font-independent UTF-8 tokenization, word/grapheme wrapping and line-height arithmetic into Ziran `std/text_layout`; Kryon supplies measurement and font-revision caches.
@@ -144,7 +156,7 @@ same Kryon as the app, or the build names the export both define. Then:
 
 - `main` is the only Kryon UI program entry: the program declares `main` and runs its window through `kryon/app` (`App.Run(window, Frame)`), and an entry without `main :: () -> s32` fails the build with a migration error. The Frame program export is removed with no compat path: the `frame_entry` binding, the old `desktop_run`/`canvas_run`/`dom_run`/`terminal_run`/`pixmap_run`/`zx_run` host programs and the `KRYON_FRAME_ENTRY` escape are gone, every fixture and example runs as a program, `App.Frame` carries the `viewport` its draw runs in, and quitting is `WindowQuit()` from `Window` instead of a Frame return value.
 
-- A program entry builds on non-desktop C backends without carrying desktop modules: terminal, canvas, dom and pixmap builds define `KRYON_NO_DESKTOP_HOST`, and `kryon/app` then maps `App.Show`/`App.Run` to `app_unsupported` on Linux C targets, so `kryon run shot` links a program entry (which imports `kryon/app`) without the desktop window and accessibility libraries.
+- A program entry builds on terminal and Canvas C backends without carrying desktop modules: non-desktop builds define `KRYON_NO_DESKTOP_HOST` so importing `kryon/app` does not add the desktop window and accessibility libraries.
 
 - Android system text draws from the pixel backend's GPU atlas as textured quads, like bundled glyphs, instead of one quad per pixel: the Android typeface raster keeps the last 64 runs (4 MB together) instead of one, names each raster by its text, font, face, style and color, and a run wider than an atlas entry draws in column chunks (`PixmapGpuAddMaskRows`). The GPU recording test draws a 600-pixel named run on both paths.
 

@@ -194,16 +194,20 @@ GuidedTourHostedReply :: struct {
 #if #defined(KRYON_HOSTED_UI) {
     guided_tour_host_api :: #system_library "host_api";
     GuidedTourHostedHost :: (session: Session, props: GuidedTour.Props, state: GuidedTourState) -> GuidedTourHostedReply #foreign guided_tour_host_api;
+        #scope_package
         Draw :: (session: Session, props: GuidedTour.Props,
     state: *GuidedTourState) -> GuidedTourResult {
         reply := GuidedTourHostedHost(session, props, state.*)
         state.* = reply.state
         return reply.result
     }
+        #scope_export
 } else {
     #import "paint_queue"
+        #scope_package
         Draw :: (session: Session, props: GuidedTour.Props,
     state: *GuidedTourState, location := #caller_location) -> GuidedTourResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return GuidedTourCore(session, props, state, true) }
+        #scope_export
     #program_export
 GuidedTourCore :: (session: Session, props: GuidedTour.Props,
     state: *GuidedTourState, effects: bool) -> GuidedTourResult {

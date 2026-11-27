@@ -1,8 +1,7 @@
 # Ziran projects with Kryon
 
-Kryon is a Ziran package. Application source imports its public modules, and
-the selected Kryon host links the application's `Frame` function. No UI syntax
-or widget handling is built into the Ziran compiler.
+Kryon is a Ziran package. Applications compose its widgets in TSX using Ziran's
+native TypeScript frontend. The selected host runs the application's frame loop.
 
 ## Start a project
 
@@ -22,9 +21,9 @@ kryon run                    # the default profile; kryon run tui picks another
 | `pages` | Home, Library, and Settings behind a tab row, sharing state | `desktop`, `tui`, `web` (canvas) |
 | `web` | page: headings, paragraphs, links, a button | `web` (Canvas2D), `desktop` |
 
-Each template's `src/layout.zi` stacks rows in pixels in a window or browser
-and in character cells on the terminal host, so one `Frame` serves every
-profile. `kryon init --template tui` adds a template to an existing package:
+Each template's `src/app.tsx` uses the same `Frame` across its profiles. The
+frame's viewport measures pixels in a window or browser and character cells on
+the terminal host. `kryon init --template tui` adds a template to an existing package:
 Ziran merges it into `ziran.toml`, keeps the package's own values, and never
 overwrites a file, so a command-line program keeps its `main` and gains a
 window.
@@ -45,7 +44,7 @@ to Kryon:
 ```toml
 [package]
 name = "Example"
-entry = "src/app.zi"
+entry = "src/app.tsx"
 module_roots = ["src"]
 tool = "kryon"
 
@@ -65,26 +64,24 @@ backend = "desktop"
 ```
 
 `tool = "kryon"` makes `ziran run`, `ziran build`, `ziran check`, and
-`ziran install` the same as the `kryon` commands. The build binds the host's
-frame capability to the selected source's exported `Frame` function. The source
-can have any module filename, such as `button.zi`; no `app.zi` alias or reverse
-module bridge is needed. `[tool.kryon] entry` selects the source with `Frame`
-when it differs from the package entry, as in a command-line package that also
-has a window. The app imports the small `kryon/app` runner and only the named
-widget packages it uses:
+`ziran install` the same as the `kryon` commands. The selected UI entry must
+end in `.tsx`. Use `[package] entry` for an application, or set
+`[tool.kryon] entry = "src/window.tsx"` when the package also has a separate
+command-line entry. A program entry exports `main` and passes its frame callback
+to `App.Run`. Export that callback as `Frame` to support `kryon run --png`.
 
-```zi
-App  :: #import "kryon/app";
-Text :: #import "kryon/text";
-#import "kryon/session"
+```tsx
+import * as App from "kryon/app";
+import { Session } from "kryon/session";
+import { Text } from "kryon/tsx/text";
 
-main :: () -> s32 {
-    return App.Run(App.Window.{.title="Hello", .width=320, .height=160}, Draw)
+export function Frame(frame: App.Frame): void {
+    const session: Session = {slot: frame.slot, epoch: frame.epoch};
+    <Text session={session} props={{text: "Hello, world!", size: s32(32), bounds: frame.viewport}}/>;
 }
 
-Draw :: (frame: App.Frame) {
-    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
-    Text.Draw(session, Text.Props.{.text="Hello, world!", .size=32, .bounds=frame.viewport})
+export function main(): s32 {
+    return App.Run({title: "Hello", width: s32(320), height: s32(160)}, Frame);
 }
 ```
 
@@ -93,12 +90,12 @@ packages: add `https://github.com/kryonlabs/css.git`,
 `https://github.com/kryonlabs/plot.git`,
 `https://github.com/kryonlabs/data-views.git`, or
 `https://github.com/ziranlang/syntax.git` with `ziran add` and import
-`css/Css`, `plot/Plot`, `data_views/TableView`, `data_views/TreeView`, or
-`syntax/Syntax`. Kryon exports `geometry`, `drawing_props`, and the other
-building blocks listed in `ziran.toml` for code that needs those primitives
+`css/Css`, `plot/tsx/charts`, `data_views/tsx/table_view`,
+`data_views/tsx/tree_view`, or `syntax/Syntax`. Kryon exports `geometry`,
+`drawing_props`, and the other building blocks listed in `ziran.toml` for code that needs those primitives
 without importing the widget catalog. Native and browser profiles resolve
 imports the same way, so an app's Git dependencies and package-qualified
-named imports such as `kryon/text` work in Canvas builds too.
+named imports such as `kryon/tsx/text` work in Canvas builds too.
 
 From the app directory, run:
 
@@ -107,7 +104,7 @@ kryon check
 kryon build
 kryon run desktop            # or: kryon run --profile desktop, ziran run desktop
 kryon profiles               # the profiles, their hosts, and the default
-kryon run shot --png build/shot.png --width 390 --height 844 --theme dark
+kryon run desktop --png build/shot.png --width 390 --height 844 --theme dark
 kryon run --watch            # rebuild and relaunch after every saved change
 ```
 
@@ -122,9 +119,9 @@ with no display and no preview fixture, and writes `FILE.png` and its widget
 tree `FILE.json` (the [preview JSON](FRAME_REPLAY.md#native-fixture-preview)).
 `--width` and `--height` take 1–4096 pixels (960 × 600 by default); a comma
 list of widths writes `FILE-PX.png` per width. `--theme light|dark` picks the
-palette (light by default). The named profile must be a desktop or pixmap C99
+palette (light by default). The named profile must be a desktop C99
 profile, and the entry must export `Frame`; the desktop renderer draws the
-picture in either case, so it matches the window. The capture build lives in
+picture, so it matches the window. The capture build lives in
 `build/shot/PROFILE`.
 
 Commit `ziran.lock` to pin exact package and toolchain revisions. `ziran
@@ -173,7 +170,7 @@ private module/object list to manufacture one.
 
 Define each profile under `[tool.kryon.profiles.NAME]`. It requires `backend`;
 `codegen` defaults to `c99`. Supported backends are `terminal`, `desktop`,
-`canvas`, `pixmap`, and `android`. Set `default_profile` under `[tool.kryon]` when there
+`canvas`, and `android`. Set `default_profile` under `[tool.kryon]` when there
 are several profiles. `--profile NAME` selects another. `run` asks for a
 profile when there are several, none is specified, and it runs in a
 terminal; otherwise it uses the default.
@@ -183,7 +180,6 @@ terminal; otherwise it uses the default.
 | `terminal` | 80 × 24 terminal cells | TTY for interactive input; redirected output renders once |
 | `desktop` | SDL2 window with Cairo raster | SDL2, Cairo, and FreeType development libraries |
 | `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
-| `pixmap` | headless 960 × 600 PPM frame for cross-target parity tests; for a picture of the app use `kryon run --png` | nothing |
 | `android` | installable APK through a generated `droid/` Gradle project and direct NativeActivity host | a JDK, the Android SDK with NDK `28.2.13676358` and CMake `3.22.1`, the locked codec source packages, and `[tool.kryon.android] package`; see [Android host](BACKENDS.md#android-host) |
 
 The SDL desktop host presents its already rasterized pixels through the
@@ -372,8 +368,7 @@ For a custom install prefix, add its `share/ziran/hosts` directory to
 same path. Images retain their ordinary `Image.Props.asset_path` values. The
 player extracts validated resources into a private temporary directory and
 removes it when the app exits. Exports rebuild resource content on every build,
-including file removals. A `pixmap` profile also accepts `codegen = "zx"` and
-runs through the display-free Ziran interpreter.
+including file removals.
 
 The desktop player supplies shapes, text, path-backed PNG images, window
 visibility/close handling, clipboard, pointer buttons, wheel, modifiers,
@@ -497,13 +492,8 @@ Every host draws text in Kryon's font, Liberation Sans
 (`assets/fonts/LiberationSans-Regular.ttf`): a `font`-pixel line box from the
 top of the ascent to the bottom of the descent, glyphs at their unhinted
 widths. The desktop host loads it from `KRYON_FONT_PATH`, which
-`kryon run` sets, else from the system's copy. The `pixmap` host rasterizes
-the font's outlines with integer arithmetic, so every Ziran target prints the
-same bytes for the same frame, and its text matches the desktop window's. It
-renders two frames and prints the second, for screenshots in documentation and
-CI without a display. `make pixmap-parity-test` builds every template and
-example for C, Go, and the portable runner and checks that
-all three images match; `build/pixmap-parity/grid.png` shows them side by side.
+`kryon run` sets, else from the system's copy. Offscreen screenshots use
+`kryon run desktop --png FILE.png` and the same desktop renderer as the window.
 `tools/image_tools.zi`, compiled to C, compares two PPM images, converts
 them to PNG, and lays out such grids.
 
@@ -523,8 +513,9 @@ backend = "desktop"
 host = "src/desktop.zi"
 ```
 
-The host exports `main` and imports the application's widgets and platform
-modules. Kryon builds and runs that program with the profile's backend libraries.
+The host exports `main` and imports the application's TSX frame and the
+platform modules it needs. Kryon builds and runs that program with the profile's
+backend libraries.
 The host must be a `.zi` file inside the project, including when reached through
 a symlink. Profiles without `host` use Kryon's standard host.
 

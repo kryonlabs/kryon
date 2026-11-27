@@ -158,15 +158,19 @@ InlineEditHostedReply :: struct { state: InlineEditState; result: InlineEditResu
     inlineedit_host_api :: #system_library "host_api";
     InlineEditHostedHost :: (session: Session, props: Props,
         state: InlineEditState) -> InlineEditHostedReply #foreign inlineedit_host_api;
+        #scope_package
         Draw :: (session: Session, props: Props,
     state: *InlineEditState) -> InlineEditResult {
         reply := InlineEditHostedHost(session, props, state.*)
         state.* = reply.state
         return reply.result
     }
+        #scope_export
 } else {
+        #scope_package
         Draw :: (session: Session, props: Props,
     state: *InlineEditState, location := #caller_location) -> InlineEditResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return InlineEditCore(session, props, state, true) }
+        #scope_export
     #program_export
     InlineEditCore :: (session: Session, props: Props,
     state: *InlineEditState, effects: bool) -> InlineEditResult {

@@ -1,0 +1,25 @@
+TagInput :: #import "kryon/tag_input";
+TextField :: #import "kryon/text_field";
+#import "kryon/key_input"
+#import "kryon/session"
+#import "kryon/tree_input"
+
+standalone_tags: TagInput.TagInputState;
+gallery_tags: TagInput.TagInputState;
+typed: [128]u8;
+initialized: bool;
+
+Tags :: (gallery: bool) -> *TagInput.TagInputState {
+    if !initialized {
+        initial: [3]TagInput.TagInputTag = .[
+            .{id = 11, text = "design"}, .{id = 12, text = "ziran"}, .{id = 13, text = "desktop"}]
+        TagInput.TagInputStateInit(*standalone_tags, initial[:], 6)
+        TagInput.TagInputStateInit(*gallery_tags, initial[:], 6)
+        initialized = true
+    }
+    return ifx gallery then *gallery_tags else *standalone_tags
+}
+
+Input :: (session: Session) -> TextField.Input {
+    return TextFieldInputFor(KeyboardTake(session), KeyboardModifiers(session), TypedTextTake(session, typed[:]))
+}

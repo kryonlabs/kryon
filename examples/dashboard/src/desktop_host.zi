@@ -2,10 +2,7 @@
 // entry point as previews/ and adds window size overrides for fixture tests.
 App :: #import "kryon/app";
 Frames :: #import "kryon/host/desktop";
-#import "kryon/geometry"
-#import "kryon/session"
-#import "kryon/tree"
-#import "app"
+Dashboard :: #import "app";
 #import "dashboard"
 #import "std/c_string"
 #import "std/byte_text_linux"
@@ -25,9 +22,10 @@ ReadWindowDimension :: (name: string, fallback: s32) -> s32 {
 }
 
 DrawDashboard :: (frame: App.Frame) {
-    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
-    viewport := TreeRootBounds(session)
-    unused Frame(session, viewport)
+    // The starter's portable entry renders the frame from its viewport, the
+    // same path previews use; qualify it so Frame stays the entry, not the
+    // App.Frame constructor.
+    Dashboard.Frame(frame)
 }
 
 #program_export

@@ -56,10 +56,12 @@ ContextMenuResult :: struct {
     host_api :: #system_library "host_api";
     ContextMenuHostedHost :: (session: Session, props: Props,
         items: []ContextMenuItem) -> ContextMenuResult #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: Props,
         items: []ContextMenuItem) -> ContextMenuResult {
         return ContextMenuHostedHost(session, props, items)
     }
+        #scope_export
 } else {
     Theme :: #import "theme";
     #import "drawing_props"
@@ -380,6 +382,7 @@ ContextMenuResult :: struct {
         End(session)
     }
 
+        #scope_package
         Draw :: (session: Session, props: Props,
         items: []ContextMenuItem, location := #caller_location) -> ContextMenuResult {
         site := TreeCallSite(session, location)

@@ -6,10 +6,12 @@ using Overlay :: #import "overlay_props";
         props: Overlay.Props) -> Overlay.DismissibleOverlayResult #foreign host_api;
     PopupHostedHost :: (session: Session,
         props: Overlay.PopupProps) -> Overlay.PopupResult #foreign host_api;
+        #scope_package
         Draw :: (session: Session,
         props: Overlay.Props) -> Overlay.DismissibleOverlayResult {
         return DismissibleOverlayHostedHost(session, props)
     }
+        #scope_export
     #program_export
     Popup :: (session: Session, props: Overlay.PopupProps) -> Overlay.PopupResult {
         return PopupHostedHost(session, props)
@@ -40,6 +42,7 @@ OverlayPanelKey :: () -> u64 {
 // children can be submitted under result.panel_node with TreePushScope/End.
 // Pointer release is owned by the retained backdrop, including drags that
 // finish outside the viewport. The caller decides when to stop submitting it.
+#scope_package
 Draw :: (session: Session, props: Overlay.Props, location := #caller_location) -> Overlay.DismissibleOverlayResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
@@ -108,6 +111,7 @@ Draw :: (session: Session, props: Overlay.Props, location := #caller_location) -
 // it saw: one since then that landed outside it closes it, and that press
 // still reaches whatever it landed on. A popup that just opened has seen
 // every press so far.
+#scope_export
 #program_export
 Popup :: (session: Session, props: Overlay.PopupProps) -> Overlay.PopupResult {
     result: Overlay.PopupResult

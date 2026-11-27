@@ -34,6 +34,7 @@ Props :: struct {
     reset_label: string
     cancel_label: string
     save_label: string
+    disabled: bool
 }
 
 Result :: struct {

@@ -8,10 +8,12 @@ Scroll :: #import "scroll";
     host_api :: #system_library "host_api";
     DropdownHostedHost :: (session: Session, props: Dropdown.Props,
         options: []Dropdown.Option) -> Dropdown.Result #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: Dropdown.Props,
         options: []Dropdown.Option) -> Dropdown.Result {
         return DropdownHostedHost(session, props, options)
     }
+        #scope_export
 } else {
     Theme :: #import "theme";
     #import "session"
@@ -324,14 +326,16 @@ Scroll :: #import "scroll";
         scroll: s32
     }
 
+        #scope_package
         Draw :: (session: Session, props: Dropdown.Props,
         options: []Option, location := #caller_location) -> Result {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }
+        key: u64 = DropdownKey(session, props)
         menu: DropdownMenu
         if TreeIsBuilding(session) {
             previous: s32 = TreePrevious(session, TreeCurrentParent(session),
-                DropdownKey(session, props), WidgetKindDropdown)
+                key, WidgetKindDropdown)
             saved: WidgetState = TreePreviousWidgetState(session, previous)
             if saved.open {
                 menu.open = true
@@ -341,7 +345,7 @@ Scroll :: #import "scroll";
         }
         if props.open { menu.open = true }
         if props.close { menu.open = false }
-        result: Result = DropdownFrame(session, props, options, *menu)
+        result: Result = DropdownFrame(session, props, options, key, *menu)
         if result.node >= 0 {
             TreeSetWidgetState(session, result.node, WidgetState.{result.open,
                     menu.highlight, menu.scroll})
@@ -349,8 +353,9 @@ Scroll :: #import "scroll";
         return result
     }
 
+        #scope_export
     DropdownFrame :: (session: Session, props: Dropdown.Props,
-        options: []Option, retained: *DropdownMenu) -> Result {
+        options: []Option, key: u64, retained: *DropdownMenu) -> Result {
         result: Result
         result.node = -1
         result.selected_index = props.selected_index
@@ -359,7 +364,6 @@ Scroll :: #import "scroll";
         // A placing column fills an unset width.
         bounds: Rectangle = props.bounds
         if bounds.height <= 0.0 || (bounds.width <= 0.0 && !TreeWillPlace(session, bounds)) { return result }
-        key: u64 = DropdownKey(session, props)
         previous: s32 = -1
         previous_overlay: s32 = -1
         previous_panel: s32 = -1

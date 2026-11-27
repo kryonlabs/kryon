@@ -1,6 +1,7 @@
 // A browser renderer for ordinary ZX files. No application UI is linked here.
 using Host :: #import "Canvas";
 using Render :: #import "canvas_raster";
+CanvasWindow :: #import "canvas_window";
 Player :: #import "bundle_player";
 WindowBundles :: #import "zx_window_bundle";
 WindowPage :: #import "window_page_player";
@@ -50,6 +51,7 @@ player_input: Session;
 WebPlayerWait :: (context: *void, input: *Player.Input) -> bool {
     player := cast(*Player.Player)context
     scope := WebScope()
+    CanvasWindow.CanvasWakeAt(player.wake_at)
     unused EndCanvasFrame()
     if !PollCanvas() { WebEnd(scope); return false }
     if requested_bundle { WebEnd(scope); return false }
@@ -353,6 +355,7 @@ main :: () -> s32 {
                 ShowStatus("The ZX finished or its frame failed. Choose a file to open another app.")
             }
         } else {
+            CanvasWindow.CanvasWakeAt(-1.0)
             BeginCanvasFrame()
             if embedded {
                 RasterText(ifx load_failed then "Could not start this app." else "Loading…", 24, 48, 22, Color.{30, 41, 59, 255})
@@ -360,6 +363,7 @@ main :: () -> s32 {
                 RasterText("Open a ZX file to run it.", 24, 48, 22, Color.{30, 41, 59, 255})
             }
         }
+        if !hosted && player.closed { CanvasWindow.CanvasWakeAt(-1.0) }
         unused EndCanvasFrame()
         WebEnd(scope)
     }

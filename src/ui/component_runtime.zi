@@ -1,0 +1,64 @@
+// Ordinary library boundary for a frontend's component invocation. Children
+// run inside Begin/End while widgets submit to the existing retained tree.
+Types :: #import "component_types";
+#import "session"
+#import "tree"
+Lifecycle :: #import "component_lifecycle";
+#import "std/callable"
+
+Body :: #type () -> void;
+ComposeProps :: struct {
+    session: Session
+    component: string
+    key: Types.Key
+    children: Scoped(Body)
+}
+
+// The authored call supplies the location through the ordinary native default
+// argument. The borrowed body runs only while this component scope is active.
+Compose :: (props: ComposeProps, location := #caller_location) -> bool {
+    instance, fresh := Begin(props.session, props.component,
+        .{location.fully_pathed_filename, location.line_number, location.column_number}, props.key)
+    unused fresh
+    if instance.identity == cast(u64)0 { return false }
+    props.children()
+    return End(instance)
+}
+
+#if #defined(KRYON_HOSTED_UI) {
+    Protocol :: #import "component_protocol";
+}
+
+Begin :: (session: Session, component: string, site: Types.Site,
+    key: Types.Key) -> (instance: Types.Instance, fresh: bool) {
+    #if #defined(KRYON_HOSTED_UI) {
+        mounted := Protocol.ComponentBeginHost(session, component, site.file, site.line, site.column, key.specified, key.value)
+        local_fresh := !Lifecycle.Alive(.{session, mounted.identity})
+        if mounted.identity == cast(u64)0 || !Lifecycle.HostedEnter(.{session, mounted.identity}) {
+            empty: Types.Instance
+            return empty, false
+        }
+        return .{session, mounted.identity}, mounted.fresh || local_fresh
+    } else {
+        parent := TreeCurrentParent(session)
+        if parent < 0 { empty: Types.Instance; return empty, false }
+        instance, fresh := Lifecycle.Enter(session, TreeSubmittedIdentity(session, parent), component, site, key)
+        return instance, fresh
+    }
+}
+
+End :: (instance: Types.Instance) -> bool {
+    #if #defined(KRYON_HOSTED_UI) {
+        local := Lifecycle.Leave(instance)
+        remote := Protocol.ComponentEndHost(instance.session, instance.identity)
+        return local && remote
+    } else { return Lifecycle.Leave(instance) }
+}
+
+// Typed native model initialization can discover the current component scope.
+// Identity comes from the retained host in hosted programs as well.
+Current :: (session: Session) -> Types.Instance {
+    #if #defined(KRYON_HOSTED_UI) {
+        return .{session, Protocol.ComponentCurrentHost(session)}
+    } else { return .{session, Lifecycle.Current(session)} }
+}

@@ -1,4 +1,5 @@
 TextArea :: #import "textarea";
+Components :: #import "component_lifecycle";
 TextField :: #import "textfield";
 ContextMenu :: #import "contextmenu";
 Box :: #import "box";
@@ -34,6 +35,7 @@ Text :: #import "text";
 TextMeasure :: #import "text_measure";
 TileMap :: #import "tilemap";
 Toggle :: #import "toggle";
+Toast :: #import "toast";
 Tooltip :: #import "tooltip";
 SegmentedControl :: #import "segmented";
 SvgIcon :: #import "svgicon";
@@ -67,6 +69,8 @@ ToggleMeasure :: #import "toggle_measure";
 
 using HostValueKind;
 
+widget_component_mount_fields: [2]HostField;
+
 // Decides which asset paths a bundle may draw. Runtime texture handles
 // belong to the renderer and are always refused.
 WidgetAssetAllowed :: #type (path: string) -> bool;
@@ -92,6 +96,8 @@ widget_host_staging: bool;
 widget_group_fields: [8]HostField;
 widget_group_bounds: WidgetRectangleCodec;
 widget_group_content: WidgetRectangleCodec;
+widget_toast_props_codec: WidgetToastPropsCodec;
+widget_toast_result_codec: WidgetToastResultCodec;
 widget_tooltip_props_codec: WidgetTooltipPropsCodec;
 widget_tooltip_state_codec: WidgetTooltipStateCodec;
 widget_tooltip_state: Tooltip.TooltipState;
@@ -170,6 +176,7 @@ widget_toggle_codec: WidgetTogglePropsCodec;
 widget_toggle_result_codec: WidgetToggleValueResultCodec;
 widget_field_codec: WidgetTextFieldPropsCodec;
 widget_field_result_codec: WidgetTextFieldResultCodec;
+widget_field_binding_typed: [128]u8;
 widget_tabs: [WIDGET_HOST_TAB_LIMIT]TabBar.Tab;
 widget_tab_codecs: [WIDGET_HOST_TAB_LIMIT]WidgetTabCodec;
 widget_tab_bar_codec: WidgetTabBarPropsCodec;
@@ -221,6 +228,7 @@ widget_menu_item_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetContextMenuItemCodec;
 // The widget calls WidgetHostCall answers, for checking a bundle's
 // capabilities before it runs.
 WidgetHostSupports :: (module: string, function: string) -> bool {
+    if ModuleName(module, "toast") && function == "ToastHostedHost" { return true }
     if (ModuleName(module, "tooltip") && function == "TooltipHostedHost") ||
     (ModuleName(module, "sheet") && function == "SheetBeginHostedHost") ||
     (ModuleName(module, "commandpalette") && function == "CommandPaletteHostedHost") ||
@@ -253,9 +261,13 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (ModuleName(module, "textarea") && function == "TextAreaHostedHost") ||
     (ModuleName(module, "scroll") && function == "ScrollHostedHost") ||
     (ModuleName(module, "layout") && function == "GroupHostedHost") ||
+    (ModuleName(module, "component_protocol") && (function == "ComponentBeginHost" ||
+        function == "ComponentEndHost" || function == "ComponentCurrentHost")) ||
     (ModuleName(module, "tree") && function == "EndHostedHost") ||
     (ModuleName(module, "tree") && function == "TreePushScopeHostedHost") ||
-    (ModuleName(module, "textfield") && function == "TextFieldHostedHost") ||
+    (ModuleName(module, "tree") && function == "TreeSubmittedBoundsHostedHost") ||
+    (ModuleName(module, "textfield") && (function == "TextFieldHostedHost" ||
+        function == "TextFieldBindingHostedHost")) ||
     (ModuleName(module, "tabs") && function == "TabBarHostedHost") ||
     (ModuleName(module, "segmented") && function == "SegmentedControlHostedHost") ||
     (ModuleName(module, "checkbox") && function == "CheckboxHostedHost") ||
@@ -582,6 +594,33 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     if session.slot != widget_host_session.slot || session.epoch != widget_host_session.epoch {
         return 0
     }
+    if ModuleName(owner, "component_protocol") && name == "ComponentCurrentHost" && count == 1 {
+        result.* = HostScalar("u64", cast(s64)Components.Current(session))
+        return 1
+    }
+    if ModuleName(owner, "component_protocol") && name == "ComponentBeginHost" && count == 7 {
+        if !HostScalarValid(arguments[1], "string", cast(s32)HostString) ||
+            !HostScalarValid(arguments[2], "string", cast(s32)HostString) ||
+            !HostScalarValid(arguments[3], "s64", cast(s32)HostInteger) ||
+            !HostScalarValid(arguments[4], "s64", cast(s32)HostInteger) ||
+            !HostScalarValid(arguments[5], "bool", cast(s32)HostInteger) ||
+            !HostScalarValid(arguments[6], "u64", cast(s32)HostUnsigned) { return 0 }
+        parent := TreeCurrentParent(session)
+        if parent < 0 { return 0 }
+        instance, fresh := Components.Enter(session, TreeSubmittedIdentity(session, parent),
+            HostValueText(arguments[1]), .{HostValueText(arguments[2]), arguments[3].integer, arguments[4].integer},
+            .{arguments[5].integer != 0, arguments[6].bits})
+        widget_component_mount_fields[0] = .{name = HostTextData("identity"), value = HostScalar("u64", cast(s64)instance.identity)}
+        widget_component_mount_fields[1] = .{name = HostTextData("fresh"), value = HostScalar("bool", ifx fresh then 1 else 0)}
+        result.* = HostRecordValue("component_protocol.ComponentMount", widget_component_mount_fields[:])
+        return 1
+    }
+    if ModuleName(owner, "component_protocol") && name == "ComponentEndHost" && count == 2 {
+        if !HostScalarValid(arguments[1], "u64", cast(s32)HostUnsigned) { return 0 }
+        closed := Components.Leave(.{session, arguments[1].bits})
+        result.* = HostScalar("bool", ifx closed then 1 else 0)
+        return 1
+    }
     if name == "CaptureFrameInputHost" && ModuleName(owner, "frame_snapshot") && count == 1 {
         result.* = WidgetEncodeFrameInputSnapshot(CaptureFrameInput(session), *widget_frame_input_codec)
         return 1
@@ -637,6 +676,13 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     if name == "GroupHostedHost" && ModuleName(owner, "layout") && count == 2 {
         return WidgetHostGroup(session, arguments[1], result)
     }
+    if name == "TreeSubmittedBoundsHostedHost" && ModuleName(owner, "tree") && count == 2 {
+        if !HostScalarValid(arguments[1], "s32", cast(s32)HostInteger) ||
+        arguments[1].integer < -2147483648 || arguments[1].integer > 2147483647 { return 0 }
+        bounds := TreeSubmittedBounds(session, cast(s32)arguments[1].integer)
+        result.* = WidgetEncodeRectangle(bounds, *widget_group_bounds)
+        return 1
+    }
     if name == "TreePushScopeHostedHost" && ModuleName(owner, "tree") && count == 2 {
         if widget_host_depth >= WIDGET_HOST_SCOPE_DEPTH ||
         !HostScalarValid(arguments[1], "s32", cast(s32)HostInteger) {
@@ -647,6 +693,16 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             widget_host_depth += 1
         }
         result.* = HostScalar("bool", ifx pushed then 1 else 0)
+        return 1
+    }
+    if name == "TextFieldBindingHostedHost" && ModuleName(owner, "textfield") && count == 3 {
+        if !WidgetValidTextFieldProps(arguments[1]) ||
+            !HostScalarValid(arguments[2], "bool", cast(s32)HostInteger) ||
+            (arguments[2].integer != 0 && arguments[2].integer != 1) { return 0 }
+        field := WidgetDecodeTextFieldProps(arguments[1], *widget_field_codec)
+        edited := TextField.DrawBinding(session, field, arguments[2].integer != 0,
+            widget_field_binding_typed[:], !widget_host_staging)
+        result.* = WidgetEncodeTextFieldResult(edited, *widget_field_result_codec)
         return 1
     }
     if name == "TabBarHostedHost" && ModuleName(owner, "tabs") && count == 3 {
@@ -831,6 +887,11 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         return 1
     }
 
+    if name == "ToastHostedHost" && ModuleName(owner, "toast") && WidgetValidToastProps(props) {
+        drawn := Toast.Draw(session, WidgetDecodeToastProps(props, *widget_toast_props_codec))
+        result.* = WidgetEncodeToastResult(drawn, *widget_toast_result_codec)
+        return 1
+    }
     if name == "ModalFrameHostedHost" && ModuleName(owner, "modal_frame") && WidgetValidModalFrameProps(props) {
         return WidgetHostModalFrame(session, props, result)
     }

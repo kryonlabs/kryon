@@ -85,6 +85,7 @@ WindowBounds :: (props: Props, window: Window, workspace: s32) -> Rectangle {
 }
 
 #program_export
+#scope_package
 Draw :: (session: Session, props: Props, windows: []Window, location := #caller_location) -> s32 {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

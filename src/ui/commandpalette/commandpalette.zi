@@ -263,17 +263,21 @@ CommandPaletteHostedReply :: struct {
 #if #defined(KRYON_HOSTED_UI) {
     command_palette_host_api :: #system_library "host_api";
     CommandPaletteHostedHost :: (session: Session, props: CommandPalette.Props, state: CommandPaletteState) -> CommandPaletteHostedReply #foreign command_palette_host_api;
+        #scope_package
         Draw :: (session: Session, props: CommandPalette.Props,
     state: *CommandPaletteState) -> CommandPaletteResult {
         reply := CommandPaletteHostedHost(session, props, state.*)
         state.* = reply.state
         return reply.result
     }
+        #scope_export
 } else {
     #import "paint_queue"
     #import "tree_input"
+        #scope_package
         Draw :: (session: Session, props: CommandPalette.Props,
     state: *CommandPaletteState, location := #caller_location) -> CommandPaletteResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return CommandPaletteCore(session, props, state, true) }
+        #scope_export
     #program_export
 CommandPaletteCore :: (session: Session, props: CommandPalette.Props,
     state: *CommandPaletteState, effects: bool) -> CommandPaletteResult {

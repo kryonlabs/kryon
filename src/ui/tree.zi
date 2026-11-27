@@ -16,6 +16,11 @@ NodeGeometry :: struct {
     host_api :: #system_library "host_api";
     EndHostedHost :: (session: Session) -> bool #foreign host_api;
     TreePushScopeHostedHost :: (session: Session, index: s32) -> bool #foreign host_api;
+    TreeSubmittedBoundsHostedHost :: (session: Session, index: s32) -> Rectangle #foreign host_api;
+    #program_export
+    TreeSubmittedBounds :: (session: Session, index: s32) -> Rectangle {
+        return TreeSubmittedBoundsHostedHost(session, index)
+    }
     #program_export
     End :: (session: Session) -> bool { return EndHostedHost(session) }
     // The host gives hosted widgets their identity; composed widgets that
@@ -30,6 +35,8 @@ NodeGeometry :: struct {
         return TreePushScopeHostedHost(session, index)
     }
 } else {
+    Components :: #import "component_frame_slot";
+    ComponentTypes :: #import "component_types";
     #import "call_site"
     #import "semantic"
     #import "session"
@@ -94,6 +101,7 @@ NodeGeometry :: struct {
         FrameAllocationFailed :: 6
         FrameIdentityOverflow :: 7
         FramePaintOverflow :: 8
+        FrameComponentFailure :: 9
     }
     FrameFailure :: struct { status: s32; key: u64; kind: s32; message: string; }
 
@@ -108,6 +116,7 @@ NodeGeometry :: struct {
         if status == 6 { return "Frame storage allocation failed" }
         if status == 7 { return "Widget identity overflow" }
         if status == 8 { return "Paint queue overflow" }
+        if status == 9 { return "Component lifetime submission failed" }
         return "Unknown frame failure"
     }
 
@@ -210,6 +219,7 @@ NodeGeometry :: struct {
     }
 
     NodeCore :: struct {
+        owner_namespace: u64
         key: u64
         identity_generation: u64
         bounds: Rectangle
@@ -523,18 +533,30 @@ NodeGeometry :: struct {
     // position for a node no widget call recorded (parts inside a widget).
     TreeAutoOrdinal :: (slot: s32, parent_index: s32, consume: bool) -> s32 {
         parent: *NodeCore = *trees[slot].submitted[parent_index]
-        sited := CallSiteOrdinal(*trees[slot].sites, parent.identity_generation, consume)
+        owner := Components.Current(.{slot, session_epochs[slot]})
+        generation := parent.identity_generation
+        if owner != cast(u64)0 { generation = CallSiteMix(generation, owner) }
+        sited := CallSiteOrdinal(*trees[slot].sites, generation, consume)
         if sited != 0 { return sited }
+        if owner != cast(u64)0 {
+            ordinal: s32 = 1
+            child := parent.first_child
+            while child >= 0 {
+                if trees[slot].submitted[child].owner_namespace == owner && trees[slot].submitted[child].auto_key { ordinal += 1 }
+                child = trees[slot].submitted[child].next_sibling
+            }
+            return ordinal
+        }
         return parent.next_auto_ordinal + 1
     }
 
     TreeFindOld :: (session: Session, parent: u64, key: u64,
-        kind: s32, auto_key: bool, auto_ordinal: s32) -> s32 {
+        kind: s32, auto_key: bool, auto_ordinal: s32, owner: u64 = 0) -> s32 {
         slot: s32 = SessionIndex(session)
         if trees[slot].committed_count <= TreeLinearIndexLimit {
             for index: 0..trees[slot].committed_count - 1 {
                 entry: *NodeCore = *trees[slot].committed[index]
-                if entry.key == key && entry.kind == kind &&
+                if entry.key == key && entry.kind == kind && entry.owner_namespace == owner &&
                 entry.auto_key == auto_key &&
                 (!auto_key || entry.auto_ordinal == auto_ordinal) &&
                 TreeParentGeneration(session, index, true) == parent {
@@ -550,7 +572,7 @@ NodeGeometry :: struct {
         while trees[slot].slots[position] >= 0 {
             index: s32 = trees[slot].slots[position]
             entry: *NodeCore = *trees[slot].committed[index]
-            if entry.key == key && entry.kind == kind &&
+            if entry.key == key && entry.kind == kind && entry.owner_namespace == owner &&
             entry.auto_key == auto_key &&
             (!auto_key || entry.auto_ordinal == auto_ordinal) &&
             TreeParentGeneration(session, index, true) == parent {
@@ -577,7 +599,7 @@ NodeGeometry :: struct {
             key = cast(u64)ordinal
         }
         return TreeFindOld(session, parent.identity_generation, key,
-            kind, auto_key, ordinal)
+            kind, auto_key, ordinal, Components.Current(session))
     }
 
     // Look up an explicitly keyed child already submitted in this frame. A
@@ -596,7 +618,7 @@ NodeGeometry :: struct {
         index := trees[slot].submitted[parent_index].first_child
         while index >= 0 {
             node := trees[slot].submitted[index]
-            if node.key == key && node.kind == kind && !node.auto_key {
+            if node.key == key && node.kind == kind && node.owner_namespace == Components.Current(session) && !node.auto_key {
                 return index
             }
             index = node.next_sibling
@@ -613,7 +635,7 @@ NodeGeometry :: struct {
         key == cast(u64)0 { return -1 }
         return TreeFindOld(session,
             trees[slot].committed[parent_index].identity_generation,
-            key, kind, false, 0)
+            key, kind, false, 0, Components.Current(session))
     }
 
     TreeExplicitExists :: (session: Session, parent: u64, key: u64) -> bool {
@@ -621,7 +643,7 @@ NodeGeometry :: struct {
         if trees[slot].submitted_count < TreeLinearIndexLimit {
             for index: 0..trees[slot].submitted_count - 1 {
                 entry: *NodeCore = *trees[slot].submitted[index]
-                if !entry.auto_key && entry.key == key &&
+                if !entry.auto_key && entry.key == key && entry.owner_namespace == Components.Current(session) &&
                 TreeParentGeneration(session, index, false) == parent { return true }
             }
             return false
@@ -632,6 +654,7 @@ NodeGeometry :: struct {
         while trees[slot].new_slots[position] >= 0 {
             index: s32 = trees[slot].new_slots[position]
             if trees[slot].submitted[index].key == key &&
+            trees[slot].submitted[index].owner_namespace == Components.Current(session) &&
             TreeParentGeneration(session, index, false) == parent {
                 return true
             }
@@ -928,6 +951,8 @@ NodeGeometry :: struct {
     TreeStart :: (session: Session, screen_key: u64, bounds: Rectangle) {
         if !SessionValid(session) { return }
         slot: s32 = session.slot
+        if !Components.FrameStart(session) { return }
+        TreeClearDeferred(slot)
         CallSitesStart(*trees[slot].sites)
         VecClear(trees[slot].submitted)
         VecClear(trees[slot].submitted_semantics)
@@ -972,6 +997,7 @@ NodeGeometry :: struct {
     // index for controls such as Spinbox that create their own child nodes.
     #program_export
     TreeCurrentParent :: (session: Session) -> s32 {
+        if TreeFrameBlocked(session) { return -1 }
         slot := SessionIndex(session)
         if !trees[slot].building || trees[slot].scope_depth <= 0 {
             return -1
@@ -1024,6 +1050,7 @@ NodeGeometry :: struct {
 
     #program_export
     TreePushScope :: (session: Session, index: s32) -> bool {
+        if TreeFrameBlocked(session) { return false }
         if !trees[SessionIndex(session)].building || index < 0 ||
         index >= trees[SessionIndex(session)].submitted_count ||
         trees[SessionIndex(session)].scope_depth <= 0 ||
@@ -1040,6 +1067,7 @@ NodeGeometry :: struct {
 
     #program_export
     TreePopScope :: (session: Session) -> bool {
+        if TreeFrameBlocked(session) { return false }
         if !trees[SessionIndex(session)].building || trees[SessionIndex(session)].scope_depth <= 1 {
             if SessionValid(session) && trees[session.slot].building {
                 trees[session.slot].error = cast(FrameStatus)FrameInvalidScope
@@ -1068,6 +1096,7 @@ NodeGeometry :: struct {
     TreeSubmit :: (session: Session, key: u64, parent_index: s32, kind: s32,
         bounds: Rectangle) -> s32 {
         if !SessionValid(session) { return -1 }
+        if TreeFrameBlocked(session) { return -1 }
         slot: s32 = session.slot
         if !trees[slot].building ||
         trees[slot].error != cast(FrameStatus)FrameOk { return -1 }
@@ -1126,6 +1155,7 @@ NodeGeometry :: struct {
             }
             node.key = derived
         }
+        node.owner_namespace = Components.Current(session)
         node.kind = kind
         node.measured_bounds = bounds
         // A widget placed ahead submits at the rect its parent gave it.
@@ -1157,7 +1187,7 @@ NodeGeometry :: struct {
         node.last_child = -1
         node.next_sibling = -1
         old_index: s32 = TreeFindOld(session, parent_generation,
-            node.key, kind, node.auto_key, node.auto_ordinal)
+            node.key, kind, node.auto_key, node.auto_ordinal, node.owner_namespace)
         // The existing lookup tells us whether every identity keeps its
         // committed position. Geometry, semantics and state may still change.
         if old_index != index { trees[slot].identity_order_unchanged = false }
@@ -1336,7 +1366,7 @@ NodeGeometry :: struct {
         if parent.parent >= 0 {
             index = TreeFindOld(session,
                 trees[slot].submitted[parent.parent].identity_generation,
-                parent.key, parent.kind, parent.auto_key, parent.auto_ordinal)
+                parent.key, parent.kind, parent.auto_key, parent.auto_ordinal, parent.owner_namespace)
         } else {
             // A root parent has no parent generation to hash under; roots
             // are few, so the scan runs once per frame through the memo.
@@ -1403,19 +1433,25 @@ NodeGeometry :: struct {
     TreeLateSlot :: struct {
         run: TreeLate
         used: bool
+        owner: u64
     }
 
     tree_late: [9][4]TreeLateSlot;
 
+    TreeClearDeferred :: (slot: s32) {
+        for index: 0..3 { tree_late[slot][index] = .{} }
+    }
+
     // Runs run at the end of this frame. Returns false when four are pending.
     #program_export
     TreeDefer :: (session: Session, run: TreeLate) -> bool {
-        if !SessionValid(session) { return false }
+        if !SessionValid(session) || TreeFrameBlocked(session) || !trees[session.slot].building || run == null { return false }
         index: s32 = 0
         while index < 4 {
             if !tree_late[session.slot][index].used {
                 tree_late[session.slot][index].run = run
                 tree_late[session.slot][index].used = true
+                tree_late[session.slot][index].owner = Components.Current(session)
                 return true
             }
             index += 1
@@ -1425,7 +1461,7 @@ NodeGeometry :: struct {
 
     #program_export
     TreeFinish :: (session: Session) -> bool {
-        if !SessionValid(session) { return false }
+        if !SessionValid(session) || TreeFrameBlocked(session) { return false }
         slot: s32 = session.slot
         if !trees[slot].building {
             trees[slot].error = cast(FrameStatus)FrameNotBuilding
@@ -1438,12 +1474,25 @@ NodeGeometry :: struct {
                 if trees[slot].error == cast(FrameStatus)FrameOk &&
                 trees[slot].scope_depth == 1 {
                     run: TreeLate = tree_late[slot][late].run
-                    run(session)
+                    owner := tree_late[slot][late].owner
+                    if owner == cast(u64)0 { run(session) }
+                    else {
+                        instance := ComponentTypes.Instance.{session, owner}
+                        if Components.Resume(instance) {
+                            run(session)
+                            unused Components.Leave(instance)
+                        }
+                    }
                 }
             }
             late += 1
         }
         trees[slot].building = false
+        if Components.FrameStatus(session) != 0 && trees[slot].error == cast(FrameStatus)FrameOk {
+            trees[slot].error = cast(FrameStatus)FrameComponentFailure
+            trees[slot].error_key = Components.FrameErrorKey(session)
+            trees[slot].error_kind = cast(s32)Components.FrameStatus(session)
+        }
         if trees[slot].scope_depth != 1 &&
         trees[slot].error == cast(FrameStatus)FrameOk {
             pending: s32 = 1
@@ -1460,6 +1509,7 @@ NodeGeometry :: struct {
         if trees[slot].error != cast(FrameStatus)FrameOk ||
         trees[slot].scope_depth != 1 {
             trees[slot].scope_depth = 0
+            Components.FrameCancel(session)
             return false
         }
         trees[slot].scope_depth = 0
@@ -1477,6 +1527,7 @@ NodeGeometry :: struct {
         trees[slot].committed_count = trees[slot].submitted_count
         trees[slot].committed_modal_layer = trees[slot].submitted_modal_layer
         trees[slot].next_identity_generation = trees[slot].staged_identity_generation
+        Components.FrameCommit(session)
         CursorHoverFrameCommit(session)
         return true
     }
@@ -1496,8 +1547,13 @@ NodeGeometry :: struct {
     #program_export
     TreeFrameStatus :: (session: Session) -> FrameStatus {
         if !SessionValid(session) { return cast(FrameStatus)FrameInvalidSession }
+        if TreeFrameBlocked(session) { return cast(FrameStatus)FrameComponentFailure }
         return trees[session.slot].error
     }
+
+    // Reentrant lifecycle work observes a rejected transaction without changing
+    // the error or submitted storage of the outer frame that owns disposal.
+    TreeFrameBlocked :: (session: Session) -> bool { return Components.FrameBlocked(session) }
 
     #program_export
     TreeFramePendingScopes :: (session: Session) -> s32 {
@@ -1537,6 +1593,7 @@ NodeGeometry :: struct {
 
     #program_export
     TreeIsBuilding :: (session: Session) -> bool {
+        if TreeFrameBlocked(session) { return false }
         return trees[SessionIndex(session)].building
     }
 
@@ -1546,12 +1603,22 @@ NodeGeometry :: struct {
         if parent < 0 { return cast(u64)0 }
         slot: s32 = SessionIndex(session)
         generation := trees[slot].submitted[parent].identity_generation
+        owner := Components.Current(session)
+        if owner != cast(u64)0 { generation = CallSiteMix(generation, owner) }
         // A widget's caller names the key it keeps its state under.
         ordinal := CallSiteOrdinal(*trees[slot].sites, generation, true)
         if ordinal == 0 {
             ordinal = 1
-            last: s32 = trees[slot].submitted[parent].last_child
-            if last >= 0 { ordinal = trees[slot].submitted[last].sibling_ordinal + 1 }
+            if owner != cast(u64)0 {
+                child := trees[slot].submitted[parent].first_child
+                while child >= 0 {
+                    if trees[slot].submitted[child].owner_namespace == owner { ordinal += 1 }
+                    child = trees[slot].submitted[child].next_sibling
+                }
+            } else {
+                last: s32 = trees[slot].submitted[parent].last_child
+                if last >= 0 { ordinal = trees[slot].submitted[last].sibling_ordinal + 1 }
+            }
         }
         return TreeIdentityHash(generation, cast(u64)ordinal, 2147483647)
     }
@@ -1566,7 +1633,10 @@ NodeGeometry :: struct {
 
     #program_export
     TreeCancel :: (session: Session) {
+        if TreeFrameBlocked(session) { return }
+        Components.FrameCancel(session)
         slot: s32 = SessionIndex(session)
+        TreeClearDeferred(slot)
         trees[slot].building = false
         VecClear(trees[slot].submitted)
         VecClear(trees[slot].submitted_semantics)
@@ -1950,7 +2020,7 @@ NodeGeometry :: struct {
         child: s32 = trees[slot].committed[parent_index].first_child
         while child >= 0 {
             node: NodeCore = trees[slot].committed[child]
-            if !node.auto_key && node.key == key && node.kind == kind {
+            if !node.auto_key && node.key == key && node.kind == kind && node.owner_namespace == Components.Current(session) {
                 return child
             }
             child = node.next_sibling
@@ -1961,8 +2031,10 @@ NodeGeometry :: struct {
     #program_export
     TreeDispose :: (session: Session) {
         if !SessionValid(session) { return }
+        if !Components.DisposeOwner(session.slot, session.epoch) { return }
         CursorSessionEnd(session)
         slot: s32 = session.slot
+        TreeClearDeferred(slot)
         VecFree(trees[slot].committed)
         VecFree(trees[slot].submitted)
         VecFree(trees[slot].committed_semantics)

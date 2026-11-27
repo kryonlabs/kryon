@@ -1,3 +1,4 @@
+ZIRAN_BUILD_DIR ?= $(abspath $(ZIRAN_DIR)/build)
 # The browser shell contains the ZX interpreter and Canvas renderer, not an
 # application's generated native UI. ZX_CANVAS_BUNDLE is the complete app.
 ZX_CANVAS_DIR ?= $(KRYON_DIR)/build/zx-canvas
@@ -11,7 +12,7 @@ ZX_CANVAS_GENERATED := $(ZX_CANVAS_DIR)/generated
 ZX_CANVAS_RUNTIME := $(ZX_CANVAS_DIR)/runtime/libziran.a
 ZX_CANVAS_SOURCES := $(KRYON_DIR)/tools/zx_canvas.zi $(wildcard $(KRYON_DIR)/src/backend/*.zi $(ZIRAN_DIR)/std/*.zi) $(shell find $(KRYON_DIR)/src/ui -name '*.zi')
 ZX_CANVAS_SOURCES += $(KRYON_DIR)/ziran.toml $(KRYON_DIR)/ziran.lock $(wildcard ziran.toml ziran.lock ziran.local.toml)
-ZX_CANVAS_COMPILER := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/cmd/zi2*/*.[ch] $(ZIRAN_DIR)/cmd/zx2*/*.[ch] $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/include/*.h $(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bin/zi2c)
+ZX_CANVAS_COMPILER := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/cmd/zi2*/*.[ch] $(ZIRAN_DIR)/cmd/zx2*/*.[ch] $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/include/*.h $(ZIRAN_BUILD_DIR)/bin/ziran $(ZIRAN_BUILD_DIR)/bin/zi2zir $(ZIRAN_BUILD_DIR)/bin/zi2c)
 ZX_CANVAS_RUNTIME_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/cmd/zi2*/*.[ch] $(ZIRAN_DIR)/cmd/zx2*/*.[ch] $(ZIRAN_DIR)/include/*.h)
 
 .PHONY: zx-canvas zx-canvas-config
@@ -24,17 +25,17 @@ $(ZX_CANVAS_DIR)/selected-bundle: zx-canvas-config
 
 $(ZX_CANVAS_DIR)/toolchain: zx-canvas-config
 	@mkdir -p $(ZX_CANVAS_DIR)
-	@printf '%s\n' "$(ZIRAN_DIR)" "$(ZX_CANVAS_CC)" "$(ZX_CANVAS_AR)" "$(ZX_CANVAS_CACHE)" > $@.new
+	@printf '%s\n' "$(ZIRAN_DIR)" "$(ZIRAN_BUILD_DIR)" "$(ZX_CANVAS_CC)" "$(ZX_CANVAS_AR)" "$(ZX_CANVAS_CACHE)" > $@.new
 	@cmp -s $@.new $@ && rm $@.new || mv $@.new $@
 
 $(ZX_CANVAS_GENERATED)/.complete: $(ZX_CANVAS_SOURCES) $(ZX_CANVAS_COMPILER) $(KRYON_DIR)/mk/zx-canvas.mk $(ZX_CANVAS_DIR)/toolchain
 	mkdir -p $(ZX_CANVAS_GENERATED)/ir $(ZX_CANVAS_GENERATED)/c
 	rm -f $(ZX_CANVAS_GENERATED)/ir/*.zir $(ZX_CANVAS_GENERATED)/c/*.[ch]
-	$(ZIRAN_DIR)/build/bin/ziran ir --project --target=c --target-os web --target-cpu wasm32 \
+	$(ZIRAN_BUILD_DIR)/bin/ziran ir --project --target=c --target-os web --target-cpu wasm32 \
 		--define PLATFORM_WEB --define BUNDLE_NATIVE_RENDERER \
 		-o $(ZX_CANVAS_GENERATED)/ir \
 		$(KRYON_DIR)/tools/zx_canvas.zi $(KRYON_DIR)/src/backend/canvas_raster.zi
-	$(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB --define BUNDLE_NATIVE_RENDERER --root $(ZX_CANVAS_GENERATED)/ir \
+	$(ZIRAN_BUILD_DIR)/bin/zi2c --define PLATFORM_WEB --define BUNDLE_NATIVE_RENDERER --root $(ZX_CANVAS_GENERATED)/ir \
 		-o $(ZX_CANVAS_GENERATED)/c $(ZX_CANVAS_GENERATED)/ir/*.zir
 	touch $@
 

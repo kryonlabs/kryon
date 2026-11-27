@@ -1,0 +1,35 @@
+// Ordinary SDK entry for portable components. Bind Compose to the typed app
+// Frame procedure. The host invokes the same entry for lifecycle commands.
+Protocol :: #import "component_protocol";
+Lifecycle :: #import "component_lifecycle";
+Types :: #import "component_types";
+
+component_entry :: #system_library "host_api";
+Compose :: () -> s64 #foreign component_entry;
+
+#program_export
+Run :: () -> s64 {
+    phase := Protocol.ComponentPhaseHost()
+    session := Protocol.ComponentSessionHost()
+    if !Lifecycle.HostedAttach(session) { return 1 }
+    answer: s64 = 0
+    if phase == Protocol.ComponentPhaseFrame {
+        if !Lifecycle.FrameStart(session) { return 1 }
+        root: Types.Instance = .{session, Protocol.ComponentRootHost()}
+        if !Lifecycle.HostedEnter(root) { Lifecycle.FrameCancel(session); return 1 }
+        answer = Compose()
+        if !Lifecycle.Leave(root) || Lifecycle.FrameStatus(session) != .Ok { answer = 1 }
+        if answer != 0 { Lifecycle.FrameCancel(session) }
+    } else if phase == Protocol.ComponentPhaseCommit {
+        if Lifecycle.FrameStatus(session) != .Ok { Lifecycle.FrameCancel(session); answer = 1 }
+        else { Lifecycle.FrameCommit(session) }
+    } else if phase == Protocol.ComponentPhaseCancel {
+        Lifecycle.FrameCancel(session)
+    } else if phase == Protocol.ComponentPhaseTick {
+        Lifecycle.Tick(session, Protocol.ComponentSecondsHost())
+    } else if phase == Protocol.ComponentPhaseDispose {
+        if !Lifecycle.HostedDetach(session) { return 1 }
+    } else { return 1 }
+    if !Protocol.ComponentDeadlineHost(Lifecycle.NextDeadline(session)) { return 1 }
+    return answer
+}

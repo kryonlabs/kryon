@@ -351,27 +351,27 @@ main :: () -> s32 {
     if ziran == "" { ziran = "ziran" }
 
     window_present: [4]string = .["window", "app", "desktop_window", "pixmap_sdl"]
-    if !BuildProgram(ziran, "window:main", "examples/window.zi", "build/test/pay-per-import/window") {
-        Fail("window", "does not build", "examples/window.zi")
+    if !BuildProgram(ziran, "window:main", "examples/window.tsx", "build/test/pay-per-import/window") {
+        Fail("window", "does not build", "examples/window.tsx")
     } else {
         Expect("window", "build/test/pay-per-import/window", window_present[:], not_in_a_window[:])
     }
-    if !CheckProgram(ziran, "window:main", "examples/window.zi", "build/test/pay-per-import/window-ir") {
-        Fail("window", "does not check", "examples/window.zi")
+    if !CheckProgram(ziran, "window:main", "examples/window.tsx", "build/test/pay-per-import/window-ir") {
+        Fail("window", "does not check", "examples/window.tsx")
     } else {
         ExpectChecked("window", "build/test/pay-per-import/window-ir", window_checked[:])
     }
 
     // As a portable bundle, the window is the bundle's window and its host
     // calls; the desktop player opens it.
-    if !CheckZxProgram(ziran, "window:main", "examples/window.zi", "build/test/pay-per-import/window-zx-ir") {
-        Fail("window (zx)", "does not check", "examples/window.zi")
+    if !CheckZxProgram(ziran, "window:main", "examples/window.tsx", "build/test/pay-per-import/window-zx-ir") {
+        Fail("window (zx)", "does not check", "examples/window.tsx")
     } else {
         ExpectChecked("window (zx)", "build/test/pay-per-import/window-zx-ir", zx_window_checked[:])
     }
-    if !BundleProgram(ziran, "window:main", "examples/window.zi", "build/test/pay-per-import/window.zx",
+    if !BundleProgram(ziran, "window:main", "examples/window.tsx", "build/test/pay-per-import/window.zx",
         "build/test/pay-per-import/window-zx.lir") {
-        Fail("window (zx)", "does not bundle", "examples/window.zi")
+        Fail("window (zx)", "does not bundle", "examples/window.tsx")
     } else {
         ExpectBundle("window (zx)", "build/test/pay-per-import/window-zx.lir", zx_window_modules[:],
             zx_window_capabilities[:])
@@ -403,8 +403,8 @@ main :: () -> s32 {
     // kryon/app's frame loop arrives with App.Run.
     hello_present: [7]string = .["app", "frames_desktop", "desktop_loop", "tree", "tree_frame",
         "text", "paint_queue"]
-    if !BuildProgram(ziran, "hello:main", "examples/hello.zi", "build/test/pay-per-import/hello") {
-        Fail("hello", "does not build", "examples/hello.zi")
+    if !BuildProgram(ziran, "hello:main", "examples/hello.tsx", "build/test/pay-per-import/hello") {
+        Fail("hello", "does not build", "examples/hello.tsx")
     } else {
         Expect("hello", "build/test/pay-per-import/hello", hello_present[:], not_without_pictures[:])
     }
@@ -417,8 +417,8 @@ main :: () -> s32 {
         "text_request", "text_input_platform", "text_editor_zx", "style_sheet",
         "surface", "image", "style", "style_facts", "style_tree", "style_motion_slot",
         "elevation", "theme", "clock", "motion_clock", "style_motion", "layout_motion"]
-    if !CheckZxProgram(ziran, "hello:main", "examples/hello.zi", "build/test/pay-per-import/hello-zx-ir") {
-        Fail("hello (zx)", "does not check", "examples/hello.zi")
+    if !CheckZxProgram(ziran, "hello:main", "examples/hello.tsx", "build/test/pay-per-import/hello-zx-ir") {
+        Fail("hello (zx)", "does not check", "examples/hello.tsx")
     } else {
         ExpectCheckedModules("hello (zx)", "build/test/pay-per-import/hello-zx-ir",
             zx_hello_present[:], zx_hello_absent[:])
@@ -466,14 +466,14 @@ main :: () -> s32 {
 
     // The web: an empty window is the window and its page, and frame
     // examples carry only what they import, as on Linux.
-    if !CheckWebProgram(ziran, "window:main", "examples/window.zi", "build/test/pay-per-import/window-web-ir") {
-        Fail("window (web)", "does not check", "examples/window.zi")
+    if !CheckWebProgram(ziran, "window:main", "examples/window.tsx", "build/test/pay-per-import/window-web-ir") {
+        Fail("window (web)", "does not check", "examples/window.tsx")
     } else {
         ExpectChecked("window (web)", "build/test/pay-per-import/window-web-ir", web_window_checked[:])
     }
     web_hello_present: [5]string = .["app", "frames_web", "tree", "text", "paint_queue"]
-    if !CheckWebProgram(ziran, "hello:main", "examples/hello.zi", "build/test/pay-per-import/hello-web-ir") {
-        Fail("hello (web)", "does not check", "examples/hello.zi")
+    if !CheckWebProgram(ziran, "hello:main", "examples/hello.tsx", "build/test/pay-per-import/hello-web-ir") {
+        Fail("hello (web)", "does not check", "examples/hello.tsx")
     } else {
         ExpectCheckedModules("hello (web)", "build/test/pay-per-import/hello-web-ir", web_hello_present[:],
             not_in_a_plain_page[:])

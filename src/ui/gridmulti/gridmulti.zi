@@ -20,6 +20,7 @@ using BehaviorModule :: #import "grid_multi_behavior";
 #import "scroll_device"
 
 // Selection storage belongs to the caller and is never retained.
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props, items: []GridMultiItem,
     selected: []bool, location := #caller_location) -> GridMultiResult {
     site := TreeCallSite(session, location)

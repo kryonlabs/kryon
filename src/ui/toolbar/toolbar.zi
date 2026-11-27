@@ -100,6 +100,7 @@ ToolbarActionWidth :: (props: PropsModule.Props, item: ToolbarAction,
 
 // Toolbar composes checked Button and Dropdown widgets. The caller owns the
 // returned dropdown state, and passes it back in props.dropdown next frame.
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props, options: []Dropdown.Option,
     actions: []ToolbarAction, location := #caller_location) -> ToolbarResult {
     site := TreeCallSite(session, location)

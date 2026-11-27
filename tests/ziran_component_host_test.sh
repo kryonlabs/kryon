@@ -13,7 +13,7 @@ cd "$repo"
 for name in counter_v1 counter_v2 status bad_schema bad_resource bad_entry bad_init bad_migrated bad_abi; do
     cd "$repo"
     source_root="$repo/tests/fixtures/component_$name"
-    generated="--module-path $source_root"
+    generated="--module-path $source_root --module-path $repo/tests/fixtures/component_owned"
     if [ "$name" = bad_abi ]; then
         project="$work/bad-abi-project"
         python3 - "$repo" "$project" <<'PYFIXTURE'
@@ -21,8 +21,9 @@ from pathlib import Path
 import sys
 repo, project = map(Path, sys.argv[1:])
 sys.path.insert(0, str(repo / 'tests'))
-from toolchain import kryon_test_project
-kryon_test_project(project)
+from toolchain import kryon_test_project, ZIRAN_ROOT
+# This internal ABI fixture builds with the same current-tree tools as its host.
+kryon_test_project(project, package_overrides=(("ziran", ZIRAN_ROOT),))
 for name in ('component', 'component_protocol'):
     (project / 'src' / (name + '.zi')).write_bytes(
         (repo / 'tests/fixtures/component_bad_abi' / (name + '.zi')).read_bytes())
@@ -32,14 +33,28 @@ PYFIXTURE
         generated=
     fi
     source="$source_root/component.zi"
+    guest="$repo/src/backend/component_guest.zi"
+    guest_ir="$work/$name-ir/component_guest.zir"
+    entry=component_guest:Run
+    binding='--bind component_guest:Compose=component:Frame'
+    if [ "$name" = bad_entry ]; then
+        guest=; guest_ir=; binding=; entry=component:Frame
+    fi
     ir="$work/$name-ir"
     "$ziran" ir --project --offline --root "$source_root" --define KRYON_HOSTED_UI \
-        $generated -o "$ir" "$source"
+        $generated -o "$ir" "$source" ${guest:+"$guest"}
+    if [ -n "$guest" ]; then
+        guest_ir=$(rg --files "$ir" | rg '/[^/]*component_guest\.zir$')
+        guest_module=$(basename "$guest_ir" .zir)
+        entry="$guest_module:Run"
+        binding="--bind $guest_module:Compose=component:Frame"
+    fi
     "$ziran" bundle --root "$ir" --module-path "$ir" --define KRYON_HOSTED_UI \
-        --entry component:Frame -o "$work/$name.zx" "$ir/component.zir"
+        $binding --entry "$entry" \
+        -o "$work/$name.zx" "$ir/component.zir" ${guest_ir:+"$guest_ir"}
     "$ziran" bundle --project --offline --root "$source_root" --define KRYON_HOSTED_UI \
-        $generated --entry component:Frame \
-        -o "$work/$name-source.zx" "$source"
+        $generated $binding --entry "$entry" \
+        -o "$work/$name-source.zx" "$source" ${guest:+"$guest"}
     cmp "$work/$name.zx" "$work/$name-source.zx"
 done
 
@@ -52,13 +67,14 @@ for variant in v1 v2 bad; do
     ir="$work/inputs-$variant-ir"
     # shellcheck disable=SC2086
     "$ziran" ir --project --offline --root "$repo/tests" --define KRYON_HOSTED_UI $define \
-        --module-path "$repo/tests" -o "$ir" "$repo/tests/component_inputs_guest.zi"
+        --module-path "$repo/tests" -o "$ir" "$repo/tests/component_inputs_guest.zi" "$repo/src/backend/component_guest.zi"
     "$ziran" bundle --root "$ir" --module-path "$ir" --define KRYON_HOSTED_UI \
-        --entry component_inputs_guest:Frame -o "$work/inputs_$variant.zx" "$ir/component_inputs_guest.zir"
+        --bind component_guest:Compose=component_inputs_guest:Frame --entry component_guest:Run \
+        -o "$work/inputs_$variant.zx" "$ir/component_inputs_guest.zir" "$ir/component_guest.zir"
     # shellcheck disable=SC2086
     "$ziran" bundle --project --offline --root "$repo/tests" --define KRYON_HOSTED_UI $define \
-        --module-path "$repo/tests" --entry component_inputs_guest:Frame \
-        -o "$work/inputs-$variant-source.zx" "$repo/tests/component_inputs_guest.zi"
+        --module-path "$repo/tests" --bind component_guest:Compose=component_inputs_guest:Frame --entry component_guest:Run \
+        -o "$work/inputs-$variant-source.zx" "$repo/tests/component_inputs_guest.zi" "$repo/src/backend/component_guest.zi"
     cmp "$work/inputs_$variant.zx" "$work/inputs-$variant-source.zx"
 done
 

@@ -171,14 +171,14 @@ PageTextureRead :: (id: s32, pixels: *u8, capacity: u32) -> s32 {
             height = page_targets[page_target_count - 1].target_height
         }
         if cast(u32)(width * height * 4) > capacity { return 0 }
-        if PageGpuReadPixels(0, 0, width, height, pixels) { return 1 }
+        if PageGpuReadPixels(0, 0, width, height, pixels, true) { return 1 }
         return 0
     }
     slot: s32 = PageTextureFind(id)
     if slot < 0 { return 0 }
     if cast(u32)(page_textures[slot].width * page_textures[slot].height * 4) > capacity { return 0 }
     if PageGpuTextureRead(page_textures[slot].texture, page_textures[slot].width,
-        page_textures[slot].height, pixels, cast(s32)capacity) { return 1 }
+        page_textures[slot].height, pixels, cast(s32)capacity, page_textures[slot].target) { return 1 }
     return 0
 }
 

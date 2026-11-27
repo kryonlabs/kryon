@@ -3,6 +3,7 @@
     #program_export
     AndroidRunMain :: () -> s32 { return AndroidBundleRunMain() }
 } else #if OS == .ANDROID || #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
+    Components :: #import "component_frame_slot";
     // Kryon owns Android's NativeActivity application thread. The NDK glue only
     // bridges lifecycle/input events to a looper; this host owns the window,
     // pixels, input, IME, density, damage presentation and frame pacing.
@@ -372,6 +373,14 @@
                     // timeout covers a display disappearing mid-request.
                     next_frame_ms = Clock.MonotonicMilliseconds() + 100
                 }
+            }
+            // Cap both polling and event-driven waits without turning a
+            // distant timer into continuous animation or retaining old wakes.
+            component_now := Clock.MonotonicMilliseconds()
+            component_delay := Components.NextDelay(session, cast(float64)component_now / 1000.0)
+            if component_delay > 0 {
+                component_due := component_now + cast(s64)component_delay
+                if next_frame_ms < 0 || component_due < next_frame_ms { next_frame_ms = component_due }
             }
         }
         if !ok { unused AndroidError("kryon: android frame rendering failed") }

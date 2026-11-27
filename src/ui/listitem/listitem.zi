@@ -69,6 +69,7 @@ TrailingWidth :: (props: Props, height: float32) -> float32 {
         CurrentThemeMetric(.ThemeMetricSpace4)
 }
 
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) -> ListItemResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

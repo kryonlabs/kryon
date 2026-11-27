@@ -10,7 +10,14 @@ using SessionModule :: #import "session";
 #import "cursor"
 #import "text_host"
 #import "text_editing"
+#import "input_protocol"
+#import "frame_input_provider"
+#import "scroll_sampling"
 Clock :: #import "frame_clock";
+Time :: #import "clock";
+Window :: #import "window";
+Components :: #import "component_frame_slot";
+#import "frame_motion"
 
 host_api :: #system_library "host_api";
 BundleWindowHost :: (title: string, width: s32, height: s32) -> bool #foreign host_api;
@@ -40,6 +47,10 @@ BundleFrameCursorHost :: (shape: s32, asset_path: string, width: s32,
     height: s32, hotspot_x: s32, hotspot_y: s32, hidden: bool) #foreign host_api;
 BundleFrameFinishedHost :: (unchanged: bool) #foreign host_api;
 BundleFrameReusableHost :: () -> bool #foreign host_api;
+// Absolute seconds in the same monotonic clock as ClockMillisecondsHost.
+// -1 cancels the previous frame's timer deadline.
+BundleWakeAtHost :: (seconds: float64) #foreign host_api;
+BundleCloseHost :: () #foreign host_api;
 
 BundleTextEditorHost :: (identity: u64, value: string, cursor: s32,
     anchor: s32, flags: s32) #foreign host_api;
@@ -59,6 +70,8 @@ using FrameStatus;
 
 active_draw: App.Draw;
 
+InactiveDraw :: (frame: App.Frame) {}
+
 // The structural probe's draw: the app's own draw into the probe frame.
 StructuralProbeDraw :: (session: Session, bounds: Rectangle) -> s32 {
     App.CallDraw(active_draw, session.slot, session.epoch, bounds)
@@ -74,22 +87,44 @@ bundle_last_width: s32; bundle_last_height: s32; bundle_last_modifiers: s32;
 // it. A bundle frame's result reaches the player through the finished-host
 // call; a failed frame closes the window instead of returning a status.
 Run :: (window: App.Window, draw: App.Draw) -> s32 {
+    if bundle_started { return 1 }
     if !bundle_started {
         width := ifx window.width > 0 then window.width else 960
         height := ifx window.height > 0 then window.height else 600
         if !BundleWindowHost(window.title, width, height) { return 1 }
         bundle_session = SessionOpen()
-        if !SessionValid(bundle_session) { return 1 }
+        if !SessionValid(bundle_session) { BundleCloseHost(); return 1 }
         bundle_started = true
         TextHostUseTransport(BundleEditorSend, BundleEditorReceive)
+    }
+    defer {
+        // Guest actions still have live code and host resources during disposal.
+        unused CloseSession(bundle_session)
+        active_draw = InactiveDraw
+        bundle_session = Session.{}
+        bundle_started = false
+        bundle_activity = Clock.FrameActivity.{}
+        bundle_last_x = 0.0; bundle_last_y = 0.0
+        bundle_last_width = 0; bundle_last_height = 0; bundle_last_modifiers = 0
+        BundleWakeAtHost(-1.0)
+        BundleCloseHost()
     }
     active_draw = draw
     result: s32 = 0
     running := true
+    frame_input: FrameInputProvider
+    started_at: s64 = -1
     while running {
         TextHostFrameBegin(bundle_session)
         input := ReadBundleInput()
         if input.closed { break }
+        now := Time.Milliseconds()
+        if now < 0 { return 1 }
+        if started_at < 0 { started_at = now }
+        seconds := cast(float64)now / 1000.0
+        // The structural probe and the presented frame observe the same time.
+        SetFrameMotionTime(bundle_session, seconds)
+        FrameMotionHoldNext(bundle_session)
         active := input.down || input.pressed || input.released ||
             input.secondary_down || input.secondary_pressed || input.secondary_released ||
             input.key != 0 || input.wheel != 0.0 ||
@@ -105,9 +140,21 @@ Run :: (window: App.Window, draw: App.Draw) -> s32 {
             input.pressed, input.released}
         secondary := SecondaryPointerFrame.{input.secondary_down,
             input.secondary_pressed, input.secondary_released}
+        sample: FrameInputSnapshot = .{.pointer = pointer, .secondary = secondary,
+            .focused = Window.WindowFocused(), .modifiers = input.modifiers, .wheel = input.wheel,
+            .elapsed_ms = now - started_at}
+        if input.key > 0 && input.key < 512 {
+            sample.keys[input.key] = cast(u8)FrameKeyPressed
+        }
+        FrameInputProviderGather(*frame_input, sample)
+        if !FrameInputProviderBegin(*frame_input, bundle_session) { return 1 }
+        defer { FrameInputProviderEnd(*frame_input) }
         TreePointerUpdate(bundle_session, pointer)
         TreeSecondaryPointerUpdate(bundle_session, secondary)
         PointerWheelSend(bundle_session, input.x, input.y, input.wheel)
+        if input.wheel != 0.0 { PointerWheelShare(bundle_session) }
+        ScrollSampleBegin(bundle_session, .{pointer.x, pointer.y}, pointer.pressed,
+            pointer.down, pointer.released, input.wheel, seconds)
         KeyboardModifiersSend(bundle_session, input.modifiers)
         if input.key != 0 { KeyboardSend(bundle_session, input.key) }
         codepoint := TakeBundleCodepoint()
@@ -126,6 +173,12 @@ Run :: (window: App.Window, draw: App.Draw) -> s32 {
         if finished.status != cast(FrameStatus)FrameOk { return 1 }
         TextHostFrameEnd(bundle_session, input.x, input.y, input.pressed)
         BundleFrameFinishedHost(finished.paint_unchanged)
+        wake := Components.NextDeadline(bundle_session)
+        if FrameMotionMoving(bundle_session) || ScrollSampleMoving(bundle_session) {
+            next_frame := cast(float64)(now + 16) / 1000.0
+            if wake < 0.0 || next_frame < wake { wake = next_frame }
+        }
+        BundleWakeAtHost(wake)
         props := CursorResolve(bundle_session, TreeCursor(bundle_session))
         BundleFrameCursorHost(props.shape, props.asset_path, props.width, props.height,
             props.hotspot_x, props.hotspot_y, props.hidden)

@@ -8,11 +8,14 @@ using SvgIcon :: #import "svg_icon_props";
     #import "session"
     host_api :: #system_library "host_api";
     SvgIconHostedHost :: (session: Session, props: SvgIcon.Props) #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: SvgIcon.Props) { SvgIconHostedHost(session, props) }
+        #scope_export
 } else {
     #import "session"
     #import "svg_icon_behavior"
 
+        #scope_package
         Draw :: (session: Session, props: SvgIcon.Props, location := #caller_location) {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }

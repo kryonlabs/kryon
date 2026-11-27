@@ -1,3 +1,4 @@
+ZIRAN_BUILD_DIR ?= $(abspath $(ZIRAN_DIR)/build)
 # Build the reusable native player, never the downloaded application's code.
 CC ?= cc
 PLAYER_HOST_OS ?= $(shell uname -s)
@@ -10,12 +11,12 @@ else
 PLAYER_LDFLAGS ?= -Wl,--gc-sections
 PLAYER_PACKAGES := sdl2 cairo freetype2 pangocairo fontconfig glib-2.0 x11
 endif
-ZIRAN := $(ZIRAN_DIR)/build/bin/ziran
+ZIRAN := $(ZIRAN_BUILD_DIR)/bin/ziran
 # The player links the codec archives; include their build rules so any
 # caller of this file (this makefile or another project's) resolves them.
 include $(KRYON_DIR)/mk/codecs.mk
 PLAYER_HTTP_LIBS := $(or $(shell pkg-config --libs libcurl 2>/dev/null),$(if $(filter Linux,$(shell uname -s)),-l:libcurl.so.4,-lcurl))
-PLAYER_LIBS = $(ZIRAN_DIR)/build/libziran.a $(OPUS_A) $(PLAYER_LDFLAGS) \
+PLAYER_LIBS = $(ZIRAN_BUILD_DIR)/libziran.a $(OPUS_A) $(PLAYER_LDFLAGS) \
 	$$(pkg-config --libs $(PLAYER_PACKAGES)) $(PLAYER_HTTP_LIBS) -lm -lpthread
 PLAYER_DIR := $(KRYON_DIR)/build/zx-player
 PLAYER := $(KRYON_DIR)/build/bin/zx
@@ -24,7 +25,7 @@ PLAYER_SOURCES := $(KRYON_DIR)/tools/zx.zi $(wildcard $(KRYON_DIR)/src/backend/*
 .PHONY: zx-player
 zx-player: $(PLAYER) webview-stage
 
-$(PLAYER): $(PLAYER_SOURCES) $(KRYON_DIR)/mk/zx-player.mk $(KRYON_DIR)/ziran.toml $(KRYON_DIR)/ziran.lock $(ZIRAN_DIR)/build/libziran.a $(ZIRAN) $(OPUS_A)
+$(PLAYER): $(PLAYER_SOURCES) $(KRYON_DIR)/mk/zx-player.mk $(KRYON_DIR)/ziran.toml $(KRYON_DIR)/ziran.lock $(ZIRAN_BUILD_DIR)/libziran.a $(ZIRAN) $(OPUS_A)
 	mkdir -p $(PLAYER_DIR) $(KRYON_DIR)/build/bin
 	cd "$(KRYON_DIR)" && $(ZIRAN) build --project --target=c --prune-stale $(PLAYER_TARGET) --root $(KRYON_DIR)/tools \
 		-o $(PLAYER_DIR) $(KRYON_DIR)/tools/zx.zi

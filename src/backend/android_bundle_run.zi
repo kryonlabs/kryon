@@ -35,6 +35,7 @@
 App :: #import "bundle_app";
 Player :: #import "bundle_player";
 Clock :: #import "std/timer_linux";
+Components :: #import "component_frame_slot";
 
 AndroidBundleHost :: struct {
     player: Player.Player
@@ -120,9 +121,10 @@ AndroidBundlePlatform :: (context: *void, module: *u8, function: *u8,
 
 AndroidBundleClose :: (host: *AndroidBundleHost) {
     slot := host.media_slot
-    AndroidBundleMediaClose(*host.media)
+    // Guest cleanup can still use the host's media and image resources.
     BundleAppClose(*host.app)
     Player.PlayerClose(*host.player)
+    AndroidBundleMediaClose(*host.media)
     AndroidBundleImagesRelease(*host.images,
         ifx host.media_slot == 0 then 384 else 512)
     host.* = AndroidBundleHost.{.media_slot = slot}
@@ -296,10 +298,18 @@ AndroidBundleWait :: (context: *void, input: *Player.Input) -> bool {
     }
     width: s32
     height: s32
-    loop {
+    while true {
         now := Clock.MonotonicMilliseconds()
         timeout := ifx host.next_frame_ms > now then cast(s32)(host.next_frame_ms - now) else 0
         if timeout > 1000 { timeout = 1000 }
+        if !host.was_paused && host.player.wake_at >= 0.0 {
+            remaining := host.player.wake_at * 1000.0 - cast(float64)now
+            if remaining <= 0.0 { timeout = 0 }
+            else if remaining < cast(float64)timeout {
+                timeout = cast(s32)remaining
+                if cast(float64)timeout < remaining { timeout += 1 }
+            }
+        }
         unused AndroidNativePoll(timeout)
         if AndroidNativeDestroyRequested() { return false }
         if AndroidNativePaused() || !AndroidNativeWindowReady() ||
@@ -317,7 +327,7 @@ AndroidBundleWait :: (context: *void, input: *Player.Input) -> bool {
         break
     }
     host.was_paused = false
-    host.selected_count = AndroidBundleTakeFile(host.selected[:]).count
+    host.selected_count = cast(s32)AndroidBundleTakeFile(host.selected[:]).count
     if host.selected_count > 0 {
         // The loop ends here; the runner swaps the selected bundle in.
         host.swap_pending = true
@@ -414,6 +424,16 @@ AndroidBundleRunHosted :: (input_session: Session) -> s32 {
         now := Clock.MonotonicMilliseconds()
         timeout := ifx next_frame_ms > now then cast(s32)(next_frame_ms - now) else 0
         if timeout > 1000 { timeout = 1000 }
+        active_host := *android_bundle_hosts[android_bundle_active]
+        component_deadline := Components.NextDeadline(active_host.app.app.session)
+        if !was_paused && component_deadline >= 0.0 {
+            remaining := component_deadline * 1000.0 - cast(float64)now
+            if remaining <= 0.0 { timeout = 0 }
+            else if remaining < cast(float64)timeout {
+                timeout = cast(s32)remaining
+                if cast(float64)timeout < remaining { timeout += 1 }
+            }
+        }
         unused AndroidNativePoll(timeout)
         if AndroidNativeDestroyRequested() { break }
 
@@ -499,8 +519,12 @@ AndroidBundleRunPortable :: (input_session: Session) -> s32 {
             break
         }
         if host.swap_pending {
-            AndroidBundleSwapTo(TextFromBytes(host.selected[0:host.selected_count]),
-                input_session)
+            // Swapping closes this host and clears its selected-path buffer.
+            // Keep the path in caller-owned storage through the transaction.
+            selected: [4096]u8
+            count := host.selected_count
+            for at: cast(s32)0..count - 1 { selected[at] = host.selected[at] }
+            AndroidBundleSwapTo(TextFromBytes(selected[0:count]), input_session)
             continue
         }
         break

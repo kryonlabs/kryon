@@ -13,7 +13,7 @@ guard = work / '.running'
 guard.mkdir()
 try:
     project = work / 'project'
-    package_id = kryon_test_project(project)
+    kryon_test_project(project)
     # A toast has no editable text, so the program never calls the platform
     # keyboard capability and binds no provider for it.
     for name in ('toast_action_test', 'ziran_test_driver_host', 'text_input_platform_host'):
@@ -31,7 +31,7 @@ try:
     effects += [(module, effect) for module, names in {'paint_queue': ['RasterImage', 'RasterImageMesh'], 'raster': ['RasterLine'], 'raster_shape': ['RasterRoundedRectangle', 'RasterRoundedRectangleOutline'], 'raster_text': ['RasterText', 'RasterTextClipped', 'RasterTextRotated'], 'raster_triangles': ['RasterTriangles']}.items() for effect in names]
     bindings = []
     for module, effect in effects:
-        bindings += ['--bind', f'{package_id}_{module}:{effect}=ziran_test_driver_host:{effect}']
+        bindings += ['--bind', f'kryon/{module}:{effect}=ziran_test_driver_host:{effect}']
     for form, fixture in [('source', source), ('saved', ir / 'toast_action_test.zir')]:
         options = ['--project', '--offline'] if form == 'source' else ['--root', ir, '--module-path', ir]
         output = work / ('c-' + form)

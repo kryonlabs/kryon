@@ -5,11 +5,14 @@ import subprocess
 from toolchain import ROOT, ZIRAN, ZIRAN_ROOT, kryon_test_project
 
 project = ROOT / "build/scratch/public-surface/project"
+shutil.rmtree(project, ignore_errors=True)
 kryon_test_project(project)
-source = project / "src/public_widgets.zi"
-source.write_bytes((ROOT / "tests/public_widgets.zi").read_bytes())
+source = project / "src/public_widgets.tsx"
+source.write_bytes((ROOT / "tests/public_widgets.tsx").read_bytes())
+widget_ir = ROOT / "build/ziran/public/widgets"
+shutil.rmtree(widget_ir, ignore_errors=True)
 subprocess.run([str(ZIRAN), "ir", "--project", "--offline", "--root", str(source.parent),
-                "-o", str(ROOT / "build/ziran/public/widgets"), str(source)],
+                "-o", str(widget_ir), str(source)],
                cwd=project, check=True)
 print("Public widget package consumer compiled")
 

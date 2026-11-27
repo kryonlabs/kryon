@@ -1,13 +1,13 @@
 [package]
 name = "emptystate"
-entry = "emptystate.zi"
+entry = "emptystate.tsx"
 module_roots = ["."]
 tool = "kryon"
 
 
 [toolchain]
-git = "https://github.com/ziranlang/ziran.git"
-ref = "7fbc8152b0ab18b641a73d16d93ccda1e1c7f863"
+git = "https://git.waozi.xyz/ziranlang/ziran.git"
+ref = "dc3ecf0aabd1630881c13783a660ca8b298eff88"
 
 [tool.kryon]
 default_profile = "desktop"
@@ -27,5 +27,5 @@ backend = "canvas"
 codegen = "zx"
 
 [dependencies.kryon]
-git = "https://github.com/kryonlabs/kryon.git"
+git = "https://git.waozi.xyz/kryonlabs/kryon.git"
 ref = "master"

@@ -1,0 +1,39 @@
+// The page's like counter and its text, apart from any widget draw
+// calls, so tests can use it.
+#import "kryon/geometry"
+using SharedLayout :: #import "kryon/PageLayout";
+#import "std/number_text"
+
+likes: s32;
+likes_text: [48]u8;
+
+// The page cursor the layout helpers advance through each frame.
+page: SharedLayout.PageLayout;
+
+// The cursor's storage, for the layout helpers to advance.
+Page :: () -> *SharedLayout.PageLayout { return *page }
+
+// Starts the centered page column for this frame's viewport.
+StartPage :: (viewport: Rectangle) { page = SharedLayout.PageFor(viewport, 640.0) }
+
+// One more like.
+Like :: () { likes += 1 }
+
+// "N likes so far", in storage that lives as long as the app.
+LikesText :: () -> string {
+    digits: [16]u8
+    length: s32 = 0
+    length = Append(likes_text[:], length, FormatInteger(cast(s64)likes, digits[:]))
+    length = Append(likes_text[:], length, " likes so far")
+    return TextView(likes_text[0:length])
+}
+
+Append :: (output: []u8, length: s32, text: string) -> s32 {
+    at := length
+    for byte: text {
+        if at >= output.count { return at }
+        output[at] = byte
+        at += 1
+    }
+    return at
+}

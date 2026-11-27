@@ -130,6 +130,7 @@ BadgeHeightFor :: (size: ControlSize) -> float32 {
     return 22.0
 }
 
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) -> BadgeResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

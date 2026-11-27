@@ -1,0 +1,111 @@
+// The library's books and the screen state that its pages share, apart
+// from any widget draw calls, so tests can use them.
+ListBox :: #import "kryon/list_box";
+#import "kryon/geometry"
+using SharedLayout :: #import "kryon/PageLayout";
+
+PageHome :: 0;
+PageLibrary :: 1;
+PageSettings :: 2;
+
+current: s32;
+selected_book: s32;
+book_scroll: s32;
+visible_count: s32;
+favorites_only: bool;
+show_authors: bool = true;
+
+titles: [6]string = .{"Ada's Notes", "The Cellar Door", "Kites at Dusk",
+    "Rivers of Light", "Small Engines", "The Quiet Grid"};
+authors: [6]string = .{"L. Byron", "M. Okafor", "S. Lind", "A. Ito", "R. Diaz", "K. Weiss"};
+favorite: [6]bool = .{true, false, true, false, false, true};
+
+// The page cursor the layout helpers advance through each frame.
+page: SharedLayout.PageLayout;
+
+// The cursor's storage, for the layout helpers to advance.
+Page :: () -> *SharedLayout.PageLayout { return *page }
+
+// Starts the centered page column for this frame's viewport.
+StartPage :: (viewport: Rectangle) { page = SharedLayout.PageFor(viewport, 560.0) }
+
+Show :: (index: s32) { current = index }
+Current :: () -> s32 { return current }
+SetSelection :: (index: s32) { selected_book = index }
+Selection :: () -> s32 { return selected_book }
+SetScroll :: (offset: s32) { book_scroll = offset }
+Scroll :: () -> s32 { return book_scroll }
+SetFavoritesOnly :: (value: bool) { favorites_only = value }
+FavoritesOnly :: () -> bool { return favorites_only }
+SetShowAuthors :: (value: bool) { show_authors = value }
+ShowAuthors :: () -> bool { return show_authors }
+BookCount :: () -> s32 { return visible_count }
+
+// The visible book rows, rebuilt every call into storage that outlives
+// the frame, so the labels never dangle. The two text sets take turns:
+// each call writes the set whose views the list no longer holds.
+rows: [6]ListBox.ListBoxItem;
+row_text_a: [6][96]u8;
+row_text_b: [6][96]u8;
+row_text_flip: bool;
+row_lengths: [6]s64;
+
+VisibleBooks :: () -> []ListBox.ListBoxItem {
+    // Write the text set the list no longer holds views of.
+    row_text_flip = !row_text_flip
+    count: s32 = 0
+    index: s32 = 0
+    while index < cast(s32)titles.count {
+        if !favorites_only || favorite[index] {
+            if show_authors {
+                title_text: [96]u8
+                prefix: string = Joined(titles[index], " - ", title_text[:])
+                label := Joined(prefix, authors[index], RowText(count)[:])
+                row_lengths[count] = label.count
+            } else {
+                label := Joined(titles[index], "", RowText(count)[:])
+                row_lengths[count] = label.count
+            }
+            count += 1
+        }
+        index += 1
+    }
+    for book: 0..count - 1 {
+        rows[book].label = TextView(RowText(book)[0:row_lengths[book]])
+    }
+    visible_count = count
+    if selected_book >= count { selected_book = 0 }
+    return rows[0:count]
+}
+
+// One row's byte storage in the active text set.
+RowText :: (index: s32) -> []u8 {
+    if row_text_flip { return row_text_b[index][:] }
+    return row_text_a[index][:]
+}
+
+// "Selected: title", in storage that lives as long as the app.
+detail_text: [128]u8;
+
+SelectedSummary :: () -> string {
+    if visible_count == 0 { return "" }
+    return Joined("Selected: ", rows[selected_book].label, detail_text[:])
+}
+
+// first followed by second, in output.
+Joined :: (first: string, second: string, output: []u8) -> string {
+    length: s32 = 0
+    index: s32 = 0
+    while index < cast(s32)first.count && length < cast(s32)output.count {
+        output[length] = first[index]
+        length += 1
+        index += 1
+    }
+    index = 0
+    while index < cast(s32)second.count && length < cast(s32)output.count {
+        output[length] = second[index]
+        length += 1
+        index += 1
+    }
+    return TextView(output[0:length])
+}

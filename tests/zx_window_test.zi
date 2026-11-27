@@ -1,4 +1,4 @@
-// examples/window.zi as a portable bundle, run as native code on a private
+// examples/window.tsx as a portable bundle, run as native code on a private
 // Xvfb two ways, each through a private host registry: `ziran run --backend
 // native` finds the installed desktop player, and `zx2native` writes a Linux
 // executable that links the desktop host library's zx_window capabilities.
@@ -191,9 +191,9 @@ main :: (argc: s32, argv: **u8) -> s32 {
     }
     bundle := Path(folder, "window.zx")
     build: [10]string = .[ziran, "bundle", "--project", "--root", "examples", "--entry", "window:main",
-    "-o", bundle, "examples/window.zi"]
+    "-o", bundle, "examples/window.tsx"]
     none: [0]string
-    if Run(build[:], none[:], Path(folder, "bundle.log")) != 0 { return Fail("window.zi does not bundle") }
+    if Run(build[:], none[:], Path(folder, "bundle.log")) != 0 { return Fail("window.tsx does not bundle") }
 
     // No registered library defines the capabilities: a named gap, no file.
     gap := Path(folder, "gap.elf")
@@ -249,14 +249,14 @@ main :: (argc: s32, argv: **u8) -> s32 {
         return Fail("measure.elf failed headless glyph measurement")
     }
 
-    // A full App.Run UI bundle (examples/hello.zi) also lowers via zx2native
+    // A full App.Run UI bundle (examples/hello.tsx) also lowers via zx2native
     // against libkryon-desktop.so and opens a real SDL2/Cairo window.
     if PathExists("src/backend/frames_zx.zi") {
         hello_bundle := Path(folder, "hello.zx")
         hello_build: [10]string = .[ziran, "bundle", "--project", "--root", "examples", "--entry", "hello:main",
-            "-o", hello_bundle, "examples/hello.zi"]
+            "-o", hello_bundle, "examples/hello.tsx"]
         if Run(hello_build[:], none[:], Path(folder, "hello-bundle.log")) != 0 {
-            return Fail("hello.zi does not bundle")
+            return Fail("hello.tsx does not bundle")
         }
         hello_elf := Path(folder, "hello.elf")
         hello_lower: [4]string = .[zx2native, "-o", hello_elf, hello_bundle]

@@ -24,6 +24,11 @@ C code to aliases in that package's `[dependencies]`. Kryon supplies each
 selected recipe with `ZIRAN_ANDROID_TARGET` and the locked source paths in
 `ZIRAN_SOURCE_<alias>`.
 
+The selected profile's `assets` directory is copied into the APK's assets;
+a file setting ships that file. Direct Gradle builds can set `-Papp.assets=...`.
+Relative paths start at the application root, beside `droid/`. Each build
+refreshes this asset snapshot, including removed files.
+
 Android uses system text and emoji by default. Set `bundled_fonts = true`
 under `[tool.kryon.android]` to preserve the bundled text renderer.
 Set `frame_mode = "events"` to sleep between updates and pace active frames

@@ -76,6 +76,37 @@ def kryon_only(overrides):
                    if line.replace(" ", "").split("=")[0] != "ziran")
 
 
+def write_linked_value_app(project, title, library, symbol):
+    """Build the same input-driven frame around each native linker fixture."""
+    source = project / "src"
+    (source / "linked_value.zi").write_text(
+        f'native :: #system_library "{library}";\n'
+        f'NativeValue :: () -> s32 #foreign native "{symbol}";\n'
+        'ReadValue :: () -> s32 { return NativeValue() }\n'
+    )
+    (source / "app.tsx").write_text('''import * as App from "kryon/app";
+import { Session } from "kryon/session";
+import { TypedCodepointTake } from "kryon/tree_input";
+import { Text } from "kryon/tsx/text";
+import { WindowQuit } from "kryon/window";
+import { ReadValue } from "linked_value";
+
+let exitCode: s32 = s32(0);
+
+function Frame(frame: App.Frame): void {
+    const session: Session = {slot: frame.slot, epoch: frame.epoch};
+    <Text session={session} props={{text: "Press q to read the linked value", bounds: frame.viewport}}/>;
+    if (TypedCodepointTake(session) === s32(113)) { exitCode = ReadValue(); }
+    if (exitCode !== s32(0)) { WindowQuit(); }
+}
+
+export function main(): s32 {
+    App.Run({title: TITLE}, Frame);
+    return exitCode;
+}
+'''.replace('TITLE', json.dumps(title)))
+
+
 def kryon_test_project(directory, package_overrides=()):
     """Resolve an ordinary consumer fixture against the canonical local packages."""
     directory = Path(directory)

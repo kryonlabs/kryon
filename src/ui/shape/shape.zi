@@ -7,9 +7,11 @@ using Shape :: #import "shape_props";
     CircleHostedHost :: (session: Session, props: Shape.CircleProps) -> s32 #foreign host_api;
     RingHostedHost :: (session: Session, props: Shape.RingProps) -> s32 #foreign host_api;
     TriangleHostedHost :: (session: Session, props: Shape.TriangleProps) -> s32 #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: Shape.Props) -> s32 {
         return LineHostedHost(session, props)
     }
+        #scope_export
     #program_export
     Circle :: (session: Session, props: Shape.CircleProps) -> s32 {
         return CircleHostedHost(session, props)
@@ -49,6 +51,7 @@ using Shape :: #import "shape_props";
         return node.* >= 0
     }
 
+        #scope_package
         Draw :: (session: Session, props: Shape.Props, location := #caller_location) -> s32 {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }
@@ -67,6 +70,7 @@ using Shape :: #import "shape_props";
         return node
     }
 
+        #scope_export
     #program_export
     Circle :: (session: Session, props: Shape.CircleProps) -> s32 {
         radius: float32 = props.radius

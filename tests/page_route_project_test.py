@@ -25,7 +25,7 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
     project = Path(directory)
     (project / "src").mkdir()
     (project / "ziran.toml").write_text(pinned(
-        '[package]\nname = "route_probe"\nentry = "src/app.zi"\n'
+        '[package]\nname = "route_probe"\nentry = "src/app.tsx"\n'
         'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
         '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
         'ref = "master"\n\n'
@@ -41,13 +41,8 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
     (project / "ziran.local.toml").write_text(kryon_only(
         "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
     ))
-    (project / "src/app.zi").write_text(
-        '#import "kryon/geometry"\n'
-        '#import "kryon/session"\n'
-        '#import "c_string"\n'
+    (project / "src/route_probe.zi").write_text(
         '#import "kryon/PageRoute"\n'
-        'host_api :: #system_library "host_api";\n'
-        'RequestWindowClose :: () #foreign host_api;\n'
         'Same :: (left: *u8, right: string) -> bool {\n'
         '    index: s32 = 0\n'
         '    while index < cast(s32)right.count {\n'
@@ -55,10 +50,9 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
         '        index += 1\n'
         '    }\n'
         '    return left[index] == cast(u8)0\n}\n'
-        '#program_export\n'
-        'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
+        'CheckBrowserRoute :: () -> bool {\n'
         '    path: *u8 = GetRoutePath()\n'
-        '    if path[0] != cast(u8)47 { return 0 }\n'
+        '    if path[0] != cast(u8)47 { return false }\n'
         '    before: s32 = GetRouteVersion()\n'
         '    target: [512]u8\n'
         '    length: s32 = 0\n'
@@ -73,23 +67,30 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
         '        index += 1\n'
         '    }\n'
         '    target[length + index] = cast(u8)0\n'
-        '    if !Same(GetRouteQuery(), "?probe=1") { return 0 }\n'
+        '    if !Same(GetRouteQuery(), "?probe=1") { return false }\n'
         '    origin: *u8 = GetRouteOrigin()\n'
-        '    if origin[0] != cast(u8)102 { return 0 }\n'  # f
-        '    if origin[1] != cast(u8)105 { return 0 }\n'  # i
-        '    if origin[2] != cast(u8)108 { return 0 }\n'  # l
-        '    if origin[3] != cast(u8)101 { return 0 }\n'  # e
-        '    if origin[4] != cast(u8)58 { return 0 }\n'   # :
+        '    if origin[0] != cast(u8)102 { return false }\n'  # f
+        '    if origin[1] != cast(u8)105 { return false }\n'  # i
+        '    if origin[2] != cast(u8)108 { return false }\n'  # l
+        '    if origin[3] != cast(u8)101 { return false }\n'  # e
+        '    if origin[4] != cast(u8)58 { return false }\n'   # :
         '    PushRoute(*target[0])\n'
-        '    if !Same(GetRouteHash(), "#round") { return 0 }\n'
-        '    if !Same(GetRouteQuery(), "?probe=1") { return 0 }\n'
-        '    if GetRouteVersion() <= before { return 0 }\n'
+        '    if !Same(GetRouteHash(), "#round") { return false }\n'
+        '    if !Same(GetRouteQuery(), "?probe=1") { return false }\n'
+        '    if GetRouteVersion() <= before { return false }\n'
         '    ReplaceRoute(*target[0])\n'
-        '    if !Same(GetRouteHash(), "#round") { return 0 }\n'
-        '    if !Same(GetRouteQuery(), "?probe=1") { return 0 }\n'
-        '    RequestWindowClose()\n'
-        '    return 0\n}\n'
+        '    return Same(GetRouteHash(), "#round") && Same(GetRouteQuery(), "?probe=1")\n}\n'
     )
+    (project / "src/app.tsx").write_text('''import { Rectangle } from "kryon/geometry";
+import { Session } from "kryon/session";
+import { WindowQuit } from "kryon/window";
+import { CheckBrowserRoute } from "route_probe";
+
+export function Frame(session: Session, viewport: Rectangle): s32 {
+    if (CheckBrowserRoute()) { WindowQuit(); }
+    return s32(0);
+}
+''')
     run([ZIRAN, "lock"], project)
     run([ZIRAN, "tool", "kryon", "build", "--profile", "web"], project)
     output = project / "build/route_probe-web.html"

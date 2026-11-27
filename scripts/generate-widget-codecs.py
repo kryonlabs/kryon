@@ -105,6 +105,7 @@ KRYON_PACKAGE_SOURCES = [
     ('MoneyField', 'money_field', 'moneyfield/moneyfield.zi', {'Props': 'MoneyFieldProps'}),
     ('ShortcutRecorder', 'shortcut_recorder', 'shortcutrecorder/shortcutrecorder.zi',
      {'Props': 'ShortcutRecorderProps'}),
+    ('Toast', 'toast', 'toast/toast_props.zi', {'Props': 'ToastProps'}),
     ('Tooltip', 'tooltip', 'tooltip/tooltip_props.zi', {'Props': 'TooltipProps'}),
     ('Tooltip', 'tooltip', 'tooltip/tooltip.zi', {}),
     ('Sheet', 'sheet', 'sheet/sheet_props.zi', {'Props': 'SheetProps'}),
@@ -133,7 +134,7 @@ KRYON_ROOTS = ['FrameInputSnapshot', 'PointerFrame', 'TextProps', 'ImageProps', 
                'RingProps', 'TriangleProps', 'SliderProps', 'SliderStep', 'DiscreteSliderProps',
                'SliderDiscreteStep', 'ProgressProps', 'DismissibleOverlayProps',
                'DismissibleOverlayResult', 'PopupProps', 'PopupResult',
-               'TagInputProps', 'TagInputHostedReply', 'OneTimeCodeProps', 'OneTimeCodeHostedReply', 'InlineEditProps', 'InlineEditHostedReply', 'ScrubFieldProps', 'ScrubFieldHostedReply', 'MoneyFieldProps', 'MoneyFieldHostedReply', 'ShortcutRecorderProps', 'ShortcutRecorderHostedReply', 'TooltipProps', 'TooltipHostedReply', 'SheetProps', 'SheetHostedReply', 'CommandPaletteProps', 'CommandPaletteHostedReply', 'HoverCardProps', 'HoverCardHostedReply', 'ConfirmPopoverProps', 'ConfirmPopoverHostedReply', 'GuidedTourProps', 'GuidedTourHostedReply']
+               'TagInputProps', 'TagInputHostedReply', 'OneTimeCodeProps', 'OneTimeCodeHostedReply', 'InlineEditProps', 'InlineEditHostedReply', 'ScrubFieldProps', 'ScrubFieldHostedReply', 'MoneyFieldProps', 'MoneyFieldHostedReply', 'ShortcutRecorderProps', 'ShortcutRecorderHostedReply', 'ToastProps', 'ToastResult', 'TooltipProps', 'TooltipHostedReply', 'SheetProps', 'SheetHostedReply', 'CommandPaletteProps', 'CommandPaletteHostedReply', 'HoverCardProps', 'HoverCardHostedReply', 'ConfirmPopoverProps', 'ConfirmPopoverHostedReply', 'GuidedTourProps', 'GuidedTourHostedReply']
 
 
 # Operations used only by generated consumers and test fixtures. Their schemas
@@ -159,6 +160,7 @@ KRYON_BUILD_TIME_METHODS = {
     'WidgetDecodeTileMapResult',
     'WidgetDecodeTimePickerResult',
     'WidgetDecodeTitleBarResult',
+    'WidgetDecodeToastResult',
     'WidgetDecodeToggleValueResult',
     'WidgetEncodeActionModalAction',
     'WidgetEncodeActionModalProps',
@@ -192,6 +194,7 @@ KRYON_BUILD_TIME_METHODS = {
     'WidgetEncodeTileMapProps',
     'WidgetEncodeTimePickerProps',
     'WidgetEncodeTitleBarProps',
+    'WidgetEncodeToastProps',
     'WidgetEncodeToggleProps',
     'WidgetValidActionModalResult',
     'WidgetValidCheckboxValueResult',

@@ -1,13 +1,13 @@
 [package]
 name = "{{name}}"
-entry = "src/app.zi"
+entry = "src/app.tsx"
 module_roots = ["src"]
 bridge_modules = ["app"]
 tool = "kryon"
 
 [toolchain]
 git = "https://git.waozi.xyz/ziranlang/ziran.git"
-ref = "4413456221aa5a9bc00a368762e9e50aaf6e7b6b"
+ref = "dc3ecf0aabd1630881c13783a660ca8b298eff88"
 
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
@@ -20,7 +20,7 @@ bin = "{{name}}"
 # a window.
 [tool.kryon]
 default_profile = "tui"
-entry = "src/app.zi"
+entry = "src/app.tsx"
 
 [tool.kryon.profiles.tui]
 backend = "terminal"
@@ -32,7 +32,3 @@ backend = "desktop"
 [tool.kryon.profiles.portable]
 backend = "desktop"
 codegen = "zx"
-
-# `kryon run shot > screen.ppm` renders one frame without a display.
-[tool.kryon.profiles.shot]
-backend = "pixmap"

@@ -38,6 +38,7 @@ LoadingDotLevel :: (phase: s32, dot: s32) -> s32 {
     return ifx own < 500 then own * 2 else (1000 - own) * 2
 }
 
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

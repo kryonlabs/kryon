@@ -3,16 +3,26 @@ Button :: #import "button";
 Text :: #import "text";
 Theme :: #import "theme";
 #import "text_host"
+#import "session"
+#import "tree"
 // Portable compositions use the same widgets as retained native hosts.
 #if #defined(KRYON_HOSTED_UI) {
-    #import "session"
     host_api :: #system_library "host_api";
     TextFieldHostedHost :: (session: Session, props: TextField.Props) -> TextField.Result #foreign host_api;
-        Draw :: (session: Session, props: TextField.Props) -> TextField.Result {
+    TextFieldBindingHostedHost :: (session: Session, props: TextField.Props,
+        session_input: bool) -> TextField.Result #foreign host_api;
+    #scope_package
+    Draw :: (session: Session, props: TextField.Props, location := #caller_location) -> TextField.Result {
+        unused location
         return TextFieldHostedHost(session, props)
     }
+    #scope_export
+    BindingDraw :: (session: Session, props: TextField.Props, session_input: bool, typed: []u8,
+        location := #caller_location) -> TextField.Result {
+        unused location; unused typed
+        return TextFieldBindingHostedHost(session, props, session_input)
+    }
 } else {
-    #import "session"
     #import "control_props"
     #import "drawing_props"
     #import "font_metrics"
@@ -28,7 +38,6 @@ Theme :: #import "theme";
     #import "text_context_menu"
     #import "text_input"
     #import "text_input_platform"
-    #import "tree"
     #import "tree_input"
     #import "text_request"
     #import "text_boundary"
@@ -44,15 +53,6 @@ Theme :: #import "theme";
     using ButtonState;
     using StyleField;
     using CompositionPhase;
-
-    BindingResult :: struct {
-        node: s32
-        focused: bool
-        changed: bool
-        committed: bool
-        escaped: bool
-        paste_without_text: bool
-    }
 
     // Default width stays steady while the text changes. An unset height
     // uses the installed face and the theme's control size.
@@ -99,77 +99,40 @@ Theme :: #import "theme";
         return observed
     }
 
-    // Apply the ordinary TextField's edit to caller-owned storage. Use
-    // session_input=false to supply all keyboard input through Props.input.
+    // Binding policy runs beside the authoritative retained tree. Both local
+    // and hosted caller-owned state use this same input and focus path.
     #program_export
-    Bind :: (session: Session, state: *State, props: TextField.Props,
-        session_input: bool = true, location := #caller_location) -> BindingResult {
+    DrawBinding :: (session: Session, props: TextField.Props,
+        session_input: bool, typed: []u8, effects: bool = true, location := #caller_location) -> Result {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }
         // A placing column places this widget before it draws.
         props.bounds = TreePlaceAhead(session, props.bounds)
-        bound: BindingResult = .{.node = -1}
-        if state == null { return bound }
-        // A state without wired bytes edits its own storage from the first
-        // frame; an application wanting another capacity or shared bytes
-        // wires state.bytes before this call (usually frame.first).
-        if state.bytes.count == 0 { state.bytes = state.storage[:] }
-        props = TextField.StatePropsFor(state, props)
         parent := TreeCurrentParent(session)
         previous := TreePrevious(session, parent, TextFieldKey(session, props), WidgetKindTextField)
         retained_focus := TreeFocusedAt(session, previous)
         // A cleared retained focus must not reuse a stale buffer flag.
         props.focused = props.focused && retained_focus
+        if !retained_focus { props.composition = .{} }
         width := Layout.ColumnWidth(session)
         fill := props.bounds.width <= 0.0 && props.bounds.x == 0.0 && props.bounds.y == 0.0 && width >= 0.0
         if fill { props.bounds.width = width }
         if !fill || width > 0.0 { props.bounds = Measure(props) }
         if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 {
-            state.focused = false
-            state.preedit_active = false
-            return bound
-        }
-        event := props.input.composition_event
-        preedit := event.phase == .CompositionStart || event.phase == .CompositionUpdate
-        if (preedit && event.text.count > state.preedit.count) ||
-            ((preedit || event.phase == .CompositionCommit) && !Utf8.Valid(event.text)) {
-            props.input.composition_event = .{.phase = .CompositionCancel}
+            return .{.node = -1, .cursor = props.cursor, .anchor = props.anchor, .scroll_x = props.scroll_x}
         }
         // The session queues up to 32 UTF-8 codepoints.
-        typed: [128]u8
         if session_input && !props.disabled && !props.input.blur && TreeInputAllowedAt(session, previous) &&
             (retained_focus || props.input.focus) {
-            props.input = TextFieldSessionInput(session, props.input, typed[:])
+            props.input = TextFieldSessionInput(session, props.input, typed)
         }
-        store_preedit := false
-        {
-            draw_props := props
-            draw_props.composition = .{}
-            if state.preedit_active && retained_focus {
-                draw_props.composition = .{.active = true, .text = TextView(state.preedit[:state.preedit_length]),
-                    .cursor = state.preedit_cursor, .selection_length = state.preedit_selection}
-            }
-            result := Draw(session, draw_props)
-            bound.node = result.node
-            if !StateApplyResult(state, result) { return bound }
-            bound.focused = result.focused
-            bound.changed = result.edit.changed
-            bound.committed = result.committed
-            bound.escaped = result.escaped
-            bound.paste_without_text = result.paste_without_text
-            if result.composition_changed || !retained_focus {
-                state.preedit_active = result.composition.active
-                state.preedit_cursor = result.composition.cursor
-                state.preedit_selection = result.composition.selection_length
-                store_preedit = result.composition.active
-            }
-        }
-        if store_preedit {
-            // An active changed preedit came from this frame's validated event.
-            state.preedit_length = cast(s32)event.text.count
-            for byte, index: event.text { state.preedit[index] = byte }
-        }
-        return bound
+        if !effects { return TextFieldCore(session, props) }
+        return Draw(session, props)
+    }
+
+    BindingDraw :: (session: Session, props: TextField.Props, session_input: bool, typed: []u8,
+        location: Source_Code_Location) -> Result {
+        return DrawBinding(session, props, session_input, typed, true, location)
     }
 
     #program_export
@@ -878,6 +841,7 @@ Theme :: #import "theme";
     // The field with its context menu: a click of the secondary button inside it
     // opens Cut, Copy, Paste, and Select all, working on the system clipboard, and
     // Cut, Copy, and Paste from the keyboard reach the system clipboard too.
+        #scope_package
         Draw :: (session: Session, props: TextField.Props, location := #caller_location) -> Result {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }
@@ -919,4 +883,31 @@ Theme :: #import "theme";
         return result
     }
 
+}
+
+// The caller owns value and preedit buffers; only Props/Result values cross a
+// hosted boundary. Use session_input=false for explicit Props.input events.
+        #scope_export
+#program_export
+#scope_package
+Bind :: (session: Session, state: *State, props: TextField.Props,
+    session_input: bool = true, location := #caller_location) -> BindingResult {
+    bound: BindingResult = .{.node = -1}
+    if state == null { return bound }
+    if state.bytes.count == 0 { state.bytes = state.storage[:] }
+    preedit: [4096]u8
+    if state.preedit_active && state.preedit_length >= 0 && state.preedit_length <= preedit.count {
+        for index: 0..state.preedit_length - 1 { preedit[index] = state.preedit[index] }
+    }
+    props = StateBindingProps(state, props, preedit[:])
+    typed: [128]u8
+    result := BindingDraw(session, props, session_input, typed[:], location)
+    bound.node = result.node
+    if !StateApplyBindingResult(state, result) { return bound }
+    bound.focused = result.focused
+    bound.changed = result.edit.changed
+    bound.committed = result.committed
+    bound.escaped = result.escaped
+    bound.paste_without_text = result.paste_without_text
+    return bound
 }

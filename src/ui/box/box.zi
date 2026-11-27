@@ -4,9 +4,11 @@ using Box :: #import "box_props";
     #import "session"
     host_api :: #system_library "host_api";
     BoxHostedHost :: (session: Session, props: Box.Props) -> s32 #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: Box.Props) -> s32 {
         return BoxHostedHost(session, props)
     }
+        #scope_export
 } else {
     #import "drawing_props"
     #import "geometry"
@@ -18,6 +20,7 @@ using Box :: #import "box_props";
     using WidgetKind;
 
     // A decorative surface that does not capture pointer or keyboard input.
+        #scope_package
         Draw :: (session: Session, props: Box.Props, location := #caller_location) -> s32 {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }

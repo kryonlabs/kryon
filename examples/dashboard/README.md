@@ -1,7 +1,9 @@
 # Dashboard Starter
 
-A reusable, editable native Kryon dashboard starter. The frame
-([`src/dashboard.zi`](src/dashboard.zi)) only says what goes where: layout
+A reusable, editable Kryon dashboard starter authored in TSX. Native domain
+state and edit buffers live in `src/dashboard_state.zi`; the model stays in
+`src/model.zi`. The frame
+([`src/dashboard.tsx`](src/dashboard.tsx)) only says what goes where: layout
 containers place and size every child, and the stylesheet
 ([`src/styles.zi`](src/styles.zi)) sets the sidebar width, the KPI and
 inspector cards, gaps, padding, fonts and the 760 px breakpoint. There is no
@@ -9,9 +11,9 @@ rectangle arithmetic and no computed key in the frame. It demonstrates:
 
 - Responsive wide/narrow layout (sidebar rail on wide viewports, compact navigation strip on narrow viewports)
 - Live CSS styling via `kryonlabs/css` (`:root` custom properties, `hwb()` colors, `%` opacity, `min-block-size`, `@media (prefers-color-scheme: dark)`, `@media (-kryon-density: compact)`, `#id`, `.class`, `:hover`, `:selected`, `:focus`)
-- Searchable results (`TextField.Bind` + filter chips + scrollable rows + detail inspector)
+- Searchable results (`TextField` + filter chips + scrollable rows + detail inspector)
 - Explicit loading (`LoadingIndicator`), empty (`EmptyState`), and error (`Alert` + retry) states
-- Keyboard-operable settings modal (`Modal.Draw`, `Toggle`, `Checkbox`, `TextField.Bind`, `Tab` / `Shift+Tab`, `Enter`, `Escape`)
+- Keyboard-operable settings modal (`ResolvedModal`, `Toggle`, `Checkbox`, `TextField`, `Tab` / `Shift+Tab`, `Enter`, `Escape`)
 
 ## Quick start
 
@@ -44,7 +46,7 @@ confirm the local sources. Use ordinary project commands during local developmen
 From `examples/dashboard/`:
 
 ```sh
-for f in src/model.zi src/styles.zi src/dashboard.zi src/app.zi src/desktop_host.zi previews/*.zi tests/dashboard_test.zi; do
+for f in src/model.zi src/dashboard_state.zi src/styles.zi src/dashboard.tsx src/app.tsx src/desktop_host.zi previews/*.zi previews/*.tsx tests/dashboard_test.zi; do
   ziran check --project "$f" || exit 1
 done
 
@@ -104,7 +106,7 @@ kryon preview settings --theme dark  --width 1120 --height 720 --output build/pr
 
 ## CSS viewport grids and portable ZX
 
-[`previews/responsive.zi`](previews/responsive.zi) uses CSS for the KPI grid,
+[`previews/responsive.tsx`](previews/responsive.tsx) uses CSS for the KPI grid,
 chart panel tracks, padding, colors and headline size. The metrics flow into
 four columns at 1200 pixels and two at 550. The first chart panel spans the
 row, and the remaining two stack below 820 pixels. The trade ledger keeps a
@@ -114,7 +116,7 @@ ready for Plot, with native API equivalents in the
 
 Use the checkout overrides above or update both Kryon and CSS in your
 project to the matching revisions from CSS's manifest and run `ziran lock`.
-From the Kryon root, generate native snapshots, compile the same `.zi` frame
+From the Kryon root, generate native snapshots, compile the same `.tsx` frame
 into ZX, and exercise the bundle on private Xvfb:
 
 ```sh

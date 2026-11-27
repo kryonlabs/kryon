@@ -19,6 +19,9 @@
 #import "hosted_values"
 #import "bundle_names"
 #import "component_protocol"
+Components :: #import "component_lifecycle";
+ComponentTypes :: #import "component_types";
+#import "frame_motion"
 
 using HostValueKind;
 using FrameStatus;
@@ -47,6 +50,8 @@ ComponentSlot :: struct {
     code_identity: [32]u8
     capability_count: u64
     capability_abis: [COMPONENT_CAPABILITY_LIMIT]BundleCapabilityAbi
+    mount: ComponentTypes.Instance
+    deadline: float64
 }
 
 ComponentHost :: struct {
@@ -62,6 +67,11 @@ ComponentHost :: struct {
     typed: string
     seconds: float64
     call_slot: s32
+    command_active: bool
+    command_phase: s32
+    command_session: Session
+    command_root: u64
+    command_deadline: float64
     session_codec: WidgetSessionCodec
     bounds_codec: WidgetRectangleCodec
     slots: [COMPONENT_HOST_LIMIT]ComponentSlot
@@ -148,7 +158,9 @@ ComponentProtocolAllows :: (module: string, function: string) -> bool {
         function == "ComponentModifiersHost" ||
         function == "ComponentWheelHost" || function == "ComponentTextHost" ||
         function == "ComponentSecondsHost" ||
-        function == "ComponentStateVersionHost"
+        function == "ComponentStateVersionHost" ||
+        function == "ComponentPhaseHost" || function == "ComponentRootHost" ||
+        function == "ComponentDeadlineHost"
 }
 
 ComponentCapabilityClass :: (module: string, function: string,
@@ -164,8 +176,10 @@ ComponentCapabilityClass :: (module: string, function: string,
         return COMPONENT_CAPABILITY_INPUT
     }
     if !WidgetHostSupports(module, function) { return 0 }
-    if ModuleName(module, "tree") && (function == "EndHostedHost" ||
-    function == "TreePushScopeHostedHost") {
+    if (ModuleName(module, "tree") && (function == "EndHostedHost" ||
+    function == "TreePushScopeHostedHost")) || (ModuleName(module, "component_protocol") &&
+    (function == "ComponentBeginHost" || function == "ComponentEndHost" ||
+        function == "ComponentCurrentHost")) {
         return ifx (capabilities & COMPONENT_CAPABILITY_TREE) != 0 then COMPONENT_CAPABILITY_TREE else 0
     }
     return ifx (capabilities & COMPONENT_CAPABILITY_WIDGET) != 0 then COMPONENT_CAPABILITY_WIDGET else 0
@@ -177,6 +191,8 @@ ComponentHostOpenSlot :: (host: *ComponentHost, slot: *ComponentSlot,
     descriptor := cast(*TextDescriptor)(*zx)
     bundle := OpenBundleBytes(descriptor.data, cast(u64)zx.count)
     if bundle == null { return false }
+    if !ModuleName(TextFromCString(BundleEntryModule(bundle)), "component_guest") ||
+        TextFromCString(BundleEntryFunction(bundle)) != "Run" { CloseBundle(bundle); return false }
     count := BundleCapabilities(bundle)
     if count > cast(u64)COMPONENT_CAPABILITY_LIMIT { CloseBundle(bundle); return false }
     bindings: [COMPONENT_CAPABILITY_LIMIT]HostBinding
@@ -208,6 +224,7 @@ ComponentHostOpenSlot :: (host: *ComponentHost, slot: *ComponentSlot,
         CloseBundleComponent(component); CloseBundle(bundle); return false
     }
     slot.used = true
+    slot.deadline = -1.0
     slot.id = ComponentHostID(namespace, name)
     namespace_copied := CopyCString(namespace, slot.namespace[:])
     name_copied := CopyCString(name, slot.name[:])
@@ -269,21 +286,46 @@ ComponentHostCount :: (host: *ComponentHost) -> s32 {
     return count
 }
 
+// Control calls use the same typed entry as composition, with no host widget
+// access outside Frame. INSTANCE is the runtime's actual staging candidate.
+ComponentHostInvoke :: (host: *ComponentHost, index: s32, instance: *void,
+    handle: *void, session: Session, phase: s32, root: u64) -> bool {
+    if host.command_active || index < 0 || index >= COMPONENT_HOST_LIMIT { return false }
+    host.call_slot = index
+    host.command_active = true
+    host.command_phase = phase
+    host.command_session = session
+    host.command_root = root
+    host.command_deadline = -1.0
+    answer: s64
+    has_answer: s32
+    ran: s32
+    if instance != null { ran = RunBundleInstance(instance, *answer, *has_answer) }
+    else { ran = RunBundleComponent(handle, *answer, *has_answer) }
+    host.command_active = false
+    if !host.staging_active { host.slots[index].deadline = host.command_deadline }
+    return ran != 0 && has_answer != 0 && answer == 0
+}
+
 ComponentHostRunHandle :: (host: *ComponentHost, index: s32,
     handle: *void) -> bool {
     if !host.ready || index < 0 || index >= COMPONENT_HOST_LIMIT ||
     (!host.frame_active && !host.staging_active) || handle == null { return false }
-    host.call_slot = index
     session := ifx host.staging_active then host.staging_session else host.session
     scope := TreeSubmitCurrent(session, host.slots[index].id, WidgetKindGroup, host.bounds)
     if scope < 0 || !TreePushScope(session, scope) { return false }
+    mounted, fresh := Components.Enter(session, TreeSubmittedIdentity(session, scope),
+        ComponentHostSlotText(host.slots[index].name[:]),
+        .{ComponentHostSlotText(host.slots[index].namespace[:]), 0, 0},
+        .{true, host.slots[index].id})
+    unused fresh
+    if mounted.identity == cast(u64)0 { unused TreePopScope(session); return false }
+    if !host.staging_active { host.slots[index].mount = mounted }
     WidgetHostBegin(session, ComponentHostAssetAllowed, ComponentHostAssetResolve)
-    answer: s64
-    has_answer: s32
-    ok := RunBundleComponent(handle, *answer, *has_answer) != 0 &&
-        has_answer != 0 && answer == 0
+    ok := ComponentHostInvoke(host, index, null, handle, session, ComponentPhaseFrame, mounted.identity)
     WidgetHostEnd()
-    return TreePopScope(session) && ok
+    left := Components.Leave(mounted)
+    return TreePopScope(session) && left && ok
 }
 
 ComponentHostRun :: (host: *ComponentHost, id: u64) -> bool {
@@ -302,14 +344,29 @@ ComponentHostCall :: (context: *void, module: *u8, function: *u8,
     if host == null || host.call_slot < 0 ||
     host.call_slot >= COMPONENT_HOST_LIMIT { return 0 }
     slot := *host.slots[host.call_slot]
-    active := host.frame_active || host.staging_active
+    active := host.command_active && host.command_phase == ComponentPhaseFrame &&
+        (host.frame_active || host.staging_active)
     name := TextFromCString(function)
     owner := TextFromCString(module)
     if ModuleName(owner, "component_protocol") {
-        if !active || count != 0 { return 0 }
+        if name == "ComponentBeginHost" || name == "ComponentEndHost" ||
+            name == "ComponentCurrentHost" {
+            if !active { return 0 }
+            return WidgetHostCall(context, module, function, arguments, count, result)
+        }
+        if !host.command_active { return 0 }
+        if name == "ComponentDeadlineHost" {
+            if count != 1 || !HostScalarValid(arguments[0], "float64", cast(s32)HostReal) ||
+                arguments[0].real != arguments[0].real || arguments[0].real < -1.0 { return 0 }
+            host.command_deadline = arguments[0].real
+            result.* = HostScalar("bool", 1)
+            return 1
+        }
+        if count != 0 { return 0 }
+        if name == "ComponentPhaseHost" { result.* = HostScalar("s32", host.command_phase); return 1 }
+        if name == "ComponentRootHost" { result.* = HostScalar("u64", cast(s64)host.command_root); return 1 }
         if name == "ComponentSessionHost" {
-            session := ifx host.staging_active then host.staging_session else host.session
-            result.* = WidgetEncodeSession(session, *host.session_codec)
+            result.* = WidgetEncodeSession(host.command_session, *host.session_codec)
             return 1
         }
         if name == "ComponentBoundsHost" {
@@ -349,29 +406,39 @@ ComponentHostCall :: (context: *void, module: *u8, function: *u8,
     return WidgetHostCall(context, module, function, arguments, count, result)
 }
 
-ComponentHostCloseSlot :: (host: *ComponentHost, index: s32) {
+ComponentHostCloseSlot :: (host: *ComponentHost, index: s32) -> bool {
+    if host.frame_active || host.staging_active || host.command_active ||
+        index < 0 || index >= COMPONENT_HOST_LIMIT { return false }
     slot := *host.slots[index]
+    if !slot.used { return true }
+    if !ComponentHostInvoke(host, index, null, slot.handle, host.session,
+        ComponentPhaseDispose, slot.mount.identity) { return false }
     ComponentHostReleaseSlot(slot)
+    return true
 }
 
 ComponentHostReleaseSlot :: (slot: *ComponentSlot) {
     if !slot.used { return }
+    unused Components.DisposeInstance(slot.mount)
     if slot.handle != null { CloseBundleComponentHandle(slot.handle) }
     if slot.component != null { CloseBundleComponent(slot.component) }
     if slot.bundle != null { CloseBundle(slot.bundle) }
     slot.* = ComponentSlot.{}
 }
 
-ComponentHostClose :: (host: *ComponentHost) {
-    ComponentHostReleaseSlot(*host.candidate)
+ComponentHostClose :: (host: *ComponentHost) -> bool {
+    if host.frame_active || host.staging_active || host.command_active { return false }
+    // A failed cleanup leaves the owning VM and native session valid for retry.
     index: s32 = 0
     while index < COMPONENT_HOST_LIMIT {
-        ComponentHostCloseSlot(host, index)
+        if !ComponentHostCloseSlot(host, index) { return false }
         index += 1
     }
-    if SessionValid(host.staging_session) { unused SessionClose(host.staging_session) }
-    if SessionValid(host.session) { unused SessionClose(host.session) }
+    ComponentHostReleaseSlot(*host.candidate)
+    if SessionValid(host.staging_session) && !CloseSession(host.staging_session) { return false }
+    if SessionValid(host.session) && !CloseSession(host.session) { return false }
     host.* = ComponentHost.{}
+    return true
 }
 
 ComponentHostField :: (record: *HostValue, name: string) -> *HostValue {
@@ -491,16 +558,18 @@ ComponentHostVerify :: (context: *void, instance: *void) -> s32 {
     if !ExportBundleState(instance, *state) || state == null { return 0 }
     count := BundleStateValueCount(state)
     found_version := false
+    found_schema := false
     index: u64 = 0
     while index < count {
         value: BundleStateValue
         if !ComponentHostStateAt(state, index, *value) {
             CloseBundleState(state); return 0
         }
-        if TextFromCString(value.module) == TextFromCString(BundleEntryModule(host.candidate.bundle)) &&
-        TextFromCString(value.name) == "component_schema_version" &&
-        HostScalarValid(value.value, "s64", cast(s32)HostInteger) {
-            found_version = value.value.integer >= slot.minimum_state_version
+        if TextFromCString(value.name) == "component_schema_version" {
+            if found_schema { CloseBundleState(state); return 0 }
+            found_schema = true
+            found_version = HostScalarValid(value.value, "s64", cast(s32)HostInteger) &&
+                value.value.integer >= slot.minimum_state_version
         }
         index += 1
     }
@@ -508,18 +577,25 @@ ComponentHostVerify :: (context: *void, instance: *void) -> s32 {
     host.staging_session = SessionOpen()
     if !SessionValid(host.staging_session) { CloseBundleState(state); return 0 }
     host.staging_active = true
-    host.call_slot = transaction.target
     staged := BeginFrame(host.staging_session, cast(u64)1, host.bounds) == cast(FrameStatus)FrameOk
     if staged {
         scope := TreeSubmitCurrent(host.staging_session, slot.id, WidgetKindGroup, host.bounds)
         staged = scope >= 0 && TreePushScope(host.staging_session, scope)
         if staged {
-            WidgetHostBegin(host.staging_session, ComponentHostAssetAllowed, ComponentHostAssetResolve,
-                null, WidgetHostAudioReadNone, null, true)
-            answer: s64
-            has_answer: s32
-            staged = RunBundleInstance(instance, *answer, *has_answer) != 0 && has_answer != 0 && answer == 0
-            WidgetHostEnd()
+            mounted, fresh := Components.Enter(host.staging_session,
+                TreeSubmittedIdentity(host.staging_session, scope),
+                ComponentHostSlotText(slot.name[:]),
+                .{ComponentHostSlotText(slot.namespace[:]), 0, 0}, .{true, slot.id})
+            unused fresh
+            staged = mounted.identity != cast(u64)0
+            if staged {
+                WidgetHostBegin(host.staging_session, ComponentHostAssetAllowed, ComponentHostAssetResolve,
+                    null, WidgetHostAudioReadNone, null, true)
+                staged = ComponentHostInvoke(host, transaction.target, instance, null,
+                    host.staging_session, ComponentPhaseFrame, mounted.identity)
+                WidgetHostEnd()
+                staged = Components.Leave(mounted) && staged
+            }
             staged = TreePopScope(host.staging_session) && staged
         }
         if staged {
@@ -527,20 +603,34 @@ ComponentHostVerify :: (context: *void, instance: *void) -> s32 {
                 TreeCount(host.staging_session) > 2
         }
     }
-    // CommitFrame validates tree/paint without emitting renderer effects.
+    // Retire every staged environment before restoring portable domain state,
+    // regardless of whether composition, validation or rollback failed.
+    phase: s32 = ifx staged then ComponentPhaseCommit else ComponentPhaseCancel
+    accepted := ComponentHostInvoke(host, transaction.target, instance, null,
+        host.staging_session, phase, cast(u64)0)
+    disposed := ComponentHostInvoke(host, transaction.target, instance, null,
+        host.staging_session, ComponentPhaseDispose, cast(u64)0)
     TreeCancel(host.staging_session)
-    host.staging_active = false
-    unused SessionClose(host.staging_session)
+    unused CloseSession(host.staging_session)
     host.staging_session = Session.{}
-    // Rendering validation must not consume the first live frame's state.
+    host.staging_active = false
     restored := ImportBundleState(instance, state)
     CloseBundleState(state)
-    return ifx staged && restored then 1 else 0
+    if !staged || !accepted || !disposed || !restored { return 0 }
+    // Verify is the generic runtime's last fallible step. Only now retire the
+    // old guest; the runtime closes its VM immediately after accepting Verify.
+    if !ComponentHostInvoke(host, transaction.target, null, slot.handle,
+        host.session, ComponentPhaseDispose, slot.mount.identity) { return 0 }
+    // Native metadata holds only stable value identities. Keep it across the
+    // code swap so retained widget keys, focus and input still identify the
+    // same nodes. The new guest initializes its own empty resource table even
+    // when the host's matching component tuple retains its identity.
+    return 1
 }
 
 ComponentHostReplace :: (host: *ComponentHost, id: u64, zx: []u8) -> bool {
     target := ComponentHostSlotFor(host, id)
-    if !host.ready || !SessionValid(host.session) || host.frame_active ||
+    if !host.ready || !SessionValid(host.session) || host.frame_active || host.command_active ||
     host.staging_active || target < 0 { return false }
     target_slot := *host.slots[target]
     candidate_slot := *host.candidate
@@ -579,7 +669,7 @@ ComponentHostFrame :: (host: *ComponentHost, bounds: Rectangle,
     pointer: PointerFrame, secondary: SecondaryPointerFrame, key: s32,
     modifiers: s32, wheel: float32, typed: string,
     seconds: float64) -> bool {
-    if !host.ready || host.frame_active || host.staging_active { return false }
+    if !host.ready || host.frame_active || host.staging_active || host.command_active { return false }
     TreePointerUpdate(host.session, pointer)
     TreeSecondaryPointerUpdate(host.session, secondary)
     PointerWheelSend(host.session, pointer.x, pointer.y, wheel)
@@ -593,18 +683,45 @@ ComponentHostFrame :: (host: *ComponentHost, bounds: Rectangle,
     host.typed = typed
     host.wheel = wheel
     host.seconds = seconds
+    SetFrameMotionTime(host.session, seconds)
+    index: s32 = 0
+    while index < COMPONENT_HOST_LIMIT {
+        if host.slots[index].used && !ComponentHostInvoke(host, index, null,
+            host.slots[index].handle, host.session, ComponentPhaseTick, cast(u64)0) { return false }
+        index += 1
+    }
     host.frame_active = true
     status := BeginFrame(host.session, cast(u64)1, bounds)
     ok := status == cast(FrameStatus)FrameOk
-    index: s32 = 0
+    index = 0
     while ok && index < COMPONENT_HOST_LIMIT {
         if host.slots[index].used {
             ok = ComponentHostRunHandle(host, index, host.slots[index].handle)
         }
         index += 1
     }
+    if ok { ok = EndFrame(host.session) == cast(FrameStatus)FrameOk }
     if !ok { TreeCancel(host.session) }
     host.frame_active = false
-    if !ok { return false }
-    return EndFrame(host.session) == cast(FrameStatus)FrameOk
+    phase: s32 = ifx ok then ComponentPhaseCommit else ComponentPhaseCancel
+    index = 0
+    while index < COMPONENT_HOST_LIMIT {
+        if host.slots[index].used {
+            accepted := ComponentHostInvoke(host, index, null, host.slots[index].handle,
+                host.session, phase, cast(u64)0)
+            ok = accepted && ok
+        }
+        index += 1
+    }
+    return ok
+}
+
+// Absolute guest deadlines share the host event loop with native resources.
+ComponentHostNextDeadline :: (host: *ComponentHost) -> float64 {
+    if !host.ready { return -1.0 }
+    deadline := Components.NextDeadline(host.session)
+    for * host.slots {
+        if it.used && it.deadline >= 0.0 && (deadline < 0.0 || it.deadline < deadline) { deadline = it.deadline }
+    }
+    return deadline
 }

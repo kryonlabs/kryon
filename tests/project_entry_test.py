@@ -95,41 +95,32 @@ backend = "terminal"
         fixtures = project / 'previews'
         fixtures.mkdir()
         check_ui_map(project)
-        fixture = fixtures / 'controls.zi'
-        source = r'''Button :: #import "kryon/button";
-Snapshot :: #import "kryon/frame_snapshot";
-App :: #import "kryon/app";
-#import "kryon/geometry"
-#import "kryon/session"
+        fixture = fixtures / 'controls.tsx'
+        source = r'''import { Button } from "kryon/tsx/button";
+import * as Snapshot from "kryon/frame_snapshot";
+import * as App from "kryon/app";
+import { Session } from "kryon/session";
 
-// The preview driver captures this frame offscreen. A non-neutral input
-// report draws nothing, so the preview fails loudly instead of lying.
-neutral: bool;
-
-Frame :: (frame: App.Frame) {
-    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
-    viewport := frame.viewport
-    input := Snapshot.CaptureFrameInput(session)
-    neutral = input.available && input.elapsed_ms == 0 && input.delta_ms == 0 &&
-        !input.focused && input.pointer.x == -1.0 && input.pointer.y == -1.0
-    if !neutral { return }
-    unused Button.Draw(session, .{.key = cast(u64)9007199254740993,
-        .bounds = .{viewport.width - 135.0, 20.0, 120.0, 36.0},
-        .label = "Save \"café\"", .id = 19})
-    return
+// Non-neutral input draws nothing, so the preview check fails visibly.
+export function Frame(frame: App.Frame): void {
+    const session: Session = {slot: frame.slot, epoch: frame.epoch};
+    const viewport = frame.viewport;
+    const input = Snapshot.CaptureFrameInput(session);
+    const neutral = input.available && input.elapsed_ms === s64(0) && input.delta_ms === s64(0) &&
+        !input.focused && input.pointer.x === float32(-1) && input.pointer.y === float32(-1);
+    if (!neutral) { return; }
+    <Button session={session} props={{key: u64(9007199254740993n),
+        bounds: {x: viewport.width - 135, y: 20, width: 120, height: 36},
+        label: "Save \"café\"", id: s32(19)}}/>;
 }
-
-main :: () -> s32 {
-    App.Run(App.Window.{.title = "preview"}, Frame)
-    return 0
-}
+export function main(): s32 { return App.Run({title: "preview"}, Frame); }
 '''
         fixture.write_text(source, encoding='utf-8')
         output = project / 'output space'
         output.mkdir()
         front_door = ROOT / 'build/bin/kryon'
         cli = [ZIRAN, 'tool', 'kryon', 'preview']
-        assert 'previews/FIXTURE.zi' in run([front_door, 'preview', '--help'], project).stdout
+        assert 'previews/FIXTURE.tsx' in run([front_door, 'preview', '--help'], project).stdout
         light = ['controls', '--width', '321', '--height', '179', '--theme', 'light']
         args = [*light, '--output', 'output space/light.png']
         run(['env', f"PATH={ZIRAN.parent}:{os.environ['PATH']}", 'DISPLAY=invalid-for-preview',
@@ -170,7 +161,7 @@ main :: () -> s32 {
         assert (output / 'responsive-321.png').read_bytes() == (output / 'light.png').read_bytes()
         assert (output / 'responsive-321.json').read_bytes() == baseline
 
-        assert 'fixture not found: previews/missing.zi' in run(
+        assert 'fixture not found: previews/missing.tsx' in run(
             [*cli, 'missing', *args[1:]], project, expected=2).stderr
         for invalid in ('4097', '173,', ',173', '173,,321', '173,4097'):
             assert 'integers from 1 through 4096' in run(
@@ -180,9 +171,9 @@ main :: () -> s32 {
         assert 'desktop C99' in run([*cli, *args, '--profile', 'terminal'], project, expected=2).stderr
         assert 'parent exists and is writable' in run(
             [*cli, *light, '--output', 'missing directory/preview'], project, expected=2).stderr
-        fixture.write_text('Frame :: ( {\n')
+        fixture.write_text('export function Frame( {\n')
         broken = run([*cli, *args], project, expected=2)
-        assert 'controls.zi' in broken.stderr and 'preview build or render failed' in broken.stderr, broken.stderr
+        assert 'controls.tsx' in broken.stderr and 'preview build or render failed' in broken.stderr, broken.stderr
         assert (output / 'light.json').read_bytes() == baseline
         assert (output / 'light.png').read_bytes() == (output / 'repeat.png').read_bytes()
         assert not list(output.glob('.kryon-preview.*'))
@@ -206,8 +197,9 @@ def main():
         toolchain = tomllib.loads((ROOT / 'ziran.toml').read_text())['toolchain']
         revision = subprocess.check_output(['git', 'rev-parse', '--verify', 'HEAD'],
                                            cwd=ROOT, text=True).strip()
-        for entry, package_entry in [('app.zi', 'app.zi'), ('button.zi', 'button.zi'),
-                                     ('button.zi', 'main.zi')]:
+        for entry, package_entry in [('app.tsx', 'app.tsx'), ('button.tsx', 'button.tsx'),
+                                     ('button.tsx', 'main.zi')]:
+            override = f'entry = "{entry}"\n' if entry != package_entry else ''
             manifest = f'''[package]
 name = "entry_probe"
 entry = "{package_entry}"
@@ -220,36 +212,35 @@ ref = "{toolchain['ref']}"
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
 ref = "{revision}"
 [tool.kryon]
-entry = "{entry}"
-default_profile = "native"
+{override}default_profile = "native"
 [tool.kryon.profiles.native]
 backend = "terminal"
 [tool.kryon.profiles.portable]
-backend = "pixmap"
+backend = "desktop"
 codegen = "zx"
 '''
             (project / 'ziran.toml').write_text(manifest)
             selected = project / entry
-            selected.write_text(r'''App :: #import "kryon/app"
-#import "kryon/session"
-#import "Window"
+            selected.write_text(r'''import * as App from "kryon/app";
+import { Session } from "kryon/session";
+import { Text } from "kryon/tsx/text";
+import { WindowQuit } from "kryon/window";
 
-announced: bool;
+let announced: boolean = false;
 
-Frame :: (frame: App.Frame) {
-    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
-    unused session
-    if !announced {
-        announced = true
-        print("selected frame\n")
-        WindowQuit()
+export function Frame(frame: App.Frame): void {
+    const session: Session = {slot: frame.slot, epoch: frame.epoch};
+    <Text session={session} props={{text: "Entry probe", bounds: frame.viewport}}/>;
+    if (!announced) {
+        announced = true;
+        print("selected frame\n");
+        WindowQuit();
     }
-    return
 }
 
-main :: () -> s32 {
-    App.Run(App.Window.{.title = "entry probe"}, Frame)
-    return 42
+export function main(): s32 {
+    App.Run({title: "entry probe"}, Frame);
+    return s32(42);
 }
 ''')
             if package_entry != entry:
@@ -262,26 +253,37 @@ main :: () -> s32 {
             run([ZIRAN, 'tool', 'kryon', 'build', 'portable'], project)
             # The window player owns the bundle's event loop and exit path,
             # so the frame announcement is the portable-run observable.
-            result = run([ZIRAN, 'run', project / 'build/entry_probe-portable.zx'],
-                         project)
+            result = run(['env', 'HARMONY_DESKTOP_RECOVERY=0', 'xvfb-run', '-a', ZIRAN,
+                          'run', project / 'build/entry_probe-portable.zx'], project)
             assert 'selected frame' in result.stdout, result.stdout
-            selected.write_text('Frame :: ( {\n')
+            selected.write_text('export function Frame( {\n')
             result = run([ZIRAN, 'check'], project, expected=2)
             assert entry in result.stderr, result.stderr
             selected.unlink()
             if package_entry != entry:
                 (project / package_entry).unlink()
+        legacy = project / 'legacy.zi'
+        legacy.write_text('main :: () -> s32 { return 0 }\n')
+        legacy_override = manifest.replace('entry = "button.tsx"', 'entry = "legacy.zi"')
+        legacy_default = manifest.replace('entry = "main.zi"', 'entry = "legacy.zi"').replace(override, '')
+        for config in (legacy_override, legacy_default):
+            (project / 'ziran.toml').write_text(config)
+            result = run([ZIRAN, 'check'], project, expected=2)
+            assert 'application entries must use .tsx' in result.stderr, result.stderr
+        legacy.unlink()
+
         # A project-owned host imports its own Frame graph and needs no
         # implicit built-in frame capability or make-variable workaround.
-        custom_manifest = manifest.replace('entry = "main.zi"', 'entry = "button.zi"')
-        custom_manifest = custom_manifest.replace('backend = "terminal"', 'backend = "pixmap"')
-        custom_manifest = custom_manifest.replace('backend = "pixmap"',
-            'backend = "pixmap"' + chr(10) + 'host = "runner.zi"')
+        custom_manifest = manifest.replace('entry = "main.zi"', 'entry = "button.tsx"')
+        for backend in ('terminal', 'desktop'):
+            custom_manifest = custom_manifest.replace(f'backend = "{backend}"',
+                f'backend = "{backend}"' + chr(10) + 'host = "runner.zi"')
         (project / 'ziran.toml').write_text(custom_manifest)
-        (project / 'button.zi').write_text('#import "kryon/geometry"' + chr(10) +
-            '#import "kryon/session"' + chr(10) +
-            '#program_export' + chr(10) +
-            'Frame :: (session: Session, viewport: Rectangle) -> s32 { return 42 }' + chr(10))
+        (project / 'button.tsx').write_text('''import { Rectangle } from "kryon/geometry";
+import { Session } from "kryon/session";
+
+export function Frame(session: Session, viewport: Rectangle): s32 { return s32(42); }
+''')
         (project / 'runner.zi').write_text('#import "kryon/geometry"' + chr(10) +
             '#import "kryon/session"' + chr(10) +
             '#import "button"' + chr(10) + '#import "kryon/pixmap"' + chr(10) + '#program_export' + chr(10) +

@@ -1,0 +1,122 @@
+// Optional owned action environments. The lifecycle stores only generation-
+// checked tokens; this module owns and drops the concrete callable records.
+#import "std/callable"
+Lifecycle :: #import "component_lifecycle";
+Types :: #import "component_types";
+
+Entry :: struct {
+    token: Types.Token
+    run: Owned(Lifecycle.Action)
+    dispose: Owned(Lifecycle.Action)
+    has_run: bool
+    has_dispose: bool
+    busy: bool
+    live: bool
+}
+#scope_file
+entries: Vec(Entry);
+
+Same :: (left: Types.Token, right: Types.Token) -> bool {
+    return left.serial == right.serial && left.owner.identity == right.owner.identity &&
+        left.owner.session.slot == right.owner.session.slot &&
+        left.owner.session.epoch == right.owner.session.epoch
+}
+
+Find :: (token: Types.Token) -> s64 {
+    for at: 0..entries.count - 1 {
+        if entries[at].live && Same(entries[at].token, token) { return at }
+    }
+    return -1
+}
+
+// Close the reference scope before user code can register another resource
+// and grow the table, or cancel this resource and free the table.
+TakeRun :: (at: s64) -> Owned(Lifecycle.Action) {
+    entry := *entries[at]
+    entry.busy = true
+    return entry.run
+}
+
+Invoke :: (token: Types.Token) {
+    at := Find(token)
+    if at < 0 || !entries[at].has_run || entries[at].busy ||
+        Lifecycle.ResourceIndex(token) < 0 || !Lifecycle.CanWrite(token.owner) { return }
+    action := TakeRun(at)
+    action(token.owner)
+    // Self-cancellation may release/reuse the slot, and registration may grow
+    // the vector. Keep the active environment in this scope through the call.
+    current := Find(token)
+    if current >= 0 {
+        kept := *entries[current]
+        kept.run = action
+        kept.busy = false
+    }
+}
+
+TakeDispose :: (at: s64) -> Owned(Lifecycle.Action) {
+    entry := *entries[at]
+    dispose := entry.dispose
+    empty: Owned(Lifecycle.Action)
+    entry.run = empty
+    entry.has_run = false; entry.has_dispose = false; entry.live = false; entry.busy = false
+    return dispose
+}
+
+Retire :: (token: Types.Token) {
+    at := Find(token)
+    if at < 0 { return }
+    has_dispose := entries[at].has_dispose
+    dispose := TakeDispose(at)
+    if has_dispose { dispose(token.owner) }
+    any_live := false
+    for * entries { if it.live { any_live = true; break } }
+    if !any_live { VecFree(entries) }
+}
+
+Allocate :: (owner: Types.Instance, timer: bool, due: float64, interval: float64) -> Types.Token {
+    empty: Types.Token
+    token := Lifecycle.CallbackToken(owner, Invoke, Retire, timer, due, interval)
+    if token.serial == cast(u64)0 { return empty }
+    for at: 0..entries.count - 1 {
+        if !entries[at].live {
+            entries[at].token = token; entries[at].live = true; entries[at].busy = false
+            return token
+        }
+    }
+    entry: Entry
+    entry.token = token; entry.live = true
+    if !VecPush(entries, entry) { unused Lifecycle.Cancel(token); return empty }
+    return token
+}
+
+#scope_export
+Callback :: (owner: Types.Instance, run: Owned(Lifecycle.Action)) -> Types.Token {
+    token := Allocate(owner, false, 0.0, 0.0)
+    at := Find(token)
+    if at >= 0 {
+        entry := *entries[at]
+        entry.run = run; entry.has_run = true
+    }
+    return token
+}
+
+OnCleanup :: (owner: Types.Instance, dispose: Owned(Lifecycle.Action)) -> Types.Token {
+    token := Allocate(owner, false, 0.0, 0.0)
+    at := Find(token)
+    if at >= 0 {
+        entry := *entries[at]
+        entry.dispose = dispose; entry.has_dispose = true
+    }
+    return token
+}
+
+Timer :: (owner: Types.Instance, due: float64, interval: float64,
+    run: Owned(Lifecycle.Action)) -> Types.Token {
+    token := Allocate(owner, true, due, interval)
+    at := Find(token)
+    if at >= 0 {
+        entry := *entries[at]
+        entry.run = run; entry.has_run = true
+    }
+    return token
+}

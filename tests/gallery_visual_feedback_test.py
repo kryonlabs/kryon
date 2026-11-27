@@ -30,7 +30,7 @@ def build():
     previous = sha(OWNER_BINARY)
     prepare(site=OUTPUT / 'site')
     command = ['make', '--no-print-directory', '-f', str(ROOT / 'mk/ziran-project.mk'),
-        'build', 'PROJECT_NAME=gallery', 'PROJECT_ENTRY=src/app.zi',
+        'build', 'PROJECT_NAME=gallery', 'PROJECT_ENTRY=src/app.tsx',
         'PROJECT_BACKEND=desktop', 'PROJECT_CODEGEN=c99', 'PROJECT_PROFILE=desktop',
         'PROJECT_HOST=src/desktop.zi', 'PROJECT_ASSETS=assets',
         'PROJECT_EXTRA_SOURCES=build/catalog/catalog.zi', 'ZIRAN_PACKAGE_ID=gallery',

@@ -100,7 +100,8 @@ def main():
     project = OUTPUT / "project"
     project.mkdir(exist_ok=True)
     (project / "src").mkdir(exist_ok=True)
-    shutil.copyfile(ROOT / "tests/zx/app.zi", project / "src/app.zi")
+    (project / "src/app.zi").unlink(missing_ok=True)
+    shutil.copyfile(ROOT / "tests/zx/app.tsx", project / "src/app.tsx")
     # Resolve checked dependencies against the toolchain Kryon pins. The
     # current Kryon checkout still supplies the source under test.
     toolchain = tomllib.loads((ROOT / "ziran.toml").read_text())["toolchain"]
@@ -110,7 +111,7 @@ def main():
     (project / "ziran.toml").write_text(f'''[package]
 name = "zx_probe"
 tool = "kryon"
-entry = "src/app.zi"
+entry = "src/app.tsx"
 module_roots = ["src"]
 bridge_modules = ["app"]
 [install]

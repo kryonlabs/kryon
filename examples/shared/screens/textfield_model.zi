@@ -1,0 +1,81 @@
+TextField :: #import "kryon/text_field";
+#import "kryon/key_input"
+#import "kryon/session"
+#import "kryon/system_clipboard"
+#import "kryon/tree_input"
+
+InitialText :: "A quiet place to think";
+Capacity :: 1024;
+
+ControlledField :: struct {
+    bytes: [Capacity]u8
+    next: [Capacity]u8
+    length: s32
+    cursor: s32
+    anchor: s32
+    scroll: s32
+}
+
+filled: ControlledField;
+empty: ControlledField;
+initialized: bool;
+typed: [128]u8;
+
+gallery_filled_bytes: [Capacity]u8;
+gallery_empty_bytes: [Capacity]u8;
+gallery_filled: TextField.State;
+gallery_empty: TextField.State;
+
+CopyInitial :: (target: []u8) -> s32 {
+    for index: 0..InitialText.count - 1 { target[index] = InitialText[index] }
+    return cast(s32)InitialText.count
+}
+
+BeginControlledFields :: (session: Session) -> TextField.Input {
+    if !initialized {
+        filled.length = CopyInitial(filled.next[:])
+        initialized = true
+    }
+    // Draw borrows the current frame's bytes while edits accumulate in next.
+    for index: 0..filled.length - 1 { filled.bytes[index] = filled.next[index] }
+    for index: 0..empty.length - 1 { empty.bytes[index] = empty.next[index] }
+    return TextFieldInputFor(KeyboardTake(session), KeyboardModifiers(session), TypedTextTake(session, typed[:]))
+}
+
+ControlledProps :: (is_empty: bool, input: TextField.Input, disabled: bool) -> TextField.Props {
+    field := ifx is_empty then *empty else *filled
+    key: u64 = ifx is_empty then 11 else 10
+    value := TextView(filled.bytes[:filled.length])
+    if is_empty { value = TextView(empty.bytes[:empty.length]) }
+    return .{key = key, bounds = .{height = 44}, value = value,
+        placeholder = "Write something...", max_bytes = Capacity, disabled = disabled,
+        cursor = field.cursor, anchor = field.anchor, scroll_x = field.scroll, input = input}
+}
+
+ApplyControlledResult :: (is_empty: bool, result: TextField.Result) {
+    if result.clipboard_write { unused SystemClipboardSet(result.clipboard_text) }
+    field := ifx is_empty then *empty else *filled
+    field.cursor = result.cursor
+    field.anchor = result.anchor
+    field.scroll = result.scroll_x
+    edit := result.edit
+    if !edit.changed || edit.start < 0 || edit.end < edit.start || edit.end > field.length { return }
+    length := field.length - (edit.end - edit.start) + cast(s32)edit.replacement.count
+    if length > Capacity { return }
+    scratch: [Capacity]u8
+    at: s32 = 0
+    for index: 0..edit.start - 1 { scratch[at] = field.next[index]; at += 1 }
+    for byte: edit.replacement { scratch[at] = byte; at += 1 }
+    for index: edit.end..field.length - 1 { scratch[at] = field.next[index]; at += 1 }
+    for index: 0..length - 1 { field.next[index] = scratch[index] }
+    field.length = length
+}
+
+GalleryField :: (is_empty: bool) -> *TextField.State {
+    if gallery_filled.bytes.count == 0 {
+        gallery_filled.bytes = gallery_filled_bytes[:]
+        gallery_filled.length = CopyInitial(gallery_filled.bytes)
+        gallery_empty.bytes = gallery_empty_bytes[:]
+    }
+    return ifx is_empty then *gallery_empty else *gallery_filled
+}

@@ -275,3 +275,9 @@ widget_kind.zi
 window_flags.zi
 zoom.zi
 workspace_pager/workspace_pager.zi
+component_slot.zi
+component_frame_slot.zi
+component_types.zi
+component_lifecycle.zi
+component_runtime.zi
+component_state.zi

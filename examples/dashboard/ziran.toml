@@ -1,13 +1,13 @@
 [package]
 name = "dashboard"
-entry = "src/app.zi"
+entry = "src/app.tsx"
 module_roots = ["src", "previews"]
 links = ["X11", "cairo"]
 tool = "kryon"
 
 [toolchain]
 git = "https://git.waozi.xyz/ziranlang/ziran.git"
-ref = "e225a4fe6acd41c40c78a46f6dab6ff779dd08ce"
+ref = "dc3ecf0aabd1630881c13783a660ca8b298eff88"
 
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
@@ -19,7 +19,7 @@ ref = "d55590a6cd97fc22096227d619e13f656f12c5b3"
 
 [tool.kryon]
 default_profile = "desktop"
-entry = "src/app.zi"
+entry = "src/app.tsx"
 
 [tool.kryon.profiles.desktop]
 backend = "desktop"
@@ -31,6 +31,3 @@ codegen = "zx"
 
 [tool.kryon.profiles.web]
 backend = "canvas"
-
-[tool.kryon.profiles.shot]
-backend = "pixmap"

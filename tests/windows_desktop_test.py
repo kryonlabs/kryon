@@ -239,7 +239,7 @@ def main():
     (fixtures / 'invalid.png').write_bytes(b'not an image')
     for path in (WORK / 'sdk/bin').glob('*.dll'):
         shutil.copyfile(path, WORK / path.name)
-    compile_source(ROOT / 'examples/window.zi', 'window')
+    compile_source(ROOT / 'examples/window.tsx', 'window')
     compile_source(ROOT / 'tests/windows_desktop_widgets.zi', 'widgets')
     compile_source(ROOT / 'tests/windows_desktop_frame.zi', 'frame', options=[
         '--module-path', ROOT / 'tests'])

@@ -83,6 +83,7 @@ EmptyStateLayoutFor :: (props: Props) -> EmptyStateLayout {
 result_placeholder :: () -> EmptyStateLayout { return EmptyStateLayout.{} }
 
 #scope_export
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) -> EmptyStateResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

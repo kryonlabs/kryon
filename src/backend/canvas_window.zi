@@ -42,6 +42,7 @@ CanvasPicturesReset :: () {
     canvas_frame_time: float32;
     canvas_target_fps: s32;
     canvas_external_frame_pacing: bool;
+    canvas_wake_at: float64 = -1.0;
     canvas_scheduler :: #system_library "c";
     CanvasMainLoopTiming :: (mode: s32, value: s32) -> s32 #foreign canvas_scheduler "emscripten_set_main_loop_timing";
     canvas_random_seed: u64 = 2864434397;
@@ -53,6 +54,7 @@ CanvasPicturesReset :: () {
         canvas_width = width
         canvas_height = height
         canvas_external_frame_pacing = false
+        canvas_wake_at = -1.0
         CanvasBitmapClose()
         CanvasPicturesReset()
         PageTexturesReset()
@@ -172,6 +174,9 @@ CanvasPicturesReset :: () {
         canvas_external_frame_pacing = enabled
     }
 
+    // Deadline shares PageNow's monotonic clock and only caps the normal wait.
+    CanvasWakeAt :: (seconds: float64) { canvas_wake_at = seconds }
+
     #program_export
     SetWindowSize :: (width: s32, height: s32) {
         canvas_width = width
@@ -204,7 +209,15 @@ CanvasPicturesReset :: () {
             if elapsed < target { delay = (target - elapsed) * 1000.0 }
         }
         if !canvas_external_frame_pacing {
-            PageWaitFrame(delay, canvas_target_fps)
+            remaining := canvas_wake_at * 1000.0 - PageNow()
+            if canvas_wake_at >= 0.0 && (remaining < 16.667 || remaining < delay) {
+                wait: s32 = 0
+                if remaining > 0.0 {
+                    wait = cast(s32)remaining
+                    if cast(float64)wait < remaining { wait += 1 }
+                }
+                PageSleep(wait)
+            } else { PageWaitFrame(delay, canvas_target_fps) }
         }
     }
 

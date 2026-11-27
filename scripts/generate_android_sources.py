@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the complete checked Zi graph and its CMake source manifest.
+"""Generate the mixed native source graph and its CMake source manifest.
 
 Resolution follows the project, not flat module paths: `ziran ir --project`
 namespaces every package's modules, so an application module may share a
@@ -16,7 +16,7 @@ import subprocess
 import tomllib
 
 
-def android_native_recipes(root, modules, native_modules):
+def android_native_recipes(root, modules, native_modules, ziran):
     """Resolve recipes for native-bearing modules that emitted code."""
     retained = {path.stem for path in modules}
     emitted = {path.stem for path in native_modules}
@@ -33,7 +33,8 @@ def android_native_recipes(root, modules, native_modules):
                 package_roots.setdefault(identity, Path(fields[0]))
             elif kind == "M":
                 module, source = fields
-                stem = module if identity == "root" else f"{identity}_{module}"
+                stem = (module if identity == "root" else f"std_{module}"
+                        if identity == "std" else f"{identity}__{module}")
                 if stem in retained:
                     path = Path(source)
                     inputs.add(path)
@@ -43,7 +44,25 @@ def android_native_recipes(root, modules, native_modules):
                             path.relative_to(package_roots[identity]).as_posix())
 
     lock = json.loads((root / "ziran.lock").read_text())
-    packages = {item["id"]: item for item in lock["packages"]}
+    # Resolve exact lock identities through the package command. A direct
+    # development override can replace its locked identity, so select that
+    # edge by its declared alias. Transitive names may repeat: keep their IDs.
+    locked = {item["id"]: item for item in lock["packages"]}
+    overrides = {}
+    if local.is_file():
+        with local.open("rb") as source:
+            overrides = tomllib.load(source).get("overrides", {})
+    overridden = {name.casefold() for name in overrides}
+    aliases = {identity: alias for alias, identity in lock["root"]["dependencies"].items()
+               if alias.casefold() in overridden}
+    selectors = [aliases.get(identity, identity) for identity in locked]
+    resolved = json.loads(subprocess.check_output(
+        [str(ziran), "pkg", "paths", *selectors], cwd=root, text=True)) if locked else []
+    paths = {identity: Path(item["path"]).resolve()
+             for identity, item in zip(locked, resolved, strict=True)}
+    namespaces = {path.resolve(): name for name, path in package_roots.items()}
+    packages = {namespaces[paths[identity]]: package
+                for identity, package in locked.items() if paths[identity] in namespaces}
     packages["root"] = lock["root"]
     recipes = []
     for identity, used_modules in sorted(reached.items()):
@@ -62,9 +81,9 @@ def android_native_recipes(root, modules, native_modules):
         sources = {}
         for alias in sorted(aliases):
             dependency = packages[identity]["dependencies"].get(alias)
-            if dependency not in packages or not packages[dependency].get("source"):
+            if dependency not in locked or not locked[dependency].get("source"):
                 raise SystemExit(f"{path}: Android native source {alias!r} must be a locked source dependency")
-            sources[alias] = package_roots[dependency]
+            sources[alias] = paths[dependency]
         recipe = (package / native["cmake"]).resolve()
         if not recipe.is_relative_to(package) or not recipe.is_file():
             raise SystemExit(f"{path}: Android native recipe is missing or outside the package: {recipe}")
@@ -89,89 +108,55 @@ parser.add_argument("--ir", type=Path, required=True)
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--manifest", type=Path, required=True)
 parser.add_argument("--host", type=Path, help="Explicit NativeActivity host source for a platform test")
-parser.add_argument("--entry", type=Path, default=os.environ.get("KRYON_PROJECT_ENTRY", "src/app.zi"),
+parser.add_argument("--retain", action="append", default=[],
+                    help="Additional externally invoked module:procedure root")
+parser.add_argument("--entry", type=Path, default=os.environ.get("KRYON_PROJECT_ENTRY", "src/app.tsx"),
                     help="Selected application source (or KRYON_PROJECT_ENTRY)")
-parser.add_argument("--package-id", default=os.environ.get("ZIRAN_PACKAGE_ID"),
-                    help="Resolved Kryon identity (or ZIRAN_PACKAGE_ID from ziran tool kryon)")
 parser.add_argument("--define", action="append", default=[])
 parser.add_argument("--codegen", choices=("c99", "zx"), default="c99")
 args = parser.parse_args()
 root = args.root.resolve()
 kryon = args.kryon.resolve()
 entry = (root / args.entry).resolve()
-if not entry.is_file() or entry.suffix != ".zi":
-    parser.error(f"selected application entry is not a Zi source: {entry}")
+source_suffixes = {".zi", ".ts", ".tsx"}
+if not entry.is_file() or entry.suffix not in source_suffixes:
+    parser.error(f"selected entry must be a native .tsx, .ts or .zi source: {entry}")
 needs_program = args.host is None and args.codegen == "c99"
-if needs_program and not args.package_id:
-    parser.error("--package-id is required unless ZIRAN_PACKAGE_ID is supplied by ziran tool kryon")
 entry_module = entry.parent.name if entry.stem == "module" else entry.stem
-sources = sorted((root / "src").rglob("*.zi"))
+sources = sorted(path for path in (root / "src").rglob("*")
+                 if path.is_file() and path.suffix in source_suffixes)
 if list((root / "src").rglob("*.c")) or list((root / "src").rglob("*.kry")):
-    raise SystemExit("Android application implementation must be current Zi")
+    raise SystemExit("Android application sources must use native TSX, TypeScript or Ziran")
 if not sources:
-    raise SystemExit("No Zi sources under src/")
+    raise SystemExit("No native .tsx, .ts or .zi sources under src/")
 host_roots = [
     args.host.resolve() if args.host else kryon / "src/backend/android_run.zi",
     kryon / "src/backend/android_fopen.zi",
+    kryon / "src/backend/android_notifications.zi",
     root / "src/main.zi",
     root / "src/android_glue.zi",
 ]
 bindings = []
-program_source = args.ir.with_name(args.ir.name + "-roots") / "kryon_android_program.zi"
 if needs_program:
-    # NativeActivity needs a callable provider, while an application's plain
-    # main is a Ziran entry rather than a native program export. Keep the
-    # platform bridge here instead of imposing an export annotation on apps.
-    host_roots.extend([entry, program_source])
+    host_roots.append(entry)
     bindings = ["--bind",
-                "kryon/android_run:AndroidProgramMain=kryon_android_program:AndroidProgramMain"]
+                f"kryon/android_run:AndroidProgramMain={entry_module}:main"]
 for path in host_roots:
-    if path != program_source and not path.is_file():
+    if not path.is_file():
         raise SystemExit(f"Missing host source {path}; run scripts/android_scaffold.py")
 
-# `ziran ir --entry` keeps only what its one entry reaches; a native C graph
-# has no other root, and `#program_export` alone does not retain a function.
-# Android calls the glue's JNI_OnLoad and the notification receiver callbacks
-# by name through cmake/libmain.map.txt. The Android app also links the fopen
-# wrappers and the NDK calls android_main. This generated entry keeps those
-# functions and forwards a valid call straight to the
-# application's stable `main(argc, argv)` and names the others only on the
-# branch a C argc (never negative) cannot take, so it has no glue side effect.
-# Kryon's entries are host capabilities bound to its exports, which keeps a
-# called provider. The root is left out of the C inputs, so the host still
-# starts the generated C `main` and nothing else.
-ROOTS_MODULE, ROOTS_ENTRY = "kryon_android_roots", "KryonAndroidRoots"
-kryon_roots = [("__wrap_fopen", "(path: *u8, mode: *u8) -> *void", "(null, null)",
-                "kryon/android_fopen"),
-               ("__wrap_fopen64", "(path: *u8, mode: *u8) -> *void", "(null, null)",
-                "kryon/android_fopen")]
+# The loader, NDK and C linker's --wrap option reach these symbols without
+# a checked call from main. Retain their real declarations directly.
+retained = [*args.retain, "android_glue:JNI_OnLoad",
+            "kryon/android_fopen:__wrap_fopen",
+            "kryon/android_fopen:__wrap_fopen64",
+            "kryon/android_notifications:AndroidNotificationReceive",
+            "kryon/android_notifications:AndroidNotificationRequestPermission"]
 if args.codegen == "zx":
-    kryon_roots.append(("android_main", "(app: *void)", "(null)", "kryon/android_bundle_run"))
+    host_roots.append(kryon / "src/backend/android_bundle_run.zi")
+    retained.append("kryon/android_bundle_run:android_main")
 elif args.host and args.host.resolve() == (kryon / "src/backend/android_runtime.zi").resolve():
-    # A custom application's main reaches the host queries; only the NDK
-    # reaches android_main, which then calls that main. Keep it as a root.
-    kryon_roots.append(("android_main", "(app: *void)", "(null)", "kryon/android_runtime"))
-roots_source = args.ir.with_name(args.ir.name + "-roots") / (ROOTS_MODULE + ".zi")
-roots_text = "\n".join([
-    "// Generated by kryon scripts/generate_android_sources.py.",
-    '#import "main"', '#import "android_glue"',
-    *(['ProgramBridge :: #import "kryon_android_program";'] if needs_program else []),
-    'NotificationReceiver :: #import "kryon/android_notifications";',
-    'host_api :: #system_library "host_api";',
-    *(f"{name} :: {signature} #foreign host_api;" for name, signature, _, _ in kryon_roots),
-    f"{ROOTS_ENTRY} :: (argc: s32, argv: **u8) -> s32 {{",
-    "    if argc < 0 {",
-    *(["        unused ProgramBridge.AndroidProgramMain()"] if needs_program else []),
-    *(f"        unused {name}{call}" if "->" in signature else f"        {name}{call}"
-      for name, signature, call, _ in kryon_roots),
-    "        NotificationReceiver.AndroidNotificationReceive(null, null, null, null)",
-    "        NotificationReceiver.AndroidNotificationRequestPermission(null, null, null)",
-    "        return JNI_OnLoad(null, null)",
-    "    }",
-    "    return main(argc, argv)",
-    "}\n"])
-for name, _, _, provider in kryon_roots:
-    bindings.extend(["--bind", f"{ROOTS_MODULE}:{name}={provider}:{name}"])
+    retained.append("kryon/android_runtime:android_main")
 
 defines = ["--define", "KRYON_ANDROID_HOST"]
 # The project tool supplies Ziran's validated settings. Direct Gradle runs
@@ -225,45 +210,36 @@ if args.output.exists():
     shutil.rmtree(args.output)
 args.ir.mkdir(parents=True)
 args.output.mkdir(parents=True)
-roots_source.parent.mkdir(parents=True, exist_ok=True)
-roots_source.write_text(roots_text)
-if needs_program:
-    program_source.write_text("\n".join([
-        "// Generated by kryon scripts/generate_android_sources.py.",
-        f'Program :: #import "{entry_module}";',
-        "#program_export",
-        "AndroidProgramMain :: () -> s32 { return Program.main() }\n",
-    ]))
 
 lock_path = root / "build" / "kryon-android-compiler.lock"
 lock_path.parent.mkdir(parents=True, exist_ok=True)
 with lock_path.open("w") as lock:
     fcntl.flock(lock, fcntl.LOCK_EX)
     subprocess.run(
-        [str(args.ziran), "ir", "--project", *(["--target=c"] if needs_program else []),
-         "--entry", f"{ROOTS_MODULE}:{ROOTS_ENTRY}",
-         *target, "--root", str(entry.parent), "--module-path", str(roots_source.parent),
+        [str(args.ziran), "ir", "--project", "--target=c",
+         "--entry", "main:main",
+         *(word for name in retained for word in ("--retain", name)),
+         *target, "--root", str(entry.parent),
          *bindings, *defines, "-o", str(args.ir),
-         *map(str, host_roots), str(roots_source)],
+         *map(str, dict.fromkeys(host_roots))],
         cwd=root, check=True,
     )
-    # The root only selects what the IR keeps; it never enters native output.
-    modules = sorted(path for path in args.ir.glob("*.zir") if path.stem != ROOTS_MODULE)
+    modules = sorted(args.ir.glob("*.zir"))
     subprocess.run(
         [str(args.zi2c), "--no-main", *target, *defines, "--root", str(args.ir),
          "-o", str(args.output), *map(str, modules)],
         cwd=root, check=True,
     )
     outputs = sorted(args.output.rglob("*.c"))
-    native_recipes, configure_inputs = android_native_recipes(root, modules, outputs)
+    native_recipes, configure_inputs = android_native_recipes(root, modules, outputs, args.ziran)
 
 if not outputs:
-    raise SystemExit("Zi compiler emitted no Android native sources")
+    raise SystemExit("Native compiler emitted no Android C sources")
 if not any(path.name == "main.c" for path in outputs):
     raise SystemExit("The Android host needs the scaffold's src/main.zi entry")
 headers = sorted(args.output.rglob("*.h"))
 include_dirs = sorted({args.output, *(p.parent for p in headers)})
-lines = ["# Generated from the complete Zi import graph.",
+lines = ["# Generated from the complete checked native import graph.",
          "set(APP_ZIRAN_GENERATED_SOURCES"]
 lines.extend(f'    "{path}"' for path in outputs)
 lines.extend([")", "set(APP_ZIRAN_GENERATED_HEADERS"])
@@ -288,4 +264,4 @@ content = "\n".join(lines)
 args.manifest.parent.mkdir(parents=True, exist_ok=True)
 if not args.manifest.exists() or args.manifest.read_text() != content:
     args.manifest.write_text(content)
-print(f"Generated {len(outputs)} Android C outputs from maintained Zi sources")
+print(f"Generated {len(outputs)} Android C outputs from maintained native sources")

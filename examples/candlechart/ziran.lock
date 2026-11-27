@@ -2,148 +2,157 @@
   "format": 1,
   "packages": [
     {
-      "commit": "c96f5e3de9c4488f4e6c97f59f5245f22fda22f7",
-      "dependencies": {},
-      "id": "p0dd67588478f9a3e",
-      "name": "libsamplerate",
-      "ref": "c96f5e3de9c4488f4e6c97f59f5245f22fda22f7",
-      "source": true,
-      "url": "https://github.com/libsndfile/libsamplerate.git"
-    },
-    {
-      "commit": "829a65d769d935c4852f8159e964312c0957260a",
-      "dependencies": {},
-      "id": "p16cd0434af3dff7b",
-      "name": "sdl3",
-      "ref": "829a65d769d935c4852f8159e964312c0957260a",
-      "source": true,
-      "url": "https://github.com/libsdl-org/SDL.git"
-    },
-    {
-      "commit": "ec6ed304767e10c125ab2820f3b01d6fd773e147",
-      "dependencies": {"image_codec": "p69c0e968ae5735d9", "libwebp": "p3b3c785a0e17e605"},
-      "dependency_refs": {"image_codec": "360553150917f352e49e1beb78917370792ccaef", "libwebp": "1844042d1ca751e62e61df7617dba19c98588339"},
-      "id": "p2af20e0c835b1c63",
-      "name": "webp",
-      "ref": "ec6ed304767e10c125ab2820f3b01d6fd773e147",
-      "url": "https://github.com/ziranlang/webp.git"
-    },
-    {
-      "commit": "1844042d1ca751e62e61df7617dba19c98588339",
-      "dependencies": {},
-      "id": "p3b3c785a0e17e605",
-      "name": "libwebp",
-      "ref": "1844042d1ca751e62e61df7617dba19c98588339",
-      "source": true,
-      "url": "https://github.com/webmproject/libwebp.git"
-    },
-    {
-      "commit": "66a400980d84de58b43d8cff9753c1837cb27067",
-      "dependencies": {"kryon": "p83b7422cf506dc6a"},
-      "dependency_refs": {"kryon": "master"},
-      "id": "p3f7c2d81ecbcab4f",
-      "name": "DataViews",
-      "ref": "master",
-      "url": "https://github.com/kryonlabs/data-views.git"
-    },
-    {
-      "commit": "1aadfad932c98c069a1204261b1856f81f3bc199",
-      "dependencies": {},
-      "id": "p57c0272208aae8db",
-      "name": "libavif",
-      "ref": "1aadfad932c98c069a1204261b1856f81f3bc199",
-      "source": true,
-      "url": "https://github.com/AOMediaCodec/libavif.git"
-    },
-    {
-      "commit": "1b2f35b7b39df6fb9af7a52324b4b7cf18e98df2",
-      "dependencies": {"libopus": "pe1fe9bbe80bf1d6d", "libsamplerate": "p0dd67588478f9a3e"},
-      "dependency_refs": {"libopus": "ddbe48383984d56acd9e1ab6a090c54ca6b735a6", "libsamplerate": "c96f5e3de9c4488f4e6c97f59f5245f22fda22f7"},
-      "id": "p59deb49c7f103127",
-      "name": "audio",
-      "ref": "1b2f35b7b39df6fb9af7a52324b4b7cf18e98df2",
-      "url": "https://github.com/ziranlang/audio.git"
-    },
-    {
-      "commit": "bd278217e2bac754d868b3d6502eac4257658d4b",
-      "dependencies": {"dav1d": "pb24767b9eb34d961", "image_codec": "p69c0e968ae5735d9", "libaom": "p74ab3cb6eb3b86fa"},
-      "dependency_refs": {"dav1d": "54706fc6bc0cdecab7e9593974a4039cc038fca7", "image_codec": "360553150917f352e49e1beb78917370792ccaef", "libaom": "b141d9c45db236335351c8a4b2a14b3ade27c937"},
-      "id": "p5d7d12505a42f7b3",
-      "name": "av1",
-      "ref": "bd278217e2bac754d868b3d6502eac4257658d4b",
-      "url": "https://github.com/ziranlang/av1.git"
-    },
-    {
-      "commit": "360553150917f352e49e1beb78917370792ccaef",
-      "dependencies": {},
-      "id": "p69c0e968ae5735d9",
-      "name": "image-codec",
-      "ref": "360553150917f352e49e1beb78917370792ccaef",
-      "url": "https://github.com/ziranlang/image-codec.git"
-    },
-    {
       "commit": "b141d9c45db236335351c8a4b2a14b3ade27c937",
       "dependencies": {},
-      "id": "p74ab3cb6eb3b86fa",
+      "id": "src_aomedia_googlesource_com_aom_b141d9c45db2",
       "name": "libaom",
       "ref": "b141d9c45db236335351c8a4b2a14b3ade27c937",
       "source": true,
       "url": "https://aomedia.googlesource.com/aom"
     },
     {
-      "commit": "03016057afa1c695f6e24f32e5be5df761475220",
-      "dependencies": {"audio": "p59deb49c7f103127", "avif": "pb203529d803e73a4", "image_codec": "p69c0e968ae5735d9", "libaom": "p74ab3cb6eb3b86fa", "libavif": "p57c0272208aae8db", "libwebp": "p3b3c785a0e17e605", "sdl3": "p16cd0434af3dff7b", "webp": "p2af20e0c835b1c63"},
-      "dependency_refs": {"audio": "1b2f35b7b39df6fb9af7a52324b4b7cf18e98df2", "avif": "2611e727e226a2af22dfb7f10bf224bd2f1a3d30", "image_codec": "360553150917f352e49e1beb78917370792ccaef", "libaom": "b141d9c45db236335351c8a4b2a14b3ade27c937", "libavif": "1aadfad932c98c069a1204261b1856f81f3bc199", "libwebp": "1844042d1ca751e62e61df7617dba19c98588339", "sdl3": "829a65d769d935c4852f8159e964312c0957260a", "webp": "ec6ed304767e10c125ab2820f3b01d6fd773e147"},
-      "id": "p83b7422cf506dc6a",
-      "name": "kryon",
-      "ref": "master",
-      "url": "https://github.com/kryonlabs/kryon.git"
+      "commit": "1aadfad932c98c069a1204261b1856f81f3bc199",
+      "dependencies": {},
+      "id": "src_github_com_AOMediaCodec_libavif_1aadfad932c9",
+      "name": "libavif",
+      "ref": "1aadfad932c98c069a1204261b1856f81f3bc199",
+      "source": true,
+      "url": "https://github.com/AOMediaCodec/libavif.git"
     },
     {
-      "commit": "2611e727e226a2af22dfb7f10bf224bd2f1a3d30",
-      "dependencies": {"av1": "p5d7d12505a42f7b3", "dav1d": "pb24767b9eb34d961", "image_codec": "p69c0e968ae5735d9", "libaom": "p74ab3cb6eb3b86fa", "libavif": "p57c0272208aae8db"},
-      "dependency_refs": {"av1": "bd278217e2bac754d868b3d6502eac4257658d4b", "dav1d": "54706fc6bc0cdecab7e9593974a4039cc038fca7", "image_codec": "360553150917f352e49e1beb78917370792ccaef", "libaom": "b141d9c45db236335351c8a4b2a14b3ade27c937", "libavif": "1aadfad932c98c069a1204261b1856f81f3bc199"},
-      "id": "pb203529d803e73a4",
-      "name": "avif",
-      "ref": "2611e727e226a2af22dfb7f10bf224bd2f1a3d30",
-      "url": "https://github.com/ziranlang/avif.git"
+      "commit": "829a65d769d935c4852f8159e964312c0957260a",
+      "dependencies": {},
+      "id": "src_github_com_libsdl_org_SDL_829a65d769d9",
+      "name": "sdl3",
+      "ref": "829a65d769d935c4852f8159e964312c0957260a",
+      "source": true,
+      "url": "https://github.com/libsdl-org/SDL.git"
+    },
+    {
+      "commit": "c96f5e3de9c4488f4e6c97f59f5245f22fda22f7",
+      "dependencies": {},
+      "id": "src_github_com_libsndfile_libsamplerate_c96f5e3de9c4",
+      "name": "libsamplerate",
+      "ref": "c96f5e3de9c4488f4e6c97f59f5245f22fda22f7",
+      "source": true,
+      "url": "https://github.com/libsndfile/libsamplerate.git"
     },
     {
       "commit": "54706fc6bc0cdecab7e9593974a4039cc038fca7",
       "dependencies": {},
-      "id": "pb24767b9eb34d961",
+      "id": "src_github_com_videolan_dav1d_54706fc6bc0c",
       "name": "dav1d",
       "ref": "54706fc6bc0cdecab7e9593974a4039cc038fca7",
       "source": true,
       "url": "https://github.com/videolan/dav1d.git"
     },
     {
-      "commit": "67a7131b9e6fb5a3a09d6e5191044c4c97196aa3",
-      "dependencies": {"kryon": "p83b7422cf506dc6a"},
-      "dependency_refs": {"kryon": "3f72441949d4e16094834fa9220e5d7fa77a0ac0"},
-      "id": "pd07b633ca4461fd8",
-      "name": "plot",
-      "ref": "master",
-      "url": "https://github.com/kryonlabs/plot.git"
+      "commit": "1844042d1ca751e62e61df7617dba19c98588339",
+      "dependencies": {},
+      "id": "src_github_com_webmproject_libwebp_1844042d1ca7",
+      "name": "libwebp",
+      "ref": "1844042d1ca751e62e61df7617dba19c98588339",
+      "source": true,
+      "url": "https://github.com/webmproject/libwebp.git"
     },
     {
       "commit": "ddbe48383984d56acd9e1ab6a090c54ca6b735a6",
       "dependencies": {},
-      "id": "pe1fe9bbe80bf1d6d",
+      "id": "src_github_com_xiph_opus_ddbe48383984",
       "name": "libopus",
       "ref": "ddbe48383984d56acd9e1ab6a090c54ca6b735a6",
       "source": true,
       "url": "https://github.com/xiph/opus.git"
+    },
+    {
+      "commit": "bd6192e7d855d56d6527b740397c340d29b29e57",
+      "dependencies": {"kryon": "waozi_xyz_kryonlabs_kryon_3fc334961213"},
+      "dependency_refs": {"kryon": "3fc33496121382cc31a53a8c3178e0f2c90977fb"},
+      "id": "waozi_xyz_kryonlabs_data_views_bd6192e7d855",
+      "name": "DataViews",
+      "ref": "master",
+      "url": "https://git.waozi.xyz/kryonlabs/data-views.git"
+    },
+    {
+      "commit": "3fc33496121382cc31a53a8c3178e0f2c90977fb",
+      "dependencies": {"audio": "waozi_xyz_ziranlang_audio_b5c6b56b7117", "avif": "waozi_xyz_ziranlang_avif_6ff696d436b6", "image_codec": "waozi_xyz_ziranlang_image_codec_3017f0d1cc56", "libaom": "src_aomedia_googlesource_com_aom_b141d9c45db2", "libavif": "src_github_com_AOMediaCodec_libavif_1aadfad932c9", "libwebp": "src_github_com_webmproject_libwebp_1844042d1ca7", "sdl3": "src_github_com_libsdl_org_SDL_829a65d769d9", "webp": "waozi_xyz_ziranlang_webp_4b9a61d32460"},
+      "dependency_refs": {"audio": "b5c6b56b71172c4361ae01e3afdd2118bdac0975", "avif": "6ff696d436b6b4f142eb1e3ecf210de7adfa048f", "image_codec": "3017f0d1cc56975aa29c600a1f55a62e1193cf7b", "libaom": "b141d9c45db236335351c8a4b2a14b3ade27c937", "libavif": "1aadfad932c98c069a1204261b1856f81f3bc199", "libwebp": "1844042d1ca751e62e61df7617dba19c98588339", "sdl3": "829a65d769d935c4852f8159e964312c0957260a", "webp": "4b9a61d32460d481624fe0f83996a7de50327dfe"},
+      "id": "waozi_xyz_kryonlabs_kryon_3fc334961213",
+      "name": "kryon",
+      "ref": "3fc33496121382cc31a53a8c3178e0f2c90977fb",
+      "url": "https://git.waozi.xyz/kryonlabs/kryon.git"
+    },
+    {
+      "commit": "7fc37d6861e42ffb2d075c460fd31080b9c3234a",
+      "dependencies": {"audio": "waozi_xyz_ziranlang_audio_b5c6b56b7117", "avif": "waozi_xyz_ziranlang_avif_6ff696d436b6", "image_codec": "waozi_xyz_ziranlang_image_codec_3017f0d1cc56", "libaom": "src_aomedia_googlesource_com_aom_b141d9c45db2", "libavif": "src_github_com_AOMediaCodec_libavif_1aadfad932c9", "libwebp": "src_github_com_webmproject_libwebp_1844042d1ca7", "sdl3": "src_github_com_libsdl_org_SDL_829a65d769d9", "webp": "waozi_xyz_ziranlang_webp_4b9a61d32460"},
+      "dependency_refs": {"audio": "b5c6b56b71172c4361ae01e3afdd2118bdac0975", "avif": "6ff696d436b6b4f142eb1e3ecf210de7adfa048f", "image_codec": "3017f0d1cc56975aa29c600a1f55a62e1193cf7b", "libaom": "b141d9c45db236335351c8a4b2a14b3ade27c937", "libavif": "1aadfad932c98c069a1204261b1856f81f3bc199", "libwebp": "1844042d1ca751e62e61df7617dba19c98588339", "sdl3": "829a65d769d935c4852f8159e964312c0957260a", "webp": "4b9a61d32460d481624fe0f83996a7de50327dfe"},
+      "id": "waozi_xyz_kryonlabs_kryon_7fc37d6861e4",
+      "name": "kryon",
+      "ref": "master",
+      "url": "https://git.waozi.xyz/kryonlabs/kryon.git"
+    },
+    {
+      "commit": "6698bd301141ed921e6f5526c67ec7277a236fed",
+      "dependencies": {"kryon": "waozi_xyz_kryonlabs_kryon_7fc37d6861e4"},
+      "dependency_refs": {"kryon": "7fc37d6861e42ffb2d075c460fd31080b9c3234a"},
+      "id": "waozi_xyz_kryonlabs_plot_6698bd301141",
+      "name": "plot",
+      "ref": "master",
+      "url": "https://git.waozi.xyz/kryonlabs/plot.git"
+    },
+    {
+      "commit": "b5c6b56b71172c4361ae01e3afdd2118bdac0975",
+      "dependencies": {"libopus": "src_github_com_xiph_opus_ddbe48383984", "libsamplerate": "src_github_com_libsndfile_libsamplerate_c96f5e3de9c4"},
+      "dependency_refs": {"libopus": "ddbe48383984d56acd9e1ab6a090c54ca6b735a6", "libsamplerate": "c96f5e3de9c4488f4e6c97f59f5245f22fda22f7"},
+      "id": "waozi_xyz_ziranlang_audio_b5c6b56b7117",
+      "name": "audio",
+      "ref": "b5c6b56b71172c4361ae01e3afdd2118bdac0975",
+      "url": "https://git.waozi.xyz/ziranlang/audio.git"
+    },
+    {
+      "commit": "bed54d12dc5a8cf8e6a514b2a49d3592d6cecb65",
+      "dependencies": {"dav1d": "src_github_com_videolan_dav1d_54706fc6bc0c", "image_codec": "waozi_xyz_ziranlang_image_codec_3017f0d1cc56", "libaom": "src_aomedia_googlesource_com_aom_b141d9c45db2"},
+      "dependency_refs": {"dav1d": "54706fc6bc0cdecab7e9593974a4039cc038fca7", "image_codec": "3017f0d1cc56975aa29c600a1f55a62e1193cf7b", "libaom": "b141d9c45db236335351c8a4b2a14b3ade27c937"},
+      "id": "waozi_xyz_ziranlang_av1_bed54d12dc5a",
+      "name": "av1",
+      "ref": "bed54d12dc5a8cf8e6a514b2a49d3592d6cecb65",
+      "url": "https://git.waozi.xyz/ziranlang/av1.git"
+    },
+    {
+      "commit": "6ff696d436b6b4f142eb1e3ecf210de7adfa048f",
+      "dependencies": {"av1": "waozi_xyz_ziranlang_av1_bed54d12dc5a", "dav1d": "src_github_com_videolan_dav1d_54706fc6bc0c", "image_codec": "waozi_xyz_ziranlang_image_codec_3017f0d1cc56", "libaom": "src_aomedia_googlesource_com_aom_b141d9c45db2", "libavif": "src_github_com_AOMediaCodec_libavif_1aadfad932c9"},
+      "dependency_refs": {"av1": "bed54d12dc5a8cf8e6a514b2a49d3592d6cecb65", "dav1d": "54706fc6bc0cdecab7e9593974a4039cc038fca7", "image_codec": "3017f0d1cc56975aa29c600a1f55a62e1193cf7b", "libaom": "b141d9c45db236335351c8a4b2a14b3ade27c937", "libavif": "1aadfad932c98c069a1204261b1856f81f3bc199"},
+      "id": "waozi_xyz_ziranlang_avif_6ff696d436b6",
+      "name": "avif",
+      "ref": "6ff696d436b6b4f142eb1e3ecf210de7adfa048f",
+      "url": "https://git.waozi.xyz/ziranlang/avif.git"
+    },
+    {
+      "commit": "3017f0d1cc56975aa29c600a1f55a62e1193cf7b",
+      "dependencies": {},
+      "id": "waozi_xyz_ziranlang_image_codec_3017f0d1cc56",
+      "name": "image-codec",
+      "ref": "3017f0d1cc56975aa29c600a1f55a62e1193cf7b",
+      "url": "https://git.waozi.xyz/ziranlang/image-codec.git"
+    },
+    {
+      "commit": "4b9a61d32460d481624fe0f83996a7de50327dfe",
+      "dependencies": {"image_codec": "waozi_xyz_ziranlang_image_codec_3017f0d1cc56", "libwebp": "src_github_com_webmproject_libwebp_1844042d1ca7"},
+      "dependency_refs": {"image_codec": "3017f0d1cc56975aa29c600a1f55a62e1193cf7b", "libwebp": "1844042d1ca751e62e61df7617dba19c98588339"},
+      "id": "waozi_xyz_ziranlang_webp_4b9a61d32460",
+      "name": "webp",
+      "ref": "4b9a61d32460d481624fe0f83996a7de50327dfe",
+      "url": "https://git.waozi.xyz/ziranlang/webp.git"
     }
   ],
   "root": {
-    "dependencies": {"data_views": "p3f7c2d81ecbcab4f", "kryon": "p83b7422cf506dc6a", "plot": "pd07b633ca4461fd8"},
+    "dependencies": {"data_views": "waozi_xyz_kryonlabs_data_views_bd6192e7d855", "kryon": "waozi_xyz_kryonlabs_kryon_7fc37d6861e4", "plot": "waozi_xyz_kryonlabs_plot_6698bd301141"},
     "dependency_refs": {"data_views": "master", "kryon": "master", "plot": "master"},
     "name": "candlechart"
   },
   "toolchain": {
-    "commit": "7fbc8152b0ab18b641a73d16d93ccda1e1c7f863",
-    "ref": "7fbc8152b0ab18b641a73d16d93ccda1e1c7f863",
-    "url": "https://github.com/ziranlang/ziran.git"
+    "commit": "dc3ecf0aabd1630881c13783a660ca8b298eff88",
+    "ref": "dc3ecf0aabd1630881c13783a660ca8b298eff88",
+    "url": "https://git.waozi.xyz/ziranlang/ziran.git"
   }
 }

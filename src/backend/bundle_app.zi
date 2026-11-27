@@ -142,7 +142,7 @@ BundleAppReadAsset :: (host: *BundleApp, path: string) -> string {
 
 BundleAppClose :: (host: *BundleApp) {
     unused BundleAppSave(host)
-    if SessionValid(host.app.session) { unused SessionClose(host.app.session) }
+    if SessionValid(host.app.session) { unused CloseSession(host.app.session) }
     AppFilesClose(*host.local.files)
     AppFileFree(host.local.read_value)
     BundleAppFrameAssetsClear()

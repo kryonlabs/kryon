@@ -2,7 +2,7 @@
 // (`// file: PATH` or `# file: PATH` on its first line) is written into a
 // scratch project, which is locked against this checkout, built with the
 // test driver, shot offscreen and driven by the sheet's own test on a
-// private display. A Ziran block without a file line fails the test.
+// private display. Every source block must name its file.
 //
 // Run from the Kryon root: make cheatsheet-test (ZIRAN_BIN names ziran).
 #import "std/process_run_linux"
@@ -46,10 +46,11 @@ WriteBlocks :: (sheet: string, project: string) -> s32 {
     while index < lines.count {
         line := lines[index]
         index += 1
-        if !TextHasPrefix(line, "```zi") && !TextHasPrefix(line, "```toml") { continue }
+        source := TextHasPrefix(line, "```zi") || TextHasPrefix(line, "```ts")
+        if !source && !TextHasPrefix(line, "```toml") { continue }
         path := ifx index < lines.count then FileLine(lines[index]) else ""
         if path == "" {
-            Expect(!TextHasPrefix(line, "```zi"), "every Ziran block names its file")
+            Expect(!source, "every source block names its file")
             continue
         }
         body: Vec(u8)

@@ -7,7 +7,6 @@ then capture after. The comparison never imitates an old theme in current code.
 import argparse
 import csv
 import fcntl
-import io
 import json
 import math
 import os
@@ -23,7 +22,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / 'build/scratch/widget-review'
 OUTPUT = ROOT / 'backup/material-widgets'
-BACKEND = 'pixmap'
+BACKEND = 'desktop'
 SELECTED_SCENES = None
 # Scene labels and implementations have one source for desktop, web and review.
 import re
@@ -46,7 +45,7 @@ def environment():
     env = os.environ.copy()
     for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER', 'WAYLAND_SOCKET', 'DESKTOP_STARTUP_ID'):
         env.pop(key, None)
-    env['YUE_DESKTOP_RECOVERY'] = '0'
+    env['HARMONY_DESKTOP_RECOVERY'] = '0'
     env['KRYON_REVIEW_FIXTURE'] = str(OUTPUT / 'fixture.png')
     env.update(TMPDIR=str(OUTPUT), ZIRAN_PAR_THREADS='1', SDL_RENDER_DRIVER='software', LIBGL_ALWAYS_SOFTWARE='1')
     return env
@@ -65,18 +64,16 @@ def build(label, env):
         defines = ['--define', 'REVIEW_SIZED_TEXT']
     elif 'pending_text_first:' in storage:
         defines = ['--define', 'REVIEW_INLINE_TEXT']
-    if BACKEND == 'desktop': defines += ['--define', 'REVIEW_DESKTOP']
-    subprocess.run([str(toolchain / 'build/bin/ziran'), 'build', '--project', '--root', 'tools',
-                    '--target=c', '--no-main', '--define', 'POSIX_THREADS',
-                    '--module-path', 'examples/gallery/src',
+    subprocess.run([str(toolchain / 'build/bin/ziran'), 'build', '--project', '--root', str(ROOT / 'tools'),
+                    '--target=c', '--emit-main', '--define', 'POSIX_THREADS',
+                    '--module-path', str(ROOT / 'tools'),
                     *defines,
                     '--entry', 'widget_review:Run', '-o', str(generated),
-                    'tools/widget_review.zi'], cwd=ROOT, env=env, check=True)
-    (generated / 'driver.c').write_text('#include "widget_review.h"\nint main(void) { return Run(); }\n')
+                    str(ROOT / 'tools/widget_review.zi')], cwd=ROOT / 'examples/gallery', env=env, check=True)
     binary = BUILD / BACKEND
     subprocess.run([env.get('CC', 'cc'), '-std=c11', '-O2', '-I' + str(toolchain / 'include'),
                     '-I' + str(generated), *map(str, sorted(generated.glob('*.c'))),
-                    *(['-lm', '-lpthread'] if BACKEND == 'pixmap' else subprocess.check_output(['pkg-config', '--libs', 'sdl2', 'cairo', 'freetype2', 'pangocairo', 'fontconfig', 'glib-2.0', 'x11'], text=True).split() + ['-lm', '-lpthread', '-ldl']), '-o', str(binary)], env=env, check=True)
+                    *subprocess.check_output(['pkg-config', '--libs', 'sdl2', 'cairo', 'freetype2', 'pangocairo', 'fontconfig', 'glib-2.0', 'x11'], text=True).split(), '-lm', '-lpthread', '-ldl', '-o', str(binary)], env=env, check=True)
     return binary
 
 
@@ -102,7 +99,7 @@ def capture(label, binary, env, limit=None):
             child_env['KRYON_CAPTURE_PATH'] = str(shot)
             result = subprocess.run(['xvfb-run', '-a', str(binary)], env=child_env,
                                     stdout=subprocess.PIPE, stderr=None, cwd=ROOT, check=True)
-            image = Image.open(shot if BACKEND == 'desktop' else io.BytesIO(result.stdout)).convert('RGB')
+            image = Image.open(shot).convert('RGB')
             assert image.size == (480, 320)
             image.save(directory / f'{scene:02d}-{state}.png')
             modes = {}
@@ -256,17 +253,15 @@ def recheck(trials):
 
 
 def main():
-    global BACKEND, OUTPUT, SELECTED_SCENES
+    global OUTPUT, SELECTED_SCENES
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('before', 'after', 'compare', 'recheck'))
-    parser.add_argument('--backend', choices=('pixmap', 'desktop'), default='pixmap')
     parser.add_argument('--output-dir', type=Path, default=OUTPUT)
     parser.add_argument('--scenes', help='comma-separated scene indexes; default: all')
     parser.add_argument('--reuse-binary', action='store_true')
     parser.add_argument('--trials', type=int, choices=(3, 7), default=3,
                         help='repeat count for recheck; use seven for noisy shared machines')
     args = parser.parse_args()
-    BACKEND = args.backend
     OUTPUT = args.output_dir.resolve()
     SELECTED_SCENES = set(map(int, args.scenes.split(','))) if args.scenes else None
     BUILD.mkdir(parents=True, exist_ok=True); OUTPUT.mkdir(parents=True, exist_ok=True)

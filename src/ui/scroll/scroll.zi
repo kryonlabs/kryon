@@ -6,7 +6,9 @@ using Scroll :: #import "scroll_props";
     #import "session"
     host_api :: #system_library "host_api";
     ScrollHostedHost :: (session: Session, props: Scroll.Props) -> Scroll.ScrollResult #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: Scroll.Props) -> Scroll.ScrollResult { return ScrollHostedHost(session, props) }
+        #scope_export
 } else {
     #import "session"
     #import "control_props"
@@ -28,6 +30,7 @@ using Scroll :: #import "scroll_props";
     // A value based scroll viewport. The caller supplies wheel or keyboard
     // movement, keeps the returned offset, and positions children in content.
     // Close the child scope with End(session).
+        #scope_package
         Draw :: (session: Session, props: Scroll.Props, location := #caller_location) -> Scroll.ScrollResult {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }

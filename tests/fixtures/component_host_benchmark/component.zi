@@ -73,5 +73,9 @@ Frame :: () -> s64 {
     if component_owned.samples[1] != component_count ||
     component_owned.samples[2] != component_frames ||
     component_owned.samples[3] != component_schema_version { return 2 }
-    return 0
+    #if #defined(COMPONENT_HOST_BENCHMARK_BAD) {
+        return 1
+    } else {
+        return 0
+    }
 }

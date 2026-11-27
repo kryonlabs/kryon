@@ -4,3 +4,10 @@
 // installed during that frame. Frames carry no selectors or matcher code.
 style_frame_session: Session;
 StyleFrameBegin :: (session: Session) { style_frame_session = session }
+
+// A plain frame asks whether a structural probe is needed without importing
+// the optional stylesheet matcher. Installing a sheet updates this one slot.
+installed_structural_late: bool;
+
+#program_export
+StyleStructuralLateActive :: () -> bool { return installed_structural_late }

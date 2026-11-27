@@ -8,7 +8,9 @@ Theme :: #import "theme";
     #import "session"
     host_api :: #system_library "host_api";
     ButtonHostedHost :: (session: Session, props: Button.Props) -> s32 #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: Button.Props) -> s32 { return ButtonHostedHost(session, props) }
+        #scope_export
 } else {
     #import "session"
     #import "card_behavior"
@@ -545,6 +547,7 @@ Theme :: #import "theme";
         return 0
     }
 
+        #scope_package
         Draw :: (session: Session, props: Button.Props, location := #caller_location) -> s32 {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }

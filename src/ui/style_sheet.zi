@@ -4,6 +4,7 @@ using Facts :: #import "style_facts";
 #import "geometry"
 #import "text_style"
 #import "style_tree"
+#import "style_frame"
 using Vectors :: #import "std/vec"
 
 using ButtonState;
@@ -596,17 +597,6 @@ StyleSelectorSpecificity :: (selector: StyleSelector) -> s32 {
         if selector.sibling_id != 0 { names += 2 }
     }
     return StyleSpecificity(kinds, attributes, classes, names)
-}
-
-// Whether any installed rule carries a late structural fact (:last-child,
-// :only-child, :last-of-type or :only-of-type). Those rules need a host's
-// structural probe frame to read this frame's committed tree; sibling
-// combinators are early facts and never set it.
-installed_structural_late: bool;
-
-#program_export
-StyleStructuralLateActive :: () -> bool {
-    return installed_structural_late
 }
 
 // A selector's tree context: the :not() exclusions, then the ancestors and

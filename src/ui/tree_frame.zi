@@ -2,6 +2,7 @@
 // around the app's frame when the program draws. A host that runs frames
 // calls TreeFrameUse before its first frame; the call, not an import,
 // brings the driver, so a program that only opens a window carries none.
+Components :: #import "component_frame_slot";
 #import "frame_driver"
 #import "geometry"
 #import "input_protocol"
@@ -50,6 +51,7 @@ TreeFrameRun :: (session: Session, input: FrameDriverInput) -> FrameDriverResult
         props.hotspot_x, props.hotspot_y, props.hidden, props.shape}
     result.paint_unchanged = finished.paint_unchanged
     result.motion_active = FrameMotionMoving(session)
+    result.wake_after_ms = Components.NextDelay(session, input.seconds)
     result.ok = true
     return result
 }

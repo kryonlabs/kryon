@@ -40,7 +40,7 @@ def maintained_scene_count():
     sys.path.insert(0, str(ROOT / 'scripts'))
     from gallery import prepare
     with tempfile.TemporaryDirectory() as scratch:
-        _, entries = prepare(catalog=Path(scratch) / 'catalog', site=Path(scratch) / 'site')
+        _, entries = prepare(inventory=True)
     return len(entries)
 
 
@@ -84,7 +84,7 @@ class Browser:
             'DISPLAY', 'WAYLAND_DISPLAY', 'WAYLAND_SOCKET', 'XAUTHORITY', 'GDK_DISPLAY',
             'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER', 'DESKTOP_SESSION', 'DESKTOP_STARTUP_ID',
             'XDG_SESSION_ID', 'XDG_SESSION_TYPE', 'XDG_CURRENT_DESKTOP', 'XDG_SESSION_DESKTOP', 'XDG_RUNTIME_DIR')}
-        environment.update(YUE_DESKTOP_RECOVERY='0')
+        environment.update(YUE_DESKTOP_RECOVERY='0', HARMONY_DESKTOP_RECOVERY='0')
         runtime_root = os.environ.get('KRYON_TEST_RUNTIME')
         self.runtime = tempfile.TemporaryDirectory(prefix='kryon-', dir=runtime_root) if runtime_root else None
         runtime_profile = Path(self.runtime.name) / 'profile' if self.runtime else profile
@@ -230,6 +230,36 @@ class Browser:
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *args): pass
+    def do_GET(self):
+        if urlsplit(self.path).path != '/compiler-worker-fixture.js':
+            return super().do_GET()
+        # Inspect the real worker's FS without adding a product test protocol.
+        script = (Path(self.directory) / 'compiler-worker.js').read_text() + r'''
+const compileMessage = self.onmessage;
+self.onmessage = event => {
+  const data = event.data;
+  if (!data.fixture) { compileMessage(event); return; }
+  pending = pending.then(async () => {
+    const compiler = await runtime;
+    if (data.fixture === 'seed') {
+      compiler.FS.mkdirTree('/gallery/examples');
+      compiler.FS.writeFile('/gallery/examples/native.tsx', data.source);
+      return;
+    }
+    const intact = compiler.FS.readFile('/gallery/examples/native.tsx', {encoding:'utf8'}) === data.source;
+    const clean = !compiler.FS.analyzePath('/examples/gallery/src/examples/native.tsx').exists &&
+                  !compiler.FS.analyzePath('/preview.zx').exists;
+    self.postMessage({id:data.id, status:intact && clean ? 0 : 1,
+      diagnostics:JSON.stringify({intact, clean})});
+  });
+};
+'''
+        data = script.encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/javascript')
+        self.send_header('Content-Length', str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
     def translate_path(self, path):
         # Like Cloudflare Pages, serve widgets.html at the clean /widgets path.
         local = super().translate_path(path)
@@ -392,24 +422,80 @@ def replace_source(browser, text):
     browser.until('Module.editorRevision > ' + str(revision), 'trusted source edit')
 
 
-def check_compiler(browser, base, scenes):
+def start_compiler(browser, base, worker='compiler-worker.js'):
     browser.open(base + 'compiler-worker.js')
-    browser.evaluate("""window.compilerWorker = new Worker('compiler-worker.js');
+    browser.evaluate('window.compilerWorker = new Worker(' + json.dumps(worker) + ');' + """
       window.compilerReply = null;
+      window.compilerReplies = [];
       compilerWorker.onmessage = ({data}) => { window.compilerReply = {id:data.id, status:data.status,
-        diagnostics:data.diagnostics, bytes:data.bytes?.byteLength || 0}; };
+        diagnostics:data.diagnostics, bytes:data.bytes?.byteLength || 0};
+        compilerReplies.push(compilerReply); };
       compilerWorker.onerror = e => { window.compilerReply = {status:1, diagnostics:e.message}; };""")
-    search = browser.evaluate("fetch('gallery-data.js').then(r => r.text()).then(t => { (0,eval)(t); return window.galleryScenes.length; })")
-    assert search == EXPECTED_SCENE_COUNT
     sys.path.insert(0, str(ROOT / 'scripts'))
     from gallery import compiler_paths, enabled_modules
-    search = '\n'.join(compiler_paths(enabled_modules()))
-    for index, scene in enumerate(scenes):
-        print('Compiling source ' + str(index + 1) + '/' + str(len(scenes)) + ': ' + scene['name'], flush=True)
-        browser.evaluate('fetch(' + json.dumps(scene['code']) + ').then(r => r.text()).then(source => { window.compilerReply = null; compilerWorker.postMessage({id:' + str(index + 1) + ',source,search:' + json.dumps(search) + '}); })')
-        reply = browser.until('window.compilerReply', 'source compile ' + scene['name'], 120)
-        assert reply['status'] == 0 and reply['bytes'] > 0, (scene['name'], reply)
-    browser.evaluate('compilerWorker.terminate()')
+    return '\n'.join(compiler_paths(enabled_modules()))
+
+
+def check_native_tsx_compiler(browser, base):
+    search = start_compiler(browser, base, 'compiler-worker-fixture.js')
+    source = ('import * as App from "kryon/app";\n'
+              'import * as Text from "kryon/text";\n'
+              'interface Props { text: string; }\n'
+              'function Label(props: Props): string { return props.text; }\n'
+              'export function Frame(frame: App.Frame): void {\n'
+              '    Text.Draw(frame, {key: u64(60001n), bounds: frame.viewport,\n'
+              '        text: <Label text={"Native TSX"}/>});\n'
+              '}\n')
+    path = 'gallery/examples/native.tsx'
+    requests = [source, source.replace('text={"Native TSX"}', 'misspelled={"Native TSX"}'),
+                'export function Frame(frame: s32): void {}\n', source]
+    try:
+        browser.evaluate('compilerWorker.postMessage(' + json.dumps({
+            'id': 0, 'source': source, 'sourcePath': 'gallery/examples/warmup.tsx', 'search': search}) + ');')
+        warmup = browser.until('compilerReplies.length === 1 && compilerReplies[0]', 'native TSX runtime startup', 120)
+        assert warmup['status'] == 0 and warmup['bytes'] > 0, warmup
+        original = '// bundled source must survive edits\n' + source
+        browser.evaluate('compilerReplies = []; compilerWorker.postMessage(' + json.dumps({
+            'fixture': 'seed', 'source': original}) + ');')
+        # Requests stay ordered; failures cannot return previous bundle bytes
+        # or delete a maintained source from the shared compiler filesystem.
+        browser.evaluate('for (const request of ' + json.dumps([
+            {'id': index + 1, 'source': code,
+             'sourcePath': path if index < 3 else 'examples/gallery/src/examples/native.tsx',
+             'search': search}
+            for index, code in enumerate(requests)]) + ') compilerWorker.postMessage(request);')
+        replies = browser.until('compilerReplies.length === 4 && compilerReplies', 'queued native TSX compilation', 240)
+        assert [reply['id'] for reply in replies] == [1, 2, 3, 4], replies
+        for index in (0, 3):
+            assert replies[index]['status'] == 0 and replies[index]['bytes'] > 0, replies[index]
+        for index in (1, 2):
+            assert replies[index]['status'] != 0 and replies[index]['bytes'] == 0, replies[index]
+            assert replies[index]['diagnostics'].strip(), replies[index]
+        assert re.search(re.escape(path) + r':7:\d+', replies[1]['diagnostics']), replies[1]
+        assert 'misspelled' in replies[1]['diagnostics'], replies[1]
+        assert 'host provider signature mismatch' in replies[2]['diagnostics'].lower(), replies[2]
+        browser.evaluate('compilerWorker.postMessage(' + json.dumps({
+            'id': 5, 'fixture': 'inspect', 'source': original}) + ');')
+        cleanup = browser.until('compilerReplies.length === 5 && compilerReplies[4]', 'compiler source restoration', 30)
+        assert cleanup['status'] == 0, cleanup
+    finally:
+        browser.evaluate('compilerWorker.terminate()')
+    print('Local browser native TSX test passed: typed bindings, authored diagnostics, queued recovery and source restoration')
+
+
+def check_compiler(browser, base, scenes):
+    check_native_tsx_compiler(browser, base)
+    search = start_compiler(browser, base)
+    try:
+        for index, scene in enumerate(scenes):
+            print('Compiling source ' + str(index + 1) + '/' + str(len(scenes)) + ': ' + scene['name'], flush=True)
+            request = {'id': index + 1, 'sourcePath': scene['sourcePath'], 'search': search}
+            browser.evaluate('fetch(' + json.dumps(scene['code']) + ').then(r => { if (!r.ok) throw new Error("Missing maintained TSX"); return r.text(); }).then(source => { window.compilerReply = null; compilerWorker.postMessage({...'
+                             + json.dumps(request) + ',source}); })')
+            reply = browser.until('window.compilerReply', 'source compile ' + scene['name'], 120)
+            assert reply['status'] == 0 and reply['bytes'] > 0, (scene['name'], reply)
+    finally:
+        browser.evaluate('compilerWorker.terminate()')
     print('Local browser compiler test passed: all ' + str(len(scenes)) + ' maintained source variants compile to portable bundles')
 
 
@@ -574,11 +660,17 @@ def check_preview_containment(browser, base, shots):
         assert usage['y'] > stage['y'] + stage['height'], 'Usage overlaps example'
         mouse(browser, node_for(browser, label='Source', width=width), width=width)
         compile_ready(browser)
-        overflow = ('Box :: #import "kryon/box";\n#import "kryon/geometry"\n#import "kryon/session"\n#program_export\n'
-                    'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
-                    ' Box.Draw(session, Box.Props.{.key = 771, .bounds = .{viewport.x - 80.0, viewport.y - 80.0, '
-                    'viewport.width + 160.0, viewport.height + 160.0}, .fill = .{247, 0, 223, 255}});\n return 0;\n}\n'
-                    '#program_export\nSetExampleOptions :: (disabled: bool, reduced_motion: bool) { unused disabled; unused reduced_motion }\n')
+        overflow = ('import * as App from "kryon/app";\n'
+                    'import { ColorFromPacked } from "kryon/drawing_props";\n'
+                    'import { Session } from "kryon/session";\n'
+                    'import { Box } from "kryon/tsx/box";\n'
+                    'export function Frame(frame: App.Frame): void {\n'
+                    ' const viewport = frame.viewport;\n'
+                    ' const session: Session = {slot: frame.slot, epoch: frame.epoch};\n'
+                    ' <Box session={session} props={{key: u64(771), bounds: {x: viewport.x - 80, '
+                    'y: viewport.y - 80, width: viewport.width + 160, height: viewport.height + 160}, '
+                    'fill: ColorFromPacked(u32(0xF700DFFF))}}/>;\n}\n'
+                    'export function SetExampleOptions(_disabled: boolean, _reducedMotion: boolean): void {}\n')
         replace_source(browser, overflow)
         compile_ready(browser)
         header_height = 56 if width >= 760 else 104
@@ -758,7 +850,7 @@ def check_live(browser, base, scenes, shots):
     mouse(browser, node_for(browser, label='Source'))
     compile_ready(browser)
     text = node_for(browser, key=10102)['value']
-    assert 'Button.Draw(' in text and 'Continue' in text
+    assert '<Button ' in text and 'Continue' in text
     assert browser.evaluate("Module.previewTree.filter(n => n.label === 'Continue' && n.interactive).length === 12"), 'portable differs from maintained/default Button'
     mouse(browser, node_for(browser, key=10102))
     browser.evaluate("window.sourceKeys=[]; window.sourceKeyListener=e=>{if(e.key==='x')sourceKeys.push({type:e.type,trusted:e.isTrusted})}; for(const kind of ['keydown','keypress','keyup'])document.addEventListener(kind,sourceKeyListener,true)")
@@ -776,7 +868,7 @@ def check_live(browser, base, scenes, shots):
     mouse(browser, edited)
     browser.until("Module.previewTree?.some(n => n.key === 2 && n.label === '1')", 'edited guest Button interaction')
     capture(browser, shots / 'edited-source.webp')
-    replace_source(browser, 'this is invalid Ziran')
+    replace_source(browser, 'export function Frame(): void {\n    const broken = ;\n}\n')
     browser.until('!Module.compileBusy && Module.compileDiagnostic?.length > 0', 'compiler diagnostics')
     assert browser.evaluate('Module.previewReady'), 'last valid preview discarded'
     replace_source(browser, text)
@@ -923,13 +1015,16 @@ def main():
     parser.add_argument('--followup-only', action='store_true')
     parser.add_argument('--polish-only', action='store_true')
     parser.add_argument('--compiler-only', action='store_true')
+    parser.add_argument('--native-tsx-only', action='store_true')
     parser.add_argument('--options-only', action='store_true')
     parser.add_argument('--routes-only', action='store_true')
     parser.add_argument('--compiler-scene', action='append', default=[], help='Compile only the named source variants')
     parser.add_argument('--site', type=Path, default=SITE)
     parser.add_argument('--shots', type=Path, default=ROOT / 'build/scratch/site-browser')
     args = parser.parse_args()
-    if args.compiler_only:
+    if args.native_tsx_only:
+        scenes = []
+    elif args.compiler_only:
         text = (args.site / 'gallery-data.js').read_text()
         scenes = json.loads(text.split('window.galleryScenes = ', 1)[1].rstrip(';\n'))
     else: scenes = check_files(args.site)
@@ -945,6 +1040,9 @@ def main():
     browser = run_step('browser startup', Browser, args.shots / 'profile', chromium, seconds=60)
     try:
         base = 'http://127.0.0.1:' + str(server.server_port) + '/'
+        if args.native_tsx_only:
+            run_step('native TSX browser compiler', check_native_tsx_compiler, browser, base, seconds=300)
+            return
         if args.followup_only:
             run_step('followup examples', check_followup, browser, base, scenes, args.shots, seconds=600)
             return
@@ -974,7 +1072,7 @@ def main():
         print('Browser console diagnostics:', browser.console_messages)
         try:
             with test_step('failure diagnostics', 10):
-                print('Browser failure state:', browser.evaluate('window.compilerReply') if args.compiler_only else browser.evaluate("({scene:Module.gallerySceneRendered,key:Module.lastInputKey,pickerKey:Module.lastPickerKey,active:document.activeElement?.id,focused:Module.siteTree?.filter(n=>n.focused).map(n=>({key:n.key,parent:n.parent,label:n.label})),errors:document.querySelector('#result')?.textContent,compileBusy:Module.compileBusy,compileRevision:Module.compileRevision,editorRevision:Module.editorRevision,compilerResult:Module.compilerResult,diagnostic:Module.compileDiagnostic})"))
+                print('Browser failure state:', browser.evaluate('window.compilerReply') if args.compiler_only or args.native_tsx_only else browser.evaluate("({scene:Module.gallerySceneRendered,key:Module.lastInputKey,pickerKey:Module.lastPickerKey,active:document.activeElement?.id,focused:Module.siteTree?.filter(n=>n.focused).map(n=>({key:n.key,parent:n.parent,label:n.label})),errors:document.querySelector('#result')?.textContent,compileBusy:Module.compileBusy,compileRevision:Module.compileRevision,editorRevision:Module.editorRevision,compilerResult:Module.compilerResult,diagnostic:Module.compileDiagnostic})"))
                 capture(browser, args.shots / 'failure.webp')
         except Exception as diagnostic:
             print('Browser diagnostics unavailable:', diagnostic, flush=True)

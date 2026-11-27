@@ -48,6 +48,8 @@ Player :: struct {
     wait: PlayerWait
     wait_context: *void
     wait_ready: bool
+    // Absolute guest-clock deadline; -1 means no component timer.
+    wake_at: float64
 }
 Supported :: (module: string, function: string) -> bool {
     if ModuleName(module, "frames_zx") {
@@ -56,6 +58,7 @@ Supported :: (module: string, function: string) -> bool {
             function == "BundleFrameFinishedHost" || function == "BundleFrameCursorHost" ||
             function == "BundleFrameReusableHost" || function == "BundleTextEditorHost" ||
             function == "BundleTextRequestHost"
+            || function == "BundleWakeAtHost" || function == "BundleCloseHost"
     }
     if ModuleName(module,"font_metrics") { return function=="MeasureGlyphWidth" || function=="MeasureGlyphLineHeight" }
     if ModuleName(module,"raster_text") { return function=="RasterText" || function=="RasterTextClipped" || function=="RasterTextRotated" }
@@ -134,6 +137,16 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     }
     if function=="BundleTextInputHost" && count==1 && args[0].kind==HostInteger { player.keyboard = args[0].integer!=0; return 1 }
     if function=="BundleFrameFinishedHost" && count==1 && args[0].kind==HostInteger { return 1 }
+    if function == "BundleWakeAtHost" && count == 1 && HostScalarValid(args[0], "float64", HostReal) {
+        player.wake_at = args[0].real
+        return 1
+    }
+    if function == "BundleCloseHost" && count == 0 {
+        player.wake_at = -1.0
+        player.keyboard = false
+        player.typed_count = 0; player.typed_at = 0
+        return 1
+    }
     if function=="BundleFrameReusableHost" && count==0 {
         // Caller-owned surfaces may have been cleared or changed between calls.
         result.kind = HostInteger; result.integer = 0; return 1
@@ -200,6 +213,7 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
 }
 #program_export
 PlayerClose :: (player: *Player) {
+    player.wake_at = -1.0
     if player.editor_ready && player.editor_present != null { player.editor_present(player.editor_context, 0, "", 0, 0, 0) }
     player.editor_ready = false; player.editor_context = null
     player.editor_identity = 0
@@ -228,6 +242,7 @@ PlayerCheck :: (data: []u8) -> bool {
 PlayerLoad :: (player: *Player, data: []u8, platform: HostCall, context: *void) -> bool {
     PlayerClose(player); player.closed = false; player.platform = platform; player.context = context
     player.failed = false; player.keyboard = false
+    player.wake_at = -1.0
     player.typed_count = 0; player.typed_at = 0
     if data.count==0 { return false }
     player.bundle = OpenBundleBytes(*data[0],cast(u64)data.count)
@@ -286,7 +301,7 @@ PlayerRun :: (player: *Player) -> bool {
     has_result: s32
     player.failed = RunBundleInstance(player.instance, *result, *has_result) == 0
     ok := !player.failed
-    if ok && has_result != 0 && result != 0 { player.closed = true }
+    if ok && has_result != 0 && result != 0 { player.closed = true; ok = false }
     player.typed_count = 0
     return ok
 }

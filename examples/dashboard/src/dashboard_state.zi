@@ -1,0 +1,170 @@
+// Native domain state, caller-owned edit buffers and text formatting. Screen composition lives in dashboard.tsx.
+Alert :: #import "kryon/alert";
+Badge :: #import "kryon/badge";
+TextField :: #import "kryon/text_field";
+Theme :: #import "kryon/theme";
+#import "model"
+
+SEARCH_FOCUS :: 200
+WORKSPACE_FOCUS :: 902
+
+// Application state across frames.
+initialized: bool;
+dark_theme: bool;
+compact_density: bool;
+auto_refresh: bool = true;
+active_section: NavSection;
+active_filter: StatusFilter;
+view_state: ViewState;
+selected_service: s32 = 0;
+results_scroll: s32 = 0;
+// The rows' height when they last drew, for the scroll range.
+results_height: s32 = 0;
+settings_open: bool;
+alert_state: Alert.AlertState;
+search_bytes: [128]u8;
+search_state: TextField.State;
+workspace_bytes: [64]u8;
+workspace_length: s32;
+draft_bytes: [64]u8;
+draft_state: TextField.State;
+draft_dark: bool;
+draft_compact: bool;
+draft_auto_refresh: bool;
+focus_workspace_pending: bool;
+
+// Frame-local text.
+kpi_latency_buf: [24]u8;
+kpi_uptime_buf: [24]u8;
+kpi_healthy_buf: [24]u8;
+count_label_buf: [48]u8;
+row_latency_buf: [8][24]u8;
+detail_uptime_buf: [24]u8;
+detail_latency_buf: [24]u8;
+detail_rps_buf: [32]u8;
+filtered_indices: [SERVICE_COUNT]s32;
+
+fixture_configured: bool;
+fixture_name: string = "";
+
+NAV_LABELS :: string.["Overview", "Services", "Incidents", "Audit"];
+FILTER_LABELS :: string.["All", "Healthy", "Attention"];
+STATE_LABELS :: string.["Ready", "Loading", "Error"];
+
+DashboardSetFixture :: (name: string) {
+    fixture_name = name
+    fixture_configured = true
+    initialized = false
+}
+
+ResetSearch :: () {
+    search_state.length = 0
+    search_state.cursor = 0
+    search_state.anchor = 0
+    search_state.scroll_x = 0
+}
+
+// Preview fixtures start the dashboard in one theme or state.
+ApplyFixturePreset :: (name: string) {
+    dark_theme = Theme.CurrentTheme().dark
+    if name == "dark" || name == "dark-wide" || name == "dark-narrow" || name == "settings-dark" { dark_theme = true }
+    if name == "light" || name == "light-wide" || name == "light-narrow" { dark_theme = false }
+    if name == "loading" { view_state = .ViewLoading }
+    if name == "error" { view_state = .ViewError }
+    if name == "empty" {
+        view_state = .ViewEmpty
+        search_state.length = CopyIntoBuffer(search_bytes[:], "nonexistent-region")
+        search_state.cursor = search_state.length
+        search_state.anchor = search_state.length
+    }
+    if name == "settings" || name == "settings-dark" { OpenSettingsModal() }
+}
+
+OpenSettingsModal :: () {
+    draft_dark = dark_theme
+    draft_compact = compact_density
+    draft_auto_refresh = auto_refresh
+    draft_state.bytes = draft_bytes[:]
+    draft_state.length = CopyIntoBuffer(draft_bytes[:], TextView(workspace_bytes[0:workspace_length]))
+    draft_state.cursor = draft_state.length
+    draft_state.anchor = draft_state.length
+    draft_state.scroll_x = 0
+    draft_state.focused = true
+    focus_workspace_pending = true
+    settings_open = true
+}
+
+CommitSettingsModal :: () {
+    dark_theme = draft_dark
+    compact_density = draft_compact
+    auto_refresh = draft_auto_refresh
+    if draft_state.length > 0 {
+        workspace_length = CopyIntoBuffer(workspace_bytes[:], TextView(draft_bytes[0:draft_state.length]))
+    }
+    settings_open = false
+}
+
+EnsureInitialized :: () {
+    if initialized { return }
+    search_state.bytes = search_bytes[:]
+    draft_state.bytes = draft_bytes[:]
+    workspace_length = CopyIntoBuffer(workspace_bytes[:], "Production Cluster")
+    if fixture_configured { ApplyFixturePreset(fixture_name) }
+    else { dark_theme = Theme.CurrentTheme().dark }
+    initialized = true
+}
+
+HealthBadgeTone :: (health: ServiceHealth) -> Badge.BadgeTone {
+    if health == .HealthHealthy { return .BadgeToneSuccess }
+    if health == .HealthDegraded { return .BadgeToneWarning }
+    return .BadgeToneDanger
+}
+
+ChooseSection :: (index: s32) {
+    active_section = cast(NavSection)index
+    view_state = .ViewReady
+    results_scroll = 0
+}
+
+WorkspaceName :: () -> string { return TextView(workspace_bytes[0:workspace_length]) }
+SearchQuery :: () -> string { return TextView(search_bytes[0:search_state.length]) }
+
+KpiText :: struct { metrics: DashboardMetrics; healthy: string; latency: string; uptime: string }
+PrepareKpis :: () -> KpiText {
+    metrics := ComputeMetrics()
+    healthy: Vec(u8)
+    BuilderPrint(*healthy, "%/%", metrics.healthy, metrics.total)
+    return KpiText.{.metrics = metrics,
+        .healthy = TextView(kpi_healthy_buf[0:CopyIntoBuffer(kpi_healthy_buf[:], BuilderFinish(healthy))]),
+        .latency = FormatLatency(metrics.avg_latency_ms, kpi_latency_buf[:]),
+        .uptime = FormatPercentTenths(metrics.avg_uptime_tenths, kpi_uptime_buf[:])}
+}
+
+row_detail_buf: [8][512]u8;
+RowDescription :: (index: s32) -> string {
+    item := SERVICES[index]
+    latency := FormatLatency(item.latency_ms, row_latency_buf[index][:])
+    detail: Vec(u8)
+    if active_section == .NavAudit { BuilderPrint(*detail, "%  -  %", item.audit_note, latency) }
+    else { BuilderPrint(*detail, "%  |  %  |  %  |  %", HealthLabel(item.health), item.region, item.owner, latency) }
+    return TextView(row_detail_buf[index][0:CopyIntoBuffer(row_detail_buf[index][:], BuilderFinish(detail))])
+}
+
+InspectorText :: struct { meta: string; latency: string; uptime: string; rps: string }
+detail_meta_buf: [512]u8;
+PrepareInspector :: (item: ServiceItem) -> InspectorText {
+    meta: Vec(u8)
+    BuilderPrint(*meta, "%  |  Owner: %", item.region, item.owner)
+    rps: Vec(u8)
+    BuilderPrint(*rps, "% req/s", item.rps)
+    return InspectorText.{
+        .meta = TextView(detail_meta_buf[0:CopyIntoBuffer(detail_meta_buf[:], BuilderFinish(meta))]),
+        .latency = FormatLatency(item.latency_ms, detail_latency_buf[:]),
+        .uptime = FormatPercentTenths(item.uptime_tenths, detail_uptime_buf[:]),
+        .rps = TextView(detail_rps_buf[0:CopyIntoBuffer(detail_rps_buf[:], BuilderFinish(rps))])}
+}
+
+CountLabel :: (count: s32) -> string { return FormatCountOf(count, SERVICE_COUNT, count_label_buf[:]) }
+FilterServices :: () -> s32 {
+    return FilterIndices(active_section, active_filter, SearchQuery(), filtered_indices[:])
+}

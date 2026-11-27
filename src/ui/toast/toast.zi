@@ -1,8 +1,17 @@
 using PropsModule :: #import "toast_props";
+#import "session"
+#if #defined(KRYON_HOSTED_UI) {
+    host_api :: #system_library "host_api";
+    ToastHostedHost :: (session: Session, props: PropsModule.Props) -> ToastResult #foreign host_api;
+    #scope_package
+    Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) -> ToastResult {
+        return ToastHostedHost(session, props)
+    }
+    #scope_export
+} else {
 Button :: #import "button";
 Text :: #import "text";
 Theme :: #import "theme";
-#import "session"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -96,6 +105,7 @@ ToastLabelFace :: (class_name: s32, id: s32 = 0) -> StyleFrame {
 
 // The caller passes the previous result.state on every frame. A nonempty
 // props.message starts or replaces the toast; props.clear removes it.
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) -> ToastResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
@@ -215,4 +225,6 @@ Draw :: (session: Session, props: PropsModule.Props, location := #caller_locatio
         unused TreePopScope(session)
     }
     return result
+}
+
 }

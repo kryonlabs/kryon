@@ -9,9 +9,11 @@ Theme :: #import "theme";
     #import "session"
     host_api :: #system_library "host_api";
     TimePickerHostedHost :: (session: Session, props: TimePicker.Props) -> TimePicker.TimePickerResult #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: TimePicker.Props) -> TimePicker.TimePickerResult {
         return TimePickerHostedHost(session, props)
     }
+        #scope_export
 } else {
 #import "session"
 #import "control_props"
@@ -268,6 +270,7 @@ TimePickerRowHeight :: (bounds: Rectangle, scale: float32) -> float32 {
 // Escape, the field or a press outside it closes it. The picker keeps its
 // open state, keyboard column and scroll offsets on its retained nodes, so
 // a caller passes only the value and reads value and changed.
+#scope_package
 Draw :: (session: Session, props: TimePicker.Props, location := #caller_location) -> TimePickerResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
@@ -423,6 +426,7 @@ Draw :: (session: Session, props: TimePicker.Props, location := #caller_location
 
 // Submits the open popup above the page. Returns whether it is still open:
 // a press outside it, or a window too small to show it, closes it.
+#scope_export
 TimePickerPopupFrame :: (session: Session, props: TimePicker.Props, key: u64,
     field: Rectangle, scale: float32, state: TimePickerKeyState,
     retained: TimePickerRetained, reveal: s32, anchor: s32) -> bool {

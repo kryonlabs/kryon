@@ -1,13 +1,13 @@
 [package]
 name = "{{name}}"
-entry = "src/app.zi"
+entry = "src/app.tsx"
 module_roots = ["src"]
 bridge_modules = ["app"]
 tool = "kryon"
 
 [toolchain]
 git = "https://git.waozi.xyz/ziranlang/ziran.git"
-ref = "4413456221aa5a9bc00a368762e9e50aaf6e7b6b"
+ref = "dc3ecf0aabd1630881c13783a660ca8b298eff88"
 
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
@@ -25,7 +25,7 @@ bin = "{{name}}"
 # The tui template is the starting point for terminal programs.
 [tool.kryon]
 default_profile = "desktop"
-entry = "src/app.zi"
+entry = "src/app.tsx"
 
 [tool.kryon.profiles.desktop]
 backend = "desktop"
@@ -37,21 +37,6 @@ codegen = "zx"
 
 [tool.kryon.profiles.web]
 backend = "canvas"
-
-# `kryon run shot --png shot.png --width 390 --height 844 --theme dark`
-# draws the app offscreen, at any size, without a display.
-[tool.kryon.profiles.shot]
-backend = "pixmap"
-
-# Android package: `kryon build --profile android` generates the droid/
-# project on the first build and assembles a debug APK. The application id
-# is required; min_sdk and abis are optional.
-# [tool.kryon.profiles.android]
-# backend = "android"
-#
-# [tool.kryon.android]
-# frame_mode = "events"
-# package = "com.example.{{name}}"
 
 [tool.kryon.install]
 profile = "desktop"

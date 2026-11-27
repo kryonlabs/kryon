@@ -40,6 +40,7 @@ LinkFaceFor :: (props: PropsModule.Props, state: s32) -> StyleFrame {
 
 // Navigation is a returned effect. The host opens result.url when open_url is
 // true; neither a browser nor a window is required to run this widget.
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) -> LinkResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

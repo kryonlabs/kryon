@@ -7,9 +7,11 @@ Theme :: #import "theme";
     #import "session"
     host_api :: #system_library "host_api";
     TabBarHostedHost :: (session: Session, props: TabBar.Props, tabs: []TabBar.Tab) -> TabBar.Result #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: TabBar.Props, tabs: []TabBar.Tab) -> TabBar.Result {
         return TabBarHostedHost(session, props, tabs)
     }
+        #scope_export
 } else {
     #import "session"
     #import "control_props"
@@ -370,6 +372,7 @@ Theme :: #import "theme";
 
     // Tabs are borrowed values. Kryon owns layout, style, and hit decisions;
     // callers apply the returned selection, close, and reorder events.
+        #scope_package
         Draw :: (session: Session, props: TabBar.Props, tabs: []Tab, location := #caller_location) -> Result {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }

@@ -3,7 +3,7 @@
 ## Native fixture preview
 
 To capture the whole app instead, without a fixture, run
-`kryon run shot --png FILE.png --width PX --height PX --theme light|dark`
+`kryon run desktop --png FILE.png --width PX --height PX --theme light|dark`
 ([Projects](PROJECTS.md)); it writes the same PNG and JSON.
 
 From a Linux project with a desktop C99 profile, run:

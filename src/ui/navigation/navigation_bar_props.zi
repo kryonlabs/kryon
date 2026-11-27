@@ -42,6 +42,8 @@ Props :: struct {
     motion: *TransitionMotionState
     now: float64
     reduced_motion: bool
+    // Position the full-width bar within an embedded view.
+    view_origin: Vector2
 }
 
 NavigationBarResult :: struct {

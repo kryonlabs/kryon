@@ -86,7 +86,7 @@ def main():
         (project / "src").mkdir()
         toolchain = tomllib.loads((ROOT / "templates/app/ziran.toml").read_text())["toolchain"]
         (project / "ziran.toml").write_text(
-            '[package]\nname = "desktop_probe"\nentry = "src/main.zi"\n'
+            '[package]\nname = "desktop_probe"\nentry = "src/main.tsx"\n'
             'module_roots = ["src"]\nbridge_modules = ["main"]\n\n'
             f'[toolchain]\ngit = {json.dumps(toolchain["git"])}\n'
             f'ref = {json.dumps(toolchain["ref"])}\n\n'
@@ -103,57 +103,52 @@ def main():
         )
         # main:main already emits C's process entry; a generated host would
         # collide with it. Other module names are covered by the examples.
-        (project / "src/main.zi").write_text(
-            'App :: #import "kryon/app";\n'
-            '#import "Window"\n'
-            'Image :: #import "kryon/image";\n'
-            'Scroll :: #import "kryon/scroll";\n'
-            'Text :: #import "kryon/text";\n'
-            'Theme :: #import "kryon/Theme";\n'
-            'Env :: #import "std/environment_linux";\n'
-            '#import "kryon/geometry"\n'
-            '#import "kryon/input_protocol"\n'
-            '#import "kryon/session"\n'
-            '#import "kryon/tree"\n'
-            '#import "kryon/tree_input"\n'
-            'scroll_offset: s32;\n'
-            'first_frame: bool = true;\n'
-            'Frame :: (frame: App.Frame) {\n'
-            '    session := Session.{.slot = frame.slot, .epoch = frame.epoch}\n'
-            '    viewport := frame.viewport\n'
-            '    if first_frame {\n'
-            '        first_frame = false\n'
-            '        if Env.EnvironmentText("THEME_PROBE_OVERRIDE") == "light" {\n'
-            '            unused Theme.InstallDefaultTheme(false)\n'
-            '        }\n'
-            '    }\n'
-            '    key: s32 = KeyboardTake(session)\n'
-            '    if key == 65 { WindowQuit(); return }\n'
-            '    control: bool = (KeyboardModifiers(session) & KeyModifierControl) != 0\n'
-            '    if key == 83 && control { WindowQuit(); return }\n'
-            '    typed: s32 = TypedCodepointTake(session)\n'
-            '    if typed == 122 || typed == 233 { WindowQuit(); return }\n'
-            '    if PointerWheelTake(session, viewport) > 0.0 { WindowQuit(); return }\n'
-            '    if SecondaryPointerSample(session).released { WindowQuit(); return }\n'
-            '    scroll := Scroll.Draw(session, .{.key = 80, .bounds = .{700.0, 10.0, 200.0, 150.0},\n'
-            '        .content_height = 600, .scroll_offset = scroll_offset})\n'
-            '    scroll_offset = scroll.scroll_offset\n'
-            '    if scroll.opened { End(session) }\n'
-            '    if scroll_offset > 0 { WindowQuit(); return }\n'
-            '    image: Image.Props\n'
-            '    image.key = cast(u64)1\n'
-            '    image.bounds = Rectangle.{80.0, 80.0, 240.0, 240.0}\n'
-            '    image.asset_path = "red.png"\n'
-            '    image.alt_text = "Red image"\n'
-            '    Image.Draw(session, image)\n'
-            '    label: Text.Props\n'
-            '    label.bounds = Rectangle.{400.0, 100.0, 300.0, 200.0}\n'
-            '    label.text = "gjpqy"\n'
-            '    label.size = 40\n'
-            '    Text.Draw(session, label)\n'
-            '    return\n}\n'
-            'main :: () -> s32 { return App.Run(App.Window.{.title = "desktop_probe"}, Frame) }\n'
-        )
+        (project / "src/main.tsx").write_text('''import * as App from "kryon/app";
+import { ScrollResult } from "kryon/scroll";
+import { Session } from "kryon/session";
+import { InstallDefaultTheme } from "kryon/Theme";
+import { KeyboardControlTake, KeyboardTake, PointerWheelTake, SecondaryPointerSample,
+    TypedCodepointTake } from "kryon/tree_input";
+import { Image } from "kryon/tsx/image";
+import { Scroll } from "kryon/tsx/scroll";
+import { Text } from "kryon/tsx/text";
+import { WindowQuit } from "kryon/window";
+import { EnvironmentText } from "std/environment_linux";
+
+let scrollOffset: s32 = s32(0);
+let firstFrame: boolean = true;
+
+function Frame(frame: App.Frame): void {
+    const session: Session = {slot: frame.slot, epoch: frame.epoch};
+    if (firstFrame) {
+        firstFrame = false;
+        if (EnvironmentText("THEME_PROBE_OVERRIDE") === "light") { InstallDefaultTheme(false); }
+    }
+    if (KeyboardControlTake(session, s32(83)) || KeyboardTake(session) === s32(65)) {
+        WindowQuit();
+        return;
+    }
+    const typed = TypedCodepointTake(session);
+    if (typed === s32(122) || typed === s32(233)) { WindowQuit(); return; }
+    if (PointerWheelTake(session, frame.viewport) > float32(0)) { WindowQuit(); return; }
+    if (SecondaryPointerSample(session).released) { WindowQuit(); return; }
+
+    const scroll = Scroll({session: session, props: {key: u64(80n),
+        bounds: {x: 700, y: 10, width: 200, height: 150}, content_height: s32(600),
+        scroll_offset: scrollOffset}, children: (view: ScrollResult): void => {
+        <Text session={session} props={{text: "End of scroll probe", bounds: {
+            x: view.content.x, y: view.content.y + 450, width: view.content.width, height: 32}}}/>;
+    }});
+    scrollOffset = scroll.scroll_offset;
+    if (scrollOffset > s32(0)) { WindowQuit(); return; }
+    <Image session={session} props={{key: u64(1n), bounds: {x: 80, y: 80, width: 240, height: 240},
+        asset_path: "red.png", alt_text: "Red image"}}/>;
+    <Text session={session} props={{bounds: {x: 400, y: 100, width: 300, height: 200},
+        text: "gjpqy", size: s32(40)}}/>;
+}
+
+export function main(): s32 { return App.Run({title: "desktop_probe"}, Frame); }
+''')
         solid_png(project / "red.png", 32, 32, (230, 30, 40, 255))
         env = private_environment()
         env["XDG_CONFIG_HOME"] = str(project / "config")

@@ -371,6 +371,7 @@ DrawCompactNavigation :: (session: Session, props: PropsModule.Props,
 
 // Items are borrowed values. Each item owns a stable key when routes can
 // move. The result reports the activated route; the caller applies routing.
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props,
     items: []NavigationBarItem, location := #caller_location) -> NavigationBarResult {
     site := TreeCallSite(session, location)
@@ -389,6 +390,12 @@ Draw :: (session: Session, props: PropsModule.Props,
         .view_height = props.view_height, .count = (cast(s32)items.count), .height = props.height,
         .side_margin = -1, .bottom_margin = -1, .icon_size = -1, .scale = props.scale, .bar = bar,
         .item = item_face})
+    paint.bounds.x += props.view_origin.x
+    paint.bounds.y += props.view_origin.y
+    paint.bar_bounds.x += props.view_origin.x
+    paint.bar_bounds.y += props.view_origin.y
+    paint.start_x += cast(s32)props.view_origin.x
+    paint.y += cast(s32)props.view_origin.y
     result.y = paint.y
     result.height = paint.height
     if TreeIsBuilding(session) {

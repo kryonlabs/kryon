@@ -10,7 +10,6 @@
 #import "scroll_sampling"
 #import "frame_motion"
 #import "frame_driver"
-#import "style_sheet"
 
 using FrameStatus;
 
@@ -34,6 +33,7 @@ FrameInputCommit :: (session: Session) {
 BeginFrame :: (session: Session, screen_key: u64,
     bounds: Rectangle) -> FrameStatus {
     if !SessionValid(session) { return cast(FrameStatus)FrameInvalidSession }
+    if TreeFrameBlocked(session) { return cast(FrameStatus)FrameComponentFailure }
     slot := SessionIndex(session)
     pointer := PointerSample(session)
     secondary := SecondaryPointerSample(session)
@@ -67,7 +67,7 @@ BeginFrame :: (session: Session, screen_key: u64,
 // Input, viewport/screen changes and focused editors still require composition.
 #program_export
 RetainFrame :: (session: Session) -> bool {
-    if !SessionValid(session) { return false }
+    if !SessionValid(session) || TreeFrameBlocked(session) { return false }
     slot := SessionIndex(session)
     if SessionFlagGet(frame_motion_active | frame_motion_dirty, slot) ||
         SessionFlagGet(frame_input_changed, slot) || !SessionFlagGet(paint_snapshots_valid, slot) || TextEditingFocused(session) || TextSelectionBusy(session) || ScrollSampleMoving(session) ||
@@ -89,6 +89,7 @@ RetainFrame :: (session: Session) -> bool {
 #program_export
 CommitFrame :: (session: Session) -> FrameStatus {
     if !SessionValid(session) { return cast(FrameStatus)FrameInvalidSession }
+    if TreeFrameBlocked(session) { return cast(FrameStatus)FrameComponentFailure }
     if SessionFlagGet(frame_retained, SessionIndex(session)) {
         frame_retained = SessionFlagSet(frame_retained, SessionIndex(session), false)
         FrameInputCommit(session)
@@ -125,7 +126,7 @@ CommitFrame :: (session: Session) -> FrameStatus {
 #program_export
 StyleStructuralProbeFrame :: (session: Session, screen_key: u64,
     bounds: Rectangle, draw: FrameDraw) -> bool {
-    if !StyleStructuralLateActive() { return false }
+    if !StyleStructuralLateActive() || TreeFrameBlocked(session) { return false }
     snapshot := TreeInputSuspend(session)
     ok := BeginFrame(session, screen_key, bounds) == cast(FrameStatus)FrameOk
     if ok {
@@ -170,6 +171,7 @@ EndFrame :: (session: Session) -> FrameStatus {
 EndFrameRetained :: (session: Session, reuse: bool,
     compare: bool = true) -> FrameEndResult {
     result: FrameEndResult
+    if TreeFrameBlocked(session) { result.status = cast(FrameStatus)FrameComponentFailure; return result }
     retained := SessionValid(session) && SessionFlagGet(frame_retained, SessionIndex(session))
     result.status = CommitFrame(session)
     if result.status != cast(FrameStatus)FrameOk {
@@ -231,6 +233,7 @@ EndFrameDamaged :: (session: Session) -> FrameEndResult {
 // can clear its retained surface before replaying the full or damaged area.
 #program_export
 CommitFrameDamaged :: (session: Session) -> FrameEndResult {
+    if TreeFrameBlocked(session) { result: FrameEndResult; result.status = cast(FrameStatus)FrameComponentFailure; return result }
     if SessionValid(session) && SessionFlagGet(frame_retained, SessionIndex(session)) { return EndFrameRetained(session, true) }
     result: FrameEndResult
     result.status = CommitFrame(session)
@@ -256,7 +259,7 @@ CommitFrameDamaged :: (session: Session) -> FrameEndResult {
 
 #program_export
 CloseSession :: (session: Session) -> bool {
-    if !SessionValid(session) { return false }
+    if !SessionValid(session) || TreeFrameBlocked(session) { return false }
     frame_retained = SessionFlagSet(frame_retained, SessionIndex(session), false)
     FrameMotionClose(session)
     TreeDispose(session)

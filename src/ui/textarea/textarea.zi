@@ -4,6 +4,14 @@ Image :: #import "image";
 Text :: #import "text";
 Theme :: #import "theme";
 #import "text_host"
+
+TextAreaAtLineStart :: (value: string, start: s32) -> bool {
+    if start < 0 || start > cast(s32)value.count {
+        return false
+    }
+    return start == 0 || value[start - 1] == cast(u8)10
+}
+
 // Portable compositions can submit the same public widget contract to a
 // retained UI host. The host binds this effect to the ordinary implementation;
 // widget behavior, styles and input ownership have one implementation.
@@ -11,7 +19,9 @@ Theme :: #import "theme";
     #import "session"
     host_api :: #system_library "host_api";
     TextAreaHostedHost :: (session: Session, props: TextArea.Props) -> TextArea.Result #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: TextArea.Props) -> TextArea.Result { return TextAreaHostedHost(session, props) }
+        #scope_export
 } else {
 #import "system_clipboard"
 #import "text_context_menu"
@@ -609,13 +619,6 @@ TextAreaViewCaretFor :: (view: TextAreaView,
 // positive height or size. A line has at most one size, and only its first
 // block may cover it. Any other list is ignored as a whole, as invalid hidden
 // ranges are.
-TextAreaAtLineStart :: (value: string, start: s32) -> bool {
-    if start < 0 || start > cast(s32)value.count {
-        return false
-    }
-    return start == 0 || value[start - 1] == cast(u8)10
-}
-
 #program_export
 TextAreaBlocksFor :: (value: string, blocks: []Block) -> []Block {
     previous: s32 = -1
@@ -1886,6 +1889,7 @@ TextAreaCore :: (session: Session, props: TextArea.Props) -> Result {
 // The area with its context menu, as TextField has: a click of the secondary
 // button inside it opens Cut, Copy, Paste, and Select all on the system
 // clipboard, and the keyboard's Cut, Copy, and Paste reach it too.
+#scope_package
 Draw :: (session: Session, props: TextArea.Props, location := #caller_location) -> Result {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

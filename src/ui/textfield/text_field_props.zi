@@ -104,6 +104,53 @@ Result :: struct {
     edit: Edit
 }
 
+BindingResult :: struct {
+    node: s32
+    focused: bool
+    changed: bool
+    committed: bool
+    escaped: bool
+    paste_without_text: bool
+}
+
+// Caller storage stays local even when Draw runs in a retained UI host.
+StateBindingProps :: (state: *State, props: Props, preedit: []u8) -> Props {
+    props = StatePropsFor(state, props)
+    event := props.input.composition_event
+    updating := event.phase == .CompositionStart || event.phase == .CompositionUpdate
+    if (updating && event.text.count > state.preedit.count) ||
+        ((updating || event.phase == .CompositionCommit) && !Utf8.Valid(event.text)) {
+        props.input.composition_event = .{.phase = .CompositionCancel}
+    }
+    props.composition = .{}
+    if state.preedit_active && state.preedit_length >= 0 &&
+        state.preedit_length <= preedit.count {
+        props.composition = .{.active = true, .text = TextView(preedit[:state.preedit_length]),
+            .cursor = state.preedit_cursor, .selection_length = state.preedit_selection}
+    }
+    return props
+}
+
+// Stage the borrowed preedit before applying an edit that may change its
+// backing bytes. Publish composition only after the value edit is accepted.
+StateApplyBindingResult :: (state: *State, result: Result) -> bool {
+    preedit: [4096]u8
+    if result.composition.active {
+        if result.composition.text.count > preedit.count || !Utf8.Valid(result.composition.text) { return false }
+        for byte, index: result.composition.text { preedit[index] = byte }
+    }
+    if !StateApplyResult(state, result) { return false }
+    state.preedit_active = result.composition.active
+    state.preedit_cursor = result.composition.cursor
+    state.preedit_selection = result.composition.selection_length
+    state.preedit_length = 0
+    if result.composition.active {
+        state.preedit_length = cast(s32)result.composition.text.count
+        for index: 0..state.preedit_length - 1 { state.preedit[index] = preedit[index] }
+    }
+    return true
+}
+
 StateValid :: (state: *State) -> bool {
     return state.bytes.count <= 2147483647 && state.length >= 0 &&
         state.length <= state.bytes.count &&

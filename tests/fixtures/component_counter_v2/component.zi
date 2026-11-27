@@ -1,8 +1,11 @@
 #import "component_protocol"
+ComponentRuntime :: #import "kryon/component";
 Button :: #import "kryon/button";
 Text :: #import "kryon/text";
 #import "geometry"
 #import "std/vec"
+CounterScope :: #import "component_counter_scope";
+OwnedModel :: #import "component_owned_model";
 
 ComponentLabel :: struct { text: string }
 ComponentOwned :: struct { label: ComponentLabel; samples: [2]s64 }
@@ -16,6 +19,7 @@ component_label_kind: s64 = 2;
 component_suffix_kind: s64 = 1;
 
 Label :: () -> string {
+    if ComponentText() == "life" { return OwnedModel.Label() }
     value: Vec(u8)
     label := component_owned.label.text
     suffix := ifx component_suffix_kind == 0 then "" else "v2"
@@ -28,6 +32,10 @@ Frame :: () -> s64 {
     if component_schema_version < 2 { return 1 }
     session := ComponentSession()
     bounds := ComponentBounds()
+    instance, scoped := CounterScope.Enter(session)
+    if instance.identity == cast(u64)0 { return 1 }
+    defer { unused ComponentRuntime.End(instance) }
+    if !scoped { return 1 }
     action := Button.Draw(session, Button.Props.{
         .key = 101, .bounds = Rectangle.{
             bounds.x + 16.0, bounds.y + 16.0, 112.0, 36.0

@@ -113,6 +113,7 @@ AlertLayoutFor :: (props: Props) -> AlertLayout {
     return layout
 }
 
+#scope_package
 Draw :: (session: Session, props: Props,
     state: *AlertState, location := #caller_location) -> AlertResult {
     site := TreeCallSite(session, location)

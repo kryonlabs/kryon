@@ -1,5 +1,6 @@
 // Interactive desktop host. Captures run only on a private display.
-using App :: #import "app";
+#import "gallery_state"
+Gallery :: #import "app";
 KryonApp :: #import "kryon/app";
 using Scenes :: #import "scenes";
 using Shot :: #import "catalog_shot";
@@ -40,7 +41,7 @@ Draw :: (session: Session, pointer: PointerFrame, wheel: float32) -> bool {
     defer { FrameInputEnd(published) }
     PrepareGalleryInput(session)
     if BeginFrame(session, 1, viewport) != FrameStatus.FrameOk { return false }
-    KryonApp.CallDraw(Frame, session.slot, session.epoch, viewport)
+    KryonApp.CallDraw(Gallery.Frame, session.slot, session.epoch, viewport)
     finished := EndFrameRetained(session, false)
     if finished.status != FrameStatus.FrameOk { return false }
     TestDriverFrame(session)

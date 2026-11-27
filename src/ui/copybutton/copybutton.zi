@@ -82,6 +82,7 @@ CopyButtonApply :: (state: *CopyButtonState, props: Props,
     return result
 }
 
+#scope_package
 Draw :: (session: Session, props: Props,
     state: *CopyButtonState, location := #caller_location) -> CopyButtonResult {
     site := TreeCallSite(session, location)

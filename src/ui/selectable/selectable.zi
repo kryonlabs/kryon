@@ -63,6 +63,7 @@ SelectableFaceFor :: (props: PropsModule.Props,
     return frame
 }
 
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) -> SelectableToggleResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

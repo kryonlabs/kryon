@@ -18,6 +18,7 @@ using WidgetKind;
 // A card is a padded column with the card's face: draw its content while it
 // is opened, then End(session). Without a height it grows to its content; a
 // clickable card is one press target with hover and pressed faces.
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) -> CardResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

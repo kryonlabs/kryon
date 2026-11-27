@@ -1,6 +1,8 @@
 #import "component_inputs_host_test"
 #import "component_host_boundaries_test"
 #import "component_host"
+#import "component_protocol"
+Lifecycle :: #import "component_lifecycle";
 #import "component_test_codecs"
 #import "component_raster_host"
 #import "widget_host"
@@ -35,14 +37,24 @@ ZXBytes :: (value: string) -> []u8 {
     return BytesFromPointer(descriptor.data, cast(u64)value.count)
 }
 
+SameAbi :: (left: string, right: string) -> bool {
+    a := OpenBundleBytes(HostTextData(left), cast(u64)left.count)
+    if a == null { return false }
+    defer CloseBundle(a)
+    b := OpenBundleBytes(HostTextData(right), cast(u64)right.count)
+    if b == null { return false }
+    defer CloseBundle(b)
+    return BundlesAbiCompatible(a, b)
+}
+
 LabelAt :: (host: *ComponentHost, index: s32) -> string {
     return TreeNodeAt(host.session, index).semantic_label
 }
 
-Frame :: (host: *ComponentHost, pointer: PointerFrame = NoPointer(), typed: string = "") -> bool {
+Frame :: (host: *ComponentHost, pointer: PointerFrame = NoPointer(), typed: string = "", seconds: float64 = 0.016) -> bool {
     if !ComponentRasterBegin() { return false }
     return ComponentHostFrame(host, Rectangle.{0.0, 0.0, 320.0, 180.0},
-        pointer, NoSecondary(), 0, 0, 0.0, typed, 0.016)
+        pointer, NoSecondary(), 0, 0, 0.0, typed, seconds)
 }
 
 Reject :: (host: *ComponentHost, id: u64, zx: string, name: string) -> bool {
@@ -100,6 +112,10 @@ main :: () -> s32 {
     if old_zx.count == 0 || new_zx.count == 0 || status_zx.count == 0 ||
     bad_entry.count == 0 || bad_init.count == 0 || bad_schema.count == 0 ||
     bad_abi.count == 0 || bad_migrated.count == 0 || bad_resource.count == 0 { return 1 }
+    // These cases must reach initialization, migration and verification,
+    // rather than being rejected early for an unrelated capability mismatch.
+    if !SameAbi(old_zx, bad_init) || !SameAbi(old_zx, bad_schema) ||
+        !SameAbi(old_zx, bad_resource) || !SameAbi(old_zx, bad_migrated) { return 31 }
 
     host: ComponentHost
     ComponentHostInit(*host)
@@ -122,6 +138,22 @@ main :: () -> s32 {
     if !Frame(*host) || TreeCount(host.session) != 6 ||
     LabelAt(*host, 3) != "A 7" || LabelAt(*host, 5) != "B 41" ||
     ComponentRasterCalls() <= 0 || ComponentRasterFailed() { return 4 }
+
+    // Actual captured owned callbacks stay in the guest. Failed-frame events
+    // are discarded, new-child cleanup runs, and timers publish absolute wakes.
+    if ComponentHostNextDeadline(*host) != 0.0 ||
+        !Frame(*host, NoPointer(), "life") || LabelAt(*host, 3) != "life 5 0 0 0" ||
+        ComponentHostNextDeadline(*host) < 0.1 { return 27 }
+    if Frame(*host, NoPointer(), "queue-fail") ||
+        !Frame(*host, NoPointer(), "life", 0.2) ||
+        LabelAt(*host, 3) != "life 5 3 7 0" || ComponentHostNextDeadline(*host) != -1.0 { return 28 }
+    at := ComponentHostSlotFor(*host, a_id)
+    if !ComponentHostInvoke(*host, at, null, host.slots[at].handle, host.session,
+        ComponentPhaseDispose, host.slots[at].mount.identity) ||
+        !Lifecycle.DisposeInstance(host.slots[at].mount) { return 29 }
+    if !Frame(*host, NoPointer(), "life", 0.2) ||
+        LabelAt(*host, 3) != "life 5 3 14 0" ||
+        !Frame(*host) { return 30 }
 
     click := PointerFrame.{.x = 40.0, .y = 30.0, .pressed = true, .released = true}
     if !Frame(*host, click) || LabelAt(*host, 3) != "A 8" ||
@@ -156,9 +188,15 @@ main :: () -> s32 {
     if ComponentHostHandleValid(old_handle) || !ComponentHostHandleValid(b_handle) ||
     ComponentHostCount(*host) != 2 { return 9 }
     ComponentHostCloseHandle(old_handle)
-    if !Frame(*host) || TreeCount(host.session) != 6 ||
+    swapped_frame := Frame(*host)
+    if !swapped_frame || TreeCount(host.session) != 6 ||
     !TreeFocusedAt(host.session, 2) || LabelAt(*host, 3) != "A 8 v2" || LabelAt(*host, 5) != "B 41" ||
-    ComponentRasterCalls() <= 0 || ComponentRasterFailed() { return 10 }
+    ComponentRasterCalls() <= 0 || ComponentRasterFailed() {
+        print("swap frame=% count=% focus=% A=% B=% calls=% raster_failed=%\n", swapped_frame,
+            TreeCount(host.session), TreeFocusedAt(host.session, 2), LabelAt(*host, 3), LabelAt(*host, 5),
+            ComponentRasterCalls(), ComponentRasterFailed())
+        return 10
+    }
     if ComponentRasterHash() == before_swap_pixels || ComponentRasterHash(true) != status_pixels { return 20 }
     if !Frame(*host, click) || LabelAt(*host, 3) != "A 10 v2" ||
     LabelAt(*host, 5) != "B 41" { return 11 }
@@ -204,7 +242,7 @@ main :: () -> s32 {
     TreeCount(host.session) != 34 || LabelAt(*host, 3) != "A 10 v2" ||
     !ComponentHostHandleValid(b_handle) { return 23 }
     new_handle := ComponentHostAcquire(*host, a_id)
-    ComponentHostClose(*host)
+    if !ComponentHostClose(*host) { return 31 }
     if ComponentHostHandleValid(b_handle) || ComponentHostHandleValid(new_handle) { return 19 }
     ComponentHostCloseHandle(b_handle)
     ComponentHostCloseHandle(new_handle)

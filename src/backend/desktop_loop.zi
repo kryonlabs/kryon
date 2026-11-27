@@ -19,6 +19,12 @@ Timer :: #import "std/timer_linux";
 #import "std/file_linux"
 #import "std/c_string"
 
+#if #defined(KRYON_TEST_DRIVER) {
+    Inspect :: #import "test_driver_engine";
+    Theme :: #import "theme";
+    PreviewEnv :: #import "std/environment_linux";
+}
+
 frame_activity: Clock.FrameActivity;
 last_pointer: Vector2; last_width: float32; last_height: float32;
 last_background: u32;
@@ -103,6 +109,7 @@ DrawFrame :: (session: Session, draw: FrameDraw, title: string = "",
         unused DesktopCursorApply(finished.cursor)
         DesktopFrameUnchanged(finished.paint_unchanged)
         if finished.motion_active { DesktopRequestFrame() }
+        DesktopWakeAfter(finished.wake_after_ms)
     }
     // Present before publishing accessibility changes: they never change
     // pixels, and assistive technology reads the same finished tree.
@@ -123,6 +130,34 @@ Run :: (draw: FrameDraw, width: s32 = 960, height: s32 = 600, appearance: FrameA
 // Runs `draw` in a window titled `title`.
 RunTitled :: (draw: FrameDraw, width: s32, height: s32, title: string,
     appearance: FrameAppearance = .{}, capture: FrameCapture = .{}) -> s32 {
+    requested := capture
+    tree_bytes: [4096]u8
+    #if #defined(KRYON_TEST_DRIVER) {
+        // The project tool's capture asks every desktop host for the same
+        // neutral, sized, themed frame a preview draws, with the widget tree
+        // beside the PNG. Resolve that contract only when the host entry
+        // passed no capture of its own.
+        if requested.tree == null {
+            tree := PreviewEnv.EnvironmentRead("KRYON_PREVIEW_TREE", tree_bytes[:])
+            width_bytes: [16]u8
+            height_bytes: [16]u8
+            theme_bytes: [8]u8
+            preview_width := PreviewEnv.EnvironmentRange("KRYON_PREVIEW_WIDTH", 1, 4096, width_bytes[:])
+            preview_height := PreviewEnv.EnvironmentRange("KRYON_PREVIEW_HEIGHT", 1, 4096, height_bytes[:])
+            theme := PreviewEnv.EnvironmentRead("KRYON_PREVIEW_THEME", theme_bytes[:]).value
+            if tree.is_ok && preview_width.is_ok && preview_height.is_ok &&
+            (theme == "light" || theme == "dark") {
+                unused Theme.InstallDefaultTheme(theme == "dark", true)
+                requested.tree = Inspect.TestDriverWriteTree
+                requested.path = tree.value
+                width = cast(s32)preview_width.value
+                height = cast(s32)preview_height.value
+            }
+        }
+    }
+    #if !#defined(KRYON_TEST_DRIVER) {
+        unused tree_bytes
+    }
     if !OpenDesktopTitled(width, height, title) {
         CloseDesktop()
         return DesktopError("kryon: could not open the desktop window")
@@ -136,7 +171,7 @@ RunTitled :: (draw: FrameDraw, width: s32, height: s32, title: string,
     if CaptureRequested() {
         capture_input: FrameInputProvider
         input: *FrameInputProvider = null
-        if capture.tree != null {
+        if requested.tree != null {
             // A preview receives the same neutral input and clock on every run.
             FrameInputProviderGather(*capture_input, .{.pointer = .{.x = -1.0, .y = -1.0}})
             input = *capture_input
@@ -150,13 +185,13 @@ RunTitled :: (draw: FrameDraw, width: s32, height: s32, title: string,
             settled += 1
         }
         if input != null { FrameInputProviderEnd(input) }
-        if ok && capture.tree != null && !capture.tree(session, width, height, capture.path) {
+        if ok && requested.tree != null && !requested.tree(session, width, height, requested.path) {
             unused DesktopError("kryon: could not write the preview widget tree with the requested viewport")
             ok = false
         }
         if ok {
             ok = CaptureConfigured()
-            if !ok && capture.tree != null { unused DesktopError("kryon: could not write the preview PNG") }
+            if !ok && requested.tree != null { unused DesktopError("kryon: could not write the preview PNG") }
         }
     } else {
         while ok {

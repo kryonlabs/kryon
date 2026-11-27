@@ -13,6 +13,26 @@ ComponentWheelHost :: () -> float32 #foreign host_api;
 ComponentSecondsHost :: () -> float64 #foreign host_api;
 ComponentStateVersionHost :: () -> s64 #foreign host_api;
 
+// SDK entry commands carry values only. Guest closures and typed state never
+// become host pointers, and control calls never compose another frame.
+ComponentPhaseFrame :: cast(s32)1
+ComponentPhaseCommit :: cast(s32)2
+ComponentPhaseCancel :: cast(s32)3
+ComponentPhaseTick :: cast(s32)4
+ComponentPhaseDispose :: cast(s32)5
+ComponentPhaseHost :: () -> s32 #foreign host_api;
+ComponentRootHost :: () -> u64 #foreign host_api;
+ComponentDeadlineHost :: (seconds: float64) -> bool #foreign host_api;
+
+// The retained host owns identity; a guest never reconstructs a native parent
+// or submits its own layout/focus tree. Callback environments do not cross this
+// value protocol: their ownership remains a Ziran bundle-runtime contract.
+ComponentMount :: struct { identity: u64; fresh: bool; }
+ComponentBeginHost :: (session: Session, component: string, file: string,
+    line: s64, column: s64, specified: bool, key: u64) -> ComponentMount #foreign host_api;
+ComponentEndHost :: (session: Session, identity: u64) -> bool #foreign host_api;
+ComponentCurrentHost :: (session: Session) -> u64 #foreign host_api;
+
 #program_export
 ComponentSession :: () -> Session { return ComponentSessionHost() }
 

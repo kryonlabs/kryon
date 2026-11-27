@@ -9,7 +9,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import threading
-from toolchain import UI_MODULE_ARGS, ROOT, ZIRAN, ZIRAN_ROOT
+from toolchain import ROOT, ZIRAN, ZIRAN_ROOT, kryon_test_project
 import canvas_no_webgl_test as canvas_browser
 
 # Stable disposable output; a short private Chromium profile path.
@@ -34,11 +34,16 @@ def prepare():
               'bad_abi', 'bad_schema', 'bad_resource', 'bad_init',
               'inputs_v1', 'inputs_v2', 'inputs_bad']
     for name in guests:
-        base = 'bad_migrated' if name == 'bad_clipboard' else name
+        base = 'counter_v1' if name == 'bad_clipboard' else name
         source = ((ROOT / 'tests/component_inputs_guest.zi').read_text() if name.startswith('inputs_')
                   else (ROOT / f'tests/fixtures/component_{base}/component.zi').read_text())
         guest = WORK / 'guests' / name
         guest.mkdir(parents=True)
+        if name == 'bad_clipboard':
+            # Keep the live counter's exact capability ABI, including mounted
+            # lifecycle calls, so rejection reaches migrated composition.
+            source = source.replace('    return 0\n}',
+                '    return ifx component_count == 8 || component_owned.samples[0] > 0 then 1 else 0\n}')
         if name in ('counter_v1', 'counter_v2', 'bad_clipboard'):
             source = '#import "component_browser_clipboard"\n' + source
             needle = ('    return ifx component_count' if name == 'bad_clipboard'
@@ -57,32 +62,46 @@ def prepare():
         else { component_text_at = ifx byte == expected[0] then 1 else 0 }
         if component_text_at == expected.count { component_count += 1; component_text_at = 0 }
     }''')
-        (guest / 'component.zi').write_text(source)
+        source_root = guest
+        project_args = []
+        if name == 'bad_abi':
+            # The SDK keeps its package-owned lifecycle protocol while the
+            # app intentionally imports an incompatible protocol fixture.
+            kryon_test_project(guest, package_overrides=(("ziran", ZIRAN_ROOT),))
+            source_root = guest / 'src'
+            project_args = ['--project', '--offline']
+        (source_root / 'component.zi').write_text(source)
         local_protocol = ROOT / f'tests/fixtures/component_{base}/component_protocol.zi'
         if local_protocol.is_file():
-            shutil.copyfile(local_protocol, guest / 'component_protocol.zi')
-        modules = ['--module-path', ROOT / 'tests', '--module-path', ROOT / 'src/backend',
-                   *UI_MODULE_ARGS, '--module-path', ZIRAN_ROOT / 'std']
+            shutil.copyfile(local_protocol, source_root / 'component_protocol.zi')
+        modules = ['--project', '--offline', '--module-path', source_root,
+                   '--module-path', ROOT / 'tests',
+                   '--module-path', ROOT / 'tests/fixtures/component_owned']
+        if project_args:
+            modules = project_args
         if name == 'inputs_v2': modules += ['--define', 'COMPONENT_INPUTS_V2']
         if name == 'inputs_bad': modules += ['--define', 'COMPONENT_INPUTS_BAD']
         ir = guest / 'ir'
-        run([ZIRAN, 'ir', '--root', guest, '--define', 'KRYON_HOSTED_UI',
-             *modules, '-o', ir, guest / 'component.zi'])
+        sdk = ROOT / 'src/backend/component_guest.zi'
+        run([ZIRAN, 'ir', '--root', source_root, '--define', 'KRYON_HOSTED_UI',
+             *modules, '-o', ir, source_root / 'component.zi', sdk], directory=guest)
+        sdk_ir, = ir.glob('*component_guest.zir')
+        entry = sdk_ir.stem + ':Run'
+        binding = sdk_ir.stem + ':Compose=component:Frame'
         run([ZIRAN, 'bundle', '--root', ir, '--module-path', ir,
-             '--define', 'KRYON_HOSTED_UI', '--entry', 'component:Frame',
-             '-o', WORK / f'{name}.zx', ir / 'component.zir'])
-        run([ZIRAN, 'bundle', '--root', guest, '--define', 'KRYON_HOSTED_UI',
-             *modules, '--entry', 'component:Frame', '-o', guest / 'source.zx',
-             guest / 'component.zi'])
+             '--define', 'KRYON_HOSTED_UI', '--bind', binding, '--entry', entry,
+             '-o', WORK / f'{name}.zx', ir / 'component.zir', sdk_ir])
+        run([ZIRAN, 'bundle', '--root', source_root, '--define', 'KRYON_HOSTED_UI',
+             *modules, '--bind', binding, '--entry', entry, '-o', guest / 'source.zx',
+             source_root / 'component.zi', sdk], directory=guest)
         assert (WORK / f'{name}.zx').read_bytes() == (guest / 'source.zx').read_bytes(), name
 
     runtime = ROOT / 'build/zx-canvas/runtime/libziran.a'
     run(['make', '--no-print-directory', runtime, f'ZX_CANVAS_CC={EMCC}'])
     generated = WORK / 'c'
-    run([ZIRAN, 'build', '--target=c', '--no-main', '--define', 'PLATFORM_WEB',
+    run([ZIRAN, 'build', '--project', '--offline', '--target=c', '--target-os', 'web', '--emit-main',
          '--define', 'BUNDLE_NATIVE_RENDERER', '--entry', 'component_browser_host:main',
-         '--root', ROOT / 'tests', '--module-path', ROOT / 'src/backend',
-         *UI_MODULE_ARGS, '--module-path', ZIRAN_ROOT / 'std',
+         '--root', ROOT / 'tests', '--module-path', ROOT / 'tests',
          '-o', generated, ROOT / 'tests/component_browser_host.zi',
          ROOT / 'src/backend/canvas_raster.zi'])
     shell = WORK / 'shell.html'

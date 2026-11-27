@@ -3,9 +3,9 @@
 #program_export
 ProjectOptionsTest :: () -> s32 {
     source: string = "default_profile=tui\nprofiles=tui other\nprofiles.tui.backend=terminal\nprofiles.tui.codegen=c99\nprofiles.tui.library=crypto\nprofiles.tui.static_archive=build/libdemo.a\nprofiles.other.backend=terminal\ninstall.autostart=false\n"
-    config: ProjectConfig = ParseProject(source, "demo", "src/custom.zi")
+    config: ProjectConfig = ParseProject(source, "demo", "src/custom.tsx")
     if !config.ok || config.name != "demo" ||
-    config.entry != "src/custom.zi" ||
+    config.entry != "src/custom.tsx" ||
     config.profile_count != 2 ||
     config.default_profile != "tui" { return 1 }
     selected: ProjectProfile = ProjectProfileNamed(config, config.default_profile)
@@ -16,13 +16,21 @@ ProjectOptionsTest :: () -> s32 {
 
     minimal: ProjectConfig = ParseProject(
         "profiles=tui\nprofiles.tui.backend=terminal\n", "demo", "")
-    if !minimal.ok || minimal.entry != "src/app.zi" ||
+    if !minimal.ok || minimal.entry != "src/app.tsx" ||
     minimal.default_profile != "tui" ||
     minimal.profiles[0].codegen != "c99" { return 4 }
 
+    old_source := ParseProject("profiles=tui\nprofiles.tui.backend=terminal\n", "demo", "src/app.zi")
+    non_jsx := ParseProject("profiles=tui\nprofiles.tui.backend=terminal\n", "demo", "src/app.ts")
+    migration := "Kryon application entries must use .tsx; migrate UI composition to TSX and keep native logic and profile hosts in .zi modules"
+    if old_source.ok || old_source.error != migration || non_jsx.ok || non_jsx.error != migration { return 65 }
+
+    removed := ParseProject("profiles=shot\nprofiles.shot.backend=pixmap\n", "demo", "")
+    if removed.ok || removed.error != "unsupported profile backend; use desktop, canvas, terminal or android; screenshots use a desktop profile with run --png" { return 64 }
+
     installed: ProjectConfig = ParseProject(
         "default_profile=cairo\nprofiles=cairo\nprofiles.cairo.backend=desktop\ninstall.profile=cairo\ninstall.name=Demo App\ninstall.icon=assets/icon.png\ninstall.working_directory=.\ninstall.autostart=true\ninstall.autostart_env=DEMO_HIDDEN=1\n",
-        "demo", "src/app.zi")
+        "demo", "src/app.tsx")
     if !installed.ok || installed.install.profile != "cairo" ||
     installed.install.name != "Demo App" || !installed.install.autostart ||
     installed.install.autostart_env != "DEMO_HIDDEN=1" { return 5 }
@@ -69,16 +77,16 @@ ProjectOptionsTest :: () -> s32 {
     if escaping_archive.ok { return 14 }
     // [tool.kryon] entry names the window's program over the package entry.
     windowed: ProjectConfig = ParseProject(
-        "entry=src/app.zi\nprofiles=tui\nprofiles.tui.backend=terminal\n",
+        "entry=src/app.tsx\nprofiles=tui\nprofiles.tui.backend=terminal\n",
         "demo", "src/main.zi")
-    if !windowed.ok || windowed.entry != "src/app.zi" { return 15 }
+    if !windowed.ok || windowed.entry != "src/app.tsx" { return 15 }
     unsafe_entry: ProjectConfig = ParseProject(
         "entry=src/$(x).zi\nprofiles=tui\nprofiles.tui.backend=terminal\n",
         "demo", "src/main.zi")
     if unsafe_entry.ok { return 16 }
     custom_host: ProjectConfig = ParseProject(
         "profiles=tui\nprofiles.tui.backend=terminal\nprofiles.tui.host=src/runner.zi\n",
-        "demo", "src/app.zi")
+        "demo", "src/app.tsx")
     if !custom_host.ok || custom_host.profiles[0].host != "src/runner.zi" {
         return 17
     }
@@ -87,23 +95,23 @@ ProjectOptionsTest :: () -> s32 {
     ProjectHostValid("src/$(touch).zi") { return 18 }
     android: ProjectConfig = ParseProject(
         "default_profile=droid\nprofiles=droid desktop\nprofiles.droid.backend=android\nprofiles.desktop.backend=desktop\nandroid.package=com.example.demo\nandroid.min_sdk=24\nandroid.abis=arm64-v8a,x86_64\n",
-        "demo", "src/app.zi")
+        "demo", "src/app.tsx")
     if !android.ok || android.android.package != "com.example.demo" ||
     android.android.min_sdk != "24" ||
     android.android.abis != "arm64-v8a,x86_64" ||
     android.android.activity != "MainActivity" { return 19 }
     android_defaults: ProjectConfig = ParseProject(
         "default_profile=droid\nprofiles=droid\nprofiles.droid.backend=android\nandroid.package=zi.demo\n",
-        "demo", "src/app.zi")
+        "demo", "src/app.tsx")
     if !android_defaults.ok || android_defaults.android.min_sdk != "21" ||
     android_defaults.android.abis != "arm64-v8a" { return 20 }
     android_missing_package: ProjectConfig = ParseProject(
         "default_profile=droid\nprofiles=droid\nprofiles.droid.backend=android\n",
-        "demo", "src/app.zi")
+        "demo", "src/app.tsx")
     if android_missing_package.ok { return 21 }
     android_bad_package: ProjectConfig = ParseProject(
         "default_profile=droid\nprofiles=droid\nprofiles.droid.backend=android\nandroid.package=com..demo\n",
-        "demo", "src/app.zi")
+        "demo", "src/app.tsx")
     if android_bad_package.ok { return 22 }
     // A project without an android profile keeps parsing without a package.
     desktop_only: ProjectConfig = ParseProject(
@@ -116,7 +124,7 @@ ProjectOptionsTest :: () -> s32 {
     ProjectAndroidPackageValid("") { return 24 }
     artifacts := ParseProject(
         "profiles=tui\nprofiles.tui.backend=terminal\nprofiles.tui.native_artifacts=kryon:renderer-desktop support:native\nprofiles.tui.native_platform=linux-x86_64-gnu\n",
-        "demo", "src/app.zi")
+        "demo", "src/app.tsx")
     if !artifacts.ok || artifacts.profiles[0].native_artifacts != "kryon:renderer-desktop support:native" ||
     artifacts.profiles[0].native_platform != "linux-x86_64-gnu" { return 25 }
     if ProjectArtifactsValid("kryon:renderer-desktop;touch") ||
@@ -126,15 +134,15 @@ ProjectOptionsTest :: () -> s32 {
     ProjectArtifactsValid("one:two:three") { return 26 }
     missing_platform := ParseProject(
         "profiles=tui\nprofiles.tui.backend=terminal\nprofiles.tui.native_artifacts=support:native\n",
-        "demo", "src/app.zi")
+        "demo", "src/app.tsx")
     if missing_platform.ok { return 27 }
     unsafe_platform := ParseProject(
         "profiles=tui\nprofiles.tui.backend=terminal\nprofiles.tui.native_artifacts=support:native\nprofiles.tui.native_platform=linux;touch\n",
-        "demo", "src/app.zi")
+        "demo", "src/app.tsx")
     if unsafe_platform.ok { return 28 }
     portable_artifacts := ParseProject(
         "profiles=tui\nprofiles.tui.backend=desktop\nprofiles.tui.codegen=zx\nprofiles.tui.native_artifacts=support:native\nprofiles.tui.native_platform=linux-x86_64-gnu\n",
-        "demo", "src/app.zi")
+        "demo", "src/app.tsx")
     if portable_artifacts.ok { return 29 }
     return 42
 }

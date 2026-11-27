@@ -193,15 +193,19 @@ OneTimeCodeHostedReply :: struct { state: OneTimeCodeState; result: OneTimeCodeR
     onetimecode_host_api :: #system_library "host_api";
     OneTimeCodeHostedHost :: (session: Session, props: Props,
         state: OneTimeCodeState) -> OneTimeCodeHostedReply #foreign onetimecode_host_api;
+        #scope_package
         Draw :: (session: Session, props: Props,
     state: *OneTimeCodeState) -> OneTimeCodeResult {
         reply := OneTimeCodeHostedHost(session, props, state.*)
         state.* = reply.state
         return reply.result
     }
+        #scope_export
 } else {
+        #scope_package
         Draw :: (session: Session, props: Props,
     state: *OneTimeCodeState, location := #caller_location) -> OneTimeCodeResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return OneTimeCodeCore(session, props, state, true) }
+        #scope_export
     #program_export
     OneTimeCodeCore :: (session: Session, props: Props,
     state: *OneTimeCodeState, effects: bool) -> OneTimeCodeResult {

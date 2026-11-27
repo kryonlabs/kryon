@@ -53,6 +53,7 @@ Activate :: (props: PropsModule.Props, item: BreadcrumbItem, index: s32,
 }
 #scope_export
 
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props,
     items: []BreadcrumbItem, location := #caller_location) -> BreadcrumbResult {
     site := TreeCallSite(session, location)

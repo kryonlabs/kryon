@@ -1,41 +1,41 @@
 # Kryon cheat sheet
 
-Kryon is a Ziran UI library: the app's `main` runs `App.Run(window, Frame)` from `kryon/app`, and Kryon
-calls `Frame` every frame, which declares the interface from the app's state; widgets report what the
-user did. `make cheatsheet-test` builds, shoots and drives every `// file:` block below.
+Author screens in TSX and import native Ziran models directly. The common compiler checks both;
+there is no generated Ziran screen or JavaScript runtime. `Frame` composes the real retained widgets.
+`make cheatsheet-test` builds, captures and drives every named source block below.
 
 ## Start and see
 
 ```sh
-kryon new notes && cd notes   # app starter: app bar, cards, dark mode; locks itself
-kryon run --watch             # the window; rebuilds and relaunches on every save
-kryon run shot --png build/shot.png --width 390 --height 844 --theme dark
-kryon upgrade                 # an older app: pin this kryon's Ziran, Kryon and CSS, relock
+kryon new notes && cd notes
+kryon run --watch
+kryon run desktop --png build/shot.png --width 390 --height 844 --theme dark
+ziran ir --project -o build/ir
 ```
 
-No display needed; `build/shot.json` lists each node's kind, role, label and bounds. `kryon` and `ziran`
-come from `make install-user`: an old `kryon` makes an old starter, so reinstall after updating.
-`ziran pkg list` names every importable module.
+Install the current tools with `make install-user`. Capture uses the desktop renderer on a private
+display; `build/shot.json` contains node roles, labels and bounds. `ziran pkg list` lists imports.
 
 ## Rules
 
-- Declare every widget every frame; keep state at file scope (`x: s32;`) in a Kryon-free module. Widgets
-  need no `.key`: one is known by its calling line and parent, and a loop's repeats count in order; pass
-  `.key = item.id` only to keep state when rows reorder.
-- Wire once: the first frame has `frame.first`, so wiring a field's bytes, reading the theme and seeding
-  state goes there — no `started` flag.
-- Containers (Layout, Grid, Flow, Modal) place children: never compute `x` or `y`; a child declares its
-  size, and zero width fills a column. Open one, and when it reports `.opened`, declare the children and
-  close it with `End(session)` — write that `End` as a `defer` right after the open check
-  (`if card.opened { defer { unused End(session) } ... }`): it fires innermost-first on block exit,
-  survives an early return, and cannot be missed — a missing or extra `End` fails the whole frame.
-- Size and space come from theme tokens; act on a result in the same frame (`Button.Draw` returns 1 on
-  a click; value widgets return `.changed` and the value).
-- A text field edits its own `TextField.State` storage: declare one, bind it, and it keeps its bytes;
-  custom capacity or shared bytes wire `state.bytes` on `frame.first`. `TextField.Value` views them,
-  so copy into app storage to keep them, then `TextField.Clear(*state)` empties the field.
-- A returned `string` must view file-scope bytes (as `NoteAt` does), never a local buffer.
-- `ziran lock` refused "checked package metadata": `[toolchain]` must be the exact Ziran Kryon pins (`kryon init` sets it). No window under the driver: build with `KRYON_TEST_DRIVER=1`.
+- Keep persistent domain state and actions in Ziran; TSX owns composition and presentation state.
+  The singleton screen below owns its draft and controls. Reusable stateful components need an
+  independent mounted instance; a module variable would share state between all instances.
+- Compose with JSX statements: containers invoke checked scoped children while open and close them
+  deterministically; a child declares size and its container places it, with theme tokens for
+  spacing. To read a widget's immediate bool or record result, call the same imported component as
+  a normal typed function, as in `Button({session, props: add})`; a JSX statement yields no value.
+- Handle results in the current frame. Buttons return booleans; value widgets return typed changes.
+  Keys must remain stable when items reorder; never use an index for reorderable data.
+- Native storage crosses through checked intrinsics that keep ordinary TypeScript syntax:
+  `nativeRef(draft)` borrows a mutable record, `nativeSlice(menu, s32(0), s32(0))` borrows an array
+  range, and `nativeCallerLocation()` is a default parameter's caller site. There is no `any` and
+  no second schema to maintain; the compiler checks the calls against the native declarations.
+- Initialize app resources on `frame.first`. A text field owns editing storage. `Value` borrows it;
+  the native action copies a saved note before `Clear` releases the draft contents.
+- Native integers and handles keep their explicit types. `number` is binary64; `s32(value)` and
+  `float32(value)` are checked narrowings, and wide ids use `u64(n)`. Borrowed text must outlive
+  its use, including deferred callbacks.
 
 ## The project
 
@@ -43,23 +43,21 @@ come from `make install-user`: an old `kryon` makes an old starter, so reinstall
 # file: ziran.toml
 [package]
 name = "notes"
-entry = "src/app.zi"
+entry = "src/app.tsx"
 module_roots = ["src"]
-bridge_modules = ["app"]
-links = ["X11"]           # private_display in the driver test uses Xlib
+links = ["X11"] # the native private-display test uses Xlib
 tool = "kryon"
 [toolchain]
 git = "https://git.waozi.xyz/ziranlang/ziran.git"
-ref = "4413456221aa5a9bc00a368762e9e50aaf6e7b6b"
+ref = "c1d3e887f239ce9f4da6d9233463c779fb5e48cf"
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
-ref = "a0efdfbdf21ebceff3d5f1e4367d33557b565247"
+ref = "e8b42fd4cb56ce388d8c8a0ca603c206385358f7"
 [dependencies.css]
 git = "https://git.waozi.xyz/kryonlabs/css.git"
-ref = "2be03f3826bd31fcde3ace00bc1234bdbd34b5c4"
+ref = "e091a4339eeb0018dbf175df70709683248b7461"
 [tool.kryon]
 default_profile = "desktop"
-entry = "src/app.zi"
 [tool.kryon.profiles.desktop]
 backend = "desktop"
 ```
@@ -82,185 +80,169 @@ AddNote :: (text: string) -> bool {
     return true
 }
 NoteAt :: (index: s32) -> string { return TextView(note_bytes[index][0:note_lengths[index]]) }
+NoteCount :: () -> s32 { return note_count }
 NoteCountText :: () -> string { return ifx note_count == 0 then "No notes yet" else "Some notes" }
 ```
 
-## The frame
+## The screen
 
-```zi
-// file: src/app.zi
-App :: #import "kryon/app";
-Button :: #import "kryon/button";
-Card :: #import "kryon/card";            // .variant -> .opened; then End
-CSS :: #import "css/Css";                // StyleClass, CssSheetParse, CssSheetInstall
-Dropdown :: #import "kryon/dropdown";    // .selected_index .placeholder -> .changed .selected_index
-Layout :: #import "kryon/layout";
-Text :: #import "kryon/text";
-TextField :: #import "kryon/text_field"; // Bind(session, *state, props) -> .committed; Value; Clear
-Theme :: #import "kryon/theme";
-TitleBar :: #import "kryon/title_bar";
-Toggle :: #import "kryon/toggle";
-#import "kryon/control_props"
-#import "kryon/geometry"
-#import "kryon/session"
-#import "kryon/tree"
-#import "notes"
-#import "widgets"
-dark: bool;
-showcase: bool;
-draft: TextField.State;
-no_menu: []Dropdown.Option;
-sheet: CSS.CssSheet;
-NOTE_CSS :: "Card.note { border-radius: 14px; gap: 4px; }";
-Frame :: (frame: App.Frame) {
-    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
-    if frame.first {                        // once: parse the look and read the theme
-        dark = Theme.CurrentTheme().dark
-        if CSS.CssSheetParse(*sheet, NOTE_CSS, "app.css", CSS.CssNoImports) {
-            unused CSS.CssSheetInstall(*sheet, CSS.CssDefaultEnvironment(), null)
-        }
-    }
-    screen := Layout.Draw(session, Layout.Props.{.bounds = frame.viewport})
-    if !screen.opened { return }
-    defer { unused End(session) }
-    AppBar(session)
-    body := Layout.Draw(session, Layout.Props.{.gap = Layout.Gap(.ThemeMetricSpace3),
-        .gap_override = true, .padding = Layout.Gap(.ThemeMetricSpace4), .padding_override = true})
-    if body.opened {
-        defer { unused End(session) }
-        if showcase { Widgets(session) } else { NotesScreen(session) }
-    }
-    return
+```tsx
+// file: src/app.tsx
+import * as App from "kryon/app";
+import * as CSS from "css/Css";
+import * as Theme from "kryon/theme";
+import { ThemeMetricRole as Metric } from "kryon/theme";
+import { Session } from "kryon/session";
+import { LayoutContainer, Gap } from "kryon/layout";
+import { Option } from "kryon/dropdown";
+import { Props as ButtonProps, ButtonMeasure } from "kryon/button";
+import { ButtonTone, ButtonEmphasis } from "kryon/control_props";
+import { CardVariant } from "kryon/card";
+import * as Editing from "kryon/text_field";
+import { Column, ResolvedRow } from "kryon/tsx/layout";
+import { Button } from "kryon/tsx/button";
+import { Card } from "kryon/tsx/card";
+import { Text } from "kryon/tsx/text";
+import { TextField } from "kryon/tsx/text_field";
+import { TitleBar } from "kryon/tsx/title_bar";
+import { Toggle } from "kryon/tsx/toggle";
+import { Widgets, Controls } from "widgets";
+import * as Notes from "notes";
+let dark: boolean = false;
+let showcase: boolean = false;
+let draft: Editing.State = {};
+let sheet: CSS.CssSheet = {};
+let overrides: CSS.CssOverrides = {};
+let controls: Controls = {checked: false, on: true, choice: s32(0), level: s32(3)};
+function AppBar(session: Session): void {
+    const menu: [Option] = [{}];
+    const height = Theme.CurrentThemeMetric(Metric.ThemeMetricControlHeightLarge) + float32(Gap(Metric.ThemeMetricSpace3));
+    const bar = TitleBar({session: session, options: nativeSlice(menu, s32(0), s32(0)),
+        props: {bounds: {height: height}, title: "Notes", strong_title: true, trailing_width: s32(120)}});
+    const toggle = Toggle({session: session, props: {bounds: bar.trailing_bounds, label: "Dark", value: dark}});
+    if (toggle.changed) { dark = toggle.value; Theme.SetThemeMode(dark); }
 }
-main :: () -> s32 { return App.Run(App.Window.{.title = "Notes"}, Frame) }
-AppBar :: (session: Session) {
-    height := Theme.CurrentThemeMetric(.ThemeMetricControlHeightLarge) + Theme.CurrentThemeMetric(.ThemeMetricSpace3)
-    bar := TitleBar.Draw(session, TitleBar.Props.{.bounds = .{height = height}, .title = "Notes", .strong_title = true, .trailing_width = 120}, no_menu)
-    switch := Toggle.Draw(session, Toggle.Props.{.bounds = bar.trailing_bounds, .label = "Dark", .value = dark})
-    if switch.changed { dark = switch.value; unused Theme.SetThemeMode(dark) }
+function NotesScreen(session: Session): void {
+    const height = Theme.CurrentThemeMetric(Metric.ThemeMetricControlHeightMedium);
+    <ResolvedRow session={session} props={{bounds: {height: height}, gap: Gap(Metric.ThemeMetricSpace2), gap_override: true}}
+        children={(row: LayoutContainer): void => {
+            const add: ButtonProps = {label: "Add", tone: ButtonTone.ButtonToneAccent, emphasis: ButtonEmphasis.ButtonEmphasisFilled};
+            add.bounds.width = ButtonMeasure(add).width;
+            const field = TextField({session: session, state: nativeRef(draft), props: {placeholder: "Write a note", label: "Note",
+                bounds: {width: row.content.width - add.bounds.width - float32(row.gap)}}});
+            if (Button({session: session, props: add}) || field.committed) {
+                if (Notes.AddNote(Editing.Value(draft))) { Editing.Clear(nativeRef(draft)); }
+            }
+        }}/>;
+    <Text session={session} props={{bounds: {height: height}, text: Notes.NoteCountText()}}/>;
+    for (let index = s32(0); index < Notes.NoteCount(); index += s32(1)) {
+        <Card session={session} props={{variant: CardVariant.CardOutlined, class_name: CSS.StyleClass("note")}}>
+            <Text session={session} props={{text: Notes.NoteAt(index)}}/>
+        </Card>;
+    }
+    if (Button({session: session, props: {label: "All widgets", bounds: {height: height}}})) { showcase = true; }
 }
-NotesScreen :: (session: Session) {
-    control := Theme.CurrentThemeMetric(.ThemeMetricControlHeightMedium)
-    row := Layout.Row(session, Layout.Props.{.bounds = .{height = control},
-        .gap = Layout.Gap(.ThemeMetricSpace2), .gap_override = true})
-    if row.opened {
-        defer { unused End(session) }
-        add := Button.Props.{.label = "Add", .tone = .ButtonToneAccent, .emphasis = .ButtonEmphasisFilled}
-        add.bounds.width = Button.ButtonMeasure(add).width
-        field := TextField.Bind(session, *draft, TextField.Props.{.placeholder = "Write a note",
-            .label = "Note", .bounds = .{width = row.content.width - add.bounds.width - cast(float32)row.gap}})
-        // Value views the bytes; AddNote copies them, so Clear empties the field in the same frame.
-        if Button.Draw(session, add) == 1 || field.committed {
-            if AddNote(TextField.Value(draft)) { TextField.Clear(*draft) }
+function Body(session: Session): void {
+    if (showcase) { <Widgets session={session} state={nativeRef(controls)}/>; }
+    else { NotesScreen(session); }
+}
+export function Frame(frame: App.Frame): void {
+    const session: Session = {slot: frame.slot, epoch: frame.epoch};
+    if (frame.first) {
+        dark = Theme.CurrentTheme().dark;
+        if (CSS.CssSheetParse(nativeRef(sheet), "Card.note { border-radius: 14px; gap: 4px; }", "app.css", CSS.CssNoImports)) {
+            CSS.CssSheetInstall(nativeRef(sheet), CSS.CssDefaultEnvironment(), nativeRef(overrides));
         }
     }
-    Text.Draw(session, Text.Props.{.bounds = .{height = control}, .text = NoteCountText()})
-    for i: 0..note_count - 1 {
-        card := Card.Draw(session, Card.Props.{.variant = .CardOutlined, .class_name = CSS.StyleClass("note")})
-        if card.opened {
-            defer { unused End(session) }
-            Text.Draw(session, Text.Props.{.text = NoteAt(i)})
-        }
+    <Column session={session} props={{bounds: frame.viewport}}>
+        {AppBar(session)}
+        <Column session={session} props={{gap: Gap(Metric.ThemeMetricSpace3), gap_override: true,
+            padding: Gap(Metric.ThemeMetricSpace4), padding_override: true}}>
+            {Body(session)}
+        </Column>
+    </Column>;
+}
+export function main(): s32 { return App.Run({title: "Notes"}, Frame); }
+```
+
+## Typed widget results
+
+```tsx
+// file: src/widgets.tsx
+import { Session } from "kryon/session";
+import { ThemeMetricRole, CurrentThemeMetric } from "kryon/theme";
+import { ButtonTone, ButtonEmphasis } from "kryon/control_props";
+import { Button } from "kryon/tsx/button";
+import { Checkbox } from "kryon/tsx/checkbox";
+import { Toggle } from "kryon/tsx/toggle";
+import { Radio } from "kryon/tsx/radio";
+import { DiscreteSlider } from "kryon/tsx/slider";
+import { Progress } from "kryon/tsx/progress";
+import { Separator } from "kryon/tsx/separator";
+import { Layouts } from "layouts";
+export interface Controls { checked: boolean; on: boolean; choice: s32; level: s32; }
+export interface WidgetsProps { session: Session; state: NativeRef<Controls>; }
+export function Widgets(widget: WidgetsProps): void {
+    const session = widget.session;
+    const state = widget.state;
+    const height = CurrentThemeMetric(ThemeMetricRole.ThemeMetricControlHeightMedium);
+    <Button session={session} props={{label: "Save", bounds: {height: height},
+        tone: ButtonTone.ButtonToneAccent, emphasis: ButtonEmphasis.ButtonEmphasisFilled}}/>;
+    const box = Checkbox({session: session, props: {label: "Remember me", checked: state.checked, bounds: {height: height}}});
+    if (box.changed) { state.checked = box.checked; }
+    const toggle = Toggle({session: session, props: {label: "Sync", value: state.on, bounds: {height: height}}});
+    if (toggle.changed) { state.on = toggle.value; }
+    if (Radio({session: session, props: {id: s32(1), label: "Weekly", checked: state.choice === s32(1), bounds: {height: height}}}) === s32(1)) {
+        state.choice = s32(1);
     }
-    if Button.Draw(session, Button.Props.{.label = "All widgets", .bounds = .{height = control}}) == 1 { showcase = true }
+    const moved = DiscreteSlider({session: session, props: {semantic_label: "Level", value: state.level,
+        min: s32(1), max: s32(5), bounds: {height: height}}});
+    if (moved.changed) { state.level = moved.value; }
+    <Progress session={session} props={{max: s32(5), value: state.level, bounds: {height: 8}}}/>;
+    <Separator session={session} props={{}}/>;
+    <Layouts session={session}/>;
 }
 ```
 
-## One line per widget
-
-```zi
-// file: src/widgets.zi
-Button :: #import "kryon/button";        // .label .tone .emphasis .size .disabled
-Checkbox :: #import "kryon/checkbox";    // .label .checked -> .changed .checked
-Layout :: #import "kryon/layout";
-Progress :: #import "kryon/progress";    // .min .max .value .label
-Radio :: #import "kryon/radio";          // .label .checked -> 1 when picked
-Separator :: #import "kryon/separator";  // a rule across the column
-Slider :: #import "kryon/slider";        // DiscreteSlider: .value .min .max -> .changed .value
-Theme :: #import "kryon/theme";
-Toggle :: #import "kryon/toggle";        // .label .value -> .changed .value
-#import "kryon/control_props"
-#import "kryon/geometry"
-#import "kryon/session"
-#import "kryon/tree"
-#import "layouts"
-checked: bool;
-choice: s32;
-level: s32 = 3;
-on: bool = true;
-Widgets :: (session: Session) {
-    h := Theme.CurrentThemeMetric(.ThemeMetricControlHeightMedium)
-    unused Button.Draw(session, Button.Props.{.label = "Save", .bounds = .{height = h}, .tone = .ButtonToneAccent, .emphasis = .ButtonEmphasisFilled})
-    box := Checkbox.Draw(session, Checkbox.Props.{.label = "Remember me", .checked = checked, .bounds = .{height = h}})
-    if box.changed { checked = box.checked }
-    switch := Toggle.Draw(session, Toggle.Props.{.label = "Sync", .value = on, .bounds = .{height = h}})
-    if switch.changed { on = switch.value }
-    if Radio.Draw(session, Radio.Props.{.label = "Weekly", .checked = choice == 1, .bounds = .{height = h}}) == 1 { choice = 1 }
-    moved := Slider.DiscreteSlider(session, Slider.DiscreteSliderProps.{.semantic_label = "Level", .value = level, .min = 1, .max = 5, .bounds = .{height = h}})
-    if moved.changed { level = moved.value }
-    Progress.Draw(session, Progress.Props.{.max = 5, .value = level, .bounds = .{height = 8}})
-    Separator.Draw(session, Separator.Props.{})
-    Layouts(session)
-}
-```
-
-Also: `kryon/text_field` (`Bind(session, *state, props)`, `Value(state)`, `Clear(*state)`), `kryon/card`
-(`.variant` -> `opened`, then `End`), `kryon/title_bar` (`.trailing_width` -> `.trailing_bounds`),
-`kryon/box`, `kryon/dropdown` (`Draw(session, props, options)`), `kryon/modal` (`opened` -> `End`, `.dismissed`),
-and chip, list_item, skeleton, avatar, image, badge, toast, scroll. `ziran api --project --imports-only
-src/app.zi` names each import's module; `ziran api --project --module NAME src/app.zi` prints that module's API.
+Import optional widgets selectively. Their `props` types come from the actual native declarations;
+`ziran api --project --imports-only src/app.tsx` lists the checked imports.
 
 ## Layout recipe
 
-```zi
-// file: src/layouts.zi
-Button :: #import "kryon/button";
-Flow :: #import "kryon/flow";
-Grid :: #import "kryon/grid";
-Layout :: #import "kryon/layout";
-#import "kryon/geometry"
-#import "kryon/grid_props"
-#import "kryon/session"
-#import "kryon/tree"
-Layouts :: (session: Session) {
-    gap := Layout.Gap(.ThemeMetricSpace2)
-    // No sizes up front: a container without a height grows to its children.
-    column := Layout.Draw(session, Layout.Props.{.gap = gap, .gap_override = true})
-    if column.opened {                         // children stack top to bottom
-        defer { unused End(session) }
-        for i: 0..1 { unused Button.Draw(session, Button.Props.{.label = "Item"}) }
-    }
-    grid := Layout.Grid(session, GridProps.{.columns = 2, .gap = gap})
-    if grid.container.opened {                 // each child takes the next cell
-        defer { unused End(session) }
-        for i: 0..1 { unused Button.Draw(session, Button.Props.{.label = "Cell"}) }
-        Layout.GridSpan(session, grid.container, -1)   // the next child spans the row
-        unused Button.Draw(session, Button.Props.{.label = "Wide"})
-    }
-    flow := Flow.Draw(session, Flow.Props.{.gap = gap})
-    if flow.opened {                           // wraps onto new lines
-        defer { unused End(session) }
-        for i: 0..5 { unused Button.Draw(session, Button.Props.{.label = "Chip"}) }
-    }
+```tsx
+// file: src/layouts.tsx
+import { Session } from "kryon/session";
+import { GridResult, GridSpan, Gap } from "kryon/layout";
+import { ThemeMetricRole } from "kryon/theme";
+import { Column } from "kryon/tsx/layout";
+import { ResolvedGrid } from "kryon/tsx/grid";
+import { Flow } from "kryon/tsx/flow";
+import { Button } from "kryon/tsx/button";
+export interface LayoutProps { session: Session; }
+export function Layouts(layout: LayoutProps): void {
+    const session = layout.session;
+    const gap = Gap(ThemeMetricRole.ThemeMetricSpace2);
+    <Column session={session} props={{gap: gap, gap_override: true}} children={(): void => {
+        for (let index = s32(0); index < s32(2); index += s32(1)) { <Button session={session} props={{label: "Item"}}/>; }
+    }}/>;
+    <ResolvedGrid session={session} props={{columns: s32(2), gap: gap}} children={(grid: GridResult): void => {
+        for (let index = s32(0); index < s32(2); index += s32(1)) { <Button session={session} props={{label: "Cell"}}/>; }
+        GridSpan(session, grid.container, s32(-1));
+        <Button session={session} props={{label: "Wide"}}/>;
+    }}/>;
+    <Flow session={session} props={{gap: gap}} children={(): void => {
+        for (let index = s32(0); index < s32(6); index += s32(1)) { <Button session={session} props={{label: "Chip"}}/>; }
+    }}/>;
 }
 ```
 
-## Theme tokens
-
-| Token | Use |
-| --- | --- |
-| `Layout.Gap(.ThemeMetricSpace1)` … `Space6` | 4, 8, 12, 16, 20, 24 px of gap or padding |
-| `Theme.CurrentThemeMetric(.ThemeMetricControlHeightMedium)` | control height; also `Small`, `Large` |
-| `Text.Props.size = cast(s32)Theme.CurrentThemeMetric(.ThemeMetricTextLG)` | font size in px; also `TextXS` `TextSM` `TextBody` `Heading1`…`Heading4` |
-| `StyleTokenColor("canvas" \| "surface" \| "border" \| "text")` | palette colors (`kryon/drawing_props`) |
-| `CssSheetLoad(*sheet, StylePackMaterial())`, `CssSheetInstall` | a look preset from `css/style_pack_material` (also `classic`, `lightfield`); see the starter's `src/look.zi` |
-| `CSS.CssSheetParse(*sheet, text, "app.css", CSS.CssNoImports)`, `CSS.CssSheetInstall` | your own rules (as `NOTE_CSS` above); a widget takes them by `.class_name = CSS.StyleClass("note")`; the CSS package's `build/tools/css_tool check app.css` names what is not native and exits 1 |
-| `Column.note { padding: 12px; gap: 4px; background: #fff; border: 1px solid #ddd; border-radius: 10px }` | containers paint their CSS box (gradients, box-shadow too) and lay out with it |
-| `flex: 1`, `margin-left: auto`, `width: 50%`, `calc()`, `em`/`vw`, nesting, `@media` | sizing in rows and columns; every property: `docs/HTML_TO_KRYON.md` section 4 |
+Spacing tokens `ThemeMetricSpace1` through `Space6` resolve to 4–24 pixels. Text and control size
+roles come from `kryon/theme`. CSS classes, presets and responsive rules use the native CSS package;
+see [theming](THEMING.md) and [CSS/layout properties](HTML_TO_KRYON.md).
 
 ## Drive it in a test
 
-`env KRYON_TEST_DRIVER=1 ziran build && ziran run --project --target=c tests/notes_test.zi`:
+`env KRYON_TEST_DRIVER=1 ziran tool kryon build desktop && ziran run --project --target=c tests/notes_test.zi`:
 
 ```zi
 // file: tests/notes_test.zi

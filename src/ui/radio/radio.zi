@@ -97,6 +97,7 @@ PaintRadioForNode :: (session: Session, node: s32, props: PropsModule.Props,
 
 // A Radio reports its id on activation; the caller chooses which option in a
 // group is checked on the next frame. The checked value stays caller-owned.
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) -> s32 {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

@@ -98,7 +98,7 @@ def main():
         "--height", str(HEIGHT), "--output", PREVIEW, cwd=APP, env=env)
     check_previews()
     run(ZIRAN, "bundle", "--project", "--define", "KRYON_ZX", "--entry", "responsive:main",
-        "-o", BUNDLE, "previews/responsive.zi", cwd=APP, env=env)
+        "-o", BUNDLE, "previews/responsive.tsx", cwd=APP, env=env)
     run(PLAYER, "--check", BUNDLE, env=env)
     env["SDL_VIDEODRIVER"] = "x11"
     run("xvfb-run", "-a", "-s", "-screen 0 1400x1000x24", sys.executable, __file__, "--input", env=env)

@@ -1,10 +1,10 @@
 # Kryon
 
-Kryon is a UI library for [Ziran](https://github.com/ziranlang/ziran): write
-ordinary Ziran modules that import Kryon widgets, and run them on the desktop,
-in a terminal, in a browser or on Android. The language, compiler, `.zir`,
-`.zx` bundles and portable runtime belong to Ziran; Kryon is an imported
-package, so a program carries only the widgets it imports.
+Kryon is a native UI library for [Ziran](https://ziran-lang.org/). Application
+screens use typed TSX, backed by native Ziran widgets and application logic,
+on the desktop, in a terminal, in a browser or on Android. Ziran owns the
+language frontends, compiler, `.zir`, `.zx` bundles and portable runtime. Kryon
+is an ordinary imported package, so a program carries only the widgets it uses.
 
 ## Start an application
 
@@ -15,7 +15,7 @@ the `kryon` command (`make install-user` here), then:
 kryon new hello        # desktop app; --template tui|pages|web picks another
 cd hello
 kryon run              # default profile; kryon run web selects another
-kryon run shot --png build/shot.png --width 390 --height 844   # offscreen, any size
+kryon run desktop --png build/shot.png --width 390 --height 844   # offscreen, any size
 ```
 
 New to Kryon? [docs/CHEATSHEET.md](docs/CHEATSHEET.md) is one page with the app

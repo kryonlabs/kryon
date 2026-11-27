@@ -1,5 +1,5 @@
 Scroll :: #import "kryon/scroll";
-App :: #import "kryon/app_types";
+App :: #import "kryon/app";
 #import "kryon/geometry"
 #import "kryon/input_protocol"
 #import "kryon/session"
@@ -8,9 +8,13 @@ App :: #import "kryon/app_types";
 #import "kryon/tree_draw"
 #import "kryon/frame_snapshot"
 GuestTheme :: #import "kryon/Theme";
-#import "app"
 #import "preview_protocol"
 #import "palette"
+
+program_provider :: #system_library "host_api";
+PreviewFrame :: (frame: App.Frame) #foreign program_provider;
+
+DrawPreview :: (frame: App.Frame) { PreviewFrame(frame) }
 
 preview_session: Session;
 preview_previous_ms: s64;
@@ -18,10 +22,14 @@ preview_scroll: s32;
 
 #program_export
 Tick :: () -> s32 {
+    input := PreviewInputRead()
+    if input.closing {
+        if SessionValid(preview_session) { CloseSession(preview_session) }
+        preview_session = .{}
+        return 0
+    }
     if !SessionValid(preview_session) { preview_session = SessionOpen() }
     if !SessionValid(preview_session) { return 1 }
-    input := PreviewInputRead()
-    SetExampleOptions(input.disabled, input.reduced_motion)
     InstallCatalogPalette(input.theme == 2)
     unused GuestTheme.SetReducedMotion(input.reduced_motion)
     viewport := Rectangle.{input.origin_x, input.origin_y, input.width, input.height}
@@ -54,7 +62,7 @@ Tick :: () -> s32 {
     scroll := Scroll.Draw(preview_session, Scroll.Props.{.key = 190000001, .bounds = viewport,
         .content_height = cast(s32)height, .scroll_offset = preview_scroll})
     preview_scroll = scroll.scroll_offset
-    App.CallDraw(Frame, preview_session.slot, preview_session.epoch, scroll.content)
+    App.CallDraw(DrawPreview, preview_session.slot, preview_session.epoch, scroll.content)
     if scroll.opened { End(preview_session) }
     if EndFrame(preview_session) != FrameStatus.FrameOk { return 1 }
     for index: 0..TreeCount(preview_session) - 1 {

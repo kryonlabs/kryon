@@ -1,8 +1,10 @@
-// The app's state and its text, apart from any widget, so tests can use
-// it. Every task owns its bytes: AddTask copies the strings it is given,
-// so a view into a widget's draft buffer never dangles.
+// The app's state and its text, apart from any widget draw calls, so
+// tests can use it. Every task owns its bytes: AddTask copies the strings
+// it is given, so a view into a widget's draft buffer never dangles.
 #import "std/number_text"
 #import "std/text_tools"
+Dropdown :: #import "kryon/dropdown";
+TextField :: #import "kryon/text_field";
 
 Task :: struct {
     title: [48]u8
@@ -16,6 +18,26 @@ tasks: [12]Task;
 task_count: s32;
 summary_text: [48]u8;
 
+// The new-task draft: the field owns and keeps its bytes until AddTask
+// copies the text into the model.
+draft: TextField.State;
+
+// The app bar's menu options: none yet, but the slice must outlive each
+// frame, so the empty list lives here with the rest of the state.
+no_menu: []Dropdown.Option;
+
+// The draft's storage, for the text field to bind and clear.
+Draft :: () -> *TextField.State { return *draft }
+
+// The draft's current text, for AddTask to copy into a task.
+DraftText :: () -> string { return TextField.Value(draft) }
+
+// Empties the draft after its text was copied into a task.
+ClearDraft :: () { TextField.Clear(*draft) }
+
+// The app bar's menu options.
+MenuOptions :: () -> []Dropdown.Option { return no_menu }
+
 // Copies text into fixed storage; returns the length that fit.
 Stored :: (output: []u8, text: string) -> s32 {
     length := ifx text.count > output.count then output.count else text.count
@@ -28,7 +50,7 @@ StartTasks :: () {
     if task_count > 0 { return }
     unused AddTask("Sketch the home screen", "Cards, an app bar and one clear action")
     unused AddTask("Connect real data", "Keep state in src/tasks.zi; widgets only draw it")
-    unused AddTask("Check it in dark mode", "kryon run shot --png build/dark.png --theme dark")
+    unused AddTask("Check it in dark mode", "The app bar's Dark switch changes the theme")
     tasks[0].done = true
 }
 

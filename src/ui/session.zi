@@ -1,3 +1,4 @@
+Components :: #import "component_slot";
 Bitmaps :: #import "bitmap_state";
 using Keys :: #import "widget_key";
 
@@ -52,6 +53,7 @@ SessionOpen :: () -> Session {
 #program_export
 SessionClose :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
+    if !Components.ComponentDisposeOwner(session.slot, session.epoch) { return false }
     Bitmaps.BitmapDisposeOwner(session.slot, session.epoch)
     session_active = session_active & ~(cast(u32)1 << cast(u32)session.slot)
     return true

@@ -11,7 +11,7 @@ import tomllib
 from toolchain import ROOT, ZIRAN, ZIRAN_ROOT, kryon_test_project
 
 WORK = ROOT / "build/scratch/android-source-generation"
-ENV = dict(os.environ, YUE_DESKTOP_RECOVERY="0")
+ENV = dict(os.environ, YUE_DESKTOP_RECOVERY="0", HARMONY_DESKTOP_RECOVERY="0")
 for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "GDK_DISPLAY",
              "DBUS_SESSION_BUS_ADDRESS", "SESSION_MANAGER", "DESKTOP_SESSION",
              "XDG_SESSION_ID", "XDG_SESSION_TYPE"):
@@ -106,10 +106,13 @@ def main():
         target = "armv7a-linux-androideabi24" if armv7 else "aarch64-linux-android24"
         cpu_define = "__arm__" if armv7 else "__aarch64__"
         project = WORK / kind
-        identity = kryon_test_project(project, overrides)
+        # Each case owns its generated application. Recreate authored inputs
+        # so an earlier run cannot leave a second module with another suffix.
+        shutil.rmtree(project / "src", ignore_errors=True)
+        kryon_test_project(project, overrides)
         native_frame = kind in ("native", "native-gles") or kind in PICTURE_MODES
         source = project / "src"
-        entry = source / ("selected.zi" if native_frame else "main.zi")
+        entry = source / ("selected.tsx" if kind == "native" else "selected.zi" if native_frame else "main.zi")
         # Like the scaffold's glue, nothing in the graph calls this entry:
         # only Android's loader does, so generation must keep it explicitly.
         (source / "android_glue.zi").write_text('\n'.join([
@@ -120,15 +123,13 @@ def main():
             '}', '#program_export', 'GenerationGluePrivate :: () -> s32 { return 0 }\n']))
         custom = []
         if kind == "native":
+            (source / "thread_probe.zi").write_text(
+                '#import "std/thread_linux"\nTouch :: () { unused ThreadFinished(null) }\n')
             entry.write_text('\n'.join([
-                'App :: #import "kryon/app";',
-                '#import "kryon/session"', '#import "kryon/geometry"',
-                '#import "std/thread_linux"',
-                'Frame :: (frame: App.Frame) {',
-                '    session := Session.{.slot = frame.slot, .epoch = frame.epoch}',
-                '    unused ThreadFinished(null)',
-                '    unused session', '}',
-                'main :: () -> s32 { return App.Run(App.Window.{}, Frame) }\n']))
+                'import * as App from "kryon/app";',
+                'import * as Logic from "thread_probe";',
+                'export function Frame(frame: App.Frame): void { Logic.Touch(); }',
+                'export function main(): s32 { return App.Run({}, Frame); }\n']))
         elif kind == "native-gles":
             entry.write_text('\n'.join([
                 'App :: #import "kryon/app";',
@@ -182,11 +183,11 @@ def main():
         run([sys.executable, ROOT / "scripts/generate_android_sources.py",
              "--ziran", ZIRAN, "--zi2c", ZIRAN_ROOT / "build/bin/zi2c",
              "--root", project, "--kryon", ROOT, "--entry", entry,
-             "--package-id", identity, "--ir", ir, "--output", generated,
+             "--ir", ir, "--output", generated,
              "--manifest", manifest, "--define", "ANDROID_BUILD",
              "--define", cpu_define,
              "--codegen", "zx" if kind == "zx" else "c99", *custom])
-        host_module = ir / (identity + "_android_run.zir")
+        host_module = ir / "kryon__android_run.zir"
         if host_module.is_file() != (kind != "custom" and not kind.startswith("runtime")):
             raise AssertionError(kind + " has the wrong Android program host graph")
         if native_frame and not (ir / "selected.zir").is_file():
@@ -201,17 +202,16 @@ def main():
                 raise AssertionError("native Android graph retained the host-Linux thread branch")
         if not (ir / "android_glue.zir").is_file():
             raise AssertionError(kind + " pruned the uncalled android_glue module")
-        roots = list(ir.rglob("kryon_android_roots.zir"))
-        if len(roots) != 1:
-            raise AssertionError(kind + " IR was not selected through the generated root")
+        if list(ir.glob("kryon_android_*.zir")):
+            raise AssertionError(kind + " IR contains a generated program adapter or selector")
         outputs = sorted(generated.rglob("*.c"))
         if not any(path.name == "android_glue.c" for path in outputs):
             raise AssertionError(kind + " emitted no android_glue.c for JNI_OnLoad")
-        # The root only selects the graph: startup runs the application's own
-        # main, with no generated code between the host and it.
-        if any("KryonAndroidRoots" in path.read_text() for path in generated.rglob("*.[ch]")):
-            raise AssertionError(kind + " native output contains the generated root")
+        if any("GenerationGluePrivate" in path.read_text() for path in generated.rglob("*.[ch]")):
+            raise AssertionError(kind + " native output retains an unused glue function")
         cmake = manifest.read_text()
+        if kind == "native" and (str(entry) not in cmake or str(source / "thread_probe.zi") not in cmake):
+            raise AssertionError("mixed TSX/Ziran sources are missing from Android configure inputs")
         if native_frame:
             if bool(list(ir.glob("*_pixmap_assets_android.zir"))) != (kind in PICTURE_MODES):
                 raise AssertionError(f"{kind} has the wrong picture-provider graph")

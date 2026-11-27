@@ -4,9 +4,11 @@ using Progress :: #import "progress_props";
     #import "session"
     host_api :: #system_library "host_api";
     ProgressHostedHost :: (session: Session, props: Progress.Props) #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: Progress.Props) {
         ProgressHostedHost(session, props)
     }
+        #scope_export
 } else {
     #import "session"
     #import "font_metrics"
@@ -59,6 +61,7 @@ using Progress :: #import "progress_props";
             prepared.font, prepared.label_opacity)
     }
 
+        #scope_package
         Draw :: (session: Session, props: Progress.Props, location := #caller_location) {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }

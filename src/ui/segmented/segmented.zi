@@ -6,10 +6,12 @@ Button :: #import "button";
     host_api :: #system_library "host_api";
     SegmentedControlHostedHost :: (session: Session, props: SegmentedControl.Props,
         options: []SegmentedControl.SegmentOption) -> SegmentedControl.SegmentedControlResult #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: SegmentedControl.Props,
         options: []SegmentedControl.SegmentOption) -> SegmentedControl.SegmentedControlResult {
         return SegmentedControlHostedHost(session, props, options)
     }
+        #scope_export
 } else {
     #import "session"
     #import "control_props"
@@ -112,6 +114,7 @@ Button :: #import "button";
 
     // A segment is a checked Button with the Segment style kind. Option keys
     // preserve identity when caller owned options move between rows or positions.
+        #scope_package
         Draw :: (session: Session, props: SegmentedControl.Props,
         options: []SegmentedControl.SegmentOption, location := #caller_location) -> SegmentedControl.SegmentedControlResult {
         site := TreeCallSite(session, location)

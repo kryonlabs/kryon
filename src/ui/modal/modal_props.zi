@@ -30,6 +30,7 @@ Props :: struct {
     // Modal backdrops consume outside presses without closing by default.
     // Set this to opt into closing on a release outside the panel.
     dismiss_on_outside: bool
+    right_action_disabled: bool
 }
 
 ModalFrameResult :: struct {

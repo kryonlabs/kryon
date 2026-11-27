@@ -104,22 +104,8 @@ ProjectPathValid :: (value: string) -> bool {
 }
 
 ProjectHostValid :: (value: string) -> bool {
-    length: s32 = cast(s32)value.count
-    if length < 4 || !ProjectPathValid(value) { return false }
-    if value[0] == cast(u8)47 || value[length - 3:length] != ".zi" {
-        return false
-    }
-    start: s32 = 0
-    at: s32 = 0
-    while at <= length {
-        if at == length || value[at] == cast(u8)47 {
-            if at == start || value[start:at] == "." ||
-            value[start:at] == ".." { return false }
-            start = at + 1
-        }
-        at += 1
-    }
-    return true
+    return value.count >= 4 && value[value.count - 3:] == ".zi" &&
+        ProjectRelativeValid(value)
 }
 
 // A relative path whose segments are never empty, "." or "..".
@@ -273,7 +259,7 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
     config: ProjectConfig
     config.name = name
     config.entry = entry
-    if config.entry == "" { config.entry = "src/app.zi" }
+    if config.entry == "" { config.entry = "src/app.tsx" }
     cursor: s32 = 0
     while cursor < cast(s32)options.count {
         end: s32 = cursor
@@ -386,12 +372,21 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
         config.error = "missing profile or invalid project fields"
         return config
     }
+    if config.entry.count < 5 || config.entry[config.entry.count - 4:] != ".tsx" {
+        config.error = "Kryon application entries must use .tsx; migrate UI composition to TSX and keep native logic and profile hosts in .zi modules"
+        return config
+    }
     found: bool = false
     index: s32 = 0
     while index < config.profile_count {
         profile: ProjectProfile = config.profiles[index]
         if profile.backend == "" {
             config.error = "profile needs backend"
+            return config
+        }
+        if profile.backend != "desktop" && profile.backend != "canvas" &&
+        profile.backend != "terminal" && profile.backend != "android" {
+            config.error = "unsupported profile backend; use desktop, canvas, terminal or android; screenshots use a desktop profile with run --png"
             return config
         }
         if profile.library != "" && !ProjectNameValid(profile.library) {

@@ -4,35 +4,36 @@ How a Kryon application starts, which host draws it on each platform, and how
 input reaches the session. Read this when creating an app entry, embedding a
 bundle, or wiring custom input.
 
-The smallest executable application imports `kryon/app` and the widgets it
-draws:
+The smallest migrated executable application is `examples/window.tsx`:
 
-```zi
-App  :: #import "kryon/app";
-Text :: #import "kryon/text";
+```tsx
+import * as App from "kryon/app";
 
-main :: () -> s32 {
-    window := App.Window.{ .title = "Hello", .width = 320, .height = 160 }
-    return App.Run(window, Draw)
-}
-
-Draw :: (frame: App.Frame) {
-    Text.Draw(frame, Text.Props.{ .text = "Hello, world!", .size = 32 })
+export function main(): s32 {
+    return <App.Show title="Window" width={s32(320)} height={s32(160)}/>;
 }
 ```
 
 Such a file is a *program*: it owns `main`, and `kryon/app` selects the desktop
-host for a Linux C build and the Canvas host for a web build. In this
-checkout, `ziran build --project --target=c --exe --entry hello:main hello.zi`
-builds it directly: Kryon's `[package] links` names the desktop host's system
-libraries, so no caller `LDLIBS` is needed. Ziran applies those links to the
+host for a Linux C build and the Canvas host for a web build. Build it directly
+from this checkout:
+
+```sh
+ziran build --project --target=c --exe --root examples \
+  --entry window:main -o build/examples/window-native examples/window.tsx
+```
+
+Kryon's `[package] links` names the desktop host's system libraries, so no
+caller `LDLIBS` is needed. Ziran applies those links to the
 root manifest only; an application that depends on Kryon builds through the
-project tool, which supplies them.
+project tool, which supplies them. Native declarations supply the JSX props;
+the compiler has no widget catalogue. The full TSX widget and state migration
+is tracked in `plans/tsx-migration.md`.
 
 A program carries only what it uses. `kryon/app` imports each platform's
 window (`desktop_window`, `page_window`) and frame loop (`frames_desktop`,
-`frames_web`) as separate modules, so `App.Show(window)` reaches only the
-window: on Linux the checked program of `examples/window.zi` is the window,
+`frames_web`) as separate modules, so `<App.Show title="Window"/>` reaches only the
+window: on Linux the checked program of `examples/window.tsx` is the window,
 `kryon/app`, `app_types`, `desktop_window`, `desktop_process_linux`,
 `sdl_event`, `pixmap_sdl` and C strings. In a portable bundle the window is `zx_window`: the checked program is
 the window, `kryon/app`, `app_types` and `zx_window`, and the bundle asks its
@@ -40,8 +41,8 @@ host only for the window, its events, clearing and presenting
 (`ZxWindowOpenHost`, `ZxWindowEventHost`, `ZxWindowClearHost`,
 `ZxWindowPresentHost`, `ZxWindowCloseHost`). Kryon's desktop zx player binds
 them to the same SDL window and runs the bundle's `main` as native code, so
-with the player installed (`make install-user`) `ziran run --backend native
-window.zx` opens the window. The desktop host library, `libkryon-desktop.so` from `zx_window_host.zi` (`make zx-window-host`),
+with the player installed (`make install-user`) `ziran run window.zx` opens
+the window (`zx window.zx` is the standalone ZX Runner). The desktop host library, `libkryon-desktop.so` from `zx_window_host.zi` (`make zx-window-host`),
 is registered by `make install-user` as `kryon-desktop.library` and exports
 both the bare `zx_window` capabilities (`App.Show`) and the full native
 SDL2/GPU/Cairo frame-loop, raster, text-measurement (`MeasureGlyphWidth`),
@@ -54,7 +55,7 @@ speed on the platform's real SDL2 hardware GPU 2D renderer (`desktop_gpu.zi`
 using `SDL_RenderGeometry`, retained GPU target textures, and a GPU atlas for
 rounded corners, cached Pango/Cairo text runs, and images) instead of a
 CPU-only software rasterizer. `make zx-window-test`
-checks `window.zi` on a private Xvfb, and that with no library registered
+checks `window.tsx` on a private Xvfb, and that with no library registered
 `zx2native` stops at the gap naming `ZxWindowOpenHost`. In
 the browser, a project profile with `backend = "canvas"` and `codegen = "zx"`
 takes a program entry too: its bundle is the program's own `main`, and the ZX
@@ -68,12 +69,13 @@ only with `KRYON_TEST_DRIVER`. `make pay-per-import-test` checks the examples'
 generated C, the window's checked programs and its bundle's modules and host
 capabilities.
 
-The project tool accepts a program as a project's entry. When the entry module
-declares `main`, `kryon build --profile NAME` generates a host that only calls
-that `main`, for a `desktop` profile and for a `canvas` page alike. A program
-entry uses `codegen = "c99"` for native source builds. Desktop and Canvas
-`codegen = "zx"` profiles also accept a program with its own `main`; the
-player binds its window capabilities. `Frame` entries use the frame host.
+The project tool compiles a program entry through checked IR.
+`kryon build --profile NAME` asks the compiler to emit the checked process
+entry for native and Canvas C builds; it does not generate a Ziran source
+wrapper or scan the source for an entry signature. A program entry uses
+`codegen = "c99"` for native source builds. Desktop and Canvas
+`codegen = "zx"` profiles bundle the program's `main`; the player binds its
+window capabilities. Native custom hosts remain Ziran implementation modules.
 
 The selected host owns the process entry point, calls `BeginFrame` and
 `EndFrame`, supplies input to the session, and presents paint operations.

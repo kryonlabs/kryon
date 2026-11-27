@@ -1,7 +1,7 @@
 // Actual public widgets for the before/after contact sheets. No mock drawing
 // substitutes for a control. Nonvisual containers contain ordinary children.
-Box :: #import "kryon/box";
 Button :: #import "kryon/button";
+Box :: #import "kryon/box";
 TextField :: #import "kryon/text_field";
 Toggle :: #import "kryon/toggle";
 #import "drawing_props"
@@ -11,19 +11,11 @@ Toggle :: #import "kryon/toggle";
 #import "tree"
 #import "tree_input"
 using Scenes :: #import "scenes";
-#if #defined(REVIEW_DESKTOP) {
-    #import "cairo_raster"
-    #import "desktop_runtime"
-} else {
-    #import "pixmap"
-    #import "pixmap_frame"
-}
+#import "kryon/Cairo"
+#import "desktop_runtime"
 #import "tree_draw"
-#import "page_text"
-#import "transition"
 ReviewTheme :: #import "theme";
 #import "system_theme"
-#import "text_selection_widget"
 #import "std/file"
 
 // Linux resets this high-water mark at exec. wait4's ru_maxrss can include
@@ -57,9 +49,6 @@ ReviewSleep :: (stamp: *ReviewStamp, remaining: *ReviewStamp) -> s32 #foreign li
 CpuNow :: () -> s64 { stamp: ReviewStamp; unused ReviewClock(2, *stamp); return stamp.seconds * 1000000000 + stamp.nanoseconds }
 
 
-pixels: [153600]u32;
-image: [4096]u32;
-
 EnvNumber :: (name: string) -> s32 {
     buffer: [128]u8
     if !CopyCString(name, buffer[:]) { return 0 }
@@ -77,34 +66,24 @@ Run :: () -> s32 {
     scene := EnvNumber("KRYON_REVIEW_SCENE")
     state := EnvNumber("KRYON_REVIEW_STATE")
     metrics := EnvNumber("KRYON_REVIEW_METRICS") > 0
-    for index: 0..4095 { image[index] = ifx (index / 512 + index % 64 / 8) % 2 == 0 then cast(u32)0xff287d91 else cast(u32)0xff83b5a0 }
-    #if #defined(REVIEW_DESKTOP) {
-        // Use a real file through the ordinary image decoder on this host.
-        key: [64]u8
-        unused CopyCString("KRYON_REVIEW_FIXTURE", key[:])
-        scene_image = TextFromCString(ReviewEnvironment(*key[0]))
-        if scene_image == "" { scene_image = "backup/material-widgets/fixture.png" }
-        if !OpenDesktopSized(480, 320) { return 1 }
-        defer CloseDesktop()
-    } else {
-        if !PixmapSetImage(0, "review-image", 64, 64, image[:]) { return 1 }
-        defer { PixmapCloseWorkers(); PixmapClearImage(0); PixmapEndInto() }
-    }
+    // Use a real file through the ordinary image decoder on this host.
+    key: [64]u8
+    unused CopyCString("KRYON_REVIEW_FIXTURE", key[:])
+    scene_image = TextFromCString(ReviewEnvironment(*key[0]))
+    if scene_image == "" { scene_image = "backup/material-widgets/fixture.png" }
+    if !OpenDesktopSized(480, 320) { return 1 }
+    defer CloseDesktop()
     session := SessionOpen()
     defer CloseSession(session)
     if !SessionValid(session) { return 2 }
     active := EnvNumber("KRYON_REVIEW_ACTIVE") > 0
     palette := SystemPaletteFromCss("", (scene == 55 || scene == 57))
     if scene >= 54 { if !SystemPaletteInstall(palette) { return 7 } }
-    background := ifx scene >= 54 then palette.background else ReviewTheme.LightBackground()
+    background := ifx scene >= 54 then palette.background else ReviewTheme.LightPalette().background
     count := ifx metrics then 130 else 3
     if metrics { print("frame,total_ns,nodes,paint,emitted,damage_pixels,frame_text_reserve_bytes,cpu_ns\n") }
     for frame: 0..count - 1 {
-        #if #defined(REVIEW_DESKTOP) {
-            BeginDesktopFrame()
-        } else {
-            if !PixmapResumeInto(480, 320, pixels[:]) { return 3 }
-        }
+        BeginDesktopFrame()
         if active { PaintSnapshotInvalidate(session) }
         if state == 2 { TreePointerUpdate(session, PointerFrame.{48.0, (ifx scene == 20 then 264.0 else 86.0), false, false, false}) }
         if state == 4 { TreePointerUpdate(session, PointerFrame.{48.0, (ifx scene == 20 then 264.0 else 86.0), frame >= 1, frame == 1, false}) }
@@ -123,16 +102,10 @@ Run :: () -> s32 {
         }
         result: FrameEndResult
         emitted: s32
-        #if #defined(REVIEW_DESKTOP) {
-            result = CommitFrameDamaged(session)
-            if !result.paint_unchanged { emitted = result.paint_count; PaintFlush(session) }
-            DesktopFrameUnchanged(result.paint_unchanged)
-            if !EndDesktopFrame() { return 5 }
-        } else {
-            pixels_result := EndPixmapFrame(session, true, background, true)
-            result.status = pixels_result.status; result.paint_count = pixels_result.paint_count
-            result.damage = pixels_result.damage; emitted = pixels_result.emitted_count
-        }
+        result = CommitFrameDamaged(session)
+        if !result.paint_unchanged { emitted = result.paint_count; PaintFlush(session) }
+        DesktopFrameUnchanged(result.paint_unchanged)
+        if !EndDesktopFrame() { return 5 }
         if metrics && frame == 0 { print("# startup_ns,%\n", Clock.MonotonicNanoseconds() - started) }
         if scene == 50 && frame == 0 && state != 1 { unused TreeFocusAt(session, 2) }
         elapsed := Clock.MonotonicNanoseconds() - start
@@ -149,23 +122,17 @@ Run :: () -> s32 {
         if metrics && frame >= 10 { print("%,%,%,%,%,%,%,%\n", frame - 10, elapsed, TreeCount(session), result.paint_count, emitted, cast(s64)(result.damage.width * result.damage.height), reserved, cpu_elapsed) }
     }
     if !metrics {
-        #if #defined(REVIEW_DESKTOP) {
-            if !CaptureConfigured() { return 6 }
-        } else {
-            PixmapPresent()
-        }
+        if !CaptureConfigured() { return 6 }
     } else {
         print("# runner_peak_rss_kib,%\n", ResidentKib("VmHWM:"))
         print("# steady_rss_kib,%\n", ResidentKib("VmRSS:"))
         // No animation timer is added by styling. Measure a quiet retained host.
         cpu_start := CpuNow(); wall_start := Clock.MonotonicNanoseconds()
         for idle: 0..4 {
-            #if #defined(REVIEW_DESKTOP) {
-                // Drain our window's queued events before the bounded quiet
-                // interval; event creation at startup must not masquerade as
-                // an idle spin. Hosts still own their normal activity policy.
-                unused PollDesktop()
-            }
+            // Drain our window's queued events before the bounded quiet
+            // interval; event creation at startup must not masquerade as
+            // an idle spin. Hosts still own their normal activity policy.
+            unused PollDesktop()
             delay: ReviewStamp = .{0, 40000000}; unused ReviewSleep(*delay, null)
         }
         print("# idle_cpu_ns,%\n", CpuNow() - cpu_start)

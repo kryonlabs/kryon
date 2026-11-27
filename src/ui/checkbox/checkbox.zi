@@ -5,9 +5,11 @@ Theme :: #import "theme";
     #import "session"
     host_api :: #system_library "host_api";
     CheckboxHostedHost :: (session: Session, props: Checkbox.Props) -> Checkbox.CheckboxValueResult #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: Checkbox.Props) -> Checkbox.CheckboxValueResult {
         return CheckboxHostedHost(session, props)
     }
+        #scope_export
 } else {
 #import "session"
 #import "checkbox_behavior"
@@ -121,6 +123,7 @@ PaintCheckboxForNode :: (session: Session, node: s32, props: Checkbox.Props,
 
 // The caller owns the current value. A release routed from the previous tree
 // returns a proposed value, without a platform pointer or mutable host state.
+#scope_package
 Draw :: (session: Session, props: Checkbox.Props, location := #caller_location) -> Checkbox.CheckboxValueResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

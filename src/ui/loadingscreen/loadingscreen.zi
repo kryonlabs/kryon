@@ -90,6 +90,7 @@ LoadingScreenColor :: (token: string, fallback: Color) -> Color {
     }
 }
 
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

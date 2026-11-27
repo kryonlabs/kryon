@@ -1,6 +1,6 @@
 // The viewport type comes from the shared geometry module.
 #import "geometry"
-using Sessions :: #import "session";
+Sessions :: #import "session";
 
 Window :: struct {
     title: string

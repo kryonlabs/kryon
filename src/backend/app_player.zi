@@ -9,6 +9,7 @@
 // Register decoding for picture cursors requested by hosted widgets.
 #import "cursor_picture"
 #import "app_files"
+Components :: #import "component_frame_slot";
 
 sdl :: #system_library "SDL2";
 SetTitle :: (window: *void, title: *u8) #foreign sdl "SDL_SetWindowTitle";
@@ -24,6 +25,7 @@ Draw :: (host: *BundleApp) -> bool {
         key, modifiers, DesktopWheelMove(), text,
         cast(float64)MonotonicMilliseconds() / 1000.0) { return false }
     unused DesktopCursor(host.app.session)
+    DesktopWakeAt(Components.NextDeadline(host.app.session))
     return EndDesktopFrame()
 }
 
@@ -60,7 +62,7 @@ Run :: (bundle: *void, check: bool, bindings: []HostBinding) -> s32 {
         }
         ready = BundleAppSave(*host) && ready
     }
-    CloseDesktop()
     BundleAppClose(*host)
+    CloseDesktop()
     return ifx ready then 0 else 1
 }

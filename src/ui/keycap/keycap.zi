@@ -84,6 +84,7 @@ KeycapPart :: (value: string, face: StyleData, font: s32) -> float32 {
     return width
 }
 
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) -> KeycapResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

@@ -34,8 +34,8 @@ for label, selected in [('core-only', {'kryon'}), ('without-plot', {'kryon', 'da
     for name in omitted:
         assert name + '_examples' not in registry
         assert not any(e['moduleId'] == name for e in entries)
-    assert {p.relative_to(target / 'site').as_posix() for p in (target / 'site/gallery-sources').rglob('*.zi')} == {entry['code'] for entry in entries}
-    roots = [PROJECT / 'src', target / 'catalog', ziran / 'std']
+    assert {p.relative_to(target / 'site').as_posix() for p in (target / 'site/gallery-sources').rglob('*.tsx')} == {entry['code'] for entry in entries}
+    roots = [PROJECT / 'src', 'gallery=' + str(PROJECT / 'src'), target / 'catalog', ziran / 'std']
     # Each package's public names are its manifest exports, which need not
     # match its source files (kryon/button_group is buttongroup/buttongroup.zi):
     # an alias module per export imports the source through <name>_source.
@@ -45,7 +45,8 @@ for label, selected in [('core-only', {'kryon'}), ('without-plot', {'kryon', 'da
         for source in (path / root for root in manifest['package']['module_roots']):
             roots.extend([source, name + '_source=' + str(source)])
         if gallery.export_aliases(name, path):
-            roots.append(name + '=' + str(PROJECT / 'build/catalog/exports' / name))
+            for alias in dict.fromkeys((name, manifest['package']['name'])):
+                roots.append(alias + '=' + str(PROJECT / 'build/catalog/exports' / name))
     command = [str(ziran / 'build/bin/zi2zir'), '--root', str(PROJECT / 'tests')]
     for root in roots: command.extend(['--module-path', str(root)])
     command.extend(['--entry', 'modules:main', '-o', str(target / 'ir'), str(PROJECT / 'tests/modules.zi')])

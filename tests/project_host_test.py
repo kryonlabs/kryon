@@ -33,7 +33,7 @@ def main():
         (project / "src").mkdir(parents=True)
         (project / "ziran.toml").write_text(pinned(
             '[package]\nname = "host_probe"\ntool = "kryon"\n'
-            'entry = "src/app.zi"\nmodule_roots = ["src"]\n'
+            'entry = "src/app.tsx"\nmodule_roots = ["src"]\n'
             'bridge_modules = ["app"]\n\n'
             '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
             'ref = "master"\n\n'
@@ -46,12 +46,11 @@ def main():
         (project / "ziran.local.toml").write_text(kryon_only(
             f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n'
         ))
-        (project / "src/app.zi").write_text(
-            '#import "kryon/geometry"\n'
-            '#import "kryon/session"\n'
-            '#program_export\n'
-            'Frame :: (session: Session, viewport: Rectangle) -> s32 { return 99 }\n'
-        )
+        (project / "src/app.tsx").write_text('''import { Rectangle } from "kryon/geometry";
+import { Session } from "kryon/session";
+
+export function Frame(session: Session, viewport: Rectangle): s32 { return s32(99); }
+''')
         (project / "src/runner.zi").write_text(
             '#import "std/byte_text_linux"\n'
             '#program_export\nmain :: (argc: s32, argv: **u8) -> s32 {\n'
@@ -80,8 +79,8 @@ def main():
         )
         with (project / "ziran.toml").open('a') as manifest:
             manifest.write(
-                '\n[tool.kryon.profiles.raster]\nbackend = "pixmap"\nhost = "src/raster.zi"\n'
-                '\n[tool.kryon.profiles.portable]\nbackend = "pixmap"\ncodegen = "zx"\nhost = "src/raster.zi"\n'
+                '\n[tool.kryon.profiles.raster]\nbackend = "terminal"\nhost = "src/raster.zi"\n'
+                '\n[tool.kryon.profiles.portable]\nbackend = "desktop"\ncodegen = "zx"\nhost = "src/raster.zi"\n'
             )
         run([str(ZIRAN), "tool", "kryon", "build", "raster"], project)
         for count in (1, None, 8):

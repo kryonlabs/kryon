@@ -4,9 +4,11 @@ using Press :: #import "press_props";
     #import "session"
     host_api :: #system_library "host_api";
     PressHostedHost :: (session: Session, props: Press.Props) -> PressResult #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: Press.Props) -> PressResult {
         return PressHostedHost(session, props)
     }
+        #scope_export
 } else {
 #import "session"
 #import "geometry"
@@ -34,6 +36,7 @@ PressElapsed :: (now: s32, start: s32) -> s32 {
 // A pressable area submitted as a button, so it takes keyboard focus and
 // Enter or Space click it. Its retained state is open while pressed, offset
 // is the press's start and index is 1 once the press became a hold.
+#scope_package
 Draw :: (session: Session, props: Press.Props, location := #caller_location) -> PressResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

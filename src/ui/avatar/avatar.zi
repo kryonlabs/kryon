@@ -169,6 +169,7 @@ AvatarInstalledFaceFor :: (props: Props, state: s32) -> StyleData {
     return MergeValues(ResolveValues(face, props.states, state), props.style)
 }
 
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) -> AvatarResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
@@ -246,6 +247,7 @@ Draw :: (session: Session, props: Props, location := #caller_location) -> Avatar
     return result
 }
 
+#scope_export
 #program_export
 AvatarGroup :: (session: Session, props: AvatarGroupProps,
     names: []string) -> AvatarGroupResult {

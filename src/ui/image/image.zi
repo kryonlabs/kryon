@@ -7,8 +7,10 @@ Theme :: #import "theme";
     #import "session"
     host_api :: #system_library "host_api";
     ImageHostedHost :: (session: Session, image: Image.Props) #foreign host_api;
+        #scope_package
         Draw :: (session: Session, image: Image.Props) { ImageHostedHost(session, image) }
     // The host draws a portable composition's pictures.
+        #scope_export
     ImageUsePictures :: () {}
 } else {
 #import "session"
@@ -145,6 +147,7 @@ PaintImagePlaceholder :: (session: Session, node: s32, image: Image.Props,
                 label_style.opacity))))
 }
 
+#scope_package
 Draw :: (session: Session, image: Image.Props, location := #caller_location) {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

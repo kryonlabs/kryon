@@ -1,4 +1,4 @@
-# Shared build route for a Ziran application configured by ziran.toml.
+# Shared native application build route configured by ziran.toml.
 ifndef PROJECT_NAME
 $(error PROJECT_NAME is required; run this through ziran tool kryon)
 endif
@@ -18,15 +18,17 @@ ifndef ZIRAN_PACKAGE_ID
 $(error ZIRAN_PACKAGE_ID is required; run this through ziran tool kryon)
 endif
 
-ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 canvas/c99 pixmap/c99 desktop/zx pixmap/zx canvas/zx),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
+ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 canvas/c99 desktop/zx canvas/zx),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
 $(error backend $(PROJECT_BACKEND) with codegen $(PROJECT_CODEGEN) is not available)
 endif
 
 CC ?= cc
+ZIRAN_BUILD_DIR ?= $(abspath $(ZIRAN_DIR)/build)
+ZIRAN_MAKE_FLAGS := $(if $(filter $(abspath $(ZIRAN_DIR)/build),$(ZIRAN_BUILD_DIR)),,BUILD_DIR=$(ZIRAN_BUILD_DIR))
 # The tool already resolved this profile's pinned or overridden toolchain.
 # A parent application's command-line ZIRAN must not replace that absolute
 # executable with a bare make prerequisite such as "ziran".
-override ZIRAN := $(ZIRAN_DIR)/build/bin/ziran
+override ZIRAN := $(ZIRAN_BUILD_DIR)/bin/ziran
 # Examples share the owning repository's output tree instead of creating a
 # build folder beside every example's source.
 EXAMPLE_RELATIVE := $(patsubst $(realpath $(KRYON_DIR))/examples/%,%,$(realpath $(CURDIR)))
@@ -67,9 +69,6 @@ ZIRAN_MODULE_ARGS := --project $(if $(KRYON_TEST_DRIVER),--define KRYON_TEST_DRI
 ifeq ($(PROJECT_BACKEND),terminal)
 ZIRAN_MODULE_ARGS += --define KRYON_TERMINAL
 endif
-ifeq ($(PROJECT_BACKEND),pixmap)
-ZIRAN_MODULE_ARGS += --define KRYON_PIXMAP
-endif
 ifeq ($(PROJECT_BACKEND)/$(PROJECT_CODEGEN),desktop/c99)
 ifeq ($(shell uname -s),Linux)
 # The desktop host needs Linux settings even when the frame IR has no target OS.
@@ -77,11 +76,13 @@ ZIRAN_MODULE_ARGS += --define KRYON_LINUX_DESKTOP
 endif
 endif
 ifeq ($(filter $(PROJECT_BACKEND),desktop),)
-# A non-desktop C build (terminal, canvas, pixmap) hosts no desktop
+# A non-desktop C build (terminal, canvas) hosts no desktop
 # window; kryon/app then maps the program's window calls to app_unsupported
 # so it carries no desktop modules.
 ZIRAN_MODULE_ARGS += --define KRYON_NO_DESKTOP_HOST
 endif
+APP_SOURCES := $(shell find . -type d \( -name build -o -name .git -o -name vendor \) -prune -o -type f \( -name '*.zi' -o -name '*.ts' -o -name '*.tsx' \) -print)
+UI_SOURCES := $(shell find $(KRYON_DIR)/src/ui $(KRYON_DIR)/src/tsx $(KRYON_DIR)/examples/shared/screens -type f \( -name '*.zi' -o -name '*.ts' -o -name '*.tsx' \) -print)
 ifneq ($(PROJECT_HOST),)
 PROJECT_HOST_PATH := $(realpath $(PROJECT_HOST))
 ifeq ($(filter $(CURDIR)/%,$(PROJECT_HOST_PATH)),)
@@ -94,8 +95,6 @@ HOST_ROOT_SOURCES := $(HOST)
 # spelling warning does not apply to that generated entry signature.
 HOST_CFLAGS := -Wno-main
 else
-APP_SOURCES := $(shell find . -type d \( -name build -o -name .git -o -name vendor \) -prune -o -type f -name '*.zi' -print)
-UI_SOURCES := $(shell find $(KRYON_DIR)/src/ui -type f -name '*.zi')
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi $(KRYON_DIR)/src/backend/avif*.zi)
 ifneq ($(filter $(PROJECT_BACKEND),desktop),)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/app_asset_path.zi $(KRYON_DIR)/src/backend/app_asset.zi $(KRYON_DIR)/src/backend/program_title.zi
@@ -104,42 +103,13 @@ endif
 ifneq ($(filter $(PROJECT_BACKEND),desktop canvas),)
 HOST_SOURCES += $(KRYON_DIR)/src/ui/frame_input_provider.zi
 endif
-# Every entry is a program: it declares `main` and opens its window through
-# kryon/app, which selects the host for the compiled target.
+# Entry signatures are checked in common IR, independent of source language.
 PROJECT_ENTRY_MODULE := $(basename $(notdir $(PROJECT_ENTRY)))
 ifeq ($(PROJECT_ENTRY_MODULE),module)
 PROJECT_ENTRY_MODULE := $(notdir $(patsubst %/,%,$(dir $(PROJECT_ENTRY))))
 endif
-PROJECT_PROGRAM := $(shell grep -Eqs '^main[[:space:]]*::' '$(PROJECT_ENTRY)' && echo program)
-ifeq ($(PROJECT_PROGRAM),)
-$(error $(PROJECT_ENTRY) has no main. Kryon programs declare one: add `main :: () -> s32` that runs App.Run from kryon/app, as docs/APPS.md shows)
-endif
-# Track the export annotation belonging to main, rather than unrelated exports.
-# Every make version reads \# in an assignment as a literal number sign.
-PROJECT_HASH := \#
-PROJECT_EXPORTED_MAIN := $(shell awk '/^$(PROJECT_HASH)program_export([[:space:]]*("main")?[[:space:]]*;?[[:space:]]*)$$/ { exported=1; next } /^main[[:space:]]*::/ { if (exported) print "main"; exit } !/^[[:space:]]*($$|\/\/|$(PROJECT_HASH))/ { exported=0 }' '$(PROJECT_ENTRY)')
-ifeq ($(PROJECT_CODEGEN),zx)
-# A portable program's bundle is its own main, which kryon/app gives the
-# window ZX bundles have; the profile's player runs it.
 HOST_ID := $(PROJECT_ENTRY_MODULE)
-PROJECT_ENTRY_LINK :=
 HOST_ROOT_SOURCES := $(PROJECT_ENTRY)
-else ifneq ($(PROJECT_CODEGEN),c99)
-$(error a program entry ($(PROJECT_ENTRY) declares main) needs codegen c99 or zx)
-else ifneq ($(strip $(PROJECT_EXPORTED_MAIN) $(filter main,$(PROJECT_ENTRY_MODULE))),)
-# Ziran emits both an exported main and main:main as the C process entry.
-# Wrapping main:main would produce a second C main.
-HOST_ID := $(PROJECT_ENTRY_MODULE)
-PROJECT_ENTRY_LINK :=
-HOST_ROOT_SOURCES := $(PROJECT_ENTRY)
-else
-# Other module names need a native process entry calling the program's main.
-PROGRAM_HOST := $(GEN_DIR)/program-host/kryon_program_host.zi
-HOST := $(PROGRAM_HOST)
-HOST_ID := kryon_program_host
-PROJECT_ENTRY_LINK := --module-path $(dir $(PROGRAM_HOST))
-HOST_ROOT_SOURCES := $(PROGRAM_HOST) $(PROJECT_ENTRY)
-endif
 endif
 ifeq ($(PROJECT_CODEGEN)/$(PROJECT_BACKEND),zx/canvas)
 # Portable app IR is identical on desktop and web. Only the renderer shell
@@ -158,18 +128,19 @@ ifneq ($(if $(filter c99,$(PROJECT_CODEGEN)),$(BROWSER_BACKEND)),)
 ifeq ($(PROJECT_BACKEND),canvas)
 HOST_ROOT_SOURCES += $(KRYON_DIR)/src/backend/canvas_raster.zi
 endif
-# Browser hosts resolve the app's packages like native ones; every saved
-# module is lowered because the browser runtime calls into the page.
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_ENTRY_LINK) $(WEB_TARGET) --define PLATFORM_WEB \
+# Browser hosts resolve the app's packages like native ones. The checked
+# closed link retains the entry and the page's exported runtime callbacks.
+IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(WEB_TARGET) --define PLATFORM_WEB \
 	--entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
-C_COMMAND := $(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB \
+C_COMMAND := $(ZIRAN_BUILD_DIR)/bin/zi2c --define PLATFORM_WEB --target-os web --target-cpu wasm32 \
+	--emit-main --entry $(HOST_ID):main \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
 
 else
 # A program selects its kryon/app host by compiled target, so a C program's
 # IR names the native C target; a ZX program's and frame IR stay portable.
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_ENTRY_LINK) $(if $(filter c99,$(PROJECT_CODEGEN)),--target=c --define POSIX_THREADS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
-C_COMMAND := $(ZIRAN) build --target=c --entry $(HOST_ID):main \
+IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(if $(filter c99,$(PROJECT_CODEGEN)),--target=c --define POSIX_THREADS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
+C_COMMAND := $(ZIRAN) build --target=c --emit-main --entry $(HOST_ID):main \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
 endif
 ifeq ($(PROJECT_BACKEND),desktop)
@@ -298,11 +269,10 @@ endif
 
 # Project builds run the driver, which shells out to zi2zir and zi2c.
 # The pinned toolchain is built once; see the kryon tool's rule.
-toolchain: $(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bin/zi2c
+toolchain: $(ZIRAN_BUILD_DIR)/bin/ziran $(ZIRAN_BUILD_DIR)/bin/zi2zir $(ZIRAN_BUILD_DIR)/bin/zi2c
 
-$(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bin/zi2c:
-	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) \
-		build/bin/ziran build/bin/zi2zir build/bin/zi2c
+$(ZIRAN_BUILD_DIR)/bin/ziran $(ZIRAN_BUILD_DIR)/bin/zi2zir $(ZIRAN_BUILD_DIR)/bin/zi2c:
+	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) $(ZIRAN_MAKE_FLAGS) all
 
 # Native assets use the same executable-relative layout before and after install.
 .PHONY: native-assets
@@ -323,25 +293,13 @@ build: toolchain
 ifeq ($(PROJECT_CODEGEN),zx)
 include $(KRYON_DIR)/mk/zx-player.mk
 
-$(ZIRAN_DIR)/build/bin/zi2zx $(ZIRAN_DIR)/build/libziran.a:
-	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
+$(ZIRAN_BUILD_DIR)/bin/zi2zx $(ZIRAN_BUILD_DIR)/libziran.a:
+	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) $(ZIRAN_MAKE_FLAGS) all
 
-$(PROGRAM): $(IR_STAMP) $(ASSET_DEPENDENCY) $(ZIRAN_DIR)/build/bin/zi2zx
+$(PROGRAM): $(IR_STAMP) $(ASSET_DEPENDENCY) $(ZIRAN_BUILD_DIR)/bin/zi2zx
 	$(ZIRAN) bundle --root $(IR_DIR) --entry $(HOST_ID):main \
-		$(if $(filter pixmap,$(PROJECT_BACKEND)),$(if $(PROJECT_HOST),--bind-host kryon__pixmap)) \
 		$(if $(PROJECT_ASSETS),--asset-dir $(PROJECT_ASSETS)=$(PROJECT_ASSETS)) \
 		-o $@ $(IR_DIR)/*.zir
-endif
-
-ifneq ($(PROGRAM_HOST),)
-# main takes nothing or (argc, argv) and returns nothing or its exit status.
-$(PROGRAM_HOST): $(PROJECT_ENTRY) $(KRYON_DIR)/mk/ziran-project.mk
-	@mkdir -p $(dir $@)
-	@signature=$$(grep -E -m1 '^main[[:space:]]*::' '$(PROJECT_ENTRY)'); \
-	case "$$signature" in *argc*) parameters='argc: s32, argv: **u8'; arguments='argc, argv';; *) parameters=; arguments=;; esac; \
-	case "$$signature" in *'->'*) body="return Program.main($$arguments)";; *) body="Program.main($$arguments)\n    return 0";; esac; \
-	printf 'Program :: #import "%s";\n\n#program_export\nmain :: (%s) -> s32 {\n    %b\n}\n' \
-		'$(PROJECT_ENTRY_MODULE)' "$$parameters" "$$body" > $@
 endif
 
 $(GEN_DIR)/test-driver.$(TEST_DRIVER_STATE):
@@ -349,7 +307,15 @@ $(GEN_DIR)/test-driver.$(TEST_DRIVER_STATE):
 	@rm -f $(GEN_DIR)/test-driver.on $(GEN_DIR)/test-driver.off
 	@: > $@
 
-$(IR_STAMP): $(GEN_DIR)/test-driver.$(TEST_DRIVER_STATE) $(PROJECT_SOURCE_DEPS) $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
+# Switching a configured toolchain invalidates output even when its binaries
+# have older mtimes than the previous build's files.
+.PHONY: project-toolchain-config
+$(GEN_DIR)/toolchain: project-toolchain-config
+	@mkdir -p $(GEN_DIR)
+	@printf '%s\n' "$(ZIRAN_BUILD_DIR)" > $@.new
+	@cmp -s $@.new $@ && rm -f $@.new || mv -f $@.new $@
+
+$(IR_STAMP): $(GEN_DIR)/toolchain $(GEN_DIR)/test-driver.$(TEST_DRIVER_STATE) $(PROJECT_SOURCE_DEPS) $(ZIRAN_BUILD_DIR)/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
 	mkdir -p $(IR_DIR)
 	rm -f $(IR_DIR)/*.zir $(IR_STAMP)
 	$(IR_COMMAND)
@@ -358,7 +324,7 @@ $(IR_STAMP): $(GEN_DIR)/test-driver.$(TEST_DRIVER_STATE) $(PROJECT_SOURCE_DEPS) 
 
 ifeq ($(PROJECT_CODEGEN),c99)
 
-$(C_STAMP): $(IR_STAMP) $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
+$(C_STAMP): $(IR_STAMP) $(ZIRAN_BUILD_DIR)/bin/zi2c $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
 	mkdir -p $(C_DIR)
 	rm -f $(C_DIR)/*.c $(C_DIR)/*.h $(C_STAMP) $(GEN_DIR)/*.c $(GEN_DIR)/*.h $(GEN_DIR)/.complete
 	$(C_COMMAND)
@@ -432,8 +398,8 @@ endif
 endif
 
 # Check the complete bound graph through the same IR route as a build.
-check: toolchain $(PROGRAM_HOST)
-	$(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_ENTRY_LINK) -o $(GEN_DIR)/check-ir --entry $(HOST_ID):main $(if $(filter c99,$(PROJECT_CODEGEN)),$(if $(BROWSER_BACKEND),$(WEB_TARGET) --define PLATFORM_WEB,--target=c)) $(HOST_ROOT_SOURCES)
+check: toolchain
+	$(ZIRAN) ir $(ZIRAN_MODULE_ARGS) -o $(GEN_DIR)/check-ir --entry $(HOST_ID):main $(if $(filter c99,$(PROJECT_CODEGEN)),$(if $(BROWSER_BACKEND),$(WEB_TARGET) --define PLATFORM_WEB,--target=c)) $(HOST_ROOT_SOURCES)
 
 # `ziran install` copies the built program to PREFIX/bin and describes it to
 # the desktop. The KRYON_INSTALL_* values come from [tool.kryon.install] and

@@ -5,9 +5,11 @@ Theme :: #import "theme";
     #import "session"
     host_api :: #system_library "host_api";
     ToggleHostedHost :: (session: Session, props: Toggle.Props) -> Toggle.ToggleValueResult #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: Toggle.Props) -> Toggle.ToggleValueResult {
         return ToggleHostedHost(session, props)
     }
+        #scope_export
 } else {
 #import "session"
 #import "control_props"
@@ -207,6 +209,7 @@ ToggleMinimumSize :: (props: Toggle.Props) -> Vector2 {
 
 // The caller retains the value returned here and supplies it on the next
 // frame. Pointer activation is consumed from the previous committed tree.
+#scope_package
 Draw :: (session: Session, props: Toggle.Props, location := #caller_location) -> Toggle.ToggleValueResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

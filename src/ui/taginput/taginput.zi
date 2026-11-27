@@ -360,15 +360,19 @@ TagInputHostedReply :: struct { state: TagInputState; result: TagInputResult }
     taginput_host_api :: #system_library "host_api";
     TagInputHostedHost :: (session: Session, props: Props,
         state: TagInputState) -> TagInputHostedReply #foreign taginput_host_api;
+        #scope_package
         Draw :: (session: Session, props: Props,
     state: *TagInputState) -> TagInputResult {
         reply := TagInputHostedHost(session, props, state.*)
         state.* = reply.state
         return reply.result
     }
+        #scope_export
 } else {
+        #scope_package
         Draw :: (session: Session, props: Props,
     state: *TagInputState, location := #caller_location) -> TagInputResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return TagInputCore(session, props, state, true) }
+        #scope_export
     #program_export
     TagInputCore :: (session: Session, props: Props,
     state: *TagInputState, effects: bool) -> TagInputResult {

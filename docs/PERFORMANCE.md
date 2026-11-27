@@ -38,21 +38,17 @@ compositions. Each interactive scene captures resting, disabled, hover, keyboard
 focus and held-press states, using the same 480 × 320 viewport.
 
 ```sh
-taskset -c 2 python3 tools/widget-review.py before --backend pixmap
-taskset -c 2 python3 tools/widget-review.py before --backend desktop
-# Change the shared library only after both baselines finish.
-taskset -c 2 python3 tools/widget-review.py after --backend pixmap
-taskset -c 2 python3 tools/widget-review.py after --backend desktop
-taskset -c 2 python3 tools/widget-review.py compare --backend pixmap
-taskset -c 2 python3 tools/widget-review.py compare --backend desktop
-taskset -c 2 python3 tools/widget-review.py recheck --backend pixmap --trials 7
-taskset -c 2 python3 tools/widget-review.py recheck --backend desktop --trials 7
+taskset -c 2 python3 tools/widget-review.py before
+# Change the shared library after the baseline finishes.
+taskset -c 2 python3 tools/widget-review.py after
+taskset -c 2 python3 tools/widget-review.py compare
+taskset -c 2 python3 tools/widget-review.py recheck --trials 7
 ```
 
 The stable executables and disposable generated C live under
 `build/scratch/widget-review/`. Captures, bounded per-frame CSV, JSON metrics and
-comparison PNGs live under ignored `backup/material-widgets/`. Each backend has
-its own `comparison-BACKEND/grid-overview.png` and full-size state comparisons.
+comparison PNGs live under ignored `backup/material-widgets/`. Desktop results
+use `comparison-desktop/grid-overview.png` and full-size state comparisons.
 A second baseline replaces the previous baseline, so preserve any earlier study
 before starting another.
 

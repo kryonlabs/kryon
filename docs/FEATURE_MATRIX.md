@@ -1,8 +1,8 @@
 # Kryon feature matrix
 
-This table describes the maintained Ziran library and hosts. Kryon is
-imported by a Ziran application; it is not a language or a built-in Ziran
-runtime. Ziran owns compilation and portable `.zx` execution. See
+This table describes the native Ziran library and hosts. Applications compose
+Kryon widgets in TSX and import Ziran application logic through checked native
+declarations. Ziran owns compilation and portable `.zx` execution. See
 [ARCHITECTURE.md](ARCHITECTURE.md) and [BACKENDS.md](BACKENDS.md) for the
 module and host boundaries.
 
@@ -29,7 +29,7 @@ browser-only features are documented in
 | Terminal | `src/backend/frames_terminal.zi` | Private PTY project test covers ASCII, UTF-8, invalid input, and escape sequences | ✅ supported |
 | Desktop | `src/backend/frames_desktop.zi` | Private Xvfb project test covers image capture, keyboard, UTF-8 text, and wheel input | ✅ supported on the tested Linux host |
 | Web Canvas | `src/backend/frames_web.zi` | Headless Chromium checks WebGL2 pixels, clips, input, textures, fonts, lifecycle, WebAudio, and file behavior | ✅ supported through Emscripten on the tested browser |
-| Android | app `src/main.zi` + `src/backend/android_run.zi` | `tests/ziran_android_device_test.sh` checks the device text, lifecycle, and inset protocol with the Java side stubbed; a manual emulator run verifies install, rendering, touch, and back | ✅ supported through NativeActivity with direct ANativeWindow pixel presentation |
+| Android | TSX application entry + `src/backend/android_run.zi` | `tests/ziran_android_device_test.sh` checks the device text, lifecycle, and inset protocol with the Java side stubbed; a manual emulator run verifies install, rendering, touch, and back | ✅ supported through NativeActivity with direct ANativeWindow pixel presentation |
 
 The desktop project test (`make desktop-project-test`) uses a private Xvfb
 display. The canvas project test runs in `make test` and launches only private

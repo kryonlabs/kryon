@@ -3,7 +3,6 @@ import argparse
 import json
 import re
 import subprocess
-import textwrap
 from pathlib import Path
 import tomllib
 
@@ -11,67 +10,119 @@ ROOT = Path(__file__).resolve().parents[1]
 PROJECT = ROOT / 'examples/gallery'
 SITE = ROOT / 'docs/site'
 
+# These scenes share a source module while keeping their distinct composition.
+SCENE_FRAMES = {
+    'kryon/0': 'GalleryCoreFrame',
+    'kryon/1': 'GalleryFrame',
+    'kryon/2': 'GalleryFrame',
+    'kryon/4': 'GalleryFrame',
+    'kryon/5': 'GalleryFrame',
+    'kryon/6': 'GalleryFrame',
+    'kryon/7': 'GalleryFrame',
+    'kryon/8': 'GalleryFrame',
+    'kryon/9': 'GalleryFrame',
+    'kryon/12': 'GalleryFrame',
+    'kryon/13': 'GalleryFrame',
+    'kryon/14': 'GalleryFrame',
+    'kryon/15': 'GalleryFrame',
+    'kryon/16': 'GalleryFrame',
+    'kryon/21': 'GalleryFrame',
+    'kryon/22': 'GalleryFrame',
+    'kryon/26': 'GalleryFrame',
+    'kryon/27': 'GalleryFrame',
+    'kryon/28': 'GalleryFrame',
+    'kryon/29': 'GalleryFrame',
+    'kryon/30': 'GalleryFrame',
+    'kryon/35': 'GalleryFrame',
+    'kryon/36': 'GalleryFrame',
+    'kryon/37': 'GalleryFrame',
+    'kryon/38': 'GalleryFrame',
+    'kryon/39': 'GalleryFrame',
+    'kryon/40': 'GalleryFrame',
+    'kryon/46': 'GalleryEmphasisFrame',
+    'kryon/49': 'GalleryFrame',
+    'kryon/50': 'GallerySelectionFrame',
+    'kryon/52': 'GalleryFrame',
+    'kryon/53': 'GalleryFrame',
+    'kryon/54': 'GalleryFrame',
+    'kryon/3': 'GalleryFrame',
+    'kryon/10': 'GalleryFrame',
+    'kryon/18': 'GalleryFrame',
+    'kryon/19': 'GalleryFrame',
+    'kryon/20': 'GalleryFrame',
+    'kryon/42': 'GalleryFrame',
+    'kryon/11': 'GalleryMultiFrame',
+    'kryon/47': 'GalleryOpenFrame',
+    'kryon/17': 'GalleryFrame',
+    'kryon/31': 'GalleryFrame',
+    'kryon/41': 'GalleryFrame',
+    'kryon/44': 'GalleryFrame',
+    'kryon/48': 'GalleryFrame',
+    'kryon/24': 'GalleryFrame',
+    'kryon/25': 'GalleryFrame',
+    'kryon/32': 'GalleryFrame',
+    'kryon/33': 'GalleryFrame',
+    'kryon/34': 'GalleryFrame',
+    'kryon/45': 'GalleryFrame',
+    'kryon/23': 'GalleryFrame',
+    'kryon/43': 'GalleryFrame',
+    'kryon/51': 'GalleryFrame',
+    'overlays/0': 'GalleryFrame',
+    'overlays/1': 'GalleryFrame',
+    'overlays/2': 'GalleryFrame',
+    'overlays/3': 'GalleryFrame',
+    'overlays/4': 'GalleryFrame',
+    'overlays/5': 'GalleryFrame',
+    'inputs/0': 'GalleryFrame',
+    'inputs/1': 'GalleryFrame',
+    'inputs/2': 'GalleryFrame',
+    'inputs/3': 'GalleryFrame',
+    'inputs/4': 'GalleryFrame',
+    'inputs/5': 'GalleryFrame',
+    'plot/0': 'GalleryFrame',
+    'plot/1': 'GalleryFrame',
+    'plot/2': 'GalleryFrame',
+    'plot/3': 'GalleryFrame',
+    'plot/4': 'GalleryFrame',
+    'plot/5': 'GalleryFrame',
+    'data_views/0': 'GalleryFrame',
+    'data_views/1': 'GalleryFrame',
+    'data_views/2': 'GalleryFrame',
+}
+
+# Static catalog captures keep each authored scene's fixed preview geometry;
+# live previews use its ordinary interactive frame callback.
+SCENE_CAPTURES = {
+    'kryon/43': 'GalleryCaptureFrame',
+    'kryon/47': 'GalleryStaticOpenFrame',
+    'overlays/1': 'GalleryCaptureFrame',
+    'overlays/2': 'GalleryCaptureFrame',
+    'overlays/3': 'GalleryCaptureFrame',
+    'overlays/4': 'GalleryCaptureFrame',
+    'overlays/5': 'GalleryCaptureFrame',
+}
+
 
 def write(path, text):
     path.parent.mkdir(parents=True, exist_ok=True)
-    if not path.exists() or path.read_text() != text:
-        path.write_text(text)
+    data = text if isinstance(text, bytes) else text.encode('utf-8')
+    if not path.exists() or path.read_bytes() != data:
+        path.write_bytes(data)
 
 
-def closing(text, start):
-    depth, quote, escape, comment = 0, False, False, False
-    for at in range(start, len(text)):
-        ch = text[at]
-        if comment:
-            if ch == '\n': comment = False
-            continue
-        if quote:
-            if escape: escape = False
-            elif ch == '\\': escape = True
-            elif ch == '"': quote = False
-            continue
-        if ch == '/' and text[at:at + 2] == '//': comment = True; continue
-        if ch == '"': quote = True; continue
-        if ch == '{': depth += 1
-        elif ch == '}':
-            depth -= 1
-            if not depth: return at
-    raise ValueError('Unclosed example body')
-
-
-def branches(text, start):
-    result = []
-    at = start
-    while True:
-        opening = text.index('{', at)
-        condition = text[at:opening].strip().removeprefix('else ').removeprefix('if ')
-        end = closing(text, opening)
-        result.append((None if condition == 'else' else condition, text[opening + 1:end], at))
-        following = re.match(r'\s*else\b', text[end + 1:])
-        if not following: return result, end
-        at = end + 1 + following.end() - 4
-
-
-def selected(condition, index):
-    if condition is None: return True
-    assert re.fullmatch(r'[a-z0-9_ <>=!&|()+-]+', condition), condition
-    return eval(condition.replace('&&', ' and ').replace('||', ' or '), {'__builtins__': {}}, {'scene': index})
-
-
-def scene_apis(fragment):
-    apis = []
-    for name in re.findall(r'(?<![\w.])([A-Z][A-Za-z0-9_]*)\s*\(', fragment):
-        if name not in apis and name not in ('Prepare', 'Label'):
-            apis.append(name)
-    return apis
-
-
-def scene_options(fragment):
+def scene_metadata(source):
+    # Catalog hints come from authored composition; compilation uses the typed
+    # frontend. Missing scenes stay visible in the inventory and fail publication.
+    if not source.is_file():
+        return [], []
+    text = source.read_text()
+    apis = list(dict.fromkeys(re.findall(r'<([A-Z][A-Za-z0-9_.]*)\b', text)))
     options = []
-    for fields in re.findall(r'[A-Z][A-Za-z0-9_]*Props\s*(?:=\s*)?\.\s*\{([^}]*)', fragment):
-        for option in re.findall(r'\.\s*([a-z][A-Za-z0-9_]*)\s*=', fields):
-            if option not in options: options.append(option)
-    return options
+    for fields in re.findall(r'\bprops=\{\{([^}]*)', text):
+        for name in re.findall(r'\b([a-z][A-Za-z0-9_]*)\s*:', fields):
+            if name not in options:
+                options.append(name)
+    return apis, options
 
 
 def enabled_modules(only=None):
@@ -80,24 +131,46 @@ def enabled_modules(only=None):
     return [m for m in modules if m['dependency'] in dependencies and (only is None or m['id'] in only)]
 
 
+def shared_example_exports(core=ROOT):
+    manifest = tomllib.loads((core / 'ziran.toml').read_text())
+    return {name.removeprefix('examples/'): Path(path) for name, path in manifest['exports'].items()
+            if name.startswith('examples/')}
+
+
+def package_roots(dependency, package):
+    manifest = tomllib.loads((package / 'ziran.toml').read_text())
+    roots = [Path(root) for root in manifest['package']['module_roots']]
+    base = Path('/packages') / dependency
+    return [(package / root, base / (root.relative_to(roots[0])
+             if root.is_relative_to(roots[0]) else root)) for root in roots]
+
+
 def compiler_paths(modules):
     paths = []
     for module in modules:
         dependency = module['dependency']
-        if export_aliases(dependency, compiler_package(dependency)):
-            paths.append(dependency + '=/exports/' + dependency)
+        package = compiler_package(dependency)
+        if export_aliases(dependency, package):
+            name = tomllib.loads((package / 'ziran.toml').read_text())['package']['name']
+            for alias in dict.fromkeys((dependency, name)):
+                paths.append(alias + '=/exports/' + dependency)
     roots = tomllib.loads((ROOT / 'ziran.toml').read_text())['package']['module_roots']
+    shared_roots = {path.parent.as_posix() for path in shared_example_exports().values()}
     for root in roots:
-        try: relative = Path(root).relative_to('src').as_posix()
-        except ValueError: continue
-        virtual = '/kryon/' + relative
+        if root in shared_roots:
+            virtual = '/kryon/' + root
+        elif Path(root).is_relative_to('src'):
+            virtual = '/kryon/' + Path(root).relative_to('src').as_posix()
+        else:
+            continue
         paths.extend([virtual, 'kryon_source=' + virtual])
     for module in modules:
         if module['dependency'] == 'kryon': continue
-        root = '/packages/' + module['dependency']
-        paths.extend([root, module['dependency'] + '_source=' + root])
-    paths.append('/std')
-    return paths
+        dependency = module['dependency']
+        for _, root in package_roots(dependency, compiler_package(dependency)):
+            paths.extend([root.as_posix(), dependency + '_source=' + root.as_posix()])
+    paths.extend(['gallery=/gallery', '/std'])
+    return list(dict.fromkeys(paths))
 
 
 def compiler_package(dependency, ziran='ziran', core=ROOT):
@@ -108,17 +181,24 @@ def compiler_package(dependency, ziran='ziran', core=ROOT):
 
 
 def compiler_embeds(ziran='ziran', core=ROOT):
-    modules, _ = prepare()
+    modules = enabled_modules()
     embeds = [str(PROJECT / 'src/palette.zi') + '@/palette.zi', str(ROOT / 'examples/shared/widget_context.zi') + '@/widget_context.zi']
     for module in modules:
-        embeds.append(str(PROJECT / module['source']) + '@/' + module['module'] + '.zi')
         package = compiler_package(module['dependency'], ziran, core)
-        manifest = tomllib.loads((package / 'ziran.toml').read_text())
-        source = package / manifest['package']['module_roots'][0]
-        virtual = '/kryon/ui' if module['dependency'] == 'kryon' else '/packages/' + module['dependency']
-        if module['dependency'] != 'kryon': embeds.append(str(source) + '@' + virtual)
+        if module['dependency'] != 'kryon':
+            roots = package_roots(module['dependency'], package)
+            for source, virtual in roots:
+                if not any(source != other and source.is_relative_to(other) for other, _ in roots):
+                    embeds.append(str(source) + '@' + virtual.as_posix())
         aliases = export_aliases(module['dependency'], package)
-        if aliases: embeds.append(str(aliases[0][1].parent) + '@/exports/' + module['dependency'])
+        if aliases:
+            alias_root = PROJECT / 'build/catalog/exports' / module['dependency']
+            embeds.append(str(alias_root) + '@/exports/' + module['dependency'])
+    shared_roots = sorted({path.parent for path in shared_example_exports(core).values()})
+    for root in shared_roots:
+        embeds.append(str(core / root) + '@/kryon/' + root.as_posix())
+    scenes = PROJECT / 'src/examples'
+    if scenes.is_dir(): embeds.append(str(scenes) + '@/gallery/examples')
     return embeds
 
 
@@ -138,103 +218,99 @@ def export_aliases(dependency, package):
         write(alias, 'using Export :: #import "' + dependency + '_source/' + local + '";\n')
         aliases.append((name, alias))
     expected = {path for _, path in aliases}
-    for stale in (PROJECT / 'build/catalog/exports' / dependency).glob('*.zi'):
+    for stale in (PROJECT / 'build/catalog/exports' / dependency).rglob('*.zi'):
         if stale not in expected: stale.unlink()
     return aliases
 
 
-def prepare(only=None, *, catalog=None, site=SITE, examples=None):
+def example_source(examples_root, slug, shared_exports):
+    if slug in shared_exports:
+        return examples_root / shared_exports[slug].relative_to('examples')
+    return examples_root / 'gallery/src/examples' / (slug + '.tsx')
+
+
+def publish_source(entry, examples_root, site, module_id, local, available, *, package=None,
+                   dependency='kryon', repository='https://git.waozi.xyz/kryonlabs/kryon.git'):
+    relative = entry.relative_to(package) if package is not None else Path('examples') / entry.relative_to(examples_root)
+    source_path = relative
+    if package is not None:
+        source_path = next((virtual / entry.relative_to(root) for root, virtual in package_roots(dependency, package)
+                            if entry.is_relative_to(root)), None)
+        if source_path is None:
+            raise ValueError(f'Exported example must belong to a declared module root: {entry}')
+        source_path = source_path.relative_to('/')
+    return {'source': repository.removesuffix('.git') + '/src/branch/master/' + relative.as_posix(),
+            'sourcePath': source_path.as_posix(),
+            'code': 'gallery-sources/' + module_id + '/' + str(local) + '.tsx',
+            'language': 'tsx', 'available': available,
+            'status': 'Available in the maintained gallery' if available else 'Not available in the current build'}
+
+
+def example_location(entry):
+    source = Path(entry['sourcePath'])
+    if source.parts[0] == 'packages':
+        dependency = source.parts[1]
+        package = compiler_package(dependency)
+        virtual_source = Path('/') / source
+        roots = [(root, virtual) for root, virtual in package_roots(dependency, package)
+                 if virtual_source.is_relative_to(virtual)]
+        if not roots:
+            raise ValueError(f'Example is outside the declared package roots: {source}')
+        root, virtual = max(roots, key=lambda item: len(item[1].parts))
+        return package, root / virtual_source.relative_to(virtual)
+    source = ROOT / source
+    return (PROJECT if source.is_relative_to(PROJECT / 'src') else ROOT), source
+
+
+def prepare(only=None, *, catalog=None, site=SITE, examples=None, inventory=False):
     examples_root = Path(examples) if examples else ROOT / "examples"
+    shared_exports = shared_example_exports()
+    shared_imports = {path.as_posix(): 'kryon/examples/' + slug for slug, path in shared_exports.items()}
     modules = enabled_modules(only)
     assert modules and modules[0]['id'] == 'kryon', 'The core Kryon module is required'
-    template = (PROJECT / 'templates/frame.zi').read_text()
+    dependencies = tomllib.loads((PROJECT / 'ziran.toml').read_text())['dependencies']
+    optional = {}
+    for module in modules:
+        dependency = module['dependency']
+        if dependency != 'kryon' and dependency not in optional:
+            package = compiler_package(dependency)
+            optional[dependency] = (package, shared_example_exports(package))
     entries, imports, dispatch, styles = [], [], [], []
+    sources = {}
     output = Path(catalog) if catalog else PROJECT / 'build/catalog'
     for number, module in enumerate(modules):
         source = PROJECT / module['source']
         text = source.read_text()
         names = [(int(m[1]), m[2]) for m in re.finditer(r'if index == (\d+) \{ return "([^"]+)" \}', text)]
         assert [i for i, _ in names] == list(range(len(names))), source
-        declaration = text.index('Compose ::')
-        opening = text.index('{', declaration)
-        end = closing(text, opening)
-        body = text[opening + 1:end]
-        candidates = [m.start() for m in re.finditer(r'(?m)^    if scene\b', body)]
-        chain, _ = max((branches(body, at) for at in candidates), key=lambda pair: len(pair[0]))
-        first = chain[0][2]
-        preamble = body[:first]
-        prefix = text[:declaration] + text[end + 1:]
         alias = 'Examples' + str(number)
         if module.get('styles'):
             imports.append(f'{alias} :: #import "{module["module"]}";')
         if module.get('styles'): styles.append(f'    {alias}.{module["styles"]}(dark)')
-        offset = len(entries)
         for local, name in names:
-            condition, fragment, position = next(part for part in chain if selected(part[0], local))
             category = next((key for key, indices in module.get('categories', {}).items() if local in indices), module['category'])
             index = len(entries)
-            declarations = "\n".join(line for line in prefix.splitlines() if re.match(r'^(?:#import |.*:: #import )', line)) + '\nusing Example :: #import "' + module['module'] + '";\n'
-            setup = f'    scene: s32 = {local}\n'
-            if module['id'] == 'kryon': setup += '    scene_image = "assets/pfp.webp"\n'
-            if module.get('styles'): setup += f'    {module["styles"]}(example_input.theme == 2)\n'
-            code = template.replace('// @declarations', declarations.rstrip()).replace('// @title', name).replace('    // @example', setup + textwrap.indent(textwrap.dedent(preamble).strip(), '    ') + '\n' + textwrap.indent(textwrap.dedent(fragment).strip(), '    ') + '\n')
             slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
             slug = {'modern-style':'stylepicker', 'button-emphasis':'button', 'dropdown-open':'dropdown', 'circle-ring-triangle-line':'shape', 'page-section-heading-paragraphtext':'page', 'text-selection':'text', 'transition-fade':'transition', 'listboxmulti':'listbox', 'plot-bars':'plotbars', 'plot-lines':'plotlines', 'separator-and-bullet':'separator'}.get(slug, slug)
-            example = examples_root / slug
-            entry = example / (slug + '.zi')
-            if not entry.exists():
-                # Keep only the example state/helpers referenced by this scene.
-                imports_code = "\n".join(line for line in prefix.splitlines() if re.match(r'^(?:#import |.*:: #import )', line))
-                starts = list(re.finditer(r'(?m)^[A-Za-z_][A-Za-z0-9_]*\s*:(?::|[^:])', prefix))
-                declarations = {}
-                for at, match in enumerate(starts):
-                    stop = starts[at + 1].start() if at + 1 < len(starts) else len(prefix)
-                    name_match = re.match(r'([A-Za-z_][A-Za-z0-9_]*)', match.group())
-                    value = prefix[match.start():stop].strip()
-                    if '#import ' not in value:
-                        declarations[name_match[1]] = value
-                setup_code = setup
-                preamble_code = preamble
-                if module['id'] == 'kryon' and not re.search(r'\b(field_input|area_input)\b', fragment):
-                    preamble_code = ''
-                wanted = set()
-                used = fragment + preamble_code + setup_code + ' SetGalleryViewport '
-                while True:
-                    following = {key for key in declarations if re.search(r'\b' + key + r'\b', used)} - wanted
-                    if not following: break
-                    wanted |= following
-                    used += '\n' + '\n'.join(declarations[key] for key in following)
-                native_code = 'App :: #import "kryon/app";\n' + imports_code + '\n#import "widget_context"\n#import "palette"\n'
-                native_code += '\n\n'.join(value for key, value in declarations.items() if key in wanted) + '\n\n'
-                frame = template[template.index('Frame ::'):]
-                frame = frame.replace('// @title', name).replace('PreviewInputRead()', 'WidgetInput(session)').replace('.title = "frame"', '.title = "' + slug + '"')
-                frame = frame.replace('    // @example', setup_code + textwrap.indent(textwrap.dedent(preamble_code).strip(), '    ') + '\n' + textwrap.indent(textwrap.dedent(fragment).strip(), '    '))
-                write(entry, native_code + frame)
-            code = entry.read_text()
-            manifest = (PROJECT / 'ziran.toml').read_text()
-            manifest = manifest.replace('name = "gallery"', 'name = "' + slug + '"').replace('entry = "src/app.zi"', 'entry = "' + slug + '.zi"')
-            manifest = manifest.replace('module_roots = ["src", "build/catalog"]', 'module_roots = ["."]')
-            manifest = manifest.replace('host = "src/desktop.zi"\n', '').replace('host = "src/web.zi"\n', '').replace('bridge_modules = ["app"]\n', '')
-            if 'assets/pfp.webp' not in code:
-                manifest = manifest.replace('assets = "assets"\n', '')
+            dependency = module['dependency']
+            if dependency in optional:
+                package, exports = optional[dependency]
+                if slug not in exports:
+                    raise ValueError(f'{dependency} must export its maintained TSX example: examples/{slug}')
+                entry = package / exports[slug]
+                publication = publish_source(entry, examples_root, site, module['id'], local,
+                                             local not in module.get('unavailable', []), package=package,
+                                             dependency=dependency, repository=dependencies[dependency]['git'])
+                shared_imports[publication['sourcePath']] = dependency + '/examples/' + slug
             else:
-                import shutil
-                (example / 'assets').mkdir(exist_ok=True)
-                if not (example / 'assets/pfp.webp').exists():
-                    shutil.copyfile(PROJECT / 'assets/pfp.webp', example / 'assets/pfp.webp')
-            if not (example / 'ziran.toml').exists(): write(example / 'ziran.toml', manifest)
-            if not (example / 'ziran.lock').exists():
-                write(example / 'ziran.lock', (PROJECT / 'ziran.lock').read_text())
-            code_path = 'gallery-sources/' + module['id'] + '/' + str(local) + '.zi'
-            write(Path(site) / code_path, code)
-            apis = scene_apis(fragment)
-            options = scene_options(fragment)
+                entry = example_source(examples_root, slug, shared_exports)
+                publication = publish_source(entry, examples_root, site, module['id'], local,
+                                             local not in module.get('unavailable', []))
+            sources[publication['sourcePath']] = entry
+            apis, options = scene_metadata(entry)
             entries.append({'index': index, 'id': module['id'] + '/' + str(local), 'name': name,
                             'module': module['label'], 'moduleId': module['id'], 'category': category,
-                            'source': 'https://github.com/kryonlabs/kryon/blob/master/' + str(entry.relative_to(ROOT)),
-                            'sourcePath': str(entry.relative_to(ROOT)),
-                            'code': code_path, 'available': local not in module.get('unavailable', []),
-                            'status': 'Available in the maintained gallery' if local not in module.get('unavailable', []) else 'Not available in the current build',
+                            **publication,
                             'api': apis, 'options': options,
                             'keyboard': module.get('keyboard', {}).get(str(local), 'Keyboard behavior is not documented by this scene.'),
                             'summary': module.get('summaries', {}).get(str(local),
@@ -267,39 +343,54 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
     }
     core_count = sum(entry["moduleId"] == "kryon" for entry in entries)
     for extra, (slug, name) in enumerate(additional.items()):
-        entry = examples_root / slug / (slug + '.zi')
-        code = entry.read_text()
+        entry = example_source(examples_root, slug, shared_exports)
         index = len(entries)
-        code_path = 'gallery-sources/kryon/' + slug + '.zi'
-        write(Path(site) / code_path, code)
+        publication = publish_source(entry, examples_root, site, 'kryon', slug, True)
+        sources[publication['sourcePath']] = entry
         entries.append({'index': index, 'id': 'kryon/' + str(core_count + extra), 'name': name,
                         'module': 'Kryon', 'moduleId': 'kryon', 'category': next(category for category, slugs in component_categories.items() if slug in slugs),
-                        'source': 'https://github.com/kryonlabs/kryon/blob/master/' + str(entry.relative_to(ROOT)),
-                        'sourcePath': str(entry.relative_to(ROOT)), 'code': code_path,
-                        'available': True, 'status': 'Available in the maintained gallery',
+                        **publication,
                         'api': [name.title().replace(' ', '')], 'options': [], 'keyboard': '',
                         'summary': f'A maintained {name} usage example.',
                         'alt': f'Live {name} example',
                         'images': {theme: f'assets/components/kryon-{core_count + extra}-{theme}.webp' for theme in ('light', 'dark')}, 'note': ''})
-    # Every renderer uses the maintained Frame shown by the source editor.
-    # Variants sharing an authored file also share its module and state.
+    for entry in entries:
+        entry['related'] = [other['id'] for other in entries if other['id'] != entry['id'] and (
+            other['category'] == entry['category'] or set(other['api']) & set(entry['api']))][:6]
+    # Inventory supports focused builds and diagnostics without publishing a partial site.
+    if inventory: return modules, entries
+    missing = [str(path) for path in sources.values() if not path.is_file()]
+    if missing:
+        raise ValueError('Native TSX gallery sources are required; source publication stopped.\n'
+                         + '\n'.join(missing))
+    # The catalog uses ordinary package imports for authored screens.
     render_modules = {}
     for entry in entries:
         path = entry['sourcePath']
         if path not in render_modules:
             alias = 'Usage' + str(len(render_modules))
-            module_name = 'usage_' + Path(path).stem
-            code = (ROOT / path).read_text()
-            write(output / (module_name + '.zi'), re.sub(r'\nmain :: \(\) -> s32 \{ return App\.Run\(App\.Window\.\{\.title = "[^"]*"\}, Frame\) \}(?:\n|\Z)', '\n', code))
+            module_name = shared_imports.get(path)
+            if module_name is None:
+                module_name = 'gallery/' + Path(path).relative_to('examples/gallery/src').with_suffix('').as_posix()
             imports.append(f'{alias} :: #import "{module_name}";')
             render_modules[path] = alias
         alias = render_modules[path]
-        dispatch.append(f"    if scene == {entry['index']} {{ {alias}.SetExampleOptions(disabled, catalog_reduced_motion); App.CallDraw({alias}.Frame, session.slot, session.epoch, catalog_viewport); return }}")
-    # This directory contains generated examples only. Drop sources whose
-    # module or example is no longer part of this build.
+        options = f'{alias}.SetExampleOptions(disabled, catalog_reduced_motion); ' if path in shared_imports else ''
+        frame = SCENE_FRAMES.get(entry['id'], 'Frame')
+        draw = f'{alias}.{frame}'
+        capture = SCENE_CAPTURES.get(entry['id'])
+        if capture:
+            call = (f'if catalog_live {{ App.CallDraw({draw}, session.slot, session.epoch, catalog_viewport); }} '
+                    f'else {{ App.CallDraw({alias}.{capture}, session.slot, session.epoch, catalog_viewport); }}')
+        else:
+            call = f'App.CallDraw({draw}, session.slot, session.epoch, catalog_viewport);'
+        dispatch.append(f"    if scene == {entry['index']} {{ {options}{call} return }}")
+        write(Path(site) / entry['code'], sources[path].read_bytes())
     expected = {Path(site) / entry['code'] for entry in entries}
-    for path in (Path(site) / 'gallery-sources').rglob('*.zi'):
-        if path not in expected: path.unlink()
+    for pattern in ('*.zi', '*.tsx'):
+        for path in (Path(site) / 'gallery-sources').rglob(pattern):
+            if path not in expected: path.unlink()
+    for stale in output.glob('usage_*.zi'): stale.unlink()
     def string_function(name, value):
         result = f'{name} :: (index: s32) -> string {{\n'
         for entry in entries:
@@ -317,8 +408,9 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
     registry += f'GallerySceneCount :: {len(entries)};\n'
     registry += 'GalleryCompilerSearch :: () -> string {\n    return #string GALLERY_COMPILER_SEARCH\n' + '\n'.join(compiler_paths(modules)) + '\nGALLERY_COMPILER_SEARCH\n}\n'
     registry += string_function('GallerySceneName', lambda e: e['name'])
-    registry += string_function('GallerySceneCode', lambda e: (Path(site) / e['code']).read_text())
+    registry += string_function('GallerySceneCode', lambda e: sources[e['sourcePath']].read_bytes().decode('utf-8'))
     registry += string_function('GallerySceneId', lambda e: e['id'])
+    registry += string_function('GallerySceneSourcePath', lambda e: e['sourcePath'])
     registry += string_function('GallerySceneSummary', lambda e: e['summary'])
     core = {'kryon', 'inputs', 'overlays'}
     registry += string_function('GallerySceneLabel', lambda e: (
@@ -333,14 +425,11 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
 
     registry += 'InstallGalleryPalette :: (dark: bool) {\n    InstallCatalogPalette(dark)\n' + '\n'.join(styles) + '\n}\n'
     registry += 'catalog_reduced_motion: bool;\n'
-    registry += 'SetGalleryPreview :: (bounds: Rectangle, live: bool, now: float32, reduced_motion: bool) {\n    catalog_viewport = bounds; catalog_reduced_motion = reduced_motion\n' + '}\n'
+    registry += 'catalog_live: bool;\n'
+    registry += 'SetGalleryPreview :: (bounds: Rectangle, live: bool, now: float32, reduced_motion: bool) {\n    catalog_viewport = bounds; catalog_reduced_motion = reduced_motion; catalog_live = live\n' + '}\n'
     registry += 'ComposeGallery :: (session: Session, scene: s32, disabled: bool) {\n' + '\n'.join(dispatch) + '\n}\n'
     write(output / 'catalog.zi', registry)
     write(output / 'modules.json', json.dumps(modules, indent=2) + '\n')
-    for entry in entries:
-        related = [other['id'] for other in entries if other['id'] != entry['id'] and (
-            other['category'] == entry['category'] or set(other['api']) & set(entry['api']))]
-        entry['related'] = related[:6]
     write(Path(site) / 'gallery-data.js', 'window.galleryModules = ' + json.dumps([{'id': m['id'], 'label': m['label']} for m in modules]) + ';\nwindow.galleryScenes = ' + json.dumps(entries, ensure_ascii=False, indent=2) + ';\n')
     return modules, entries
 

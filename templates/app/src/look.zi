@@ -9,6 +9,13 @@ Theme :: #import "kryon/theme";
 look_sheet: CSS.CssSheet;
 look_dark: s32 = -1;
 
+// The user's theme preference; ApplyLook installs the matching preset.
+dark: bool;
+
+Dark :: () -> bool { return dark }
+
+SetDark :: (value: bool) { dark = value }
+
 // Installs the look for DARK when it changes; false when the preset fails.
 ApplyLook :: (dark: bool) -> bool {
     want: s32 = ifx dark then 1 else 0

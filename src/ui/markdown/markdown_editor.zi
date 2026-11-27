@@ -129,6 +129,7 @@ FoldValid :: (value: string, fold: Fold) -> bool {
         TextArea.TextAreaAtLineStart(value,fold.start) && TextArea.TextAreaAtLineStart(value,fold.body_start) &&
         (fold.end==cast(s32)value.count || TextArea.TextAreaAtLineStart(value,fold.end))
 }
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) -> TextArea.Result {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

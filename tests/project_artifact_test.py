@@ -5,7 +5,7 @@ import subprocess
 import shutil
 import tempfile
 
-from toolchain import ZIRAN_ROOT, pinned, kryon_only
+from toolchain import ZIRAN_ROOT, pinned, kryon_only, write_linked_value_app
 from project_static_archive_test import request_exit
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -54,7 +54,7 @@ printf 'archive\\tsupport.a\\n' > "$ZIRAN_ARTIFACT_OUTPUT/link.txt"
         project=work/'project';(project/'src').mkdir(parents=True)
         (project/'ziran.toml').write_text(pinned(f'''[package]
 name = "artifact_probe"
-entry = "src/app.zi"
+entry = "src/app.tsx"
 module_roots = ["src"]
 bridge_modules = ["app"]
 [toolchain]
@@ -74,27 +74,7 @@ native_artifacts = "support:native support:extra"
 native_platform = "linux-x86_64-gnu"
 '''))
         (project/'ziran.local.toml').write_text(kryon_only(f'[overrides]\nziran = "{ZIRAN_ROOT}"\nkryon = "{ROOT}"\nsupport = "{provider}"\n'))
-        (project/'src/app.zi').write_text('''App :: #import "kryon/app"
-#import "kryon/geometry"
-#import "kryon/session"
-#import "kryon/tree_input"
-#import "Window"
-support :: #system_library "support";
-ArtifactValue :: () -> s32 #foreign support;
-// main is the only entry: the frame records the artifact value and
-// main reports it after the host loop ends through WindowQuit.
-exit_code: s32;
-Frame :: (frame: App.Frame) {
-    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
-    if TypedCodepointTake(session) == 113 { exit_code = ArtifactValue() }
-    if exit_code != 0 { WindowQuit() }
-    return
-}
-main :: () -> s32 {
-    App.Run(App.Window.{.title = "artifact probe"}, Frame)
-    return exit_code
-}
-''')
+        write_linked_value_app(project, 'artifact probe', 'support', 'ArtifactValue')
         run([ZIRAN,'lock'],project)
         run([ZIRAN,'tool','kryon','build','--profile','tui'],project)
         request_exit(project/'build/artifact_probe-tui',project,77)

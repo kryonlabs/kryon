@@ -30,7 +30,7 @@ def main():
         (project / 'ziran.toml').write_text(f'''[package]
 name = "system_links_probe"
 tool = "kryon"
-entry = "src/app.zi"
+entry = "src/app.tsx"
 module_roots = ["src"]
 bridge_modules = ["app"]
 links = ["gtk-3", "gdk-3", "gio-2.0", "gobject-2.0", "glib-2.0", "pango-1.0", "cairo", "gdk_pixbuf-2.0"]
@@ -48,7 +48,7 @@ host = "src/runner.zi"
 ''')
         (project / 'ziran.local.toml').write_text(
             f'[overrides]\nkryon = {json.dumps(str(ROOT))}\n')
-        (project / 'src/app.zi').write_text('Value :: 42;\n')
+        (project / 'src/app.tsx').write_text('export function Frame(): s32 { return s32(42); }\n')
         # Type registration and version queries require linkage but open no windows.
         (project / 'src/runner.zi').write_text('''native :: #system_library "native";
 GtkType :: () -> u64 #foreign native "gtk_widget_get_type";

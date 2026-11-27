@@ -20,7 +20,8 @@ kryon_test_project(guest_project)
 app = guest_project / 'src'
 (output / 'assets').mkdir(exist_ok=True)
 solid_png(output / 'assets/red.png', 32, 32, (230, 30, 40, 255))
-(app / 'app.zi').write_text((ROOT / 'tests/zx/app.zi').read_text())
+(app / 'app.zi').unlink(missing_ok=True)
+shutil.copyfile(ROOT / 'tests/zx/app.tsx', app / 'app.tsx')
 env = {**os.environ, 'ZIRAN_ROOT': str(ZIRAN_ROOT)}
 for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
     env.pop(key, None)
@@ -28,7 +29,7 @@ paths = ['--project']
 bundle = output / 'app.zx'
 subprocess.run([str(ZIRAN), 'bundle', *paths, '--root', str(app), '--entry', 'app:main',
                 '--asset-dir', 'assets=' + str(output / 'assets'), '-o', str(bundle),
-                str(app / 'app.zi')], cwd=guest_project, env=env, check=True, timeout=120)
+                str(app / 'app.tsx')], cwd=guest_project, env=env, check=True, timeout=120)
 generated = output / 'host'
 shutil.rmtree(generated, ignore_errors=True)
 defines = []

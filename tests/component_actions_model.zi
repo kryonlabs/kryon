@@ -1,0 +1,90 @@
+#import "session"
+#import "tree"
+#import "component_types"
+#import "ziran_widget_noop_host"
+Runtime :: #import "component_runtime";
+Lifecycle :: #import "component_lifecycle";
+#scope_file
+session: Session;
+self_token: Token;
+seen: s64;
+cleaned: s64;
+#scope_export
+Open :: () -> Instance {
+    session = SessionOpen()
+    TreeStart(session, cast(u64)1, .{0.0, 0.0, 100.0, 100.0})
+    instance, fresh := Runtime.Begin(session, "OwnedActions", .{"actions.tsx", 1, 1}, .{true, 1})
+    unused fresh
+    unused Runtime.End(instance)
+    unused TreeFinish(session)
+    return instance
+}
+Record :: (value: s64) { seen += value }
+Clean :: (value: s64) { cleaned += value }
+Seen :: () -> s64 { return seen }
+Cleaned :: () -> s64 { return cleaned }
+SaveSelf :: (token: Token) { self_token = token }
+CancelSelf :: () { unused Lifecycle.Cancel(self_token) }
+Pump :: () { Lifecycle.Pump(.{session.slot, session.epoch}) }
+Close :: () -> bool { return SessionClose(session) }
+
+State :: #import "component_state";
+#import "std/option"
+
+CounterValue :: struct { count: s32; title: Text; }
+CounterClone :: #type (value: *CounterValue) -> CounterValue;
+CounterView :: struct { handle: State.Handle(CounterValue); count: s32; }
+#scope_file
+counters: State.Store(CounterValue);
+observed: [8]CounterView;
+observed_origins: [8]Source_Code_Location;
+observed_count: s32;
+counter_cleanups: s32;
+invalid_cleanup: bool;
+#scope_export
+
+CopyCounter :: (value: *CounterValue) -> CounterValue {
+    return .{value.count, TextCopy(TextView(value.title))}
+}
+RetireCounter :: (token: Token) {
+    if Lifecycle.ResourceIndex(token) >= 0 { invalid_cleanup = true }
+    if State.Release(*counters, token) { counter_cleanups += 1 }
+}
+CounterRead :: (handle: State.Handle(CounterValue)) -> Option(State.Snapshot(CounterValue)) {
+    clone: CounterClone = CopyCounter
+    return State.Read(*counters, handle, clone)
+}
+UseCounter :: (owner_session: Session, initial: s32) -> CounterView {
+    owner := Runtime.Current(owner_session)
+    handle := State.Mount(*counters, owner, cast(u64)1,
+        CounterValue.{initial, TextCopy("counter")}, RetireCounter)
+    read := CounterRead(handle)
+    if !read.has_value { empty: CounterView; return empty }
+    return .{handle, read.value.value.count}
+}
+CounterSet :: (view: CounterView, value: s32) -> bool {
+    return State.Set(*counters, view.handle, CounterValue.{value, TextCopy("updated")})
+}
+ObserveCounter :: (view: CounterView, origin: Source_Code_Location) {
+    if observed_count < 8 {
+        observed[observed_count] = view
+        observed_origins[observed_count] = origin
+        observed_count += 1
+    }
+}
+CounterAt :: (index: s32) -> CounterView { return observed[index] }
+CounterOrigin :: (index: s32) -> Source_Code_Location { return observed_origins[index] }
+CounterCount :: () -> s32 { return observed_count }
+CounterCleanups :: () -> s32 { return counter_cleanups }
+CounterCleanupValid :: () -> bool { return !invalid_cleanup }
+ScreenOpen :: () -> Session { return SessionOpen() }
+ScreenStart :: (owner_session: Session) {
+    observed_count = 0
+    TreeStart(owner_session, cast(u64)1, .{0.0, 0.0, 200.0, 100.0})
+}
+ScreenFinish :: (owner_session: Session) -> bool { return TreeFinish(owner_session) }
+ScreenCancel :: (owner_session: Session) { TreeCancel(owner_session) }
+ScreenClose :: (owner_session: Session) -> bool { return SessionClose(owner_session) }
+ScreenIdentity :: (owner_session: Session, index: s32) -> u64 {
+    return TreeNodeAt(owner_session, index).identity_generation
+}

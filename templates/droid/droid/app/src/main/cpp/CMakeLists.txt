@@ -47,7 +47,8 @@ endif()
 set(APP_ZIRAN_IR_DIR "${CMAKE_BINARY_DIR}/ziran/ir")
 set(APP_ZIRAN_GEN_DIR "${CMAKE_BINARY_DIR}/ziran/generated")
 set(APP_ZIRAN_MANIFEST "${CMAKE_BINARY_DIR}/ziran/generated-sources.cmake")
-file(GLOB_RECURSE APP_ZIRAN_SOURCES CONFIGURE_DEPENDS "${REPO_ROOT}/src/*.zi")
+file(GLOB_RECURSE APP_ZIRAN_SOURCES CONFIGURE_DEPENDS
+    "${REPO_ROOT}/src/*.zi" "${REPO_ROOT}/src/*.ts" "${REPO_ROOT}/src/*.tsx")
 file(GLOB_RECURSE APP_LIBRARY_ZIRAN_SOURCES CONFIGURE_DEPENDS
     "${KRYON_DIR}/src/ui/*.zi" "${KRYON_DIR}/src/backend/*.zi"
     "${ZIRAN_DIR}/std/*.zi")

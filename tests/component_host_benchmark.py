@@ -65,35 +65,42 @@ def percentile(values: list[int], fraction: float) -> int:
     return round(ordered[lower] * (1.0 - weight) + ordered[upper] * weight)
 
 
-def module_paths(ziran_root: Path) -> list[str]:
-    paths = [str(ROOT / "src/backend"), str(ROOT / "src/ui")]
-    paths.extend(str(path) for path in sorted((ROOT / "src/ui").rglob("*")) if path.is_dir())
-    paths.append(str(ziran_root / "std"))
-    return paths
-
-
 def build_guest(env: dict[str, str], ziran: Path, ziran_root: Path, name: str,
                 source: Path, define: str | None) -> dict[str, Any]:
     ir = WORK / f"{name}-ir"
     output = WORK / f"{name}.zx"
     source_output = WORK / f"{name}-source.zx"
+    directory = ROOT
+    modules = module_args(ziran_root)
+    if name == "bad_abi":
+        from toolchain import kryon_test_project
+        directory = WORK / "bad-abi-project"
+        kryon_test_project(directory, package_overrides=(("ziran", ziran_root),))
+        for filename in ("component.zi", "component_protocol.zi"):
+            shutil.copyfile(source.parent / filename, directory / "src" / filename)
+        source = directory / "src/component.zi"
+        modules = ["--project", "--offline"]
     ir_command = [str(ziran), "ir", "--root", str(source.parent),
-                  "--define", "KRYON_HOSTED_UI", *module_args(ziran_root),
-                  "-o", str(ir), str(source)]
+                  "--define", "KRYON_HOSTED_UI", *modules,
+                  "-o", str(ir), str(source), str(ROOT / "src/backend/component_guest.zi")]
     if define:
         ir_command[6:6] = ["--define", define]
-    run(ir_command, env=env)
+    run(ir_command, cwd=directory, env=env)
+    sdk_ir, = ir.glob("*component_guest.zir")
+    binding = sdk_ir.stem + ":Compose=component:Frame"
+    entry = sdk_ir.stem + ":Run"
     bundle_command = [str(ziran), "bundle", "--root", str(ir),
                       "--module-path", str(ir), "--define", "KRYON_HOSTED_UI",
-                      "--entry", "component:Frame", "-o", str(output),
-                      str(ir / "component.zir")]
+                      "--bind", binding, "--entry", entry, "-o", str(output),
+                      str(ir / "component.zir"), str(sdk_ir)]
     run(bundle_command, env=env)
     direct_command = [str(ziran), "bundle", "--root", str(source.parent),
-                      "--define", "KRYON_HOSTED_UI", *module_args(ziran_root),
-                      "--entry", "component:Frame", "-o", str(source_output), str(source)]
+                      "--define", "KRYON_HOSTED_UI", *modules,
+                      "--bind", binding, "--entry", entry, "-o", str(source_output),
+                      str(source), str(ROOT / "src/backend/component_guest.zi")]
     if define:
         direct_command[6:6] = ["--define", define]
-    run(direct_command, env=env)
+    run(direct_command, cwd=directory, env=env)
     if output.read_bytes() != source_output.read_bytes():
         raise RuntimeError(f"{name}: source and saved-IR bundles differ")
     return {"name": name, "path": str(output), "bytes": output.stat().st_size,
@@ -101,12 +108,8 @@ def build_guest(env: dict[str, str], ziran: Path, ziran_root: Path, name: str,
 
 
 def module_args(ziran_root: Path) -> list[str]:
-    result: list[str] = []
-    for path in module_paths(ziran_root):
-        result.extend(("--module-path", path))
-        if Path(path).is_relative_to(ROOT / "src/ui"):
-            result.extend(("--module-path", f"kryon={path}"))
-    return result
+    return ["--project", "--offline", "--module-path", str(ROOT / "tests"),
+            "--module-path", str(ROOT / "tests/fixtures/component_owned")]
 
 
 def build(env: dict[str, str], ziran: Path, ziran_root: Path) -> tuple[dict[str, Any], list[str]]:
@@ -119,7 +122,8 @@ def build(env: dict[str, str], ziran: Path, ziran_root: Path) -> tuple[dict[str,
     bad_abi = build_guest(env, ziran, ziran_root, "bad_abi",
                           ROOT / "tests/fixtures/component_bad_abi/component.zi", None)
     bad_migrated = build_guest(env, ziran, ziran_root, "bad_migrated",
-                               ROOT / "tests/fixtures/component_bad_migrated/component.zi", None)
+                               ROOT / "tests/fixtures/component_host_benchmark/component.zi",
+                               "COMPONENT_HOST_BENCHMARK_BAD")
     truncated = WORK / "truncated.zx"
     truncated.write_bytes((WORK / "benchmark_v1.zx").read_bytes()[:16])
 

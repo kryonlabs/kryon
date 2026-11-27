@@ -3,17 +3,20 @@
 Ready-made interactive controls: toasts, bottom navigation, buttons,
 breadcrumbs, context menus, cards, swipe rows, the workspace pager, cover
 carousels, loading surfaces, rotated text, paged reading and the multi-select
-grid. Read the section for the control you are placing or styling.
+grid. Applications place each control through its typed TSX component from
+`kryon/tsx/*`; the props, results and actions are the checked native
+declarations. Read the section for the control you are placing or styling.
 
 ## Toast actions
 
-`Toast.Draw(session, Toast.Props) -> Toast.ToastResult` accepts an optional
+`Toast({session, props})` from `kryon/tsx/toast` returns the checked
+`ToastResult` (from `kryon/toast`) and accepts an optional
 `action_label: string`. A nonempty `message` captures that label in
-`Toast.ToastState.action_label`; keep passing `result.state` on later frames.
+`ToastState.action_label`; keep passing `result.state` on later frames.
 An empty label gives a passive toast.
 
 The action is a standard Button, with its label exposed to accessibility and
-normal pointer, Tab, Enter and Space activation. `Toast.ToastResult.action_clicked`
+normal pointer, Tab, Enter and Space activation. `ToastResult.action_clicked`
 is true only on the submission that consumes the activation. The caller owns
 the action and the dismissal; set `clear = true` when the toast should
 disappear. A replacement message replaces the action; expiry and clearing
@@ -21,12 +24,13 @@ remove both.
 
 ## Bottom navigation
 
-`Navigation.Draw(session, props, items)` defaults to a full-width 80-unit tonal
-bottom bar. Reserve `Navigation.NavigationBarHeight(props)` above the bottom of
-the view. For an embedded preview or panel, use `compact = true` with `bounds`;
+`NavigationBar({session, props, items})` from `kryon/tsx/navigation` defaults
+to a full-width 80-unit tonal bottom bar. Reserve `NavigationBarHeight(props)`
+from `kryon/navigation` above the bottom of the view. For an embedded preview
+or panel, use `compact = true` with `bounds`;
 `fit_items = true` fits the shortcuts into that rectangle.
 
-Each `Navigation.NavigationBarItem` accepts an optional `icon_shape` (the
+Each `NavigationBarItem` accepts an optional `icon_shape` (the
 standard Shape format) or `image`; the icon is 24 units inside a 64 by 32
 selection pill, with its label below. With neither icon, the label is centered
 inside the pill. Item keys, route results, disabled hit testing and custom
@@ -54,9 +58,9 @@ pictures a toolbar, title bar or modal header hands to its buttons.
 
 ## Breadcrumbs
 
-`Breadcrumb.Draw(session: Session, props: Breadcrumb.Props,
-items: []Breadcrumb.BreadcrumbItem) -> Breadcrumb.BreadcrumbResult` is exported
-by `kryon/breadcrumb`. No labels are interpreted as paths.
+`Breadcrumb({session, props, items})` from `kryon/tsx/breadcrumb` returns the
+checked `BreadcrumbResult`; its `Breadcrumb.Props` and `BreadcrumbItem` come
+from `kryon/breadcrumb`. No labels are interpreted as paths.
 
 | `BreadcrumbItem` field | Meaning |
 | --- | --- |
@@ -91,9 +95,9 @@ or fully clipped bounds submit no controls.
 
 ## Context menus
 
-`ContextMenu.Draw(session, props: ContextMenu.Props,
-items: []ContextMenu.ContextMenuItem) -> ContextMenu.ContextMenuResult` is
-exported by `kryon/context_menu`. The caller keeps `open` and the pointer
+`ContextMenu({session, props, items})` from `kryon/tsx/context_menu` returns
+the checked `ContextMenuResult`; its props and items come from
+`kryon/context_menu`. The caller keeps `open` and the pointer
 position (`x`, `y`); the result reports `activated_id` (0 for none) and
 `closed`. Submit it after the page's other controls.
 
@@ -109,8 +113,8 @@ position (`x`, `y`); the result reports `activated_id` (0 for none) and
 | `checkable: bool` | Draws a 14-unit check box at the row's left inset |
 | `checked: bool` | Check state of a checkable row; the caller flips it after a choice reports the id |
 
-Fields are appended in order, so positional `.{id, label, disabled, separator}`
-initializers keep their meaning. The panel widens so each row's label, a
+New fields are appended in order, so existing item literals keep their
+meaning. The panel widens so each row's label, a
 32-unit gap and its accelerator fit. When any row of a panel is checkable,
 every label in that panel starts after the box column so labels line up, as in
 GTK menus; panels without check rows keep the plain inset. Check rows keep the
@@ -119,11 +123,12 @@ icons.
 
 ## Cards
 
-`Card.Draw(session, Card.Props)` opens a filled, elevated or outlined Material
-surface as a padded column: while the result is `opened`, draw the content,
-which the column places, then call `End(session)`. Import it as
-`Card :: #import "kryon/card";`. Set `variant` to `CardFilled` (the default),
-`CardElevated` or `CardOutlined`. Without a height the card grows to its
+`Card({session, props, children})` from `kryon/tsx/card` opens a filled,
+elevated or outlined Material surface as a padded column: while the result is
+`opened`, the component draws the `children` inside the column and closes it
+afterwards. Set `variant` (a `CardVariant` from `kryon/card`) to `CardFilled`
+(the default), `CardElevated` or `CardOutlined`. Without a height the card
+grows to its
 content; with `bounds` it keeps them, and `content` is the area inside its
 16 units of padding.
 
@@ -140,8 +145,9 @@ set its row height. Explicit `row_height` and style `offset_y` still win.
 
 ## Swipe rows
 
-`SwipeRow.Draw(session, props, state)` follows a horizontal drag, paints the
-revealed strip and returns its content `offset` plus state for the next frame.
+`SwipeRow({widget: {session, props}, state})` from `kryon/tsx/swipe_row`
+follows a horizontal drag, paints the revealed strip and returns its content
+`offset` plus state for the next frame.
 
 | `SwipeRow` prop | Meaning |
 | --- | --- |
@@ -169,10 +175,12 @@ results. A tap need not complete the row.
 
 ## Workspace pager and centered panel groups
 
-`workspace_pager.Draw(session, props, windows)` draws miniature workspace tiles
-from the caller's real count, active workspace and desktop window geometry.
-It returns the clicked workspace index, or -1. `Cell`, `WindowBounds` and
-`Width` expose the same geometry for sizing and verification. The default is
+`WorkspacePager({session, props, windows})` from `kryon/tsx/workspace_pager`
+draws miniature workspace tiles from the caller's real count, active workspace
+and desktop window geometry. It returns the clicked workspace index, or -1.
+`Cell`, `WindowBounds` and `Width` (checked declarations in
+`kryon/workspace_pager`) expose the same geometry for sizing and verification.
+The default is
 two rows; window workspace -1 is sticky, and rectangles are clipped to each
 tile.
 
@@ -183,10 +191,11 @@ available width and side groups can scroll within their remaining rectangles.
 
 ## Cover carousels
 
-`kryon/carousel` provides `Carousel.Draw(session, props, items, state)` for a
-full-cover browser. Keep a `Carousel.CarouselState`, pass `Carousel.CarouselItem`
-values with portrait and landscape art, an optional source crop, an optional
-logo and caption, and an action label. A zero `source` uses the whole selected
+`Carousel({session, props, items, state})` from `kryon/tsx/carousel` is the
+full-cover browser. Keep a `CarouselState` behind a `NativeRef`, pass
+`CarouselItem` values with portrait and landscape art, an optional source
+crop, an optional logo and caption, and an action label. A zero `source` uses
+the whole selected
 image. It returns the activated item index, or -1. Swipe, wheel, arrows and
 Enter/Space share one selection; only that selection exposes an action.
 The caller keeps game launching and any footer controls. `CarouselArtwork`
@@ -195,8 +204,8 @@ same optional source crop, defaulting to the whole image.
 
 ## Loading surfaces
 
-`kryon/loading_screen` provides `LoadingScreen.Draw(session,
-LoadingScreen.Props)` for app starts and longer operations.
+`LoadingScreen({session, props})` from `kryon/tsx/loading_screen` covers app
+starts and longer operations.
 
 | `LoadingScreen.Props` | Meaning |
 | --- | --- |
@@ -213,9 +222,9 @@ waits, with the same theme accent.
 ## Rotated text
 
 `Text.Props.rotation` rotates text clockwise in degrees about `bounds` top left
-plus `Text.Props.origin` (logical units). Zero keeps horizontal text; `origin =
-Vector2.{bounds.width / 2.0, bounds.height / 2.0}` rotates about the box
-centre. Layout and font sizes stay unchanged. Native and Canvas rasters
+plus `Text.Props.origin` (logical units). Zero keeps horizontal text; an
+`origin` of `{x: bounds.width / 2.0, y: bounds.height / 2.0}` rotates about
+the box centre. Layout and font sizes stay unchanged. Native and Canvas rasters
 preserve the same pivot; local text clipping rotates with the text, while
 ancestor clipping stays in its original coordinate space.
 
@@ -270,9 +279,9 @@ height for the resulting lines.
 
 ## Multi-select grid
 
-`GridMulti.Draw(session: Session, props: GridMulti.Props,
-items: []GridMulti.GridMultiItem, selected: []bool) -> GridMulti.GridMultiResult`
-is exported by `kryon/grid_multi`.
+`GridMulti({session, props, items, selected})` from `kryon/tsx/grid_multi`
+returns the checked `GridMultiResult`; its `GridMulti.Props`, `GridMultiItem`
+and result records come from `kryon/grid_multi`.
 
 | `GridMultiItem` field | Meaning |
 | --- | --- |
@@ -280,10 +289,9 @@ is exported by `kryon/grid_multi`.
 | `label: string` | Row label |
 | `image: Image.Props` | Optional image; bounds and child image keys are assigned by the grid |
 
-Build images with `ImageForIcon(icon_type: s32, bounds: Rectangle,
-alt_text: string) -> Image.Props` and `IconType` from `kryon/icon` (import
-`kryon/image` too); for example `ImageForIcon(cast(s32)IconType.IconHome,
-Rectangle.{}, "Home")`. Ship the referenced `icons/` atlases as ordinary
+Build images with `ImageForIcon(icon_type, bounds, alt_text)` and `IconType`
+from `kryon/icon` (import `kryon/image` too); `kryon/tsx/icon` wraps the same
+helper into `Image` props. Ship the referenced `icons/` atlases as ordinary
 application assets. Images use the ordinary Image renderer, including assets,
 previews and session-owned textures.
 

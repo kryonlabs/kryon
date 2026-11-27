@@ -79,8 +79,8 @@ PixmapWorkerCount :: () -> s32 {
 // Kryon's font outlines (pixmap_text), so every Ziran target -- C, C++, Go,
 // Rust, Python, and the
 // portable VM -- prints the same bytes for the same frame. That makes it both
-// a screenshot profile (`kryon run shot > frame.ppm`) and a cross-target
-// conformance check.
+// an internal raster conformance check. Application screenshots use the
+// desktop renderer through `kryon run desktop --png FILE.png`.
 
 PixmapWidth :: 960;
 PixmapHeight :: 600;

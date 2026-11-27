@@ -30,18 +30,32 @@ var Module = {
 // Asynchronous compiler/FS transport. The Ziran editor owns all compile state.
 let compilerWorker;
 let compilerRequestId;
+Module.disposeCompiler = function () {
+  if (compilerWorker) compilerWorker.terminate();
+  compilerWorker = undefined;
+  compilerRequestId = undefined;
+  Module.compilerResult = undefined;
+};
+addEventListener('pagehide', Module.disposeCompiler);
 Module.compileSource = function (request) {
   compilerRequestId = request.id;
+  Module.compilerResult = undefined;
   if (!compilerWorker) {
-    compilerWorker = new Worker('compiler-worker.js?v=' + document.querySelector('script[src*="current.js"]').src.split('?v=')[1]);
+    const script = document.querySelector('script[src*="current.js"]');
+    const url = new URL('compiler-worker.js', script.src);
+    url.search = new URL(script.src).search;
+    const worker = compilerWorker = new Worker(url);
     compilerWorker.onmessage = function ({data}) {
-      if (data.id !== compilerRequestId) return;
+      if (worker !== compilerWorker || data.id !== compilerRequestId) return;
       if (data.bytes) Module.FS.writeFile('/compiled.zx', new Uint8Array(data.bytes));
       delete data.bytes;
       Module.compilerResult = data;
     };
     compilerWorker.onerror = function (event) {
+      if (worker !== compilerWorker) return;
       Module.compilerResult = {id:compilerRequestId, status:1, diagnostics:event.message};
+      worker.terminate();
+      compilerWorker = undefined;
     };
   }
   compilerWorker.postMessage(request);

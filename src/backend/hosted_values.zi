@@ -146,10 +146,11 @@ HostScalar :: (type_name: string, number: s64) -> HostValue {
     return value
 }
 
-// Borrows the bytes of text that outlives the call, such as a literal.
+// Borrows the bytes; their storage must outlive every use of the pointer.
+// Names passed to C-string consumers must also be zero-terminated.
 HostTextData :: (text: string) -> *u8 {
-    descriptor := cast(*TextDescriptor)(*text)
-    return descriptor.data
+    if text.count == 0 { return null }
+    return *text[0]
 }
 
 // The length of a decoded slice field, matched by name like its elements.

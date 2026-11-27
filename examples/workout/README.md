@@ -19,14 +19,16 @@ make install DEVICE=SERIAL   # adb install of that APK
 adb -s SERIAL logcat -s WorkoutProfile
 ```
 
-`src/workout.zi` is the application: a plain `main` that runs `App.Run`.
+`src/workout.tsx` composes the desktop `Image` and runs `App.Run`. Native
+loading, pose updates, GPU rendering and measurements live in
+`src/workout_model.zi`.
 The Android build follows Kryon's application layout. `make android`
 scaffolds the Gradle project under `droid/` and generates the two Android
 host sources from `templates/droid`: `src/main.zi`, the entry that calls
 `AndroidRunMain`, and `src/android_glue.zi`. Neither is tracked.
 
 The generator also supplies the native `AndroidProgramMain` bridge used
-by the activity host. The application's `main` stays an ordinary Ziran
+by the activity host. The application's TSX `main` stays an ordinary native
 entry without a `#program_export` annotation.
 
 Every window of at least 60 frames prints one `WORKOUT: frames=...` line:

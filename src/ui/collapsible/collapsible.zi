@@ -89,6 +89,7 @@ CollapsibleCloseKey :: () -> u64 {
 
 // The caller owns open, hidden, and focus state. The ordered header slice
 // supplies tree navigation without a host side registration list.
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props,
     headers: []CollapsibleHeader, location := #caller_location) -> CollapsibleResult {
     site := TreeCallSite(session, location)
@@ -298,6 +299,7 @@ Draw :: (session: Session, props: PropsModule.Props,
     return result
 }
 
+#scope_export
 Math :: #import "std/math";
 #program_export
 PaintTransitionChevron :: (session: Session, node: s32, center: Vector2,

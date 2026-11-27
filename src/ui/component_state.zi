@@ -1,0 +1,106 @@
+// Typed native presentation storage. Domain modules own a Store(T) and expose
+// typed model operations; authored components receive only handles and values.
+#import "std/option"
+#import "component_types"
+Lifecycle :: #import "component_lifecycle";
+
+Handle :: struct($T: Type) { token: Token; }
+Snapshot :: struct($T: Type) {
+    handle: Handle(T)
+    revision: u64
+    value: T
+}
+Entry :: struct($T: Type) {
+    token: Token
+    key: u64
+    revision: u64
+    live: bool
+    value: T
+}
+Store :: struct($T: Type) { entries: Vec(Entry(T)); }
+
+SameToken :: (left: Token, right: Token) -> bool {
+    return left.serial == right.serial && left.owner.identity == right.owner.identity &&
+        left.owner.session.slot == right.owner.session.slot &&
+        left.owner.session.epoch == right.owner.session.epoch
+}
+
+Index :: (store: *Store($T), handle: Handle(T)) -> s64 {
+    if Lifecycle.ResourceIndex(handle.token) < 0 { return -1 }
+    for at: 0..store.entries.count - 1 {
+        if store.entries[at].live && SameToken(store.entries[at].token, handle.token) { return at }
+    }
+    return -1
+}
+
+// `retire` is a concrete native procedure forwarding its token to Release on
+// this store. No borrowed pointer or erased value enters an owned UI action.
+Mount :: (store: *Store($T), owner: Instance, key: u64, initial: T,
+    retire: Lifecycle.Retirement) -> Handle(T) {
+    empty: Handle(T)
+    if !Lifecycle.CanInitialize(owner) || retire == null { return empty }
+    reusable: s64 = -1
+    for at: 0..store.entries.count - 1 {
+        entry := *store.entries[at]
+        if !entry.live { if reusable < 0 { reusable = at }; continue }
+        if entry.token.owner.identity == owner.identity &&
+            entry.token.owner.session.slot == owner.session.slot &&
+            entry.token.owner.session.epoch == owner.session.epoch && entry.key == key {
+            return .{entry.token}
+        }
+    }
+    token := Lifecycle.OnRetirement(owner, retire)
+    if token.serial == cast(u64)0 { return empty }
+    if reusable >= 0 {
+        entry := *store.entries[reusable]
+        entry.token = token; entry.key = key; entry.revision = cast(u64)1
+        entry.live = true; entry.value = initial
+        return .{token}
+    }
+    entry: Entry(T) = .{token = token, key = key, revision = cast(u64)1,
+        live = true, value = initial}
+    if !VecPush(store.entries, entry) { unused Lifecycle.Cancel(token); return empty }
+    return .{token}
+}
+
+// Native clone procedures return an independently owned value. In particular,
+// Text and Vec snapshots must copy their data, never move or lend live storage.
+Read :: (store: *Store($T), handle: Handle(T), clone: $Clone) -> Option(Snapshot(T)) {
+    empty: Option(Snapshot(T))
+    at := Index(store, handle)
+    if at < 0 { return empty }
+    revision := store.entries[at].revision
+    value := clone(*store.entries[at].value)
+    return .{true, .{handle, revision, value}}
+}
+
+Set :: (store: *Store($T), handle: Handle(T), value: T) -> bool {
+    at := Index(store, handle)
+    if at < 0 || !Lifecycle.CanWrite(handle.token.owner) ||
+        store.entries[at].revision == cast(u64)18446744073709551615 { return false }
+    entry := *store.entries[at]
+    entry.value = value
+    entry.revision += cast(u64)1
+    return true
+}
+
+// Called by the lifecycle after the token and every removed instance are
+// invalid. Dropping this value also drops all of its owned fields.
+Release :: (store: *Store($T), token: Token) -> bool {
+    found := false
+    for at: 0..store.entries.count - 1 {
+        if !store.entries[at].live || !SameToken(store.entries[at].token, token) { continue }
+        empty: T
+        entry := *store.entries[at]
+        entry.value = empty
+        entry.live = false
+        found = true
+        break
+    }
+    if found {
+        any_live := false
+        for * store.entries { if it.live { any_live = true; break } }
+        if !any_live { VecFree(store.entries) }
+    }
+    return found
+}

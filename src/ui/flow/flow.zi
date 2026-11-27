@@ -21,6 +21,7 @@ FlowResult :: struct {
     padding: s32
 }
 
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) -> FlowResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

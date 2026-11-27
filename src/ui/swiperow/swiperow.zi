@@ -143,6 +143,7 @@ SwipeRowStrip :: (session: Session, props: PropsModule.Props, offset: float32,
 // Submits the row's pressable area and the strip a swipe reveals. The app
 // draws the row's content afterwards, shifted by the result's offset, and
 // keeps the result's state for the next frame.
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props, state: SwipeRowState, location := #caller_location) -> SwipeRowResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

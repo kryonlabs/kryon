@@ -1,0 +1,26 @@
+TextField :: #import "kryon/text_field";
+#import "kryon/geometry"
+#import "kryon/input_protocol"
+#import "kryon/key_input"
+#import "kryon/session"
+#import "kryon/tree_input"
+
+#if OS == .WEB {
+    Canvas :: #import "kryon/Canvas";
+    UseEscapeForEditing :: () { Canvas.CanvasSetExitKey(0) }
+} else {
+    UseEscapeForEditing :: () {}
+}
+
+EditorInput :: struct { key: s32; modifiers: s32; text: TextField.Input; outside_press: bool }
+
+typed: [128]u8;
+
+ReadEditorInput :: (session: Session, bounds: Rectangle) -> EditorInput {
+    key := KeyboardTake(session)
+    modifiers := KeyboardModifiers(session)
+    text := TextFieldInputFor(key, modifiers, TypedTextTake(session, typed[:]))
+    pointer := PointerSample(session)
+    outside_press := pointer.pressed && !PointInBounds(pointer.x, pointer.y, bounds)
+    return .{key, modifiers, text, outside_press}
+}

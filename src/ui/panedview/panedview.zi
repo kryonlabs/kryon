@@ -266,6 +266,7 @@ PaneDropZone :: (bounds: Rectangle, mouse: Vector2, scale: float32,
 
 // The caller stores the returned split and places its pane content in the
 // returned rectangles. The handle uses the retained pointer drag route.
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) -> PanedViewResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

@@ -1,0 +1,50 @@
+ListBox :: #import "kryon/list_box";
+#import "kryon/input_protocol"
+#import "kryon/key_input"
+#import "kryon/session"
+#import "kryon/tree"
+#import "kryon/tree_input"
+#import "catalog"
+
+embedded: bool;
+scene: s32;
+disabled_controls: bool;
+picker_key: s32;
+picker_focused: bool;
+catalog_scroll: s32;
+navigation_focus_pending: bool;
+
+// Reserve sidebar input before generic activation and scene editors consume it.
+PrepareGalleryInput :: (session: Session) {
+    picker_key = 0
+    picker_focused = false
+    if embedded { return }
+    for index: 0..TreeCount(session) - 1 {
+        entry := TreeNodeAt(session, index)
+        if TreeFocusedAt(session, index) && entry.parent >= 0 && TreeNodeAt(session, entry.parent).key == cast(u64)9003 {
+            picker_focused = TreeFocusedAt(session, index)
+            if picker_focused {
+                picker_key = KeyboardTake(session)
+                if picker_key == KeyTab {
+                    unused KeyboardSend(session, picker_key)
+                    picker_key = 0
+                    picker_focused = false
+                }
+                typed: [128]u8
+                unused TypedTextTake(session, typed[:])
+            }
+            return
+        }
+    }
+}
+
+// The catalog size is generated. Keep the stable picker rows in native storage.
+picker_items: [GallerySceneCount]ListBox.ListBoxItem;
+
+GalleryPickerItems :: () -> []ListBox.ListBoxItem {
+    for index: cast(s32)0..GallerySceneCount - 1 {
+        picker_items[index].key = cast(u64)(index + 1)
+        picker_items[index].label = GallerySceneName(index)
+    }
+    return picker_items[:]
+}

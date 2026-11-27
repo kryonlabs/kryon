@@ -50,13 +50,14 @@ upgraded = []
 # Normalize only the fields that were substituted by the old templates.
 stock_upgrades = {
     "droid/app/build.gradle": (
-        "17dd534c81ba962446610198ce872cf3e62cdfb9b5b1715a1773536bd792a49e",
+        ("17dd534c81ba962446610198ce872cf3e62cdfb9b5b1715a1773536bd792a49e",
+         "0f59566c9ed530ec6ebf84a6bef521651744426d49296eaa4c16c46023feb6c7"),
         ["    namespace '__PACKAGE__'", "        applicationId '__PACKAGE__'"]),
     "droid/app/src/main/cpp/CMakeLists.txt": (
-        "ae3d4b1624cb05f4143dfb9add7ce3a8a68d5e55136ae83de7b6056468824222",
+        ("ae3d4b1624cb05f4143dfb9add7ce3a8a68d5e55136ae83de7b6056468824222",),
         ["project(__CMAKE_NAME__ C)"]),
     "droid/app/src/main/java/__PACKAGE_PATH__/__ACTIVITY__.java": (
-        "381a7e855806af3cd7af31f3f1e421a60cf5e2129c8a05bb802ef3dc3c8c6981",
+        ("381a7e855806af3cd7af31f3f1e421a60cf5e2129c8a05bb802ef3dc3c8c6981",),
         ["package __PACKAGE__;", "public class __ACTIVITY__ extends NativeActivity {",
          '    private static final String TAG = "__ACTIVITY__";']),
 }
@@ -80,11 +81,11 @@ for template in sorted(templates.rglob("*")):
     if target.exists():
         stock = stock_upgrades.get(relative.as_posix())
         if stock and target.is_file() and not target.is_symlink():
-            digest, lines = stock
+            digests, lines = stock
             text = target.read_text()
             for line in lines:
                 text = text.replace(render(line), line, 1)
-            if sha256(text.encode()).hexdigest() == digest:
+            if sha256(text.encode()).hexdigest() in digests:
                 target.write_text(render(template.read_text()))
                 upgraded.append(target.relative_to(root))
                 continue

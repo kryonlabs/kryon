@@ -4,10 +4,13 @@
 #import "session"
 #import "tree"
 #import "tree_draw"
+#import "frame_motion"
 #import "tree_input"
 #import "key_input"
 #import "text_input_platform"
 Motion :: #import "scroll_device";
+Components :: #import "component_lifecycle";
+ComponentTypes :: #import "component_types";
 #import "text_input_platform_host"
 #import "ziran_frame_retained_host"
 using FrameStatus;
@@ -17,6 +20,23 @@ draws: s32;
 failed: bool;
 late_calls: s32;
 emitter_calls: s32;
+reentry_calls: s32;
+reentry_failed: bool;
+
+RejectNestedFrame :: (instance: ComponentTypes.Instance) {
+    session := instance.session
+    count := TreeCount(session)
+    paint := PendingPaintCount(session)
+    snapshots := paint_snapshots_valid
+    reentry_calls += 1
+    if BeginFrame(session, cast(u64)999, .{0.0, 0.0, 1.0, 1.0}) != cast(FrameStatus)FrameComponentFailure ||
+        CommitFrame(session) != cast(FrameStatus)FrameComponentFailure ||
+        EndFrameRetained(session, true).status != cast(FrameStatus)FrameComponentFailure ||
+        EndFrameDamaged(session).status != cast(FrameStatus)FrameComponentFailure ||
+        CloseSession(session) { reentry_failed = true }
+    TreeCancel(session)
+    if TreeCount(session) != count || PendingPaintCount(session) != paint || paint_snapshots_valid != snapshots { reentry_failed = true }
+}
 
 EmitFirst :: (command: PaintCommand) {
     unused command
@@ -258,5 +278,19 @@ main :: () -> s32 {
     TreeCancel(b)
     unused CloseSession(a)
     unused CloseSession(b)
+    // Public frame APIs reject cleanup/timer reentry before clearing queued
+    // paint or changing the authoritative transaction being committed.
+    a = SessionOpen()
+    Start(a)
+    instance, instance_fresh := Components.Enter(a, TreeSubmittedIdentity(a, 0), "Reentrant", .{"frame.tsx", 1, 1}, .{})
+    if !instance_fresh { return 45 }
+    unused Components.OnCleanup(instance, RejectNestedFrame)
+    unused Components.Timer(instance, 0.0, 0.0, RejectNestedFrame)
+    unused Components.Leave(instance)
+    if EndFrameRetained(a, false).status != cast(FrameStatus)FrameOk { return 46 }
+    SetFrameMotionTime(a, 1.0)
+    Start(a)
+    if EndFrameRetained(a, false).status != cast(FrameStatus)FrameOk || reentry_failed || reentry_calls != 2 { return 47 }
+    unused CloseSession(a)
     return 0
 }

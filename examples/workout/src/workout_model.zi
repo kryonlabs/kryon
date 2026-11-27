@@ -1,0 +1,608 @@
+// Standalone animated workout figure, rendered by Kryon's GPU Scene backend.
+// On Android the scene is drawn straight into the activity window: the host
+// frame loop calls Frame, the renderer presents into the window's default
+// framebuffer and the window host swaps. No Pixmap, text or CPU copy is
+// involved, so the frame time is the figure's real cost. Metrics go to logcat.
+App :: #import "kryon/app";
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/drawing_props"
+#import "kryon/scene"
+#import "kryon/scene_gltf"
+#import "kryon/scene_gpu"
+#import "kryon/scene_render"
+#import "kryon/shader"
+#import "kryon/scene_vrm"
+#import "kryon/app_asset"
+FrameMotion :: #import "kryon/frame_motion";
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/format"
+#import "std/image"
+#import "std/math"
+#import "std/timer_linux"
+#import "std/vec"
+
+#if #defined(ANDROID_BUILD) {
+    AndroidSceneWindow :: #import "kryon/android_scene_window";
+    workout_log :: #system_library "log";
+    WorkoutLogWrite :: (priority: s32, tag: *u8, text: *u8) -> s32 #foreign workout_log "__android_log_write";
+} else {
+    BitmapImage :: #import "kryon/bitmap_image";
+}
+
+Workout :: struct {
+    scene: Scene
+    model: GltfModel
+    avatar: VrmAvatar
+    instance: GltfSceneInstance
+    gpu: SceneGpuContext
+    toon: ShaderProgram
+    uniforms: Vec(ShaderValue)
+    bones: [13]s32
+    rest: [13]GltfQuat
+    ready: bool
+    failed: bool
+    width: s32
+    height: s32
+    #if !#defined(ANDROID_BUILD) {
+        pixels: Image
+        texture: Texture2D
+    }
+}
+
+Metrics :: struct {
+    frames: s64
+    interval_ns: s64
+    pose_ns: s64
+    skin_ns: s64
+    render_ns: s64
+    prepare_ns: s64
+    shadow_ns: s64
+    draw_ns: s64
+    draw_calls: s64
+    shadow_passes: s64
+    swap_ns: s64
+    presents: s64
+    compare_ns: s64
+    upload_ns: s64
+    snapshot_ns: s64
+    shader_ns: s64
+    gpu_ns: s64
+    intervals: [128]s64
+    interval_count: s32
+    p95_ns: s64
+}
+
+workout: Workout;
+metrics: Metrics;
+load_requested: bool;
+previous_frame_ns: s64;
+reported: bool;
+first_render_measured: bool;
+previous_presents: s64;
+camera_fitted: bool;
+workout_camera: SceneCamera = OrthographicCamera(-0.9, 0.9, 2.1, -0.3, 0.05, 30.0);
+
+BONE_NAMES :: string.["leftUpperArm", "rightUpperArm", "leftLowerArm", "rightLowerArm",
+    "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg",
+    "spine", "chest", "neck", "head", "hips"]
+
+LogLine :: (line: string) {
+    #if #defined(ANDROID_BUILD) {
+        tag: [24]u8
+        buffer: [1024]u8
+        if CopyCString("WorkoutProfile", tag[:]) && CopyCString(line, buffer[:]) {
+            unused WorkoutLogWrite(4, *tag[0], *buffer[0])
+        }
+    } else {
+        print("%\n", line)
+    }
+}
+
+// One-off phase measurements (model load, first render) go to the same log.
+LogMeasure :: (label: string, ns: s64) {
+    line: Vec(u8)
+    BuilderPrint(*line, "WORKOUT: %_ms=%", label, ns / 1000000)
+    LogLine(BuilderFinish(line))
+}
+
+AppendText :: (out: []u8, used: *s32, text: string) {
+    for byte: text {
+        if used.* >= cast(s32)out.count { return }
+        out[used.*] = byte
+        used.* += 1
+    }
+}
+
+AppendNumber :: (out: []u8, used: *s32, value: s64) {
+    digits: [24]u8
+    count: s32 = 0
+    remaining := value
+    if remaining < 0 {
+        AppendText(out, used, "-")
+        remaining = -remaining
+    }
+    while remaining >= 0 {
+        digits[count] = cast(u8)(48 + remaining % 10)
+        count += 1
+        remaining /= 10
+        if remaining == 0 { break }
+    }
+    while count > 0 {
+        count -= 1
+        AppendText(out, used, TextView(digits[count:count + 1]))
+    }
+}
+
+FormatMs :: (ns: s64, out: []u8) -> string {
+    used: s32 = 0
+    AppendNumber(out, *used, ns / 1000000)
+    AppendText(out, *used, ".")
+    AppendNumber(out, *used, (ns / 100000) % 10)
+    return TextView(out[0:cast(s64)used])
+}
+
+FormatFps :: (interval_ns: s64, out: []u8) -> string {
+    used: s32 = 0
+    if interval_ns <= 0 {
+        AppendText(out, *used, "-")
+    } else {
+        AppendNumber(out, *used, 10000000000 / interval_ns / 10)
+        AppendText(out, *used, ".")
+        AppendNumber(out, *used, 10000000000 / interval_ns % 10)
+    }
+    return TextView(out[0:cast(s64)used])
+}
+
+ResetMetrics :: () {
+    metrics.frames = 0
+    metrics.interval_ns = 0
+    metrics.pose_ns = 0
+    metrics.skin_ns = 0
+    metrics.render_ns = 0
+    metrics.prepare_ns = 0
+    metrics.shadow_ns = 0
+    metrics.draw_ns = 0
+    metrics.draw_calls = 0
+    metrics.shadow_passes = 0
+    metrics.swap_ns = 0
+    metrics.presents = 0
+    metrics.compare_ns = 0
+    metrics.upload_ns = 0
+    metrics.snapshot_ns = 0
+    metrics.shader_ns = 0
+    metrics.gpu_ns = 0
+    metrics.interval_count = 0
+    metrics.p95_ns = 0
+}
+
+UpdatePercentile :: () {
+    values: [128]s64
+    count := metrics.interval_count
+    for at: 0..count - 1 { values[at] = metrics.intervals[at] }
+    for at: 1..count - 1 {
+        value := values[at]
+        prior := at - 1
+        while prior >= 0 && values[prior] > value {
+            values[prior + 1] = values[prior]
+            prior -= 1
+        }
+        values[prior + 1] = value
+    }
+    if count > 0 {
+        index := count * 95 / 100
+        if index >= count { index = count - 1 }
+        metrics.p95_ns = values[index]
+    }
+}
+
+Average :: (total: s64, count: s64) -> s64 {
+    if count == 0 { return 0 }
+    return total / count
+}
+
+// Every reported window is a fresh measurement; the first line also names the
+// GPU so the log alone shows which backend drew the figure.
+Report :: () {
+    if metrics.frames < 60 { return }
+    interval := Average(metrics.interval_ns, metrics.frames)
+    if interval == 0 { return }
+    line: Vec(u8)
+    BuilderPrint(*line, "WORKOUT: frames=% interval_us=% fps=% p95_us=% pose_us=% skin_us=% render_us=% prepare_us=% shadow_us=% draw_us=% calls=% shadow_passes=% accelerated=% size=%x% presents=% swap_us=% gpu_us=% timer=% scale=% msaa=%",
+        metrics.frames, interval / 1000, 10000000000 / interval / 10, metrics.p95_ns / 1000,
+        Average(metrics.pose_ns, metrics.frames) / 1000, Average(metrics.skin_ns, metrics.frames) / 1000,
+        Average(metrics.render_ns, metrics.frames) / 1000, Average(metrics.prepare_ns, metrics.frames) / 1000,
+        Average(metrics.shadow_ns, metrics.frames) / 1000, Average(metrics.draw_ns, metrics.frames) / 1000,
+        Average(metrics.draw_calls, metrics.frames), Average(metrics.shadow_passes, metrics.frames),
+        cast(s64)workout.gpu.capabilities.available, workout.width, workout.height,
+        metrics.presents, Average(metrics.swap_ns, metrics.frames) / 1000, Average(metrics.gpu_ns, metrics.frames) / 1000,
+        workout.gpu.timer_state,
+        workout.gpu.scale_percent, workout.gpu.samples)
+    BuilderPrint(*line, " compare_us=% upload_us=% snapshot_us=% shader_us=%",
+        Average(metrics.compare_ns, metrics.frames) / 1000,
+        Average(metrics.upload_ns, metrics.frames) / 1000, Average(metrics.snapshot_ns, metrics.frames) / 1000,
+        Average(metrics.shader_ns, metrics.frames) / 1000)
+    LogLine(BuilderFinish(line))
+    if !reported||SceneGpuErrorTrace().count>0 {
+        reported = true
+        info: Vec(u8)
+        gpu_skins: s64; joint_count: s64; vertex_count: s64
+        for at: 0..workout.model.skins.count - 1 {
+            if workout.model.skins[at].joints.count > joint_count { joint_count = workout.model.skins[at].joints.count }
+        }
+        for at: 0..workout.instance.meshes.count - 1 {
+            vertex_count += workout.instance.meshes[at].skin.positions.count
+        }
+        for at: 0..workout.instance.meshes.count - 1 {
+            if workout.instance.meshes[at].has_skin && workout.instance.meshes[at].skin.gpu { gpu_skins += 1 }
+        }
+        palette_textures: s64 = 0
+        palette_uniforms: s64 = 0
+        for at: 0..workout.gpu.skins.count - 1 {
+            if workout.gpu.skins[at].texture != 0 { palette_textures += 1 } else if workout.gpu.skins[at].uniform.count > 0 { palette_uniforms += 1 }
+        }
+        BuilderPrint(*info, "WORKOUT: renderer=% version=% samples=% direct_window=% diagnostic=% vtunits=% vtf=% vuniforms=% palette=t%/u% gpu_skins=%/% joints=% verts=% trace=[%] async=%",
+            TextFromCString(*workout.gpu.capabilities.renderer[0]), TextFromCString(*workout.gpu.capabilities.version[0]),
+            workout.gpu.capabilities.samples, cast(s64)workout.gpu.adopted,
+            workout.gpu.capabilities.diagnostic, workout.gpu.capabilities.vertex_texture_units, workout.gpu.capabilities.vertex_texture_fetch, workout.gpu.capabilities.vertex_uniform_vectors, palette_textures, palette_uniforms, gpu_skins,
+            workout.instance.meshes.count, joint_count, vertex_count, SceneGpuErrorTrace(), workout.gpu.capabilities.async_available)
+        LogLine(BuilderFinish(info))
+    }
+    ResetMetrics()
+}
+
+ToonCode :: struct {
+    code: [64]ShaderInstruction
+    count: s32
+}
+
+ToonOp :: (code: *ToonCode, op: ShaderOp, dest: s32, a: s32, b: s32) {
+    code.code[code.count] = .{op = op, dest = dest, a = a, b = b}
+    code.count += 1
+}
+
+ToonMix :: (code: *ToonCode, dest: s32, a: s32, b: s32, t: s32) {
+    code.code[code.count] = .{op = .ShaderMix, dest = dest, a = a, b = b, c = t}
+    code.count += 1
+}
+
+ToonSlot :: (code: *ToonCode, op: ShaderOp, dest: s32, a: s32, slot: s32) {
+    code.code[code.count] = .{op = op, dest = dest, a = a, slot = slot}
+    code.count += 1
+}
+
+ToonLiteral :: (code: *ToonCode, dest: s32, x: float64, y: float64, z: float64, w: float64) {
+    code.code[code.count] = .{op = .ShaderLiteral, dest = dest, value = .{x, y, z, w}}
+    code.count += 1
+}
+
+CompileToon :: (program: *ShaderProgram) -> ShaderDiagnostic {
+    code: ToonCode
+    ToonSlot(*code, .ShaderUniform, 5, 0, 0)
+    ToonOp(*code, .ShaderMultiply, 4, 0, 5)
+    ToonLiteral(*code, 11, -0.188, -0.188, -0.188, -0.188)
+    ToonOp(*code, .ShaderMultiply, 11, 4, 11)
+    ToonLiteral(*code, 12, 1.188, 1.188, 1.188, 1.188)
+    ToonOp(*code, .ShaderAdd, 11, 11, 12)
+    ToonOp(*code, .ShaderMultiply, 11, 4, 11)
+    ToonLiteral(*code, 12, 1.0, 1.0, 1.0, 0.0)
+    ToonMix(*code, 4, 4, 11, 12)
+    ToonSlot(*code, .ShaderUniform, 13, 0, 1)
+    ToonSlot(*code, .ShaderNormalize, 13, 13, 0)
+    ToonOp(*code, .ShaderDot, 14, 2, 13)
+    ToonLiteral(*code, 15, 5.0, 5.0, 5.0, 5.0)
+    ToonOp(*code, .ShaderMultiply, 14, 14, 15)
+    ToonLiteral(*code, 15, 0.75, 0.75, 0.75, 0.75)
+    ToonOp(*code, .ShaderAdd, 14, 14, 15)
+    ToonLiteral(*code, 15, 0.0, 0.0, 0.0, 0.0)
+    ToonOp(*code, .ShaderMax, 14, 14, 15)
+    ToonLiteral(*code, 15, 1.0, 1.0, 1.0, 1.0)
+    ToonOp(*code, .ShaderMin, 14, 14, 15)
+    ToonSlot(*code, .ShaderUniform, 16, 0, 2)
+    ToonOp(*code, .ShaderMultiply, 16, 4, 16)
+    ToonMix(*code, 17, 16, 4, 14)
+    ToonSlot(*code, .ShaderUniform, 18, 0, 3)
+    ToonSlot(*code, .ShaderNormalize, 18, 18, 0)
+    ToonOp(*code, .ShaderDot, 19, 2, 18)
+    ToonLiteral(*code, 20, -1.0, -1.0, -1.0, -1.0)
+    ToonOp(*code, .ShaderMultiply, 19, 19, 20)
+    ToonLiteral(*code, 20, 1.0, 1.0, 1.0, 1.0)
+    ToonOp(*code, .ShaderAdd, 19, 19, 20)
+    ToonOp(*code, .ShaderMultiply, 19, 19, 19)
+    ToonOp(*code, .ShaderMultiply, 19, 19, 19)
+    ToonSlot(*code, .ShaderUniform, 21, 0, 4)
+    ToonOp(*code, .ShaderMultiply, 19, 19, 21)
+    ToonOp(*code, .ShaderAdd, 17, 17, 19)
+    ToonSlot(*code, .ShaderOutput, 0, 17, 0)
+    return ShaderCompile(program, code.code[0:code.count])
+}
+
+ApplyToon :: () -> bool {
+    if !CompileToon(*workout.toon).ok { return false }
+    meshes := workout.instance.meshes.count
+    if !VecResize(workout.uniforms, meshes * 5) { return false }
+    for at: 0..meshes - 1 {
+        placed := *workout.instance.meshes[at]
+        material := workout.scene.meshes[workout.scene.nodes[placed.scene_node].mesh].material
+        first := at * 5
+        workout.uniforms[first] = .{1.0, 1.0, 1.0, 1.0}
+        workout.uniforms[first + 1] = .{-0.45, 0.75, 0.55, 0.0}
+        workout.uniforms[first + 2] = .{0.70, 0.64, 0.78, 1.0}
+        workout.uniforms[first + 3] = .{0.0, 0.0, 1.0, 0.0}
+        workout.uniforms[first + 4] = .{0.18, 0.20, 0.26, 0.0}
+        material.kind = .MaterialUnlit
+        material.vertex_colors = false
+        material.shader = *workout.toon
+        material.shader_uniforms = workout.uniforms[first:first + 5]
+        unused SetMaterial(*workout.scene, placed.scene_node, material)
+    }
+    return true
+}
+
+LoadWorkout :: () -> bool {
+    SceneInit(*workout.scene)
+    // The window is opaque: a transparent clear would show through it.
+    workout.scene.background = .{18, 20, 26, 255}
+    asset := ReadAppAsset("assets/figure/man.vrm")
+    if asset.count == 0 { return false }
+    descriptor := cast(*TextDescriptor)(*asset)
+    bytes := BytesFromPointer(descriptor.data, cast(u64)asset.count)
+    workout.model = GltfReadBytes(bytes)
+    model_ok := workout.model.valid
+    avatar_ok := model_ok && VrmReadBytes(*workout.avatar, bytes)
+    FreeAppAsset(asset)
+    if !model_ok || !avatar_ok { return false }
+    AddHemisphereLight(*workout.scene, .{255, 249, 236, 255}, .{109, 115, 99, 255}, 0.7)
+    unused AddDirectionalLight(*workout.scene, .{255, 248, 235, 255}, 0.6, .{-3.0, 6.0, 4.0})
+    if !GltfSceneCreate(*workout.scene, *workout.model, *workout.instance) { return false }
+    GltfSetDualQuaternion(*workout.instance, true)
+    // The GPU backend poses the figure in its vertex shader: the frame then
+    // sends only the joint matrices, never the vertices.
+    // Every skin must fit one palette: the uniform array of a GPU without
+    // vertex texture fetch holds fewer joints than a texture does.
+    gpu_skinning := SceneGpuSkinningAvailable(*workout.gpu)
+    if gpu_skinning {
+        for at: 0..workout.model.skins.count - 1 {
+            if workout.model.skins[at].joints.count > SceneGpuPoseCapacity(*workout.gpu, true) { gpu_skinning = false }
+        }
+    }
+    if !GltfSetGpuSkinning(*workout.scene, *workout.instance, gpu_skinning) { return false }
+    for at: 0..BONE_NAMES.count - 1 {
+        node := VrmBoneNode(*workout.avatar, BONE_NAMES[at])
+        workout.bones[at] = node
+        if node >= 0 { workout.rest[at] = workout.instance.rotations[node] }
+    }
+    if !ApplyToon() { return false }
+    // Nothing changes a vertex after this: the pose lives in the palettes.
+    FreezeGeometry(*workout.scene)
+    SceneGpuSetProfiling(*workout.gpu, true)
+    return true
+}
+
+// The figure's bind pose fills the window with one uniform scale and its
+// centre, so the orthographic camera neither stretches nor lowers it. The
+// pose only swings limbs, so the bind box stays the frame.
+FitCamera :: (width: s32, height: s32) {
+    if width <= 0 || height <= 0 { return }
+    low: Vector3 = .{0.0, 0.0, 0.0}
+    high: Vector3 = .{0.0, 0.0, 0.0}
+    have := false
+    for at: 0..workout.instance.meshes.count - 1 {
+        placed := *workout.instance.meshes[at]
+        if !placed.has_skin { continue }
+        world := workout.instance.node_world[placed.gltf_node]
+        skin := *placed.skin
+        for vertex: 0..skin.positions.count - 1 {
+            p := skin.positions[vertex]
+            q := Vector3.{world.m[0] * p.x + world.m[4] * p.y + world.m[8] * p.z + world.m[3],
+                world.m[1] * p.x + world.m[5] * p.y + world.m[9] * p.z + world.m[7],
+                world.m[2] * p.x + world.m[6] * p.y + world.m[10] * p.z + world.m[11]}
+            if !have { low = q; high = q; have = true; continue }
+            if q.x < low.x { low.x = q.x }
+            if q.y < low.y { low.y = q.y }
+            if q.z < low.z { low.z = q.z }
+            if q.x > high.x { high.x = q.x }
+            if q.y > high.y { high.y = q.y }
+            if q.z > high.z { high.z = q.z }
+        }
+    }
+    if !have { return }
+    span_x := (high.x - low.x) * 1.15 / cast(float64)width
+    span_y := (high.y - low.y) * 1.15 / cast(float64)height
+    scale := ifx span_x > span_y then span_x else span_y
+    if scale <= 0.0 { return }
+    centre_x := (low.x + high.x) * 0.5
+    centre_y := (low.y + high.y) * 0.5
+    workout_camera.position = .{centre_x, centre_y, 8.0}
+    workout_camera.target = .{centre_x, centre_y, 0.0}
+    workout_camera.near = 5.0
+    workout_camera.far = 12.0
+    workout_camera.top = cast(float64)height * scale * 0.5
+    workout_camera.bottom = -workout_camera.top
+    workout_camera.right = cast(float64)width * scale * 0.5
+    workout_camera.left = -workout_camera.right
+}
+
+AxisAngle :: (axis: Vector3, angle: float64) -> GltfQuat {
+    half := angle * 0.5
+    sine := Sin(half)
+    return .{axis.x * sine, axis.y * sine, axis.z * sine, Cos(half)}
+}
+
+QuatMultiply :: (a: GltfQuat, b: GltfQuat) -> GltfQuat {
+    return .{a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+        a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+        a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+        a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z}
+}
+
+Pose :: (seconds: float64) {
+    for at: 0..BONE_NAMES.count - 1 {
+        node := workout.bones[at]
+        if node < 0 { continue }
+        amount := ifx at < 8 then 0.22 else 0.07
+        angle := Sin(seconds * 2.4 + cast(float64)at * 0.7) * amount
+        if at == 1 || at == 3 || at == 5 || at == 7 { angle = -angle }
+        axis := ifx at < 4 || at >= 8 then Vector3.{0.0, 0.0, 1.0} else Vector3.{1.0, 0.0, 0.0}
+        workout.instance.rotations[node] = QuatMultiply(workout.rest[at], AxisAngle(axis, angle))
+        workout.instance.trs_dirty[node] = true
+    }
+}
+
+#if !#defined(ANDROID_BUILD) {
+// Desktop has no window presenter yet; the figure still takes the readback
+// path there, drawn alone without any other widget.
+PrepareSize :: (session: Session, width: s32, height: s32) -> bool {
+    if workout.width == width && workout.height == height && workout.pixels.pixels.count > 0 { return true }
+    if workout.texture.id != 0 {
+        BitmapImage.BitmapImageRelease(session, workout.texture)
+        workout.texture = .{}
+    }
+    workout.width = width
+    workout.height = height
+    VecResize(workout.pixels.pixels, cast(s64)width * height * 4)
+    workout.pixels.width = width
+    workout.pixels.height = height
+    return workout.pixels.pixels.count == cast(s64)width * height * 4
+}
+}
+
+// GPU/bitmap output and measurements; the authored screen owns its Image widget.
+FrameRender :: struct {
+    frame_start: s64
+    pose_start: s64
+    skin_start: s64
+    render_start: s64
+    result: SceneGpuFrame
+    texture: Texture2D
+    image_ready: bool
+    rendered: bool
+    completed: bool
+}
+
+PrepareFrame :: (frame: App.Frame) -> FrameRender {
+    prepared: FrameRender
+    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
+    // The figure never rests: ask the host for the next frame as well.
+    FrameMotion.FrameMotionMark(session)
+    frame_start := MonotonicNanoseconds()
+    prepared.frame_start = frame_start
+    if !workout.ready && !workout.failed && !load_requested {
+        load_requested = true
+        loading := MonotonicNanoseconds()
+        workout.ready = LoadWorkout()
+        workout.failed = !workout.ready
+        LogMeasure("load", MonotonicNanoseconds() - loading)
+        if workout.failed { LogLine("WORKOUT: model unavailable") }
+    }
+    pose_start: s64
+    skin_start: s64
+    render_start: s64
+    result: SceneGpuFrame
+    if workout.ready {
+        pose_start = MonotonicNanoseconds()
+        Pose(cast(float64)frame_start / 1000000000.0)
+        skin_start = MonotonicNanoseconds()
+        if !GltfUpdateScene(*workout.model, *workout.instance, *workout.scene) { workout.failed = true; return prepared }
+        if !camera_fitted {
+            camera_fitted = true
+            #if #defined(ANDROID_BUILD) {
+                FitCamera(AndroidSceneWindow.AndroidSceneWindowWidth(), AndroidSceneWindow.AndroidSceneWindowHeight())
+            } else {
+                FitCamera(cast(s32)frame.viewport.width, cast(s32)frame.viewport.height)
+            }
+        }
+    }
+    // A failed model still clears the window to the background every frame.
+    if workout.ready || workout.failed {
+        render_start = MonotonicNanoseconds()
+        #if #defined(ANDROID_BUILD) {
+            workout.width = AndroidSceneWindow.AndroidSceneWindowWidth()
+            workout.height = AndroidSceneWindow.AndroidSceneWindowHeight()
+            result = SceneGpuRenderWindow(*workout.gpu, *workout.scene, workout_camera,
+                workout.width, workout.height)
+            if !first_render_measured {
+                first_render_measured = true
+                LogMeasure("first_render", MonotonicNanoseconds() - render_start)
+            }
+            if !result.ok {
+                if !workout.failed {
+                    workout.failed = true
+                    line: Vec(u8)
+                    BuilderPrint(*line, "WORKOUT: scene failed: %", result.diagnostic)
+                    LogLine(BuilderFinish(line))
+                }
+                return prepared
+            }
+        } else {
+            width := cast(s32)frame.viewport.width
+            height := cast(s32)frame.viewport.height
+            if !PrepareSize(session, width, height) { workout.failed = true; return prepared }
+            result = SceneGpuRenderOrCPU(*workout.gpu, *workout.scene, workout_camera, *workout.pixels)
+            if !result.ok { workout.failed = true; return prepared }
+            if workout.texture.id == 0 {
+                workout.texture = BitmapImage.BitmapImageCreate(session, width, height, workout.pixels.pixels[:])
+            } else {
+                unused BitmapImage.BitmapImageUpdate(session, workout.texture, workout.pixels.pixels[:])
+            }
+            prepared.image_ready = true
+            prepared.texture = workout.texture
+        }
+        prepared.rendered = true
+    }
+    prepared.pose_start = pose_start
+    prepared.skin_start = skin_start
+    prepared.render_start = render_start
+    prepared.result = result
+    prepared.completed = true
+    return prepared
+}
+
+FinishFrame :: (prepared: FrameRender) {
+    if !prepared.completed { return }
+    frame_start := prepared.frame_start
+    pose_start := prepared.pose_start
+    skin_start := prepared.skin_start
+    render_start := prepared.render_start
+    result := prepared.result
+    if prepared.rendered {
+        render_end := MonotonicNanoseconds()
+        if previous_frame_ns > 0 {
+            interval := frame_start - previous_frame_ns
+            metrics.frames += 1
+            metrics.interval_ns += interval
+            metrics.pose_ns += skin_start - pose_start
+            metrics.skin_ns += render_start - skin_start
+            metrics.render_ns += render_end - render_start
+            metrics.prepare_ns += cast(s64)(result.prepare_ms * 1000000.0)
+            metrics.shadow_ns += cast(s64)(result.shadow_ms * 1000000.0)
+            metrics.draw_ns += cast(s64)(result.draw_ms * 1000000.0)
+            metrics.draw_calls += cast(s64)result.draw_calls
+            metrics.shadow_passes += result.shadow_passes
+            metrics.compare_ns += cast(s64)(result.profile.geometry_compare_ms * 1000000.0)
+            metrics.upload_ns += cast(s64)(result.profile.geometry_upload_ms * 1000000.0)
+            metrics.snapshot_ns += cast(s64)(result.profile.geometry_snapshot_ms * 1000000.0)
+            metrics.shader_ns += cast(s64)(result.profile.shader_setup_ms * 1000000.0)
+            metrics.gpu_ns += cast(s64)(result.gpu_ms * 1000000.0)
+            #if #defined(ANDROID_BUILD) {
+                metrics.swap_ns += AndroidSceneWindow.AndroidSceneWindowSwapNanoseconds()
+                presents := AndroidSceneWindow.AndroidSceneWindowPresents()
+                if presents != previous_presents { metrics.presents += 1; previous_presents = presents }
+            }
+            if metrics.interval_count < metrics.intervals.count {
+                metrics.intervals[metrics.interval_count] = interval
+                metrics.interval_count += 1
+            }
+            if metrics.frames % 15 == 0 { UpdatePercentile() }
+            Report()
+        }
+    }
+    previous_frame_ns = frame_start
+}
+
+ConfigurePlatform :: () {
+    #if #defined(ANDROID_BUILD) {
+        AndroidSceneWindow.EnableAndroidSceneWindow(*workout.gpu)
+    }
+}

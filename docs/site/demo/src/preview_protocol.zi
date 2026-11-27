@@ -2,6 +2,7 @@
 // Raw observations shared by the portable app and the Canvas host.
 #scope_export
 PreviewInput :: struct {
+    closing: bool
     origin_x: float32
     origin_y: float32
     now: float32

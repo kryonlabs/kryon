@@ -591,6 +591,7 @@ EmptyFlexBoxes :: () -> []FlexPlacement {
     return boxes
 }
 
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props, items: []FlexItem = EmptyFlexItems(),
     boxes: []FlexPlacement = EmptyFlexBoxes()) -> LayoutContainer {
     if items.count > 0 { return MeasuredFlex(session, props, WidgetKindColumn, items, boxes) }
@@ -599,7 +600,9 @@ Draw :: (session: Session, props: PropsModule.Props, items: []FlexItem = EmptyFl
     return result
 }
 
+#scope_export
 #program_export
+#scope_package
 Row :: (session: Session, props: PropsModule.Props, items: []FlexItem = EmptyFlexItems(),
     boxes: []FlexPlacement = EmptyFlexBoxes()) -> LayoutContainer {
     if items.count > 0 { return MeasuredFlex(session, props, WidgetKindRow, items, boxes) }
@@ -608,6 +611,7 @@ Row :: (session: Session, props: PropsModule.Props, items: []FlexItem = EmptyFle
     return result
 }
 
+#scope_export
 ResolveLayoutFlexItem :: (item: FlexItem) -> FlexItem {
     facts := StyleDefaultFacts(item.kind)
     facts.id = item.id
@@ -742,12 +746,14 @@ GridSpan :: (session: Session, grid: LayoutContainer, span: s32) {
 }
 
 #program_export
+#scope_package
 Stack :: (session: Session, props: PropsModule.Props) -> LayoutContainer {
     result: LayoutContainer = ContainerFor(session, props, WidgetKindStack)
     TreeSetPlacement(session, result.node, TreePlaceStack)
     return result
 }
 
+#scope_export
 #program_export
 Group :: (session: Session, props: PropsModule.Props) -> LayoutContainer {
     return ContainerFor(session, props, WidgetKindGroup)

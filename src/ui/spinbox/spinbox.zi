@@ -6,9 +6,11 @@ Theme :: #import "theme";
     #import "session"
     host_api :: #system_library "host_api";
     SpinboxHostedHost :: (session: Session, props: Spinbox.Props) -> Spinbox.SpinboxStepResult #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: Spinbox.Props) -> Spinbox.SpinboxStepResult {
         return SpinboxHostedHost(session, props)
     }
+        #scope_export
 } else {
 #import "session"
 #import "control_props"
@@ -142,6 +144,7 @@ SpinboxPaintFace :: (session: Session, node: s32, bounds: Rectangle,
     }
 }
 
+#scope_package
 Draw :: (session: Session, props: Spinbox.Props, location := #caller_location) -> SpinboxStepResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

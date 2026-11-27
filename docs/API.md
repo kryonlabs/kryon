@@ -6,10 +6,32 @@ Kryon is an ordinary Ziran package. An application imports the modules it
 uses; no widget names are recognized by the Ziran compiler or `.zx` loader.
 The public package imports are declared in [`ziran.toml`](../ziran.toml).
 
+Application composition uses TSX component values such as `Text` from
+`kryon/tsx/text`, `Button` from `kryon/tsx/button`, and `Row` or `Column` from
+`kryon/tsx/layout`. Bindings take the native draw session and the real widget's
+checked props; their result types are the native declarations. See
+[`hello.tsx`](../examples/hello.tsx) for the complete window and label example.
+JSX statements compose; when a frame reads a widget's immediate bool or record
+result, it calls the same imported component as a normal typed function, as in
+`Button({session, props})`. Mutable native storage crosses through the checked
+`NativeRef`/`nativeRef` and `nativeSlice` intrinsics, and narrow scalars keep
+their explicit widths (`s32`, `float32`) with wide ids written `u64(n)`.
+Ziran application models and actions are imported directly through the same
+package graph. The compiler checks both languages into common IR; it has no
+catalogue of widget names and generates no intermediate Ziran screen source.
+
+Container children use a checked `Scoped` callback invoked between the native
+container's begin and end operations. Those borrowed children cannot escape
+their calling scope. Persistent actions use the native owned-callable and
+component lifecycle contracts described in [COMPONENTS.md](COMPONENTS.md).
+The full TSX migration is in progress; its remaining widget, application and
+profile coverage is recorded in [the migration matrix](../plans/tsx-migration.md).
+
 Reusable component sources are grouped under `src/ui/<component>/`; shared
 tree, input, theme, and paint infrastructure stays in `src/ui/`. Applications
-import only the packages they use. For example, use `kryon/text`,
-`kryon/button`, `kryon/button_group`, or `kryon/progress_ring`; checklist tasks
+import only the packages they use. Native implementations and their checked
+types live in `kryon/text`, `kryon/button`, `kryon/button_group`, or
+`kryon/progress_ring`; checklist tasks
 and swipe actions are available from `kryon/onboarding_checklist_task` and
 `kryon/swipe_props`.
 
@@ -37,7 +59,8 @@ retained controls from it while input continues using the committed tree.
 
 | Import | Surface |
 | --- | --- |
-| `app` | `Window`, `Frame`, and `Run` for a small executable application |
+| `tsx/text`, `tsx/button`, `tsx/layout`, ... | Typed application component values backed by the native widget implementations |
+| `app` | `Window`, `Show`, `Run`, and the `Frame`/`Draw` frame types for a small executable application |
 | `text`, `button`, `image`, `page`, ... | One named package per widget, with `Props`, `Draw`, and widget-specific results |
 | `semantic` | Semantic kinds for document-oriented applications |
 | `PageRoute` | Browser route path, hash, and history (`GetRoutePath`, `PushRoute`, `GetRouteOrigin`, ...) for Canvas profiles |

@@ -343,6 +343,7 @@ ListBoxViewFinish :: (session: Session, view: ListBoxViewState,
 
 // Selection and scroll are returned as values. Rows keep identity through
 // their keys and use the same retained pointer routing as other controls.
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props,
     items: []ListBoxItem, location := #caller_location) -> ListBoxResult {
     site := TreeCallSite(session, location)
@@ -390,6 +391,7 @@ Draw :: (session: Session, props: PropsModule.Props,
     return result
 }
 
+#scope_export
 #program_export
 ListBoxMultiApply :: (selected: []bool, clicked: s32,
     anchor: s32, control: bool, shift: bool,

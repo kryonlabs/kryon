@@ -47,6 +47,8 @@ FrameDriverResult :: struct {
     ok: bool
     paint_unchanged: bool
     motion_active: bool
+    // Earliest component deadline, rounded up in milliseconds; zero means none.
+    wake_after_ms: s32
     cursor: FrameCursor
 }
 

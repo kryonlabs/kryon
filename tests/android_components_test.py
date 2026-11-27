@@ -6,8 +6,9 @@ import re
 import shlex
 import subprocess
 import time
+import zipfile
 
-from toolchain import UI_MODULE_ARGS, ROOT, ZIRAN, ZIRAN_ROOT, pinned, kryon_only
+from toolchain import ROOT, ZIRAN, ZIRAN_ROOT, pinned, kryon_only
 from android_soft_keyboard import soft_keyboard_text
 from android_png_probe import png_pixels, rgb
 
@@ -28,7 +29,7 @@ package = 'com.kryon.componenttest'
 def run(command, **kw):
     command = list(map(str, command))
     print('Android components: ' + shlex.join(command[:8]), flush=True)
-    return subprocess.run(command, cwd=project, env=env, stdin=subprocess.DEVNULL,
+    return subprocess.run(command, cwd=kw.pop('cwd', project), env=env, stdin=subprocess.DEVNULL,
                           timeout=kw.pop('timeout', 1800), check=True, **kw)
 
 if not a.skip_build:
@@ -61,16 +62,21 @@ min_sdk = "21"
     for name, defines in [('a-v1', []), ('b-v1', ['ANDROID_COMPONENT_B']),
                           ('a-v2', ['ANDROID_COMPONENT_V2']),
                           ('fail-v2', ['ANDROID_COMPONENT_V2', 'ANDROID_COMPONENT_FAIL'])]:
-        run([ZIRAN, 'bundle', '--root', fixture, '--module-path', ROOT / 'src/backend',
-             *UI_MODULE_ARGS, '--module-path', ZIRAN_ROOT / 'std',
+        run([ZIRAN, 'bundle', '--project', '--offline', '--root', fixture, '--module-path', fixture,
              '--define', 'KRYON_HOSTED_UI',
              *[part for define in defines for part in ('--define', define)],
-             '--entry', 'component:Frame', '-o', project / 'assets' / (name + '.zx'), fixture / 'component.zi'])
+             '--bind', 'component_guest:Compose=component:Frame',
+             '--entry', 'component_guest:Run', '-o', project / 'assets' / (name + '.zx'),
+             fixture / 'component.zi', ROOT / 'src/backend/component_guest.zi'], cwd=ROOT)
     source = ROOT / 'tests/fixtures/component_bad_schema/component.zi'
-    run([ZIRAN, 'bundle', '--root', source.parent, '--module-path', ROOT / 'src/backend',
-         *UI_MODULE_ARGS, '--module-path', ZIRAN_ROOT / 'std',
-         '--define', 'KRYON_HOSTED_UI', '--entry', 'component:Frame',
-         '-o', project / 'assets/bad-schema.zx', source])
+    run([ZIRAN, 'bundle', '--project', '--offline', '--root', source.parent, '--module-path', source.parent,
+         '--module-path', ROOT / 'tests/fixtures/component_owned',
+         '--define', 'KRYON_HOSTED_UI', '--bind', 'component_guest:Compose=component:Frame',
+         '--entry', 'component_guest:Run',
+         '-o', project / 'assets/bad-schema.zx', source, ROOT / 'src/backend/component_guest.zi'], cwd=ROOT)
+    # Refresh the owned fixture's generated build recipes when templates change.
+    (project / 'droid/app/build.gradle').unlink(missing_ok=True)
+    (project / 'droid/app/src/main/cpp/CMakeLists.txt').unlink(missing_ok=True)
     run(['python3', ROOT / 'scripts/android_scaffold.py', '--root', project,
          '--name', 'Android components test', '--package', package, '--activity', 'MainActivity', '--kryon', ROOT])
     (project / 'src/component_test_host.zi').unlink(missing_ok=True)
@@ -81,12 +87,16 @@ main :: () -> s32 {{ return 0 }}
     cmake = project / 'droid/app/src/main/cpp/CMakeLists.txt'
     content = cmake.read_text()
     content = re.sub(r' --host "[^"]*"', '', content)
-    content = content.replace('--codegen "${APP_CODEGEN}"', f'--codegen "${{APP_CODEGEN}}" --host "{ROOT / "src/backend/android_component_test_host.zi"}"')
+    content = content.replace('--codegen "${APP_CODEGEN}"', f'--codegen "${{APP_CODEGEN}}" --host "{ROOT / "src/backend/android_component_test_host.zi"}" --retain "kryon/android_component_test_host:android_main"')
     cmake.write_text(content)
     run([ZIRAN, 'tool', 'kryon', 'build', '--profile', 'android'])
 
 apk = project / 'droid/app/build/outputs/apk/debug/app-debug.apk'
 assert apk.is_file()
+with zipfile.ZipFile(apk) as archive:
+    assert 'lib/armeabi-v7a/libmain.so' in archive.namelist()
+    for name in ('a-v1.zx', 'b-v1.zx', 'a-v2.zx', 'bad-schema.zx', 'fail-v2.zx'):
+        assert archive.read('assets/' + name) == (project / 'assets' / name).read_bytes(), name
 if a.build_only or not a.serial:
     print('Android component fixture APK built', flush=True)
     raise SystemExit(0)

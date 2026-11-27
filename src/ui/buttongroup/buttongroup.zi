@@ -121,6 +121,7 @@ ButtonGroupNextFocus :: (items: []Button.Props, current: s32,
     return -1
 }
 
+#scope_package
 Draw :: (session: Session, props: Props,
     items: []Button.Props, state: *ButtonGroupState, location := #caller_location) -> ButtonGroupResult {
     site := TreeCallSite(session, location)

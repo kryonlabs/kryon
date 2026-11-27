@@ -14,17 +14,21 @@ project = ROOT / 'build/zx-canvas-test'
 project.mkdir(parents=True, exist_ok=True)
 (project / 'src').mkdir(exist_ok=True)
 (project / 'assets').mkdir(exist_ok=True)
-source = (ROOT / 'tests/zx/app.zi').read_text()
-source = ('#import "kryon/image_raster"\n'
-          'startup_width: s32 = AssetWidth("assets/red.png");\n'
-          'outside_width: s32 = AssetWidth("private.png");\n') + source
-source = source.replace('    frames += 1',
-                        '    if startup_width != 32 || outside_width != 0 { WindowQuit(); return }\n    frames += 1')
-(project / 'src/app.zi').write_text(source)
+source = (ROOT / 'tests/zx/app.tsx').read_text()
+frame = 'function Frame(frame: App.Frame): void {\n'
+assert source.count(frame) == 1, 'shared ZX fixture has no unique Frame to extend'
+startup = '''import { AssetWidth } from "kryon/image_raster";
+let startupWidth: s32 = AssetWidth("assets/red.png");
+let outsideWidth: s32 = AssetWidth("private.png");
+'''
+source = source.replace(frame, startup + frame +
+                        '    if (startupWidth !== s32(32) || outsideWidth !== s32(0)) { WindowQuit(); return; }\n', 1)
+(project / 'src/app.zi').unlink(missing_ok=True)
+(project / 'src/app.tsx').write_text(source)
 solid_png(project / 'assets/red.png', 32, 32, (230, 30, 40, 255))
 (project / 'ziran.toml').write_text(pinned('''[package]
 name = "zx_canvas_probe"
-entry = "src/app.zi"
+entry = "src/app.tsx"
 module_roots = ["src"]
 bridge_modules = ["app"]
 [toolchain]

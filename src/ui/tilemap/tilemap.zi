@@ -93,6 +93,7 @@ TileMapFit :: (bounds: Rectangle, columns: s32, rows: s32, pixel_snap: bool = fa
 // call. A larger map is drawn cell by cell.
 TILE_MAP_HOSTED_LIMIT :: 1024
 
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) -> TileMapResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

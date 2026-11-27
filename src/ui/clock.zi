@@ -4,3 +4,15 @@ host_api :: #system_library "host_api";
 ClockMillisecondsHost :: () -> s64 #foreign host_api;
 #program_export
 Milliseconds :: () -> s64 { return ClockMillisecondsHost() }
+
+Seconds :: () -> float64 {
+    milliseconds := Milliseconds()
+    return ifx milliseconds < 0 then -1.0 else cast(float64)milliseconds / 1000.0
+}
+
+// Importing the portable UI clock opts its frame host into time sampling.
+// Low-level lifecycle programs with explicit Tick need no clock capability.
+#if TARGET == .ZX {
+    #import "frame_motion"
+    frame_time_registered: bool = FrameMotionUseClock(Seconds);
+}

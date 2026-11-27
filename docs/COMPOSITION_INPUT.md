@@ -5,6 +5,14 @@ Kryon's checked `TextField` and `TextArea` accept raw composition events in
 for a commit, a normal byte-range edit. The caller owns the committed text and
 applies that edit before the next frame.
 
+`TextField` from `kryon/tsx/text_field` uses native `Bind` to apply edits to a
+caller-owned `State`, including its separate preedit buffer. This works with
+both local and hosted UI: the retained native tree handles placement, focus,
+input and editing, while the caller keeps its value and composition bytes.
+`ControlledTextField` returns the ordinary `Result` for applications that
+apply edits and retain composition themselves. Raw composition events still
+arrive through `props.input.composition_event`.
+
 `composition_input.zi` exposes `SampleComposition()` as an ordinary Ziran
 library function. It calls the platform's `PollComposition` capability and
 returns a `CompositionSample`. Convert an available sample with

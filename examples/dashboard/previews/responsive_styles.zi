@@ -1,0 +1,56 @@
+// Native stylesheet parsing and installation for responsive.tsx.
+CSS :: #import "css/Css";
+Theme :: #import "kryon/theme";
+#import "kryon/geometry"
+sheet: CSS.CssSheet;
+previous: CSS.CssEnvironment;
+installed: bool;
+
+styles :: #string CSS
+:root {
+  --panel: #151f30;
+  --line: #29384f;
+  --ink: #edf4ff;
+  --muted: #a9b8ce;
+  --accent: #45dfbf;
+  --negative: #fa819d;
+}
+Column.dashboard { gap: 14px; padding: 16px 24px; }
+Heading.title { font-size: 46px; font-weight: 700; line-height: 1.05; letter-spacing: -2px; color: var(--ink); }
+Heading.panel-title { font-size: 19px; font-weight: 600; color: var(--ink); }
+Text.eyebrow { color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 1.4px; }
+Text.muted { color: var(--muted); font-size: 14px; }
+Text.positive { color: var(--accent); font-size: 24px; font-weight: 700; letter-spacing: -0.7px; }
+Text.negative { color: var(--negative); font-size: 14px; }
+Card.panel { background: var(--panel); border: 1px solid; border-color: var(--line); border-radius: 16px; padding: 20px; }
+Button.costs { color: var(--accent); background: var(--panel); border-radius: 8px; }
+Grid.metrics { grid-template-columns: repeat(auto-fit, minmax(min(165px, 100%), 1fr)); gap: 14px; }
+Grid.charts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+Grid.ledger { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 12px; }
+@media (max-width: 820px) {
+  Column.dashboard { padding: 16px; }
+  Heading.title { font-size: 34px; }
+  Card.panel { padding: 12px; }
+  Grid.charts { grid-template-columns: minmax(0, 1fr); }
+}
+CSS;
+
+Install :: (viewport: Rectangle) -> bool {
+    if !installed {
+        unused Theme.InstallDefaultTheme(true)
+        if !CSS.CssSheetParse(*sheet, styles, "responsive.css", CSS.CssNoImports) {
+            diagnostic: [256]u8
+            print("%\n", CSS.CssSheetDiagnostic(*sheet, diagnostic[:]))
+            return false
+        }
+    }
+    env := CSS.CssEnvironmentWithViewportWidth(CSS.CssDefaultEnvironment(), viewport.width)
+    if installed && CSS.CssSheetSameMedia(*sheet, previous, env) { return true }
+    if !CSS.CssSheetInstall(*sheet, env, null) { return false }
+    previous = env
+    installed = true
+    return true
+}
+
+
+Class :: (name: string) -> s32 { return CSS.StyleClass(name) }

@@ -1,0 +1,66 @@
+// Shared native observations for the retained hosted ownership fixture.
+Lifecycle :: #import "component_lifecycle";
+Types :: #import "component_types";
+State :: #import "component_state";
+#import "std/vec"
+
+Presentation :: struct { count: s64; title: Text; samples: Vec(s64); }
+Clone :: #type (value: *Presentation) -> Presentation;
+
+#scope_file
+called: s64;
+timed: s64;
+cleaned: s64;
+invalid: s64;
+cells: State.Store(Presentation);
+cell: State.Handle(Presentation);
+#scope_export
+
+Copy :: (value: *Presentation) -> Presentation {
+    samples: Vec(s64)
+    for value.samples { unused VecPush(samples, it) }
+    return .{value.count, TextCopy(TextView(value.title)), samples}
+}
+Release :: (token: Types.Token) {
+    if Lifecycle.ResourceIndex(token) >= 0 || !State.Release(*cells, token) { invalid += 1 }
+}
+Mount :: (owner: Types.Instance) {
+    samples: Vec(s64)
+    unused VecPush(samples, called)
+    unused VecPush(samples, called + 1)
+    cell = State.Mount(*cells, owner, cast(u64)1,
+        Presentation.{called, TextCopy("cell"), samples}, Release)
+    if State.Index(*cells, cell) < 0 { invalid += 1 }
+}
+
+Call :: (owner: Types.Instance, count: s64) {
+    if !Lifecycle.Alive(owner) || !Lifecycle.CanWrite(owner) { invalid += 1 }
+    clone: Clone = Copy
+    snapshot := State.Read(*cells, cell, clone)
+    if !snapshot.has_value || snapshot.value.value.count != called ||
+        TextView(snapshot.value.value.title) != "cell" ||
+        snapshot.value.value.samples.count != 2 { invalid += 1 }
+    else {
+        if snapshot.value.value.samples[0] != called || snapshot.value.value.samples[1] != called + 1 { invalid += 1 }
+        updated: Vec(s64)
+        unused VecPush(updated, called + count)
+        unused VecPush(updated, called + count + 1)
+        if !State.Set(*cells, cell, Presentation.{called + count, TextCopy("cell"), updated}) { invalid += 1 }
+        // The old independently owned snapshot must survive replacement.
+        if snapshot.value.value.samples[0] != called || TextView(snapshot.value.value.title) != "cell" { invalid += 1 }
+    }
+    called += count
+}
+Timer :: (owner: Types.Instance, count: s64) {
+    if !Lifecycle.Alive(owner) || !Lifecycle.CanWrite(owner) { invalid += 1 }
+    timed += count
+}
+Clean :: (owner: Types.Instance, count: s64) {
+    if Lifecycle.Alive(owner) || Lifecycle.CanWrite(owner) { invalid += 1 }
+    cleaned += count
+}
+Label :: () -> string {
+    text: Vec(u8)
+    BuilderPrint(*text, "life % % % %", called, timed, cleaned, invalid)
+    return BuilderFinish(text)
+}

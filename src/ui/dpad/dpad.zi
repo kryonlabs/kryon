@@ -123,6 +123,7 @@ DirectionPadCell :: (x: float32, y: float32, third: float32, arm: s32) -> Rectan
     return Rectangle.{x + column * third + gap, y + row * third + gap, third - gap * 2.0, third - gap * 2.0}
 }
 
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) -> DirectionPadResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

@@ -4,6 +4,7 @@ Button :: #import "button";
 #import "drawing_props"
 #import "focus"
 #import "font_metrics"
+#import "frame_motion"
 #import "geometry"
 #import "style_sheet"
 #import "icon"
@@ -176,6 +177,7 @@ PaintConfirmFace :: (session: Session, node: s32, props: Button.Props,
 }
 
 #scope_export
+#scope_package
 Draw :: (session: Session, props: Props,
     state: *ConfirmButtonState, location := #caller_location) -> ConfirmButtonResult {
     site := TreeCallSite(session, location)
@@ -222,11 +224,18 @@ Draw :: (session: Session, props: Props,
     }
     if !props.outside_press && SessionValid(session) {
         pointer := PointerSample(session)
-        props.outside_press = pointer.pressed &&
-            !PointInBounds(pointer.x, pointer.y, props.button.bounds)
+        if pointer.pressed {
+            // Input targets the committed button after its parent places it.
+            if previous >= 0 {
+                props.outside_press = TreeHitAt(session, pointer.x, pointer.y, true) != previous
+            } else {
+                props.outside_press = !PointInBounds(pointer.x, pointer.y, props.button.bounds)
+            }
+        }
     }
     props.activated = activated
     result := ConfirmButtonApply(state, props)
+    if result.armed || result.progress > 0.0 { FrameMotionMark(session) }
     submitted := armed
     submitted.bounds = props.button.bounds
     submitted.bounds.width = result.width
@@ -242,6 +251,8 @@ Draw :: (session: Session, props: Props,
     submitted_after := TreeSubmittedCount(session)
     if submitted_after > submitted_before { result.node = submitted_after - 1 }
     if result.node < 0 { return result }
+    result.bounds = TreeSubmittedBounds(session, result.node)
+    TreeAdoptPlacement(session, result.node)
     face_state := ResolveState(cast(s32)ButtonState.ButtonStateAuto,
         submitted.disabled, submitted.loading, pressed, hovered, focused,
         submitted.selected)

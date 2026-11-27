@@ -1,0 +1,598 @@
+// Component metadata shares the retained tree's frame transaction. It owns no
+// geometry, paint, focus, semantic or input tree. All calls run on the UI thread.
+#import "session"
+#import "component_slot"
+#import "std/option"
+
+Types :: #import "component_types";
+Frames :: #import "component_frame_slot";
+Action :: #type (instance: Types.Instance) -> void;
+Retirement :: #type (token: Types.Token) -> void;
+
+Status :: enum { Ok; NotBuilding; InvalidScope; DuplicateKey; AllocationFailed; IdentityOverflow; }
+
+Entry :: struct {
+    identity: u64
+    parent: u64
+    tree_parent: u64
+    component: Text
+    file: Text
+    line: s64
+    column: s64
+    key: Types.Key
+    ordinal: s64
+    depth: s64
+    live: bool
+    seen: bool
+    committed: bool
+    retiring: bool
+}
+
+Resource :: struct {
+    owner: Types.Instance
+    serial: u64
+    run: Action
+    dispose: Action
+    retire: Retirement
+    run_token: Retirement
+    dispatching: bool
+    due: float64
+    interval: float64
+    timer: bool
+    live: bool
+    committed: bool
+    retiring: bool
+}
+
+Queued :: struct { token: Types.Token; committed: bool; }
+
+Store :: struct {
+    entries: Vec(Entry)
+    resources: Vec(Resource)
+    stack: Vec(s64)
+    events: Vec(Queued)
+    epoch: u64
+    next_identity: u64
+    next_resource: u64
+    building: bool
+    disposing: bool
+    ticking: bool
+    error: Status
+    error_key: u64
+}
+
+#scope_file
+stores: [SessionSlotCount]Store;
+no_action: Action;
+no_retirement: Retirement;
+
+FrameStatusCode :: (session: Session) -> s32 { return cast(s32)FrameStatus(session) }
+component_frames_registered: bool = Frames.Use(.{
+    .current = Current, .start = FrameStart, .resume = Resume, .leave = Leave,
+    .status = FrameStatusCode, .error_key = FrameErrorKey, .cancel = FrameCancel,
+    .commit = FrameCommit, .blocked = FrameBlocked, .tick = Tick,
+    .deadline = NextDeadline, .delay = NextDelay, .dispose = DisposeOwner});
+
+// Hosted sessions are borrowed value identities supplied by the SDK entry.
+// They authorize only this guest's resource table, never native tree access.
+OwnerIndex :: (session: Session) -> s32 {
+    #if #defined(KRYON_HOSTED_UI) {
+        if session.slot > 0 && session.slot < SessionSlotCount && session.epoch != cast(u64)0 &&
+            stores[session.slot].epoch == session.epoch { return session.slot }
+        return 0
+    } else { return SessionIndex(session) }
+}
+
+OwnerValid :: (session: Session) -> bool { return OwnerIndex(session) != 0 }
+
+#scope_export
+HostedAttach :: (session: Session) -> bool {
+    #if #defined(KRYON_HOSTED_UI) {
+        if session.slot <= 0 || session.slot >= SessionSlotCount || session.epoch == cast(u64)0 { return false }
+        store := *stores[session.slot]
+        if store.epoch == session.epoch { return true }
+        if store.epoch != cast(u64)0 { return false }
+        store.epoch = session.epoch
+        return true
+    } else { return false }
+}
+
+HostedDetach :: (session: Session) -> bool {
+    #if #defined(KRYON_HOSTED_UI) {
+        if !OwnerValid(session) { return false }
+        FrameCancel(session)
+        if !DisposeOwner(session.slot, session.epoch) { return false }
+        stores[session.slot].epoch = 0
+        return true
+    } else { return false }
+}
+
+// The host already resolved the complete identity tuple. Mirror that ID for
+// local resources; retain no layout tree or alternative identity algorithm.
+HostedEnter :: (instance: Types.Instance) -> bool {
+    #if #defined(KRYON_HOSTED_UI) {
+        if !OwnerValid(instance.session) || instance.identity == cast(u64)0 { return false }
+        store := *stores[instance.session.slot]
+        if !store.building || store.disposing || store.ticking || store.error != .Ok { return false }
+        parent := Current(instance.session)
+        at := Find(instance)
+        if at >= 0 {
+            if store.entries[at].seen || store.entries[at].parent != parent { store.error = .InvalidScope; return false }
+        } else {
+            at = -1
+            for index: 0..store.entries.count - 1 { if !store.entries[index].live { at = index; break } }
+            if at < 0 {
+                at = store.entries.count
+                entry: Entry
+                if !VecPush(store.entries, entry) { store.error = .AllocationFailed; return false }
+            }
+            entry := *store.entries[at]
+            entry.identity = instance.identity; entry.parent = parent
+            entry.depth = store.stack.count
+            entry.live = true; entry.committed = false
+        }
+        store.entries[at].seen = true
+        if !VecPush(store.stack, at) { store.error = .AllocationFailed; return false }
+        return true
+    } else { return false }
+}
+
+Current :: (session: Session) -> u64 {
+    slot := OwnerIndex(session)
+    store := *stores[slot]
+    if slot == 0 || store.stack.count == 0 { return 0 }
+    at := store.stack[store.stack.count - 1]
+    return store.entries[at].identity
+}
+
+Find :: (instance: Types.Instance) -> s64 {
+    slot := OwnerIndex(instance.session)
+    store := *stores[slot]
+    if slot == 0 || instance.identity == cast(u64)0 || store.epoch != instance.session.epoch { return -1 }
+    for at: 0..store.entries.count - 1 {
+        if store.entries[at].identity == instance.identity && store.entries[at].live { return at }
+    }
+    return -1
+}
+
+Alive :: (instance: Types.Instance) -> bool { return Find(instance) >= 0 }
+
+CanInitialize :: (instance: Types.Instance) -> bool {
+    if !Alive(instance) { return false }
+    store := *stores[instance.session.slot]
+    return store.building && !store.disposing && !store.ticking &&
+        store.error == .Ok && Current(instance.session) == instance.identity
+}
+
+CanWrite :: (instance: Types.Instance) -> bool {
+    if !Alive(instance) { return false }
+    store := *stores[instance.session.slot]
+    return !store.building && !store.disposing
+}
+
+FrameBlocked :: (session: Session) -> bool {
+    slot := OwnerIndex(session)
+    if slot == 0 { return false }
+    return stores[slot].disposing || stores[slot].ticking
+}
+
+FrameStart :: (session: Session) -> bool {
+    if !OwnerValid(session) { return false }
+    slot := session.slot
+    store := *stores[slot]
+    if store.disposing || store.ticking { return false }
+    if store.building { FrameCancel(session) }
+    ComponentSetOwnerDisposal(DisposeOwner)
+    store.epoch = session.epoch
+    Pump(session)
+    store.building = true
+    store.error = .Ok
+    store.error_key = 0
+    VecClear(store.stack)
+    for * store.entries { it.seen = false }
+    return true
+}
+
+// A full tuple is compared, never a hashed identity. Explicit keys distinguish
+// repeats of a site; unkeyed repeats retain their position within that site.
+Enter :: (session: Session, tree_parent: u64, component: string, site: Types.Site,
+    key: Types.Key) -> (instance: Types.Instance, fresh: bool) {
+    empty: Types.Instance
+    if !OwnerValid(session) { return empty, false }
+    slot := session.slot
+    store := *stores[slot]
+    if !store.building || store.disposing || store.ticking || store.error != .Ok { return empty, false }
+    parent := Current(session)
+    ordinal: s64 = 0
+    found: s64 = -1
+    reusable: s64 = -1
+    for at: 0..store.entries.count - 1 {
+        entry := *store.entries[at]
+        if !entry.live { if reusable < 0 { reusable = at }; continue }
+        if entry.parent != parent || entry.tree_parent != tree_parent ||
+            TextView(entry.file) != site.file || entry.line != site.line || entry.column != site.column { continue }
+        if !key.specified && !entry.key.specified && entry.seen { ordinal += 1 }
+        if key.specified && entry.key.specified && entry.key.value == key.value && entry.seen {
+            store.error = .DuplicateKey
+            store.error_key = key.value
+            return empty, false
+        }
+    }
+    for at: 0..store.entries.count - 1 {
+        entry := *store.entries[at]
+        if !entry.live || entry.seen || entry.parent != parent || entry.tree_parent != tree_parent ||
+            TextView(entry.component) != component || TextView(entry.file) != site.file ||
+            entry.line != site.line || entry.column != site.column || entry.key.specified != key.specified { continue }
+        if (key.specified && entry.key.value == key.value) || (!key.specified && entry.ordinal == ordinal) { found = at; break }
+    }
+    fresh := found < 0
+    if fresh {
+        if store.next_identity == cast(u64)18446744073709551615 { store.error = .IdentityOverflow; return empty, false }
+        store.next_identity += cast(u64)1
+        found = reusable
+        if found < 0 {
+            found = store.entries.count
+            empty_entry: Entry
+            if !VecPush(store.entries, empty_entry) { store.error = .AllocationFailed; return empty, false }
+        }
+        entry := *store.entries[found]
+        entry.identity = store.next_identity
+        entry.parent = parent
+        entry.tree_parent = tree_parent
+        owned_component: Text = TextCopy(component)
+        owned_file: Text = TextCopy(site.file)
+        VecSwap(entry.component.bytes, owned_component.bytes)
+        VecSwap(entry.file.bytes, owned_file.bytes)
+        entry.live = true
+        entry.committed = false
+        if TextView(entry.component) != component || TextView(entry.file) != site.file { store.error = .AllocationFailed; return empty, false }
+        entry.line = site.line
+        entry.column = site.column
+        entry.key = key
+        entry.ordinal = ordinal
+        entry.depth = store.stack.count
+        if store.stack.count > 0 { entry.depth = store.entries[store.stack[store.stack.count - 1]].depth + 1 }
+        entry.live = true
+        entry.committed = false
+    }
+    store.entries[found].seen = true
+    if !VecPush(store.stack, found) { store.error = .AllocationFailed; return empty, false }
+    return .{session, store.entries[found].identity}, fresh
+}
+
+Leave :: (instance: Types.Instance) -> bool {
+    if !OwnerValid(instance.session) { return false }
+    slot := instance.session.slot
+    store := *stores[slot]
+    if store.disposing || store.ticking { return false }
+    if !store.building || store.stack.count == 0 || Current(instance.session) != instance.identity {
+        store.error = .InvalidScope
+        return false
+    }
+    unused VecPop(store.stack)
+    return true
+}
+
+// Deferred widget work restores its owning namespace while the same frame is
+// still building. This never marks a second component occurrence or remounts.
+Resume :: (instance: Types.Instance) -> bool {
+    at := Find(instance)
+    if at < 0 { return false }
+    store := *stores[instance.session.slot]
+    if !store.building || store.disposing || store.ticking || store.error != .Ok || !store.entries[at].seen { return false }
+    return VecPush(store.stack, at)
+}
+
+FrameStatus :: (session: Session) -> Status {
+    if !OwnerValid(session) { return .NotBuilding }
+    slot := session.slot
+    store := *stores[slot]
+    if store.error != .Ok { return store.error }
+    if !store.building { return .NotBuilding }
+    if store.stack.count != 0 { return .InvalidScope }
+    return .Ok
+}
+
+FrameErrorKey :: (session: Session) -> u64 {
+    if !OwnerValid(session) { return 0 }
+    return stores[session.slot].error_key
+}
+
+// Native procedures receive the stable instance handle. This registry stores
+// no erased payload or state pointer; domain state stays in its typed module.
+Register :: (instance: Types.Instance, run: Action, dispose: Action, timer: bool,
+    due: float64, interval: float64, retire: Retirement = no_retirement, run_token: Retirement = no_retirement) -> Types.Token {
+    empty: Types.Token
+    if !Alive(instance) { return empty }
+    slot := instance.session.slot
+    store := *stores[slot]
+    if store.disposing || store.next_resource == cast(u64)18446744073709551615 { return empty }
+    store.next_resource += cast(u64)1
+    serial := store.next_resource
+    chosen: s64 = -1
+    for at: 0..store.resources.count - 1 {
+        if !store.resources[at].live && !store.resources[at].retiring {
+            chosen = at
+            break
+        }
+    }
+    if chosen < 0 {
+        chosen = store.resources.count
+        resource: Resource
+        if !VecPush(store.resources, resource) { store.error = .AllocationFailed; return empty }
+    }
+    resource := *store.resources[chosen]
+    resource.owner = instance; resource.serial = serial
+    resource.run = run; resource.dispose = dispose; resource.retire = retire
+    resource.run_token = run_token
+    resource.dispatching = false
+    resource.timer = timer; resource.due = due; resource.interval = interval
+    resource.live = true; resource.committed = !store.building
+    return .{instance, serial}
+}
+
+OnCleanup :: (instance: Types.Instance, dispose: Action) -> Types.Token { return Register(instance, no_action, dispose, false, 0.0, 0.0) }
+// Typed native stores use the exact resource token to drop only this cell,
+// including a new cell cancelled on an otherwise committed component.
+OnRetirement :: (instance: Types.Instance, retire: Retirement) -> Types.Token {
+    return Register(instance, no_action, no_action, false, 0.0, 0.0, retire)
+}
+Callback :: (instance: Types.Instance, run: Action, dispose: Action = no_action) -> Types.Token { return Register(instance, run, dispose, false, 0.0, 0.0) }
+Timer :: (instance: Types.Instance, due: float64, interval: float64, run: Action, dispose: Action = no_action) -> Types.Token {
+    empty: Types.Token
+    if due != due || interval != interval || due < 0.0 || due > 9007199254740991.0 || interval < 0.0 || interval > 9007199254740991.0 || run == null { return empty }
+    return Register(instance, run, dispose, true, due, interval)
+}
+
+// Value-only token dispatch lets optional typed owners retain their resources
+// locally; no environment pointer crosses the lifecycle registry boundary.
+CallbackToken :: (instance: Types.Instance, run: Retirement, retire: Retirement,
+    timer: bool = false, due: float64 = 0.0, interval: float64 = 0.0) -> Types.Token {
+    empty: Types.Token
+    if due != due || interval != interval || due < 0.0 || due > 9007199254740991.0 ||
+        interval < 0.0 || interval > 9007199254740991.0 { return empty }
+    return Register(instance, no_action, no_action, timer, due, interval, retire, run)
+}
+
+ResourceIndex :: (token: Types.Token) -> s64 {
+    if !Alive(token.owner) || token.serial == cast(u64)0 { return -1 }
+    store := *stores[token.owner.session.slot]
+    for at: 0..store.resources.count - 1 {
+        resource := *store.resources[at]
+        if resource.live && resource.serial == token.serial && resource.owner.identity == token.owner.identity { return at }
+    }
+    return -1
+}
+
+Dispatch :: (token: Types.Token) -> bool {
+    at := ResourceIndex(token)
+    if at < 0 { return false }
+    slot := token.owner.session.slot
+    store := *stores[slot]
+    if store.disposing || store.building || store.resources[at].dispatching { return false }
+    run_token := store.resources[at].run_token
+    if run_token != null {
+        store.resources[at].dispatching = true
+        run_token(token)
+        current := ResourceIndex(token)
+        if current >= 0 { store.resources[current].dispatching = false }
+        return true
+    }
+    run := store.resources[at].run
+    if run == null { return false }
+    run(token.owner)
+    return true
+}
+
+// Render-observed actions run only after their frame commits. Events queued by
+// an action belong to the next batch, so callbacks cannot recursively pump.
+Queue :: (token: Types.Token) -> bool {
+    at := ResourceIndex(token)
+    if at < 0 { return false }
+    store := *stores[token.owner.session.slot]
+    if store.disposing || (store.resources[at].run == null &&
+        store.resources[at].run_token == null) { return false }
+    event: Queued = .{token, !store.building}
+    return VecPush(store.events, event)
+}
+
+Pump :: (session: Session) {
+    if !OwnerValid(session) { return }
+    store := *stores[session.slot]
+    if store.building || store.disposing || store.ticking || store.events.count == 0 { return }
+    batch: Vec(Queued)
+    VecSwap(batch, store.events)
+    store.ticking = true
+    for * batch {
+        if it.committed { unused Dispatch(it.token) }
+    }
+    store.ticking = false
+    VecFree(batch)
+}
+
+Cancel :: (token: Types.Token) -> bool {
+    at := ResourceIndex(token)
+    if at < 0 { return false }
+    slot := token.owner.session.slot
+    store := *stores[slot]
+    if store.disposing { return false }
+    resource := *store.resources[at]
+    dispose := resource.dispose
+    retire := resource.retire
+    store.resources[at].live = false
+    store.resources[at].run = no_action
+    store.resources[at].dispose = no_action
+    if dispose != null || retire != null {
+        store.disposing = true
+        if dispose != null { dispose(token.owner) }
+        if retire != null { retire(token) }
+        store.disposing = false
+    }
+    return true
+}
+
+// All removed handles/tokens die before disposal. Children dispose before
+// parents, then reverse registration order, independent of recycled slots.
+Descendant :: (store: *Store, identity: u64, root: u64) -> bool {
+    current := identity
+    while current != cast(u64)0 {
+        if current == root { return true }
+        parent: u64 = 0
+        for * store.entries { if it.identity == current { parent = it.parent; break } }
+        current = parent
+    }
+    return false
+}
+
+Retire :: (session: Session, cancel_frame: bool, all: bool, root: u64 = cast(u64)0) {
+    slot := session.slot
+    store := *stores[slot]
+    store.disposing = true
+    for * store.entries {
+        removed := all || (cancel_frame && !it.committed) || (!cancel_frame && !it.seen)
+        if root != cast(u64)0 { removed = Descendant(store, it.identity, root) }
+        if it.live && removed { it.live = false; it.retiring = true }
+    }
+    for * store.resources {
+        if it.live && (all || (root == cast(u64)0 && cancel_frame && !it.committed) || !Alive(it.owner)) { it.live = false; it.retiring = true }
+    }
+    while true {
+        chosen: s64 = -1
+        depth: s64 = -1
+        serial: u64 = 0
+        for at: 0..store.resources.count - 1 {
+            resource := *store.resources[at]
+            if !resource.retiring { continue }
+            owner_depth: s64 = 0
+            for * store.entries { if it.identity == resource.owner.identity { owner_depth = it.depth; break } }
+            if owner_depth > depth || (owner_depth == depth && resource.serial > serial) { chosen = at; depth = owner_depth; serial = resource.serial }
+        }
+        if chosen < 0 { break }
+        resource := *store.resources[chosen]
+        owner := resource.owner
+        retired_serial := resource.serial
+        dispose := resource.dispose
+        retire := resource.retire
+        resource.retiring = false
+        resource.run = no_action; resource.dispose = no_action
+        if dispose != null { dispose(owner) }
+        if retire != null { retire(.{owner, retired_serial}) }
+    }
+    for * store.entries {
+        if it.retiring { VecFree(it.component.bytes); VecFree(it.file.bytes); it.retiring = false }
+    }
+    store.disposing = false
+}
+
+// Host code retires a bundle's mounted namespace before dropping its code.
+// The same registry invalidates all descendants and tokens before disposal.
+DisposeInstance :: (instance: Types.Instance) -> bool {
+    if Find(instance) < 0 { return false }
+    store := *stores[instance.session.slot]
+    if store.building || store.disposing || store.ticking { return false }
+    Retire(instance.session, false, false, instance.identity)
+    return true
+}
+
+FrameCancel :: (session: Session) {
+    if !OwnerValid(session) { return }
+    slot := session.slot
+    store := *stores[slot]
+    if !store.building || store.disposing { return }
+    Retire(session, true, false)
+    kept: s64 = 0
+    for at: 0..store.events.count - 1 {
+        if store.events[at].committed {
+            store.events[kept] = store.events[at]
+            kept += 1
+        }
+    }
+    unused VecResize(store.events, kept)
+    store.building = false
+    VecClear(store.stack)
+}
+
+FrameCommit :: (session: Session) {
+    if FrameStatus(session) != .Ok { FrameCancel(session); return }
+    slot := session.slot
+    store := *stores[slot]
+    Retire(session, false, false)
+    for * store.entries { if it.live { it.committed = true } }
+    for * store.resources { if it.live { it.committed = true } }
+    for * store.events { it.committed = true }
+    store.building = false
+}
+
+// Absolute monotonic seconds, zero for accepted queued actions, or -1 when no
+// work remains. Hosts cap their wait without requesting continuous painting.
+NextDeadline :: (session: Session) -> float64 {
+    if !OwnerValid(session) { return -1.0 }
+    deadline: float64 = -1.0
+    store := *stores[session.slot]
+    for * store.events {
+        if it.committed && ResourceIndex(it.token) >= 0 { return 0.0 }
+    }
+    for * store.resources {
+        if it.live && it.timer && (deadline < 0.0 || it.due < deadline) { deadline = it.due }
+    }
+    return deadline
+}
+
+NextDelay :: (session: Session, seconds: float64) -> s32 {
+    if !OwnerValid(session) || seconds != seconds { return 0 }
+    store := *stores[session.slot]
+    for * store.events {
+        if it.committed && ResourceIndex(it.token) >= 0 { return 1 }
+    }
+    delay: s32 = 0
+    for * store.resources {
+        if !it.live || !it.timer { continue }
+        remaining := it.due - seconds
+        milliseconds: s32 = 1
+        if remaining >= 2147483.647 { milliseconds = 2147483647 }
+        else if remaining > 0.0 {
+            milliseconds = cast(s32)(remaining * 1000.0)
+            if cast(float64)milliseconds < remaining * 1000.0 { milliseconds += 1 }
+            if milliseconds < 1 { milliseconds = 1 }
+        }
+        if delay == 0 || milliseconds < delay { delay = milliseconds }
+    }
+    return delay
+}
+
+Tick :: (session: Session, seconds: float64) {
+    if !OwnerValid(session) || seconds != seconds { return }
+    slot := session.slot
+    store := *stores[slot]
+    if store.building || store.disposing || store.ticking { return }
+    Pump(session)
+    store.ticking = true
+    last := store.next_resource
+    for at: 0..store.resources.count - 1 {
+        if !store.resources[at].live || !store.resources[at].timer ||
+            store.resources[at].serial > last || seconds < store.resources[at].due { continue }
+        owner := store.resources[at].owner
+        serial := store.resources[at].serial
+        interval := store.resources[at].interval
+        if interval > 0.0 { store.resources[at].due = seconds + interval }
+        else { store.resources[at].timer = false }
+        unused Dispatch(.{owner, serial})
+        if !OwnerValid(session) || store.epoch != session.epoch { store.ticking = false; return }
+        if interval == 0.0 { unused Cancel(.{owner, serial}) }
+    }
+    store.ticking = false
+}
+
+DisposeOwner :: (slot: s32, epoch: u64) -> bool {
+    session: Session = .{slot, epoch}
+    store := *stores[slot]
+    if store.disposing || store.ticking { return false }
+    if !OwnerValid(session) || store.epoch != epoch { return true }
+    Retire(session, false, true)
+    VecFree(store.entries)
+    VecFree(store.resources)
+    VecFree(store.stack)
+    VecFree(store.events)
+    store.building = false
+    return true
+}

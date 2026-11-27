@@ -87,6 +87,7 @@ Supported :: (module: string, function: string) -> bool {
             function == "TakeBundleCodepoint" ||
             function == "BundleTextInputHost" || function == "BundleFrameFinishedHost" ||
             function == "BundleFrameReusableHost" || function == "BundleFrameCursorHost" ||
+            function == "BundleWakeAtHost" || function == "BundleCloseHost" ||
             function == "BundleTextEditorHost" || function == "BundleTextRequestHost"
     }
     if ModuleName(module, "font_metrics") {
@@ -244,6 +245,18 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         DesktopFrameUnchanged(args[0].integer != 0)
         return 1
     }
+    if function == "BundleWakeAtHost" && count == 1 && HostScalarValid(args[0], "float64", HostReal) {
+        DesktopWakeAt(args[0].real)
+        return 1
+    }
+    if function == "BundleCloseHost" && count == 0 {
+        DesktopWakeAt(-1.0)
+        TreeInputReset(player.input)
+        player.frames = 0
+        player.key = 0
+        player.modifiers = 0
+        return 1
+    }
     // The bundle resolved its tree's cursor; apply it on the player's window.
     if function == "BundleFrameCursorHost" && count == 7 && args[0].kind == HostInteger &&
     args[1].kind == HostString && args[1].length <= cast(usize)4096 &&
@@ -312,6 +325,7 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     }
     if function == "BundleWindowHost" {
         if !WindowRequestValid(args, count) { return 0 }
+        player.closed = false
         result.kind = HostInteger
         result.integer = cast(s64)(DesktopSetTitle(TextValue(args[0])) &&
             ResizeDesktop(cast(s32)args[1].integer, cast(s32)args[2].integer))
@@ -530,7 +544,7 @@ RunUIBundle :: (instance: *void, player: *Player) -> bool {
     result: s64
     has_result: s32
     if RunBundleInstance(instance, *result, *has_result) == 0 { return false }
-    if has_result != 0 && result != 0 { player.closed = true }
+    if has_result != 0 && result != 0 { player.closed = true; return false }
     return true
 }
 
@@ -592,7 +606,7 @@ OpenInstance :: (bundle: *void, player: *Player, grants: []HostBinding, check: b
 }
 
 Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
-    instance: **void, player: *Player, assets_root: *string, asset_storage: []u8) {
+    instance: **void, player: *Player, assets_active: *bool, asset_storage: []u8) {
     candidate := Watch.Read(pointer)
     if !Watch.Newer(current.*, candidate) {
         if candidate.valid && candidate.sequence > current.sequence { current.* = candidate }
@@ -632,7 +646,8 @@ Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
     }
     directory: [4096]u8
     if replacement_assets != "" {
-        if !CopyCString(replacement_assets, directory[:]) || ChangeDirectory(*directory[0]) != 0 {
+        if replacement_assets.count >= asset_storage.count ||
+            !CopyCString(replacement_assets, directory[:]) || ChangeDirectory(*directory[0]) != 0 {
             CloseBundleInstance(prepared)
             CloseBundle(replacement)
             unused RemoveAssetDirectory(replacement_assets)
@@ -653,11 +668,11 @@ Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
     CloseBundleInstance(instance.*)
     BundleMediaClose(*player.media)
     CloseBundle(bundle.*)
-    if assets_root.* != "" { unused RemoveAssetDirectory(assets_root.*) }
-    assets_root.* = ""
+    if assets_active.* { unused RemoveAssetDirectory(TextFromCString(*asset_storage[0])) }
+    assets_active.* = false
     if replacement_assets != "" {
         unused CopyCString(replacement_assets, asset_storage)
-        assets_root.* = TextFromCString(*asset_storage[0])
+        assets_active.* = true
     }
     bundle.* = replacement
     player.media = replacement_media
@@ -815,12 +830,12 @@ RunFrameBundle :: (bundle_path: string, opened_bundle: *void, check: bool,
         return 1
     }
     temporary: [4096]u8
-    assets_root: string = ""
+    assets_active := false
     if BundleAssets(bundle) > cast(u64)0 {
         ok = TemporaryAssets(temporary[:])
         if ok {
-            assets_root = TextFromCString(*temporary[0])
-            ok = ExtractAssets(bundle, assets_root) && ChangeDirectory(*temporary[0]) == 0
+            assets_active = true
+            ok = ExtractAssets(bundle, TextFromCString(*temporary[0])) && ChangeDirectory(*temporary[0]) == 0
         }
     }
     // A UI bundle declares the frames_zx loop's host capabilities: its main
@@ -833,7 +848,7 @@ RunFrameBundle :: (bundle_path: string, opened_bundle: *void, check: bool,
         ok = RunBundleInstance(instance, *result, *has_result) != 0
         CloseBundleInstance(instance)
         BundleMediaClose(*player.media)
-        if assets_root != "" && !RemoveAssetDirectory(assets_root) { ok = false }
+        if assets_active && !RemoveAssetDirectory(TextFromCString(*temporary[0])) { ok = false }
         if !ok { print("zx: app execution failed\n"); return 1 }
         if has_result != 0 { print("%\n", result) }
         return 0
@@ -853,7 +868,7 @@ RunFrameBundle :: (bundle_path: string, opened_bundle: *void, check: bool,
                 ok = RunUIBundle(instance, *player)
                 if ok && player.reload_due {
                     player.reload_due = false
-                    Reload(pointer_path, *current, *bundle, *instance, *player, *assets_root, temporary[:])
+                    Reload(pointer_path, *current, *bundle, *instance, *player, *assets_active, temporary[:])
                 } else {
                     running = false
                 }
@@ -873,7 +888,7 @@ RunFrameBundle :: (bundle_path: string, opened_bundle: *void, check: bool,
         Service.CloseService()
     }
     CloseDesktop()
-    if assets_root != "" && !RemoveAssetDirectory(assets_root) { ok = false }
+    if assets_active && !RemoveAssetDirectory(TextFromCString(*temporary[0])) { ok = false }
     if !ok { print("zx: app execution or rendering failed\n"); return 1 }
     return 0
 }

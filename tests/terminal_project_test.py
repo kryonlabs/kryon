@@ -68,7 +68,7 @@ def main():
         project = Path(directory)
         (project / "src").mkdir()
         (project / "ziran.toml").write_text(pinned(
-            '[package]\nname = "terminal_probe"\nentry = "src/app.zi"\n'
+            '[package]\nname = "terminal_probe"\nentry = "src/app.tsx"\n'
             'module_roots = ["src"]\nbridge_modules = ["app"]\n\n'
             '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
             'ref = "master"\n\n'
@@ -84,40 +84,41 @@ def main():
         (project / "ziran.local.toml").write_text(kryon_only(
             "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
         ))
-        (project / "src/app.zi").write_text(
-            'App :: #import "kryon/app"\n'
-            '#import "kryon/geometry"\n'
-            '#import "kryon/input_protocol"\n'
-            '#import "kryon/session"\n'
-            '#import "kryon/tree_input"\n'
-            '#import "Window"\n'
-            '// main is the only entry: the frame maps one input event to the\n'
-            '// code main reports, and the app quits through WindowQuit.\n'
-            'exit_code: s32;\n'
-            'Frame :: (frame: App.Frame) {\n'
-            '    session := Session.{.slot = frame.slot, .epoch = frame.epoch}\n'
-            '    key: s32 = KeyboardTake(session)\n'
-            '    control: bool = (KeyboardModifiers(session) & KeyModifierControl) != 0\n'
-            '    if key == 263 && control { exit_code = 51 }\n'
-            '    else if key == 263 { exit_code = 46 }\n'
-            '    else if key == 259 { exit_code = 47 }\n'
-            '    else if key == 257 { exit_code = 48 }\n'
-            '    else if key == 256 { exit_code = 49 }\n'
-            '    else if key == 65 && control { exit_code = 50 }\n'
-            '    else if key == 261 { exit_code = 52 }\n'
-            '    typed: s32 = TypedCodepointTake(session)\n'
-            '    if typed == 122 { exit_code = 42 }\n'
-            '    else if typed == 233 { exit_code = 43 }\n'
-            '    else if typed == 65 { exit_code = 44 }\n'
-            '    else if typed == 65533 { exit_code = 45 }\n'
-            '    if exit_code != 0 { WindowQuit() }\n'
-            '    return\n'
-            '}\n'
-            'main :: () -> s32 {\n'
-            '    App.Run(App.Window.{.title = "terminal probe"}, Frame)\n'
-            '    return exit_code\n'
-            '}\n'
-        )
+        (project / "src/app.tsx").write_text('''import * as App from "kryon/app";
+import { KeyBackspace, KeyDelete, KeyEnter, KeyEscape, KeyLeft } from "kryon/input_protocol";
+import { Session } from "kryon/session";
+import { KeyboardControlTake, KeyboardTake, TypedCodepointTake } from "kryon/tree_input";
+import { Text } from "kryon/tsx/text";
+import { WindowQuit } from "kryon/window";
+
+let exitCode: s32 = s32(0);
+
+function Frame(frame: App.Frame): void {
+    const session: Session = {slot: frame.slot, epoch: frame.epoch};
+    <Text session={session} props={{text: "Terminal input probe", bounds: frame.viewport}}/>;
+    if (KeyboardControlTake(session, s32(KeyLeft))) { exitCode = s32(51); }
+    else if (KeyboardControlTake(session, s32(65))) { exitCode = s32(50); }
+    else {
+        const key = KeyboardTake(session);
+        if (key === s32(KeyLeft)) { exitCode = s32(46); }
+        else if (key === s32(KeyBackspace)) { exitCode = s32(47); }
+        else if (key === s32(KeyEnter)) { exitCode = s32(48); }
+        else if (key === s32(KeyEscape)) { exitCode = s32(49); }
+        else if (key === s32(KeyDelete)) { exitCode = s32(52); }
+    }
+    const typed = TypedCodepointTake(session);
+    if (typed === s32(122)) { exitCode = s32(42); }
+    else if (typed === s32(233)) { exitCode = s32(43); }
+    else if (typed === s32(65)) { exitCode = s32(44); }
+    else if (typed === s32(65533)) { exitCode = s32(45); }
+    if (exitCode !== s32(0)) { WindowQuit(); }
+}
+
+export function main(): s32 {
+    App.Run({title: "terminal probe"}, Frame);
+    return exitCode;
+}
+''')
         run([ZIRAN, "lock"], project)
         run([ZIRAN, "tool", "kryon", "build", "--profile", "tui"], project)
         binary = project / "build/terminal_probe-tui"
@@ -135,7 +136,7 @@ def main():
         exercise(binary, project, b"\x1b[1;5D", 51)
         exercise(binary, project, b"\x1b[3~", 52)
         exercise(binary, project, b"\x1bOD", 46)
-    print("terminal Ziran project: ASCII, UTF-8, escape, invalid input, and key codes passed")
+    print("Terminal TSX project: ASCII, UTF-8, escape, invalid input, and key codes passed")
 
 
 if __name__ == "__main__":

@@ -49,7 +49,7 @@ ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c $(ZIRAN_DIR)/cmd/zi2*/*.c 
 
 SOURCE := $(addprefix src/ui/,$(shell cat src/ui/modules.txt))
 
-.PHONY: all backends-check check laws test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test templates-test pixmap-parity-test pixmap-font pixmap-emoji install-user host-keys-test
+.PHONY: all backends-check check laws test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test templates-test pixmap-font pixmap-emoji install-user host-keys-test
 all: source-check $(BUILD_DIR)/libkryon.a backends-check
 
 # Project command. Its implementation and platform integration are Ziran.
@@ -59,13 +59,13 @@ project-toolchain:
 # The kryon tool builds its Ziran toolchain only when it is missing, as ziran
 # builds a pinned one: a locked toolchain never changes, and a local one is
 # rebuilt in its own checkout.
-$(ZIRAN_DIR)/build/bin/zi2c:
-	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
+$(ZI2C_BIN):
+	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) $(ZIRAN_MAKE_FLAGS) all
 
-build/project/gen/cli_linux.c: $(wildcard src/project/*.zi) $(ZIRAN_DIR)/build/bin/zi2c $(ZIRAN_DIR)/build/bin/ziran
+build/project/gen/cli_linux.c: $(wildcard src/project/*.zi) $(ZI2C_BIN) $(ZIRAN_BIN)
 	mkdir -p build/project/gen
 	rm -f build/project/gen/*.c build/project/gen/*.h
-	$(ZIRAN_DIR)/build/bin/ziran build --target=c --root src/project \
+	$(ZIRAN_BIN) build --target=c --root src/project \
 		-o build/project/gen src/project/cli_linux.zi
 
 build/bin/kryon: build/project/gen/cli_linux.c Makefile
@@ -283,7 +283,7 @@ zx-nested-test: zx-player
 
 test: zx-reload-test
 
-# window.zi's bundle runs as native code on a private Xvfb through a private
+# window.tsx's bundle runs as native code on a private Xvfb through a private
 # host registry: in the desktop player's window through `ziran run`, and as
 # zx2native's executable linking the desktop host library.
 .PHONY: zx-window-test
@@ -498,7 +498,7 @@ templates-test: build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) \
 		python3 tests/templates_test.py
 
-# `kryon run shot --png` renders a whole app offscreen at any size: the
+# `kryon run desktop --png` renders a whole app offscreen at any size: the
 # dashboard example at two sizes, then restyled.
 .PHONY: shot-test
 shot-test:
@@ -567,14 +567,6 @@ widget-tree-test:
 		--root $(CURDIR)/tests --entry widget_tree_test:Main --exe -o build/test/widget-tree-c $(CURDIR)/tests/widget_tree_test.zi
 	@build/test/widget-tree-c/widget_tree_test
 test: widget-tree-test
-
-# Every supported target -- C, Go, and the portable runner --
-# renders each template and example on the headless pixmap host, and every
-# image must equal C's byte for byte. It needs go and python3, and
-# writes build/pixmap-parity/grid.png to look at.
-pixmap-parity-test: build/bin/kryon
-	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) \
-		python3 tests/pixmap_parity_test.py
 
 # Rebuild glyph outlines with the same Ziran tool for both font families.
 OUTLINE_FONT_DIR := build/tools/outline-font-c

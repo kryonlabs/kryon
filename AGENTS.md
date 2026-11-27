@@ -18,8 +18,11 @@ package, and the compiler never recognizes Kryon widget names.
 
 ## Rules
 
-- Handwritten implementation, platform integration and examples are Ziran
-  (`.zi`); no new handwritten C, C++ or Go; `build/` output is not source.
+- Native widget implementation, platform integration, application logic and
+  internal behavior checks remain Ziran (`.zi`). Application composition and
+  maintained screen examples use TSX (`.tsx`) through the generic Ziran frontend.
+  Do not add another Ziran application composition API or a compatibility lane.
+  No new handwritten C, C++ or Go; `build/` output is not source.
 - Use current Ziran syntax and APIs directly. No compatibility wrappers,
   aliases, fallback runtimes, or removed KIR, `.kry` or `.krb` paths; a missing
   general capability is implemented in Ziran first, never as a Kryon compiler

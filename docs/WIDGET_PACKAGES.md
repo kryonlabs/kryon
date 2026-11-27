@@ -61,13 +61,15 @@ its first frame, so the next queued key reaches it without an idle render.
 
 ### Intrinsic layouts and bound text fields
 
-A retained form can use `Layout.Draw` for a column and `Layout.Row` for a row.
-Submit ordinary widgets inside the scope and close it with `End(session)`.
-Omit the bounds of an intrinsic button in a row or a bound text field in a
-column. The button sizes to its content, and the field fills the column's inner
-width and uses the themed control height. `Layout.Gap(.ThemeMetricSpace2)`
-resolves a theme spacing token in logical units. A container without a height
-grows to the children it places when `End` closes it.
+A screen composes intrinsic layouts with the `kryon/tsx/layout` components:
+`Column` and `Row` draw their children inside the component's checked `Scoped`
+callback and close the container themselves. Omit the bounds of an intrinsic
+button in a row or a bound text field in a column. The button sizes to its
+content, and the field fills the column's inner width and uses the themed
+control height. `Gap(ThemeMetricRole.ThemeMetricSpace2)` — `Gap` from
+`kryon/layout`, the role type from `kryon/theme` — resolves a theme spacing
+token in logical units. A container without a height grows to the children it
+places.
 Pass a calculated dimension in `Layout.Props.bounds` to fit it to
 content, or use an explicit width to compose inside a viewport.
 
@@ -81,60 +83,71 @@ A single-line row uses `column_gap` between children and a column uses `row_gap`
 Set the corresponding `_override` flag to supply explicit zero. Negative
 spacing is clamped to zero.
 
-Pass `[]Layout.FlexItem` and `[]Layout.FlexPlacement` as the third and fourth
-arguments to `Layout.Row` or `Layout.Draw` to distribute space across a batch.
-Supply each child's measured `width` and `height`. The resolved layout uses
-the item's `kind`, `id`, and `class_name` for matching typed flex style rules.
-Draw children using `placements[i].bounds` after the container opens. A row
-with unset height fits the tallest child in each line plus spacing and
-padding. The caller supplies one placement slot per item.
+`MeasuredColumn` and `MeasuredRow` from `kryon/tsx/layout` distribute space
+across a measured batch. Supply each child's measured `width` and `height` as
+`items` (`Layout.FlexItem`) and one `Layout.FlexPlacement` slot per item as
+`placements`. The resolved layout uses the item's `kind`, `id`, and
+`class_name` for matching typed flex style rules. The `children` callback
+receives the container; draw children using `placements[i].bounds`. A row with
+unset height fits the tallest child in each line plus spacing and padding.
 
-`Layout.Grid(session, Grid.GridProps, items, item_bounds)` uses CSS `Grid`
-width, height, padding, row/column gaps, and equal `grid-template-columns`
-tracks. Give each `Grid.GridItem` a height or a `measure_height` function and
-an optional `measure_key`. A zero item height calls the function with the
-item's allocated width and the key for looking up its data. The tallest item
-sets the row height. An unset grid height fits its rows unless the stylesheet
-sets an explicit height. A negative span fills a row. Pass an optional output
-`[]Rectangle` as `item_bounds` to
-draw with the boxes already measured by the grid. To walk items using the
-returned cursor, call `Grid.GridItemStep`. Close `result.container.opened` with
-`End(session)`. A two-argument `Layout.Grid` places unpositioned children one
-track at a time using their submitted sizes. See the
+`Grid({session, props, children})` from `kryon/tsx/grid` — checked `GridProps`
+from `kryon/grid_props` — uses CSS `Grid` width, height, padding, row/column
+gaps, and equal `grid-template-columns` tracks. Give each `Grid.GridItem` a
+height or a `measure_height` function and an optional `measure_key`. A zero
+item height calls the function with the item's allocated width and the key for
+looking up its data. The tallest item sets the row height. An unset grid
+height fits its rows unless the stylesheet sets an explicit height. A negative
+span fills a row. `MeasuredGrid` takes the `items` and an output `Rectangle`
+list as `itemBounds` to draw with the boxes already measured by the grid; to
+walk items using the returned cursor, call `Grid.GridItemStep`. The component
+closes `container.opened` itself. The plain `Grid` places unpositioned
+children one track at a time using their submitted sizes. See the
 [HTML/CSS mapping](HTML_TO_KRYON.md#author-a-responsive-dashboard).
 
-For a native bound field, initialize `state.bytes` once from application-owned
-storage and set `state.length` to the number of UTF-8 bytes in the initial
-value. `TextField.Bind(session, *state, props)` draws and applies edits to that
-storage. Give each field a stable `key`. The same field keeps focus, selection,
-scroll and IME preedit across frames and resize. It consumes editing input from
-the focused session and uses the platform clipboard. Use the returned `changed`,
-`committed`, `escaped` and `paste_without_text` flags for application actions.
-For deterministic input, pass `false` as the fourth argument to `Bind`
-and provide the sample in `props.input`. Custom hosts can pass an IME sample
-in `props.input.composition_event`. Native platform text requests use the
-same bound widget.
+Applications bind fields with the `kryon/tsx/text_field` `TextField`
+component: initialize `state.bytes` once from application-owned storage, set
+`state.length` to the number of UTF-8 bytes in the initial value, and pass
+`{session, state: nativeRef(state), props}`. Give each field a stable `key`.
+The same field keeps focus, selection, scroll and IME preedit across frames and
+resize. It consumes editing input from the focused session and uses the
+platform clipboard. Use the returned `changed`, `committed`, `escaped` and
+`paste_without_text` flags for application actions.
+Native `TextField.Bind` remains the implementation and host entry: pass `false`
+as its sampled-input argument to take the sample from `props.input`, and pass
+an IME sample in `props.input.composition_event`. Native platform text
+requests use the same bound widget.
 
-```zi
-// name.bytes points to persistent application storage.
-form := Layout.Draw(session, Layout.Props.{.key = 11, .bounds = bounds,
-    .gap = Layout.Gap(.ThemeMetricSpace2)})
-if form.opened {
-    edited := TextField.Bind(session, *name, TextField.Props.{.key = 42, .label = "Name"})
-    if edited.committed {
-        SaveName(TextView(name.bytes[:name.length]))
-    }
-    unused End(session)
+```tsx
+import { Rectangle } from "kryon/geometry";
+import { Gap } from "kryon/layout";
+import { ThemeMetricRole } from "kryon/theme";
+import { Session } from "kryon/session";
+import { Column } from "kryon/tsx/layout";
+import { TextField } from "kryon/tsx/text_field";
+import * as Editing from "kryon/text_field";
+
+// name: Editing.State is kept alive between frames; byte-backed models can
+// stay in a native Ziran model module. SaveName is the application's action.
+function NameForm(session: Session, bounds: Rectangle): void {
+    <Column session={session} props={{key: u64(11), bounds: bounds,
+        gap: Gap(ThemeMetricRole.ThemeMetricSpace2)}} children={(): void => {
+            const edited = TextField({session: session, state: nativeRef(name),
+                props: {key: u64(42), label: "Name"}});
+            if (edited.committed) { SaveName(Editing.Value(name)); }
+        }}/>;
 }
 ```
 
 `TextField.State` keeps a field's value and interaction state in caller-owned
-storage. Import it and its helpers as `TextField :: #import "kryon/text_field";`.
+storage; applications pass it to the TSX `TextField` component through a
+`NativeRef`. The native helpers live in `kryon/text_field`.
 Give `bytes` a writable slice and set `length`, `cursor`, `anchor`, `scroll_x`
 and `focused` as needed. Every byte of the slice is usable capacity; length
 does not include a terminator and the helpers do not write one.
 
 ```zi
+// Native byte-backed field, as used by implementations and hosts.
 // Keep the bytes and state alive between frames.
 name_bytes: [96]u8;
 name: TextField.State;
@@ -192,11 +205,12 @@ at most one size per line, or ignored as a whole; without them the layout is
 the plain area's. During an IME composition, lines and
 boxes after it move with the preedit.
 
-`MarkdownEditor :: #import "kryon/markdown_editor";` shares the inline
-Markdown editor used by Inner Breeze Diary. Call
-`MarkdownEditor.Draw(session, MarkdownEditor.Props.{.area = area, ...})`
-with ordinary `TextArea.Props` and retain its result's edit, cursor, anchor,
-scroll and focus. `muted_color` and `link_color` color list/quote markers and
+`MarkdownEditor({session, props})` from `kryon/tsx/markdown_editor` shares the
+inline Markdown editor used by Inner Breeze Diary. Its checked
+`MarkdownEditor.Props` (from `kryon/markdown_editor`) wraps ordinary
+`TextArea.Props` in `area`; its `TextArea.Result` keeps the edit, cursor,
+anchor, scroll and focus to retain. `muted_color` and `link_color` color
+list/quote markers and
 links. Headings, emphasis and links preview while the caret's active lines
 show their original syntax. The value and edit offsets always address the
 original Markdown; there is no HTML conversion or second document.

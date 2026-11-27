@@ -99,16 +99,20 @@ ConfirmPopoverHostedReply :: struct {
 #if #defined(KRYON_HOSTED_UI) {
     confirm_popover_host_api :: #system_library "host_api";
     ConfirmPopoverHostedHost :: (session: Session, props: ConfirmPopover.Props, state: ConfirmPopoverState) -> ConfirmPopoverHostedReply #foreign confirm_popover_host_api;
+        #scope_package
         Draw :: (session: Session, props: ConfirmPopover.Props,
     state: *ConfirmPopoverState) -> ConfirmPopoverResult {
         reply := ConfirmPopoverHostedHost(session, props, state.*)
         state.* = reply.state
         return reply.result
     }
+        #scope_export
 } else {
     #import "paint_queue"
+        #scope_package
         Draw :: (session: Session, props: ConfirmPopover.Props,
     state: *ConfirmPopoverState, location := #caller_location) -> ConfirmPopoverResult { site := TreeCallSite(session, location); defer { TreeCallSiteEnd(session, site) }; return ConfirmPopoverCore(session, props, state, true) }
+        #scope_export
     #program_export
 ConfirmPopoverCore :: (session: Session, props: ConfirmPopover.Props,
     state: *ConfirmPopoverState, effects: bool) -> ConfirmPopoverResult {

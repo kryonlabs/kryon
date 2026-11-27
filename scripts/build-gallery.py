@@ -9,7 +9,7 @@ import tomllib
 
 from PIL import Image
 
-from gallery import prepare
+from gallery import example_location, prepare
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = ROOT / 'examples/gallery'
@@ -24,7 +24,7 @@ def clean_environment():
                  'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER', 'DESKTOP_STARTUP_ID',
                  'XDG_SESSION_ID', 'XDG_SESSION_TYPE'):
         env.pop(name, None)
-    env.update(YUE_DESKTOP_RECOVERY='0', SDL_RENDER_DRIVER='software',
+    env.update(HARMONY_DESKTOP_RECOVERY='0', YUE_DESKTOP_RECOVERY='0', SDL_RENDER_DRIVER='software',
                LIBGL_ALWAYS_SOFTWARE='1', ZIRAN_PAR_THREADS='1')
     return env
 
@@ -39,8 +39,9 @@ def digest_file(path):
 
 def scene_digest(scene):
     digest = hashlib.sha256()
-    for path in (ROOT / scene['sourcePath'], SITE / scene['code']):
-        digest.update(str(path.relative_to(ROOT)).encode() + b'\0')
+    _, source = example_location(scene)
+    for name, path in ((scene['sourcePath'], source), ('docs/site/' + scene['code'], SITE / scene['code'])):
+        digest.update(name.encode() + b'\0')
         digest.update(path.read_bytes())
     return digest.hexdigest()
 
@@ -50,10 +51,12 @@ SITE_ONLY_MANIFEST_KEYS = {'categories', 'keyboard', 'notes', 'summaries', 'unav
 
 def project_digests():
     paths = [PROJECT / 'ziran.toml',
-             PROJECT / 'ziran.lock', PROJECT / 'templates/frame.zi',
+             PROJECT / 'ziran.lock', ROOT / 'scripts/gallery.py',
              ROOT / 'scripts/build-gallery.py',
              ROOT / 'scripts/export_theme_tokens.zi', SITE / 'theme-tokens.css']
     paths.extend((PROJECT / 'src').glob('*.zi'))
+    paths.extend((PROJECT / 'src').glob('*.ts'))
+    paths.extend((PROJECT / 'src').glob('*.tsx'))
     digest = hashlib.sha256()
     for path in sorted(paths):
         digest.update(str(path.relative_to(ROOT)).encode() + b'\0')

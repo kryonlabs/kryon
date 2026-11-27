@@ -1,0 +1,14 @@
+// Session teardown knows only this small slot, never component storage.
+ComponentOwnerDisposal :: #type (slot: s32, epoch: u64) -> bool;
+#scope_file
+component_owner_disposal: ComponentOwnerDisposal;
+
+#scope_package
+ComponentSetOwnerDisposal :: (dispose: ComponentOwnerDisposal) {
+    component_owner_disposal = dispose
+}
+
+ComponentDisposeOwner :: (slot: s32, epoch: u64) -> bool {
+    if component_owner_disposal != null { return component_owner_disposal(slot, epoch) }
+    return true
+}

@@ -49,6 +49,7 @@ SkeletonLevel :: (now: float64, dark: bool, reduced_motion: bool) -> u32 {
     return low + cast(u32)(rise * 10.0)
 }
 
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

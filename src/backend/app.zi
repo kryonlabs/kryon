@@ -21,10 +21,6 @@ DESKTOP_HOST :: OS == .WINDOWS || OS == .LINUX
     } else #if #defined(KRYON_TERMINAL) {
         WindowHost :: #import "app_unsupported";
         FrameHost :: #import "frames_terminal";
-    } else #if #defined(KRYON_PIXMAP) {
-        // The explicit headless profile renders frames to a PPM image.
-        WindowHost :: #import "app_unsupported";
-        FrameHost :: #import "frames_pixmap";
     } else #if DESKTOP_HOST && !#defined(KRYON_NO_DESKTOP_HOST) {
         WindowHost :: #import "desktop_window";
         FrameHost :: #import "frames_desktop";

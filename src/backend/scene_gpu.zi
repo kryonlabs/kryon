@@ -18,6 +18,7 @@
         Surface :: #import "scene_gpu_web_context";
         Page :: #import "page_texture";
         Core :: #import "page_core";
+        Presenter :: #import "page_gpu";
     }
 }
 M :: #import "scene_gpu_math";
@@ -731,8 +732,9 @@ SceneGpuCancel :: (gpu: *SceneGpuContext) {unused gpu}
 }
 
 #if OS == .WEB {
-// Present the resolved premultiplied framebuffer through Canvas as an Image
-// texture. No Image allocation, pixel readback, or RGBA upload is involved.
+// Resolve the scene in its private WebGL context, then import its canvas
+// into the page presenter as a real GPU texture. Context-local GL names cannot
+// be registered as page textures. No Image allocation or pixel readback occurs.
 SceneGpuRenderCanvas :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera,width: s32,height: s32)->(result: SceneGpuFrame,image: Texture2D) {
  caps:=SceneGpuProbe(gpu)
  if !caps.available {return .{diagnostic=caps.diagnostic},.{}}
@@ -740,6 +742,7 @@ SceneGpuRenderCanvas :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera
  saved:=G.SaveContext();defer G.RestoreContext(saved,null)
  if !G.MakeSceneCurrent(null,gpu.context) {return .{diagnostic="WebGL context lost"},.{}}
  Core.PageFlushPaint()
+ Presenter.PageGpuFlush()
  if !Resize(gpu,width,height,4)||!Surface.ResizeCanvas(gpu.canvas,width,height) {return .{diagnostic="WebGL canvas extent unavailable"},.{}}
  frame:=RenderTarget(gpu,scene,camera)
  if !frame.ok {return frame,.{}}
@@ -747,8 +750,13 @@ SceneGpuRenderCanvas :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera
  G.BlitFramebuffer(0,0,width,height,0,0,width,height,0x4000,0x2600)
  if G.GetError()!=0 {return .{diagnostic="WebGL canvas presentation failed"},.{}}
  // Give the new pixels a new texture identity for retained paint damage.
- texture:=Page.PageTextureRegister(gpu.canvas,false,width,height)
- if texture==0 {return .{diagnostic="WebGL canvas texture table is full"},.{}}
+ uploaded:=Presenter.PageGpuTextureFromBitmap(gpu.canvas)
+ if uploaded==0 {return .{diagnostic="WebGL scene texture import failed"},.{}}
+ texture:=Page.PageTextureRegister(uploaded,0,false,width,height)
+ if texture==0 {
+  Presenter.PageGpuTextureFree(uploaded)
+  return .{diagnostic="WebGL scene texture table is full"},.{}
+ }
  Page.PageTextureFree(gpu.canvas_texture)
  gpu.canvas_texture=texture
  gpu.resources.frames+=1

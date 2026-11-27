@@ -1,0 +1,73 @@
+TextArea :: #import "kryon/text_area";
+#import "kryon/geometry"
+#import "kryon/key_input"
+#import "kryon/session"
+#import "kryon/system_clipboard"
+#import "kryon/tree_input"
+
+InitialText :: "A small note\n\nClear typography and careful spacing make everyday work feel calm. Café, Ω and é.";
+Capacity :: 4096;
+
+Area :: struct {
+    bytes: [Capacity]u8
+    next: [Capacity]u8
+    length: s32
+    cursor: s32
+    anchor: s32
+    scroll_y: s32
+}
+
+standalone_area: Area;
+gallery_area: Area;
+typed: [128]u8;
+initialized: bool;
+
+Prepare :: (session: Session, bounds: Rectangle, disabled: bool, gallery: bool) -> TextArea.Props {
+    if !initialized {
+        for index: 0..InitialText.count - 1 {
+            standalone_area.next[index] = InitialText[index]
+            gallery_area.next[index] = InitialText[index]
+        }
+        standalone_area.length = cast(s32)InitialText.count
+        gallery_area.length = cast(s32)InitialText.count
+        initialized = true
+    }
+    area := ifx gallery then *gallery_area else *standalone_area
+    // The widget borrows these bytes while its returned edit updates the next frame.
+    for index: 0..area.length - 1 { area.bytes[index] = area.next[index] }
+    value := TextView(standalone_area.bytes[:standalone_area.length])
+    if gallery { value = TextView(gallery_area.bytes[:gallery_area.length]) }
+    key := KeyboardTake(session)
+    modifiers := KeyboardModifiers(session)
+    text := TypedTextTake(session, typed[:])
+    input := TextAreaInputFor(key, modifiers, text)
+    if !gallery {
+        // The standalone demo uses line Home and End even with Control held.
+        input.home = key == KeyHome
+        input.end = key == KeyEnd
+        input.document_home = false
+        input.document_end = false
+    }
+    return .{bounds = bounds, value = value, max_bytes = Capacity, wrap = true,
+        disabled = disabled, cursor = area.cursor, anchor = area.anchor,
+        scroll_y = area.scroll_y, input = input}
+}
+
+ApplyResult :: (gallery: bool, result: TextArea.Result) {
+    if result.clipboard_write { unused SystemClipboardSet(result.clipboard_text) }
+    area := ifx gallery then *gallery_area else *standalone_area
+    area.cursor = result.cursor
+    area.anchor = result.anchor
+    area.scroll_y = result.scroll_y
+    edit := result.edit
+    if !edit.changed || edit.start < 0 || edit.end < edit.start || edit.end > area.length { return }
+    length := area.length - (edit.end - edit.start) + cast(s32)edit.replacement.count
+    if length > Capacity { return }
+    scratch: [Capacity]u8
+    at: s32 = 0
+    for index: 0..edit.start - 1 { scratch[at] = area.next[index]; at += 1 }
+    for byte: edit.replacement { scratch[at] = byte; at += 1 }
+    for index: edit.end..area.length - 1 { scratch[at] = area.next[index]; at += 1 }
+    for index: 0..length - 1 { area.next[index] = scratch[index] }
+    area.length = length
+}

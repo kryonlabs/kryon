@@ -9,7 +9,7 @@ import tempfile
 import time
 
 
-from toolchain import ZIRAN_ROOT, pinned, kryon_only
+from toolchain import ZIRAN_ROOT, pinned, kryon_only, write_linked_value_app
 
 ROOT = Path(__file__).resolve().parents[1]
 ZIRAN = ZIRAN_ROOT / "build/bin/ziran"
@@ -74,7 +74,7 @@ def main():
         run(["ar", "rcs", "build/libdemo.a", "build/library.o"], project)
         (project / "ziran.toml").write_text(pinned(
             '[package]\nname = "static_archive_probe"\n'
-            'entry = "src/app.zi"\nmodule_roots = ["src"]\n'
+            'entry = "src/app.tsx"\nmodule_roots = ["src"]\n'
             'bridge_modules = ["app"]\n\n'
             '[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\n'
             'ref = "master"\n\n'
@@ -92,28 +92,7 @@ def main():
             "[overrides]\n"
             + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
         ))
-        (project / "src/app.zi").write_text(
-            'App :: #import "kryon/app"\n'
-            '#import "kryon/geometry"\n'
-            '#import "kryon/session"\n'
-            '#import "kryon/tree_input"\n'
-            '#import "Window"\n'
-            '// main is the only entry: the frame records the archive value and\n'
-            '// main reports it after the host loop ends through WindowQuit.\n'
-            'static_archive :: #system_library "static_archive";\n'
-            'StaticArchiveValue :: () -> s32 #foreign static_archive;\n'
-            'exit_code: s32;\n'
-            'Frame :: (frame: App.Frame) {\n'
-            '    session := Session.{.slot = frame.slot, .epoch = frame.epoch}\n'
-            '    if TypedCodepointTake(session) == 113 { exit_code = StaticArchiveValue() }\n'
-            '    if exit_code != 0 { WindowQuit() }\n'
-            '    return\n'
-            '}\n'
-            'main :: () -> s32 {\n'
-            '    App.Run(App.Window.{.title = "static archive probe"}, Frame)\n'
-            '    return exit_code\n'
-            '}\n'
-        )
+        write_linked_value_app(project, "static archive probe", "static_archive", "StaticArchiveValue")
         outside_archive = temporary_path / "outside.a"
         outside_archive.write_bytes((project / "build/libdemo.a").read_bytes())
         (project / "build/escape.a").symlink_to(outside_archive)

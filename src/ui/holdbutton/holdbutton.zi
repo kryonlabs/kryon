@@ -120,6 +120,7 @@ HoldButtonApply :: (state: *HoldButtonState, props: Props,
     return result
 }
 
+#scope_package
 Draw :: (session: Session, props: Props,
     state: *HoldButtonState, location := #caller_location) -> HoldButtonResult {
     site := TreeCallSite(session, location)

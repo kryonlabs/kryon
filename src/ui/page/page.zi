@@ -54,6 +54,7 @@ PageLayoutMetricsFor :: (style: StyleData) -> PageSpacing {
 // Page opens a retained tree scope. The caller closes it with End(session). The
 // returned metadata is an effect request for a platform host, not a window or
 // browser operation hidden inside the widget.
+#scope_package
 Draw :: (session: Session, props: PropsModule.Props, location := #caller_location) -> PageResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
@@ -91,6 +92,7 @@ Draw :: (session: Session, props: PropsModule.Props, location := #caller_locatio
     return result
 }
 
+#scope_export
 #program_export
 Section :: (session: Session, props: SectionProps) -> SectionResult {
     result: SectionResult

@@ -1,7 +1,0 @@
-App :: #import "kryon/app";
-
-#program_export
-main :: () -> s32 {
-    window := App.Window.{ .title = "Window", .width = 320, .height = 160 }
-    return App.Show(window)
-}

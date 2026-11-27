@@ -3,9 +3,10 @@
 #import "kryon/session"
 #import "kryon/tree"
 #import "kryon/tree_input"
-using App :: #import "app";
+#import "gallery_state"
 using Preview :: #import "site_preview";
-using Site :: #import "site";
+Site :: #import "site";
+#import "site_state"
 using Scenes :: #import "scenes";
 #import "std/byte_text_linux"
 #import "kryon/PageRoute"
@@ -49,6 +50,7 @@ main :: () -> s32 {
     WebEnd(mark)
     scene_image = "assets/pfp.webp"
     if !OpenCanvas() { return 1 }
+    Host.CanvasSetExitKey(0)
     session := SessionOpen()
     if !SessionValid(session) { CloseCanvas(); return 1 }
     site_native_session = SessionOpen()
@@ -58,14 +60,18 @@ main :: () -> s32 {
         if embedded { ReadOptions() }
         if paused { WebSleep(16); continue }
         unused CanvasFrameInputBegin(session)
+        pointer := PollPointer()
+        if !site_native_visible { site_native_focus = false }
+        if pointer.pressed { site_native_focus = site_native_visible && NativePreviewContains(pointer.x, pointer.y) }
+        preview_keyboard := site_native_visible && site_native_focus
         unread := 32 - TypedCodepointCapacity(session)
         key, modifiers := CanvasInputTake(session)
         KeyboardModifiersSend(session, modifiers)
         if key != 0 { review_last_key = key }
-        site_key = key
+        site_key = ifx preview_keyboard then 0 else key
         site_modifiers = modifiers
-        if key != 0 { unused KeyboardSend(session, key) }
-        // The previews receive a copy of this take's text; the page keeps it.
+        if key != 0 && !preview_keyboard { unused KeyboardSend(session, key) }
+        // Deliver new text only to the session that owns keyboard focus.
         preview_text_count = 0
         pending := 32 - TypedCodepointCapacity(session)
         for index: cast(s32)0..pending - 1 {
@@ -74,10 +80,9 @@ main :: () -> s32 {
                 preview_text[preview_text_count] = codepoint
                 preview_text_count += 1
             }
-            unused TypedCodepointSend(session, codepoint)
+            if index < unread || !preview_keyboard { unused TypedCodepointSend(session, codepoint) }
         }
         BeginCanvasFrame()
-        pointer := PollPointer()
         unused TreePointerUpdate(session, pointer)
         unused TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
         wheel := CanvasWheelMove()
@@ -94,8 +99,15 @@ main :: () -> s32 {
         site_now = cast(float32)now
         site_pointer = pointer
         snapshot := CaptureFrameInput(session)
-        site_space_held = (snapshot.keys[32] & cast(u8)FrameKeyHeld) != cast(u8)0
-        site_focused = snapshot.focused
+        site_space_held = !preview_keyboard && (snapshot.keys[32] & cast(u8)FrameKeyHeld) != cast(u8)0
+        site_focused = snapshot.focused && !preview_keyboard
+        if preview_keyboard {
+            page_input := snapshot
+            page_input.focused = false
+            for index: 0..511 { page_input.keys[index] = 0 }
+            FrameInputEnd(session)
+            unused FrameInputBegin(session, page_input)
+        }
         mark = WebScope()
         media := WebAsObject(WebCall1(WebGlobal, WebName("matchMedia"), WebText("(prefers-reduced-motion: reduce)")))
         site_reduced_motion = WebAsBool(WebGet(media, WebName("matches")))
@@ -104,13 +116,13 @@ main :: () -> s32 {
         if picker_key != 0 { review_last_picker_key = picker_key }
         if BeginFrame(session, 1, viewport) != FrameStatus.FrameOk { ok = false }
         else {
-            if SiteFrame(session, viewport) != 0 { TreeCancel(session); ok = false }
+            if Site.SiteFrame(session, viewport) != 0 { TreeCancel(session); ok = false }
             else { ok = EndFrame(session) == FrameStatus.FrameOk }
         }
         preview_clip := Host.BeginRasterClip(RectangleIntersection(site_preview_bounds, site_preview_clip))
         RunSitePreview(session)
         Host.EndRasterClip(preview_clip)
-        if site_native_visible && !RunNativeSitePreview(snapshot) { ok = false }
+        if site_native_visible && !RunNativeSitePreview(snapshot, key) { ok = false }
         FrameInputEnd(session)
         if site_native_visible && NativePreviewContains(pointer.x, pointer.y) { CanvasCursor(site_native_session) }
         else { CanvasCursor(session) }
@@ -145,6 +157,7 @@ main :: () -> s32 {
             WebEnd(mark)
         }
     }
+    SitePreviewClose()
     CloseSession(site_native_session); CloseSession(session); CloseCanvas()
     return ifx ok then 0 else 1
 }
@@ -166,9 +179,8 @@ NativePreviewContains :: (x: float32, y: float32) -> bool {
     return x >= clip.x && y >= clip.y && x < clip.x + clip.width && y < clip.y + clip.height
 }
 
-RunNativeSitePreview :: (snapshot: FrameInputSnapshot) -> bool {
+RunNativeSitePreview :: (snapshot: FrameInputSnapshot, key: s32) -> bool {
     native := site_native_session
-    if site_pointer.pressed { site_native_focus = NativePreviewContains(site_pointer.x, site_pointer.y) }
     pointer := site_pointer
     if !site_native_focus && !NativePreviewContains(pointer.x, pointer.y) {
         pointer.x = -10000.0; pointer.y = -10000.0
@@ -178,7 +190,7 @@ RunNativeSitePreview :: (snapshot: FrameInputSnapshot) -> bool {
     if !site_native_focus { for index: 0..511 { snapshot.keys[index] = 0 } }
     unused FrameInputBegin(native, snapshot)
     KeyboardModifiersSend(native, site_modifiers)
-    if site_native_focus && site_key != 0 { unused KeyboardSend(native, site_key) }
+    if site_native_focus && key != 0 { unused KeyboardSend(native, key) }
     if site_native_focus { for index: 0..preview_text_count - 1 { unused TypedCodepointSend(native, preview_text[index]) } }
     unused TreePointerUpdate(native, pointer)
     secondary := snapshot.secondary

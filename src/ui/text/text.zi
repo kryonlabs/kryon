@@ -8,12 +8,15 @@ using Text :: #import "text_props";
     host_api :: #system_library "host_api";
     TextHostedHost :: (session: Session, props: Text.Props) #foreign host_api;
     TextLinkAtHostedHost :: (session: Session, props: Text.Props, x: float32, y: float32) -> s32 #foreign host_api;
+    #scope_package
     DrawSession :: (session: Session, props: Text.Props) {
         TextHostedHost(session, props)
     }
+    #scope_package
     Draw :: (frame: $T, props: Text.Props) {
         DrawSession(Session.{.slot = frame.slot, .epoch = frame.epoch}, props)
     }
+    #scope_export
     #program_export
     TextLinkAt :: (session: Session, props: Text.Props, x: float32, y: float32) -> s32 {
         return TextLinkAtHostedHost(session, props, x, y)
@@ -455,6 +458,7 @@ using Text :: #import "text_props";
         return TextFaceFor(props, defaults)
     }
 
+    #scope_package
     DrawSession :: (session: Session, props: Text.Props) {
         if !Finite32(props.rotation) || !Finite32(props.origin.x) || !Finite32(props.origin.y) { return }
         face: TextFace = TextFaceOf(props)
@@ -511,12 +515,14 @@ using Text :: #import "text_props";
         PaintTextLinesWithPlans(session, node, props, prepared, lines[:count], revision)
     }
 
+    #scope_package
     Draw :: (frame: $T, props: Text.Props) {
         DrawSession(Session.{.slot = frame.slot, .epoch = frame.epoch}, props)
     }
 
     // The index in props.links of the link whose characters Text paints
     // under (x, y), on any of its lines, or -1.
+    #scope_export
     #program_export
     TextLinkAt :: (session: Session, props: Text.Props, x: float32, y: float32) -> s32 {
         unused session

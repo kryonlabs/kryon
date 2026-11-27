@@ -9,9 +9,11 @@ Theme :: #import "theme";
     #import "session"
     host_api :: #system_library "host_api";
     ModalFrameHostedHost :: (session: Session, props: Modal.Props) -> ModalFrameResult #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: Modal.Props) -> ModalFrameResult {
         return ModalFrameHostedHost(session, props)
     }
+        #scope_export
 } else {
 #import "session"
 #import "control_props"
@@ -96,6 +98,7 @@ ModalFrameTitleStart :: (layout: ModalFrameLayout, metrics: ModalMetrics,
 // open, the frame opens the panel's scope and reports `opened`; the caller
 // submits the content and Ends the scope. A frame whose dismissal or action
 // fired opens no scope, and its caller acts on the result instead.
+#scope_package
 Draw :: (session: Session, props: Modal.Props, location := #caller_location) -> ModalFrameResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
@@ -231,6 +234,7 @@ Draw :: (session: Session, props: Modal.Props, location := #caller_location) -> 
         button.label = props.right_label
         button.image = props.right_image
         button.icon_only = true
+        button.disabled = props.right_action_disabled
         result.right_clicked = Button.SubmitButton(session, button,
             result.panel_node) != 0
         if button.image.asset_path == "" &&

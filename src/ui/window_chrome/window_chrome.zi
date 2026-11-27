@@ -236,6 +236,7 @@ DrawControl :: (session: Session, key: u64, bounds: Rectangle, action: Action, p
 // Declare inside a frame. Hosts that route primary presses with PointerPress
 // use Draw for presentation. An ordinary Kryon tree can dispatch the returned
 // Button activation, including focus traversal and keyboard activation.
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) -> Action {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }

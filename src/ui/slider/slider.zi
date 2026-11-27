@@ -6,9 +6,11 @@ using Slider :: #import "slider_props";
     SliderHostedHost :: (session: Session, props: Slider.Props) -> Slider.SliderStep #foreign host_api;
     DiscreteSliderHostedHost :: (session: Session,
         props: Slider.DiscreteSliderProps) -> Slider.SliderDiscreteStep #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: Slider.Props) -> Slider.SliderStep {
         return SliderHostedHost(session, props)
     }
+        #scope_export
     #program_export
     DiscreteSlider :: (session: Session, props: Slider.DiscreteSliderProps) -> Slider.SliderDiscreteStep {
         return DiscreteSliderHostedHost(session, props)
@@ -314,6 +316,7 @@ using Slider :: #import "slider_props";
 
     // The caller stores the proposed value for the next frame. Multiple values
     // are ordinary compositions of this scalar control and SliderCellBoundsFor.
+        #scope_package
         Draw :: (session: Session, props: Slider.Props, location := #caller_location) -> Slider.SliderStep {
         site := TreeCallSite(session, location)
         defer { TreeCallSiteEnd(session, site) }
@@ -336,6 +339,7 @@ using Slider :: #import "slider_props";
         return result
     }
 
+        #scope_export
     #program_export
     DiscreteSlider :: (session: Session, props: Slider.DiscreteSliderProps, location := #caller_location) -> Slider.SliderDiscreteStep {
         site := TreeCallSite(session, location)

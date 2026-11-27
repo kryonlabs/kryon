@@ -9,10 +9,12 @@ Theme :: #import "theme";
     host_api :: #system_library "host_api";
     TitleBarHostedHost :: (session: Session, props: TitleBarSchema.Props,
         options: []DropdownSchema.Option) -> TitleBarSchema.TitleBarResult #foreign host_api;
+        #scope_package
         Draw :: (session: Session, props: TitleBarSchema.Props,
         options: []DropdownSchema.Option) -> TitleBarSchema.TitleBarResult {
         return TitleBarHostedHost(session, props, options)
     }
+        #scope_export
 } else {
 #import "session"
 #import "control_props"
@@ -108,6 +110,7 @@ TitleBarLayoutAt :: (bounds: Rectangle, has_leading: bool,
 
 // A TitleBar is ordinary checked UI composition. A caller retains the
 // dropdown result and passes it back through props.dropdown next frame.
+#scope_package
 Draw :: (session: Session, props: TitleBarSchema.Props,
     options: []DropdownSchema.Option, location := #caller_location) -> TitleBarSchema.TitleBarResult {
     site := TreeCallSite(session, location)

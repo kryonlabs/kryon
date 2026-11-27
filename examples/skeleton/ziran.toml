@@ -1,12 +1,12 @@
 [package]
 name = "skeleton"
-entry = "skeleton.zi"
+entry = "skeleton.tsx"
 module_roots = ["."]
 tool = "kryon"
 
 [toolchain]
 git = "https://git.waozi.xyz/ziranlang/ziran.git"
-ref = "e225a4fe6acd41c40c78a46f6dab6ff779dd08ce"
+ref = "dc3ecf0aabd1630881c13783a660ca8b298eff88"
 
 [tool.kryon]
 default_profile = "desktop"

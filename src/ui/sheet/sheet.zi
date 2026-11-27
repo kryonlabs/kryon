@@ -346,6 +346,7 @@ SheetEnd :: (session: Session) -> bool {
 
 }
 
+#scope_package
 Draw :: (session: Session, props: Sheet.Props,
     state: *SheetState, location := #caller_location) -> SheetResult {
     site := TreeCallSite(session, location)

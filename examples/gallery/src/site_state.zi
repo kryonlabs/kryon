@@ -1,0 +1,515 @@
+ConfirmButton :: #import "kryon/confirm_button";
+HoldButton :: #import "kryon/hold_button";
+TextArea :: #import "kryon/text_area";
+TextField :: #import "kryon/text_field";
+#import "kryon/control_props"
+#import "kryon/drawing_props"
+#import "kryon/geometry"
+#import "kryon/input_protocol"
+#import "kryon/key_input"
+#import "kryon/session"
+#import "kryon/style_sheet"
+#import "kryon/tree"
+#import "kryon/tree_input"
+#import "kryon/cursor"
+#import "kryon/PageRoute"
+#import "std/byte_text_linux"
+#import "std/number_text"
+#import "std/web"
+#import "catalog"
+#import "gallery_state"
+using Preview :: #import "site_preview";
+using Scenes :: #import "scenes";
+
+site_page: s32;
+site_route: string;
+site_now: float32;
+site_reduced_motion: bool;
+site_pointer: PointerFrame;
+site_key: s32;
+site_space_held: bool;
+site_focused: bool;
+site_scroll: s32;
+site_source_cursor: s32;
+site_source_anchor: s32;
+site_source_scroll: s32;
+site_mobile_navigation: bool;
+site_resources_open: bool;
+site_scene: s32 = -1;
+site_source: bool;
+site_editor_bytes: [65536]u8;
+site_editor_typed: [128]u8;
+site_editor_next: [65536]u8;
+site_editor_length: s32;
+site_editor_revision: s32;
+site_compile_revision: s32;
+site_compile_busy: bool;
+site_compile_due: float32;
+site_preview_ready: bool;
+site_diagnostic_bytes: [32768]u8;
+site_diagnostic_count: s32;
+site_modifiers: s32;
+site_wheel: float32;
+site_preview_bounds: Rectangle;
+site_preview_clip: Rectangle;
+site_native_session: Session;
+site_native_bounds: Rectangle;
+site_native_visible: bool;
+site_native_focus: bool;
+site_preview_visible: bool;
+site_guest_focus: bool;
+site_hash_length: s64;
+site_hash_bytes: [256]u8;
+site_marker: float32;
+site_marker_from: float32;
+site_marker_target: float32;
+site_marker_started: float32;
+site_marker_ready: bool;
+site_modal_active: bool;
+site_count: s32;
+site_style_theme: s32 = -1;
+site_component_scroll: s32;
+site_usage_scroll: s32;
+site_volume: float32 = 65.0;
+site_notifications: bool = true;
+site_hold: HoldButton.HoldButtonState;
+site_confirm: ConfirmButton.ConfirmButtonState;
+// The hold button's progress and whether the confirm button is armed, which
+// the web page reports. Readers in other modules go through these: the
+// states' types name this module's imports.
+SiteHoldProgress :: () -> float32 { return site_hold.progress }
+SiteConfirmArmed :: () -> bool { return site_confirm.armed }
+site_hold_count: s32;
+site_confirm_count: s32;
+site_code_colors: [8192]TextArea.ColorSpan;
+site_code_color_count: s32;
+
+SiteRouteName :: (page: s32) -> string {
+    if page == 1 { return "getting-started.html" }
+    if page == 2 { return "widgets.html" }
+    if page == 3 { return "apps.html" }
+    if page == 4 { return "docs.html" }
+    if page == 5 { return "renderers.html" }
+    if page == 6 { return "modules.html" }
+    return "index.html"
+}
+
+// Static hosts such as Cloudflare Pages serve widgets.html at /widgets, so a
+// route names its page with or without the .html suffix.
+SitePageFor :: (path: string) -> s32 {
+    name := path
+    if name.count > 5 && name[name.count - 5:] == ".html" { name = name[:name.count - 5] }
+    if name == "getting-started" { return 1 }
+    if name == "widgets" { return 2 }
+    if name == "apps" { return 3 }
+    if name == "docs" { return 4 }
+    if name == "renderers" { return 5 }
+    if name == "modules" { return 6 }
+    return 0
+}
+
+SiteNavigate :: (page: s32) {
+    if page == site_page { return }
+    route := SiteRouteName(page)
+    path := TextFromCString(GetRoutePath())
+    slash: s64 = -1
+    for index: cast(s64)0..path.count - 1 { if path[index] == cast(u8)47 { slash = index } }
+    bytes: [2048]u8
+    if slash + 1 + route.count >= bytes.count { return }
+    at: s32
+    for index: cast(s64)0..slash { bytes[at] = path[index]; at += 1 }
+    for byte: route { bytes[at] = byte; at += 1 }
+    bytes[at] = 0
+    PushRoute(*bytes[0])
+}
+
+PrepareSiteInput :: (session: Session) {
+    path := TextFromCString(GetRoutePath())
+    slash: s64 = -1
+    for index: cast(s64)0..path.count - 1 { if path[index] == cast(u8)47 { slash = index } }
+    page := SitePageFor(path[slash + 1:])
+    if page != site_page || site_route == "" {
+        if site_page == 2 && page != 2 { SitePreviewClose() }
+        site_page = page; site_route = SiteRouteName(page)
+        site_scroll = 0; site_component_scroll = 0; site_mobile_navigation = false; site_resources_open = false
+    }
+    hash := TextFromCString(GetRouteHash())
+    if hash != TextView(site_hash_bytes[:site_hash_length]) {
+        for index: cast(s32)0..GallerySceneCount - 1 {
+            id := GallerySceneId(index)
+            if hash.count == id.count + 1 && hash[1:] == id {
+                scene = index; dismissed = false; navigation_focus_pending = true
+            }
+        }
+        if hash.count < site_hash_bytes.count {
+            for index: cast(s64)0..hash.count - 1 { site_hash_bytes[index] = hash[index] }
+            site_hash_length = hash.count
+        }
+    }
+    PrepareGalleryInput(session)
+    if site_key == KeyEscape { site_mobile_navigation = false; site_resources_open = false }
+}
+
+SiteStyle :: () {
+    wanted: s32 = ifx dark then 1 else 0
+    if wanted == site_style_theme { return }
+    site_style_theme = wanted
+    rules := ActiveStyleRules()
+    for kind: cast(s32)0..3 {
+        rule: StyleRule
+        rule.selector = StyleDefaultSelector()
+        rule.selector.class_name = 11001 + kind
+        rule.style.fields = cast(u32)StyleField.StyleForeground | cast(u32)StyleField.StyleTypeface
+        rule.style.foreground = ifx dark then 0xf2f2f2ff else 0x171717ff
+        rule.style.typeface = "assets/fonts/Inter-Regular.ttf"
+        if kind == 1 { rule.style.foreground = ifx dark then 0xb5b5b5ff else 0x626262ff }
+        if kind == 2 { rule.style.typeface = "assets/fonts/Geist-Medium.ttf" }
+        if kind == 3 { rule.style.typeface = "assets/fonts/GeistMono-Regular.ttf" }
+        rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    }
+    for variant: cast(s32)0..2 {
+        for state: 0..2 {
+            rule: StyleRule
+            rule.selector = StyleDefaultSelector()
+            rule.selector.class_name = 11010 + variant
+            rule.selector.kind = StyleKindButton()
+            rule.layer = 1
+            if state == 1 { rule.selector.state = cast(s32)ButtonState.ButtonStateHover }
+            if state == 2 { rule.selector.state = cast(s32)ButtonState.ButtonStateSelected }
+            rule.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground |
+                cast(u32)StyleField.StyleBorder | cast(u32)StyleField.StyleBorderWidth |
+                cast(u32)StyleField.StyleRadius | cast(u32)StyleField.StyleFontSize | cast(u32)StyleField.StyleTypeface
+            rule.style.background = ifx dark then 0x121212ff else 0xffffffff
+            rule.style.foreground = ifx dark then 0xc5c5c5ff else 0x585858ff
+            rule.style.border = ifx dark then 0x333333ff else 0xe4e4e4ff
+            rule.style.border_width = ifx variant == 2 then 1.0 else 0.0
+            rule.style.radius = 8.0; rule.style.font_size = 14.0
+            rule.style.typeface = "assets/fonts/Inter-Regular.ttf"
+            if state != 0 { rule.style.background = ifx dark then 0x252525ff else 0xf0f0f0ff }
+            if variant == 1 {
+                rule.style.background = ifx dark then 0xf2f2f2ff else 0x171717ff
+                rule.style.foreground = ifx dark then 0x171717ff else 0xffffffff
+            }
+            rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+        }
+    }
+    for kind: 0..1 {
+        for state: 0..2 {
+            nav: StyleRule
+            nav.selector = StyleDefaultSelector(); nav.selector.class_name = 11030
+            nav.selector.kind = ifx kind == 0 then StyleKindListBox() else StyleKindListBoxItem()
+            if state == 1 { nav.selector.state = cast(s32)ButtonState.ButtonStateHover }
+            if state == 2 { nav.selector.state = cast(s32)ButtonState.ButtonStateSelected }
+            nav.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground |
+                cast(u32)StyleField.StyleBorder | cast(u32)StyleField.StyleBorderWidth | cast(u32)StyleField.StyleRadius |
+                cast(u32)StyleField.StyleFontSize | cast(u32)StyleField.StyleTypeface
+            nav.style.background = ifx dark then 0x121212ff else 0xffffffff
+            if kind == 1 && state > 0 { nav.style.background = ifx dark then 0x292929ff else 0xf0f0f0ff }
+            nav.style.foreground = ifx dark then 0xc5c5c5ff else 0x505050ff
+            nav.style.border = 0; nav.style.border_width = 0.0; nav.style.radius = 6.0
+            nav.style.font_size = 13.0; nav.style.typeface = "assets/fonts/Inter-Regular.ttf"
+            nav.order = rules.count; rules.items[rules.count] = nav; rules.count += 1
+        }
+    }
+    editor: StyleRule
+    editor.selector = StyleDefaultSelector(); editor.selector.class_name = 11020
+    editor.style.fields = cast(u32)StyleField.StyleFontSize | cast(u32)StyleField.StyleTypeface
+    editor.style.font_size = 13.0; editor.style.typeface = "assets/fonts/GeistMono-Regular.ttf"
+    editor.order = rules.count; rules.items[rules.count] = editor; rules.count += 1
+    code: StyleRule
+    code.selector = StyleDefaultSelector(); code.selector.class_name = 11040
+    code.selector.kind = StyleKindTextArea()
+    code.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground |
+        cast(u32)StyleField.StyleBorder | cast(u32)StyleField.StyleBorderWidth |
+        cast(u32)StyleField.StyleRadius | cast(u32)StyleField.StyleFontSize |
+        cast(u32)StyleField.StyleTypeface | cast(u32)StyleField.StylePaddingX |
+        cast(u32)StyleField.StylePaddingY
+    code.style.background = cast(u32)0x00000000
+    code.style.foreground = ifx dark then 0xf2f2f2ff else 0x171717ff
+    code.style.border = cast(u32)0
+    code.style.border_width = 0.0
+    code.style.radius = 0.0
+    code.style.font_size = 12.0
+    code.style.typeface = "assets/fonts/GeistMono-Regular.ttf"
+    code.style.padding_x = 0.0
+    code.style.padding_y = 0.0
+    code.order = rules.count; rules.items[rules.count] = code; rules.count += 1
+    unused InstallStyleRules(rules)
+}
+SiteBackground :: () -> Color { return ColorFromPacked(ifx dark then 0x121212ff else 0xffffffff) }
+SiteBorder :: () -> Color { return ColorFromPacked(ifx dark then 0x303030ff else 0xe5e5e5ff) }
+SiteSurface :: () -> Color { return ColorFromPacked(ifx dark then 0x1b1b1bff else 0xf7f7f7ff) }
+
+SiteCodeKeywordColor :: () -> u32 { return ifx dark then 0xff7b72ff else 0xcf222eff }
+SiteCodeTypeColor :: () -> u32 { return ifx dark then 0xffa657ff else 0x953800ff }
+SiteCodeFunctionColor :: () -> u32 { return ifx dark then 0xd2a8ffff else 0x8250dfff }
+SiteCodeStringColor :: () -> u32 { return ifx dark then 0xa5d6ffff else 0x0a3069ff }
+SiteCodeNumberColor :: () -> u32 { return ifx dark then 0x79c0ffff else 0x0550aeff }
+SiteCodeCommentColor :: () -> u32 { return ifx dark then 0x8b949eff else 0x6e7781ff }
+
+SiteCodeLetter :: (byte: u8) -> bool {
+    return (byte >= cast(u8)65 && byte <= cast(u8)90) ||
+        (byte >= cast(u8)97 && byte <= cast(u8)122) || byte == cast(u8)95
+}
+SiteCodeDigit :: (byte: u8) -> bool {
+    return byte >= cast(u8)48 && byte <= cast(u8)57
+}
+SiteCodeHex :: (byte: u8) -> bool {
+    return SiteCodeDigit(byte) || (byte >= cast(u8)65 && byte <= cast(u8)70) ||
+        (byte >= cast(u8)97 && byte <= cast(u8)102)
+}
+SiteCodeKeyword :: (word: string) -> bool {
+    return word == "using" || word == "if" || word == "else" || word == "for" ||
+        word == "while" || word == "return" || word == "struct" || word == "enum" ||
+        word == "true" || word == "false" || word == "defer" || word == "cast" ||
+        word == "import" || word == "in" || word == "as" || word == "break" ||
+        word == "continue" || word == "and" || word == "or" || word == "not" ||
+        word == "ifx" || word == "unused" || word == "let" || word == "mut" ||
+        word == "match" || word == "switch" || word == "case" || word == "const" ||
+        word == "var" || word == "law" || word == "forall" ||
+        word == "export" || word == "function" || word == "interface" ||
+        word == "type" || word == "from" || word == "extends"
+}
+SiteCodePrimitive :: (word: string) -> bool {
+    return word == "string" || word == "bool" || word == "u8" || word == "u16" ||
+        word == "u32" || word == "u64" || word == "s8" || word == "s16" ||
+        word == "s32" || word == "s64" || word == "f32" || word == "f64" ||
+        word == "float32" || word == "float64" || word == "usize" || word == "byte" ||
+        word == "number" || word == "boolean" || word == "void"
+}
+SiteCodeColorAdd :: (start: s32, end: s32, color: u32) {
+    if end <= start || site_code_color_count >= 8192 { return }
+    span: TextArea.ColorSpan
+    span.start = start
+    span.end = end
+    span.color = color
+    site_code_colors[site_code_color_count] = span
+    site_code_color_count += 1
+}
+
+// TSX screens and native API snippets use the same byte-based editor spans.
+SiteHighlightCode :: (code: string) {
+    site_code_color_count = 0
+    length := cast(s32)code.count
+    at: s32 = 0
+    while at < length {
+        byte := code[at]
+        if byte == cast(u8)47 && at + 1 < length && code[at + 1] == cast(u8)47 {
+            start := at
+            while at < length && code[at] != cast(u8)10 { at += 1 }
+            SiteCodeColorAdd(start, at, SiteCodeCommentColor())
+        } else if byte == cast(u8)47 && at + 1 < length && code[at + 1] == cast(u8)42 {
+            start := at
+            at += 2
+            while at < length {
+                if code[at] == cast(u8)42 && at + 1 < length && code[at + 1] == cast(u8)47 { at += 2; break }
+                at += 1
+            }
+            SiteCodeColorAdd(start, at, SiteCodeCommentColor())
+        } else if byte == cast(u8)34 || byte == cast(u8)39 {
+            start := at
+            at += 1
+            while at < length {
+                if code[at] == cast(u8)92 { at += 2; continue }
+                if code[at] == byte { at += 1; break }
+                at += 1
+            }
+            SiteCodeColorAdd(start, at, SiteCodeStringColor())
+        } else if byte == cast(u8)35 {
+            start := at
+            at += 1
+            while at < length && (SiteCodeLetter(code[at]) || SiteCodeDigit(code[at])) { at += 1 }
+            SiteCodeColorAdd(start, at, SiteCodeKeywordColor())
+        } else if SiteCodeDigit(byte) {
+            start := at
+            if byte == cast(u8)48 && at + 1 < length &&
+                (code[at + 1] == cast(u8)120 || code[at + 1] == cast(u8)88) {
+                at += 2
+                while at < length && SiteCodeHex(code[at]) { at += 1 }
+            } else {
+                while at < length && SiteCodeDigit(code[at]) { at += 1 }
+            }
+            SiteCodeColorAdd(start, at, SiteCodeNumberColor())
+        } else if SiteCodeLetter(byte) {
+            start := at
+            while at < length && (SiteCodeLetter(code[at]) || SiteCodeDigit(code[at])) { at += 1 }
+            word := code[start:at]
+            color: u32
+            if SiteCodeKeyword(word) {
+                color = SiteCodeKeywordColor()
+            } else if SiteCodePrimitive(word) || (byte >= cast(u8)65 && byte <= cast(u8)90) {
+                color = SiteCodeTypeColor()
+            } else {
+                look := at
+                while look < length && code[look] == cast(u8)32 { look += 1 }
+                if look < length && code[look] == cast(u8)40 { color = SiteCodeFunctionColor() }
+            }
+            if color != cast(u32)0 { SiteCodeColorAdd(start, at, color) }
+        } else {
+            at += 1
+        }
+    }
+}
+
+SiteSelectScene :: (picked: s32) {
+    scene = picked; dismissed = false; navigation_focus_pending = true; site_component_scroll = 0
+    if picker_key == 0 { site_mobile_navigation = false }
+    route := GallerySceneId(scene)
+    bytes: [128]u8
+    at: s32
+    path := TextFromCString(GetRoutePath())
+    for byte: path { if at < 126 { bytes[at] = byte; at += 1 } }
+    bytes[at] = cast(u8)35; at += 1
+    for byte: route { if at < 127 { bytes[at] = byte; at += 1 } }
+    bytes[at] = 0
+    PushRoute(*bytes[0])
+}
+
+SiteDiagnostic :: () -> string { return TextView(site_diagnostic_bytes[:site_diagnostic_count]) }
+SiteDiagnosticSet :: (message: string) {
+    site_diagnostic_count = cast(s32)message.count
+    if site_diagnostic_count > 32768 { site_diagnostic_count = 32768 }
+    for index: 0..site_diagnostic_count - 1 { site_diagnostic_bytes[index] = message[index] }
+}
+
+SitePreviewClose :: () {
+    ClosePreview()
+    site_preview_ready = false; site_compile_busy = false; site_compile_revision = 0
+    site_guest_focus = false
+    mark := WebScope()
+    unused WebCall0(WebModule, WebName("disposeCompiler"))
+    WebEnd(mark)
+}
+
+SiteCompile :: () {
+    mark := WebScope()
+    result := WebGetObject(WebModule, WebName("compilerResult"))
+    revision: s32
+    if result > 0 { revision = cast(s32)WebGetNumber(result, WebName("id")) }
+    if site_compile_busy && revision == site_compile_revision {
+        site_compile_busy = false
+        if revision == site_editor_revision {
+            if WebGetNumber(result, WebName("status")) == 0.0 {
+                if LoadPreview() { site_preview_ready = true; site_diagnostic_count = 0 }
+                else { SiteDiagnosticSet(PreviewError()) }
+            } else {
+                diagnostic := WebGetObject(result, WebName("diagnostics"))
+                count := WebCopyString(diagnostic, site_diagnostic_bytes[:])
+                site_diagnostic_count = cast(s32)count
+            }
+        }
+    }
+    if site_source && !site_compile_busy && site_compile_revision != site_editor_revision && site_now >= site_compile_due {
+        site_compile_revision = site_editor_revision; site_compile_busy = true
+        request := WebNewObject()
+        WebSet(request, WebName("id"), WebNumber(cast(float64)site_compile_revision))
+        WebSet(request, WebName("source"), WebText(TextView(site_editor_next[:site_editor_length])))
+        WebSet(request, WebName("sourcePath"), WebText(GallerySceneSourcePath(scene)))
+        WebSet(request, WebName("search"), WebText(GalleryCompilerSearch()))
+        unused WebCall1(WebModule, WebName("compileSource"), WebObject(request))
+    }
+    WebSet(WebModule, WebName("editorRevision"), WebNumber(cast(float64)site_editor_revision))
+    WebSet(WebModule, WebName("compileRevision"), WebNumber(cast(float64)site_compile_revision))
+    WebSet(WebModule, WebName("compileBusy"), WebBool(site_compile_busy))
+    WebSet(WebModule, WebName("previewReady"), WebBool(site_preview_ready))
+    WebSet(WebModule, WebName("previewNodes"), WebNumber(cast(float64)preview_nodes))
+    WebSet(WebModule, WebName("compileDiagnostic"), WebText(SiteDiagnostic()))
+    WebEnd(mark)
+}
+
+RunSitePreview :: (session: Session) {
+    unused CursorSet(session, CursorProps.{})
+    if !site_preview_visible || !site_preview_ready || site_mobile_navigation || site_resources_open { return }
+    if site_pointer.pressed {
+        site_guest_focus = site_pointer.x >= site_preview_bounds.x && site_pointer.y >= site_preview_bounds.y &&
+            site_pointer.x < site_preview_bounds.x + site_preview_bounds.width && site_pointer.y < site_preview_bounds.y + site_preview_bounds.height &&
+            site_pointer.y >= site_preview_clip.y && site_pointer.y < site_preview_clip.y + site_preview_clip.height
+    }
+    key: s32 = ifx site_guest_focus then site_key else 0
+    if !site_guest_focus { preview_text_count = 0 }
+    guest_pointer := site_pointer
+    if site_pointer.y < site_preview_clip.y || site_pointer.y >= site_preview_clip.y + site_preview_clip.height {
+        guest_pointer.x = -10000.0; guest_pointer.y = -10000.0; guest_pointer.pressed = false
+    }
+    if !RunPreview(site_preview_bounds, guest_pointer, key, site_modifiers, site_wheel,
+        site_now, dark, disabled_controls, site_reduced_motion, site_guest_focus && site_space_held, site_guest_focus && site_focused) {
+        SiteDiagnosticSet(PreviewError()); site_preview_ready = false
+    }
+    if site_pointer.x >= site_preview_bounds.x && site_pointer.y >= site_preview_bounds.y &&
+        site_pointer.x < site_preview_bounds.x + site_preview_bounds.width && site_pointer.y < site_preview_bounds.y + site_preview_bounds.height {
+        unused CursorSet(session, CursorProps.{.shape = preview_cursor})
+    }
+}
+
+// The group order and count come from the generated catalog.
+site_navigation_positions: [GallerySceneCount]float32;
+
+SiteNavigationHeight :: (visible_height: float32) -> float32 {
+    height: float32
+    group: string
+    selected: s32
+    for position: cast(s32)0..GallerySceneCount - 1 {
+        index := GalleryNavigationScene(position)
+        label := GallerySceneGroup(index)
+        if label != group { height += 40.0; group = label }
+        site_navigation_positions[position] = height
+        height += 32.0
+        if index == scene { selected = position }
+    }
+    next := selected
+    if picker_key == KeyHome { next = 0 }
+    else if picker_key == KeyEnd { next = GallerySceneCount - 1 }
+    else if picker_key == KeyUp && next > 0 { next -= 1 }
+    else if picker_key == KeyDown && next < GallerySceneCount - 1 { next += 1 }
+    if next != selected { SiteSelectScene(GalleryNavigationScene(next)) }
+    if next != selected || navigation_focus_pending {
+        if site_navigation_positions[next] < cast(float32)catalog_scroll { catalog_scroll = cast(s32)site_navigation_positions[next] }
+        if site_navigation_positions[next] + 32.0 > cast(float32)catalog_scroll + visible_height {
+            catalog_scroll = cast(s32)(site_navigation_positions[next] + 32.0 - visible_height)
+        }
+    }
+    return height
+}
+
+SiteNavigationPosition :: (index: s32) -> float32 {
+    return site_navigation_positions[index]
+}
+
+SiteResetEditorForSelection :: () {
+    if site_scene == scene { return }
+    SitePreviewClose()
+    site_scene = scene; site_usage_scroll = 0; site_source_scroll = 0; site_source_cursor = 0; site_source_anchor = 0
+    code := GallerySceneCode(scene)
+    site_editor_length = cast(s32)code.count
+    for index: 0..site_editor_length - 1 { site_editor_next[index] = code[index] }
+    site_editor_revision += 1; site_compile_due = site_now + 0.4
+    site_preview_ready = false; site_diagnostic_count = 0
+}
+
+SiteEditorText :: () -> string {
+    for index: 0..site_editor_length - 1 { site_editor_bytes[index] = site_editor_next[index] }
+    return TextView(site_editor_bytes[:site_editor_length])
+}
+
+SiteEditorInput :: (session: Session) -> TextArea.Input {
+    return Scenes.SceneInputFor(KeyboardTake(session), KeyboardModifiers(session),
+        TypedTextTake(session, site_editor_typed[:])).area
+}
+
+SiteApplyEditorChange :: (change: TextArea.Edit) {
+    edit: TextField.Edit = .{.start = change.start, .end = change.end,
+        .replacement = change.replacement, .changed = true}
+    site_editor_length = Scenes.Apply(site_editor_next[:], site_editor_length, edit)
+    site_editor_revision += 1; site_compile_due = site_now + 0.4
+}
+
+SiteCodeColors :: (code: string) -> []TextArea.ColorSpan {
+    SiteHighlightCode(code)
+    return site_code_colors[:site_code_color_count]
+}
+
+SiteFormatCount :: () -> string {
+    return FormatInteger(cast(s64)site_count, site_count_digits[:])
+}
+
+site_count_digits: [32]u8;

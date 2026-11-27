@@ -81,7 +81,9 @@ BundleHostBackground :: (refresh: bool) -> u32 {
     return UiTheme.CurrentBackground()
 }
 
+#program_export
 BundleCloseHost :: () {
+    DesktopWakeAt(-1.0)
     if SessionValid(bundle_input) {
         TreeInputReset(bundle_input)
         unused SessionClose(bundle_input)
@@ -124,7 +126,6 @@ ReadBundleInput :: () -> BundleInput {
     if ok && CaptureRequested() && bundle_frames >= 2 { ok = false }
     if !ok {
         if CaptureRequested() { unused CaptureConfigured() }
-        BundleCloseHost()
         result.closed = true
         return result
     }
@@ -173,6 +174,11 @@ BundleFrameCursorHost :: (shape: s32, asset_path: string, width: s32,
 #program_export
 BundleFrameFinishedHost :: (unchanged: bool) {
     DesktopFrameUnchanged(unchanged)
+}
+
+#program_export
+BundleWakeAtHost :: (seconds: float64) {
+    DesktopWakeAt(seconds)
 }
 
 #program_export

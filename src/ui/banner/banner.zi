@@ -135,6 +135,7 @@ BannerLayoutFor :: (props: Props) -> BannerLayout {
     return layout
 }
 
+#scope_package
 Draw :: (session: Session, props: Props,
     state: *BannerState, location := #caller_location) -> BannerResult {
     site := TreeCallSite(session, location)

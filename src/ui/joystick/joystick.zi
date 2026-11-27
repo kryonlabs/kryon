@@ -148,6 +148,7 @@ TouchDirection :: (dx: float32, dy: float32, reach: float32) -> s32 {
     return ifx dy < 0.0 then 1 else 3
 }
 
+#scope_package
 Draw :: (session: Session, props: Props, location := #caller_location) -> JoystickResult {
     site := TreeCallSite(session, location)
     defer { TreeCallSiteEnd(session, site) }
@@ -193,6 +194,7 @@ Draw :: (session: Session, props: Props, location := #caller_location) -> Joysti
     return result
 }
 
+#scope_export
 SwipeArea :: (session: Session, props: SwipeAreaProps) -> SwipeAreaResult {
     result := SwipeAreaResult.{.swiped = -1, .lean = -1}
     slot := TouchSlotFor(props.key)

@@ -172,10 +172,7 @@ CountdownLayoutFor :: (props: Props) -> CountdownLayout {
 }
 
 #scope_file
-unit_at :: (parts: CountdownParts, index: s32, hide_days: bool) -> s64 {
-    if index == 1 || hide_days {
-        if hide_days { return parts.hours }
-    }
+unit_at :: (parts: CountdownParts, index: s32) -> s64 {
     if index == 0 { return parts.days }
     if index == 1 { return parts.hours }
     if index == 2 { return parts.minutes }
@@ -191,6 +188,7 @@ unit_label :: (index: s32) -> string {
 }
 
 #scope_export
+#scope_package
 Draw :: (session: Session, props: Props,
     state: *CountdownState, location := #caller_location) -> CountdownResult {
     site := TreeCallSite(session, location)
@@ -226,7 +224,7 @@ Draw :: (session: Session, props: Props,
         unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 30 + index),
             .bounds = Rectangle.{tile.x, tile.y + (tile.height - cast(float32)result.layout.tile_font) * 0.5,
                 tile.width, cast(float32)result.layout.tile_font},
-            .text = CountdownUnitText(unit_at(result.parts, unit, props.hide_days),
+            .text = CountdownUnitText(unit_at(result.parts, unit),
                 countdown_digits[:]),
             .size = result.layout.tile_font, .id = props.id, .class_name = props.class_name,
             .align = TextAlign.TextAlignCenter, .wrap = Text.Wrap.TextWrapNone})

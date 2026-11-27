@@ -153,6 +153,7 @@ percent_text :: (value: float32, output: []u8) -> string {
 }
 
 #scope_export
+#scope_package
 Draw :: (session: Session, props: Props,
     state: *ProgressRingState, location := #caller_location) -> ProgressRingResult {
     site := TreeCallSite(session, location)

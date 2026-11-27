@@ -158,6 +158,7 @@ CarouselActionRibbon :: (session: Session, key: u64, button: Rectangle, label: s
 
 // Returns the activated item, or -1. Pointer, swipe, wheel and keyboard
 // select the same page; only the selected page exposes an action.
+#scope_package
 Draw :: (session: Session, props: Props, items: []CarouselItem,
     state: *CarouselState, location := #caller_location) -> s32 {
     site := TreeCallSite(session, location)
