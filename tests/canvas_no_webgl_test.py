@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prove the production Canvas2D web app works with WebGL requests rejected."""
+"""Prove the production web app presents only through WebGL2 and fails cleanly without it."""
 
 from __future__ import annotations
 
@@ -79,6 +79,8 @@ def prepare_project():
         'using App :: #import "app";\n'
         '#import "kryon/canvas_app_run"\n\n'
         '#program_export\n'
+        'main :: () -> s32 { return CanvasAppMainLoop() }\n\n'
+        '#program_export\n'
         'CanvasAppMain :: () -> s64 { return App.Main() }\n')
     (PROJECT / 'ziran.local.toml').write_text(kryon_only(
         '[overrides]\nkryon = "%s"\nziran = "%s"\n' % (ROOT, ZIRAN_ROOT)))
@@ -136,16 +138,18 @@ class DevToolsError(RuntimeError):
 
 
 class Browser:
-    def __init__(self):
-        profile = WORK / 'p'
+    def __init__(self, block_webgl=False):
+        self.block_webgl = block_webgl
+        suffix = '-blocked' if block_webgl else ''
+        profile = WORK / ('p' + suffix)
         shutil.rmtree(profile, ignore_errors=True)
         profile.mkdir()
-        self.log = (WORK / 'chromium.log').open('wb')
+        self.log = (WORK / ('chromium' + suffix + '.log')).open('wb')
         self.process = subprocess.Popen(
             ['sh', '-c', 'exec 3<&0 4>&1 "$@" </dev/null >/dev/null', 'chromium',
              os.environ.get('CHROMIUM', 'chromium'), '--headless', '--no-sandbox',
-             '--disable-gpu', '--disable-webgl', '--disable-software-rasterizer',
-             '--disable-gpu-compositing', '--use-gl=disabled',
+             '--enable-unsafe-swiftshader', '--enable-webgl', '--use-gl=angle',
+             '--use-angle=swiftshader',
              '--disable-dev-shm-usage', '--no-first-run',
              '--no-default-browser-check', '--remote-debugging-pipe',
              '--user-data-dir=' + str(profile), 'about:blank'],
@@ -161,13 +165,16 @@ class Browser:
                                     flatten=True)['sessionId']
         for domain in ('Runtime', 'Page', 'Network'):
             self.command(domain + '.enable')
+        self.command('Page.addScriptToEvaluateOnNewDocument',
+            source='globalThis.canvasBlockWebgl = ' +
+            ('true' if self.block_webgl else 'false'))
         self.command('Page.addScriptToEvaluateOnNewDocument', source=r'''
             globalThis.canvasStats = {
-              rasterCalls: 0, rasterCpu: 0, presentCalls: 0, presentCpu: 0,
-              webglRequests: 0, inputMark: 0, lastPresent: 0, lastVisible: 0,
-              latencyMs: 0, composition: [], profiles: {}, setupCalls: 0,
-              setupCpu: 0, frameRasterCalls: 0, frameRasterCpu: 0,
-              maxFrameRasterCalls: 0, maxFrameRasterCpu: 0
+              rasterCalls: 0, rasterCpu: 0,
+              webglRequests: 0, front2dRequests: 0,
+              glDraws: 0, glDrawCpu: 0, damageFrames: 0, fullFrames: 0,
+              inputMark: 0, lastPresent: 0, lastVisible: 0, latencyMs: 0,
+              composition: []
             };
             for (const type of ['compositionstart', 'compositionupdate', 'compositionend', 'compositioncancel'])
               addEventListener(type, event => canvasStats.composition.push(
@@ -181,74 +188,63 @@ class Browser:
               prototype.getContext = function(kind, ...args) {
                 if (kind === 'webgl' || kind === 'webgl2' || kind === 'experimental-webgl') {
                   canvasStats.webglRequests++;
-                  return null;
+                  if (globalThis.canvasBlockWebgl) return null;
                 }
+                if (kind === '2d' && this && this.id === 'canvas') canvasStats.front2dRequests++;
                 return original.call(this, kind, ...args);
               };
             }
-            const methods = ['clearRect', 'fillRect', 'strokeRect', 'drawImage',
-              'fillText', 'strokeText', 'fill', 'stroke', 'putImageData',
-              'beginPath', 'clip', 'save', 'restore',
-              'setTransform', 'translate', 'rotate', 'scale'];
-            const setupMethods = new Set(['beginPath', 'clip', 'save', 'restore',
-              'setTransform', 'translate', 'rotate', 'scale']);
-            function describe(context) {
-              const canvas = context.canvas;
-              if (!canvas) return 'detached';
-              if (canvas.id === 'canvas') return 'front';
-              const label = canvas.id || (canvas.dataset && canvas.dataset.kryonName) ||
-                canvas.tagName || (canvas.constructor && canvas.constructor.name) || 'unknown';
-              return label + ':' + canvas.width + 'x' + canvas.height;
-            }
-            for (const kind of ['CanvasRenderingContext2D', 'OffscreenCanvasRenderingContext2D']) {
-              const prototype = globalThis[kind] && globalThis[kind].prototype;
-              if (!prototype) continue;
-              for (const name of methods) {
-                const original = prototype[name];
-                prototype[name] = function(...args) {
-                  const started = performance.now();
-                  const source = kind + ':' + describe(this);
-                  const key = source + '.' + name;
-                  const profile = canvasStats.profiles[key] ||
-                    (canvasStats.profiles[key] = {count: 0, cpu: 0});
-                  profile.count++;
-                  const setup = setupMethods.has(name);
-                  try { return original.apply(this, args); }
-                  finally {
-                    const finished = performance.now();
-                    const elapsed = finished - started;
-                    profile.cpu += elapsed;
-                    if (setup) {
-                      canvasStats.setupCalls++;
-                      canvasStats.setupCpu += elapsed;
-                    }
-                    if (this.canvas && this.canvas.id === 'canvas') {
-                      canvasStats.presentCalls++;
-                      canvasStats.presentCpu += elapsed;
-                      canvasStats.lastPresent = finished;
-                      if (name === 'drawImage') {
-                        canvasStats.maxFrameRasterCalls = Math.max(
-                          canvasStats.maxFrameRasterCalls, canvasStats.frameRasterCalls);
-                        canvasStats.maxFrameRasterCpu = Math.max(
-                          canvasStats.maxFrameRasterCpu, canvasStats.frameRasterCpu);
-                        canvasStats.frameRasterCalls = 0;
-                        canvasStats.frameRasterCpu = 0;
-                      }
-                      requestAnimationFrame(() => requestAnimationFrame(() => {
-                        canvasStats.lastVisible = performance.now();
-                      }));
-                    } else {
-                      if (!setup) {
-                        canvasStats.rasterCalls++;
-                        canvasStats.rasterCpu += elapsed;
-                        canvasStats.frameRasterCalls++;
-                        canvasStats.frameRasterCpu += elapsed;
-                      }
-                    }
+            (function() {
+              const proto = globalThis.WebGL2RenderingContext && WebGL2RenderingContext.prototype;
+              if (!proto) return;
+              const originalScissor = proto.scissor;
+              proto.scissor = function(x, y, width, height) {
+                if (this.canvas && this.canvas.id === 'canvas')
+                  canvasStats.lastDamage = [x, y, width, height];
+                return originalScissor.call(this, x, y, width, height);
+              };
+              const originalDraw = proto.drawElements;
+              proto.drawElements = function(mode, count, type, offset) {
+                const started = performance.now();
+                try { return originalDraw.call(this, mode, count, type, offset); }
+                finally {
+                  if (this.canvas && this.canvas.id === 'canvas') {
+                    canvasStats.glDraws++;
+                    canvasStats.glDrawCpu += performance.now() - started;
+                    canvasStats.lastPresent = performance.now();
+                    const damage = canvasStats.lastDamage;
+                    canvasStats.lastDamage = null;
+                    if (damage && (damage[2] < this.canvas.width ||
+                        damage[3] < this.canvas.height)) canvasStats.damageFrames++;
+                    else canvasStats.fullFrames++;
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                      canvasStats.lastVisible = performance.now();
+                    }));
                   }
-                };
+                }
+              };
+            })();
+            // The presenter keeps a premultiplied drawing buffer; read it
+            // top-down for pixel comparisons.
+            globalThis.canvasGLPixels = function(x, y, width, height) {
+              const canvas = document.getElementById('canvas');
+              const gl = canvas.getContext('webgl2');
+              if (!gl) return null;
+              const data = new Uint8ClampedArray(width * height * 4);
+              gl.readPixels(x, gl.drawingBufferHeight - y - height,
+                width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
+              let row = width * 4, top = 0, bottom = height - 1;
+              while (top < bottom) {
+                const start = top * row, end = bottom * row;
+                for (let at = 0; at < row; at++) {
+                  const swap = data[start + at];
+                  data[start + at] = data[end + at];
+                  data[end + at] = swap;
+                }
+                top++; bottom--;
               }
-            }
+              return data;
+            };
         ''')
 
     def command(self, method, timeout=45, **params):
@@ -323,9 +319,9 @@ class Browser:
         return self.evaluate(f'''(() => {{
           const canvas = document.getElementById('canvas');
           const scale = canvas.width / canvas.clientWidth;
-          const pixel = canvas.getContext('2d').getImageData(
-            Math.round({x} * scale), Math.round({y} * scale), 1, 1).data;
-          return Array.from(pixel);
+          const pixel = canvasGLPixels(Math.round({x} * scale),
+            Math.round({y} * scale), 1, 1);
+          return pixel ? Array.from(pixel.slice(0, 4)) : null;
         }})()''')
 
     def region(self, x, y, width, height):
@@ -334,7 +330,8 @@ class Browser:
           const scale = canvas.width / canvas.clientWidth;
           const x = Math.round({x} * scale), y = Math.round({y} * scale);
           const width = Math.round({width} * scale), height = Math.round({height} * scale);
-          const pixels = canvas.getContext('2d').getImageData(x, y, width, height).data;
+          const pixels = canvasGLPixels(x, y, width, height);
+          if (!pixels) return null;
           let sum = 0, nonbackground = 0;
           for (let index = 0; index < pixels.length; index += 4) {{
             sum = (sum + pixels[index] * 65536 + pixels[index + 1] * 256 +
@@ -350,7 +347,8 @@ class Browser:
           const scale = canvas.width / canvas.clientWidth;
           const x = Math.round({x} * scale), y = Math.round({y} * scale);
           const width = Math.round({width} * scale), height = Math.round({height} * scale);
-          const pixels = canvas.getContext('2d').getImageData(x, y, width, height).data;
+          const pixels = canvasGLPixels(x, y, width, height);
+          if (!pixels) return null;
           let sum = 0, nonbackground = 0;
           for (let index = 0; index < pixels.length; index += 4) {{
             sum = (sum + pixels[index] * 65536 + pixels[index + 1] * 256 +
@@ -406,11 +404,8 @@ class Browser:
 
     def reset_stats(self):
         self.evaluate('''canvasStats.rasterCalls = 0; canvasStats.rasterCpu = 0;
-          canvasStats.presentCalls = 0; canvasStats.presentCpu = 0;
-          canvasStats.setupCalls = 0; canvasStats.setupCpu = 0;
-          canvasStats.frameRasterCalls = 0; canvasStats.frameRasterCpu = 0;
-          canvasStats.maxFrameRasterCalls = 0; canvasStats.maxFrameRasterCpu = 0;
-          canvasStats.profiles = {};''')
+          canvasStats.glDraws = 0; canvasStats.glDrawCpu = 0;
+          canvasStats.damageFrames = 0; canvasStats.fullFrames = 0;''')
 
     def close(self):
         try:
@@ -448,12 +443,11 @@ def exercise(url):
           const canvas = document.getElementById('canvas');
           return canvas && canvas.clientWidth === 640 && canvas.clientHeight === 720 &&
             canvas.width === 640;
-        })()''', 'Canvas2D app opened')
-        browser.until("canvasStats.webglRequests >= 1", 'optional WebGL path was probed')
+        })()''', 'GPU app opened')
+        browser.until("canvasStats.webglRequests >= 1", 'the host requested WebGL2')
         browser.until('''(() => {
-          const left = [document.getElementById('canvas').getContext('2d').getImageData(28, 250, 1, 1).data,
-            document.getElementById('canvas').getContext('2d').getImageData(112, 250, 1, 1).data];
-          return left.every(color => color[0] > 150 && color[1] < 100 && color[3] === 255);
+          const left = [canvasGLPixels(28, 250, 1, 1), canvasGLPixels(112, 250, 1, 1)];
+          return left.every(color => color && color[0] > 150 && color[1] < 100 && color[3] === 255);
         })()''', 'normal and fallback mesh images decoded')
         assert close_color(browser.sample(200, 250), [30, 60, 220, 255]), browser.sample(200, 250)
 
@@ -471,8 +465,9 @@ def exercise(url):
 
         browser.color_scheme(True)
         dark = browser.until('''(() => {
-          const color = Array.from(document.getElementById('canvas').getContext('2d').getImageData(620, 20, 1, 1).data);
-          return (.2126 * color[0] + .7152 * color[1] + .0722 * color[2]) < 80 ? color : null;
+          const color = canvasGLPixels(620, 20, 1, 1);
+          return color && (.2126 * color[0] + .7152 * color[1] + .0722 * color[2]) < 80 ?
+            Array.from(color.slice(0, 4)) : null;
         })()''', 'dark theme became visible')
         assert dark != light and luma(dark) < 80 < luma(light), (light, dark)
         assert close_color(browser.sample(220, 20), [91, 42, 134, 255]), browser.sample(220, 20)
@@ -483,12 +478,11 @@ def exercise(url):
         browser.mouse(50, 36)
         browser.wait_region_change(20, 24, 124, 24, button_before, 'pointer click changed button')
         browser.frames(2)
-        warm = browser.stats()
         browser.evaluate('''if (canvasStats.lastVisible >= canvasStats.inputMark) {
           canvasStats.latencyMs = canvasStats.lastVisible - canvasStats.inputMark;
         }''')
         warm = browser.stats()
-        assert warm['rasterCalls'] > 0 and warm['latencyMs'] > 0, warm
+        assert warm['damageFrames'] > 0 and warm['latencyMs'] > 0, warm
 
         browser.mouse(50, 88)
         browser.frames(2)
@@ -530,7 +524,7 @@ def exercise(url):
         time.sleep(.4)
         idle = browser.stats()
         assert idle['rasterCalls'] == 0, idle
-        assert idle['presentCalls'] > 0, idle
+        assert idle['glDraws'] == 0, idle
 
         browser.reset_stats()
         browser.mark_input()
@@ -540,19 +534,18 @@ def exercise(url):
         browser.wait_region_change(20, 24, 124, 24, button_second, 'second pointer click')
         assert browser.region(16, 68, 280, 42) == stable_second, 'retained pixels changed outside damage'
         browser.frames(2)
-        partial = browser.stats()
         browser.evaluate('''if (canvasStats.lastVisible >= canvasStats.inputMark) {
           canvasStats.latencyMs = canvasStats.lastVisible - canvasStats.inputMark;
         }''')
         partial = browser.stats()
-        assert partial['rasterCalls'] > 0 and partial['latencyMs'] > 0, partial
+        assert partial['damageFrames'] > 0 and partial['latencyMs'] > 0, partial
 
         browser.reset_stats()
         browser.viewport(390, 744, 1, mobile=True)
         browser.until("document.getElementById('canvas').width === 390", 'resize full repaint')
         browser.frames(4)
         full = browser.stats()
-        assert full['maxFrameRasterCalls'] > 0, full
+        assert full['fullFrames'] > 0, full
 
         for width in (320, 390, 768, 1024, 1366):
             browser.viewport(width, 720, 1, mobile=True)
@@ -562,7 +555,8 @@ def exercise(url):
             layout = browser.evaluate('''(() => ({
               scrollWidth: document.documentElement.scrollWidth,
               clientWidth: document.documentElement.clientWidth,
-              button: Array.from(document.getElementById('canvas').getContext('2d').getImageData(220, 20, 1, 1).data).slice(0, 4)
+              button: canvasGLPixels(220, 20, 1, 1) ?
+                Array.from(canvasGLPixels(220, 20, 1, 1).slice(0, 4)) : null
             }))()''')
             assert layout['scrollWidth'] <= layout['clientWidth'] + 1, (width, layout)
             assert close_color(list(layout['button']), [91, 42, 134, 255]), (width, layout)
@@ -573,7 +567,7 @@ def exercise(url):
           document.getElementById('canvas').clientWidth === 320''', 'device scale change')
         browser.frames(4)
         scaled = browser.stats()
-        assert scaled['rasterCalls'] > 0, scaled
+        assert scaled['fullFrames'] > 0, scaled
         assert close_color(browser.sample(220, 20), [91, 42, 134, 255]), browser.sample(220, 20)
         assert browser.sample(152, 260) == browser.sample(300, 20), (
             browser.sample(152, 260), browser.sample(300, 20))
@@ -581,19 +575,44 @@ def exercise(url):
         final = browser.stats()
         sizes = transfer_sizes()
         assert final['webglRequests'] >= 1, final
+        assert final['front2dRequests'] == 0, final
+        assert final['glDraws'] > 0 and final['damageFrames'] > 0, final
         assert final['composition'], final
         assert not browser.errors, browser.errors
 
-        print('Canvas2D no-WebGL production app: PASS')
-        print(f"WebGL requests rejected: {final['webglRequests']}; software mesh pixels verified")
+        print('GPU presenter production app: PASS')
+        print(f"WebGL2 requests: {final['webglRequests']}; 2D context requests on the front canvas: {final['front2dRequests']}")
         print(f"light background={light}; dark background={dark}; typed style forwarded")
-        print(f"warm damaged frame: {partial['maxFrameRasterCalls']} Canvas raster calls, {partial['maxFrameRasterCpu']:.3f} ms raster CPU, event-to-visible {partial['latencyMs']:.3f} ms")
-        print(f"full repaint after resize: {full['maxFrameRasterCalls']} Canvas raster calls, {full['maxFrameRasterCpu']:.3f} ms raster CPU")
-        print(f"DPR 2 repaint: {scaled['rasterCalls']} Canvas raster calls, {scaled['rasterCpu']:.3f} ms raster CPU")
-        print(f"idle retained frame: {idle['rasterCalls']} Canvas raster calls in 400 ms; {idle['setupCalls']} setup calls, {idle['setupCpu']:.3f} ms; {idle['presentCalls']} present calls, {idle['presentCpu']:.3f} ms")
+        print(f"warm damaged frame: {warm['damageFrames']} partial presents, {warm['glDrawCpu']:.3f} ms draw CPU, event-to-visible {warm['latencyMs']:.3f} ms")
+        print(f"full repaint after resize: {full['fullFrames']} full presents, {full['glDrawCpu']:.3f} ms draw CPU")
+        print(f"DPR 2 repaint: {scaled['fullFrames']} full presents, {scaled['glDrawCpu']:.3f} ms draw CPU")
+        print(f"idle retained frame: {idle['glDraws']} GPU draws and {idle['rasterCalls']} raster calls in 400 ms")
         print(f"download transfer: navigation={final['navigationBytes']} B resources={final['resourceBytes']} B files={sum(sizes.values())} B in {len(sizes)} files")
         for name, size in sizes.items():
             print(f'  {size:9d} B  {name}')
+    finally:
+        browser.close()
+
+
+def exercise_blocked(url):
+    # Without WebGL2 the host presents nothing; there is no 2D fallback.
+    browser = Browser(block_webgl=True)
+    try:
+        browser.viewport(640, 720, 1, mobile=True)
+        browser.open(url)
+        browser.until("canvasStats.webglRequests >= 1", 'the host still requested WebGL2')
+        browser.frames(6)
+        time.sleep(.4)
+        stats = browser.stats()
+        assert stats['front2dRequests'] == 0, stats
+        blank = browser.evaluate('''(() => {
+          const canvas = document.getElementById('canvas');
+          return {context: !!canvas.getContext('webgl2'), width: canvas.width, height: canvas.height};
+        })()''')
+        assert not blank['context'], blank
+        assert blank['width'] > 0 and blank['height'] > 0, blank
+        print('GPU presenter blocked run: PASS (no 2D fallback, clean no-paint failure)')
+        print(f"rejected WebGL2 requests: {stats['webglRequests']}; front-canvas 2D requests: {stats['front2dRequests']}")
     finally:
         browser.close()
 
@@ -629,6 +648,7 @@ def main():
         worker = threading.Thread(target=server.serve_forever, daemon=True)
         worker.start()
         exercise(f'http://127.0.0.1:{server.server_port}/{OUTPUT.name}')
+        exercise_blocked(f'http://127.0.0.1:{server.server_port}/{OUTPUT.name}')
     finally:
         server.shutdown()
         server.server_close()

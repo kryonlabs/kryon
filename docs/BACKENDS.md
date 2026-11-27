@@ -52,7 +52,7 @@ in the application.
 | `terminal` | `frames_terminal.zi` | 80 × 24 terminal cells via `terminal.zi` |
 | `pixmap` | `frames_pixmap.zi` | Explicit headless profile; renders two frames and writes the final PPM image |
 | `desktop` | `frames_desktop.zi` | SDL2 window with Cairo raster |
-| `canvas` | `frames_web.zi` | Canvas2D page with Emscripten and Asyncify |
+| `canvas` | `frames_web.zi` | WebGL2 page with Emscripten and Asyncify |
 | `android` | app `src/main.zi` → `android_run.zi` | Android NativeActivity package with direct `ANativeWindow` pixel presentation |
 
 The small application surface selects the host from the compile-time target.

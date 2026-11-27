@@ -41,6 +41,12 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Replace the web host's Canvas2D presenter with a WebGL2 GPU presenter: one
+  context whose drawing buffer survives composites, batched shape vertices
+  with analytic coverage, text and images as textured quads from retained
+  atlases, and damage-rectangle repaints instead of full-frame redraws. The
+  Canvas2D painter is deleted with no fallback; a browser without WebGL2
+  shows a blank canvas.
 - Clear Canvas frames before submitting GPU geometry, correct framebuffer attachment calls, and keep the portable window player on the current page API.
 - Keep native VS Code checks and previews on explicit build actions so editing and auto-save stay lightweight.
 

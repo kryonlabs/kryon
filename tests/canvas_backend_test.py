@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compile Zi Canvas2D effects to Wasm and verify pixels in a private headless browser."""
+"""Compile Zi Canvas effects to Wasm and verify GPU pixels in a private headless browser."""
 
 from toolchain import UI_MODULE_ARGS, JS_RUNTIME
 import os
@@ -36,12 +36,10 @@ with tempfile.TemporaryDirectory(prefix='canvas-browser-', dir=ROOT / 'build') a
     run([EMCC,'-O1','-I'+str(ZIRAN/'include'),'-iquote',gen,*sorted(gen.rglob('*.c')),
          *libs,'--embed-file',str(ROOT/'assets/fonts/LiberationSans-Regular.ttf')+'@/test-font.ttf','--js-library',ROOT/'tests/canvas_backend_effects.js','-sASYNCIFY','-sSINGLE_FILE=1',
          '-sEXIT_RUNTIME=1','-sENVIRONMENT=web','--shell-file',shell,'-o',work/'test.html'])
-    for gpu in ('0', '1'):
-        environment['CANVAS_TEST_MESH_GPU'] = gpu
-        for dpi in ('1', '1.25', '2'):
-            environment['CANVAS_TEST_DPI'] = dpi
-            profile = work / ('profile-' + gpu + '-' + dpi)
-            profile.mkdir(mode=0o700)
-            run([JS_RUNTIME, ROOT/'tests/canvas_backend_browser.mjs',
-                 (work/'test.html').as_uri(), profile], timeout=35)
-print('Canvas2D Zi/Wasm browser pixels, nested clips, input and lifecycle passed')
+    for dpi in ('1', '1.25', '2'):
+        environment['CANVAS_TEST_DPI'] = dpi
+        profile = work / ('profile-' + dpi)
+        profile.mkdir(mode=0o700)
+        run([JS_RUNTIME, ROOT/'tests/canvas_backend_browser.mjs',
+             (work/'test.html').as_uri(), profile], timeout=35)
+print('Canvas GPU Zi/Wasm browser pixels, nested clips, input and lifecycle passed')

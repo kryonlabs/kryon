@@ -42,22 +42,27 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
         "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
     ))
     (project / "src/app.zi").write_text(
-        '#import "kryon/geometry"\n'
-        '#import "kryon/session"\n'
-        'host_api :: #system_library "host_api";\n'
-        'RequestWindowClose :: () #foreign host_api;\n'
-        '#program_export\n'
-        'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
-        '    RequestWindowClose()\n'
-        '    return 0\n}\n'
+        'App :: #import "kryon/app"\n'
+        '#import "Window"\n'
+        '// main is the only entry: the first frame quits the host loop and\n'
+        '// main reports success after the canvas page exits cleanly.\n'
+        'Frame :: (frame: App.Frame) {\n'
+        '    unused frame\n'
+        '    WindowQuit()\n'
+        '    return\n'
+        '}\n'
+        'main :: () -> s32 {\n'
+        '    App.Run(App.Window.{.title = "canvas probe"}, Frame)\n'
+        '    return 0\n'
+        '}\n'
     )
     run([ZIRAN, "lock"], project)
     run([ZIRAN, "tool", "kryon", "build", "--profile", "web"], project)
     output = project / "build/canvas_probe-web.html"
     assert output.is_file() and output.stat().st_size > 100_000
     assert "<title>canvas_probe</title>" in output.read_text(errors="replace"), "page is not named after the program"
-    assert next((project / "build/generated/web/ir").glob("*_canvas_run.zir"), None)
-    assert next((project / "build/generated/web/c").glob("*_canvas_run.c"), None)
+    assert (project / "build/generated/web/ir/app.zir").is_file(), "the page has no generated program entry"
+    assert (project / "build/generated/web/c/app.c").is_file(), "the page has no generated program C"
     run([JS_RUNTIME, ROOT / "tests/canvas_backend_browser.mjs",
          output.as_uri(), project / "browser-profile"], project)
 print("Canvas Ziran project: manifest, saved IR, generated C, Emscripten page, and browser exit passed")

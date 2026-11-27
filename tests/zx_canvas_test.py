@@ -69,7 +69,7 @@ assert portable.read_bytes() == web.read_bytes(), 'Backend changed the portable 
 run([ROOT / 'build/bin/zx', '--check', portable])
 # The web shell contains the renderer and VM, never native app/widget output.
 generated = project / 'build/generated/web/player/generated/c'
-assert all(re.fullmatch(r'(?:p[0-9a-f]{16}_)?(?:bundle_app|hosted_app)\.c', path.name)
+assert all(re.fullmatch(r'(?:p[0-9a-f]{16}_)?(?:kryon__)?(?:bundle_app|hosted_app)\.c', path.name)
            for path in generated.glob('*_app.c'))
 assert not list(generated.glob('*_frames_zx.c'))
 for mode in ('keyboard', 'unicode'):

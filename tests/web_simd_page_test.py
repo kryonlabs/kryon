@@ -33,14 +33,16 @@ ENV.setdefault('EM_CACHE', str(ROOT / 'build/emscripten-cache'))
 # Lanczos resizes up, down, along one axis and along both, of a fixed noise
 # picture; the app publishes an FNV-1a hash of each result, first with the
 # best kernels and then with the scalar ones.
-APP = '''#import "kryon/geometry"
+APP = '''App :: #import "kryon/app"
+#import "kryon/geometry"
 #import "kryon/session"
+#import "Window"
+// main is the only entry: the frame reports the resize hashes once,
+// then quits the host loop and main reports success.
 #import "std/resample"
 #import "std/web"
 #import "std/vec"
 #import "std/format"
-host_api :: #system_library "host_api";
-RequestWindowClose :: () #foreign host_api;
 
 noise: [240000]u8;
 resized: [163840]u8;
@@ -70,8 +72,8 @@ Hashes :: (text: *Vec(u8)) {
         Resized(128, 128, 128, 77), Resized(200, 50, 61, 50), Resized(33, 300, 200, 31))
 }
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
+Frame :: (frame: App.Frame) {
+    unused frame
     if !reported {
         reported = true
         text: Vec(u8)
@@ -84,7 +86,12 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         WebSet(WebGlobal, WebName("kryonResample"), WebText(BuilderFinish(text)))
         WebEnd(scope)
     }
-    RequestWindowClose()
+    WindowQuit()
+    return
+}
+
+main :: () -> s32 {
+    App.Run(App.Window.{.title = "simd probe"}, Frame)
     return 0
 }
 '''

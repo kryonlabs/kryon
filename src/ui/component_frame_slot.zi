@@ -1,0 +1,76 @@
+// Optional mounted-component work. Plain widget trees know these procedure
+// slots, not the resource store or timer implementation that fills them.
+#import "session"
+Types :: #import "component_types";
+
+SessionQuery :: #type (Session) -> bool;
+SessionAction :: #type (Session) -> void;
+CurrentOwner :: #type (Session) -> u64;
+InstanceQuery :: #type (Types.Instance) -> bool;
+StatusCode :: #type (Session) -> s32;
+ErrorKey :: #type (Session) -> u64;
+ClockTick :: #type (Session, float64) -> void;
+Deadline :: #type (Session) -> float64;
+Delay :: #type (Session, float64) -> s32;
+OwnerDisposal :: #type (s32, u64) -> bool;
+
+Hooks :: struct {
+    current: CurrentOwner
+    start: SessionQuery
+    resume: InstanceQuery
+    leave: InstanceQuery
+    status: StatusCode
+    error_key: ErrorKey
+    cancel: SessionAction
+    commit: SessionAction
+    blocked: SessionQuery
+    tick: ClockTick
+    deadline: Deadline
+    delay: Delay
+    dispose: OwnerDisposal
+}
+#scope_file
+hooks: Hooks;
+#scope_export
+
+Use :: (value: Hooks) -> bool { hooks = value; return true }
+Current :: (session: Session) -> u64 {
+    if hooks.current != null { return hooks.current(session) }
+    return 0
+}
+FrameStart :: (session: Session) -> bool {
+    return hooks.start == null || hooks.start(session)
+}
+Resume :: (instance: Types.Instance) -> bool {
+    return hooks.resume != null && hooks.resume(instance)
+}
+Leave :: (instance: Types.Instance) -> bool {
+    return hooks.leave != null && hooks.leave(instance)
+}
+FrameStatus :: (session: Session) -> s32 {
+    if hooks.status != null { return hooks.status(session) }
+    return 0
+}
+FrameErrorKey :: (session: Session) -> u64 {
+    if hooks.error_key != null { return hooks.error_key(session) }
+    return 0
+}
+FrameCancel :: (session: Session) { if hooks.cancel != null { hooks.cancel(session) } }
+FrameCommit :: (session: Session) { if hooks.commit != null { hooks.commit(session) } }
+FrameBlocked :: (session: Session) -> bool {
+    return hooks.blocked != null && hooks.blocked(session)
+}
+Tick :: (session: Session, seconds: float64) {
+    if hooks.tick != null { hooks.tick(session, seconds) }
+}
+NextDeadline :: (session: Session) -> float64 {
+    if hooks.deadline != null { return hooks.deadline(session) }
+    return -1.0
+}
+NextDelay :: (session: Session, seconds: float64) -> s32 {
+    if hooks.delay != null { return hooks.delay(session, seconds) }
+    return 0
+}
+DisposeOwner :: (slot: s32, epoch: u64) -> bool {
+    return hooks.dispose == null || hooks.dispose(slot, epoch)
+}

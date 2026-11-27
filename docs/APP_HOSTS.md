@@ -57,7 +57,7 @@ uppercase ASCII, named keys from 256 (Escape), as `desktop_keys` maps SDL's.
 
 ## Compiled canvas host extensions
 
-`canvas_app_run.CanvasAppMainLoop(false)` runs an AppContext app compiled into
+`canvas_app_run.CanvasAppMainLoop()` runs an AppContext app compiled into
 its page. Bind `canvas_app_run:CanvasAppMain=app:Main`. Private documents retain
 `/kryon-apps/<app id>` on IndexedDB. The bare runner supports mini mode only.
 

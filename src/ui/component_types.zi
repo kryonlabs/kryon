@@ -1,0 +1,8 @@
+// Typed values shared with hosted compositions; no component storage.
+#import "session"
+
+Instance :: struct { session: Session; identity: u64; }
+Site :: struct { file: string; line: s64; column: s64; }
+Key :: struct { specified: bool; value: u64; }
+Token :: struct { owner: Instance; serial: u64; }
+

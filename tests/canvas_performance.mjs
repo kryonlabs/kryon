@@ -14,7 +14,7 @@ async function open(directory) {
   const profile = await mkdtemp(join(tmpdir(), 'canvas-performance-'));
   const env = {...process.env};
   for(const key of ['DISPLAY','WAYLAND_DISPLAY','XAUTHORITY','DBUS_SESSION_BUS_ADDRESS','SESSION_MANAGER','GDK_DISPLAY']) delete env[key];
-  const browser = spawn(process.env.CHROMIUM || 'chromium', ['--headless','--no-sandbox','--disable-gpu','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check','--allow-file-access-from-files','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'], {env,detached:true,stdio:['ignore','ignore','pipe']});
+  const browser = spawn(process.env.CHROMIUM || 'chromium', ['--headless','--no-sandbox','--enable-unsafe-swiftshader','--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check','--allow-file-access-from-files','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'], {env,detached:true,stdio:['ignore','ignore','pipe']});
   let errors = '', socket;
   browser.stderr.on('data', d => errors=(errors+d).slice(-4000));
   const close = async () => {
@@ -69,7 +69,7 @@ try {
   }
   for(const transformed of [0,1]) {
     // Include deferred raster work with a synchronous readback inside the timer.
-    const expression=`(()=>{const begin=performance.now();Module._Draw(50,${transformed});const pixels=document.querySelector('canvas').getContext('2d').getImageData(0,0,512,384).data;const end=performance.now();let hash=2166136261;for(const x of pixels) hash=Math.imul(hash^x,16777619);return {ms:end-begin,hash:hash>>>0};})()`;
+    const expression=`(()=>{const begin=performance.now();Module._Draw(50,${transformed});const canvas=document.querySelector('canvas');const gl=canvas.getContext('webgl2');const width=gl.drawingBufferWidth,height=gl.drawingBufferHeight;const src=new Uint8Array(width*height*4);gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,src);const pixels=new Uint8Array(width*height*4);const row=width*4;for(let y=0;y<height;y++) pixels.set(src.subarray((height-1-y)*row,(height-y)*row),y*row);const end=performance.now();let hash=2166136261;for(const x of pixels) hash=Math.imul(hash^x,16777619);return {ms:end-begin,hash:hash>>>0};})()`;
     for(const client of clients) await client.evaluate(expression);
     let reference;
     for(let round=0;round<9;round++) {

@@ -5,8 +5,7 @@ import {join} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 const [html,profile]=process.argv.slice(2);
 const dpi = process.env.CANVAS_TEST_DPI || '1';
-const gpu = process.env.CANVAS_TEST_MESH_GPU === '1';
-const rendering = gpu ? ['--enable-unsafe-swiftshader','--enable-webgl','--use-gl=angle','--use-angle=swiftshader'] : ['--disable-gpu','--use-gl=disabled','--disable-webgl'];
+const rendering = ['--enable-unsafe-swiftshader','--enable-webgl','--use-gl=angle','--use-angle=swiftshader'];
 const launchedAt=Date.now();
 const env={...process.env,YUE_DESKTOP_RECOVERY:'0'};
 for(const name of ['DISPLAY','WAYLAND_DISPLAY','XAUTHORITY','DBUS_SESSION_BUS_ADDRESS','SESSION_MANAGER']) delete env[name];
@@ -52,25 +51,13 @@ try {
   }
   await command('Runtime.enable');
   await command('Page.enable');
-  if(!gpu) await command('Page.addScriptToEvaluateOnNewDocument',{source:`
-    for(const prototype of [HTMLCanvasElement.prototype,OffscreenCanvas.prototype]) {
-      const original=prototype.getContext;
-      prototype.getContext=function(kind,...args) {
-        if(kind==='webgl'||kind==='webgl2'||kind==='experimental-webgl') return null;
-        return original.call(this,kind,...args);
-      };
-    }
-  `});
   await command('Page.navigate',{url:html});
   let result='pending';
   while(Date.now()<deadline) {
     const response=await command('Runtime.evaluate',{expression:'document.getElementById("result")?.textContent',returnByValue:true});
     result=response.result?.result?.value;
     if(result==='PASS') {
-      const measured=await command('Runtime.evaluate',{expression:'globalThis.canvasTestMeshDraws || 0',returnByValue:true});
-      const draws=measured.result?.result?.value || 0;
-      if(gpu ? draws < 1 : draws !== 0) throw new Error('Unexpected accelerated mesh count: '+draws+' gpu='+gpu);
-      console.log('Canvas2D browser: PASS ('+(gpu?'accelerated':'software')+' meshes)');break;
+      console.log('Canvas GPU browser: PASS');break;
     }
     if(result && result!=='pending') throw new Error(result+' '+pageDiagnostics);
     await delay(50);

@@ -11,7 +11,8 @@ const [html, profile, title, mode] = process.argv.slice(2);
 const launchedAt = Date.now();
 const env = {...process.env, YUE_DESKTOP_RECOVERY: '0'};
 for (const name of ['DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER']) delete env[name];
-const browser = spawn(process.env.CHROMIUM || 'chromium', ['--headless', '--no-sandbox', '--disable-gpu',
+const browser = spawn(process.env.CHROMIUM || 'chromium', ['--headless', '--no-sandbox',
+  '--enable-unsafe-swiftshader', '--enable-webgl', '--use-gl=angle', '--use-angle=swiftshader',
   '--disable-dev-shm-usage', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0',
   '--user-data-dir=' + profile, '--window-size=640,480', html], {env, stdio: ['ignore', 'ignore', 'pipe']});
 let errors = '';
@@ -51,19 +52,30 @@ try {
   const state = `(() => {
     const canvas = document.querySelector('canvas');
     if (!canvas) return {title: document.title, painted: 0, pixels: 0};
-    const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    const gl = canvas.getContext('webgl2');
+    if (!gl) return {title: document.title, painted: 0, pixels: 0};
+    // The GPU presenter keeps a premultiplied drawing buffer; alpha decides
+    // what painted, and readPixels reports it without row flipping.
+    const data = new Uint8ClampedArray(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
+    gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, data);
     let painted = 0;
     for (let index = 3; index < data.length; index += 4) if (data[index]) painted += 1;
     // The host sets the canvas's touch action as it boots, before main first
     // yields, so its clear has happened by the time the page can be read.
     return {title: document.title, booted: canvas.style.touchAction === 'none', painted,
-      pixels: canvas.width * canvas.height};
+      pixels: gl.drawingBufferWidth * gl.drawingBufferHeight};
   })()`;
   const expected = (seen) => mode === 'opaque' ? seen.painted === seen.pixels :
     mode === 'clear' ? seen.painted === 0 : seen.painted > 0 && seen.painted < seen.pixels / 2;
   const running = (seen) => seen.title === title && seen.booted && seen.pixels > 0;
+  // Reading pixels before the host boots (the canvas is still at its
+  // default size) stalls SwiftShader for the page's lifetime, so poll
+  // the cheap boot state first and read pixels only once it can present.
+  const booting = `(() => ({title: document.title, booted: document.querySelector('canvas')?.style.touchAction === 'none'}))()`;
   let seen = {};
   while (Date.now() < deadline) {
+    const light = await evaluate(booting) || {};
+    if (!(light.title === title && light.booted)) { await delay(100); continue; }
     seen = await evaluate(state) || {};
     if (running(seen) && expected(seen)) break;
     await delay(100);

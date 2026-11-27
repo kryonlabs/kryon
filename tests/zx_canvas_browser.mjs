@@ -26,7 +26,7 @@ const server=createServer(async(req,res)=>{
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const query=mode==='url'||mode==='hosted'?'?bundle='+encodeURIComponent(basename(downloaded)):'';
-const browser=spawn(process.env.CHROMIUM||'chromium',['--headless','--no-sandbox','--disable-gpu','--use-gl=disabled','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'http://127.0.0.1:'+server.address().port+'/'+basename(html)+query],{detached:true,stdio:['ignore','ignore','pipe'],env:environment});
+const browser=spawn(process.env.CHROMIUM||'chromium',['--headless','--no-sandbox','--enable-unsafe-swiftshader','--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'http://127.0.0.1:'+server.address().port+'/'+basename(html)+query],{detached:true,stdio:['ignore','ignore','pipe'],env:environment});
 let errors='',socket,diagnostics='';browser.stderr.on('data',v=>errors=(errors+v).slice(-2000));
 try {
   const deadline=Date.now()+45000;
@@ -61,6 +61,8 @@ try {
   async function settle(expression,accept){const end=Date.now()+15000;for(;;){const value=await evaluate(expression);if(accept(value)||Date.now()>end)return value;await delay(100);}}
   await call('Runtime.enable');
   await call('Emulation.setDeviceMetricsOverride',{width:960,height:600,deviceScaleFactor:1,mobile:false});
+  // The GPU presenter keeps a premultiplied drawing buffer; read it top-down.
+  await evaluate('globalThis.__zxGLPixels=function(x,y,w,h){const c=document.querySelector("canvas");const g=c.getContext("webgl2");if(!g)return null;const d=new Uint8ClampedArray(w*h*4);g.readPixels(x,g.drawingBufferHeight-y-h,w,h,g.RGBA,g.UNSIGNED_BYTE,d);const row=w*4;for(let t=0,b=h-1;t<b;t++,b--){const s=t*row,e=b*row;for(let i=0;i<row;i++){const v=d[s+i];d[s+i]=d[e+i];d[e+i]=v;}}return d;}');
   if(mode==='services') {
     while(Date.now()<deadline&&!await evaluate('!!document.querySelector("#zx-open")'))await delay(100);
     const document=await call('DOM.getDocument');
@@ -74,8 +76,8 @@ try {
     assert.equal(await evaluate('getComputedStyle(document.querySelector("canvas")).cursor'),'crosshair','ZX frame cursor did not reach the browser');
     console.log('Browser ZX audio, asynchronous HTTP and clock passed');
   } else if(mode==='hosted') {
-    const imageReady='(()=>{const c=document.querySelector("canvas");if(!c)return false;const p=c.getContext("2d").getImageData(550,130,1,1).data;return p[0]===230&&p[1]===30&&p[2]===40;})()';
-    const textPixels='Array.from(document.querySelector("canvas").getContext("2d").getImageData(40,128,300,40).data).join(",")';
+    const imageReady='(()=>{const c=document.querySelector("canvas");if(!c)return false;const p=__zxGLPixels(550,130,1,1);return p&&p[0]===230&&p[1]===30&&p[2]===40;})()';
+    const textPixels='Array.from(__zxGLPixels(40,128,300,40)).join(",")';
     async function ready(){const end=Date.now()+30000;while(Date.now()<end){if(await evaluate(imageReady))return;await delay(100);}throw Error('Hosted app did not render: '+diagnostics+' '+await evaluate('document.querySelector("#zx-controls span").textContent'));}
     await ready();
     const original=await evaluate(textPixels);
@@ -237,7 +239,7 @@ try {
     for(const entry of entries) {
       await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[resolve(dirname(bundleFile),entry.bundle)]});
       await delay(600);
-      const state=await evaluate(`(()=>{const c=document.querySelector('canvas');const p=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let ink=0;for(let i=0;i<p.length;i+=4)if(p[i]+p[i+1]+p[i+2]<500)ink++;return {status:document.querySelector('#zx-controls span').textContent,ink};})()`);
+      const state=await evaluate(`(()=>{const c=document.querySelector('canvas');const p=__zxGLPixels(0,0,c.width,c.height);let ink=0;for(let i=0;i<p.length;i+=4)if(p[i]+p[i+1]+p[i+2]<500)ink++;return {status:document.querySelector('#zx-controls span').textContent,ink};})()`);
       assert.equal(state.status,'',entry.id+': '+state.status+' '+diagnostics);
       assert(state.ink>10,'Empty browser example: '+entry.id);
       assert(!/portable execution failed|ABORT|RuntimeError/.test(diagnostics),entry.id+': '+diagnostics);
@@ -255,14 +257,14 @@ try {
   }
   let ready=false;
   while(Date.now()<deadline){
-    ready=await evaluate('(()=>{const c=document.querySelector("canvas");if(!c||c.width!==960)return false;const p=c.getContext("2d").getImageData(550,130,1,1).data;return p[0]===230&&p[1]===30&&p[2]===40;})()');
+    ready=await evaluate('(()=>{const c=document.querySelector("canvas");if(!c||c.width!==960)return false;const p=__zxGLPixels(550,130,1,1);return p&&p[0]===230&&p[1]===30&&p[2]===40;})()');
     if(ready)break;
     assert(!/portable execution failed|ABORT|FAIL/.test(diagnostics),diagnostics);
     await delay(100);
   }
   assert(ready,'ZX image asset did not render: '+diagnostics+' '+errors);
-  assert(await evaluate('(()=>{const c=document.querySelector("canvas").getContext("2d");const p=c.getImageData(10,10,1,1).data;if(p[0]!==248||p[1]!==250||p[2]!==252)return false;return [...c.getImageData(40,128,300,40).data].filter((v,i)=>i%4!==3&&v<100).length>30;})()'),'ZX background or text did not render');
-  const textPixels='Array.from(document.querySelector("canvas").getContext("2d").getImageData(40,128,300,40).data).join(",")';
+  assert(await evaluate('(()=>{const p=__zxGLPixels(10,10,1,1);if(!p||p[0]!==248||p[1]!==250||p[2]!==252)return false;return [...__zxGLPixels(40,128,300,40)].filter((v,i)=>i%4!==3&&v<100).length>30;})()'),'ZX background or text did not render');
+  const textPixels='Array.from(__zxGLPixels(40,128,300,40)).join(",")';
   const before=await evaluate(textPixels);
   const position=await evaluate('(()=>{const r=document.querySelector("canvas").getBoundingClientRect();return {x:r.x+100,y:r.y+70};})()');
   await call('Input.dispatchMouseEvent',{type:'mouseMoved',...position});

@@ -1,4 +1,4 @@
-# Canvas2D browser host
+# Canvas browser host
 
 A browser integration roots `src/backend/canvas_raster.zi` with the selected
 host and defines `PLATFORM_WEB`. Generate native sources with Ziran, then link
@@ -16,17 +16,15 @@ The browser hosts (`page_core.zi`,
 written in Ziran and reach the page through `std/web.zi`; the one JavaScript
 file is the generic, Kryon-agnostic bridge in the Ziran repository.
 
-The page uses a Canvas2D context with a drawing preference that survives
-occasional pixel reads. When WebGL is available, `Image` meshes share
-a private surface around their visible bounds and transfer to the page together.
-Indexed grids reuse shared vertices, and small size changes reuse the drawing
-buffer. Texture changes retain their painter order within the batch. Other
-paint, clipping, target changes, readback and presentation flush that batch
-in order. Without WebGL, the same API uses the Canvas2D triangle painter.
-Ordinary sprites without local rotation or mirroring draw directly in the
-current camera coordinates. They preserve the caller's opacity and sampling
-without copying the complete canvas state for each tile. Opacity alone does
-not allocate a tinted texture.
+The page presents through one WebGL2 context on the visible canvas whose
+drawing buffer survives composites: a repaint rasterises only its damage
+rectangle and the browser shows the rest of the frame unchanged, with no
+second canvas and no full-frame redraw. Shapes stream into one batched
+vertex buffer and shade with analytic coverage; text runs and images draw
+as textured quads from retained atlases. Hidden 2D canvases only rasterise
+the glyph bitmaps that feed those atlases, so no pixel is ever presented
+through a 2D context. A browser without WebGL2 leaves the page blank: the
+Canvas2D painter is deleted, not kept as a fallback.
 The UI host retains its existing back buffer. It compares checked paint plans,
 keeps unchanged pixels and clears/replays only the damaged region. Session,
 viewport, display-density, background and raster-resource changes repaint as
@@ -83,10 +81,10 @@ and 16 MiB of pixels; releasing or updating a texture invalidates its cached
 copies. Frame input queues hold at most 1024 events. Audio streams enqueue at
 most two pending buffers and report their actual readiness.
 
-Mesh acceleration retains at most 32 source textures and 16 MiB of source
-pixels; its drawing surface is limited to four million pixels and the device's
-own limits. Texture updates refresh cached pixels. A lost context releases
-its resources and invalidates retained paint before the next frame.
+A lost GPU context releases its resources and stops drawing until the browser
+restores the context: the program and buffers rebuild, texture owners
+re-upload on their next use, and caches holding GPU textures re-rasterise
+instead of sampling now-empty uploads.
 
 Browser window position, monitor selection, and native window icons have no
 corresponding operation on the embedded canvas. Fullscreen and pointer lock
@@ -104,10 +102,11 @@ python3 tests/canvas_project_test.py
 The first command compiles the complete host and checks real pixels in a new
 headless Chromium process. It covers camera and nested clipping, UTF-8 input,
 texture updates and render targets, asynchronous PNG round trips, a real TTF
-font, frame yielding, and close/reopen ownership. Mesh pixels, sampling,
-opacity and texture updates run at three display densities with acceleration
-both available and unavailable; the accelerated runs also lose and recreate
-their graphics context. It scrubs desktop display
+font, frame yielding, and close/reopen ownership. Sprite pixels, sampling,
+opacity and texture updates run at three display densities on the GPU
+presenter and also lose and recreate their graphics context. A separate
+no-WebGL run (tests/canvas_no_webgl_test.py) checks that a browser without
+WebGL2 shows a blank canvas with no Canvas2D fallback and no errors. It scrubs desktop display
 variables and controls only its own browser process. The other tests verify
 WebAudio and text/file behavior with deterministic browser-effect fixtures. The
 project test builds a real application manifest through Ziran, loads the

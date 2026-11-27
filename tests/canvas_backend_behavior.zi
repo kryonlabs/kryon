@@ -14,6 +14,7 @@
 #import "c_string"
 #import "page_texture"
 #import "page_mesh"
+#import "page_gpu"
 #import "page_core"
 #import "tree_draw"
 #import "tree"
@@ -75,7 +76,6 @@ TestRetainedCanvas :: () -> bool {
     density := PageDpi()
     for phase: cast(s32)0..18 {
         session := ifx phase == 4 then second else first
-        if phase == 17 { WebSet(page_ctx, page_names.global_alpha, WebNumber(0.5)) }
         if phase == 13 { CanvasTestDensity(ifx density == 2.0 then 1.25 else 2.0) }
         background := ifx phase >= 12 then Color.{232, 240, 248, 255} else Color.{255, 255, 255, 255}
         CanvasFrameBegin(background)
@@ -119,8 +119,11 @@ TestRetainedCanvas :: () -> bool {
         if phase == 10 { DrawRectangle(80, 10, 20, 20, .{0, 0, 240, 255}) }
         EndDrawing()
         if CanvasTestRetained(phase) == 0 { good = false; break }
+        // Stray GPU state must not survive the next frame's reset.
+        if phase == 17 {
+            PageGpuScissorPush(40.0 * density, 40.0 * density, 10.0 * density, 10.0 * density)
+        }
     }
-    WebSet(page_ctx, page_names.global_alpha, WebNumber(1.0))
     CanvasFrameReset()
     CanvasTestDensity(density)
     BeginDrawing()
@@ -142,12 +145,12 @@ TestSpriteState :: (clipped: bool) -> bool {
     if page_textures[image_slot].width != 2 || page_textures[image_slot].height != 2 ||
         page_textures[target_slot].width != 32 || page_textures[target_slot].height != 32 { return false }
     BeginTextureMode(target)
-    ctx := PageContext()
-    source := page_textures[PageTextureFind(cast(s32)image.id)].canvas
-    unused CanvasTestSpriteState(ctx, source, ifx clipped then 2 else 0)
+    ClearBackground(Color.{})
     before := PageTextureCount()
     // Nonzero origin cancels without a local rotation, even under an outer
     // rotated camera and clip. Alternate sampling and opacity on this path.
+    BeginMode2D(Camera.{offset = Vector2.{5.0, 3.0}, rotation = 9.7403, zoom = 1.1})
+    if clipped { BeginScissorMode(0, 0, 26, 20) }
     for index: cast(s32)0..3 {
         alpha: s32 = ifx index % 2 == 0 then 255 else 128
         if clipped {
@@ -162,8 +165,14 @@ TestSpriteState :: (clipped: bool) -> bool {
                 255, 255, 255, alpha, index % 2)
         }
     }
+    if clipped { EndScissorMode() }
+    EndMode2D()
     unchanged := PageTextureCount() == before
-    matched := CanvasTestSpriteState(ctx, source, ifx clipped then 3 else 1) != 0
+    // Read the finished target back through borrowed DOM canvases; the
+    // presenter itself keeps no 2D context to inspect.
+    staging := PageTextureStaging(cast(s32)target.id)
+    source := PageTextureStaging(cast(s32)image.id)
+    matched := CanvasTestSpriteState(staging, source, ifx clipped then 3 else 1) != 0
     EndTextureMode()
     UnloadRenderTexture(target)
     UnloadTexture(image)
@@ -182,22 +191,19 @@ CanvasTestText :: (face: s32, size: s32, zoom: float32, width: s32,
     dark: bool) -> s32 #foreign browser "canvas_test_text";
 
 CanvasInk :: struct { right: s32; ink: s64; signature: u64 }
-type_pixels: [221184]u8;
+type_pixels: [921600]u8;
 
 CanvasTypographyInk :: (value: string) -> CanvasInk {
     BeginDrawing()
     ClearBackground(.{255, 255, 255, 255})
     RasterText(value, 4, 3, 28, .{0, 0, 0, 255})
     EndDrawing()
-    scope := WebScope(); defer WebEnd(scope)
-    dpi := PageDpi()
-    width := cast(s32)(150.0 * dpi); height := cast(s32)(45.0 * dpi)
-    image := WebAsObject(WebCall4(page_ctx, WebName("getImageData"), WebNumber(0.0), WebNumber(0.0),
-        WebNumber(cast(float64)width), WebNumber(cast(float64)height)))
-    data := WebGetObject(image, WebName("data"))
+    width := PageGpuSurfaceWidth()
+    height := PageGpuSurfaceHeight()
     ink: CanvasInk
-    if data == 0 || width * height * 4 > type_pixels.count { return ink }
-    unused WebCopyOut(data, cast(*void)*type_pixels[0], width * height * 4)
+    if width <= 0 || height <= 0 ||
+        width * height * 4 > type_pixels.count { return ink }
+    if PageTextureRead(0, *type_pixels[0], cast(u32)(width * height * 4)) != 1 { return ink }
     for y: cast(s32)0..height - 1 {
         for x: cast(s32)0..width - 1 {
             dark := 255 - cast(s32)type_pixels[(y * width + x) * 4]
@@ -364,33 +370,22 @@ main :: () -> s32 {
     mesh: [4]Vector2
     mesh[0] = .{112.0, 30.0}; mesh[1] = .{96.0, 30.0}
     mesh[2] = .{112.0, 46.0}; mesh[3] = .{96.0, 46.0}
-    if PageMeshDraw(cast(s32)mesh_texture.id, .{-1.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
-        .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255}, 0) { CanvasTestFail(45) }
-    before_mesh_draws := page_mesh_draws
     RasterImageMesh("", mesh_texture.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
         .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
     // Adjacent uses of the same image retain their own tint and opacity
     // while sharing one GPU draw, including when its source changes next.
-    if page_mesh_gl != 0 {
-        for index: cast(s32)0..3 { mesh[index].x += 30.0 }
-        RasterImageMesh("", mesh_texture.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
-            .{0.0, 0.0, 160.0, 120.0}, .{128, 255, 255, 128})
-        for index: cast(s32)0..3 { mesh[index].x -= 30.0 }
-    }
+    for index: cast(s32)0..3 { mesh[index].x += 30.0 }
+    RasterImageMesh("", mesh_texture.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
+        .{0.0, 0.0, 160.0, 120.0}, .{128, 255, 255, 128})
+    for index: cast(s32)0..3 { mesh[index].x -= 30.0 }
     PaintRoundedFill(Session.{}, -1, .{0.0, 0.0, 160.0, 120.0}, 0.0, 4,
         Color.{0, 0, 0, 0})
-    if page_mesh_gl != 0 && !page_mesh_pending { CanvasTestFail(44) }
     // The accelerated sampler must interpolate transparent texels before
     // applying tint. Keep the software painter's existing opaque baseline.
-    if page_mesh_gl != 0 {
-        mesh_pixels[7] = cast(u8)128
-        mesh_pixels[11] = cast(u8)64
-        mesh_pixels[15] = cast(u8)0
-        UpdateTexture(mesh_texture, cast(*void)(*mesh_pixels[0]))
-        if page_mesh_draws != before_mesh_draws + 1 { CanvasTestFail(46) }
-        if WebGetNumber(page_mesh_canvas, page_names.width) * WebGetNumber(page_mesh_canvas, page_names.height) >
-        9600.0 * PageSurfaceScale() * PageSurfaceScale() { CanvasTestFail(47) }
-    }
+    mesh_pixels[7] = cast(u8)128
+    mesh_pixels[11] = cast(u8)64
+    mesh_pixels[15] = cast(u8)0
+    UpdateTexture(mesh_texture, cast(*void)(*mesh_pixels[0]))
     SetTextureFilter(mesh_texture, 1)
     for index: cast(s32)0..3 {
         mesh[index].x -= 16.0
@@ -438,23 +433,21 @@ main :: () -> s32 {
         RasterImageMesh("", id, .{0.0, 0.0, 2.0, 2.0}, mixed[:], 2, 2,
             .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
     }
-    if page_mesh_gl != 0 {
-        // Three large grids cross the index-buffer capacity. Shared vertices
-        // and the next batch's indices must still refer to the right colours.
-        large: [64 * 32]Vector2
-        for row: cast(s32)0..31 {
-            for column: cast(s32)0..63 {
-                large[row * 64 + column] = Vector2.{148.0 + cast(float32)column * 8.0 / 63.0,
-                    90.0 + cast(float32)row * 8.0 / 31.0}
-            }
+    // Three large grids cross the index-buffer capacity. Shared vertices
+    // and the next batch's indices must still refer to the right colours.
+    large: [64 * 32]Vector2
+    for row: cast(s32)0..31 {
+        for column: cast(s32)0..63 {
+            large[row * 64 + column] = Vector2.{148.0 + cast(float32)column * 8.0 / 63.0,
+                90.0 + cast(float32)row * 8.0 / 31.0}
         }
-        for index: cast(s32)0..2 {
-            color := Color.{255, 255, 255, 255}
-            if index == 1 { color.b = cast(u8)0 }
-            if index == 2 { color = Color.{255, 128, 0, 255} }
-            RasterImageMesh("", mesh_texture.id, .{0.0, 0.0, 2.0, 2.0}, large[:], 64, 32,
-                .{0.0, 0.0, 160.0, 120.0}, color)
-        }
+    }
+    for index: cast(s32)0..2 {
+        color := Color.{255, 255, 255, 255}
+        if index == 1 { color.b = cast(u8)0 }
+        if index == 2 { color = Color.{255, 128, 0, 255} }
+        RasterImageMesh("", mesh_texture.id, .{0.0, 0.0, 2.0, 2.0}, large[:], 64, 32,
+            .{0.0, 0.0, 160.0, 120.0}, color)
     }
     UnloadTexture(accent)
     // A collapsed grid column must not erase its visible neighbour.
@@ -506,64 +499,40 @@ main :: () -> s32 {
     SetTargetFPS(120)
     // The page shows a frame once it ends, so its pixels are read after.
     EndDrawing()
-    result := CanvasTestFinish(page_mesh_draws)
-    if page_mesh_gl != 0 {
-        retained := SessionOpen()
-        unused MeshLossFrame(retained)
-        if !MeshLossFrame(retained) { CanvasTestFail(40) }
-        scope := WebScope()
-        extension := WebAsObject(WebCall1(page_mesh_gl, WebName("getExtension"),
-            WebText("WEBGL_lose_context")))
-        if extension == 0 { CanvasTestFail(41) }
-        else {
-            unused WebCall0(extension, WebName("loseContext"))
-            for attempt: cast(s32)0..49 {
-                if page_mesh_gl == 0 { break }
-                WebSleep(10)
-            }
-            if page_mesh_gl != 0 || MeshLossFrame(retained) { CanvasTestFail(42) }
+    result := CanvasTestFinish(1)
+    retained := SessionOpen()
+    unused MeshLossFrame(retained)
+    if !MeshLossFrame(retained) { CanvasTestFail(40) }
+    // Losing WebGL2 must fail a retained repaint and hand back a working
+    // presenter after the browser restores the context.
+    scope := WebScope()
+    extension := WebAsObject(WebCall1(PageGpuContext(), WebName("getExtension"),
+        WebText("WEBGL_lose_context")))
+    if extension == 0 { CanvasTestFail(41) }
+    else {
+        unused WebCall0(extension, WebName("loseContext"))
+        for attempt: cast(s32)0..49 {
+            if !PageGpuAttached() { break }
+            WebSleep(10)
         }
-        WebEnd(scope)
-        SessionClose(retained)
-        restored := LoadTextureFromImage(CanvasImageFromRgba(*mesh_pixels[0], 2, 2))
-        mesh[0] = .{0.0, 0.0}; mesh[1] = .{10.0, 0.0}
-        mesh[2] = .{0.0, 10.0}; mesh[3] = .{10.0, 10.0}
-        BeginDrawing()
-        ClearBackground(Color.{0, 0, 0, 255})
-        RasterImageMesh("", restored.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
-            .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
-        EndDrawing()
-        if page_mesh_gl == 0 || page_mesh_draws == 0 || CanvasTestFront(0, 255, 255) == 0 {
-            CanvasTestFail(43)
+        if PageGpuAttached() || MeshLossFrame(retained) { CanvasTestFail(42) }
+        unused WebCall0(extension, WebName("restoreContext"))
+        for attempt: cast(s32)0..49 {
+            if PageGpuAttached() { break }
+            WebSleep(10)
         }
-        // A shrinking animation keeps its allocation, but copies only the
-        // active crop from the top of the larger WebGL backing surface.
-        mesh[1].x = 100.0
-        mesh[2].y = 80.0
-        mesh[3] = .{100.0, 80.0}
-        BeginDrawing()
-        ClearBackground(Color.{0, 0, 0, 255})
-        RasterImageMesh("", restored.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
-            .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
-        EndDrawing()
-        capacity_w := WebGetNumber(page_mesh_canvas, page_names.width)
-        capacity_h := WebGetNumber(page_mesh_canvas, page_names.height)
-        mesh[1].x = 10.0
-        mesh[2].y = 10.0
-        mesh[3] = .{10.0, 10.0}
-        BeginDrawing()
-        ClearBackground(Color.{0, 0, 0, 255})
-        RasterImageMesh("", restored.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
-            .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
-        EndDrawing()
-        if WebGetNumber(page_mesh_canvas, page_names.width) != capacity_w ||
-        WebGetNumber(page_mesh_canvas, page_names.height) != capacity_h ||
-        CanvasTestFront(0, 255, 255) == 0 { CanvasTestFail(48) }
-        UnloadTexture(restored)
-        BeginDrawing()
-        ClearBackground(Color.{255, 255, 255, 255})
-        EndDrawing()
     }
+    WebEnd(scope)
+    SessionClose(retained)
+    BeginDrawing()
+    ClearBackground(Color.{0, 255, 255, 255})
+    EndDrawing()
+    if !PageGpuAttached() || CanvasTestFront(0, 255, 255) == 0 {
+        CanvasTestFail(43)
+    }
+    BeginDrawing()
+    ClearBackground(Color.{255, 255, 255, 255})
+    EndDrawing()
     if IsKeyPressed(65) || IsKeyReleased(65) { CanvasTestFail(12) }
     // A frame in progress stays off the page until it ends.
     BeginDrawing()
