@@ -1,0 +1,8 @@
+{
+  "files.associations": {
+    "*.ts": "typescript",
+    "*.tsx": "typescriptreact"
+  },
+  "typescript.validate.enable": false,
+  "typescript.preferences.jsxAttributeCompletionStyle": "braces"
+}

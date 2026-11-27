@@ -41,6 +41,11 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Configure VS Code and TSX starters to use built-in TypeScript React editing
+  with native Ziran diagnostics, rather than JavaScript/React assumptions.
+  Document why native syntax and checked imports need the Ziran extension
+  instead of duplicate ambient widget declarations (docs/VSCODE.md).
+
 - Resolve Android's program-entry binding through the public package import,
   so compiler module namespaces cannot break native application builds.
 
