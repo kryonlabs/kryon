@@ -1,13 +1,13 @@
-// Canvas 2D drawing for the application's shapes, gradients, transforms, and
-// clips. The operations mirror native's 2D drawing; each turns into calls on
-// the page's 2D context, which page_core.zi holds.
+// GPU drawing for the application's shapes, gradients, transforms, and
+// clips. The operations mirror native's 2D drawing; each turns into a batch
+// the WebGL2 presenter shades, with the transform baked per vertex so a
+// camera change cannot split a batch.
 #import "geometry"
+#import "drawing_props"
 #import "page_core"
+#import "drawing_props"
+#import "page_gpu"
 #import "web"
-
-page_paint_c :: #system_library "c";
-PagePaintAllocate :: (size: usize) -> *void #foreign page_paint_c "malloc";
-PagePaintRelease :: (memory: *void) #foreign page_paint_c "free";
 
 PAGE_TAU :: 6.28318530718
 PAGE_PI :: 3.14159265359
@@ -26,73 +26,56 @@ PageOpCameraPush :: 11
 PageOpCameraPop :: 12
 PageOpFrameReset :: 13
 
-PageSetFill :: (ctx: s32, r: s32, g: s32, b: s32, a: s32) {
-    WebSet(ctx, page_names.fill_style, WebText(PageColor(r, g, b, a)))
+PageGpuColor :: (r: s32, g: s32, b: s32, a: s32) -> Color {
+    return Color.{cast(u8)r, cast(u8)g, cast(u8)b, cast(u8)a}
 }
 
-PageSetStroke :: (ctx: s32, r: s32, g: s32, b: s32, a: s32) {
-    WebSet(ctx, page_names.stroke_style, WebText(PageColor(r, g, b, a)))
+// Whether the presenter's transform is axis aligned: scaled and moved, but
+// not turned or skewed.
+PageGpuUpright :: (m: [6]float64) -> bool {
+    return m[1] == 0.0 && m[2] == 0.0 && m[0] > 0.0 && m[3] > 0.0
 }
 
-PageArc :: (ctx: s32, x: float64, y: float64, radius: float64,
-    start: float64, end: float64, backwards: bool) {
-    args: [6]WebValue
-    args[0] = WebNumber(x)
-    args[1] = WebNumber(y)
-    args[2] = WebNumber(radius)
-    args[3] = WebNumber(start)
-    args[4] = WebNumber(end)
-    args[5] = WebBool(backwards)
-    unused WebCall(ctx, page_names.arc, *args[0], 6)
-}
-
-PageApplyCamera :: (ctx: s32) {
+// The camera the 2D hosts applied to their context, tracked as the
+// presenter's logical-to-device matrix.
+PageApplyCamera :: () {
     if !page_mode.active { return }
-    unused WebCall0(ctx, page_names.save)
-    unused WebCall2(ctx, page_names.translate, WebNumber(page_mode.offset_x),
-        WebNumber(page_mode.offset_y))
-    unused WebCall1(ctx, page_names.rotate,
-        WebNumber(page_mode.rotation * PAGE_PI / 180.0))
-    unused WebCall2(ctx, page_names.scale, WebNumber(page_mode.zoom_x),
-        WebNumber(page_mode.zoom_y))
-    unused WebCall2(ctx, page_names.translate, WebNumber(-page_mode.target_x),
-        WebNumber(-page_mode.target_y))
+    PageGpuMatrixTranslate(page_mode.offset_x, page_mode.offset_y)
+    PageGpuMatrixRotate(page_mode.rotation)
+    PageGpuMatrixScale2(page_mode.zoom_x, page_mode.zoom_y)
+    PageGpuMatrixTranslate(0.0 - page_mode.target_x, 0.0 - page_mode.target_y)
 }
 
-PageResetTransform :: (ctx: s32) {
-    scale: float64 = PageSurfaceScale()
-    args: [6]WebValue
-    args[0] = WebNumber(scale)
-    args[1] = WebNumber(0.0)
-    args[2] = WebNumber(0.0)
-    args[3] = WebNumber(scale)
-    args[4] = WebNumber(0.0)
-    args[5] = WebNumber(0.0)
-    unused WebCall(ctx, page_names.set_transform, *args[0], 6)
+PageResetTransform :: () {
+    PageGpuMatrixReset()
 }
 
-PageRoundedTransformFill :: (ctx: s32, x: float64, y: float64, width: float64,
+// Fill a rectangle with its edges snapped to exact device pixels while the
+// transform is axis aligned, like the 2D host's aligned fills.
+PageRoundedTransformFill :: (x: float64, y: float64, width: float64,
     height: float64) {
-    matrix: s32 = WebAsObject(WebCall0(ctx, page_names.get_transform))
-    a: float64 = WebGetNumber(matrix, page_names.a)
-    b: float64 = WebGetNumber(matrix, page_names.b)
-    c: float64 = WebGetNumber(matrix, page_names.c)
-    d: float64 = WebGetNumber(matrix, page_names.d)
-    e: float64 = WebGetNumber(matrix, page_names.e)
-    f: float64 = WebGetNumber(matrix, page_names.f)
-    if b == 0.0 && c == 0.0 && a > 0.0 && d > 0.0 {
-        // Share exact device-pixel edges after camera zoom.
+    m := PageGpuMatrixOut()
+    if PageGpuUpright(m) {
+        a := m[0]
+        d := m[3]
+        e := m[4]
+        f := m[5]
         x0: float64 = cast(float64)PageRound(a * x + e)
         y0: float64 = cast(float64)PageRound(d * y + f)
         x1: float64 = cast(float64)PageRound(a * (x + width) + e)
         y1: float64 = cast(float64)PageRound(d * (y + height) + f)
-        unused WebCall4(ctx, page_names.fill_rect, WebNumber((x0 - e) / a),
-            WebNumber((y0 - f) / d), WebNumber((x1 - x0) / a),
-            WebNumber((y1 - y0) / d))
+        PageGpuFillRect((x0 - e) / a, (y0 - f) / d, (x1 - x0) / a,
+            (y1 - y0) / d, PageGpuLastColor())
         return
     }
-    unused WebCall4(ctx, page_names.fill_rect, WebNumber(x), WebNumber(y),
-        WebNumber(width), WebNumber(height))
+    PageGpuFillRect(x, y, width, height, PageGpuLastColor())
+}
+
+// The colour of the last fill-like call; PageContextCall carries colours in
+// its arguments, and the snapped fill needs it after the matrix read.
+page_gpu_fill_color: Color;
+PageGpuLastColor :: () -> Color {
+    return page_gpu_fill_color
 }
 
 // One drawing operation on the current surface. `PageOp*` names the
@@ -100,83 +83,43 @@ PageRoundedTransformFill :: (ctx: s32, x: float64, y: float64, width: float64,
 PageContextCall :: (op: s32, a: float64, b: float64, c: float64, d: float64,
     e: float64, f: float64, g: float64, r: s32, green: s32, blue: s32, alpha: s32) {
     if !PageIsOpen() { return }
-    ctx: s32 = PageContext()
-    if ctx == 0 { return }
-    scope: s32 = WebScope()
+    color := PageGpuColor(r, green, blue, alpha)
+    page_gpu_fill_color = color
     if op == PageOpClear {
+        // A fill over the whole current surface, like the 2D hosts' clear.
         width: float64 = cast(float64)page_width
         height: float64 = cast(float64)page_height
         if page_target_count > 0 {
-            surface: s32 = page_targets[page_target_count - 1].canvas
-            width = WebGetNumber(surface, page_names.width)
-            height = WebGetNumber(surface, page_names.height)
+            width = cast(float64)page_targets[page_target_count - 1].target_width
+            height = cast(float64)page_targets[page_target_count - 1].target_height
         }
-        PageSetFill(ctx, r, green, blue, alpha)
-        unused WebCall4(ctx, page_names.fill_rect, WebNumber(0.0), WebNumber(0.0),
-            WebNumber(width), WebNumber(height))
+        PageGpuFillRect(0.0, 0.0, width, height, color)
     } else if op == PageOpFillRect {
-        PageSetFill(ctx, r, green, blue, alpha)
-        PageRoundedTransformFill(ctx, a, b, c, d)
+        PageRoundedTransformFill(a, b, c, d)
     } else if op == PageOpStrokeRect {
-        PageSetStroke(ctx, r, green, blue, alpha)
-        WebSet(ctx, page_names.line_width, WebNumber(1.0))
-        unused WebCall4(ctx, page_names.stroke_rect, WebNumber(a + 0.5),
-            WebNumber(b + 0.5), WebNumber(c - 1.0), WebNumber(d - 1.0))
+        // A one-pixel outline centred on the edge, half a pixel in.
+        PageGpuRoundedOutline(a + 0.5, b + 0.5, c - 1.0, d - 1.0, 0.0, 1.0, color)
     } else if op == PageOpFillCircle {
-        PageSetFill(ctx, r, green, blue, alpha)
-        unused WebCall0(ctx, page_names.begin_path)
-        PageArc(ctx, a, b, c, 0.0, PAGE_TAU, false)
-        unused WebCall0(ctx, page_names.fill)
+        PageGpuCircle(a, b, c, color)
     } else if op == PageOpStrokeCircle {
-        PageSetStroke(ctx, r, green, blue, alpha)
-        WebSet(ctx, page_names.line_width, WebNumber(1.0))
-        unused WebCall0(ctx, page_names.begin_path)
-        PageArc(ctx, a, b, c, 0.0, PAGE_TAU, false)
-        unused WebCall0(ctx, page_names.stroke)
+        PageGpuRing(a, b, c - 0.5, c + 0.5, 0.0, PAGE_TAU, color)
     } else if op == PageOpLine {
-        PageSetStroke(ctx, r, green, blue, alpha)
-        WebSet(ctx, page_names.line_width, WebNumber(1.0))
-        unused WebCall0(ctx, page_names.begin_path)
-        unused WebCall2(ctx, page_names.move_to, WebNumber(a + 0.5), WebNumber(b + 0.5))
-        unused WebCall2(ctx, page_names.line_to, WebNumber(c + 0.5), WebNumber(d + 0.5))
-        unused WebCall0(ctx, page_names.stroke)
+        PageGpuSegment(a + 0.5, b + 0.5, c + 0.5, d + 0.5, 1.0, false, color)
     } else if op == PageOpThickLine {
-        PageSetStroke(ctx, r, green, blue, alpha)
-        WebSet(ctx, page_names.line_width, WebNumber(e))
-        WebSet(ctx, page_names.line_cap, WebText("round"))
-        unused WebCall0(ctx, page_names.begin_path)
-        unused WebCall2(ctx, page_names.move_to, WebNumber(a), WebNumber(b))
-        unused WebCall2(ctx, page_names.line_to, WebNumber(c), WebNumber(d))
-        unused WebCall0(ctx, page_names.stroke)
+        PageGpuSegment(a, b, c, d, e, true, color)
     } else if op == PageOpTriangle {
-        PageSetFill(ctx, r, green, blue, alpha)
-        unused WebCall0(ctx, page_names.begin_path)
-        unused WebCall2(ctx, page_names.move_to, WebNumber(a), WebNumber(b))
-        unused WebCall2(ctx, page_names.line_to, WebNumber(c), WebNumber(d))
-        unused WebCall2(ctx, page_names.line_to, WebNumber(e), WebNumber(f))
-        unused WebCall0(ctx, page_names.close_path)
-        unused WebCall0(ctx, page_names.fill)
+        PageGpuTriangle(a, b, c, d, e, f, color)
     } else if op == PageOpScissorBegin {
         // Replace the screen-space clip below the camera.
-        if page_mode.active { unused WebCall0(ctx, page_names.restore) }
-        if page_saved > 0 {
-            unused WebCall0(ctx, page_names.restore)
-            page_saved = 0
-        }
-        unused WebCall0(ctx, page_names.save)
-        PageResetTransform(ctx)
-        unused WebCall0(ctx, page_names.begin_path)
-        unused WebCall4(ctx, page_names.rect, WebNumber(a), WebNumber(b),
-            WebNumber(c), WebNumber(d))
-        unused WebCall0(ctx, page_names.clip)
+        saved := PageGpuMatrixOut()
+        PageGpuMatrixReset()
+        PageGpuScissorPush(a, b, c, d)
+        PageGpuMatrixSet(saved[0], saved[1], saved[2], saved[3], saved[4], saved[5])
         page_saved = 1
-        PageApplyCamera(ctx)
     } else if op == PageOpScissorEnd {
         if page_saved > 0 {
-            if page_mode.active { unused WebCall0(ctx, page_names.restore) }
-            unused WebCall0(ctx, page_names.restore)
+            PageGpuScissorPop()
             page_saved = 0
-            PageApplyCamera(ctx)
         }
     } else if op == PageOpCameraPush {
         page_mode.active = true
@@ -187,260 +130,140 @@ PageContextCall :: (op: s32, a: float64, b: float64, c: float64, d: float64,
         page_mode.target_x = e
         page_mode.target_y = f
         page_mode.rotation = g
-        PageApplyCamera(ctx)
+        PageApplyCamera()
     } else if op == PageOpCameraPop {
         if page_mode.active {
-            unused WebCall0(ctx, page_names.restore)
+            PageGpuFrameReset()
             page_mode.active = false
         }
     } else if op == PageOpFrameReset {
         // Logical screen coordinates over the high-density backing store.
-        if page_mode.active {
-            unused WebCall0(ctx, page_names.restore)
-            page_mode.active = false
-        }
-        if page_saved > 0 {
-            unused WebCall0(ctx, page_names.restore)
-            page_saved = 0
-        }
-        PageResetTransform(ctx)
+        page_mode.active = false
+        page_saved = 0
+        PageGpuFrameReset()
     }
-    WebEnd(scope)
 }
 
-PageGradient :: (ctx: s32, gradient: s32, r0: s32, g0: s32, b0: s32, a0: s32,
-    r1: s32, g1: s32, b1: s32, a1: s32) {
-    add: s32 = WebName("addColorStop")
-    unused WebCall2(gradient, add, WebNumber(0.0), WebText(PageColor(r0, g0, b0, a0)))
-    unused WebCall2(gradient, add, WebNumber(1.0), WebText(PageColor(r1, g1, b1, a1)))
-    WebSet(ctx, page_names.fill_style, WebObject(gradient))
-}
-
-PageDrawGradientVertical :: (x: float64, y: float64, w: float64, h: float64,
-    tr: s32, tg: s32, tb: s32, ta: s32, br: s32, bg: s32, bb: s32, ba: s32) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 { return }
-    scope: s32 = WebScope()
-    gradient: s32 = WebAsObject(WebCall4(ctx, WebName("createLinearGradient"),
-        WebNumber(0.0), WebNumber(y), WebNumber(0.0), WebNumber(y + h)))
-    PageGradient(ctx, gradient, tr, tg, tb, ta, br, bg, bb, ba)
-    unused WebCall4(ctx, page_names.fill_rect, WebNumber(x), WebNumber(y),
-        WebNumber(w), WebNumber(h))
-    WebEnd(scope)
-}
-PageDrawCircleGradient :: (x: float64, y: float64, radius: float64,
-    ir: s32, ig: s32, ib: s32, ia: s32, outer_r: s32, og: s32, ob: s32, oa: s32) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 || radius <= 0.0 { return }
-    scope: s32 = WebScope()
-    args: [6]WebValue
-    args[0] = WebNumber(x)
-    args[1] = WebNumber(y)
-    args[2] = WebNumber(0.0)
-    args[3] = WebNumber(x)
-    args[4] = WebNumber(y)
-    args[5] = WebNumber(radius)
-    gradient: s32 = WebAsObject(WebCall(ctx, WebName("createRadialGradient"),
-        *args[0], 6))
-    PageGradient(ctx, gradient, ir, ig, ib, ia, outer_r, og, ob, oa)
-    unused WebCall0(ctx, page_names.begin_path)
-    PageArc(ctx, x, y, radius, 0.0, PAGE_TAU, false)
-    unused WebCall0(ctx, page_names.fill)
-    WebEnd(scope)
-}
-
-// Every three points are one triangle; all of them are filled as one path,
-// so the canvas's antialiasing shows no seam where two of them meet.
-PageFillTriangles :: (points: []Vector2, r: s32, g: s32, b: s32, a: s32) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 { return }
-    count: s64 = points.count - points.count % 3
-    if count == 0 { return }
-    scope: s32 = WebScope()
-    PageSetFill(ctx, r, g, b, a)
-    unused WebCall0(ctx, page_names.begin_path)
-    at: s64 = 0
-    while at < count {
-        unused WebCall2(ctx, page_names.move_to,
-            WebNumber(cast(float64)points[at].x),
-            WebNumber(cast(float64)points[at].y))
-        unused WebCall2(ctx, page_names.line_to,
-            WebNumber(cast(float64)points[at + 1].x),
-            WebNumber(cast(float64)points[at + 1].y))
-        unused WebCall2(ctx, page_names.line_to,
-            WebNumber(cast(float64)points[at + 2].x),
-            WebNumber(cast(float64)points[at + 2].y))
-        unused WebCall0(ctx, page_names.close_path)
-        at += 3
-    }
-    unused WebCall0(ctx, page_names.fill)
-    WebEnd(scope)
-}
-
-// Starts (begin) or ends a blend mode for what is drawn in between.
-PageBlendMode :: (mode: s32, begin: bool) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 { return }
-    scope: s32 = WebScope()
-    if !begin {
-        unused WebCall0(ctx, page_names.restore)
-        WebEnd(scope)
-        return
-    }
-    unused WebCall0(ctx, page_names.save)
-    if mode == 1 {
-        WebSet(ctx, page_names.global_composite, WebText("lighter"))
-    } else if mode == 2 {
-        WebSet(ctx, page_names.global_composite, WebText("multiply"))
-    } else {
-        WebSet(ctx, page_names.global_composite, WebText("source-over"))
-    }
-    WebEnd(scope)
-}
-// A filled (0) or outlined (1) rectangle with rounded corners.
-PageDrawRounded :: (op: s32, x: float64, y: float64, w: float64, h: float64,
-    radius: float64, r: s32, g: s32, b: s32, a: s32) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 { return }
-    scope: s32 = WebScope()
-    unused WebCall0(ctx, page_names.begin_path)
-    limit: float64 = w
-    if h < limit { limit = h }
-    limit = limit * 0.5
-    corner: float64 = radius
-    if limit < corner { corner = limit }
-    if WebTypeOf(WebGetObject(ctx, WebName("roundRect"))) == WebTypeFunction {
-        unused WebCall5(ctx, WebName("roundRect"), WebNumber(x), WebNumber(y),
-            WebNumber(w), WebNumber(h), WebNumber(corner))
-    } else {
-        arc_to: s32 = WebName("arcTo")
-        unused WebCall2(ctx, page_names.move_to, WebNumber(x + corner), WebNumber(y))
-        unused WebCall2(ctx, page_names.line_to, WebNumber(x + w - corner), WebNumber(y))
-        unused WebCall5(ctx, arc_to, WebNumber(x + w), WebNumber(y),
-            WebNumber(x + w), WebNumber(y + corner), WebNumber(corner))
-        unused WebCall2(ctx, page_names.line_to, WebNumber(x + w), WebNumber(y + h - corner))
-        unused WebCall5(ctx, arc_to, WebNumber(x + w), WebNumber(y + h),
-            WebNumber(x + w - corner), WebNumber(y + h), WebNumber(corner))
-        unused WebCall2(ctx, page_names.line_to, WebNumber(x + corner), WebNumber(y + h))
-        unused WebCall5(ctx, arc_to, WebNumber(x), WebNumber(y + h),
-            WebNumber(x), WebNumber(y + h - corner), WebNumber(corner))
-        unused WebCall2(ctx, page_names.line_to, WebNumber(x), WebNumber(y + corner))
-        unused WebCall5(ctx, arc_to, WebNumber(x), WebNumber(y),
-            WebNumber(x + corner), WebNumber(y), WebNumber(corner))
-        unused WebCall0(ctx, page_names.close_path)
-    }
-    if op == 0 {
-        PageSetFill(ctx, r, g, b, a)
-        unused WebCall0(ctx, page_names.fill)
-    } else {
-        PageSetStroke(ctx, r, g, b, a)
-        WebSet(ctx, page_names.line_width, WebNumber(1.0))
-        unused WebCall0(ctx, page_names.stroke)
-    }
-    WebEnd(scope)
-}
-
-PageDrawRectLinesEx :: (x: float64, y: float64, w: float64, h: float64,
-    thickness: float64, r: s32, g: s32, b: s32, a: s32) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 || w <= 0.0 || h <= 0.0 { return }
-    scope: s32 = WebScope()
-    line: float64 = thickness
-    if line < 1.0 { line = 1.0 }
-    unused WebCall0(ctx, page_names.save)
-    PageSetStroke(ctx, r, g, b, a)
-    WebSet(ctx, page_names.line_width, WebNumber(line))
-    inner_w: float64 = w - line
-    if inner_w < 0.0 { inner_w = 0.0 }
-    inner_h: float64 = h - line
-    if inner_h < 0.0 { inner_h = 0.0 }
-    unused WebCall4(ctx, page_names.stroke_rect, WebNumber(x + line * 0.5),
-        WebNumber(y + line * 0.5), WebNumber(inner_w), WebNumber(inner_h))
-    unused WebCall0(ctx, page_names.restore)
-    WebEnd(scope)
-}
 PageAbs :: (value: float64) -> float64 {
     if value < 0.0 { return 0.0 - value }
     return value
 }
 
+PageDrawGradientVertical :: (x: float64, y: float64, w: float64, h: float64,
+    tr: s32, tg: s32, tb: s32, ta: s32, br: s32, bg: s32, bb: s32, ba: s32) {
+    if !PageIsOpen() { return }
+    PageGpuGradientVertical(x, y, w, h,
+        PageGpuColor(tr, tg, tb, ta), PageGpuColor(br, bg, bb, ba))
+}
+
+PageDrawCircleGradient :: (x: float64, y: float64, radius: float64,
+    ir: s32, ig: s32, ib: s32, ia: s32, outer_r: s32, og: s32, ob: s32, oa: s32) {
+    if !PageIsOpen() || radius <= 0.0 { return }
+    PageGpuCircleGradient(x, y, radius,
+        PageGpuColor(ir, ig, ib, ia), PageGpuColor(outer_r, og, ob, oa))
+}
+
+// Every three points are one triangle; all of them shade with the same
+// analytic coverage, so no seam shows where two of them meet.
+PageFillTriangles :: (points: []Vector2, r: s32, g: s32, b: s32, a: s32) {
+    if !PageIsOpen() { return }
+    count: s64 = points.count - points.count % 3
+    if count == 0 { return }
+    color := PageGpuColor(r, g, b, a)
+    at: s64 = 0
+    while at < count {
+        PageGpuTriangle(cast(float64)points[at].x, cast(float64)points[at].y,
+            cast(float64)points[at + 1].x, cast(float64)points[at + 1].y,
+            cast(float64)points[at + 2].x, cast(float64)points[at + 2].y, color)
+        at += 3
+    }
+}
+
+// Starts (begin) or ends a blend mode for what is drawn in between.
+PageBlendMode :: (mode: s32, begin: bool) {
+    if !PageIsOpen() { return }
+    if begin {
+        PageGpuBlendBegin(mode)
+    } else {
+        PageGpuBlendEnd()
+    }
+}
+
+// A filled (0) or outlined (1) rectangle with rounded corners.
+PageDrawRounded :: (op: s32, x: float64, y: float64, w: float64, h: float64,
+    radius: float64, r: s32, g: s32, b: s32, a: s32) {
+    if !PageIsOpen() { return }
+    limit: float64 = w
+    if h < limit { limit = h }
+    limit = limit * 0.5
+    corner: float64 = radius
+    if limit < corner { corner = limit }
+    color := PageGpuColor(r, g, b, a)
+    if op == 0 {
+        PageGpuFillRectRounded(x, y, w, h, corner, color)
+    } else {
+        PageGpuRoundedOutline(x, y, w, h, corner, 1.0, color)
+    }
+}
+
+PageDrawRectLinesEx :: (x: float64, y: float64, w: float64, h: float64,
+    thickness: float64, r: s32, g: s32, b: s32, a: s32) {
+    if !PageIsOpen() || w <= 0.0 || h <= 0.0 { return }
+    line: float64 = thickness
+    if line < 1.0 { line = 1.0 }
+    color := PageGpuColor(r, g, b, a)
+    inner_w: float64 = w - line
+    if inner_w < 0.0 { inner_w = 0.0 }
+    inner_h: float64 = h - line
+    if inner_h < 0.0 { inner_h = 0.0 }
+    PageGpuFillRect(x, y, w, line, color)
+    PageGpuFillRect(x, y + h - line, w, line, color)
+    PageGpuFillRect(x, y + line, line, h - line * 2.0, color)
+    PageGpuFillRect(x + w - line, y + line, line, h - line * 2.0, color)
+}
+
 PageDrawRing :: (cx: float64, cy: float64, inner: float64, outer: float64,
     start: float64, end: float64, r: s32, g: s32, b: s32, a: s32) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 { return }
-    scope: s32 = WebScope()
+    if !PageIsOpen() { return }
     from: float64 = start * PAGE_PI / 180.0
-    to: float64 = end * PAGE_PI / 180.0
-    full: bool = PageAbs(end - start) >= 359.999
-    PageSetFill(ctx, r, g, b, a)
-    unused WebCall0(ctx, page_names.begin_path)
-    if full {
-        PageArc(ctx, cx, cy, outer, 0.0, PAGE_TAU, false)
-        unused WebCall2(ctx, page_names.move_to, WebNumber(cx + inner), WebNumber(cy))
-        PageArc(ctx, cx, cy, inner, PAGE_TAU, 0.0, true)
-    } else {
-        PageArc(ctx, cx, cy, outer, from, to, false)
-        PageArc(ctx, cx, cy, inner, to, from, true)
-        unused WebCall0(ctx, page_names.close_path)
-    }
-    unused WebCall1(ctx, page_names.fill, WebText("evenodd"))
-    WebEnd(scope)
+    sweep: float64 = (end - start) * PAGE_PI / 180.0
+    if PageAbs(end - start) >= 359.999 { sweep = PAGE_TAU }
+    if sweep < 0.0 { sweep = 0.0 }
+    PageGpuRing(cx, cy, inner, outer, from, sweep, PageGpuColor(r, g, b, a))
 }
-page_math_c :: #system_library "m";
-PageSine :: (value: float64) -> float64 #foreign page_math_c "sin";
-PageCosine :: (value: float64) -> float64 #foreign page_math_c "cos";
 
-// The six numbers of the context's transform, in the application's units.
+// The six numbers of the current logical-to-device transform, in the
+// application's units (the density scale divided out).
 PageGetModelview :: (values: *float32) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 { return }
-    scope: s32 = WebScope()
-    matrix: s32 = WebAsObject(WebCall0(ctx, page_names.get_transform))
+    m := PageGpuMatrixOut()
     scale: float64 = PageSurfaceScale()
-    values[0] = cast(float32)(WebGetNumber(matrix, page_names.a) / scale)
-    values[1] = cast(float32)(WebGetNumber(matrix, page_names.b) / scale)
-    values[2] = cast(float32)(WebGetNumber(matrix, page_names.c) / scale)
-    values[3] = cast(float32)(WebGetNumber(matrix, page_names.d) / scale)
-    values[4] = cast(float32)(WebGetNumber(matrix, page_names.e) / scale)
-    values[5] = cast(float32)(WebGetNumber(matrix, page_names.f) / scale)
-    WebEnd(scope)
+    if scale <= 0.0 { scale = 1.0 }
+    values[0] = cast(float32)(m[0] / scale)
+    values[1] = cast(float32)(m[1] / scale)
+    values[2] = cast(float32)(m[2] / scale)
+    values[3] = cast(float32)(m[3] / scale)
+    values[4] = cast(float32)(m[4] / scale)
+    values[5] = cast(float32)(m[5] / scale)
 }
+
 // Clips later drawing to a rectangle in the application's coordinates,
 // keeping the current transform for what follows.
 PageClipPush :: (x: s32, y: s32, width: s32, height: s32) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 { return }
-    scope: s32 = WebScope()
-    unused WebCall0(ctx, page_names.save)
-    matrix: s32 = WebAsObject(WebCall0(ctx, page_names.get_transform))
-    scale: float64 = PageSurfaceScale()
-    args: [6]WebValue
-    args[0] = WebNumber(scale)
-    args[1] = WebNumber(0.0)
-    args[2] = WebNumber(0.0)
-    args[3] = WebNumber(scale)
-    args[4] = WebNumber(0.0)
-    args[5] = WebNumber(0.0)
-    unused WebCall(ctx, page_names.set_transform, *args[0], 6)
+    if !PageIsOpen() { return }
+    saved := PageGpuMatrixOut()
+    PageGpuMatrixReset()
     clip_w: s32 = width
     if clip_w < 0 { clip_w = 0 }
     clip_h: s32 = height
     if clip_h < 0 { clip_h = 0 }
-    unused WebCall0(ctx, page_names.begin_path)
-    unused WebCall4(ctx, page_names.rect, WebNumber(cast(float64)x),
-        WebNumber(cast(float64)y), WebNumber(cast(float64)clip_w),
-        WebNumber(cast(float64)clip_h))
-    unused WebCall0(ctx, page_names.clip)
-    unused WebCall1(ctx, page_names.set_transform, WebObject(matrix))
+    PageGpuScissorPush(cast(float64)x, cast(float64)y,
+        cast(float64)clip_w, cast(float64)clip_h)
+    PageGpuMatrixSet(saved[0], saved[1], saved[2], saved[3], saved[4], saved[5])
     page_raster_clips += 1
-    WebEnd(scope)
 }
 
 PageClipPop :: () {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 || page_raster_clips <= 0 { return }
-    scope: s32 = WebScope()
-    unused WebCall0(ctx, page_names.restore)
+    if !PageIsOpen() || page_raster_clips <= 0 { return }
+    PageGpuScissorPop()
     page_raster_clips -= 1
-    WebEnd(scope)
 }

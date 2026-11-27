@@ -144,7 +144,9 @@ CanvasCursorCss :: (props: CursorProps, dpi: float64) -> s32 {
     for byte: FormatInteger(cast(s64)props.hotspot_y, number[:]) { hotspot[at] = byte; at += 1 }
     for byte: ", auto" { hotspot[at] = byte; at += 1 }
     tail := TextFromBytes(hotspot[:at])
-    single := CanvasCursorImageUrl(page_textures[slot].canvas, props.width, props.height)
+    source := PageTextureStaging(page_textures[slot].id)
+    if source == 0 { return 0 }
+    single := CanvasCursorImageUrl(source, props.width, props.height)
     if single == 0 { return 0 }
     suffix: [80]u8
     close := "\")"
@@ -156,7 +158,7 @@ CanvasCursorCss :: (props: CursorProps, dpi: float64) -> s32 {
     style := WebGetObject(WebAsObject(WebCall1(PageDocument(), page_names.create_element, WebText("div"))), page_names.style)
     WebSet(style, page_names.cursor, CanvasCursorText("url(\"", single, TextFromBytes(suffix[:length])))
     if dpi != 1.0 {
-        dense := CanvasCursorImageUrl(page_textures[slot].canvas,
+        dense := CanvasCursorImageUrl(source,
             CanvasCursorPixels(props.width, dpi), CanvasCursorPixels(props.height, dpi))
         if dense != 0 {
             density: [24]u8

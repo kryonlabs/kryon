@@ -1,44 +1,34 @@
 // Textures, render targets, and images for the canvas backend. A texture is
-// an offscreen canvas the page holds; the numbers the application sees are
-// small ids that this module hands out and looks up. Tinted copies of
-// textures are cached here too, within a fixed count and pixel budget.
+// a WebGL2 texture (a render target adds its own framebuffer); the numbers
+// the application sees are small ids that this module hands out and looks
+// up.
 #import "page_core"
+#import "page_gpu"
+#import "drawing_props"
 #import "web"
 
 page_texture_c :: #system_library "c";
-PageTextureAllocate :: (size: usize) -> *void #foreign page_texture_c "malloc";
+PageTextureRawAllocate :: (size: usize) -> *void #foreign page_texture_c "malloc";
+PageTextureRawRelease :: (memory: *void) #foreign page_texture_c "free";
+
+PageTextureAllocate :: (size: usize) -> *void { return PageTextureRawAllocate(size) }
+PageTextureRelease :: (memory: *void) { PageTextureRawRelease(memory) }
 PAGE_TEXTURE_MAX :: 4096
-PAGE_TINT_MAX :: 32
-PAGE_TINT_BYTES :: 16777216
 
 PageTexture :: struct {
     id: s32
-    canvas: s32
+    texture: s32
+    framebuffer: s32
     target: bool
     filter: s32
     revision: u64
-    // Browser canvases have fixed dimensions for a registered texture.
+    // GPU textures have fixed dimensions once created.
     width: s32
     height: s32
 }
 
-// A copy of a texture multiplied by a colour. `order` is when it was made,
-// so the oldest goes first when the cache is full.
-PageTint :: struct {
-    texture: s32
-    r: s32
-    g: s32
-    b: s32
-    canvas: s32
-    bytes: float64
-    order: s32
-}
-
 page_textures: [PAGE_TEXTURE_MAX]PageTexture;
 page_next_texture: s32 = 1;
-page_tints: [PAGE_TINT_MAX]PageTint;
-page_tint_count: s32;
-page_tint_order: s32;
 page_export_canvas: s32;
 
 PageTextureFind :: (id: s32) -> s32 {
@@ -48,8 +38,10 @@ PageTextureFind :: (id: s32) -> s32 {
     return -1
 }
 
-// Registers a canvas and returns its id; 0 when the table is full.
-PageTextureRegister :: (canvas: s32, target: bool, width: s32, height: s32) -> s32 {
+// Registers a GPU texture (and its render-target framebuffer, or 0) and
+// returns its id; 0 when the table is full.
+PageTextureRegister :: (texture: s32, framebuffer: s32, target: bool,
+    width: s32, height: s32) -> s32 {
     tries: s32 = 0
     while tries < PAGE_TEXTURE_MAX {
         id: s32 = page_next_texture
@@ -57,8 +49,9 @@ PageTextureRegister :: (canvas: s32, target: bool, width: s32, height: s32) -> s
         if page_next_texture >= 2147483000 { page_next_texture = 1 }
         slot: s32 = id % PAGE_TEXTURE_MAX
         if page_textures[slot].id == 0 {
-            page_textures[slot] = PageTexture.{.id = id, .canvas = WebKeep(canvas),
-                .target = target, .revision = 1, .width = width, .height = height}
+            page_textures[slot] = PageTexture.{.id = id, .texture = texture,
+                .framebuffer = framebuffer, .target = target, .revision = 1,
+                .width = width, .height = height}
             return id
         }
         tries += 1
@@ -66,75 +59,20 @@ PageTextureRegister :: (canvas: s32, target: bool, width: s32, height: s32) -> s
     return 0
 }
 
-PageTintDrop :: (index: s32) {
-    WebRelease(page_tints[index].canvas)
-    page_tint_count -= 1
-    page_tints[index] = page_tints[page_tint_count]
-}
-
-PageTintsClear :: () {
-    while page_tint_count > 0 { PageTintDrop(page_tint_count - 1) }
-}
-
-PageTintsClearFor :: (id: s32) {
-    index: s32 = 0
-    while index < page_tint_count {
-        if page_tints[index].texture == id {
-            PageTintDrop(index)
-        } else {
-            index += 1
-        }
-    }
-}
-
-PageTintOldest :: () -> s32 {
-    oldest: s32 = 0
-    index: s32 = 1
-    while index < page_tint_count {
-        if page_tints[index].order < page_tints[oldest].order { oldest = index }
-        index += 1
-    }
-    return oldest
-}
-
-PageTintFind :: (id: s32, r: s32, g: s32, b: s32) -> s32 {
-    index: s32 = 0
-    while index < page_tint_count {
-        tint: PageTint = page_tints[index]
-        if tint.texture == id && tint.r == r && tint.g == g && tint.b == b {
-            return index
-        }
-        index += 1
-    }
-    return -1
-}
-
-PageTintBytes :: () -> float64 {
-    total: float64 = 0.0
-    index: s32 = 0
-    while index < page_tint_count {
-        total += page_tints[index].bytes
-        index += 1
-    }
-    return total
-}
-
-// Frees every texture and tint: the page is closing or starting over.
+// Frees every texture: the page is closing or starting over.
 PageTexturesReset :: () {
-    PageTintsClear()
     index: s32 = 0
     while index < PAGE_TEXTURE_MAX {
         if page_textures[index].id != 0 {
-            WebRelease(page_textures[index].canvas)
-            page_textures[index] = PageTexture.{}
+            PageTextureFreeEntry(index)
         }
         index += 1
     }
 }
 
-// How many textures and tinted copies are alive, for leak checks.
+// How many textures are alive, for leak checks.
 PageTextureCount :: () -> s32 {
-    count: s32 = page_tint_count
+    count: s32 = 0
     index: s32 = 0
     while index < PAGE_TEXTURE_MAX {
         if page_textures[index].id != 0 { count += 1 }
@@ -143,85 +81,161 @@ PageTextureCount :: () -> s32 {
     return count
 }
 
-PageMakeTint :: (slot: s32, id: s32, r: s32, g: s32, b: s32) -> s32 {
-    source: s32 = page_textures[slot].canvas
-    width := cast(float64)page_textures[slot].width
-    height := cast(float64)page_textures[slot].height
-    copy: s32 = PageMakeCanvas(cast(s32)width, cast(s32)height)
-    if copy == 0 { return -1 }
-    context: s32 = PageContext2D(copy)
-    draw: s32 = WebName("drawImage")
-    WebSet(context, WebName("imageSmoothingEnabled"), WebBool(false))
-    unused WebCall3(context, draw, WebObject(source), WebNumber(0.0), WebNumber(0.0))
-    WebSet(context, page_names.global_composite, WebText("multiply"))
-    WebSet(context, page_names.fill_style, WebText(PageColor(r, g, b, 255)))
-    unused WebCall4(context, page_names.fill_rect, WebNumber(0.0), WebNumber(0.0),
-        WebNumber(width), WebNumber(height))
-    WebSet(context, page_names.global_composite, WebText("destination-in"))
-    unused WebCall3(context, draw, WebObject(source), WebNumber(0.0), WebNumber(0.0))
-    if page_tint_count >= PAGE_TINT_MAX { PageTintDrop(PageTintOldest()) }
-    index: s32 = page_tint_count
-    page_tint_count += 1
-    page_tint_order += 1
-    page_tints[index] = PageTint.{id, r, g, b, WebKeep(copy), width * height * 4.0,
-        page_tint_order}
-    return index
-}
-
-// The canvas a texture draws from with a tint: the texture itself, or its
-// cached tinted copy. `drop_after` is a copy the cache already gave up,
-// released once the draw is done.
-PageTintedSource :: struct {
-    canvas: s32
-    drop_after: s32
-}
-
-PageTintedSourceFor :: (slot: s32, id: s32, r: s32, g: s32, b: s32) -> PageTintedSource {
-    result: PageTintedSource
-    texture: s32 = page_textures[slot].canvas
-    drop_after: s32 = 0
-    if !(r == 255 && g == 255 && b == 255) {
-        // Tinted copies are cached per (texture, tint): multiply the colour
-        // channels, then restore the source alpha with destination-in.
-        found: s32 = PageTintFind(id, r, g, b)
-        if found < 0 { found = PageMakeTint(slot, id, r, g, b) }
-        if found >= 0 {
-            texture = page_tints[found].canvas
-            // Bound the retained tint pixels as well as their count. A large
-            // image may still be drawn once without pinning another copy.
-            while PageTintBytes() > cast(float64)PAGE_TINT_BYTES && page_tint_count > 0 {
-                oldest: s32 = PageTintOldest()
-                if page_tints[oldest].canvas == texture {
-                    // Still needed for this draw: released afterwards.
-                    drop_after = texture
-                    page_tint_count -= 1
-                    page_tints[oldest] = page_tints[page_tint_count]
-                } else {
-                    PageTintDrop(oldest)
-                }
-            }
-        }
+PageTextureFreeEntry :: (slot: s32) {
+    if page_textures[slot].framebuffer != 0 {
+        PageGpuFramebufferFree(page_textures[slot].framebuffer)
     }
-    result.canvas = texture
-    result.drop_after = drop_after
-    return result
+    if page_textures[slot].texture != 0 {
+        PageGpuTextureFree(page_textures[slot].texture)
+    }
+    page_textures[slot] = PageTexture.{}
 }
 
-// Whether the context's transform keeps images upright: scaled and moved,
-// but not turned or skewed.
-PageTransformUpright :: (ctx: s32) -> bool {
-    matrix: s32 = WebAsObject(WebCall0(ctx, page_names.get_transform))
-    return WebGetNumber(matrix, page_names.b) == 0.0 && WebGetNumber(matrix, page_names.c) == 0.0
+// Applies a draw's requested filter to a texture exactly once.
+PageTextureEnsureFilter :: (slot: s32, filter: s32) {
+    if page_textures[slot].filter != filter {
+        page_textures[slot].filter = filter
+        PageGpuTextureFilter(page_textures[slot].texture, filter != 0)
+    }
 }
 
+PageTextureFilter :: (id: s32, filter: s32) {
+    slot: s32 = PageTextureFind(id)
+    if slot >= 0 { PageTextureEnsureFilter(slot, filter) }
+}
+
+PageTextureFilterFor :: (id: s32) -> s32 {
+    slot: s32 = PageTextureFind(id)
+    if slot < 0 { return 0 }
+    return page_textures[slot].filter
+}
+
+PageTextureWidthOf :: (id: s32) -> s32 {
+    slot: s32 = PageTextureFind(id)
+    if slot < 0 { return 0 }
+    return page_textures[slot].width
+}
+
+PageTextureHeightOf :: (id: s32) -> s32 {
+    slot: s32 = PageTextureFind(id)
+    if slot < 0 { return 0 }
+    return page_textures[slot].height
+}
+
+// RGBA pixels from memory become a new texture.
+PageTextureFromRgba :: (pixels: *u8, width: s32, height: s32) -> s32 {
+    texture := PageGpuTextureFromRgba(pixels, width, height)
+    if texture == 0 { return 0 }
+    return PageTextureRegister(texture, 0, false, width, height)
+}
+
+// Failed uploads leave the original texture, revision and dimensions intact.
+PageTextureReplaceRgba :: (id: s32, pixels: *u8, width: s32, height: s32) -> bool {
+    slot: s32 = PageTextureFind(id)
+    if slot < 0 || pixels == null || page_textures[slot].target ||
+        page_textures[slot].width != width || page_textures[slot].height != height { return false }
+    PageFlushPaint()
+    ok := PageGpuTextureReplaceRgba(page_textures[slot].texture, pixels, width, height)
+    if ok {
+        page_textures[slot].revision += 1
+    }
+    return ok
+}
+
+PageTextureFree :: (id: s32) {
+    PageFlushPaint()
+    slot: s32 = PageTextureFind(id)
+    if slot >= 0 { PageTextureFreeEntry(slot) }
+}
+
+PageTextureUpdateRgba :: (id: s32, pixels: *u8, x: s32, y: s32, width: s32, height: s32) {
+    PageFlushPaint()
+    slot: s32 = PageTextureFind(id)
+    if slot < 0 || pixels == null || width <= 0 || height <= 0 { return }
+    if PageGpuTextureUpdateRgba(page_textures[slot].texture, pixels, x, y,
+        width, height) {
+        page_textures[slot].revision += 1
+    }
+}
+
+// Copies a texture's pixels (0 is the page's drawing buffer) into `pixels`,
+// top-down with straight alpha. Returns 1 when they all fit.
+PageTextureRead :: (id: s32, pixels: *u8, capacity: u32) -> s32 {
+    PageFlushPaint()
+    if pixels == null { return 0 }
+    if id == 0 {
+        width: s32 = page_render_width
+        height: s32 = page_render_height
+        if page_target_count > 0 {
+            width = page_targets[page_target_count - 1].target_width
+            height = page_targets[page_target_count - 1].target_height
+        }
+        if cast(u32)(width * height * 4) > capacity { return 0 }
+        if PageGpuReadPixels(0, 0, width, height, pixels) { return 1 }
+        return 0
+    }
+    slot: s32 = PageTextureFind(id)
+    if slot < 0 { return 0 }
+    if cast(u32)(page_textures[slot].width * page_textures[slot].height * 4) > capacity { return 0 }
+    if PageGpuTextureRead(page_textures[slot].texture, page_textures[slot].width,
+        page_textures[slot].height, pixels, cast(s32)capacity) { return 1 }
+    return 0
+}
+
+// A render target: an upright texture with its own framebuffer.
+PageRenderTarget :: (width: s32, height: s32) -> s32 {
+    texture: s32 = 0
+    framebuffer: s32 = 0
+    if !PageGpuTargetCreate(width, height, *texture, *framebuffer) { return 0 }
+    return PageTextureRegister(texture, framebuffer, true, width, height)
+}
+
+// Draws into a texture until PageTargetDeselect, keeping the camera, clip
+// and surface state of what was being drawn to.
+PageTargetSelect :: (id: s32) {
+    PageFlushPaint()
+    slot: s32 = PageTextureFind(id)
+    if slot < 0 || page_target_count >= PAGE_TARGET_MAX { return }
+    entry := page_textures[slot]
+    if entry.framebuffer == 0 { return }
+    page_targets[page_target_count] = PageTarget.{
+        .texture = entry.texture, .framebuffer = entry.framebuffer,
+        .matrix = PageGpuMatrixOut(), .flip = PageGpuFlip(),
+        .target_width = PageGpuTargetWidth(), .target_height = PageGpuTargetHeight(),
+        .mode = page_mode, .saved = page_saved, .raster_clips = page_raster_clips}
+    page_target_count += 1
+    page_mode.active = false
+    page_saved = 0
+    page_raster_clips = 0
+    PageGpuTargetBind(entry.framebuffer, entry.width, entry.height)
+    PageGpuMatrixReset()
+    entry.revision += 1
+    page_textures[slot].revision = entry.revision
+}
+
+PageTargetDeselect :: () {
+    PageFlushPaint()
+    if page_target_count <= 0 { return }
+    page_target_count -= 1
+    state: PageTarget = page_targets[page_target_count]
+    PageGpuTargetBind(0, page_render_width, page_render_height)
+    PageGpuMatrixSet(state.matrix[0], state.matrix[1], state.matrix[2],
+        state.matrix[3], state.matrix[4], state.matrix[5])
+    PageGpuFlipSet(state.flip)
+    PageGpuTargetSizeSet(state.target_width, state.target_height)
+    page_mode = state.mode
+    page_saved = state.saved
+    page_raster_clips = state.raster_clips
+}
+
+// Maps the native source/destination conventions onto one GPU textured quad:
+// negative extents mirror, and render targets keep their upright rows.
 PageDrawTexture :: (id: s32, sx: float64, sy: float64, sw: float64, sh: float64,
     dx: float64, dy: float64, dw: float64, dh: float64, ox: float64, oy: float64,
     rotation: float64, r: s32, g: s32, b: s32, a: s32, filter: s32) {
     if !PageIsOpen() { return }
-    ctx: s32 = PageContext()
     slot: s32 = PageTextureFind(id)
-    if ctx == 0 || slot < 0 { return }
-    scope: s32 = WebScope()
+    if slot < 0 { return }
     flip_x: bool = false
     flip_y: bool = false
     source_x: float64 = sx
@@ -231,8 +245,8 @@ PageDrawTexture :: (id: s32, sx: float64, sy: float64, sw: float64, sh: float64,
     dest_w: float64 = dw
     dest_h: float64 = dh
     // native re-anchors a negative source extent at the far corner and
-    // mirrors it. Canvas textures are stored upright, so sprites mirror via
-    // the flip transform below. Render targets are the exception: native
+    // mirrors it. GPU textures are stored upright, so sprites mirror via
+    // the flip flags below. Render targets are the exception: native
     // stores them bottom-up and the {0,0,w,-h} idiom exists to draw them
     // upright, which here is a plain copy of |sh| rows starting at sy.
     if source_w < 0.0 {
@@ -255,162 +269,32 @@ PageDrawTexture :: (id: s32, sx: float64, sy: float64, sw: float64, sh: float64,
         dest_h = 0.0 - dest_h
         flip_y = !flip_y
     }
-    tinted: PageTintedSource = PageTintedSourceFor(slot, id, r, g, b)
-    texture: s32 = tinted.canvas
-    drop_after: s32 = tinted.drop_after
-    // The usual tile/sprite needs no local transform. Draw in the existing
-    // camera coordinates and preserve just the two properties we can change;
-    // save/translate/restore needlessly copies the entire context state.
-    if rotation == 0.0 && !flip_x && !flip_y {
-        smooth := WebAsBool(WebGet(ctx, page_names.image_smoothing))
-        if smooth != (filter != 0) {
-            WebSet(ctx, page_names.image_smoothing, WebBool(filter != 0))
-        }
-        // An upright smooth image takes the browser's best filter for this
-        // draw only; meshes and images that it or a camera turns keep its
-        // default.
-        best := filter != 0 && PageTransformUpright(ctx)
-        if best { WebSet(ctx, page_names.image_quality, WebText("high")) }
-        previous_alpha: float64 = 1.0
-        if a < 255 {
-            previous_alpha = WebGetNumber(ctx, page_names.global_alpha)
-            WebSet(ctx, page_names.global_alpha, WebNumber(cast(float64)a / 255.0))
-        }
-        args: [9]WebValue = .{WebObject(texture), WebNumber(source_x),
-            WebNumber(source_y), WebNumber(source_w), WebNumber(source_h),
-            WebNumber(dx), WebNumber(dy), WebNumber(dest_w), WebNumber(dest_h)}
-        unused WebCall(ctx, page_names.draw_image, *args[0], 9)
-        if best { WebSet(ctx, page_names.image_quality, WebText("low")) }
-        if a < 255 {
-            WebSet(ctx, page_names.global_alpha, WebNumber(previous_alpha))
-        }
-        if smooth != (filter != 0) {
-            WebSet(ctx, page_names.image_smoothing, WebBool(smooth))
-        }
-        if drop_after != 0 { WebRelease(drop_after) }
-        WebEnd(scope)
-        return
-    }
-    unused WebCall0(ctx, page_names.save)
-    WebSet(ctx, page_names.image_smoothing, WebBool(filter != 0))
-    if a < 255 {
-        WebSet(ctx, page_names.global_alpha, WebNumber(cast(float64)a / 255.0))
-    }
-    unused WebCall2(ctx, page_names.translate, WebNumber(dx + ox), WebNumber(dy + oy))
-    if rotation != 0.0 {
-        unused WebCall1(ctx, page_names.rotate, WebNumber(rotation * 3.14159265359 / 180.0))
-    }
-    if flip_x || flip_y {
-        scale_x: float64 = 1.0
-        scale_y: float64 = 1.0
-        if flip_x { scale_x = -1.0 }
-        if flip_y { scale_y = -1.0 }
-        unused WebCall2(ctx, page_names.scale, WebNumber(scale_x), WebNumber(scale_y))
-    }
-    target_x: float64 = 0.0 - ox
-    target_y: float64 = 0.0 - oy
-    if flip_x { target_x = ox - dest_w }
-    if flip_y { target_y = oy - dest_h }
-    args: [9]WebValue
-    args[0] = WebObject(texture)
-    args[1] = WebNumber(source_x)
-    args[2] = WebNumber(source_y)
-    args[3] = WebNumber(source_w)
-    args[4] = WebNumber(source_h)
-    args[5] = WebNumber(target_x)
-    args[6] = WebNumber(target_y)
-    args[7] = WebNumber(dest_w)
-    args[8] = WebNumber(dest_h)
-    unused WebCall(ctx, page_names.draw_image, *args[0], 9)
-    unused WebCall0(ctx, page_names.restore)
-    if drop_after != 0 { WebRelease(drop_after) }
-    WebEnd(scope)
+    PageTextureEnsureFilter(slot, filter)
+    tint := Color.{cast(u8)r, cast(u8)g, cast(u8)b, cast(u8)a}
+    PageGpuTextureQuad(page_textures[slot].texture, dx, dy, dest_w, dest_h,
+        ox, oy, rotation, flip_x, flip_y, source_x, source_y, source_w, source_h,
+        cast(float64)page_textures[slot].width, cast(float64)page_textures[slot].height,
+        tint)
 }
 
 // Draws one triangle of a texture: the source points (u, v) of its three
-// corners land on (x, y). The canvas has no textured triangles, so the
-// texture is drawn through the source-to-screen transform, clipped to the
-// triangle grown by a little, which hides seams between neighbors.
+// corners land on (x, y).
 PageDrawTextureTriangle :: (id: s32, x0: float64, y0: float64, x1: float64,
     y1: float64, x2: float64, y2: float64, u0: float64, v0: float64,
     u1: float64, v1: float64, u2: float64, v2: float64,
     r: s32, g: s32, b: s32, a: s32, filter: s32) {
     if !PageIsOpen() { return }
-    ctx: s32 = PageContext()
     slot: s32 = PageTextureFind(id)
-    if ctx == 0 || slot < 0 { return }
+    if slot < 0 { return }
     determinant: float64 = (u1 - u0) * (v2 - v0) - (u2 - u0) * (v1 - v0)
     area: float64 = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)
     if determinant == 0.0 || area == 0.0 || determinant != determinant || area != area { return }
-    scope: s32 = WebScope()
-    tinted: PageTintedSource = PageTintedSourceFor(slot, id, r, g, b)
-    unused WebCall0(ctx, page_names.save)
-    WebSet(ctx, WebName("imageSmoothingEnabled"), WebBool(filter != 0))
-    if a < 255 {
-        WebSet(ctx, WebName("globalAlpha"), WebNumber(cast(float64)a / 255.0))
-    }
-    center_x: float64 = (x0 + x1 + x2) / 3.0
-    center_y: float64 = (y0 + y1 + y2) / 3.0
-    unused WebCall0(ctx, page_names.begin_path)
-    PageTriangleCorner(ctx, page_names.move_to, x0, y0, center_x, center_y)
-    PageTriangleCorner(ctx, page_names.line_to, x1, y1, center_x, center_y)
-    PageTriangleCorner(ctx, page_names.line_to, x2, y2, center_x, center_y)
-    unused WebCall0(ctx, page_names.close_path)
-    unused WebCall0(ctx, page_names.clip)
-    // x = a·u + c·v + e and y = b·u + d·v + f through the three corners.
-    args: [9]WebValue
-    args[0] = WebNumber(((x1 - x0) * (v2 - v0) - (x2 - x0) * (v1 - v0)) / determinant)
-    args[1] = WebNumber(((y1 - y0) * (v2 - v0) - (y2 - y0) * (v1 - v0)) / determinant)
-    args[2] = WebNumber(((x2 - x0) * (u1 - u0) - (x1 - x0) * (u2 - u0)) / determinant)
-    args[3] = WebNumber(((y2 - y0) * (u1 - u0) - (y1 - y0) * (u2 - u0)) / determinant)
-    args[4] = WebNumber(x0 - args[0].number * u0 - args[2].number * v0)
-    args[5] = WebNumber(y0 - args[1].number * u0 - args[3].number * v0)
-    unused WebCall(ctx, WebName("transform"), *args[0], 6)
-    // Only the source rectangle around the triangle, one pixel wider.
-    left: float64 = PageMin3(u0, u1, u2) - 1.0
-    top: float64 = PageMin3(v0, v1, v2) - 1.0
-    right: float64 = PageMax3(u0, u1, u2) + 1.0
-    bottom: float64 = PageMax3(v0, v1, v2) + 1.0
-    width := cast(float64)page_textures[slot].width
-    height := cast(float64)page_textures[slot].height
-    if left < 0.0 { left = 0.0 }
-    if top < 0.0 { top = 0.0 }
-    if right > width { right = width }
-    if bottom > height { bottom = height }
-    if right > left && bottom > top {
-        args[0] = WebObject(tinted.canvas)
-        args[1] = WebNumber(left)
-        args[2] = WebNumber(top)
-        args[3] = WebNumber(right - left)
-        args[4] = WebNumber(bottom - top)
-        args[5] = WebNumber(left)
-        args[6] = WebNumber(top)
-        args[7] = WebNumber(right - left)
-        args[8] = WebNumber(bottom - top)
-        unused WebCall(ctx, WebName("drawImage"), *args[0], 9)
-    }
-    unused WebCall0(ctx, page_names.restore)
-    if tinted.drop_after != 0 { WebRelease(tinted.drop_after) }
-    WebEnd(scope)
-}
-
-// A triangle corner moved half a pixel away from the triangle's center.
-PageTriangleCorner :: (ctx: s32, name: s32, x: float64, y: float64,
-    center_x: float64, center_y: float64) {
-    dx: float64 = x - center_x
-    dy: float64 = y - center_y
-    length: float64 = dx * dx + dy * dy
-    grow: float64 = 0.0
-    if length > 0.0 { grow = 0.5 / PageSquareRoot(length) }
-    unused WebCall2(ctx, name, WebNumber(x + dx * grow), WebNumber(y + dy * grow))
-}
-
-PageSquareRoot :: (value: float64) -> float64 {
-    if value <= 0.0 { return 0.0 }
-    root: float64 = value
-    if root < 1.0 { root = 1.0 }
-    for step: cast(s32)0..30 { root = (root + value / root) * 0.5 }
-    return root
+    PageTextureEnsureFilter(slot, filter)
+    tint := Color.{cast(u8)r, cast(u8)g, cast(u8)b, cast(u8)a}
+    unused PageGpuTexturedTriangle(page_textures[slot].texture,
+        x0, y0, u0 / cast(float64)page_textures[slot].width, v0 / cast(float64)page_textures[slot].height,
+        x1, y1, u1 / cast(float64)page_textures[slot].width, v1 / cast(float64)page_textures[slot].height,
+        x2, y2, u2 / cast(float64)page_textures[slot].width, v2 / cast(float64)page_textures[slot].height, tint)
 }
 
 PageMin3 :: (a: float64, b: float64, c: float64) -> float64 {
@@ -428,7 +312,7 @@ PageMax3 :: (a: float64, b: float64, c: float64) -> float64 {
 }
 
 // Copies `width` by `height` RGBA pixels from memory into a canvas's image
-// at (x, y).
+// at (x, y). Hidden 2D canvases stay the export staging raster.
 PageWritePixels :: (canvas: s32, pixels: *u8, x: s32, y: s32, width: s32, height: s32) -> bool {
     context: s32 = PageContext2D(canvas)
     if context == 0 { return false }
@@ -443,167 +327,28 @@ PageWritePixels :: (canvas: s32, pixels: *u8, x: s32, y: s32, width: s32, height
     return !WebFailed()
 }
 
-PageTextureFromRgba :: (pixels: *u8, width: s32, height: s32) -> s32 {
-    PageInitNames()
-    scope: s32 = WebScope()
-    canvas: s32 = PageMakeCanvas(width, height)
-    id: s32 = 0
-    if canvas != 0 && PageWritePixels(canvas, pixels, 0, 0, width, height) {
-        id = PageTextureRegister(canvas, false, width, height)
-    }
-    WebEnd(scope)
-    return id
-}
-
-// Failed uploads leave the original canvas, revision, URL and tint cache intact.
-PageTextureReplaceRgba :: (id: s32, pixels: *u8, width: s32, height: s32) -> bool {
-    slot := PageTextureFind(id)
-    if slot < 0 || pixels == null || page_textures[slot].target ||
-        page_textures[slot].width != width || page_textures[slot].height != height { return false }
-    PageFlushPaint()
-    scope := WebScope()
-    canvas := PageMakeCanvas(width, height)
-    ok := canvas != 0 && PageWritePixels(canvas, pixels, 0, 0, width, height)
-    if ok {
-        kept := WebKeep(canvas)
-        if kept == 0 { ok = false }
-        else {
-            WebRelease(page_textures[slot].canvas)
-            page_textures[slot].canvas = kept
-            page_textures[slot].revision += 1
-            PageTintsClearFor(id)
-        }
-    }
-    WebEnd(scope)
-    return ok
-}
-
-PageTextureFree :: (id: s32) {
-    PageFlushPaint()
-    slot: s32 = PageTextureFind(id)
-    if slot >= 0 {
-        WebRelease(page_textures[slot].canvas)
-        page_textures[slot] = PageTexture.{}
-    }
-    PageTintsClearFor(id)
-}
-
-PageTextureUpdateRgba :: (id: s32, pixels: *u8, x: s32, y: s32, width: s32, height: s32) {
-    PageFlushPaint()
-    slot: s32 = PageTextureFind(id)
-    if slot < 0 || pixels == null || width <= 0 || height <= 0 { return }
-    scope: s32 = WebScope()
-    PageWritePixels(page_textures[slot].canvas, pixels, x, y, width, height)
-    page_textures[slot].revision += 1
-    // Tinted copies of this texture hold its previous pixels.
-    PageTintsClearFor(id)
-    WebEnd(scope)
-}
-
-PageTextureFilter :: (id: s32, filter: s32) {
-    slot: s32 = PageTextureFind(id)
-    if slot >= 0 { page_textures[slot].filter = filter }
-}
-
-PageTextureFilterFor :: (id: s32) -> s32 {
-    slot: s32 = PageTextureFind(id)
-    if slot < 0 { return 0 }
-    return page_textures[slot].filter
-}
-
-PageRenderTarget :: (width: s32, height: s32) -> s32 {
-    PageInitNames()
-    scope: s32 = WebScope()
-    canvas: s32 = PageMakeCanvas(width, height)
-    id: s32 = 0
-    if canvas != 0 { id = PageTextureRegister(canvas, true, width, height) }
-    WebEnd(scope)
-    return id
-}
-
-// Draws into a texture until PageTargetDeselect, keeping the camera and clip
-// state of what was being drawn to.
-PageTargetSelect :: (id: s32) {
-    PageFlushPaint()
-    slot: s32 = PageTextureFind(id)
-    if slot < 0 || page_target_count >= PAGE_TARGET_MAX { return }
-    scope: s32 = WebScope()
-    context: s32 = PageContext2D(page_textures[slot].canvas)
-    if context != 0 {
-        page_targets[page_target_count] = PageTarget.{
-            WebKeep(page_textures[slot].canvas), WebKeep(context),
-            page_mode, page_saved, page_raster_clips}
-        page_target_count += 1
-        page_mode.active = false
-        page_saved = 0
-        page_raster_clips = 0
-        // Cached tints go stale as soon as a target is written.
-        page_textures[slot].revision += 1
-        PageTintsClearFor(id)
-    }
-    WebEnd(scope)
-}
-
-PageTargetDeselect :: () {
-    PageFlushPaint()
-    if page_target_count <= 0 { return }
-    page_target_count -= 1
-    state: PageTarget = page_targets[page_target_count]
-    WebRelease(state.canvas)
-    WebRelease(state.ctx)
-    page_mode = state.mode
-    page_saved = state.saved
-    page_raster_clips = state.raster_clips
-}
-
-// Copies a texture's pixels (0 is the page's canvas) into `pixels`. Returns
-// 1 when they all fit.
-PageTextureRead :: (id: s32, pixels: *u8, capacity: u32) -> s32 {
-    PageFlushPaint()
-    canvas: s32 = 0
-    if id == 0 {
-        canvas = page_canvas
-        // The frame being drawn, which the page shows once it ends.
-        if page_back_canvas != 0 { canvas = page_back_canvas }
-    } else {
-        slot: s32 = PageTextureFind(id)
-        if slot >= 0 { canvas = page_textures[slot].canvas }
-    }
-    if canvas == 0 || pixels == null { return 0 }
-    scope: s32 = WebScope()
-    context: s32 = PageContext2D(canvas)
-    width: float64 = WebGetNumber(canvas, page_names.width)
-    height: float64 = WebGetNumber(canvas, page_names.height)
-    image: s32 = WebAsObject(WebCall4(context, WebName("getImageData"),
-        WebNumber(0.0), WebNumber(0.0), WebNumber(width), WebNumber(height)))
-    data: s32 = WebGetObject(image, WebName("data"))
-    length: float64 = WebGetNumber(data, WebName("length"))
-    ok: s32 = 0
-    if data != 0 && length <= cast(float64)capacity {
-        copied: s32 = WebCopyOut(data, cast(*void)pixels, cast(s32)capacity)
-        if cast(float64)copied == length { ok = 1 }
-    }
-    WebEnd(scope)
-    return ok
-}
-
 // The bitmap is borrowed from the caller's Web scope and must be closed.
+// Straight alpha keeps GPU uploads exact; hidden 2D staging reads it fine.
 PageDecodeBitmap :: (blob: s32) -> s32 {
     if blob == 0 { return 0 }
-    promise: s32 = WebAsObject(WebCall1(WebGlobal, WebName("createImageBitmap"),
-        WebObject(blob)))
+    options: s32 = WebNewObject()
+    WebSet(options, WebName("premultiplyAlpha"), WebText("none"))
+    WebSet(options, WebName("colorSpaceConversion"), WebText("none"))
+    promise: s32 = WebAsObject(WebCall2(WebGlobal, WebName("createImageBitmap"),
+        WebObject(blob), WebObject(options)))
     bitmap_value: WebValue
     if promise == 0 || !WebAwait(promise, *bitmap_value) { return 0 }
     return WebAsObject(bitmap_value)
 }
 
 // Keep decoded texture pixels in the browser. Loading an asset for drawing
-// needs no GPU readback, Wasm RGBA allocation, or second pixel upload.
+// uploads the decoded bitmap straight into a GPU texture: no CPU pixels,
+// staging canvas, or second upload.
 PageTextureFromEncoded :: (bytes: *u8, size: s32, width: *s32, height: *s32) -> s32 {
     PageInitNames()
     scope := WebScope()
     id: s32 = 0
-    // Snapshot once. Canvas decoding and a native DOM image share this same
+    // Snapshot once. GPU decoding and a native DOM image share this same
     // encoded Blob instead of copying the Wasm bytes into two typed arrays.
     blob := WebBlobBytes(cast(*void)bytes, size)
     bitmap := PageDecodeBitmap(blob)
@@ -611,17 +356,14 @@ PageTextureFromEncoded :: (bytes: *u8, size: s32, width: *s32, height: *s32) -> 
         w := WebGetNumber(bitmap, page_names.width)
         h := WebGetNumber(bitmap, page_names.height)
         if w > 0.0 && h > 0.0 && w <= 16384.0 && h <= 16384.0 && w * h * 4.0 <= 67108864.0 {
-            canvas := PageMakeCanvas(cast(s32)w, cast(s32)h)
-            if canvas != 0 {
-                context := PageContext2D(canvas)
-                if context != 0 {
-                    unused WebCall3(context, WebName("drawImage"), WebObject(bitmap),
-                        WebNumber(0.0), WebNumber(0.0))
-                    if !WebFailed() { id = PageTextureRegister(canvas, false, cast(s32)w, cast(s32)h) }
-                    if id != 0 {
-                        width.* = cast(s32)w
-                        height.* = cast(s32)h
-                    }
+            texture := PageGpuTextureFromBitmap(bitmap)
+            if texture != 0 {
+                id = PageTextureRegister(texture, 0, false, cast(s32)w, cast(s32)h)
+                if id != 0 {
+                    width.* = cast(s32)w
+                    height.* = cast(s32)h
+                } else {
+                    PageGpuTextureFree(texture)
                 }
             }
         }
@@ -720,3 +462,18 @@ PageImageExport :: (path: string, pixels: *u8, width: s32, height: s32) -> s32 {
     return ok
 }
 
+// A borrowed hidden canvas for APIs that require a DOM image, such as CSS
+// cursors. The presented canvas and ordinary image drawing remain on the GPU.
+PageTextureStaging :: (id: s32) -> s32 {
+    width := PageTextureWidthOf(id)
+    height := PageTextureHeightOf(id)
+    if width <= 0 || height <= 0 || cast(s64)width * cast(s64)height > 16777216 { return 0 }
+    bytes := cast(u32)(width * height * 4)
+    pixels := cast(*u8)PageTextureAllocate(cast(usize)bytes)
+    if pixels == null { return 0 }
+    defer PageTextureRelease(cast(*void)pixels)
+    if PageTextureRead(id, pixels, bytes) != 1 { return 0 }
+    canvas := PageMakeCanvas(width, height)
+    if canvas == 0 || !PageWritePixels(canvas, pixels, 0, 0, width, height) { return 0 }
+    return canvas
+}

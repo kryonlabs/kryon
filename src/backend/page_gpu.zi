@@ -1,0 +1,1645 @@
+// The browser host's GPU presenter. One WebGL2 context on the visible canvas
+// keeps the drawing buffer between composites, so a repaint only rasterises
+// its damage rectangle and the browser shows the rest of the frame unchanged:
+// there is no second canvas and no full-frame copy. Shapes stream into one
+// batched vertex buffer and shade with analytic coverage; text runs and
+// images draw as textured quads. Hidden 2D canvases only rasterise the glyph
+// bitmaps that feed the atlases; no pixel is ever presented through a 2D
+// context.
+#import "geometry"
+#import "drawing_props"
+#import "web"
+
+PAGE_GPU_VERTEX_MAX :: 64000
+PAGE_GPU_RUN_MAX :: 256
+PAGE_GPU_SCISSOR_MAX :: 32
+
+GL_GPU_ARRAY_BUFFER :: 34962
+GL_GPU_ELEMENT_BUFFER :: 34963
+GL_GPU_DYNAMIC_DRAW :: 35040
+GL_GPU_UNSIGNED_SHORT :: 5123
+GL_GPU_TRIANGLES :: 4
+GL_GPU_BLEND :: 3042
+GL_GPU_ONE :: 1
+GL_GPU_SRC_ALPHA :: 770
+GL_GPU_ONE_MINUS_SRC_ALPHA :: 771
+GL_GPU_DST_COLOR :: 774
+GL_GPU_SCISSOR_TEST :: 3089
+GL_GPU_RGBA :: 6408
+GL_GPU_TEXTURE_2D :: 3553
+GL_GPU_TEXTURE0 :: 33984
+GL_GPU_NEAREST :: 9728
+GL_GPU_LINEAR :: 9729
+GL_GPU_CLAMP_TO_EDGE :: 33071
+GL_GPU_FRAGMENT_SHADER :: 35632
+GL_GPU_VERTEX_SHADER :: 35633
+GL_GPU_COMPILE_STATUS :: 35713
+GL_GPU_LINK_STATUS :: 35714
+GL_GPU_FRAMEBUFFER :: 36160
+GL_GPU_COLOR_ATTACHMENT0 :: 36064
+GL_GPU_FRAMEBUFFER_COMPLETE :: 36053
+GL_GPU_COLOR_BUFFER_BIT :: 16384
+GL_GPU_UNPACK_PREMULTIPLY :: 37441
+GL_GPU_BYTES :: 4
+
+PageGpuNames :: struct {
+    active_texture: s32
+    attach_shader: s32
+    bind_buffer: s32
+    bind_framebuffer: s32
+    bind_texture: s32
+    blend_func: s32
+    buffer_data: s32
+    check_framebuffer: s32
+    clear: s32
+    clear_color: s32
+    compile_shader: s32
+    create_buffer: s32
+    create_framebuffer: s32
+    create_program: s32
+    create_shader: s32
+    create_texture: s32
+    delete_buffer: s32
+    delete_framebuffer: s32
+    delete_program: s32
+    delete_shader: s32
+    delete_texture: s32
+    disable: s32
+    enable_vertex_array: s32
+    draw_elements: s32
+    enable: s32
+    framebuffer_texture_2d: s32
+    get_program_parameter: s32
+    get_shader_parameter: s32
+    link_program: s32
+    pixel_storei: s32
+    read_pixels: s32
+    scissor: s32
+    shader_source: s32
+    tex_image_2d: s32
+    tex_parameteri: s32
+    tex_sub_image_2d: s32
+    uniform1f: s32
+    uniform1i: s32
+    uniform2f: s32
+    use_program: s32
+    vertex_attrib_pointer: s32
+    viewport: s32
+}
+
+page_gpu_names: PageGpuNames;
+
+PageGpuName :: (text: string) -> s32 { return WebName(text) }
+
+page_gpu_attached: bool;
+page_gpu_canvas: s32;
+page_gpu_gl: s32;
+page_gpu_program: s32;
+page_gpu_buffer: s32;
+page_gpu_elements: s32;
+page_gpu_read_framebuffer: s32;
+page_gpu_bound_framebuffer: s32;
+page_gpu_size_uniform: s32;
+page_gpu_flip_uniform: s32;
+page_gpu_sampler_uniform: s32;
+page_gpu_lost: bool;
+// Bumps on every context restore: caches holding GPU textures re-rasterise
+// instead of sampling now-empty uploads.
+page_gpu_generation: u64;
+page_gpu_lost_handler: s32;
+page_gpu_restored_handler: s32;
+
+page_gpu_surface_width: s32;
+page_gpu_surface_height: s32;
+page_gpu_dpi: float64;
+// The logical-to-device scale of the bound surface: the screen's density on
+// the drawing buffer, 1:1 inside a render target, like the 2D hosts.
+page_gpu_target_scale: float64 = 1.0;
+page_gpu_transparent: bool;
+
+// The current transform: the logical-to-device affine of the context's
+// matrix, tracked here because the batch bakes it into every vertex.
+page_gpu_matrix: [6]float64;
+page_gpu_scissors: [PAGE_GPU_SCISSOR_MAX]Rectangle;
+page_gpu_scissor_count: s32;
+page_gpu_blend: s32;
+page_gpu_flip: float64 = 1.0;
+page_gpu_target_width: s32;
+page_gpu_target_height: s32;
+
+PageGpuVertex :: struct {
+    pos: Vector2
+    uv: Vector2
+    params: [4]float32
+    extra: [4]float32
+    matrix: [4]float32
+    origin: Vector2
+    color: Color
+    color2: Color
+    kind: float32
+    tex: float32
+}
+
+PageGpuRun :: struct {
+    texture: s32
+    first: s32
+    count: s32
+}
+
+page_gpu_vertices: [PAGE_GPU_VERTEX_MAX]PageGpuVertex;
+page_gpu_vertex_count: s32;
+page_gpu_indices: [PAGE_GPU_VERTEX_MAX * 3 / 2]u16;
+page_gpu_index_count: s32;
+page_gpu_runs: [PAGE_GPU_RUN_MAX]PageGpuRun;
+page_gpu_run_count: s32;
+page_gpu_batch_texture: s32;
+
+// Shape kinds. Every quad covers its shape's bounding box; the fragment
+// shader turns box-local coordinates into analytic coverage.
+PageGpuKindSolid :: 0.0
+PageGpuKindRounded :: 1.0
+PageGpuKindGradient :: 2.0
+PageGpuKindCircle :: 3.0
+PageGpuKindCircleGradient :: 4.0
+PageGpuKindRing :: 5.0
+PageGpuKindTriangle :: 6.0
+PageGpuKindLine :: 7.0
+PageGpuKindOutline :: 8.0
+PageGpuKindTextured :: 9.0
+
+PageGpuVertexSource :: #string GLSL
+#version 300 es
+precision highp float;
+layout(location=0) in vec2 aPos;
+layout(location=1) in vec2 aUv;
+layout(location=2) in vec4 aParams;
+layout(location=3) in vec4 aExtra;
+layout(location=4) in vec4 aMatrix;
+layout(location=5) in vec2 aOrigin;
+layout(location=6) in vec4 aColor;
+layout(location=7) in vec4 aColor2;
+layout(location=8) in vec2 aKindTex;
+uniform vec2 uSize;
+uniform float uFlip;
+out vec2 vUv;
+out vec4 vParams;
+out vec4 vExtra;
+out vec2 vPos;
+flat out vec4 vColor;
+flat out vec4 vColor2;
+flat out float vKind;
+void main() {
+  vec2 device = mat2(aMatrix.xy, aMatrix.zw) * aPos + aOrigin;
+  float x = device.x / uSize.x * 2.0 - 1.0;
+  float y = uFlip * (1.0 - device.y / uSize.y * 2.0);
+  gl_Position = vec4(x, y, 0.0, 1.0);
+  vUv = aUv;
+  vParams = aParams;
+  vExtra = aExtra;
+  vPos = aPos;
+  vColor = aColor;
+  vColor2 = aColor2;
+  vKind = aKindTex.x;
+}
+GLSL
+
+PageGpuFragmentSource :: #string GLSL
+#version 300 es
+precision highp float;
+in vec2 vUv;
+in vec4 vParams;
+in vec4 vExtra;
+in vec2 vPos;
+flat in vec4 vColor;
+flat in vec4 vColor2;
+flat in float vKind;
+uniform sampler2D uTex;
+out vec4 fragColor;
+float sdBox(vec2 p, vec2 b) {
+  vec2 d = abs(p) - b;
+  return length(max(d, vec2(0.0))) + min(max(d.x, d.y), 0.0);
+}
+float sdRound(vec2 p, vec2 b, float r) {
+  r = min(r, min(b.x, b.y));
+  return sdBox(p, b - vec2(r)) - r;
+}
+float cover(float sd) {
+  float w = max(fwidth(sd), 1e-4);
+  return clamp(0.5 - sd / w, 0.0, 1.0);
+}
+void main() {
+  int kind = int(vKind + 0.5);
+  vec4 color = vColor;
+  float alpha = 1.0;
+  vec2 size = vParams.xy;
+  vec2 p = vUv * size;
+  vec2 mid = size * 0.5;
+  if (kind == 0) {
+    alpha = cover(sdBox(p - mid, mid));
+  } else if (kind == 1) {
+    alpha = cover(sdRound(p - mid, mid, vParams.z));
+  } else if (kind == 2) {
+    alpha = cover(sdBox(p - mid, mid));
+    color = mix(vColor, vColor2, clamp(vUv.y, 0.0, 1.0));
+  } else if (kind == 3) {
+    alpha = cover(length(p - mid) - vParams.z);
+  } else if (kind == 4) {
+    float d = length(p - mid);
+    alpha = cover(d - vParams.z);
+    color = mix(vColor, vColor2, clamp(d / vParams.z, 0.0, 1.0));
+  } else if (kind == 5) {
+    float d = length(p - mid);
+    float band = cover(vParams.w - d) * cover(d - vParams.z);
+    float sweep = vExtra.y;
+    if (sweep < 6.2831853) {
+      float ang = atan(p.y - mid.y, p.x - mid.x) - vExtra.x;
+      ang = ang - floor(ang / 6.2831853) * 6.2831853;
+      float w = max(fwidth(d), 1e-4) + 1e-4;
+      band *= clamp((ang + w) / w, 0.0, 1.0) *
+        clamp((sweep - ang + w) / w, 0.0, 1.0);
+    }
+    alpha = band;
+  } else if (kind == 6) {
+    float m = min(vExtra.x, min(vExtra.y, vExtra.z));
+    float w = max(fwidth(m), 1e-4);
+    alpha = clamp(m / w + 0.5, 0.0, 1.0);
+  } else if (kind == 7) {
+    vec2 ba = vParams.xy - vExtra.xy;
+    vec2 pa = vPos - vExtra.xy;
+    float len = length(ba);
+    vec2 dir = ba / max(len, 1e-6);
+    float along = dot(pa, dir);
+    float perp = dot(pa, vec2(-dir.y, dir.x));
+    if (vExtra.z > 0.5) {
+      float t = clamp(along, 0.0, len);
+      alpha = cover(length(pa - dir * t) - vParams.z * 0.5);
+    } else {
+      alpha = cover(sdBox(vec2(along, perp), vec2(len * 0.5, vParams.z * 0.5)));
+    }
+  } else if (kind == 8) {
+    alpha = cover(abs(sdRound(p - mid, mid, vParams.z)) - vParams.w);
+  } else {
+    vec4 texel = texture(uTex, vUv);
+    color = vec4(texel.rgb * vColor.rgb, texel.a * vColor.a);
+  }
+  color.a *= alpha;
+  fragColor = vec4(color.rgb * color.a, color.a);
+}
+GLSL
+
+PageGpuInternNames :: () {
+    n := *page_gpu_names
+    n.active_texture = PageGpuName("activeTexture")
+    n.attach_shader = PageGpuName("attachShader")
+    n.bind_buffer = PageGpuName("bindBuffer")
+    n.bind_framebuffer = PageGpuName("bindFramebuffer")
+    n.bind_texture = PageGpuName("bindTexture")
+    n.blend_func = PageGpuName("blendFuncSeparate")
+    n.buffer_data = PageGpuName("bufferData")
+    n.check_framebuffer = PageGpuName("checkFramebufferStatus")
+    n.clear = PageGpuName("clear")
+    n.clear_color = PageGpuName("clearColor")
+    n.compile_shader = PageGpuName("compileShader")
+    n.create_buffer = PageGpuName("createBuffer")
+    n.create_framebuffer = PageGpuName("createFramebuffer")
+    n.create_program = PageGpuName("createProgram")
+    n.create_shader = PageGpuName("createShader")
+    n.create_texture = PageGpuName("createTexture")
+    n.delete_buffer = PageGpuName("deleteBuffer")
+    n.delete_framebuffer = PageGpuName("deleteFramebuffer")
+    n.delete_program = PageGpuName("deleteProgram")
+    n.delete_shader = PageGpuName("deleteShader")
+    n.delete_texture = PageGpuName("deleteTexture")
+    n.disable = PageGpuName("disable")
+    n.enable_vertex_array = PageGpuName("enableVertexAttribArray")
+    n.draw_elements = PageGpuName("drawElements")
+    n.enable = PageGpuName("enable")
+    n.framebuffer_texture_2d = PageGpuName("framebufferTexture2D")
+    n.get_program_parameter = PageGpuName("getProgramParameter")
+    n.get_shader_parameter = PageGpuName("getShaderParameter")
+    n.link_program = PageGpuName("linkProgram")
+    n.pixel_storei = PageGpuName("pixelStorei")
+    n.read_pixels = PageGpuName("readPixels")
+    n.scissor = PageGpuName("scissor")
+    n.shader_source = PageGpuName("shaderSource")
+    n.tex_image_2d = PageGpuName("texImage2D")
+    n.tex_parameteri = PageGpuName("texParameteri")
+    n.tex_sub_image_2d = PageGpuName("texSubImage2D")
+    n.uniform1f = PageGpuName("uniform1f")
+    n.uniform1i = PageGpuName("uniform1i")
+    n.uniform2f = PageGpuName("uniform2f")
+    n.use_program = PageGpuName("useProgram")
+    n.vertex_attrib_pointer = PageGpuName("vertexAttribPointer")
+    n.viewport = PageGpuName("viewport")
+}
+
+PageGpuShader :: (gl: s32, kind: s32, text: string) -> s32 {
+    shader := WebAsObject(WebCall1(gl, page_gpu_names.create_shader, WebNumber(cast(float64)kind)))
+    if shader == 0 { return 0 }
+    unused WebCall2(gl, page_gpu_names.shader_source, WebObject(shader), WebText(text))
+    unused WebCall1(gl, page_gpu_names.compile_shader, WebObject(shader))
+    if !WebAsBool(WebCall2(gl, page_gpu_names.get_shader_parameter,
+        WebObject(shader), WebNumber(35713.0))) {
+        unused WebCall1(gl, page_gpu_names.delete_shader, WebObject(shader))
+        WebRelease(shader)
+        return 0
+    }
+    return shader
+}
+
+PageGpuAttrib :: struct {
+    location: s32
+    size: s32
+    gl_type: float64
+    normalized: bool
+    offset: s32
+}
+
+PageGpuApplyAttributes :: () {
+    context := page_gpu_gl
+    stride: s32 = cast(s32)size_of(type_of(page_gpu_vertices[0]))
+    specs: [9]PageGpuAttrib
+    specs[0] = PageGpuAttrib.{0, 2, 5126.0, false, 0}
+    specs[1] = PageGpuAttrib.{1, 2, 5126.0, false, 8}
+    specs[2] = PageGpuAttrib.{2, 4, 5126.0, false, 16}
+    specs[3] = PageGpuAttrib.{3, 4, 5126.0, false, 32}
+    specs[4] = PageGpuAttrib.{4, 4, 5126.0, false, 48}
+    specs[5] = PageGpuAttrib.{5, 2, 5126.0, false, 64}
+    specs[6] = PageGpuAttrib.{6, 4, 5121.0, true, 72}
+    specs[7] = PageGpuAttrib.{7, 4, 5121.0, true, 76}
+    specs[8] = PageGpuAttrib.{8, 2, 5126.0, false, 80}
+    for index: cast(s32)0..8 {
+        spec := specs[index]
+        args: [6]WebValue
+        args[0] = WebNumber(cast(float64)spec.location)
+        args[1] = WebNumber(cast(float64)spec.size)
+        args[2] = WebNumber(spec.gl_type)
+        args[3] = WebBool(spec.normalized)
+        args[4] = WebNumber(cast(float64)stride)
+        args[5] = WebNumber(cast(float64)spec.offset)
+        unused WebCall1(context, page_gpu_names.enable_vertex_array, args[0])
+        unused WebCall(context, page_gpu_names.vertex_attrib_pointer, *args[0], 6)
+    }
+}
+
+// Draws the pending batch and empties it. Runs split where the bound texture
+// changes; GL state only changes at caller-controlled flush points.
+PageGpuFlush :: () {
+    if page_gpu_vertex_count <= 0 || page_gpu_index_count <= 0 { return }
+    if page_gpu_gl == 0 || page_gpu_lost {
+        page_gpu_vertex_count = 0
+        page_gpu_index_count = 0
+        page_gpu_run_count = 0
+        page_gpu_batch_texture = 0
+        return
+    }
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    unused WebCall2(gl, page_gpu_names.bind_buffer, WebNumber(34962.0), WebObject(page_gpu_buffer))
+    vertices := WebBytes(WebBytesUint8, cast(*void)(*page_gpu_vertices[0]),
+        page_gpu_vertex_count * cast(s32)size_of(type_of(page_gpu_vertices[0])))
+    unused WebCall3(gl, page_gpu_names.buffer_data, WebNumber(34962.0),
+        WebObject(vertices), WebNumber(35040.0))
+    unused WebCall2(gl, page_gpu_names.bind_buffer, WebNumber(34963.0), WebObject(page_gpu_elements))
+    indices := WebBytes(WebBytesInt16, cast(*void)(*page_gpu_indices[0]), page_gpu_index_count)
+    unused WebCall3(gl, page_gpu_names.buffer_data, WebNumber(34963.0),
+        WebObject(indices), WebNumber(35040.0))
+    for index: cast(s32)0..page_gpu_run_count - 1 {
+        run := page_gpu_runs[index]
+        if run.texture != page_gpu_batch_texture {
+            page_gpu_batch_texture = run.texture
+            if run.texture != 0 {
+                unused WebCall1(gl, page_gpu_names.active_texture, WebNumber(33984.0))
+                unused WebCall2(gl, page_gpu_names.bind_texture, WebNumber(3553.0),
+                    WebObject(run.texture))
+            }
+        }
+        unused WebCall4(gl, page_gpu_names.draw_elements, WebNumber(4.0),
+            WebNumber(cast(float64)run.count), WebNumber(5123.0),
+            WebNumber(cast(float64)run.first * 2.0))
+    }
+    page_gpu_vertex_count = 0
+    page_gpu_index_count = 0
+    page_gpu_run_count = 0
+    page_gpu_batch_texture = 0
+    WebEnd(scope)
+}
+
+// The device-space rectangle a scissor covers right now, or false.
+PageGpuScissorRect :: (rect: *Rectangle) -> bool {
+    if page_gpu_scissor_count <= 0 { return false }
+    rect.* = page_gpu_scissors[page_gpu_scissor_count - 1]
+    return true
+}
+
+PageGpuScissorApply :: () {
+    if page_gpu_gl == 0 || page_gpu_lost { return }
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    rect: Rectangle
+    if PageGpuScissorRect(*rect) {
+        y: float64 = cast(float64)rect.y
+        if page_gpu_flip > 0.0 {
+            y = cast(float64)page_gpu_target_height - (cast(float64)rect.y + cast(float64)rect.height)
+        }
+        args: [4]WebValue
+        args[0] = WebNumber(cast(float64)rect.x)
+        args[1] = WebNumber(y)
+        args[2] = WebNumber(cast(float64)rect.width)
+        args[3] = WebNumber(cast(float64)rect.height)
+        unused WebCall(gl, page_gpu_names.scissor, *args[0], 4)
+        unused WebCall1(gl, page_gpu_names.enable, WebNumber(3089.0))
+    } else {
+        unused WebCall1(gl, page_gpu_names.disable, WebNumber(3089.0))
+    }
+    WebEnd(scope)
+}
+
+PageGpuScissorJoin :: (a: Rectangle, b: Rectangle) -> Rectangle {
+    left := a.x
+    if b.x > left { left = b.x }
+    top := a.y
+    if b.y > top { top = b.y }
+    right := a.x + a.width
+    if b.x + b.width < right { right = b.x + b.width }
+    bottom := a.y + a.height
+    if b.y + b.height < bottom { bottom = b.y + b.height }
+    width := right - left
+    height := bottom - top
+    if width < 0.0 { width = 0.0 }
+    if height < 0.0 { height = 0.0 }
+    return Rectangle.{left, top, width, height}
+}
+
+// Pushes a scissor in logical coordinates under the current transform. Like
+// the 2D context's clip, it intersects with the scissor already in force.
+PageGpuScissorPush :: (x: float64, y: float64, width: float64, height: float64) {
+    if page_gpu_scissor_count >= PAGE_GPU_SCISSOR_MAX { return }
+    m := page_gpu_matrix
+    left := m[0] * x + m[2] * y + m[4]
+    top := m[1] * x + m[3] * y + m[5]
+    right := m[0] * (x + width) + m[2] * (y + height) + m[4]
+    bottom := m[1] * (x + width) + m[3] * (y + height) + m[5]
+    if right < left { swap := left; left = right; right = swap }
+    if bottom < top { swap := top; top = bottom; bottom = swap }
+    rect := Rectangle.{cast(float32)left, cast(float32)top,
+        cast(float32)(right - left), cast(float32)(bottom - top)}
+    parent: Rectangle
+    if PageGpuScissorRect(*parent) { rect = PageGpuScissorJoin(parent, rect) }
+    page_gpu_scissors[page_gpu_scissor_count] = rect
+    page_gpu_scissor_count += 1
+    PageGpuFlush()
+    PageGpuScissorApply()
+}
+
+PageGpuScissorPop :: () {
+    if page_gpu_scissor_count <= 0 { return }
+    page_gpu_scissor_count -= 1
+    PageGpuFlush()
+    PageGpuScissorApply()
+}
+
+// Drops every scissor, for render-target switches and frame resets.
+PageGpuScissorClear :: () {
+    if page_gpu_scissor_count <= 0 { return }
+    page_gpu_scissor_count = 0
+    PageGpuFlush()
+    PageGpuScissorApply()
+}
+
+// The scale the transform applies: one logical unit in device pixels.
+PageGpuMatrixScale :: () -> float64 {
+    m := page_gpu_matrix
+    x := m[0] * m[0] + m[1] * m[1]
+    y := m[2] * m[2] + m[3] * m[3]
+    return PageGpuSquareRoot((x + y) * 0.5)
+}
+
+PageGpuMatrixSet :: (a: float64, b: float64, c: float64, d: float64,
+    e: float64, f: float64) {
+    page_gpu_matrix[0] = a
+    page_gpu_matrix[1] = b
+    page_gpu_matrix[2] = c
+    page_gpu_matrix[3] = d
+    page_gpu_matrix[4] = e
+    page_gpu_matrix[5] = f
+}
+
+PageGpuMatrixReset :: () {
+    PageGpuMatrixSet(page_gpu_target_scale, 0.0, 0.0, page_gpu_target_scale, 0.0, 0.0)
+}
+
+PageGpuMatrixTranslate :: (x: float64, y: float64) {
+    m := page_gpu_matrix
+    page_gpu_matrix[4] = m[0] * x + m[2] * y + m[4]
+    page_gpu_matrix[5] = m[1] * x + m[3] * y + m[5]
+}
+
+PageGpuMatrixRotate :: (degrees: float64) {
+    radians := degrees * 0.017453292519943295
+    sine := PageGpuSine(radians)
+    cosine := PageGpuCosine(radians)
+    m := page_gpu_matrix
+    a := m[0] * cosine + m[2] * sine
+    b := m[1] * cosine + m[3] * sine
+    c := m[2] * cosine - m[0] * sine
+    d := m[3] * cosine - m[1] * sine
+    page_gpu_matrix[0] = a
+    page_gpu_matrix[1] = b
+    page_gpu_matrix[2] = c
+    page_gpu_matrix[3] = d
+}
+
+PageGpuMatrixScale2 :: (x: float64, y: float64) {
+    page_gpu_matrix[0] *= x
+    page_gpu_matrix[1] *= x
+    page_gpu_matrix[2] *= y
+    page_gpu_matrix[3] *= y
+}
+
+PageGpuMatrixOut :: () -> [6]float64 {
+    return page_gpu_matrix
+}
+
+page_gpu_math :: #system_library "m";
+PageGpuSine :: (radians: float64) -> float64 #foreign page_gpu_math "sin";
+PageGpuCosine :: (radians: float64) -> float64 #foreign page_gpu_math "cos";
+
+PageGpuSquareRoot :: (value: float64) -> float64 {
+    if value <= 0.0 { return 0.0 }
+    root: float64 = value
+    if root < 1.0 { root = 1.0 }
+    for step: cast(s32)0..30 { root = (root + value / root) * 0.5 }
+    return root
+}
+
+PageGpuBlendApply :: () {
+    if page_gpu_gl == 0 || page_gpu_lost { return }
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    unused WebCall1(gl, page_gpu_names.enable, WebNumber(3042.0))
+    args: [4]WebValue
+    if page_gpu_blend == 1 {
+        args[0] = WebNumber(1.0); args[1] = WebNumber(1.0)
+        args[2] = WebNumber(1.0); args[3] = WebNumber(1.0)
+    } else if page_gpu_blend == 2 {
+        args[0] = WebNumber(774.0); args[1] = WebNumber(771.0)
+        args[2] = WebNumber(1.0); args[3] = WebNumber(771.0)
+    } else {
+        args[0] = WebNumber(1.0); args[1] = WebNumber(771.0)
+        args[2] = WebNumber(1.0); args[3] = WebNumber(771.0)
+    }
+    unused WebCall(gl, page_gpu_names.blend_func, *args[0], 4)
+    WebEnd(scope)
+}
+
+// Canvas composite modes: 0 source-over, 1 lighter, 2 multiply.
+PageGpuBlendBegin :: (mode: s32) {
+    if mode == page_gpu_blend { return }
+    PageGpuFlush()
+    page_gpu_blend = mode
+    PageGpuBlendApply()
+}
+
+PageGpuBlendEnd :: () {
+    PageGpuBlendBegin(0)
+}
+
+// Whether the composite state matches the context's plain source-over.
+PageGpuOpaqueBlend :: () -> bool {
+    return page_gpu_blend == 0
+}
+
+// Clears the whole current surface. The colour premultiplies, because the
+// browser composites the drawing buffer as premultiplied alpha.
+PageGpuClearAll :: (r: s32, g: s32, b: s32, a: s32) {
+    PageGpuFlush()
+    if page_gpu_gl == 0 || page_gpu_lost { return }
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    alpha := cast(float64)a / 255.0
+    args: [4]WebValue
+    args[0] = WebNumber(cast(float64)r / 255.0 * alpha)
+    args[1] = WebNumber(cast(float64)g / 255.0 * alpha)
+    args[2] = WebNumber(cast(float64)b / 255.0 * alpha)
+    args[3] = WebNumber(alpha)
+    unused WebCall(gl, page_gpu_names.clear_color, *args[0], 4)
+    unused WebCall1(gl, page_gpu_names.clear, WebNumber(16384.0))
+    WebEnd(scope)
+}
+
+// Clears a rectangle to nothing, like the 2D context's clearRect over the
+// active clip: the intersection, in exact device pixels, no blending.
+PageGpuClearRect :: (x: float64, y: float64, width: float64, height: float64) {
+    PageGpuFlush()
+    if page_gpu_gl == 0 || page_gpu_lost { return }
+    saved_count := page_gpu_scissor_count
+    saved: [PAGE_GPU_SCISSOR_MAX]Rectangle
+    index: s32 = 0
+    while index < saved_count {
+        saved[index] = page_gpu_scissors[index]
+        index += 1
+    }
+    PageGpuScissorPush(x, y, width, height)
+    if page_gpu_scissor_count > saved_count {
+        scope: s32 = WebScope()
+        gl := page_gpu_gl
+        args: [4]WebValue = .{WebNumber(0.0), WebNumber(0.0), WebNumber(0.0), WebNumber(0.0)}
+        unused WebCall(gl, page_gpu_names.clear_color, *args[0], 4)
+        unused WebCall1(gl, page_gpu_names.clear, WebNumber(16384.0))
+        WebEnd(scope)
+    }
+    page_gpu_scissor_count = saved_count
+    index = 0
+    while index < saved_count {
+        page_gpu_scissors[index] = saved[index]
+        index += 1
+    }
+    PageGpuScissorApply()
+}
+
+// Binds the presenter's framebuffer for a render target, or the drawing
+// buffer when the handle is 0. Targets keep their rows upright like the
+// canvas targets they replace, so the projection flips over.
+PageGpuTargetBind :: (framebuffer: s32, width: s32, height: s32) {
+    PageGpuFlush()
+    if page_gpu_gl == 0 || page_gpu_lost { return }
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    unused WebCall2(gl, page_gpu_names.bind_framebuffer, WebNumber(36160.0),
+        WebObject(framebuffer))
+    page_gpu_bound_framebuffer = framebuffer
+    if framebuffer != 0 {
+        page_gpu_flip = -1.0
+        page_gpu_target_scale = 1.0
+        page_gpu_target_width = width
+        page_gpu_target_height = height
+    } else {
+        page_gpu_flip = 1.0
+        page_gpu_target_scale = page_gpu_dpi
+        page_gpu_target_width = page_gpu_surface_width
+        page_gpu_target_height = page_gpu_surface_height
+    }
+    args: [4]WebValue
+    args[0] = WebNumber(0.0)
+    args[1] = WebNumber(0.0)
+    args[2] = WebNumber(cast(float64)page_gpu_target_width)
+    args[3] = WebNumber(cast(float64)page_gpu_target_height)
+    unused WebCall(gl, page_gpu_names.viewport, *args[0], 4)
+    args[0] = WebObject(page_gpu_size_uniform)
+    args[1] = WebNumber(cast(float64)page_gpu_target_width)
+    args[2] = WebNumber(cast(float64)page_gpu_target_height)
+    unused WebCall(gl, page_gpu_names.uniform2f, *args[0], 3)
+    args[0] = WebObject(page_gpu_flip_uniform)
+    args[1] = WebNumber(page_gpu_flip)
+    unused WebCall(gl, page_gpu_names.uniform1f, *args[0], 2)
+    PageGpuScissorApply()
+    WebEnd(scope)
+}
+
+// Reads `width` by `height` RGBA pixels of the current surface into
+// `pixels`, top-down with straight alpha like a canvas readback.
+PageGpuReadPixels :: (x: s32, y: s32, width: s32, height: s32, pixels: *u8) -> bool {
+    if page_gpu_gl == 0 || page_gpu_lost || pixels == null { return false }
+    if width <= 0 || height <= 0 { return false }
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    read_y := y
+    flip := page_gpu_flip > 0.0
+    if flip { read_y = page_gpu_target_height - (y + height) }
+    buffer := WebBytes(WebBytesUint8, cast(*void)pixels, width * height * 4)
+    args: [7]WebValue
+    args[0] = WebNumber(cast(float64)x)
+    args[1] = WebNumber(cast(float64)read_y)
+    args[2] = WebNumber(cast(float64)width)
+    args[3] = WebNumber(cast(float64)height)
+    args[4] = WebNumber(6408.0)
+    args[5] = WebNumber(5121.0)
+    args[6] = WebObject(buffer)
+    unused WebCall(gl, page_gpu_names.read_pixels, *args[0], 7)
+    ok := !WebFailed()
+    WebEnd(scope)
+    if !ok { return false }
+    row_bytes := width * 4
+    if flip {
+        for top: cast(s32)0..height / 2 - 1 {
+            bottom := height - 1 - top
+            column: s32 = 0
+            while column < row_bytes {
+                top_at := cast(s64)top * row_bytes + column
+                bottom_at := cast(s64)bottom * row_bytes + column
+                swap := pixels[top_at]
+                pixels[top_at] = pixels[bottom_at]
+                pixels[bottom_at] = swap
+                column += 1
+            }
+        }
+    }
+    count := width * height
+    index: s32 = 0
+    while index < count {
+        alpha := cast(s32)pixels[index * 4 + 3]
+        if alpha > 0 && alpha < 255 {
+            pixels[index * 4] = cast(u8)((cast(s32)pixels[index * 4] * 255 + alpha / 2) / alpha)
+            pixels[index * 4 + 1] = cast(u8)((cast(s32)pixels[index * 4 + 1] * 255 + alpha / 2) / alpha)
+            pixels[index * 4 + 2] = cast(u8)((cast(s32)pixels[index * 4 + 2] * 255 + alpha / 2) / alpha)
+        }
+        index += 1
+    }
+    return true
+}
+
+// One vertex of the pending batch; -1 when the batch is full and must flush.
+PageGpuVertexPush :: (kind: float32, texture: s32, p: Vector2, uv: Vector2,
+    params: [4]float32, extra: [4]float32, color: Color, color2: Color) -> s32 {
+    if page_gpu_vertex_count >= PAGE_GPU_VERTEX_MAX { return -1 }
+    at := page_gpu_vertex_count
+    page_gpu_vertices[at] = PageGpuVertex.{p, uv, params, extra,
+        .{cast(float32)page_gpu_matrix[0], cast(float32)page_gpu_matrix[1],
+          cast(float32)page_gpu_matrix[2], cast(float32)page_gpu_matrix[3]},
+        .{cast(float32)page_gpu_matrix[4], cast(float32)page_gpu_matrix[5]},
+        color, color2, kind, 0.0}
+    page_gpu_vertex_count += 1
+    return at
+}
+
+PageGpuRunStart :: (texture: s32) {
+    if page_gpu_run_count > 0 {
+        run := page_gpu_runs[page_gpu_run_count - 1]
+        if run.texture == texture { return }
+    }
+    if page_gpu_run_count >= PAGE_GPU_RUN_MAX {
+        PageGpuFlush()
+    }
+    if page_gpu_run_count >= PAGE_GPU_RUN_MAX { return }
+    page_gpu_runs[page_gpu_run_count] = PageGpuRun.{texture, page_gpu_index_count, 0}
+    page_gpu_run_count += 1
+    page_gpu_batch_texture = -1
+}
+
+PageGpuRunAdd :: (count: s32) {
+    if page_gpu_run_count <= 0 { return }
+    page_gpu_runs[page_gpu_run_count - 1].count += count
+}
+
+// Writes four vertices and two triangles in painter order. `uv0`/`uv1` are
+// the texture corners; corner a maps to uv0 and corner c to uv1.
+PageGpuEmitQuad :: (kind: float32, texture: s32, a: Vector2, b: Vector2,
+    c: Vector2, d: Vector2, uv0: Vector2, uv1: Vector2,
+    params: [4]float32, extra: [4]float32, color: Color, color2: Color) -> bool {
+    if page_gpu_vertex_count + 4 > PAGE_GPU_VERTEX_MAX { PageGpuFlush() }
+    if page_gpu_run_count >= PAGE_GPU_RUN_MAX { PageGpuFlush() }
+    if page_gpu_vertex_count + 4 > PAGE_GPU_VERTEX_MAX { return false }
+    PageGpuRunStart(texture)
+    if page_gpu_run_count == 0 { return false }
+    base := PageGpuVertexPush(kind, texture, a, uv0, params, extra, color, color2)
+    if base < 0 { return false }
+    PageGpuVertexPush(kind, texture, b, Vector2.{uv1.x, uv0.y}, params, extra, color, color2)
+    PageGpuVertexPush(kind, texture, c, uv1, params, extra, color, color2)
+    PageGpuVertexPush(kind, texture, d, Vector2.{uv0.x, uv1.y}, params, extra, color, color2)
+    if page_gpu_index_count + 6 > PAGE_GPU_VERTEX_MAX * 3 / 2 {
+        page_gpu_vertex_count = base
+        page_gpu_index_count = base / 4 * 6
+        return false
+    }
+    page_gpu_indices[page_gpu_index_count] = cast(u16)base
+    page_gpu_indices[page_gpu_index_count + 1] = cast(u16)(base + 1)
+    page_gpu_indices[page_gpu_index_count + 2] = cast(u16)(base + 2)
+    page_gpu_indices[page_gpu_index_count + 3] = cast(u16)base
+    page_gpu_indices[page_gpu_index_count + 4] = cast(u16)(base + 2)
+    page_gpu_indices[page_gpu_index_count + 5] = cast(u16)(base + 3)
+    page_gpu_index_count += 6
+    PageGpuRunAdd(6)
+    return true
+}
+
+// One textured quad in logical coordinates with the current transform. The
+// caller supplies source and destination rects like DrawTexturePro.
+PageGpuTextureQuad :: (texture: s32, dx: float64, dy: float64, dw: float64,
+    dh: float64, ox: float64, oy: float64, rotation: float64,
+    flip_x: bool, flip_y: bool, sx: float64, sy: float64, sw: float64,
+    sh: float64, texel_width: float64, texel_height: float64,
+    tint: Color) -> bool {
+    if dw == 0.0 || dh == 0.0 || sw == 0.0 || sh == 0.0 { return false }
+    radians := rotation * 0.017453292519943295
+    cosine := PageGpuCosine(radians)
+    sine := PageGpuSine(radians)
+    left := 0.0 - ox
+    top := 0.0 - oy
+    right := dw - ox
+    bottom := dh - oy
+    corners: [4]Vector2
+    corners[0] = Vector2.{cast(float32)(dx + left * cosine - top * sine),
+        cast(float32)(dy + left * sine + top * cosine)}
+    corners[1] = Vector2.{cast(float32)(dx + right * cosine - top * sine),
+        cast(float32)(dy + right * sine + top * cosine)}
+    corners[2] = Vector2.{cast(float32)(dx + right * cosine - bottom * sine),
+        cast(float32)(dy + right * sine + bottom * cosine)}
+    corners[3] = Vector2.{cast(float32)(dx + left * cosine - bottom * sine),
+        cast(float32)(dy + left * sine + bottom * cosine)}
+    u0 := sx / texel_width
+    u1 := (sx + sw) / texel_width
+    v0 := sy / texel_height
+    v1 := (sy + sh) / texel_height
+    if flip_x { swap := u0; u0 = u1; u1 = swap }
+    if flip_y { swap := v0; v0 = v1; v1 = swap }
+    params: [4]float32 = .{0.0, 0.0, 0.0, 0.0}
+    extra: [4]float32 = .{0.0, 0.0, 0.0, 0.0}
+    return PageGpuEmitQuad(PageGpuKindTextured, texture,
+        corners[0], corners[1], corners[2], corners[3],
+        Vector2.{cast(float32)u0, cast(float32)v0},
+        Vector2.{cast(float32)u1, cast(float32)v1},
+        params, extra, tint, tint)
+}
+
+// A plain colour quad over a logical rectangle, with the rectangle's own
+// analytic coverage like the 2D context's antialiased fill.
+PageGpuFillRect :: (x: float64, y: float64, width: float64, height: float64,
+    color: Color) {
+    if color.a == cast(u8)0 || width <= 0.0 || height <= 0.0 { return }
+    params: [4]float32 = .{cast(float32)width, cast(float32)height, 0.0, 0.0}
+    extra: [4]float32 = .{0.0, 0.0, 0.0, 0.0}
+    unused PageGpuEmitQuad(PageGpuKindSolid, 0,
+        Vector2.{cast(float32)x, cast(float32)y},
+        Vector2.{cast(float32)(x + width), cast(float32)y},
+        Vector2.{cast(float32)(x + width), cast(float32)(y + height)},
+        Vector2.{cast(float32)x, cast(float32)(y + height)},
+        Vector2.{}, Vector2.{1.0, 1.0}, params, extra, color, color)
+}
+
+PageGpuFillRectRounded :: (x: float64, y: float64, width: float64,
+    height: float64, radius: float64, color: Color) {
+    if radius <= 0.0 {
+        PageGpuFillRect(x, y, width, height, color)
+        return
+    }
+    params: [4]float32 = .{cast(float32)width, cast(float32)height,
+        cast(float32)radius, 0.0}
+    extra: [4]float32 = .{0.0, 0.0, 0.0, 0.0}
+    unused PageGpuEmitQuad(PageGpuKindRounded, 0,
+        Vector2.{cast(float32)x, cast(float32)y},
+        Vector2.{cast(float32)(x + width), cast(float32)y},
+        Vector2.{cast(float32)(x + width), cast(float32)(y + height)},
+        Vector2.{cast(float32)x, cast(float32)(y + height)},
+        Vector2.{}, Vector2.{1.0, 1.0}, params, extra, color, color)
+}
+
+PageGpuGradientVertical :: (x: float64, y: float64, width: float64,
+    height: float64, top: Color, bottom: Color) {
+    if width <= 0.0 || height <= 0.0 { return }
+    params: [4]float32 = .{cast(float32)width, cast(float32)height, 0.0, 0.0}
+    extra: [4]float32 = .{0.0, 0.0, 0.0, 0.0}
+    unused PageGpuEmitQuad(PageGpuKindGradient, 0,
+        Vector2.{cast(float32)x, cast(float32)y},
+        Vector2.{cast(float32)(x + width), cast(float32)y},
+        Vector2.{cast(float32)(x + width), cast(float32)(y + height)},
+        Vector2.{cast(float32)x, cast(float32)(y + height)},
+        Vector2.{}, Vector2.{1.0, 1.0}, params, extra, top, bottom)
+}
+
+PageGpuCircle :: (cx: float64, cy: float64, radius: float64, color: Color) {
+    if color.a == cast(u8)0 || radius <= 0.0 { return }
+    params: [4]float32 = .{cast(float32)(radius * 2.0), cast(float32)(radius * 2.0),
+        cast(float32)radius, 0.0}
+    extra: [4]float32 = .{0.0, 0.0, 0.0, 0.0}
+    unused PageGpuEmitQuad(PageGpuKindCircle, 0,
+        Vector2.{cast(float32)(cx - radius), cast(float32)(cy - radius)},
+        Vector2.{cast(float32)(cx + radius), cast(float32)(cy - radius)},
+        Vector2.{cast(float32)(cx + radius), cast(float32)(cy + radius)},
+        Vector2.{cast(float32)(cx - radius), cast(float32)(cy + radius)},
+        Vector2.{}, Vector2.{1.0, 1.0}, params, extra, color, color)
+}
+
+PageGpuCircleGradient :: (cx: float64, cy: float64, radius: float64,
+    inner: Color, outer: Color) {
+    if radius <= 0.0 { return }
+    params: [4]float32 = .{cast(float32)(radius * 2.0), cast(float32)(radius * 2.0),
+        cast(float32)radius, 0.0}
+    extra: [4]float32 = .{0.0, 0.0, 0.0, 0.0}
+    unused PageGpuEmitQuad(PageGpuKindCircleGradient, 0,
+        Vector2.{cast(float32)(cx - radius), cast(float32)(cy - radius)},
+        Vector2.{cast(float32)(cx + radius), cast(float32)(cy - radius)},
+        Vector2.{cast(float32)(cx + radius), cast(float32)(cy + radius)},
+        Vector2.{cast(float32)(cx - radius), cast(float32)(cy + radius)},
+        Vector2.{}, Vector2.{1.0, 1.0}, params, extra, inner, outer)
+}
+
+// A filled band between two radii, over start..end degrees clockwise.
+PageGpuRing :: (cx: float64, cy: float64, inner: float64, outer: float64,
+    start: float64, sweep: float64, color: Color) {
+    if color.a == cast(u8)0 || outer <= 0.0 || outer <= inner { return }
+    params: [4]float32 = .{cast(float32)(outer * 2.0), cast(float32)(outer * 2.0),
+        cast(float32)inner, cast(float32)outer}
+    extra: [4]float32 = .{cast(float32)(start * 0.017453292519943295),
+        cast(float32)(sweep * 0.017453292519943295), 0.0, 0.0}
+    unused PageGpuEmitQuad(PageGpuKindRing, 0,
+        Vector2.{cast(float32)(cx - outer), cast(float32)(cy - outer)},
+        Vector2.{cast(float32)(cx + outer), cast(float32)(cy - outer)},
+        Vector2.{cast(float32)(cx + outer), cast(float32)(cy + outer)},
+        Vector2.{cast(float32)(cx - outer), cast(float32)(cy + outer)},
+        Vector2.{}, Vector2.{1.0, 1.0}, params, extra, color, color)
+}
+
+// A solid triangle whose edges shade with the same analytic coverage as the
+// 2D context's path fill. Each vertex carries its signed distance to the
+// opposite edge, in shape units, positive inside.
+PageGpuTriangle :: (x1: float64, y1: float64, x2: float64, y2: float64,
+    x3: float64, y3: float64, color: Color) {
+    if color.a == cast(u8)0 { return }
+    doubled := (x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1)
+    if doubled == 0.0 { return }
+    if page_gpu_vertex_count + 3 > PAGE_GPU_VERTEX_MAX { PageGpuFlush() }
+    if page_gpu_run_count >= PAGE_GPU_RUN_MAX { PageGpuFlush() }
+    if page_gpu_vertex_count + 3 > PAGE_GPU_VERTEX_MAX { return }
+    PageGpuRunStart(0)
+    if page_gpu_run_count == 0 { return }
+    sign := 1.0
+    if doubled < 0.0 { sign = -1.0 }
+    d1 := PageGpuEdgeDistance(x2, y2, x3, y3, x1, y1, sign)
+    d2 := PageGpuEdgeDistance(x3, y3, x1, y1, x2, y2, sign)
+    d3 := PageGpuEdgeDistance(x1, y1, x2, y2, x3, y3, sign)
+    params: [4]float32 = .{0.0, 0.0, 0.0, 0.0}
+    base := PageGpuVertexPush(PageGpuKindTriangle, 0,
+        Vector2.{cast(float32)x1, cast(float32)y1}, Vector2.{},
+        params, .{cast(float32)d1, 0.0, 0.0, 0.0}, color, color)
+    if base < 0 { return }
+    PageGpuVertexPush(PageGpuKindTriangle, 0,
+        Vector2.{cast(float32)x2, cast(float32)y2}, Vector2.{},
+        params, .{0.0, cast(float32)d2, 0.0, 0.0}, color, color)
+    PageGpuVertexPush(PageGpuKindTriangle, 0,
+        Vector2.{cast(float32)x3, cast(float32)y3}, Vector2.{},
+        params, .{0.0, 0.0, cast(float32)d3, 0.0}, color, color)
+    page_gpu_indices[page_gpu_index_count] = cast(u16)base
+    page_gpu_indices[page_gpu_index_count + 1] = cast(u16)(base + 1)
+    page_gpu_indices[page_gpu_index_count + 2] = cast(u16)(base + 2)
+    page_gpu_index_count += 3
+    PageGpuRunAdd(3)
+}
+
+PageGpuEdgeDistance :: (ax: float64, ay: float64, bx: float64, by: float64,
+    px: float64, py: float64, sign: float64) -> float64 {
+    dx := bx - ax
+    dy := by - ay
+    length := PageGpuSquareRoot(dx * dx + dy * dy)
+    if length <= 0.0 { return 0.0 }
+    return sign * ((px - ax) * dy - (py - ay) * dx) / length
+}
+
+// One textured triangle in logical coordinates with the current transform:
+// source corner (u, v) lands on (x, y). Polygon-clipped images draw as a fan
+// of these; the texture's own edges sample, no shape coverage applies.
+PageGpuTexturedTriangle :: (texture: s32, x1: float64, y1: float64,
+    u1: float64, v1: float64, x2: float64, y2: float64, u2: float64,
+    v2: float64, x3: float64, y3: float64, u3: float64, v3: float64,
+    tint: Color) -> bool {
+    if tint.a == cast(u8)0 { return false }
+    doubled := (x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1)
+    if doubled == 0.0 { return false }
+    if page_gpu_vertex_count + 3 > PAGE_GPU_VERTEX_MAX { PageGpuFlush() }
+    if page_gpu_run_count >= PAGE_GPU_RUN_MAX { PageGpuFlush() }
+    if page_gpu_vertex_count + 3 > PAGE_GPU_VERTEX_MAX { return false }
+    PageGpuRunStart(texture)
+    if page_gpu_run_count == 0 { return false }
+    params: [4]float32 = .{0.0, 0.0, 0.0, 0.0}
+    extra: [4]float32 = .{0.0, 0.0, 0.0, 0.0}
+    base := PageGpuVertexPush(PageGpuKindTextured, texture,
+        Vector2.{cast(float32)x1, cast(float32)y1},
+        Vector2.{cast(float32)u1, cast(float32)v1},
+        params, extra, tint, tint)
+    if base < 0 { return false }
+    PageGpuVertexPush(PageGpuKindTextured, texture,
+        Vector2.{cast(float32)x2, cast(float32)y2},
+        Vector2.{cast(float32)u2, cast(float32)v2},
+        params, extra, tint, tint)
+    PageGpuVertexPush(PageGpuKindTextured, texture,
+        Vector2.{cast(float32)x3, cast(float32)y3},
+        Vector2.{cast(float32)u3, cast(float32)v3},
+        params, extra, tint, tint)
+    page_gpu_indices[page_gpu_index_count] = cast(u16)base
+    page_gpu_indices[page_gpu_index_count + 1] = cast(u16)(base + 1)
+    page_gpu_indices[page_gpu_index_count + 2] = cast(u16)(base + 2)
+    page_gpu_index_count += 3
+    PageGpuRunAdd(3)
+    return true
+}
+
+// A straight segment the way the 2D context strokes it: round caps when
+// `round_caps` is set, butt caps otherwise.
+PageGpuSegment :: (x1: float64, y1: float64, x2: float64, y2: float64,
+    width: float64, round_caps: bool, color: Color) {
+    if color.a == cast(u8)0 || width <= 0.0 { return }
+    dx := x2 - x1
+    dy := y2 - y1
+    length := PageGpuSquareRoot(dx * dx + dy * dy)
+    if length <= 0.0 {
+        PageGpuCircle(x1, y1, width * 0.5, color)
+        return
+    }
+    margin := width * 0.5 + 1.0
+    nx := 0.0 - dy / length * margin
+    ny := dx / length * margin
+    px := dx / length * margin
+    py := dy / length * margin
+    caps: float32 = 0.0
+    if round_caps { caps = 1.0 }
+    params: [4]float32 = .{cast(float32)x2, cast(float32)y2, cast(float32)width, 0.0}
+    extra: [4]float32 = .{cast(float32)x1, cast(float32)y1, caps, 0.0}
+    unused PageGpuEmitQuad(PageGpuKindLine, 0,
+        Vector2.{cast(float32)(x1 - nx - px), cast(float32)(y1 - ny - py)},
+        Vector2.{cast(float32)(x1 - nx + px), cast(float32)(y1 - ny + py)},
+        Vector2.{cast(float32)(x2 + nx + px), cast(float32)(y2 + ny + py)},
+        Vector2.{cast(float32)(x2 + nx - px), cast(float32)(y2 + ny - py)},
+        Vector2.{}, Vector2.{1.0, 1.0}, params, extra, color, color)
+}
+
+// A rounded-rectangle outline, like stroking the context's rounded path.
+PageGpuRoundedOutline :: (x: float64, y: float64, width: float64,
+    height: float64, radius: float64, thickness: float64, color: Color) {
+    if thickness <= 0.0 || width <= 0.0 || height <= 0.0 { return }
+    if radius <= 0.0 {
+        inner := thickness
+        if inner > width { inner = width }
+        if inner > height { inner = height }
+        PageGpuFillRect(x, y, width, inner, color)
+        PageGpuFillRect(x, y + height - inner, width, inner, color)
+        PageGpuFillRect(x, y + inner, inner, height - inner * 2.0, color)
+        PageGpuFillRect(x + width - inner, y + inner, inner, height - inner * 2.0, color)
+        return
+    }
+    params: [4]float32 = .{cast(float32)width, cast(float32)height,
+        cast(float32)radius, cast(float32)thickness}
+    extra: [4]float32 = .{0.0, 0.0, 0.0, 0.0}
+    unused PageGpuEmitQuad(PageGpuKindOutline, 0,
+        Vector2.{cast(float32)(x - thickness), cast(float32)(y - thickness)},
+        Vector2.{cast(float32)(x + width + thickness), cast(float32)(y - thickness)},
+        Vector2.{cast(float32)(x + width + thickness), cast(float32)(y + height + thickness)},
+        Vector2.{cast(float32)(x - thickness), cast(float32)(y + height + thickness)},
+        Vector2.{}, Vector2.{1.0, 1.0}, params, extra, color, color)
+}
+
+// The frame reset the window performs: identity density transform, no
+// scissor, and the default composite mode.
+PageGpuFrameReset :: () {
+    PageGpuFlush()
+    if page_gpu_scissor_count != 0 {
+        page_gpu_scissor_count = 0
+        PageGpuScissorApply()
+    }
+    if page_gpu_blend != 0 {
+        page_gpu_blend = 0
+        PageGpuBlendApply()
+    }
+    PageGpuMatrixReset()
+}
+
+// Resizes the drawing surface. The drawing buffer restarts empty, exactly
+// like assigning a canvas element's width or height.
+PageGpuSurfaceResize :: (width: s32, height: s32, dpi: float64) {
+    PageGpuFlush()
+    page_gpu_surface_width = width
+    page_gpu_surface_height = height
+    page_gpu_dpi = dpi
+    if page_gpu_bound_framebuffer == 0 {
+        page_gpu_target_scale = dpi
+        page_gpu_target_width = width
+        page_gpu_target_height = height
+        PageGpuMatrixReset()
+        PageGpuTargetBind(0, width, height)
+    }
+}
+
+PageGpuSurfaceWidth :: () -> s32 { return page_gpu_surface_width }
+PageGpuSurfaceHeight :: () -> s32 { return page_gpu_surface_height }
+PageGpuDpi :: () -> float64 { return page_gpu_dpi }
+PageGpuFlip :: () -> float64 { return page_gpu_flip }
+PageGpuFlipSet :: (flip: float64) { page_gpu_flip = flip }
+PageGpuTargetWidth :: () -> s32 { return page_gpu_target_width }
+PageGpuTargetHeight :: () -> s32 { return page_gpu_target_height }
+// Restores the caller's target dimensions after a nested bind; the viewport
+// and uniforms follow the next PageGpuTargetBind.
+PageGpuTargetSizeSet :: (width: s32, height: s32) {
+    page_gpu_target_width = width
+    page_gpu_target_height = height
+}
+
+// Frees a render target's framebuffer.
+PageGpuFramebufferFree :: (framebuffer: s32) {
+    if page_gpu_gl == 0 || framebuffer == 0 { return }
+    PageGpuFlush()
+    scope: s32 = WebScope()
+    unused WebCall1(page_gpu_gl, page_gpu_names.delete_framebuffer,
+        WebObject(framebuffer))
+    WebRelease(framebuffer)
+    WebEnd(scope)
+}
+PageGpuContext :: () -> s32 { return page_gpu_gl }
+PageGpuAttached :: () -> bool { return page_gpu_attached && page_gpu_gl != 0 && !page_gpu_lost }
+
+// Uploads RGBA pixels as a new GL texture. Pixels are straight alpha, like
+// every canvas readback this host produces.
+PageGpuTextureFromRgba :: (pixels: *u8, width: s32, height: s32) -> s32 {
+    if page_gpu_gl == 0 || page_gpu_lost || pixels == null { return 0 }
+    if width <= 0 || height <= 0 { return 0 }
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    texture := WebAsObject(WebCall0(gl, page_gpu_names.create_texture))
+    ok := texture != 0
+    if ok {
+        unused WebCall1(gl, page_gpu_names.active_texture, WebNumber(33984.0))
+        unused WebCall2(gl, page_gpu_names.bind_texture, WebNumber(3553.0), WebObject(texture))
+        unused PageGpuTextureParams(gl, false)
+        unused WebCall2(gl, page_gpu_names.pixel_storei,
+        WebNumber(37441.0), WebBool(false))
+        bytes := WebBytes(WebBytesUint8, cast(*void)pixels, width * height * 4)
+        args: [9]WebValue
+        args[0] = WebNumber(3553.0)
+        args[1] = WebNumber(0.0)
+        args[2] = WebNumber(6408.0)
+        args[3] = WebNumber(cast(float64)width)
+        args[4] = WebNumber(cast(float64)height)
+        args[5] = WebNumber(0.0)
+        args[6] = WebNumber(6408.0)
+        args[7] = WebNumber(5121.0)
+        args[8] = WebObject(bytes)
+        unused WebCall(gl, page_gpu_names.tex_image_2d, *args[0], 9)
+        ok = !WebFailed()
+        if ok { texture = WebKeep(texture) } else { PageGpuTextureDiscard(gl, texture) }
+    }
+    WebEnd(scope)
+    if !ok { return 0 }
+    return texture
+}
+
+// NEAREST filtering and clamped edges for every texture this host makes:
+// callers switch a texture to linear when it asks for smoothing.
+PageGpuTextureParams :: (gl: s32, smooth: bool) {
+    mode: float64 = 9728.0
+    if smooth { mode = 9729.0 }
+    args: [3]WebValue
+    args[0] = WebNumber(3553.0)
+    args[1] = WebNumber(10240.0)
+    args[2] = WebNumber(mode)
+    unused WebCall(gl, page_gpu_names.tex_parameteri, *args[0], 3)
+    args[1] = WebNumber(10241.0)
+    unused WebCall(gl, page_gpu_names.tex_parameteri, *args[0], 3)
+    args[1] = WebNumber(10242.0)
+    args[2] = WebNumber(33071.0)
+    unused WebCall(gl, page_gpu_names.tex_parameteri, *args[0], 3)
+    args[1] = WebNumber(10243.0)
+    unused WebCall(gl, page_gpu_names.tex_parameteri, *args[0], 3)
+}
+
+PageGpuTextureDiscard :: (gl: s32, texture: s32) {
+    unused WebCall1(gl, page_gpu_names.delete_texture, WebObject(texture))
+    WebRelease(texture)
+}
+
+// Replaces a whole texture's pixels.
+PageGpuTextureReplaceRgba :: (texture: s32, pixels: *u8, width: s32,
+    height: s32) -> bool {
+    if page_gpu_gl == 0 || page_gpu_lost || texture == 0 || pixels == null { return false }
+    if width <= 0 || height <= 0 { return false }
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    unused WebCall1(gl, page_gpu_names.active_texture, WebNumber(33984.0))
+    unused WebCall2(gl, page_gpu_names.bind_texture, WebNumber(3553.0), WebObject(texture))
+    unused WebCall2(gl, page_gpu_names.pixel_storei,
+        WebNumber(37441.0), WebBool(false))
+    bytes := WebBytes(WebBytesUint8, cast(*void)pixels, width * height * 4)
+    args: [9]WebValue
+    args[0] = WebNumber(3553.0)
+    args[1] = WebNumber(0.0)
+    args[2] = WebNumber(6408.0)
+    args[3] = WebNumber(cast(float64)width)
+    args[4] = WebNumber(cast(float64)height)
+    args[5] = WebNumber(0.0)
+    args[6] = WebNumber(6408.0)
+    args[7] = WebNumber(5121.0)
+    args[8] = WebObject(bytes)
+    unused WebCall(gl, page_gpu_names.tex_image_2d, *args[0], 9)
+    ok := !WebFailed()
+    WebEnd(scope)
+    return ok
+}
+
+// Updates part of a texture's pixels in place.
+PageGpuTextureUpdateRgba :: (texture: s32, pixels: *u8, x: s32, y: s32,
+    width: s32, height: s32) -> bool {
+    if page_gpu_gl == 0 || page_gpu_lost || texture == 0 || pixels == null { return false }
+    if width <= 0 || height <= 0 { return false }
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    unused WebCall1(gl, page_gpu_names.active_texture, WebNumber(33984.0))
+    unused WebCall2(gl, page_gpu_names.bind_texture, WebNumber(3553.0), WebObject(texture))
+    unused WebCall2(gl, page_gpu_names.pixel_storei,
+        WebNumber(37441.0), WebBool(false))
+    bytes := WebBytes(WebBytesUint8, cast(*void)pixels, width * height * 4)
+    args: [9]WebValue
+    args[0] = WebNumber(3553.0)
+    args[1] = WebNumber(0.0)
+    args[2] = WebNumber(6408.0)
+    args[3] = WebNumber(cast(float64)x)
+    args[4] = WebNumber(cast(float64)y)
+    args[5] = WebNumber(cast(float64)width)
+    args[6] = WebNumber(cast(float64)height)
+    args[7] = WebNumber(6408.0)
+    args[8] = WebNumber(5121.0)
+    args[9] = WebObject(bytes)
+    unused WebCall(gl, page_gpu_names.tex_sub_image_2d, *args[0], 9)
+    ok := !WebFailed()
+    WebEnd(scope)
+    return ok
+}
+
+// Uploads a decoded ImageBitmap straight into a new texture.
+PageGpuTextureFromBitmap :: (bitmap: s32) -> s32 {
+    if page_gpu_gl == 0 || page_gpu_lost || bitmap == 0 { return 0 }
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    texture := WebAsObject(WebCall0(gl, page_gpu_names.create_texture))
+    ok := texture != 0
+    if ok {
+        unused WebCall1(gl, page_gpu_names.active_texture, WebNumber(33984.0))
+        unused WebCall2(gl, page_gpu_names.bind_texture, WebNumber(3553.0), WebObject(texture))
+        unused PageGpuTextureParams(gl, false)
+        unused WebCall2(gl, page_gpu_names.pixel_storei,
+        WebNumber(37441.0), WebBool(false))
+        args: [6]WebValue
+        args[0] = WebNumber(3553.0)
+        args[1] = WebNumber(0.0)
+        args[2] = WebNumber(6408.0)
+        args[3] = WebNumber(6408.0)
+        args[4] = WebNumber(5121.0)
+        args[5] = WebObject(bitmap)
+        unused WebCall(gl, page_gpu_names.tex_image_2d, *args[0], 6)
+        ok = !WebFailed()
+        if ok { texture = WebKeep(texture) } else { PageGpuTextureDiscard(gl, texture) }
+    }
+    WebEnd(scope)
+    if !ok { return 0 }
+    return texture
+}
+
+PageGpuTextureFree :: (texture: s32) {
+    if page_gpu_gl == 0 || texture == 0 { return }
+    PageGpuFlush()
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    unused WebCall1(gl, page_gpu_names.delete_texture, WebObject(texture))
+    WebRelease(texture)
+    WebEnd(scope)
+}
+
+PageGpuTextureFilter :: (texture: s32, smooth: bool) {
+    if page_gpu_gl == 0 || page_gpu_lost || texture == 0 { return }
+    PageGpuFlush()
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    unused WebCall1(gl, page_gpu_names.active_texture, WebNumber(33984.0))
+    unused WebCall2(gl, page_gpu_names.bind_texture, WebNumber(3553.0), WebObject(texture))
+    unused PageGpuTextureParams(gl, smooth)
+    WebEnd(scope)
+}
+
+// Creates a render-target texture with its own framebuffer. Rows stay
+// upright like the canvas targets this presenter replaces.
+PageGpuTargetCreate :: (width: s32, height: s32, texture_out: *s32,
+    framebuffer_out: *s32) -> bool {
+    if page_gpu_gl == 0 || page_gpu_lost { return false }
+    if width <= 0 || height <= 0 { return false }
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    texture := WebAsObject(WebCall0(gl, page_gpu_names.create_texture))
+    framebuffer := WebAsObject(WebCall0(gl, page_gpu_names.create_framebuffer))
+    ok := texture != 0 && framebuffer != 0
+    if ok {
+        unused WebCall1(gl, page_gpu_names.active_texture, WebNumber(33984.0))
+        unused WebCall2(gl, page_gpu_names.bind_texture, WebNumber(3553.0), WebObject(texture))
+        unused PageGpuTextureParams(gl, false)
+        args: [9]WebValue
+        args[0] = WebNumber(3553.0)
+        args[1] = WebNumber(0.0)
+        args[2] = WebNumber(6408.0)
+        args[3] = WebNumber(cast(float64)width)
+        args[4] = WebNumber(cast(float64)height)
+        args[5] = WebNumber(0.0)
+        args[6] = WebNumber(6408.0)
+        args[7] = WebNumber(5121.0)
+        args[8] = WebNull()
+        unused WebCall(gl, page_gpu_names.tex_image_2d, *args[0], 9)
+        args[0] = WebNumber(36160.0)
+        args[1] = WebNumber(36064.0)
+        args[2] = WebNumber(3553.0)
+        args[3] = WebObject(texture)
+        unused WebCall2(gl, page_gpu_names.bind_framebuffer, WebNumber(36160.0), WebObject(framebuffer))
+        unused WebCall(gl, page_gpu_names.framebuffer_texture_2d, *args[0], 4)
+        complete := WebAsNumber(WebCall0(gl, page_gpu_names.check_framebuffer))
+        unused WebCall2(gl, page_gpu_names.bind_framebuffer, WebNumber(36160.0),
+            WebObject(page_gpu_bound_framebuffer))
+        if complete != 36053.0 { ok = false }
+    }
+    if !ok {
+        if texture != 0 { PageGpuTextureDiscard(gl, texture) }
+        if framebuffer != 0 {
+            unused WebCall1(gl, page_gpu_names.delete_framebuffer, WebObject(framebuffer))
+            WebRelease(framebuffer)
+        }
+        texture = 0
+        framebuffer = 0
+    }
+    if ok {
+        texture = WebKeep(texture)
+        framebuffer = WebKeep(framebuffer)
+    }
+    texture_out.* = texture
+    framebuffer_out.* = framebuffer
+    WebEnd(scope)
+    return ok
+}
+
+// Reads a texture's pixels through the shared readback framebuffer.
+PageGpuTextureRead :: (texture: s32, width: s32, height: s32,
+    pixels: *u8, capacity: s32) -> bool {
+    if page_gpu_gl == 0 || page_gpu_lost || texture == 0 || pixels == null { return false }
+    if width * height * 4 > capacity { return false }
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    PageGpuFlush()
+    bound := page_gpu_bound_framebuffer
+    args: [4]WebValue
+    args[0] = WebNumber(36160.0)
+    args[1] = WebNumber(36064.0)
+    args[2] = WebNumber(3553.0)
+    args[3] = WebObject(texture)
+    unused WebCall2(gl, page_gpu_names.bind_framebuffer, WebNumber(36160.0),
+        WebObject(page_gpu_read_framebuffer))
+    unused WebCall(gl, page_gpu_names.framebuffer_texture_2d, *args[0], 4)
+    saved_flip := page_gpu_flip
+    saved_height := page_gpu_target_height
+    page_gpu_flip = -1.0
+    page_gpu_target_height = height
+    ok := PageGpuReadPixels(0, 0, width, height, pixels)
+    page_gpu_flip = saved_flip
+    page_gpu_target_height = saved_height
+    args[3] = WebNull()
+    unused WebCall(gl, page_gpu_names.framebuffer_texture_2d, *args[0], 4)
+    args[3] = WebObject(bound)
+    unused WebCall2(gl, page_gpu_names.bind_framebuffer, WebNumber(36160.0), args[3])
+    WebEnd(scope)
+    return ok
+}
+
+// A lost context keeps the GL object handles but they are dead; drawing
+// stops until the browser restores the context and resources rebuild.
+PageGpuLost :: (context: s32, event: s32, second: s32, third: s32) {
+    unused context
+    unused second
+    unused third
+    if event != 0 { unused WebCall0(event, WebName("preventDefault")) }
+    PageGpuFlushSoft()
+    page_gpu_lost = true
+}
+
+PageGpuFlushSoft :: () {
+    page_gpu_vertex_count = 0
+    page_gpu_index_count = 0
+    page_gpu_run_count = 0
+    page_gpu_batch_texture = 0
+}
+
+PageGpuRestored :: (context: s32, event: s32, second: s32, third: s32) {
+    unused context
+    unused event
+    unused second
+    unused third
+    page_gpu_lost = false
+    page_gpu_generation += 1
+    PageGpuRebuild()
+}
+
+PageGpuTextureGeneration :: () -> u64 { return page_gpu_generation }
+
+// Recreates the program and buffers after a context restore. Textures belong
+// to their owners and re-upload through their next use.
+PageGpuRebuild :: () {
+    if page_gpu_gl == 0 { return }
+    scope: s32 = WebScope()
+    gl := page_gpu_gl
+    if page_gpu_size_uniform != 0 { WebRelease(page_gpu_size_uniform) }
+    page_gpu_size_uniform = 0
+    if page_gpu_flip_uniform != 0 { WebRelease(page_gpu_flip_uniform) }
+    page_gpu_flip_uniform = 0
+    if page_gpu_sampler_uniform != 0 { WebRelease(page_gpu_sampler_uniform) }
+    page_gpu_sampler_uniform = 0
+    if page_gpu_program != 0 {
+        unused WebCall1(gl, page_gpu_names.delete_program, WebObject(page_gpu_program))
+        WebRelease(page_gpu_program)
+        page_gpu_program = 0
+    }
+    if page_gpu_buffer != 0 {
+        unused WebCall1(gl, page_gpu_names.delete_buffer, WebObject(page_gpu_buffer))
+        WebRelease(page_gpu_buffer)
+        page_gpu_buffer = 0
+    }
+    if page_gpu_elements != 0 {
+        unused WebCall1(gl, page_gpu_names.delete_buffer, WebObject(page_gpu_elements))
+        WebRelease(page_gpu_elements)
+        page_gpu_elements = 0
+    }
+    ok := PageGpuMakeResources()
+    if ok { PageGpuTargetBind(0, page_gpu_surface_width, page_gpu_surface_height) }
+    WebEnd(scope)
+}
+
+PageGpuMakeResources :: () -> bool {
+    gl := page_gpu_gl
+    vertex := PageGpuShader(gl, 35633, PageGpuVertexSource)
+    fragment := PageGpuShader(gl, 35632, PageGpuFragmentSource)
+    ok := vertex != 0 && fragment != 0
+    if ok {
+        page_gpu_program = WebAsObject(WebCall0(gl, page_gpu_names.create_program))
+        ok = page_gpu_program != 0
+    }
+    if ok {
+        unused WebCall2(gl, page_gpu_names.attach_shader, WebObject(page_gpu_program), WebObject(vertex))
+        unused WebCall2(gl, page_gpu_names.attach_shader, WebObject(page_gpu_program), WebObject(fragment))
+        unused WebCall1(gl, page_gpu_names.link_program, WebObject(page_gpu_program))
+        ok = WebAsBool(WebCall2(gl, page_gpu_names.get_program_parameter,
+            WebObject(page_gpu_program), WebNumber(35714.0)))
+    }
+    if vertex != 0 {
+        unused WebCall1(gl, page_gpu_names.delete_shader, WebObject(vertex))
+        WebRelease(vertex)
+    }
+    if fragment != 0 {
+        unused WebCall1(gl, page_gpu_names.delete_shader, WebObject(fragment))
+        WebRelease(fragment)
+    }
+    if !ok {
+        if page_gpu_program != 0 {
+            unused WebCall1(gl, page_gpu_names.delete_program, WebObject(page_gpu_program))
+            WebRelease(page_gpu_program)
+            page_gpu_program = 0
+        }
+        return false
+    }
+    page_gpu_program = WebKeep(page_gpu_program)
+    page_gpu_buffer = WebAsObject(WebCall0(gl, page_gpu_names.create_buffer))
+    page_gpu_elements = WebAsObject(WebCall0(gl, page_gpu_names.create_buffer))
+    if page_gpu_buffer == 0 || page_gpu_elements == 0 { return false }
+    page_gpu_buffer = WebKeep(page_gpu_buffer)
+    page_gpu_elements = WebKeep(page_gpu_elements)
+    unused WebCall1(gl, page_gpu_names.use_program, WebObject(page_gpu_program))
+    page_gpu_size_uniform = WebAsObject(WebCall2(gl, WebName("getUniformLocation"),
+        WebObject(page_gpu_program), WebText("uSize")))
+    page_gpu_flip_uniform = WebAsObject(WebCall2(gl, WebName("getUniformLocation"),
+        WebObject(page_gpu_program), WebText("uFlip")))
+    page_gpu_sampler_uniform = WebAsObject(WebCall2(gl, WebName("getUniformLocation"),
+        WebObject(page_gpu_program), WebText("uTex")))
+    page_gpu_size_uniform = WebKeep(page_gpu_size_uniform)
+    page_gpu_flip_uniform = WebKeep(page_gpu_flip_uniform)
+    page_gpu_sampler_uniform = WebKeep(page_gpu_sampler_uniform)
+    args: [2]WebValue
+    args[0] = WebObject(page_gpu_sampler_uniform)
+    args[1] = WebNumber(0.0)
+    unused WebCall(gl, page_gpu_names.uniform1i, *args[0], 2)
+    unused WebCall2(gl, page_gpu_names.bind_buffer, WebNumber(34962.0), WebObject(page_gpu_buffer))
+    unused WebCall2(gl, page_gpu_names.bind_buffer, WebNumber(34963.0), WebObject(page_gpu_elements))
+    PageGpuApplyAttributes()
+    PageGpuBlendApply()
+    return true
+}
+
+// Attaches the presenter to a canvas element. The context options keep the
+// drawing buffer between composites so damage rects repaint in place.
+PageGpuAttach :: (canvas: s32, width: s32, height: s32, dpi: float64,
+    transparent: bool) -> bool {
+    if page_gpu_attached { PageGpuClose() }
+    scope: s32 = WebScope()
+    page_gpu_attached = true
+    page_gpu_surface_width = width
+    page_gpu_surface_height = height
+    page_gpu_dpi = dpi
+    page_gpu_transparent = transparent
+    page_gpu_matrix[0] = dpi
+    page_gpu_matrix[3] = dpi
+    page_gpu_flip = 1.0
+    page_gpu_target_width = width
+    page_gpu_target_height = height
+    options := WebNewObject()
+    WebSet(options, WebName("alpha"), WebBool(true))
+    WebSet(options, WebName("premultipliedAlpha"), WebBool(true))
+    WebSet(options, WebName("antialias"), WebBool(false))
+    WebSet(options, WebName("preserveDrawingBuffer"), WebBool(true))
+    WebSet(options, WebName("powerPreference"), WebText("high-performance"))
+    gl := WebAsObject(WebCall2(canvas, WebName("getContext"),
+        WebText("webgl2"), WebObject(options)))
+    if gl == 0 {
+        page_gpu_attached = false
+        WebEnd(scope)
+        return false
+    }
+    page_gpu_gl = WebKeep(gl)
+    page_gpu_canvas = WebKeep(canvas)
+    PageGpuInternNames()
+    lost := WebFunction(PageGpuLost, 0)
+    page_gpu_lost_handler = lost
+    restored := WebFunction(PageGpuRestored, 0)
+    page_gpu_restored_handler = restored
+    unused WebCall2(canvas, WebName("addEventListener"), WebText("webglcontextlost"),
+        WebObject(lost))
+    unused WebCall2(canvas, WebName("addEventListener"), WebText("webglcontextrestored"),
+        WebObject(restored))
+    page_gpu_read_framebuffer = WebAsObject(WebCall0(gl, page_gpu_names.create_framebuffer))
+    if page_gpu_read_framebuffer != 0 { page_gpu_read_framebuffer = WebKeep(page_gpu_read_framebuffer) }
+    ok := PageGpuMakeResources()
+    if ok {
+        PageGpuTargetBind(0, width, height)
+    } else {
+        PageGpuClose()
+    }
+    WebEnd(scope)
+    return ok
+}
+
+PageGpuClose :: () {
+    PageGpuFlushSoft()
+    if page_gpu_gl != 0 {
+        scope: s32 = WebScope()
+        gl := page_gpu_gl
+        if page_gpu_lost_handler != 0 {
+            unused WebCall2(page_gpu_canvas, WebName("removeEventListener"),
+                WebText("webglcontextlost"), WebObject(page_gpu_lost_handler))
+            WebRelease(page_gpu_lost_handler)
+            page_gpu_lost_handler = 0
+        }
+        if page_gpu_restored_handler != 0 {
+            unused WebCall2(page_gpu_canvas, WebName("removeEventListener"),
+                WebText("webglcontextrestored"), WebObject(page_gpu_restored_handler))
+            WebRelease(page_gpu_restored_handler)
+            page_gpu_restored_handler = 0
+        }
+        if page_gpu_read_framebuffer != 0 {
+            unused WebCall1(gl, page_gpu_names.delete_framebuffer, WebObject(page_gpu_read_framebuffer))
+            WebRelease(page_gpu_read_framebuffer)
+            page_gpu_read_framebuffer = 0
+        }
+        if page_gpu_program != 0 {
+            unused WebCall1(gl, page_gpu_names.delete_program, WebObject(page_gpu_program))
+            WebRelease(page_gpu_program)
+            page_gpu_program = 0
+        }
+        if page_gpu_buffer != 0 {
+            unused WebCall1(gl, page_gpu_names.delete_buffer, WebObject(page_gpu_buffer))
+            WebRelease(page_gpu_buffer)
+            page_gpu_buffer = 0
+        }
+        if page_gpu_elements != 0 {
+            unused WebCall1(gl, page_gpu_names.delete_buffer, WebObject(page_gpu_elements))
+            WebRelease(page_gpu_elements)
+            page_gpu_elements = 0
+        }
+        if page_gpu_size_uniform != 0 { WebRelease(page_gpu_size_uniform) }
+        page_gpu_size_uniform = 0
+        if page_gpu_flip_uniform != 0 { WebRelease(page_gpu_flip_uniform) }
+        page_gpu_flip_uniform = 0
+        if page_gpu_sampler_uniform != 0 { WebRelease(page_gpu_sampler_uniform) }
+        page_gpu_sampler_uniform = 0
+
+        WebRelease(page_gpu_gl)
+        WebRelease(page_gpu_canvas)
+        WebEnd(scope)
+    }
+    page_gpu_gl = 0
+    page_gpu_canvas = 0
+    page_gpu_bound_framebuffer = 0
+    page_gpu_attached = false
+    page_gpu_lost = false
+    page_gpu_scissor_count = 0
+    page_gpu_blend = 0
+    page_gpu_flip = 1.0
+    page_gpu_target_width = 0
+    page_gpu_target_height = 0
+}
+
+// Presents nothing: the browser composites the preserved drawing buffer on
+// its own. Flushing only guarantees the queued batch reached the GL.
+PageGpuPresent :: () {
+    PageGpuFlush()
+}
+
+// A deferred root-frame clear must not alter the current render target,
+// camera or clip. glClear changes only the selected framebuffer's pixels.
+PageGpuClearRoot :: (r: s32, g: s32, b: s32, a: s32) {
+    PageGpuFlush()
+    if page_gpu_gl == 0 || page_gpu_lost { return }
+    scope := WebScope()
+    gl := page_gpu_gl
+    unused WebCall2(gl, page_gpu_names.bind_framebuffer, WebNumber(36160.0), WebNull())
+    unused WebCall1(gl, page_gpu_names.disable, WebNumber(3089.0))
+    PageGpuClearAll(r, g, b, a)
+    unused WebCall2(gl, page_gpu_names.bind_framebuffer, WebNumber(36160.0),
+        WebObject(page_gpu_bound_framebuffer))
+    PageGpuScissorApply()
+    WebEnd(scope)
+}

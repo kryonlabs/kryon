@@ -41,6 +41,8 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Repair Canvas previews after the shared GPU presenter migration: retain GPU
+  resource handles, render cached text textures, and replay every damaged area.
 - Open native apps through `kryon.code-workspace` and use the current
   `js/ts.validate.enabled` setting, including multi-root workspace folders.
 

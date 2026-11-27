@@ -1838,10 +1838,10 @@ PaintFlushArea :: (session: Session, area: Rectangle) {
     PaintFlushAreas(session, areas[:])
 }
 
-// The same for several areas at once, with the paint clipped to all of them:
-// each command that may touch one is emitted once.
+// Draw commands touching any selected area without consuming the frame.
+// Hosts with separate device clips replay under each clip, then clear once.
 #program_export
-PaintFlushAreas :: (session: Session, areas: []Rectangle) {
+PaintDrawAreas :: (session: Session, areas: []Rectangle) {
     if PaintOverflow(session) || !PaintOrder(session) { PaintClear(session); return }
     index: s32 = 0
     while cast(s64)index < pending_paint[SessionIndex(session)].items.count {
@@ -1864,6 +1864,12 @@ PaintFlushAreas :: (session: Session, areas: []Rectangle) {
         }
         index += 1
     }
+}
+
+// Emit each command that touches any area once, then consume the frame.
+#program_export
+PaintFlushAreas :: (session: Session, areas: []Rectangle) {
+    PaintDrawAreas(session, areas)
     PaintClear(session)
 }
 

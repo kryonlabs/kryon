@@ -9,10 +9,9 @@ using Types :: #import "app_types";
 // The empty window's colour, the same as an empty Kryon frame, or none on a
 // transparent page.
 PageWindowClear :: () {
-    ctx := PageContext()
-    if ctx == 0 { return }
+    if !PageIsOpen() { return }
     scope := WebScope()
-    PageBackground(ctx, 0.0, 0.0, cast(float64)PageDimension(0), cast(float64)PageDimension(1),
+    PageBackground(0.0, 0.0, cast(float64)PageDimension(0), cast(float64)PageDimension(1),
         248, 250, 252, 255)
     WebEnd(scope)
     PageFrame()

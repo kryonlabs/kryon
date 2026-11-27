@@ -454,6 +454,7 @@
     }
 
     CloseCanvasText :: () {
+        PageTextRunsClear()
         if canvas_default_font_built {
             UnloadFont(canvas_default_font)
         }

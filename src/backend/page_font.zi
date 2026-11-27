@@ -1,11 +1,20 @@
-// Browser fonts for the canvas backend. UI text is measured and rasterised
-// directly at its output size. The low-level glyph API can also rasterise
+// Browser fonts for the canvas backend. UI text is measured on a hidden 2D
+// canvas and rasterised into cached whole-run atlases the GPU presenter
+// draws as tinted textured quads. The low-level glyph API can also rasterise
 // individual glyphs for the atlases owned by canvas_text.zi.
 #import "page_core"
+#import "page_gpu"
+#import "page_texture"
+#import "drawing_props"
+#import "byte_text_linux"
 #import "number_text"
 #import "text_buffer"
 #import "web"
 #import "control_props"
+
+page_font_c :: #system_library "c";
+PageFontRunAlloc :: (size: usize) -> *void #foreign page_font_c "malloc";
+PageFontRunFree :: (memory: *void) #foreign page_font_c "free";
 
 using FontStyle;
 
@@ -25,6 +34,7 @@ PageTextSize :: struct {
     slant: FontStyle
     hundredths: s32
     ascent: float64
+    descent: float64
 }
 
 PAGE_TEXT_SIZE_MAX :: 256
@@ -212,6 +222,8 @@ PageTextSizeFor :: (context: s32, face_id: s32, size: s32,
     metrics := WebAsObject(WebCall1(context, WebName("measureText"), WebText("H")))
     result.ascent = PageMeasured(metrics, WebName("fontBoundingBoxAscent"),
         cast(float64)size * 0.8)
+    result.descent = PageMeasured(metrics, WebName("fontBoundingBoxDescent"),
+        cast(float64)size * 0.2)
     if page_text_size_count < PAGE_TEXT_SIZE_MAX {
         index = page_text_size_count
         page_text_size_count += 1
@@ -254,22 +266,213 @@ PageTextWidth :: (face_id: s32, text: string, size: s32, weight: s32 = 0,
     return width
 }
 
-PageTextDraw :: (face_id: s32, text: string, x: s32, y: s32, size: s32,
-    r: s32, g: s32, b: s32, a: s32, weight: s32 = 0, slant: s32 = 0, spacing: float32 = 0.0) {
-    context := PageContext()
-    if context == 0 || size <= 0 || text.count == 0 { return }
+// A cached raster of one whole text run: white-on-transparent pixels at the
+// output resolution, drawn as one tinted textured quad. `scale` is the
+// device pixels per logical pixel the run was rasterised for.
+PageTextRun :: struct {
+    face: s32
+    size: s32
+    weight: s32
+    slant: s32
+    spacing: float32
+    scale_hundredths: s32
+    ascent: float64
+    width: float64
+    height: float64
+    texture: s32
+    generation: u64
+    order: s32
+    text: string
+    text_memory: *void
+}
+
+PAGE_TEXT_RUN_MAX :: 128
+PAGE_TEXT_RUN_BYTES :: 33554432
+page_text_runs: [PAGE_TEXT_RUN_MAX]PageTextRun;
+page_text_run_count: s32;
+page_text_run_order: s32;
+page_run_canvas: s32;
+page_run_context: s32;
+
+// Drops every cached run: the page is closing or starting over.
+PageTextRunsClear :: () {
+    while page_text_run_count > 0 { PageTextRunDrop(page_text_run_count - 1) }
+    if page_run_context != 0 { WebRelease(page_run_context); page_run_context = 0 }
+    if page_run_canvas != 0 { WebRelease(page_run_canvas); page_run_canvas = 0 }
+}
+
+PageTextRunBytes :: () -> float64 {
+    total: float64 = 0.0
+    index: s32 = 0
+    while index < page_text_run_count {
+        texture := page_text_runs[index].texture
+        total += cast(float64)PageTextureWidthOf(texture) * cast(float64)PageTextureHeightOf(texture) * 4.0
+        index += 1
+    }
+    return total
+}
+
+PageTextRunOldest :: () -> s32 {
+    oldest: s32 = 0
+    index: s32 = 1
+    while index < page_text_run_count {
+        if page_text_runs[index].order < page_text_runs[oldest].order { oldest = index }
+        index += 1
+    }
+    return oldest
+}
+
+PageTextRunDrop :: (index: s32) {
+    if page_text_runs[index].texture != 0 { PageTextureFree(page_text_runs[index].texture) }
+    if page_text_runs[index].text_memory != null {
+        PageTextureRelease(page_text_runs[index].text_memory)
+    }
+    page_text_run_count -= 1
+    page_text_runs[index] = page_text_runs[page_text_run_count]
+}
+
+// Whether RUN holds exactly TEXT.
+PageTextRunSame :: (run: string, text: string) -> bool {
+    if run.count != text.count { return false }
+    index: s64 = 0
+    while index < text.count {
+        if run[index] != text[index] { return false }
+        index += 1
+    }
+    return true
+}
+
+// The hidden canvas a run is rasterised on, sized as the caller asks.
+PageTextRunSurface :: (width: s32, height: s32) -> s32 {
+    if page_run_canvas == 0 {
+        canvas: s32 = PageMakeCanvas(width, height)
+        if canvas == 0 { return 0 }
+        options: s32 = WebNewObject()
+        WebSet(options, WebName("willReadFrequently"), WebBool(true))
+        context: s32 = WebAsObject(WebCall2(canvas, page_names.get_context,
+            WebText("2d"), WebObject(options)))
+        if context == 0 { return 0 }
+        page_run_canvas = WebKeep(canvas)
+        page_run_context = WebKeep(context)
+    }
+    if cast(s32)WebGetNumber(page_run_canvas, page_names.width) != width {
+        WebSet(page_run_canvas, page_names.width, WebNumber(cast(float64)width))
+    }
+    if cast(s32)WebGetNumber(page_run_canvas, page_names.height) != height {
+        WebSet(page_run_canvas, page_names.height, WebNumber(cast(float64)height))
+    }
+    return page_run_context
+}
+
+// The text run's atlas: a cached texture, or a fresh white-on-transparent
+// raster the presenter tints when it draws.
+PageTextRunTexture :: (face_id: s32, text: string, size: s32, weight: s32,
+    slant: s32, spacing: float32, scale: float64, style: PageTextSize) -> s32 {
+    hundredths: s32 = cast(s32)(scale * 100.0 + 0.5)
+    if hundredths < 1 { hundredths = 1 }
+    index: s32 = 0
+    while index < page_text_run_count {
+        run := page_text_runs[index]
+        if run.face == face_id && run.size == size && run.weight == weight &&
+        run.slant == slant && run.spacing == spacing &&
+        run.scale_hundredths == hundredths && run.generation == PageGpuTextureGeneration() &&
+        PageTextRunSame(run.text, text) {
+            page_text_runs[index].order = page_text_run_order
+            page_text_run_order += 1
+            return index
+        }
+        index += 1
+    }
+    // Rasterise the run at its output resolution: one pixel of atlas per
+    // device pixel the quad covers, like the 2D host's direct fillText.
+    run_width := PageTextWidth(face_id, text, size, weight, slant, spacing)
+    margin: float64 = 2.0 / scale
+    device_w: s32 = PageCeil(run_width * scale + margin * 2.0 * scale) + 1
+    line: float64 = style.ascent + style.descent
+    device_h: s32 = PageCeil(line * scale + margin * 2.0 * scale) + 1
+    if device_w <= 0 || device_h <= 0 || device_w > 16384 || device_h > 16384 ||
+    cast(s64)device_w * cast(s64)device_h * 4 > cast(s64)PAGE_TEXT_RUN_BYTES { return -1 }
+    context := PageTextRunSurface(device_w, device_h)
+    if context == 0 { return -1 }
     scope := WebScope()
     glyphs := TextGlyphStyle.{weight, cast(FontStyle)slant, spacing}
-    style := PageTextSizeFor(context, face_id, size, glyphs)
-    WebSet(context, WebName("font"), WebText(PageFontSpec(style.hundredths, face_id, glyphs)))
-    previous := PageTextTracking(context, spacing)
+    raster_hundredths := cast(s32)(cast(float64)style.hundredths * scale + 0.5)
+    WebSet(context, WebName("font"), WebText(PageFontSpec(raster_hundredths, face_id, glyphs)))
+    previous := PageTextTracking(context, cast(float32)(cast(float64)spacing * scale))
     WebSet(context, WebName("textBaseline"), WebText("alphabetic"))
     WebSet(context, WebName("textAlign"), WebText("left"))
-    WebSet(context, page_names.fill_style, WebText(PageColor(r, g, b, a)))
+    WebSet(context, page_names.fill_style, WebText(PageColor(255, 255, 255, 255)))
+    unused WebCall4(context, WebName("clearRect"), WebNumber(0.0), WebNumber(0.0),
+        WebNumber(cast(float64)device_w), WebNumber(cast(float64)device_h))
     unused WebCall3(context, WebName("fillText"), WebText(text),
-        WebNumber(cast(float64)x), WebNumber(cast(float64)y + style.ascent))
+        WebNumber(margin * scale), WebNumber(margin * scale + style.ascent * scale))
     if !WebIsUndefined(previous) { WebSet(context, WebName("letterSpacing"), previous) }
+    pixels := cast(*u8)PageFontRunAlloc(cast(usize)(device_w * device_h * 4))
+    ok := false
+    if pixels != null {
+        image := WebAsObject(WebCall4(context, WebName("getImageData"),
+            WebNumber(0.0), WebNumber(0.0), WebNumber(cast(float64)device_w),
+            WebNumber(cast(float64)device_h)))
+        data := WebGetObject(image, WebName("data"))
+        if data != 0 {
+            unused WebCopyOut(data, cast(*void)pixels, device_w * device_h * 4)
+            ok = true
+        }
+    }
     WebEnd(scope)
+    if !ok {
+        if pixels != null { PageTextureRelease(cast(*void)pixels) }
+        return -1
+    }
+    texture := PageTextureFromRgba(pixels, device_w, device_h)
+    PageTextureRelease(cast(*void)pixels)
+    if texture == 0 { return -1 }
+    if page_text_run_count >= PAGE_TEXT_RUN_MAX { PageTextRunDrop(PageTextRunOldest()) }
+    while PageTextRunBytes() + cast(float64)device_w * cast(float64)device_h * 4.0 >
+    cast(float64)PAGE_TEXT_RUN_BYTES && page_text_run_count > 0 {
+        PageTextRunDrop(PageTextRunOldest())
+    }
+    if page_text_run_count >= PAGE_TEXT_RUN_MAX { PageTextureFree(texture); return -1 }
+    memory: *void = PageFontRunAlloc(cast(usize)(text.count + 1))
+    if memory == null {
+        PageTextureFree(texture)
+        return -1
+    }
+    stored_bytes := cast(*u8)memory
+    at: s64 = 0
+    while at < text.count { stored_bytes[at] = text[at]; at += 1 }
+    stored_bytes[at] = cast(u8)0
+    stored := TextFromBytes(BytesFromPointer(stored_bytes, cast(u64)text.count))
+    slot := page_text_run_count
+    page_text_run_count += 1
+    page_text_run_order += 1
+    page_text_runs[slot] = PageTextRun.{face_id, size, weight, slant, spacing,
+        hundredths, style.ascent, run_width, line, texture,
+        PageGpuTextureGeneration(), page_text_run_order, stored, memory}
+    return slot
+}
+
+PageTextDraw :: (face_id: s32, text: string, x: s32, y: s32, size: s32,
+    r: s32, g: s32, b: s32, a: s32, weight: s32 = 0, slant: s32 = 0, spacing: float32 = 0.0) {
+    if size <= 0 || text.count == 0 { return }
+    context := PageMeasureContext()
+    if context == 0 { return }
+    glyphs := TextGlyphStyle.{weight, cast(FontStyle)slant, spacing}
+    style := PageTextSizeFor(context, face_id, size, glyphs)
+    scale := PageGpuMatrixScale()
+    if scale <= 0.0 { return }
+    slot := PageTextRunTexture(face_id, text, size, weight, slant, spacing, scale, style)
+    if slot < 0 { return }
+    run := page_text_runs[slot]
+    // The quad covers the raster exactly: margins included, so ink outside
+    // the measured line box still shows.
+    texel := 1.0 / scale
+    width := cast(float64)PageTextureWidthOf(run.texture)
+    height := cast(float64)PageTextureHeightOf(run.texture)
+    PageDrawTexture(run.texture, 0.0, 0.0, width, height,
+        cast(float64)x - 2.0 * texel, cast(float64)y - 2.0 * texel,
+        width * texel, height * texel, 0.0, 0.0, 0.0,
+        r, g, b, a, 1)
 }
 
 // TEXT at SIZE in the given colour, centred on a transparent WIDTH by HEIGHT

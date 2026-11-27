@@ -8,8 +8,10 @@
 #import "tree_draw"
 #import "paint_queue"
 #import "page_core"
+#import "page_gpu"
 #import "canvas_window"
 #import "web"
+Components :: #import "component_frame_slot";
 
 canvas_frame_ready: bool;
 canvas_frame_owner: Session;
@@ -36,18 +38,9 @@ CanvasFrameEnsureClear :: () {
     if !canvas_frame_clear_pending { return }
     canvas_frame_clear_pending = false
     canvas_frame_ready = false
-    if page_ctx == 0 { return }
-    scope := WebScope()
-    ctx := page_ctx
-    unused WebCall0(ctx, page_names.save)
-    identity: [6]WebValue = .{WebNumber(1), WebNumber(0), WebNumber(0),
-        WebNumber(1), WebNumber(0), WebNumber(0)}
-    unused WebCall(ctx, page_names.set_transform, *identity[0], 6)
     color := canvas_frame_background
-    PageBackground(ctx, 0.0, 0.0, cast(float64)page_render_width, cast(float64)page_render_height,
-        cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
-    unused WebCall0(ctx, page_names.restore)
-    WebEnd(scope)
+    if page_transparent { color = Color.{} }
+    PageGpuClearRoot(cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
 }
 
 // Ordinary host paint still starts with its background. Paint after the UI
@@ -70,7 +63,7 @@ CanvasFrameBegin :: (background: Color) {
 
 CanvasFrameFill :: (area: Rectangle) {
     color := canvas_frame_background
-    PageBackground(page_ctx, cast(float64)area.x, cast(float64)area.y, cast(float64)area.width,
+    PageBackground(cast(float64)area.x, cast(float64)area.y, cast(float64)area.width,
         cast(float64)area.height, cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
 }
 
@@ -92,23 +85,11 @@ CanvasFrameBuiltin :: (session: Session) -> bool {
 }
 
 CanvasFrameOpaqueBlend :: () -> bool {
-    if WebGetNumber(page_ctx, page_names.global_alpha) != 1.0 { return false }
-    scope := WebScope()
-    value := WebGetObject(page_ctx, page_names.global_composite)
-    bytes: [32]u8
-    length := WebCopyString(value, bytes[:])
-    expected := "source-over"
-    same := length == cast(s32)expected.count
-    if same {
-        for index: cast(s32)0..length - 1 {
-            if bytes[index] != expected[index] { same = false; break }
-        }
-    }
-    WebEnd(scope)
-    return same
+    return PageGpuOpaqueBlend()
 }
 
 EndCanvasUiFrame :: (session: Session) -> FrameStatus {
+    defer { CanvasWakeAt(Components.NextDeadline(session)) }
     if !PageIsOpen() || canvas_frame_background.a != cast(u8)255 ||
         !canvas_frame_clear_pending || !CanvasFrameBuiltin(session) || !CanvasFrameOpaqueBlend() ||
         page_target_count != 0 || page_mode.active || page_saved != 0 || page_raster_clips != 0 {
@@ -148,9 +129,6 @@ EndCanvasUiFrame :: (session: Session) -> FrameStatus {
                 } else {
                     for at: cast(s32)0..count - 1 { areas[at] = PaintDamageAreaAt(session, at) }
                 }
-                ctx := page_ctx
-                unused WebCall0(ctx, page_names.save)
-                unused WebCall0(ctx, page_names.begin_path)
                 for at: cast(s32)0..count - 1 {
                     area := areas[at]
                     // Device-pixel-aligned clips cover both clearing and
@@ -164,15 +142,16 @@ EndCanvasUiFrame :: (session: Session) -> FrameStatus {
                         cast(float32)(cast(float64)(right - left) / page_dpi),
                         cast(float32)(cast(float64)(bottom - top) / page_dpi)}
                     areas[at] = area
-                    unused WebCall4(ctx, page_names.rect, WebNumber(cast(float64)area.x),
-                        WebNumber(cast(float64)area.y), WebNumber(cast(float64)area.width),
-                        WebNumber(cast(float64)area.height))
                 }
-                unused WebCall0(ctx, page_names.clip)
-                for at: cast(s32)0..count - 1 { CanvasFrameFill(areas[at]) }
-                PaintFlushAreas(session, areas[:count])
-                PageFlushPaint()
-                unused WebCall0(ctx, page_names.restore)
+                for at: cast(s32)0..count - 1 {
+                    area := areas[at]
+                    PageGpuScissorPush(area.x, area.y, area.width, area.height)
+                    CanvasFrameFill(area)
+                    PaintDrawAreas(session, areas[at:at + 1])
+                    PageFlushPaint()
+                    PageGpuScissorPop()
+                }
+                PaintClear(session)
             } else {
                 CanvasFrameFill(.{0.0, 0.0, cast(float32)page_width, cast(float32)page_height})
                 PaintFlush(session)
