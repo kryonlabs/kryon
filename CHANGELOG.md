@@ -41,6 +41,9 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Clear Canvas frames before submitting GPU geometry, correct framebuffer attachment calls, and keep the portable window player on the current page API.
+- Keep native VS Code checks and previews on explicit build actions so editing and auto-save stay lightweight.
+
 - Provide the same monotonic clock to native desktop apps and portable bundles.
 - Repair Canvas previews after the shared GPU presenter migration: retain GPU
   resource handles, render cached text textures, and replay every damaged area.

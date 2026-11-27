@@ -42,9 +42,12 @@ IntelliSense only understands the standard TypeScript portion; native API
 information comes from the Ziran extension.
 
 The updated Ziran extension checks native `.zi`, `.ts` and `.tsx` with the
-actual compiler on open/save. Problems from that checker have source `ziran`:
+actual compiler when you explicitly Check, Run or Preview. Problems from that checker have source `ziran`:
 unknown imports, invalid fields, types and native lifetime rules remain errors.
-The checks read saved source, so save changes before inspecting diagnostics.
+Those actions save the selected source before checking. Typing, opening,
+saving (including auto-save) and switching files never start compiler checks
+or rebuild previews. Completion and hover use declarations from the last
+explicit check; after edits, check or build again to refresh them.
 If the extension is missing or the toolchain cannot run, native checking is
 unavailable; turning off TypeScript diagnostics alone does not validate a file.
 For a direct check from the repository root:

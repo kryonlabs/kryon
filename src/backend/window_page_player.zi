@@ -42,16 +42,16 @@ PageWindowCall :: (context: *void, module_name: *u8, function_name: *u8,
         return 1
     }
     if function == "ZxWindowClearHost" && count == 1 && args[0].kind == HostUnsigned {
-        ctx := PageContext()
+        open := PageIsOpen()
         color := args[0].bits
-        if ctx != 0 {
+        if open {
             scope := WebScope()
-            PageBackground(ctx, 0.0, 0.0, cast(float64)PageDimension(0), cast(float64)PageDimension(1),
+            PageBackground(0.0, 0.0, cast(float64)PageDimension(0), cast(float64)PageDimension(1),
                 cast(s32)((color >> 16) & 255), cast(s32)((color >> 8) & 255), cast(s32)(color & 255), 255)
             WebEnd(scope)
         }
         result.kind = HostInteger
-        result.integer = cast(s64)(ctx != 0)
+        result.integer = cast(s64)open
         return 1
     }
     if count != 0 { return 0 }

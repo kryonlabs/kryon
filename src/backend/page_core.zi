@@ -306,9 +306,6 @@ PagePaintHooks :: struct {
     flush: PagePaintFlush
 }
 page_paint_hooks: PagePaintHooks;
-// The UI host can defer its frame clear until ordinary drawing starts.
-PageDrawHooks :: struct { before: PagePaintFlush }
-page_draw_hooks: PageDrawHooks;
 
 PageFlushPaint :: () {
     if page_paint_hooks.flush != null { page_paint_hooks.flush() }

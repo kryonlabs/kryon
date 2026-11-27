@@ -10,6 +10,12 @@
 #import "drawing_props"
 #import "web"
 
+// Prepare the root frame before its first submitted primitive. Observing
+// textures or measuring text does not begin a repaint.
+PageDrawBefore :: #type () -> void;
+PageDrawHooks :: struct { before: PageDrawBefore }
+page_draw_hooks: PageDrawHooks;
+
 PAGE_GPU_VERTEX_MAX :: 64000
 PAGE_GPU_RUN_MAX :: 256
 PAGE_GPU_SCISSOR_MAX :: 32
@@ -787,6 +793,7 @@ PageGpuRunAdd :: (count: s32) {
 PageGpuEmitQuad :: (kind: float32, texture: s32, a: Vector2, b: Vector2,
     c: Vector2, d: Vector2, uv0: Vector2, uv1: Vector2,
     params: [4]float32, extra: [4]float32, color: Color, color2: Color) -> bool {
+    if page_draw_hooks.before != null { page_draw_hooks.before() }
     if page_gpu_vertex_count + 4 > PAGE_GPU_VERTEX_MAX { PageGpuFlush() }
     if page_gpu_run_count >= PAGE_GPU_RUN_MAX { PageGpuFlush() }
     if page_gpu_vertex_count + 4 > PAGE_GPU_VERTEX_MAX { return false }
@@ -993,6 +1000,7 @@ PageGpuTexturedTriangle :: (texture: s32, x1: float64, y1: float64,
     v2: float64, x3: float64, y3: float64, u3: float64, v3: float64,
     tint: Color) -> bool {
     if tint.a == cast(u8)0 { return false }
+    if page_draw_hooks.before != null { page_draw_hooks.before() }
     doubled := (x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1)
     if doubled == 0.0 { return false }
     if page_gpu_vertex_count + 3 > PAGE_GPU_VERTEX_MAX { PageGpuFlush() }
@@ -1331,9 +1339,10 @@ PageGpuTargetCreate :: (width: s32, height: s32, texture_out: *s32,
         args[1] = WebNumber(36064.0)
         args[2] = WebNumber(3553.0)
         args[3] = WebObject(texture)
+        args[4] = WebNumber(0.0)
         unused WebCall2(gl, page_gpu_names.bind_framebuffer, WebNumber(36160.0), WebObject(framebuffer))
-        unused WebCall(gl, page_gpu_names.framebuffer_texture_2d, *args[0], 4)
-        complete := WebAsNumber(WebCall0(gl, page_gpu_names.check_framebuffer))
+        unused WebCall(gl, page_gpu_names.framebuffer_texture_2d, *args[0], 5)
+        complete := WebAsNumber(WebCall1(gl, page_gpu_names.check_framebuffer, WebNumber(36160.0)))
         unused WebCall2(gl, page_gpu_names.bind_framebuffer, WebNumber(36160.0),
             WebObject(page_gpu_bound_framebuffer))
         if complete != 36053.0 { ok = false }
@@ -1366,23 +1375,25 @@ PageGpuTextureRead :: (texture: s32, width: s32, height: s32,
     gl := page_gpu_gl
     PageGpuFlush()
     bound := page_gpu_bound_framebuffer
-    args: [4]WebValue
+    args: [5]WebValue
     args[0] = WebNumber(36160.0)
     args[1] = WebNumber(36064.0)
     args[2] = WebNumber(3553.0)
     args[3] = WebObject(texture)
+    args[4] = WebNumber(0.0)
     unused WebCall2(gl, page_gpu_names.bind_framebuffer, WebNumber(36160.0),
         WebObject(page_gpu_read_framebuffer))
-    unused WebCall(gl, page_gpu_names.framebuffer_texture_2d, *args[0], 4)
+    unused WebCall(gl, page_gpu_names.framebuffer_texture_2d, *args[0], 5)
     saved_flip := page_gpu_flip
     saved_height := page_gpu_target_height
     page_gpu_flip = -1.0
     page_gpu_target_height = height
-    ok := PageGpuReadPixels(0, 0, width, height, pixels)
+    complete := WebAsNumber(WebCall1(gl, page_gpu_names.check_framebuffer, WebNumber(36160.0)))
+    ok := complete == 36053.0 && PageGpuReadPixels(0, 0, width, height, pixels)
     page_gpu_flip = saved_flip
     page_gpu_target_height = saved_height
     args[3] = WebNull()
-    unused WebCall(gl, page_gpu_names.framebuffer_texture_2d, *args[0], 4)
+    unused WebCall(gl, page_gpu_names.framebuffer_texture_2d, *args[0], 5)
     args[3] = WebObject(bound)
     unused WebCall2(gl, page_gpu_names.bind_framebuffer, WebNumber(36160.0), args[3])
     WebEnd(scope)

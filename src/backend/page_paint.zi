@@ -3,7 +3,6 @@
 // the WebGL2 presenter shades, with the transform baked per vertex so a
 // camera change cannot split a batch.
 #import "geometry"
-#import "drawing_props"
 #import "page_core"
 #import "drawing_props"
 #import "page_gpu"
