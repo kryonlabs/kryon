@@ -14,6 +14,10 @@
     #import "test_driver_frame"
 }
 Timer :: #import "std/timer_linux";
+
+// Monotonic time shared by native apps and the portable desktop host.
+#program_export
+ClockMillisecondsHost :: () -> s64 { return Timer.MonotonicMilliseconds() }
 #import "geometry"
 #import "program_title"
 #import "tree_input"

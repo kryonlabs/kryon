@@ -192,10 +192,3 @@ BundleTextRequestHost :: (identity: u64) -> TextRequest {
     empty: TextRequest
     return empty
 }
-
-// --- Shared desktop clock capability ---
-
-#program_export
-ClockMillisecondsHost :: () -> s64 {
-    return Timer.MonotonicMilliseconds()
-}
