@@ -514,64 +514,118 @@ FillClippedSpan :: (x0: float32, x1: float32, y: float32, height: float32,
         0.0, 0, color)
 }
 
-// Spans of a rounded rectangle, or of its outline when width > 0, for the
-// rows from top to bottom, clipped to visible.
+ShapePixelFloor :: (value: float32) -> s32 {
+    whole := cast(s32)value
+    if cast(float32)whole > value { whole -= 1 }
+    return whole
+}
+
+ShapePixelCeil :: (value: float32) -> s32 {
+    return -ShapePixelFloor(-value)
+}
+
+// Clip after evaluating the original curve. Four samples on each device-pixel
+// axis retain edge coverage instead of replacing corners with logical rows.
 FillShapeRows :: (bounds: Rectangle, radius: float32, width: float32,
     top: float32, bottom: float32, visible: Rectangle, color: Color) {
+    scale := PaintPixelScale()
+    pixel := 1.0 / scale
     if top < visible.y { top = visible.y }
     if bottom > visible.y + visible.height { bottom = visible.y + visible.height }
-    inner_radius: float32 = radius - width
+    left := bounds.x
+    right := bounds.x + bounds.width
+    if left < visible.x { left = visible.x }
+    if right > visible.x + visible.width { right = visible.x + visible.width }
+    if right <= left || bottom <= top { return }
+    first_x := ShapePixelFloor(left * scale)
+    last_x := ShapePixelCeil(right * scale)
+    first_y := ShapePixelFloor(top * scale)
+    last_y := ShapePixelCeil(bottom * scale)
+    inner_radius := radius - width
     if inner_radius < 0.0 { inner_radius = 0.0 }
-    y: float32 = top
-    while y < bottom {
-        height: float32 = 1.0
-        if y + height > bottom { height = bottom - y }
-        center: float32 = y + height * 0.5
-        dy: float32 = bounds.y + radius - center
-        if center > bounds.y + bounds.height * 0.5 {
-            dy = center - (bounds.y + bounds.height - radius)
-        }
-        outer: float32 = ShapeCornerInset(radius, dy)
-        left: float32 = bounds.x + outer
-        right: float32 = bounds.x + bounds.width - outer
-        inside: bool = width > 0.0 && center > bounds.y + width &&
-        center < bounds.y + bounds.height - width
-        if !inside {
-            FillClippedSpan(left, right, y, height, visible, color)
-        } else {
-            inner_dy: float32 = bounds.y + width + inner_radius - center
-            if center > bounds.y + bounds.height * 0.5 {
-                inner_dy = center - (bounds.y + bounds.height - width - inner_radius)
+    for row: first_y..last_y - 1 {
+        outer_left: [4]float32
+        outer_right: [4]float32
+        inner_left: [4]float32
+        inner_right: [4]float32
+        edges: [16]s32
+        for sample: cast(s32)0..3 {
+            y := (cast(float32)row + (cast(float32)sample + 0.5) * 0.25) * pixel
+            if y >= bounds.y && y < bounds.y + bounds.height {
+                dy := bounds.y + radius - y
+                if y > bounds.y + bounds.height * 0.5 {
+                    dy = y - (bounds.y + bounds.height - radius)
+                }
+                inset := ShapeCornerInset(radius, dy)
+                outer_left[sample] = bounds.x + inset
+                outer_right[sample] = bounds.x + bounds.width - inset
+                if width > 0.0 && bounds.width > width * 2.0 &&
+                y >= bounds.y + width && y < bounds.y + bounds.height - width {
+                    inner_dy := bounds.y + width + inner_radius - y
+                    if y > bounds.y + bounds.height * 0.5 {
+                        inner_dy = y - (bounds.y + bounds.height - width - inner_radius)
+                    }
+                    inner := width + ShapeCornerInset(inner_radius, inner_dy)
+                    inner_left[sample] = bounds.x + inner
+                    inner_right[sample] = bounds.x + bounds.width - inner
+                }
             }
-            inner: float32 = width + ShapeCornerInset(inner_radius, inner_dy)
-            FillClippedSpan(left, bounds.x + inner, y, height, visible, color)
-            FillClippedSpan(bounds.x + bounds.width - inner, right, y, height,
-                visible, color)
+            edges[sample * 4] = ShapePixelFloor(outer_left[sample] * scale)
+            edges[sample * 4 + 1] = ShapePixelFloor(outer_right[sample] * scale)
+            edges[sample * 4 + 2] = ShapePixelFloor(inner_left[sample] * scale)
+            edges[sample * 4 + 3] = ShapePixelFloor(inner_right[sample] * scale)
         }
-        y += height
+        column := first_x
+        while column < last_x {
+            // Between boundary pixels the coverage is constant; emit one span
+            // rather than visiting the whole interior or the empty hole.
+            next := last_x
+            for edge: edges {
+                if edge == column { next = column + 1 }
+                else if edge > column && edge < next { next = edge }
+            }
+            samples: s32 = 0
+            for sy: cast(s32)0..3 {
+                for sx: cast(s32)0..3 {
+                    x := (cast(float32)column + (cast(float32)sx + 0.5) * 0.25) * pixel
+                    outside_inner := inner_right[sy] <= inner_left[sy] ||
+                    x < inner_left[sy] || x > inner_right[sy]
+                    if outer_right[sy] > outer_left[sy] &&
+                    x >= outer_left[sy] && x <= outer_right[sy] && outside_inner {
+                        samples += 1
+                    }
+                }
+            }
+            if samples > 0 {
+                ink := color
+                ink.a = cast(u8)(cast(s32)color.a * samples / 16)
+                FillClippedSpan(cast(float32)column * pixel, cast(float32)next * pixel,
+                    cast(float32)row * pixel, pixel, visible, ink)
+            }
+            column = next
+        }
     }
 }
 
 FillShapeClipped :: (bounds: Rectangle, radius: float32, width: float32,
     visible: Rectangle, color: Color) {
     radius = ShapeRadius(bounds, radius)
-    band: float32 = radius
+    scale := PaintPixelScale()
+    band := radius
     if width > band { band = width }
     if band > bounds.height * 0.5 { band = bounds.height * 0.5 }
-    middle_top: float32 = bounds.y + band
-    middle_bottom: float32 = bounds.y + bounds.height - band
+    middle_top := cast(float32)ShapePixelCeil((bounds.y + band) * scale) / scale
+    middle_bottom := cast(float32)ShapePixelFloor((bounds.y + bounds.height - band) * scale) / scale
+    if middle_bottom <= middle_top {
+        FillShapeRows(bounds, radius, width, bounds.y, bounds.y + bounds.height, visible, color)
+        return
+    }
     FillShapeRows(bounds, radius, width, bounds.y, middle_top, visible, color)
-    if middle_bottom > middle_top {
-        if width > 0.0 {
-            FillClippedSpan(bounds.x, bounds.x + width, middle_top,
-                middle_bottom - middle_top, visible, color)
-            FillClippedSpan(bounds.x + bounds.width - width,
-                bounds.x + bounds.width, middle_top,
-                middle_bottom - middle_top, visible, color)
-        } else {
-            FillClippedSpan(bounds.x, bounds.x + bounds.width, middle_top,
-                middle_bottom - middle_top, visible, color)
-        }
+    if width > 0.0 {
+        FillShapeRows(bounds, radius, width, middle_top, middle_bottom, visible, color)
+    } else {
+        FillClippedSpan(bounds.x, bounds.x + bounds.width, middle_top,
+            middle_bottom - middle_top, visible, color)
     }
     FillShapeRows(bounds, radius, width, middle_bottom,
         bounds.y + bounds.height, visible, color)
@@ -595,7 +649,7 @@ EmitLine :: (command: PaintCommand) {
     if command.clip_set {
         clip := command.clip
         if clip.width <= 0.0 || clip.height <= 0.0 ||
-            (line.width == 0.0 && line.height == 0.0) { return }
+        (line.width == 0.0 && line.height == 0.0) { return }
         x := cast(float64)line.x
         y := cast(float64)line.y
         dx := cast(float64)line.width
@@ -605,7 +659,7 @@ EmitLine :: (command: PaintCommand) {
         start: float64 = 0.0
         end: float64 = 1.0
         if !ClipLineAxis(x, dx, left, left + cast(float64)clip.width, *start, *end) ||
-            !ClipLineAxis(y, dy, top, top + cast(float64)clip.height, *start, *end) { return }
+        !ClipLineAxis(y, dy, top, top + cast(float64)clip.height, *start, *end) { return }
         if start > 0.0 || end < 1.0 {
             length := end - start
             line = Rectangle.{cast(float32)(x + start * dx), cast(float32)(y + start * dy),
@@ -1226,7 +1280,7 @@ PendingPaintPoints :: (session: Session, data: *PaintCommand) -> []Vector2 {
     count := PaintPointCount(data.*)
     if count == 0 || !data.owns_mesh { return none }
     return pending_mesh[SessionIndex(session)][data.mesh_block].points[data.mesh_start:
-        data.mesh_start + cast(s32)count]
+    data.mesh_start + cast(s32)count]
 }
 
 // Gives a queued command another emitter that reads the same fields.
@@ -1380,13 +1434,13 @@ PaintCommandEqual :: (slot: s32, current: PaintCommand,
     current.italic != previous.data.italic { return false }
     if !SameTextGlyphStyle(current.glyph_style, previous.data.glyph_style) { return false }
     if (current.kind == PaintKindText || current.kind == PaintKindClippedText) &&
-        previous.text_revision != glyph_metrics_revision { return false }
+    previous.text_revision != glyph_metrics_revision { return false }
     if !SnapshotAssetEqual(slot, current.asset_path, previous.asset_start,
         previous.asset_count) { return false }
     if current.texture_id != previous.data.texture_id ||
     !TextureEqual(current.texture, previous.data.texture) { return false }
     if paint_snapshot_bitmap_revisions[slot] != Bitmaps.bitmap_revision &&
-        PaintBitmapRevision(current.texture_id) != previous.bitmap_revision { return false }
+    PaintBitmapRevision(current.texture_id) != previous.bitmap_revision { return false }
     if current.source.x != previous.data.source.x ||
     current.source.y != previous.data.source.y ||
     current.source.width != previous.data.source.width ||
@@ -1667,7 +1721,7 @@ PaintAreasNear :: (first: Rectangle, second: Rectangle) -> bool {
     // A host widens each area to whole device pixels; keep them apart by more.
     gap: float32 = 4.0
     return first.x <= second.x + second.width + gap && second.x <= first.x + first.width + gap &&
-        first.y <= second.y + second.height + gap && second.y <= first.y + first.height + gap
+    first.y <= second.y + second.height + gap && second.y <= first.y + first.height + gap
 }
 
 PaintAreasUnion :: (first: Rectangle, second: Rectangle) -> Rectangle {

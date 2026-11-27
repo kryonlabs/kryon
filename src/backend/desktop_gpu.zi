@@ -165,7 +165,7 @@ GpuSoftwareGl :: () -> bool {
     if get == null { return false }
     driver := get(cast(u32)0x1F01) // GL_RENDERER
     return GpuTextContains(driver, "llvmpipe") || GpuTextContains(driver, "softpipe") ||
-        GpuTextContains(driver, "Software")
+    GpuTextContains(driver, "Software")
 }
 
 Premul :: (color: Color) -> Color {
@@ -249,7 +249,7 @@ PushTriangle :: (texture: *void, smooth: bool, has_clip: bool, clip: DesktopGpuR
     if count > 0 {
         last := *gpu_batches[count - 1]
         if last.texture == texture && last.smooth == smooth && last.has_clip == has_clip &&
-            (!has_clip || ClipSame(last.clip, clip)) {
+        (!has_clip || ClipSame(last.clip, clip)) {
             if VecPush(gpu_vertices, a) && VecPush(gpu_vertices, b) && VecPush(gpu_vertices, c) {
                 last.count += 3
             }
@@ -317,7 +317,7 @@ CornerMask :: (radius: s32, out_x: *s32, out_y: *s32) -> bool {
             cov := cast(u32)((hits * 255 + 8) / 16)
             // Premultiplied white (cov, cov, cov, cov) in ARGB8888.
             gpu_scratch_pixels[cast(s64)py * cast(s64)side + cast(s64)px] =
-                (cov << cast(u32)24) | (cov << cast(u32)16) | (cov << cast(u32)8) | cov
+            (cov << cast(u32)24) | (cov << cast(u32)16) | (cov << cast(u32)8) | cov
         }
     }
     area: DesktopGpuRect = .{ax, ay, side, side}
@@ -351,8 +351,8 @@ HashTextKey :: (value: string, font: s32, family: s32, weight: s32,
 TextEntryMatches :: (entry: *DesktopGpuTextEntry, hash: u64, value: string,
     font: s32, family: s32, weight: s32, slant: s32, spacing: s32, scale_milli: s32) -> bool {
     if entry.width <= 0 || entry.hash != hash || entry.length != cast(s32)value.count ||
-        entry.font != font || entry.family != family || entry.weight != weight ||
-        entry.slant != slant || entry.spacing != spacing || entry.scale_milli != scale_milli {
+    entry.font != font || entry.family != family || entry.weight != weight ||
+    entry.slant != slant || entry.spacing != spacing || entry.scale_milli != scale_milli {
         return false
     }
     for i: cast(s32)0..entry.length - 1 {
@@ -388,8 +388,8 @@ UploadImageTexture :: (surface_ptr: *void, texture_id: u32, serial: u64,
         }
         if item.used < oldest_used { oldest_used = item.used; oldest = i }
         if cacheable && item.alpha_mask == alpha_mask &&
-            ((texture_id != cast(u32)0 && item.texture_id == texture_id) ||
-             (texture_id == cast(u32)0 && item.surface == surface_ptr)) {
+        ((texture_id != cast(u32)0 && item.texture_id == texture_id) ||
+            (texture_id == cast(u32)0 && item.surface == surface_ptr)) {
             if item.serial == serial && item.width == width && item.height == height {
                 item.used = gpu_clock
                 return item.texture
@@ -430,7 +430,7 @@ UploadImageTexture :: (surface_ptr: *void, texture_id: u32, serial: u64,
                 word := (cast(*u32)(*row[cast(s64)x * 4])).*
                 a := word >> cast(u32)24
                 gpu_scratch_pixels[cast(s64)y * cast(s64)width + cast(s64)x] =
-                    (a << cast(u32)24) | (a << cast(u32)16) | (a << cast(u32)8) | a
+                (a << cast(u32)24) | (a << cast(u32)16) | (a << cast(u32)8) | a
             }
         }
         ok = UpdateTexture(tex, null, cast(*void)*gpu_scratch_pixels[0], width * 4)
@@ -462,7 +462,7 @@ DesktopGpuOpen :: (renderer: *void, width: s32, height: s32) -> bool {
     if (info.flags & cast(u32)8) == cast(u32)0 { return false } // SDL_RENDERER_TARGETTEXTURE
     if !forced && ((info.flags & cast(u32)2) == cast(u32)0 || GpuSoftwareGl()) { return false }
     if (info.max_width > 0 && info.max_width < DESKTOP_GPU_ATLAS_SIDE) ||
-        (info.max_height > 0 && info.max_height < DESKTOP_GPU_ATLAS_SIDE) { return false }
+    (info.max_height > 0 && info.max_height < DESKTOP_GPU_ATLAS_SIDE) { return false }
     gpu_renderer = renderer
     gpu_premultiplied = ComposeBlend(2, 6, 1, 2, 6, 1)
     gpu_max_texture = ifx info.max_width < info.max_height then info.max_width else info.max_height
@@ -583,6 +583,96 @@ DesktopGpuReadback :: (pixels: *u8, stride: s32) -> bool {
     return ok
 }
 
+// Device-pixel coverage fringes keep GPU curves smooth without MSAA. All
+// bands meet at shared vertices, so translucent borders never blend twice.
+RoundedInset :: (bounds: Rectangle, inset: float32) -> Rectangle {
+    width := bounds.width - inset * 2.0
+    height := bounds.height - inset * 2.0
+    if width < 0.0 { width = 0.0 }
+    if height < 0.0 { height = 0.0 }
+    return Rectangle.{bounds.x + (bounds.width - width) * 0.5,
+        bounds.y + (bounds.height - height) * 0.5, width, height}
+}
+
+RoundedSegments :: (radius: float32) -> s32 {
+    // Keep the chord error below a fraction of a device pixel as radii grow.
+    segments := cast(s32)(Sqrt(cast(float64)radius) * 2.0) + 1
+    if segments < 8 { segments = 8 }
+    if segments > 256 { segments = 256 }
+    return segments
+}
+
+RoundedVertex :: (bounds: Rectangle, radius: float32, corner: s32,
+    cosine: float32, sine: float32, color: Color) -> DesktopGpuVertex {
+    if radius < 0.0 { radius = 0.0 }
+    if radius > bounds.width * 0.5 { radius = bounds.width * 0.5 }
+    if radius > bounds.height * 0.5 { radius = bounds.height * 0.5 }
+    x := bounds.x + radius
+    y := bounds.y + radius
+    if corner < 2 { x = bounds.x + bounds.width - radius }
+    if corner == 1 || corner == 2 { y = bounds.y + bounds.height - radius }
+    uv := WhiteUv()
+    return DesktopGpuVertex.{x + cosine * radius, y + sine * radius,
+        color.r, color.g, color.b, color.a, uv, uv}
+}
+
+PushRoundedBand :: (outer: Rectangle, outer_radius: float32, outer_color: Color,
+    inner: Rectangle, inner_radius: float32, inner_color: Color, segments: s32) {
+    no_clip: DesktopGpuRect
+    first_outer: DesktopGpuVertex
+    first_inner: DesktopGpuVertex
+    previous_outer: DesktopGpuVertex
+    previous_inner: DesktopGpuVertex
+    started := false
+    for corner: cast(s32)0..3 {
+        for step: cast(s32)0..segments {
+            angle := (cast(float64)corner - 1.0 + cast(float64)step / cast(float64)segments) * 1.5707963267948966
+            cosine := cast(float32)Cos(angle)
+            sine := cast(float32)Sin(angle)
+            a := RoundedVertex(outer, outer_radius, corner, cosine, sine, outer_color)
+            b := RoundedVertex(inner, inner_radius, corner, cosine, sine, inner_color)
+            if started {
+                PushTriangle(gpu_atlas, false, false, no_clip, previous_outer, a, b)
+                PushTriangle(gpu_atlas, false, false, no_clip, previous_outer, b, previous_inner)
+            } else {
+                first_outer = a
+                first_inner = b
+                started = true
+            }
+            previous_outer = a
+            previous_inner = b
+        }
+    }
+    PushTriangle(gpu_atlas, false, false, no_clip, previous_outer, first_outer, first_inner)
+    PushTriangle(gpu_atlas, false, false, no_clip, previous_outer, first_inner, previous_inner)
+}
+
+PushRoundedFill :: (bounds: Rectangle, radius: float32, color: Color) {
+    full := RoundedInset(bounds, 0.5)
+    segments := RoundedSegments(radius)
+    no_clip: DesktopGpuRect
+    uv := WhiteUv()
+    center := DesktopGpuVertex.{bounds.x + bounds.width * 0.5,
+        bounds.y + bounds.height * 0.5, color.r, color.g, color.b, color.a, uv, uv}
+    first: DesktopGpuVertex
+    previous: DesktopGpuVertex
+    started := false
+    for corner: cast(s32)0..3 {
+        for step: cast(s32)0..segments {
+            angle := (cast(float64)corner - 1.0 + cast(float64)step / cast(float64)segments) * 1.5707963267948966
+            vertex := RoundedVertex(full, radius - 0.5, corner,
+                cast(float32)Cos(angle), cast(float32)Sin(angle), color)
+            if started { PushTriangle(gpu_atlas, false, false, no_clip, center, previous, vertex) }
+            else { first = vertex; started = true }
+            previous = vertex
+        }
+    }
+    PushTriangle(gpu_atlas, false, false, no_clip, center, previous, first)
+    clear: Color
+    PushRoundedBand(RoundedInset(bounds, -0.5), radius + 0.5, clear,
+        full, radius - 0.5, color, segments)
+}
+
 DesktopGpuDrawRoundedRect :: (bounds: Rectangle, radius: float32, color: Color,
     scale: float64, offset_x: float64, offset_y: float64) {
     if !gpu_active || bounds.width <= 0.0 || bounds.height <= 0.0 || color.a == cast(u8)0 { return }
@@ -624,46 +714,18 @@ DesktopGpuDrawRoundedRect :: (bounds: Rectangle, radius: float32, color: Color,
         PushSolidQuad(x0 + rf, y1 - rf, x1 - rf, y1, c)
         return
     }
-    // Large radius (>128px): tessellated GPU triangle fan around center.
-    cx := (x0 + x1) * 0.5; cy := (y0 + y1) * 0.5
-    wv := WhiteUv()
-    center := DesktopGpuVertex.{cx, cy, c.r, c.g, c.b, c.a, wv, wv}
-    no_clip: DesktopGpuRect
-    segs: s32 = 24
-    half_pi: float64 = 1.5707963267948966
-    cxs: [4]float32 = .[x1 - r, x1 - r, x0 + r, x0 + r]
-    cys: [4]float32 = .[y0 + r, y1 - r, y1 - r, y0 + r]
-    starts: [4]float64 = .[-half_pi, 0.0, half_pi, 2.0 * half_pi]
-    prev_set := false
-    first_v: DesktopGpuVertex
-    prev_v: DesktopGpuVertex
-    for corner: cast(s32)0..3 {
-        for s: cast(s32)0..segs {
-            ang := starts[corner] + half_pi * cast(float64)s / cast(float64)segs
-            px := cxs[corner] + cast(float32)(Cos(ang) * cast(float64)r)
-            py := cys[corner] + cast(float32)(Sin(ang) * cast(float64)r)
-            v := DesktopGpuVertex.{px, py, c.r, c.g, c.b, c.a, wv, wv}
-            if prev_set {
-                PushTriangle(gpu_atlas, false, false, no_clip, center, prev_v, v)
-            } else {
-                first_v = v
-                prev_set = true
-            }
-            prev_v = v
-        }
-    }
-    if prev_set { PushTriangle(gpu_atlas, false, false, no_clip, center, prev_v, first_v) }
+    // The atlas limit must not turn a large rounded fill into an aliased fan.
+    PushRoundedFill(Rectangle.{x0, y0, w, h}, r, c)
 }
 
 DesktopGpuDrawRoundedOutline :: (bounds: Rectangle, radius: float32, line_width: float32,
     color: Color, scale: float64, offset_x: float64, offset_y: float64) {
     if !gpu_active || bounds.width <= 0.0 || bounds.height <= 0.0 || line_width <= 0.0 ||
-        color.a == cast(u8)0 { return }
+    color.a == cast(u8)0 { return }
     x0 := cast(float32)(cast(float64)bounds.x * scale + offset_x)
     y0 := cast(float32)(cast(float64)bounds.y * scale + offset_y)
     w := cast(float32)(cast(float64)bounds.width * scale)
     h := cast(float32)(cast(float64)bounds.height * scale)
-    x1 := x0 + w; y1 := y0 + h
     lw := cast(float32)(cast(float64)line_width * scale)
     if lw < 1.0 { lw = 1.0 }
     half := lw * 0.5
@@ -672,47 +734,24 @@ DesktopGpuDrawRoundedOutline :: (bounds: Rectangle, radius: float32, line_width:
     if r < 0.0 { r = 0.0 }
     if r > w * 0.5 { r = w * 0.5 }
     if r > h * 0.5 { r = h * 0.5 }
-    if r <= 0.5 {
-        PushSolidQuad(x0 - half, y0 - half, x1 + half, y0 + half, c)
-        PushSolidQuad(x0 - half, y1 - half, x1 + half, y1 + half, c)
-        PushSolidQuad(x0 - half, y0 + half, x0 + half, y1 - half, c)
-        PushSolidQuad(x1 - half, y0 + half, x1 + half, y1 - half, c)
+    device := Rectangle.{x0, y0, w, h}
+    outer := RoundedInset(device, -half)
+    if w <= lw || h <= lw {
+        PushRoundedFill(outer, r + half, c)
         return
     }
-    // 4 straight edge segments between rounded corners.
-    PushSolidQuad(x0 + r, y0 - half, x1 - r, y0 + half, c)
-    PushSolidQuad(x0 + r, y1 - half, x1 - r, y1 + half, c)
-    PushSolidQuad(x0 - half, y0 + r, x0 + half, y1 - r, c)
-    PushSolidQuad(x1 - half, y0 + r, x1 + half, y1 - r, c)
-    // 4 tessellated GPU arc strips for corners.
-    r_out := r + half
-    r_in := r - half
-    if r_in < 0.0 { r_in = 0.0 }
-    wv := WhiteUv()
-    no_clip: DesktopGpuRect
-    segs: s32 = 16
-    half_pi: float64 = 1.5707963267948966
-    cxs: [4]float32 = .[x1 - r, x1 - r, x0 + r, x0 + r]
-    cys: [4]float32 = .[y0 + r, y1 - r, y1 - r, y0 + r]
-    starts: [4]float64 = .[-half_pi, 0.0, half_pi, 2.0 * half_pi]
-    for corner: cast(s32)0..3 {
-        for s: cast(s32)0..segs - 1 {
-            a0 := starts[corner] + half_pi * cast(float64)s / cast(float64)segs
-            a1 := starts[corner] + half_pi * cast(float64)(s + 1) / cast(float64)segs
-            ca0 := Cos(a0); sa0 := Sin(a0)
-            ca1 := Cos(a1); sa1 := Sin(a1)
-            o0 := DesktopGpuVertex.{cxs[corner] + cast(float32)(ca0 * cast(float64)r_out),
-                cys[corner] + cast(float32)(sa0 * cast(float64)r_out), c.r, c.g, c.b, c.a, wv, wv}
-            i0 := DesktopGpuVertex.{cxs[corner] + cast(float32)(ca0 * cast(float64)r_in),
-                cys[corner] + cast(float32)(sa0 * cast(float64)r_in), c.r, c.g, c.b, c.a, wv, wv}
-            o1 := DesktopGpuVertex.{cxs[corner] + cast(float32)(ca1 * cast(float64)r_out),
-                cys[corner] + cast(float32)(sa1 * cast(float64)r_out), c.r, c.g, c.b, c.a, wv, wv}
-            i1 := DesktopGpuVertex.{cxs[corner] + cast(float32)(ca1 * cast(float64)r_in),
-                cys[corner] + cast(float32)(sa1 * cast(float64)r_in), c.r, c.g, c.b, c.a, wv, wv}
-            PushTriangle(gpu_atlas, false, false, no_clip, o0, o1, i1)
-            PushTriangle(gpu_atlas, false, false, no_clip, o0, i1, i0)
-        }
+    segments := RoundedSegments(r + half)
+    clear: Color
+    outer_full := RoundedInset(device, -half + 0.5)
+    inner_full := RoundedInset(device, half - 0.5)
+    PushRoundedBand(RoundedInset(device, -half - 0.5), r + half + 0.5, clear,
+        outer_full, r + half - 0.5, c, segments)
+    if lw > 1.0 {
+        PushRoundedBand(outer_full, r + half - 0.5, c,
+            inner_full, r - half + 0.5, c, segments)
     }
+    PushRoundedBand(inner_full, r - half + 0.5, c,
+        RoundedInset(device, half + 0.5), r - half - 0.5, clear, segments)
 }
 
 DesktopGpuDrawLine :: (line: Rectangle, color: Color,
@@ -771,7 +810,7 @@ DesktopGpuDrawTriangles :: (points: []Vector2, color: Color,
 // (zero Cairo calls needed) and draws it immediately on the GPU.
 DesktopGpuTextCached :: (args: *Cairo.RasterGpuTextArgs) -> bool {
     if !gpu_active || args == null || args.value.count == 0 ||
-        args.value.count > DESKTOP_GPU_TEXT_KEY_LIMIT { return false }
+    args.value.count > DESKTOP_GPU_TEXT_KEY_LIMIT { return false }
     scale_milli := cast(s32)(args.scale * 1000.0 + 0.5)
     hash := HashTextKey(args.value, args.font, args.family, args.weight,
         args.slant, args.spacing, scale_milli)
@@ -944,7 +983,7 @@ DesktopGpuEmitTextQuad :: (tex: *void, tx: s32, ty: s32, tw: s32, th: s32,
 
 DesktopGpuDrawImage :: (args: *Cairo.RasterGpuImageArgs) -> bool {
     if !gpu_active || args == null || args.img_w <= 0 || args.img_h <= 0 ||
-        args.tint.a == cast(u8)0 { return true }
+    args.tint.a == cast(u8)0 { return true }
     img_w := args.img_w; img_h := args.img_h; tint := args.tint
     source := args.source; dest := args.dest; clip := args.clip
     scale := args.scale; offset_x := args.offset_x; offset_y := args.offset_y
@@ -1025,7 +1064,7 @@ DesktopGpuDrawImage :: (args: *Cairo.RasterGpuImageArgs) -> bool {
 
 DesktopGpuDrawImageMesh :: (args: *Cairo.RasterGpuMeshArgs) -> bool {
     if !gpu_active || args == null || args.img_w <= 0 || args.img_h <= 0 ||
-        args.tint.a == cast(u8)0 { return true }
+    args.tint.a == cast(u8)0 { return true }
     img_w := args.img_w; img_h := args.img_h; tint := args.tint
     source := args.source; clip := args.clip; points := args.points
     columns := args.columns; rows := args.rows

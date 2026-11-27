@@ -66,14 +66,16 @@ cat > "$work/native_main.h" <<'C'
 static int text_draws;
 static int image_draws;
 static int shape_draws;
+static int antialiased_shapes;
 
 HOST void RasterRoundedRectangle(Rectangle bounds, float radius,
     int32_t segments, Color color) {
-    (void)segments; (void)color;
+    (void)segments;
     assert(radius == 0.0f);
     assert(bounds.x >= 20 && bounds.y >= 20 &&
            bounds.x + bounds.width <= 60 && bounds.y + bounds.height <= 60);
     shape_draws++;
+    if (color.a > 0 && color.a < 255) antialiased_shapes++;
 }
 HOST void RasterRoundedRectangleOutline(Rectangle bounds, float radius,
     int32_t segments, float width, Color color) {
@@ -123,7 +125,7 @@ HOST void RasterTextRotated(String value, int32_t x, int32_t y, int32_t font,
 }
 int main(void) {
     assert(Frame() == 42);
-    assert(text_draws == 2 && image_draws == 1 && shape_draws == 18);
+    assert(text_draws == 2 && image_draws == 1 && shape_draws > 0 && antialiased_shapes > 0);
     return 0;
 }
 C
@@ -142,7 +144,7 @@ for target in c go; do
 package ziran
 import "testing"
 
-type clipHost struct { t *testing.T; texts int; images int; shapes int }
+type clipHost struct { t *testing.T; texts int; images int; shapes int; antialiased int }
 
 func (h *clipHost) RasterRoundedRectangle(bounds Rectangle,
     radius float32, segments int32, color Color) {
@@ -151,6 +153,7 @@ func (h *clipHost) RasterRoundedRectangle(bounds Rectangle,
         h.t.Fatal("shape outside clip")
     }
     h.shapes++
+    if color.A > 0 && color.A < 255 { h.antialiased++ }
 }
 func (h *clipHost) RasterRoundedRectangleOutline(bounds Rectangle,
     radius float32, segments int32, width float32,
@@ -187,8 +190,8 @@ func TestClip(t *testing.T) {
     SetRasterTextHost(h)
     SetRasterHost(h)
     SetPaintQueueHost(h)
-    if TestCase_Frame() != 42 || h.texts != 2 || h.images != 1 || h.shapes != 18 {
-        t.Fatal("clip paint calls", h.texts, h.images)
+    if TestCase_Frame() != 42 || h.texts != 2 || h.images != 1 || h.shapes == 0 || h.antialiased == 0 {
+        t.Fatal("clip paint calls", h.texts, h.images, h.shapes, h.antialiased)
     }
 }
 GO
