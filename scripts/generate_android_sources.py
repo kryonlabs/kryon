@@ -124,7 +124,7 @@ if needs_program:
     # platform bridge here instead of imposing an export annotation on apps.
     host_roots.extend([entry, program_source])
     bindings = ["--bind",
-                f"{args.package_id}_android_run:AndroidProgramMain=kryon_android_program:AndroidProgramMain"]
+                "kryon/android_run:AndroidProgramMain=kryon_android_program:AndroidProgramMain"]
 for path in host_roots:
     if path != program_source and not path.is_file():
         raise SystemExit(f"Missing host source {path}; run scripts/android_scaffold.py")

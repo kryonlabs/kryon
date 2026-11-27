@@ -41,6 +41,9 @@ same Kryon as the app, or the build names the export both define. Then:
 
 ## Unreleased
 
+- Resolve Android's program-entry binding through the public package import,
+  so compiler module namespaces cannot break native application builds.
+
 - Fix one-pixel gaps in GPU-rendered pills and rounded rectangles at
   fractional positions.
 
