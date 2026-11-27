@@ -619,13 +619,17 @@ TextAreaAtLineStart :: (value: string, start: s32) -> bool {
 #program_export
 TextAreaBlocksFor :: (value: string, blocks: []Block) -> []Block {
     previous: s32 = -1
+    replaced_until: s32
     for block: blocks {
         if block.start < previous || (block.start == previous && block.cover) ||
-            block.height <= 0 || !TextAreaAtLineStart(value, block.start) {
+            block.start < replaced_until || block.height <= 0 || !TextAreaAtLineStart(value, block.start) ||
+            (block.end != 0 && (!block.cover || block.end <= block.start ||
+                (block.end != cast(s32)value.count && !TextAreaAtLineStart(value, block.end)))) {
             none: []Block
             return none
         }
         previous = block.start
+        if block.end > 0 { replaced_until = block.end }
     }
     return blocks
 }
@@ -769,6 +773,12 @@ TextAreaPlaceRow :: (place: *TextAreaPlacement) -> TextAreaPlacedRow {
             }
             while place.next_block < cast(s32)blocks.count &&
                 TextAreaViewOffset(place.view, blocks[place.next_block].start) == place.line_start {
+                replaced_end := TextAreaViewOffset(place.view, blocks[place.next_block].end)
+                if blocks[place.next_block].end > 0 && replaced_end > placed.row.next {
+                    placed.row.end = replaced_end
+                    if replaced_end > 0 && place.view.value[blocks[place.next_block].end-1] == cast(u8)10 { placed.row.end-=1 }
+                    placed.row.next = replaced_end
+                }
                 placed.advance += blocks[place.next_block].height + layout.gap
                 placed.block_count += 1
                 place.next_block += 1

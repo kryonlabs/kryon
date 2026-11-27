@@ -3,8 +3,19 @@
 #import "tree"
 Preview :: #import "kryon/markdown_preview";
 TextArea :: #import "kryon/text_area";
+Text :: #import "kryon/text_props";
 #import "kryon/session"
 
+// Line-aligned source ranges. The application owns disclosure controls and
+// expanded state; folding changes layout, never the document or edit offsets.
+Fold :: struct {
+    start: s32
+    body_start: s32
+    body_end: s32
+    end: s32
+    expanded: bool
+}
+FOLDS :: 128;
 Props :: struct {
     area: TextArea.Props
     muted_color: u32
@@ -12,13 +23,15 @@ Props :: struct {
     // Sorted byte spans for images resolved by the app, with corresponding
     // blocks in area.blocks. Unresolved image syntax remains ordinary text.
     images: []Preview.ImageSpan
+    folds: []Fold
 }
 
 Workspace :: struct {
     preview: Preview.Preview
     colors: [Preview.PREVIEW_TONES]TextArea.ColorSpan
     lines: [Preview.PREVIEW_HEADINGS]TextArea.Line
-    blocks: [Preview.PREVIEW_IMAGES]TextArea.Block
+    blocks: [Preview.PREVIEW_IMAGES+FOLDS]TextArea.Block
+    hidden: [Preview.PREVIEW_RANGES+FOLDS*2]Text.Range
 }
 
 HEADING_SCALES: [6]float32 = .[1.6, 1.4, 1.25, 1.1, 1.0, 1.0];
@@ -29,14 +42,11 @@ workspace: Workspace;
 
 // No shadow document or conversion step is involved: edits address the
 // original Markdown bytes. Every range is consumed by TextArea in this call.
-Draw :: (session: Session, props: Props, location := #caller_location) -> TextArea.Result {
-    site := TreeCallSite(session, location)
-    defer { TreeCallSiteEnd(session, site) }
+Prepare :: (props: Props) -> TextArea.Props {
     area := props.area
     Preview.Scan(*workspace.preview, area.value, area.cursor, area.anchor,
         area.focused && !area.read_only, props.images)
     preview := *workspace.preview
-    area.hidden = preview.hidden[:preview.hidden_count]
     area.strong = preview.strong[:preview.strong_count]
     area.italic = preview.italic[:preview.italic_count]
     colors: s32 = 0
@@ -63,6 +73,12 @@ Draw :: (session: Session, props: Props, location := #caller_location) -> TextAr
     blocks: s32 = 0
     for index: cast(s32)0..preview.image_count - 1 {
         image := preview.images[index]
+        folded: bool
+        for fold: props.folds {
+            if FoldValid(area.value,fold) && image.embed.start>=fold.start &&
+                image.embed.start<(ifx fold.expanded then fold.body_start else fold.end) { folded=true; break }
+        }
+        if folded { continue }
         for supplied: cast(s32)0..cast(s32)props.images.count - 1 {
             if props.images[supplied].start == image.embed.start &&
             supplied < cast(s32)props.area.blocks.count {
@@ -73,6 +89,48 @@ Draw :: (session: Session, props: Props, location := #caller_location) -> TextAr
             }
         }
     }
+    hidden: s32
+    for range: preview.hidden[:preview.hidden_count] { workspace.hidden[hidden]=range; hidden+=1 }
+    for fold: props.folds {
+        if blocks>=workspace.blocks.count || hidden+2>workspace.hidden.count || !FoldValid(area.value,fold) { continue }
+        stop:=ifx fold.expanded then fold.body_start else fold.end
+        workspace.blocks[blocks]=TextArea.Block.{.start=fold.start,.end=stop,.height=28,.cover=true}; blocks+=1
+        workspace.hidden[hidden]=Text.Range.{.start=fold.start,.end=stop}; hidden+=1
+        if fold.expanded && fold.body_end<fold.end {
+            workspace.hidden[hidden]=Text.Range.{.start=fold.body_end,.end=fold.end}; hidden+=1
+        }
+    }
+    // Formatting ranges can overlap a disclosure's source range. Merge them
+    // before passing the same original value to the ordinary TextArea.
+    for i: cast(s32)1..hidden-1 {
+        range:=workspace.hidden[i]; j:=i
+        while j>0 && workspace.hidden[j-1].start>range.start { workspace.hidden[j]=workspace.hidden[j-1]; j-=1 }
+        workspace.hidden[j]=range
+    }
+    merged: s32
+    for i: cast(s32)0..hidden-1 {
+        range:=workspace.hidden[i]
+        if merged>0 && range.start<=workspace.hidden[merged-1].end {
+            if range.end>workspace.hidden[merged-1].end { workspace.hidden[merged-1].end=range.end }
+        } else { workspace.hidden[merged]=range; merged+=1 }
+    }
+    area.hidden=workspace.hidden[:merged]
+    for i: cast(s32)1..blocks-1 {
+        block:=workspace.blocks[i]; j:=i
+        while j>0 && workspace.blocks[j-1].start>block.start { workspace.blocks[j]=workspace.blocks[j-1]; j-=1 }
+        workspace.blocks[j]=block
+    }
     area.blocks = workspace.blocks[:blocks]
-    return TextArea.Draw(session, area)
+    return area
+}
+FoldValid :: (value: string, fold: Fold) -> bool {
+    return fold.start>=0 && fold.start<fold.body_start && fold.body_start<=fold.body_end &&
+        fold.body_end<=fold.end && fold.end<=cast(s32)value.count &&
+        TextArea.TextAreaAtLineStart(value,fold.start) && TextArea.TextAreaAtLineStart(value,fold.body_start) &&
+        (fold.end==cast(s32)value.count || TextArea.TextAreaAtLineStart(value,fold.end))
+}
+Draw :: (session: Session, props: Props, location := #caller_location) -> TextArea.Result {
+    site := TreeCallSite(session, location)
+    defer { TreeCallSiteEnd(session, site) }
+    return TextArea.Draw(session, Prepare(props))
 }

@@ -79,3 +79,11 @@ and fenced code are excluded. `Embed(destination, alt)` creates an escaped
 image line. The application owns uploads, authenticated downloads and decoded
 assets; pass resolved spans in `MarkdownEditor.Props.images` and matching image
 blocks in `area.blocks`. Unresolved references remain editable Markdown.
+
+`MarkdownEditor.Props.folds` holds line-aligned source ranges with `start`,
+`body_start`, `body_end`, `end` and `expanded`. A collapsed range occupies one
+28-pixel disclosure row; an expanded range reveals its original body and images.
+The app owns the disclosure buttons and state. `MarkdownEditor.Prepare(props)`
+returns the same formatted `TextArea.Props` used by `Draw`, for measurement and
+positioning controls. Folded content remains in the original value, so edits,
+selection and copying retain document byte offsets.

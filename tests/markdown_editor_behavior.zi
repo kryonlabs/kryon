@@ -94,5 +94,21 @@ Main :: () -> s32 {
     if Editor.workspace.preview.images[0].cover || Editor.workspace.preview.hidden_count != 0 {
         return 8
     }
+    // A disclosure hides only technical source lines. The following task
+    // keeps its original byte offset for caret placement, editing and copy.
+    document := "- [ ] First task\nDetails\ntrace one\ntrace two\n- [ ] Second task\n"
+    folds: [1]Editor.Fold=.[Editor.Fold.{.start=17,.body_start=25,.body_end=45,.end=45}]
+    props.area.value=document; props.area.cursor=0; props.area.anchor=0; props.folds=folds[:]
+    prepared:=Editor.Prepare(props)
+    if prepared.value!=document || prepared.blocks.count!=1 || prepared.blocks[0].end!=45 { return 9 }
+    layout: TextArea.TextAreaLayout=.{.font=14,.gap=4,.wrap_width=600,.hidden=prepared.hidden,.blocks=prepared.blocks}
+    view:=TextArea.TextAreaViewFor(document,0,0,props.area.composition)
+    closed_height:=TextArea.TextAreaContentHeight(layout,view)
+    caret:=TextArea.TextAreaCaretPlaced(layout,view,45)
+    if caret.row_start!=45 || caret.y>closed_height || TextArea.TextAreaBlocksFor(document,prepared.blocks).count!=1 { return 10 }
+    open_fold:=folds[0]; open_fold.expanded=true
+    opened_folds: [1]Editor.Fold=.[open_fold]; props.folds=opened_folds[:]
+    prepared=Editor.Prepare(props); layout.hidden=prepared.hidden; layout.blocks=prepared.blocks
+    if prepared.value!=document || TextArea.TextAreaContentHeight(layout,view)<=closed_height { return 11 }
     return 0
 }

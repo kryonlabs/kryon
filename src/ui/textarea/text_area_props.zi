@@ -57,6 +57,9 @@ Block :: struct {
     image: string
     // Shown in a soft frame while the image is empty or unavailable.
     label: string
+    // A covering block can replace complete source lines through this byte
+    // offset. Zero keeps the ordinary single-line image behavior.
+    end: s32
 }
 
 // A logical line drawn at its own size, such as a heading. Its rows wrap,
