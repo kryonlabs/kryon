@@ -250,10 +250,13 @@ AppContextCall :: (context: *void, module: *u8, function: *u8,
     }
     if name == "AppSupportsHost" && count == 1 &&
     HostScalarValid(arguments[0], "string", cast(s32)HostString) {
-        capability := AppArgumentText(arguments[0])
-        available := capability == "AppThemeColorHost" || capability == "tile_map.sampling" ||
-        (capability == KRYON_INPUT_DESKTOP && HostInputDesktop()) ||
-        (app.allows != null && app.allows(app.context, capability))
+        available: bool
+        {
+            capability := AppArgumentText(arguments[0])
+            available = capability == "AppThemeColorHost" || capability == "tile_map.sampling" ||
+            (capability == KRYON_INPUT_DESKTOP && HostInputDesktop()) ||
+            (app.allows != null && app.allows(app.context, capability))
+        }
         result.* = HostScalar("bool", ifx available then 1 else 0)
         return 1
     }
@@ -264,8 +267,12 @@ AppContextCall :: (context: *void, module: *u8, function: *u8,
     if name == "AppServiceHost" && count == 2 &&
     HostScalarValid(arguments[0], "string", cast(s32)HostString) &&
     HostScalarValid(arguments[1], "string", cast(s32)HostString) {
-        service := AppArgumentText(arguments[0])
-        if app.services != null && app.allows != null && app.allows(app.context, service) {
+        allowed: bool
+        {
+            service := AppArgumentText(arguments[0])
+            allowed = app.services != null && app.allows != null && app.allows(app.context, service)
+        }
+        if allowed {
             return app.services(app.context, module, function, arguments, count, result)
         }
         unavailable := "{\"status\":\"unavailable\"}"

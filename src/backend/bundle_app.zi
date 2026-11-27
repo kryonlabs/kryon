@@ -93,9 +93,11 @@ BundleAppServices :: (context: *void, module: *u8, function: *u8,
     host := cast(*BundleApp)context
     if TextFromCString(function) == "AppAssetPathHost" && count == 1 &&
     HostScalarValid(arguments[0], "string", cast(s32)HostValueKind.HostString) {
-        path := AppArgumentText(arguments[0])
         value := ""
-        if BundleReadAsset(host.app.app.bundle, path).count > 0 { value = path }
+        {
+            path := AppArgumentText(arguments[0])
+            if BundleReadAsset(host.app.app.bundle, path).count > 0 { value = path }
+        }
         result.* = AppLocalText(value)
         return 1
     }

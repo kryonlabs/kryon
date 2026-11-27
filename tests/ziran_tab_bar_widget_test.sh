@@ -8,7 +8,6 @@ set --
 . "$repo/tests/widget_raster_bindings.sh"
 
 widget_native=1
-widget_run_saved=1
 widget_std="$ziran_root/std"
 . "$repo/tests/widget_matrix.sh"
 

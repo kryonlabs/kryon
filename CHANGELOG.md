@@ -39,6 +39,15 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
+- Pin the native TSX frontend to the published 4596187a compiler in the CLI,
+  templates and maintained examples, with normally regenerated package locks.
+- End host argument and renderer-buffer borrows before publishing results or
+  presenting pixels; consume owned document replies before replacing storage.
+- Finish reading TextField draw results before publishing edited bytes and IME
+  state. Reuse the existing edit staging allocation and keep idle binding allocation-free.
+- Remove duplicate widget-test executions of byte-identical portable bundles;
+  preserve source/saved IR comparisons and native and Go behavior checks.
+
 - Replace the web host's Canvas2D presenter with a WebGL2 GPU presenter: one
   context whose drawing buffer survives composites, batched shape vertices
   with analytic coverage, text and images as textured quads from retained

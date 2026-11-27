@@ -14,10 +14,6 @@ widget_test=${widget_test%.zi}
 cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran_root/build/bin/zi2zx" run "$work/source.zx")" = 0
 
-if test "${widget_run_saved:-0}" = 1; then
-    test "$("$ziran_root/build/bin/zi2zx" run "$work/saved.zx")" = 0
-fi
-
 if test "${widget_native:-0}" = 1; then
     for target in c; do
         output=$work/native-$target

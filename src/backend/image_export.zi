@@ -34,9 +34,14 @@ EncodedImageExport :: (data: string, file_type: string, path: string) -> bool {
         byte := extension[at]
         kind[at] = ifx byte >= 65 && byte <= 90 then byte + cast(u8)32 else byte
     }
-    format := TextFromCString(*kind[0])
-    jpeg := format == "jpg" || format == "jpeg"
-    if format == "jpg" {
+    jpeg: bool
+    normalize_jpg: bool
+    {
+        format := TextFromCString(*kind[0])
+        jpeg = format == "jpg" || format == "jpeg"
+        normalize_jpg = format == "jpg"
+    }
+    if normalize_jpg {
         unused CopyCString("jpeg", kind[:])
     }
     image := ImageDecodeEncoded(data, file_type)

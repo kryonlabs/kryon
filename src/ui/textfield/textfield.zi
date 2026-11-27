@@ -1,4 +1,5 @@
 using TextField :: #import "text_field_props";
+using Vectors :: #import "std/vec";
 Button :: #import "button";
 Text :: #import "text";
 Theme :: #import "theme";
@@ -895,19 +896,24 @@ Bind :: (session: Session, state: *State, props: TextField.Props,
     bound: BindingResult = .{.node = -1}
     if state == null { return bound }
     if state.bytes.count == 0 { state.bytes = state.storage[:] }
-    preedit: [4096]u8
-    if state.preedit_active && state.preedit_length >= 0 && state.preedit_length <= preedit.count {
-        for index: 0..state.preedit_length - 1 { preedit[index] = state.preedit[index] }
+    update: StateBindingUpdate
+    defer { VecFree(update.bytes) }
+    {
+        preedit: [4096]u8
+        if state.preedit_active && state.preedit_length >= 0 && state.preedit_length <= preedit.count {
+            for index: 0..state.preedit_length - 1 { preedit[index] = state.preedit[index] }
+        }
+        bound_props := StateBindingProps(state, props, preedit[:])
+        typed: [128]u8
+        result := BindingDraw(session, bound_props, session_input, typed[:], location)
+        bound.node = result.node
+        if !StateBindingStage(state, result, *update) { return bound }
+        bound.focused = result.focused
+        bound.changed = result.edit.changed
+        bound.committed = result.committed
+        bound.escaped = result.escaped
+        bound.paste_without_text = result.paste_without_text
     }
-    props = StateBindingProps(state, props, preedit[:])
-    typed: [128]u8
-    result := BindingDraw(session, props, session_input, typed[:], location)
-    bound.node = result.node
-    if !StateApplyBindingResult(state, result) { return bound }
-    bound.focused = result.focused
-    bound.changed = result.edit.changed
-    bound.committed = result.committed
-    bound.escaped = result.escaped
-    bound.paste_without_text = result.paste_without_text
+    StateBindingApply(state, *update)
     return bound
 }

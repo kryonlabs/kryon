@@ -87,14 +87,17 @@ AppLocalCall :: (context: *void, module: *u8, function: *u8,
     if name == "AppServiceHost" && count == 2 &&
     HostScalarValid(arguments[0], "string", cast(s32)HostString) &&
     HostScalarValid(arguments[1], "string", cast(s32)HostString) {
-        service := AppArgumentText(arguments[0])
-        request := AppArgumentText(arguments[1])
+        value: string
+        {
+            service := AppArgumentText(arguments[0])
+            request := AppArgumentText(arguments[1])
+            if service == "media.query" { value = AppMediaQuery(*local.files, request) }
+            else if service == "media.asset" { value = AppMediaAsset(*local.files, request) }
+            else if service == "media.pick" { value = AppMediaPick(*local.files, request) }
+            else { return 0 }
+        }
         AppFileFree(local.read_value)
-        local.read_value = ""
-        if service == "media.query" { local.read_value = AppMediaQuery(*local.files, request) }
-        else if service == "media.asset" { local.read_value = AppMediaAsset(*local.files, request) }
-        else if service == "media.pick" { local.read_value = AppMediaPick(*local.files, request) }
-        else { return 0 }
+        local.read_value = value
         result.* = AppLocalText(local.read_value)
         return 1
     }
@@ -118,12 +121,21 @@ AppLocalCall :: (context: *void, module: *u8, function: *u8,
     }
     if (name == "AppLocaleHost" || name == "DocumentReadHost") && count == 1 &&
     HostScalarValid(arguments[0], "string", cast(s32)HostString) {
-        key := AppArgumentText(arguments[0])
         if name == "AppLocaleHost" {
-            result.* = AppLocalText(AppLocalLocale(local, key))
+            value: string
+            {
+                key := AppArgumentText(arguments[0])
+                value = AppLocalLocale(local, key)
+            }
+            result.* = AppLocalText(value)
         } else {
+            value: string
+            {
+                key := AppArgumentText(arguments[0])
+                value = AppFileRead(*local.files, key)
+            }
             AppFileFree(local.read_value)
-            local.read_value = AppFileRead(*local.files, key)
+            local.read_value = value
             result.* = AppLocalText(local.read_value)
         }
         return 1

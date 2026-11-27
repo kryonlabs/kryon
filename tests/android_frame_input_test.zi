@@ -195,8 +195,10 @@ main :: () -> s32 {
     AndroidTouchSetSurfaceOffset(0.0, 0.0)
     // Pixel stride includes NDK row padding; ARGB becomes little-endian RGBA.
     for index: 0..64799 { window_pixels[index] = 0x12345678 }
-    pixels := AndroidNativePixels()
-    for index: 0..63999 { pixels[index] = 0xffe61e28 }
+    {
+        pixels := AndroidNativePixels()
+        for index: 0..63999 { pixels[index] = 0xffe61e28 }
+    }
     if !AndroidNativeLock(1, 1, 3, 3) || !AndroidNativePresentDamage(1, 1, 3, 3) || !AndroidNativeUnlock() { return Failure(14) }
     if window_pixels[325] != 0xff281ee6 || window_pixels[650] != 0xff281ee6 ||
     window_pixels[324] != 0x12345678 || window_pixels[323] != 0x12345678 { return Failure(15) }

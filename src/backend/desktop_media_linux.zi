@@ -17,13 +17,16 @@ DesktopMediaCall :: (media: *BundleMedia, function: string,
     args: *HostValue, count: s32, result: *HostValue) -> s32 {
     if function == "MediaOpenHost" && count == 1 &&
     HostScalarValid(args[0], "string", cast(s32)HostValueKind.HostString) {
-        source := TextFromBytes(BytesFromPointer(args[0].data, cast(u64)args[0].length))
-        hosted := Media.SafeSource(source)
-        if hosted != host_audio {
-            if host_audio { Media.MediaStopHost() } else { BundleMediaStop(media) }
-            host_audio = hosted
+        ready: bool
+        {
+            source := TextFromBytes(BytesFromPointer(args[0].data, cast(u64)args[0].length))
+            hosted := Media.SafeSource(source)
+            if hosted != host_audio {
+                if host_audio { Media.MediaStopHost() } else { BundleMediaStop(media) }
+                host_audio = hosted
+            }
+            ready = ifx hosted then Media.MediaOpenHost(source) else BundleMediaOpen(media, source)
         }
-        ready := ifx hosted then Media.MediaOpenHost(source) else BundleMediaOpen(media, source)
         result.* = HostScalar("bool", ifx ready then 1 else 0)
         return 1
     }

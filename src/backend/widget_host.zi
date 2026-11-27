@@ -563,17 +563,19 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             !HostScalarValid(arguments[0], "string", cast(s32)HostString) {
             return 0
         }
-        packed := HostValueText(arguments[0])
-        if !WidgetHostAssetAllowed(packed) { return 0 }
-        resolved := WidgetHostAssetPath(packed)
         dimension: s32 = 0
-        if packed != "" {
-            if resolved == "" {
-                dimension = -1
-            } else if name == "ImageWidth" {
-                dimension = AssetWidth(resolved)
-            } else {
-                dimension = AssetHeight(resolved)
+        {
+            packed := HostValueText(arguments[0])
+            if !WidgetHostAssetAllowed(packed) { return 0 }
+            resolved := WidgetHostAssetPath(packed)
+            if packed != "" {
+                if resolved == "" {
+                    dimension = -1
+                } else if name == "ImageWidth" {
+                    dimension = AssetWidth(resolved)
+                } else {
+                    dimension = AssetHeight(resolved)
+                }
             }
         }
         result.* = HostScalar("s32", cast(s64)dimension)
@@ -634,19 +636,22 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             arguments[index].integer < -2147483648 || arguments[index].integer > 2147483647 { return 0 }
         }
         if arguments[6].integer != 0 && arguments[6].integer != 1 { return 0 }
-        props := CursorProps.{.asset_path = HostValueText(arguments[1]),
-            .width = cast(s32)arguments[2].integer, .height = cast(s32)arguments[3].integer,
-            .hotspot_x = cast(s32)arguments[4].integer, .hotspot_y = cast(s32)arguments[5].integer,
-            .hidden = arguments[6].integer != 0, .shape = cast(s32)arguments[7].integer}
-        accepted := CursorPropsValid(props)
-        if accepted && props.asset_path != "" {
-            accepted = CursorPackedPath(props.asset_path)
-            if accepted {
-                props.asset_path = WidgetHostAssetPath(props.asset_path)
-                accepted = props.asset_path != "" && CursorPropsValid(props)
+        accepted: bool
+        {
+            props := CursorProps.{.asset_path = HostValueText(arguments[1]),
+                .width = cast(s32)arguments[2].integer, .height = cast(s32)arguments[3].integer,
+                .hotspot_x = cast(s32)arguments[4].integer, .hotspot_y = cast(s32)arguments[5].integer,
+                .hidden = arguments[6].integer != 0, .shape = cast(s32)arguments[7].integer}
+            accepted = CursorPropsValid(props)
+            if accepted && props.asset_path != "" {
+                accepted = CursorPackedPath(props.asset_path)
+                if accepted {
+                    props.asset_path = WidgetHostAssetPath(props.asset_path)
+                    accepted = props.asset_path != "" && CursorPropsValid(props)
+                }
             }
+            if accepted { accepted = CursorSet(session, props) }
         }
-        if accepted { accepted = CursorSet(session, props) }
         result.* = HostScalar("bool", ifx accepted then 1 else 0)
         return 1
     }

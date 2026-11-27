@@ -131,24 +131,52 @@ StateBindingProps :: (state: *State, props: Props, preedit: []u8) -> Props {
     return props
 }
 
-// Stage the borrowed preedit before applying an edit that may change its
-// backing bytes. Publish composition only after the value edit is accepted.
-StateApplyBindingResult :: (state: *State, result: Result) -> bool {
+// Draw results borrow input buffers. Stage edited bytes and composition before
+// leaving that read scope; publishing then keeps no borrowed widget result.
+#scope_package
+StateBindingUpdate :: struct {
+    bytes: Vec(u8)
+    changed: bool
+    cursor: s32
+    anchor: s32
+    scroll_x: s32
+    focused: bool
     preedit: [4096]u8
+    preedit_length: s32
+    preedit_cursor: s32
+    preedit_selection: s32
+    preedit_active: bool
+}
+
+#scope_package
+StateBindingStage :: (state: *State, result: Result, update: *StateBindingUpdate) -> bool {
+    if result.composition.active &&
+        (result.composition.text.count > update.preedit.count || !Utf8.Valid(result.composition.text)) { return false }
+    if !StatePrepareEdit(state, result.edit, *update.bytes) { return false }
+    update.changed = result.edit.changed
+    update.cursor = result.cursor
+    update.anchor = result.anchor
+    update.scroll_x = result.scroll_x
+    update.focused = result.focused
+    update.preedit_active = result.composition.active
+    update.preedit_cursor = result.composition.cursor
+    update.preedit_selection = result.composition.selection_length
     if result.composition.active {
-        if result.composition.text.count > preedit.count || !Utf8.Valid(result.composition.text) { return false }
-        for byte, index: result.composition.text { preedit[index] = byte }
-    }
-    if !StateApplyResult(state, result) { return false }
-    state.preedit_active = result.composition.active
-    state.preedit_cursor = result.composition.cursor
-    state.preedit_selection = result.composition.selection_length
-    state.preedit_length = 0
-    if result.composition.active {
-        state.preedit_length = cast(s32)result.composition.text.count
-        for index: 0..state.preedit_length - 1 { state.preedit[index] = preedit[index] }
+        update.preedit_length = cast(s32)result.composition.text.count
+        for byte, index: result.composition.text { update.preedit[index] = byte }
     }
     return true
+}
+
+#scope_package
+StateBindingApply :: (state: *State, update: *StateBindingUpdate) {
+    if update.changed { StatePublishEdit(state, update.bytes[:]) }
+    StateSetSelection(state, update.cursor, update.anchor, update.scroll_x, update.focused)
+    state.preedit_active = update.preedit_active
+    state.preedit_cursor = update.preedit_cursor
+    state.preedit_selection = update.preedit_selection
+    state.preedit_length = update.preedit_length
+    for index: 0..update.preedit_length - 1 { state.preedit[index] = update.preedit[index] }
 }
 
 StateValid :: (state: *State) -> bool {
@@ -193,6 +221,20 @@ StatePropsFor :: (state: *State, props: Props) -> Props {
 #program_export
 StateApplyEdit :: (state: *State,
     edit: Edit) -> bool {
+    joined: Vec(u8)
+    defer { VecFree(joined) }
+    if !StatePrepareEdit(state, edit, *joined) { return false }
+    if !edit.changed { return true }
+    StatePublishEdit(state, joined[:])
+    state.cursor = edit.start + cast(s32)edit.replacement.count
+    state.anchor = state.cursor
+    return true
+}
+
+// Build the accepted value without mutating caller storage. The same join
+// serves direct result application and binding, with no allocation for idle.
+#scope_package
+StatePrepareEdit :: (state: *State, edit: Edit, joined: *Vec(u8)) -> bool {
     if state == null { return false }
     if !StateValid(state) { return false }
     if !edit.changed { return true }
@@ -209,22 +251,22 @@ StateApplyEdit :: (state: *State,
     remaining := cast(s64)state.length - (edit.end - edit.start)
     if edit.replacement.count > state.bytes.count - remaining ||
         !Utf8.Valid(edit.replacement) { return false }
-    joined: Vec(u8)
-    defer { VecFree(joined) }
     for index: 0..edit.start - 1 {
-        if !VecPush(joined, state.bytes[index]) { return false }
+        if !VecPush(joined[0], state.bytes[index]) { return false }
     }
     for byte: edit.replacement {
-        if !VecPush(joined, byte) { return false }
+        if !VecPush(joined[0], byte) { return false }
     }
     for index: edit.end..state.length - 1 {
-        if !VecPush(joined, state.bytes[index]) { return false }
+        if !VecPush(joined[0], state.bytes[index]) { return false }
     }
+    return true
+}
+
+#scope_package
+StatePublishEdit :: (state: *State, joined: []u8) {
     for index: cast(s64)0..joined.count - 1 { state.bytes[index] = joined[index] }
     state.length = cast(s32)joined.count
-    state.cursor = edit.start + cast(s32)edit.replacement.count
-    state.anchor = state.cursor
-    return true
 }
 
 // Apply bytes and interaction state together; a rejected edit keeps both.
@@ -235,13 +277,17 @@ StateApplyEdit :: (state: *State,
 StateApplyResult :: (state: *State,
     result: Result) -> bool {
     if !StateApplyEdit(state, result.edit) { return false }
-    value := TextView(state.bytes[:state.length])
-    state.cursor = CompositionBoundaryFor(value, result.cursor)
-    state.anchor = CompositionBoundaryFor(value, result.anchor)
-    state.scroll_x = result.scroll_x
-    if state.scroll_x < 0 { state.scroll_x = 0 }
-    state.focused = result.focused
+    StateSetSelection(state, result.cursor, result.anchor, result.scroll_x, result.focused)
     return true
+}
+
+#scope_package
+StateSetSelection :: (state: *State, cursor: s32, anchor: s32, scroll_x: s32, focused: bool) {
+    value := TextView(state.bytes[:state.length])
+    state.cursor = CompositionBoundaryFor(value, cursor)
+    state.anchor = CompositionBoundaryFor(value, anchor)
+    state.scroll_x = ifx scroll_x < 0 then 0 else scroll_x
+    state.focused = focused
 }
 
 // The field's text, viewing the state's bytes. The view lasts until those
