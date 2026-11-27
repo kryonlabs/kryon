@@ -43,9 +43,9 @@ The earlier layout changes also apply:
   selection and snapshots isolated between players, including re-entry and
   closing a peer while another editor remains active. Author the existing
   editor fixture in TSX with native state; retain source and saved-IR checks.
-- Remove duplicate VM runs from eighteen input, tree, raster, clipboard and
-  theme check drivers. Retain strict source/saved bundle comparisons and every
-  distinct native/Go and behavior assertion.
+- Remove duplicate VM runs from twenty-five input, tree, raster, clipboard,
+  theme and renderer check drivers. Retain strict source/saved bundle
+  comparisons and every distinct native/Go and behavior assertion.
 
 - Author the hosted surface, animated chart, loading preview, image demo and
   time-picker demo in TSX. Keep native state, plotting, scheduling and
