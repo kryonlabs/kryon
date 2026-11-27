@@ -14,7 +14,6 @@ set -- --root "$work" --module-path "$repo/src/backend" --module-path "$ziran_ro
 "$ziran" bundle --root "$work/ir" --entry png_cases:main -o "$work/saved.zx" "$work/ir/png_cases.zir"
 cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 0
-test "$("$ziran" run "$work/saved.zx")" = 0
 for target in c; do
     "$ziran" build --target="$target" "$@" -o "$work/$target-source" "$work/png_cases.zi"
     "$ziran" build --target="$target" --root "$work/ir" -o "$work/$target-saved" "$work/ir/png_cases.zir"

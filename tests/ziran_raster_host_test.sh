@@ -13,7 +13,6 @@ binding=kryon/raster:RasterLine=ziran_raster_host_provider:RasterLine
     -o "$work/saved.zx" "$work/ir/ziran_raster_host_test.zir"
 cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 0
-test "$("$ziran" run "$work/saved.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
     $kryon_project_args  -o "$work/c" "$source"

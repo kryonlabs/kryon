@@ -469,4 +469,3 @@ set -- \
     "$@" --entry portable:PortableCheck -o "$work/portable-saved.zx" "$work/portable-ir/portable.zir"
 cmp "$work/portable-source.zx" "$work/portable-saved.zx"
 test "$("$ziran" run "$work/portable-source.zx")" = 42
-test "$("$ziran" run "$work/portable-saved.zx")" = 42

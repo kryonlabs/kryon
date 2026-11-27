@@ -14,7 +14,6 @@ set -- --module-path "$repo/src/backend" $kryon_ui_args --module-path "$ziran_ro
     "$work/ir/ziran_image_canvas_test.zir"
 cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 0
-test "$("$ziran" run "$work/saved.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
     "$@" -o "$work/c" "$source"

@@ -11,7 +11,6 @@ source=$repo/tests/ziran_text_buffer_test.zi
     "$work/ir/ziran_text_buffer_test.zir"
 cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 0
-test "$("$ziran" run "$work/saved.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
     $kryon_ui_args --module-path "$ziran_root/std" -o "$work/c" "$source"

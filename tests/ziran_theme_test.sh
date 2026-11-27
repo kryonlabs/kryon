@@ -11,7 +11,6 @@ source=$repo/tests/theme_test.zi
     --entry theme_test:Answer -o "$work/saved.zx" "$work/ir/theme_test.zir"
 cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 42
-test "$("$ziran" run "$work/saved.zx")" = 42
 
 for input in source saved; do
     if test "$input" = source; then

@@ -218,7 +218,6 @@ ZI
     --entry app:Check -o "$work/saved.zx" "$work/ir/app.zir"
 cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 42
-test "$("$ziran" run "$work/saved.zx")" = 42
 "$ziran" build --target=c --root "$work" \
     $kryon_ui_args --module-path "$ziran_root/std" -o "$work/c" "$work/app.zi"
 "${CC:-cc}" -std=c99 -I"$ziran_root/include" -I"$work/c" \

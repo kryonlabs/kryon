@@ -44,4 +44,3 @@ ZI
     --entry app:Answer -o "$work/saved.zx" "$work/ir/app.zir"
 cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 42
-test "$("$ziran" run "$work/saved.zx")" = 42

@@ -12,7 +12,6 @@ source=$repo/tests/canvas_props_test.zi
     "$work/ir/canvas_props_test.zir"
 cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 42
-test "$("$ziran" run "$work/saved.zx")" = 42
 
 for input in source saved; do
     if test "$input" = source; then
