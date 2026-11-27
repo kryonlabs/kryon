@@ -123,7 +123,11 @@ binding for any platform effect they call.
 To run a portable `.zx` as a windowed app in a host such as TaijiOS, use
 [`kryon/host/surface`](BACKENDS.md#hosted-zx-software-surface). The bundle runs
 ordinary Kryon widgets with its own session and software raster. The host
-supplies the window, pixel presentation and ordered input events.
+supplies the window, pixel presentation and ordered input events. Compose the
+screen and wire widget events in TSX, as in
+[`hosted_surface.tsx`](../examples/hosted_surface.tsx). Its Ziran helper owns
+domain state and native scheduling/pixel callbacks; see the
+[build command](BACKENDS.md#hosted-zx-software-surface).
 
 Call `Surface.Run(window, Draw, 250)` to compose on input and every 250 ms
 when idle. Apps that draw through Kryon's paint queue can call

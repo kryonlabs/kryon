@@ -93,19 +93,33 @@ by the dedicated button examples and widget regression tests. The `test`
 target also compiles both programs for Go, C/Web, and portable ZX.
 
 `make -C examples ../build/examples/motion_chart` builds the animated revenue
-chart. Run `build/examples/motion_chart` from the repository root and click
+chart from `motion_chart.tsx`. Its native helper retains the plotting and
+tween logic. Run `build/examples/motion_chart` from the repository root and click
 **Switch week**. One `kryon/motion` tween drives the full series. Clicking again
 mid-animation reverses smoothly from the currently displayed values.
 
 `make -C examples desktop-image-test` renders the canonical
-`Image.Draw(Image.Props)` with a path-backed PNG and red tint, then writes
+typed `Image` TSX widget in `demo/image_demo.tsx` with a path-backed PNG and red tint, then writes
 `build/examples/image-desktop.png`. The host imports Ziran's generic
 `c_string` module for safe C string arguments. It handles shapes, text, and
 path-backed PNG images. See [image host support](../docs/BACKENDS.md#webp-images) for image formats.
 
-`make -C examples time-picker` builds `demo/time_picker_demo.zi`, Kryon's
+`make -C examples time-picker` builds `demo/time_picker_demo.tsx`, Kryon's
 `TimePicker` without a time, with one, disabled and in a small form, with a
 Light and Dark switch. Run `../build/examples/time-picker-desktop` from
 `examples/` to try it with the mouse, touch and keyboard.
 `make -C examples time-picker-shots` plays scripted scenes on a private
 display and saves them in `build/time-picker-shots/`.
+The root `desktop_image.zi` and `desktop_time_picker.zi` programs are native
+host, capture and scripted input harnesses for these TSX demos. State, text
+formatting and platform callbacks live under `native/`; the Makefile adds
+that directory to the ordinary project module search path. `zx_libraries.zi`
+remains the low-level static/dynamic library ABI fixture.
+
+`make -C examples ../build/examples/loading_demo` builds the TSX loading
+preview. Its native host accepts width, height, dark mode and measured
+progress as numeric arguments, for example `390 780 1 1` on a private display.
+The hosted portable counter and text editor are authored in
+`hosted_surface.tsx`; use the [hosted surface build command](../docs/BACKENDS.md#hosted-zx-software-surface)
+and the existing `make zx-surface-test` smoke target for its presentation,
+input, resize and clock variants.

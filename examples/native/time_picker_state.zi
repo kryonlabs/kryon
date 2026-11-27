@@ -1,0 +1,70 @@
+// Application times and text formatting for time_picker_demo.tsx.
+#import "kryon/time_picker"
+#import "time_picker_behavior"
+#import "system_theme"
+#import "std/number_text"
+
+// The current time in minutes after midnight, which the host sets each
+// frame for the Now action.
+now_minutes: s32 = -1;
+dark: bool;
+installed: s32 = -1;
+
+// The application's times: minutes after midnight, -1 for none.
+empty_time: s32 = -1;
+chosen_time: s32 = 450;
+disabled_time: s32 = 720;
+stopped_eating: s32 = 1200;
+started_eating: s32 = 735;
+first_meal: s32 = -1;
+
+last_change: [64]u8;
+last_change_length: s32;
+
+#program_export
+DemoSetNow :: (minutes: s32) {
+    now_minutes = minutes
+}
+
+Append :: (output: []u8, length: s32, text: string) -> s32 {
+    for index: cast(s32)0..cast(s32)text.count - 1 {
+        if length >= cast(s32)output.count { return length }
+        output[length] = text[index]
+        length += 1
+    }
+    return length
+}
+
+RecordChange :: (label: string, value: s32) {
+    digits: [8]u8
+    length: s32 = Append(last_change[:], 0, "Last change: ")
+    length = Append(last_change[:], length, label)
+    length = Append(last_change[:], length, ", ")
+    last_change_length = Append(last_change[:], length, TimePickerText(value, digits[:]))
+}
+
+Palette :: () -> s32 {
+    want: s32 = ifx dark then 1 else 0
+    if installed != want {
+        unused SystemPaletteInstall(SystemPaletteFallback(dark))
+        installed = want
+    }
+    return want
+}
+
+LastChangeText :: () -> string { return TextView(last_change[0:last_change_length]) }
+fast_bytes: [48]u8;
+
+// How long the fast between two times lasted, across midnight if needed.
+FastText :: () -> string {
+    output := fast_bytes[:]
+    if stopped_eating < 0 || started_eating < 0 { return "Pick both times to see the fast." }
+    minutes: s32 = (started_eating - stopped_eating + 1440) % 1440
+    number: [16]u8
+    length: s32 = Append(output, 0, "Fasted for ")
+    length = Append(output, length, FormatInteger(cast(s64)(minutes / 60), number[:]))
+    length = Append(output, length, " h ")
+    length = Append(output, length, FormatInteger(cast(s64)(minutes % 60), number[:]))
+    length = Append(output, length, " min")
+    return TextView(output[0:length])
+}

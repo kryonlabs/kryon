@@ -1,10 +1,6 @@
-App :: #import "kryon/app";
-Box :: #import "kryon/box";
-Button :: #import "kryon/button";
 Desktop :: #import "kryon/desktop_runtime";
 Motion :: #import "kryon/motion";
 Shape :: #import "kryon/shape";
-Text :: #import "kryon/text";
 Theme :: #import "kryon/theme";
 #import "kryon/drawing_props"
 #import "kryon/frame_snapshot"
@@ -50,34 +46,15 @@ DrawSeries :: (session: Session, bounds: Rectangle, phase: float32, palette: The
     unused Shape.Circle(session, Shape.CircleProps.{.center = points[5], .radius = 4.5, .fill = line})
 }
 
-Draw :: (frame: App.Frame) {
-    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
-    bounds := TreeRootBounds(session)
-    if bounds.width < 280.0 || bounds.height < 240.0 { return }
-    theme := Theme.CurrentTheme()
-    x := bounds.x + 48.0
-    y := bounds.y + 46.0
-    unused Box.Draw(session, Box.Props.{.bounds = bounds,
-        .fill = ColorFromPacked(theme.colors.background)})
-    unused Box.Draw(session, Box.Props.{.radius = 18.0,
-        .bounds = .{x - 24.0, y - 22.0, bounds.width - 48.0, bounds.height - 48.0},
-        .fill = ColorFromPacked(theme.colors.surface_raised), .border = ColorFromPacked(theme.colors.border)})
-    Text.Draw(session, Text.Props.{.bounds = .{x, y, 104.0, 36.0}, .text = "Revenue", .size = 25})
-    if Button.Draw(session, Button.Props.{.label = "Switch week",
-        .bounds = .{bounds.x + bounds.width - 158.0, y, 110.0, 36.0}}) != 0 {
-        current_week = !current_week
-    }
-    Text.Draw(session, Text.Props.{.bounds = .{x, y + 42.0, 165.0, 24.0},
-        .text = ifx current_week then "Current week" else "Previous week", .size = 14})
+Init :: () { week_easing = Motion.TimingFor(.EaseOut) }
+
+SwitchWeek :: () { current_week = !current_week }
+
+Phase :: (session: Session, theme: Theme.ThemeTokens) -> float32 {
     now := cast(float64)CaptureFrameInput(session).elapsed_ms / 1000.0
     target: float32 = ifx current_week then 1.0 else 0.0
     phase := Motion.TweenTo(*week, target, now, 0.42 * cast(float64)theme.motion.multiplier,
         week_easing, theme.motion.reduced_motion)
-    DrawSeries(session, .{x, y + 82.0, bounds.width - 96.0, bounds.height - 181.0}, phase.value, theme.colors)
     if phase.active { Desktop.DesktopRequestFrame() }
-}
-
-main :: () -> s32 {
-    week_easing = Motion.TimingFor(.EaseOut)
-    return App.Run(App.Window.{.title = "Animated revenue chart", .width = 600, .height = 360}, Draw)
+    return phase.value
 }

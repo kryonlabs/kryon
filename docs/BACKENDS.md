@@ -89,6 +89,11 @@ no replacement when encoding would increase file size.
 
 ## Hosted ZX software surface
 
+Author the screen with typed `kryon/tsx/*` widgets in TSX. The maintained
+[`hosted_surface.tsx`](../examples/hosted_surface.tsx) composes the counter,
+button and editable text field and handles their events. Its native helper
+keeps state, smoke clocks and row/pixel presentation callbacks.
+
 Import `kryon/host/surface` in a portable app and call `Run(window, draw)`
 with the same `Window` and `Draw` types as `kryon/app`. A `Frame` identifies
 the current session by slot and epoch. The bundle runs the widget tree,
@@ -132,8 +137,8 @@ From the Kryon checkout, using canonical Ziran:
 
 ```sh
 mkdir -p build/scratch/zx-surface
-ziran bundle --project --bind-host pixmap --entry hosted_surface:main \
-  -o build/scratch/zx-surface/hosted_surface.zx examples/hosted_surface.zi
+ziran bundle --project --module-path examples/native --bind-host pixmap --entry hosted_surface:main \
+  -o build/scratch/zx-surface/hosted_surface.zx examples/hosted_surface.tsx
 ```
 
 A host supplies typed `HostBinding` callbacks for the four capabilities in

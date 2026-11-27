@@ -1,6 +1,5 @@
 // Run on a private display for previews. Width, height, dark and measured
 // progress can be selected with numeric command-line arguments.
-LoadingScreen :: #import "kryon/loading_screen";
 #import "desktop_runtime"
 #import "widget_palette"
 #import "session"
@@ -13,8 +12,15 @@ LoadingScreen :: #import "kryon/loading_screen";
 c :: #system_library "c";
 atoi :: (text: *u8) -> s32 #foreign c;
 
-#program_export
-main :: (argc: s32, argv: **u8) -> s32 {
+PreviewFrame :: struct {
+    session: Session
+    bounds: Rectangle
+    now: float64
+    measured: bool
+}
+PreviewDraw :: #type (frame: PreviewFrame) -> void;
+
+Run :: (argc: s32, argv: **u8, draw: PreviewDraw) -> s32 {
     width: s32 = 390
     height: s32 = 780
     if argc > 2 {
@@ -44,11 +50,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
         area := Rectangle.{0.0, 0.0, cast(float32)width, cast(float32)height}
         BeginFrame(session, cast(u64)1, area)
         unused WidgetPaletteUse(session, palette)
-        LoadingScreen.Draw(session, LoadingScreen.Props.{.bounds = area,
-                .title = "Inner Breeze", .detail = "Getting things ready for you",
-                .icon_shape = "S1.7rr:M12 21C6 17 5 9 12 3C19 9 18 17 12 21ZM12 21V10M12 16L7 12M12 13L16 9",
-                .now = cast(float64)frame / 60.0, .scale = 1.0,
-                .has_progress = measured, .completed = 3, .total = 5})
+        draw(.{.session = session, .bounds = area,
+            .now = cast(float64)frame / 60.0, .measured = measured})
         unused EndFrame(session)
         if !EndDesktopFrame() {
             return 2

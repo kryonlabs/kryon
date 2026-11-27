@@ -2,7 +2,7 @@
 
 ZIRAN_BIN ?= ziran
 # Resolve the maintained examples through the ordinary package graph.
-KRYON_MODULE_ARGS := --project
+KRYON_MODULE_ARGS := --project --module-path native
 # The demos that the desktop hosts import live in demo/, apart from the
 # programs here whose names other project modules also use.
 DEMO_MODULE_ARGS := --module-path demo
@@ -13,7 +13,10 @@ PROGRAMS := hello window
 DESKTOP_PROGRAMS := $(PROGRAMS) motion_chart
 PROGRAM_SOURCE_hello := hello.tsx
 PROGRAM_SOURCE_window := window.tsx
-PROGRAM_SOURCE_motion_chart := motion_chart.zi
+PROGRAM_SOURCE_motion_chart := motion_chart.tsx
+PROGRAM_SOURCE_loading_demo := loading_demo.tsx
+PROGRAM_NATIVE_motion_chart := native/motion_chart_state.zi
+PROGRAM_NATIVE_loading_demo := native/loading_preview.zi
 NATIVE_PROGRAMS := $(addprefix $(BUILD_DIR)/,$(DESKTOP_PROGRAMS))
 GO_PROGRAMS := $(addsuffix .go.stamp,$(addprefix $(BUILD_DIR)/matrix/,$(PROGRAMS)))
 WEB_PROGRAMS := $(addsuffix .web.stamp,$(addprefix $(BUILD_DIR)/matrix/,$(PROGRAMS)))
@@ -25,14 +28,14 @@ all: $(NATIVE_PROGRAMS)
 $(NATIVE_LIB): ../Makefile ../src/ui/modules.txt $(KRYON_SOURCES)
 	$(MAKE) -C .. all
 
-$(BUILD_DIR)/image.zx: demo/image_demo.zi $(KRYON_SOURCES) ../ziran.toml Makefile
+$(BUILD_DIR)/image.zx: demo/image_demo.tsx native/image_demo_state.zi $(KRYON_SOURCES) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)
 	$(ZIRAN_BIN) bundle --root demo $(KRYON_MODULE_ARGS) \
-		--entry image_demo:Frame -o $@ demo/image_demo.zi
+		--entry image_demo:Frame -o $@ demo/image_demo.tsx
 
 $(BUILD_DIR)/image-saved.zx: $(BUILD_DIR)/image.zx
 	$(ZIRAN_BIN) ir --root demo $(KRYON_MODULE_ARGS) \
-		-o $(BUILD_DIR)/image-ir demo/image_demo.zi
+		-o $(BUILD_DIR)/image-ir demo/image_demo.tsx
 	$(ZIRAN_BIN) bundle --root $(BUILD_DIR)/image-ir \
 		--module-path $(BUILD_DIR)/image-ir --entry image_demo:Frame \
 		-o $@ $(BUILD_DIR)/image-ir/image_demo.zir
@@ -40,44 +43,44 @@ $(BUILD_DIR)/image-saved.zx: $(BUILD_DIR)/image.zx
 
 # Kryon's ziran.toml [package] links names the desktop host's system
 # libraries, so every project C build below links without caller LDLIBS.
-$(BUILD_DIR)/image-desktop: desktop_image.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi demo/image_demo.zi $(KRYON_SOURCES) ../ziran.toml Makefile
+$(BUILD_DIR)/image-desktop: desktop_image.zi native/image_demo_state.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi demo/image_demo.tsx $(KRYON_SOURCES) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)/desktop-image-native
 	$(ZIRAN_BIN) build --target=c --exe --root . $(KRYON_MODULE_ARGS) $(DEMO_MODULE_ARGS) \
 		--entry desktop_image:main -o $(BUILD_DIR)/desktop-image-native desktop_image.zi
 	cp $(BUILD_DIR)/desktop-image-native/desktop_image $@
 
-$(BUILD_DIR)/time-picker-desktop: desktop_time_picker.zi demo/time_picker_demo.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi $(KRYON_SOURCES) ../ziran.toml Makefile
+$(BUILD_DIR)/time-picker-desktop: desktop_time_picker.zi native/time_picker_state.zi demo/time_picker_demo.tsx ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi $(KRYON_SOURCES) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)/desktop-time-picker-native
 	$(ZIRAN_BIN) build --target=c --exe --root . $(KRYON_MODULE_ARGS) $(DEMO_MODULE_ARGS) \
 		--entry desktop_time_picker:main -o $(BUILD_DIR)/desktop-time-picker-native desktop_time_picker.zi
 	cp $(BUILD_DIR)/desktop-time-picker-native/desktop_time_picker $@
 
 define PROGRAM_RULES
-$(BUILD_DIR)/$(1): $(PROGRAM_SOURCE_$(1)) $(KRYON_SOURCES) ../ziran.toml Makefile
+$(BUILD_DIR)/$(1): $(PROGRAM_SOURCE_$(1)) $(PROGRAM_NATIVE_$(1)) $(KRYON_SOURCES) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)/$(1)-native
 	$(ZIRAN_BIN) build --target=c --exe --root . $(KRYON_MODULE_ARGS) \
 		--entry $(1):main -o $(BUILD_DIR)/$(1)-native $(PROGRAM_SOURCE_$(1))
 	cp $(BUILD_DIR)/$(1)-native/$(1) $$@
 
-$(BUILD_DIR)/matrix/$(1).go.stamp: $(PROGRAM_SOURCE_$(1)) $(KRYON_SOURCES) ../ziran.toml Makefile
+$(BUILD_DIR)/matrix/$(1).go.stamp: $(PROGRAM_SOURCE_$(1)) $(PROGRAM_NATIVE_$(1)) $(KRYON_SOURCES) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)/matrix/$(1)-go
 	$(ZIRAN_BIN) build --target=go --pkg main --exe --root . $(KRYON_MODULE_ARGS) \
 		--entry $(1):main -o $(BUILD_DIR)/matrix/$(1)-go $(PROGRAM_SOURCE_$(1))
 	touch $$@
 
-$(BUILD_DIR)/matrix/$(1).web.stamp: $(PROGRAM_SOURCE_$(1)) $(KRYON_SOURCES) ../ziran.toml Makefile
+$(BUILD_DIR)/matrix/$(1).web.stamp: $(PROGRAM_SOURCE_$(1)) $(PROGRAM_NATIVE_$(1)) $(KRYON_SOURCES) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)/matrix/$(1)-web
 	$(ZIRAN_BIN) build --target=c --target-os web --root . $(KRYON_MODULE_ARGS) \
 		--entry $(1):main -o $(BUILD_DIR)/matrix/$(1)-web $(PROGRAM_SOURCE_$(1))
 	touch $$@
 
-$(BUILD_DIR)/matrix/$(1).zx: $(PROGRAM_SOURCE_$(1)) $(KRYON_SOURCES) ../ziran.toml Makefile
+$(BUILD_DIR)/matrix/$(1).zx: $(PROGRAM_SOURCE_$(1)) $(PROGRAM_NATIVE_$(1)) $(KRYON_SOURCES) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)/matrix
 	$(ZIRAN_BIN) bundle --root . $(KRYON_MODULE_ARGS) \
 		--entry $(1):main -o $$@ $(PROGRAM_SOURCE_$(1))
 endef
 
-$(foreach program,$(DESKTOP_PROGRAMS),$(eval $(call PROGRAM_RULES,$(program))))
+$(foreach program,$(DESKTOP_PROGRAMS) loading_demo,$(eval $(call PROGRAM_RULES,$(program))))
 
 .PHONY: widget-catalog widget-catalog-web
 widget-catalog:
@@ -94,7 +97,8 @@ backend-matrix: $(GO_PROGRAMS) $(WEB_PROGRAMS) $(ZX_PROGRAMS)
 test: all backend-matrix
 
 desktop-image-test: $(BUILD_DIR)/image-saved.zx $(BUILD_DIR)/image-desktop
-	env -u DISPLAY -u WAYLAND_DISPLAY \
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		HARMONY_DESKTOP_RECOVERY=0 \
 		KRYON_CAPTURE_PATH=$(BUILD_DIR)/image-desktop.png \
 		xvfb-run -a $(BUILD_DIR)/image-desktop
 
@@ -109,6 +113,7 @@ time-picker-shots: $(BUILD_DIR)/time-picker-desktop
 	mkdir -p $(TIME_PICKER_SHOTS)
 	for scene in $(TIME_PICKER_SCENES); do \
 		env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+			HARMONY_DESKTOP_RECOVERY=0 \
 			KRYON_FONT_PATH=$(abspath ../assets/fonts/LiberationSans-Regular.ttf) \
 			TIME_PICKER_SCENE=$$scene KRYON_CAPTURE_PATH=$(abspath $(TIME_PICKER_SHOTS))/$$scene.png \
 			xvfb-run -a -s '-screen 0 1024x768x24' \

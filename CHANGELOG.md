@@ -39,6 +39,10 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
+- Author the hosted surface, animated chart, loading preview, image demo and
+  time-picker demo in TSX. Keep native state, plotting, scheduling and
+  capture/input harnesses in Ziran; use the existing behavior checks.
+
 - Align the root, examples and all four starters with Ziran 4ae21503, and the
   app generator and upgrade defaults with Kryon f4bda473 and CSS 20b7c95d.
   Check generated TSX entries and the supported desktop screenshot route;

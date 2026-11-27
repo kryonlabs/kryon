@@ -314,8 +314,8 @@ zx-hosted-test: zx-player zx-canvas
 .PHONY: zx-surface-test
 zx-surface-test: project-toolchain
 	mkdir -p build/scratch/zx-surface
-	$(ZIRAN_BIN) bundle --project --bind-host pixmap --entry hosted_surface:main \
-		-o build/scratch/zx-surface/hosted_surface.zx examples/hosted_surface.zi
+	$(ZIRAN_BIN) bundle --project --module-path examples/native --bind-host pixmap --entry hosted_surface:main \
+		-o build/scratch/zx-surface/hosted_surface.zx examples/hosted_surface.tsx
 	$(ZIRAN_BIN) build --project --target=c --root tests --entry zx_surface_test:main --prune-stale \
 		-o build/scratch/zx-surface/host tests/zx_surface_test.zi
 	$(CC) -O2 -ffunction-sections -fdata-sections -Wl,--gc-sections \
@@ -328,37 +328,37 @@ zx-surface-test: project-toolchain
 	grep -Fx 'text éx' build/scratch/zx-surface/result
 	grep -Fx 'text é' build/scratch/zx-surface/result
 	grep -Fx 'surface 280 x 160' build/scratch/zx-surface/result
-	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_TIMED --entry hosted_surface:main \
-		-o build/scratch/zx-surface/timed.zx examples/hosted_surface.zi
+	$(ZIRAN_BIN) bundle --project --module-path examples/native --bind-host pixmap --define SURFACE_SMOKE_TIMED --entry hosted_surface:main \
+		-o build/scratch/zx-surface/timed.zx examples/hosted_surface.tsx
 	build/scratch/zx-surface/test build/scratch/zx-surface/timed.zx timed > build/scratch/zx-surface/timed-result
 	cat build/scratch/zx-surface/timed-result
-	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_ROWS \
+	$(ZIRAN_BIN) bundle --project --module-path examples/native --bind-host pixmap --define SURFACE_SMOKE_ROWS \
 		--define KRYON_PIXMAP_EXTERNAL_BUFFER --entry hosted_surface:main \
-		-o build/scratch/zx-surface/rows.zx examples/hosted_surface.zi
+		-o build/scratch/zx-surface/rows.zx examples/hosted_surface.tsx
 	build/scratch/zx-surface/test build/scratch/zx-surface/rows.zx rows > build/scratch/zx-surface/rows-result
 	cmp build/scratch/zx-surface/timed-result build/scratch/zx-surface/rows-result
-	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_PIXELS \
+	$(ZIRAN_BIN) bundle --project --module-path examples/native --bind-host pixmap --define SURFACE_SMOKE_PIXELS \
 		--define KRYON_PIXMAP_EXTERNAL_BUFFER --entry hosted_surface:main \
-		-o build/scratch/zx-surface/pixels.zx examples/hosted_surface.zi
+		-o build/scratch/zx-surface/pixels.zx examples/hosted_surface.tsx
 	build/scratch/zx-surface/test build/scratch/zx-surface/pixels.zx pixels > build/scratch/zx-surface/pixels-result
 	cmp build/scratch/zx-surface/timed-result build/scratch/zx-surface/pixels-result
-	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_TIMED \
+	$(ZIRAN_BIN) bundle --project --module-path examples/native --bind-host pixmap --define SURFACE_SMOKE_TIMED \
 		--define KRYON_PIXMAP_EXTERNAL_BUFFER --entry hosted_surface:main \
-		-o build/scratch/zx-surface/external.zx examples/hosted_surface.zi
+		-o build/scratch/zx-surface/external.zx examples/hosted_surface.tsx
 	build/scratch/zx-surface/test build/scratch/zx-surface/external.zx timed
-	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_CLOCK --entry hosted_surface:main \
-		-o build/scratch/zx-surface/clocked.zx examples/hosted_surface.zi
+	$(ZIRAN_BIN) bundle --project --module-path examples/native --bind-host pixmap --define SURFACE_SMOKE_CLOCK --entry hosted_surface:main \
+		-o build/scratch/zx-surface/clocked.zx examples/hosted_surface.tsx
 	build/scratch/zx-surface/test build/scratch/zx-surface/clocked.zx timed
-	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_WAKE --entry hosted_surface:main \
-		-o build/scratch/zx-surface/wake.zx examples/hosted_surface.zi
+	$(ZIRAN_BIN) bundle --project --module-path examples/native --bind-host pixmap --define SURFACE_SMOKE_WAKE --entry hosted_surface:main \
+		-o build/scratch/zx-surface/wake.zx examples/hosted_surface.tsx
 	build/scratch/zx-surface/test build/scratch/zx-surface/wake.zx wake
-	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_WAKE --define SURFACE_SMOKE_ROWS \
+	$(ZIRAN_BIN) bundle --project --module-path examples/native --bind-host pixmap --define SURFACE_SMOKE_WAKE --define SURFACE_SMOKE_ROWS \
 		--define KRYON_PIXMAP_EXTERNAL_BUFFER --entry hosted_surface:main \
-		-o build/scratch/zx-surface/wake-rows.zx examples/hosted_surface.zi
+		-o build/scratch/zx-surface/wake-rows.zx examples/hosted_surface.tsx
 	build/scratch/zx-surface/test build/scratch/zx-surface/wake-rows.zx wake-rows
-	$(ZIRAN_BIN) bundle --project --bind-host pixmap --define SURFACE_SMOKE_WAKE --define SURFACE_SMOKE_PIXELS \
+	$(ZIRAN_BIN) bundle --project --module-path examples/native --bind-host pixmap --define SURFACE_SMOKE_WAKE --define SURFACE_SMOKE_PIXELS \
 		--define KRYON_PIXMAP_EXTERNAL_BUFFER --entry hosted_surface:main \
-		-o build/scratch/zx-surface/wake-pixels.zx examples/hosted_surface.zi
+		-o build/scratch/zx-surface/wake-pixels.zx examples/hosted_surface.tsx
 	build/scratch/zx-surface/test build/scratch/zx-surface/wake-pixels.zx wake-pixels
 
 # Kryon's portable halves as shared ZX libraries (docs/BACKENDS.md). Each

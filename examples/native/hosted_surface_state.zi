@@ -1,13 +1,9 @@
-// An interactive portable Kryon app. Build and run as documented in BACKENDS.md.
+// Native state, host scheduling and pixel callbacks for hosted_surface.tsx.
 Surface :: #import "kryon/host/surface";
-Button :: #import "kryon/button";
-Text :: #import "kryon/text";
 TextField :: #import "kryon/text_field";
 #import "kryon/geometry"
 #import "kryon/session"
 #import "kryon/tree"
-#import "kryon/tree_input"
-#import "kryon/key_input"
 #import "std/number_text"
 
 clicks: s32;
@@ -69,44 +65,38 @@ last_height: s32;
     }
 }
 
-Draw :: (frame: Surface.Frame) {
+ObserveFrame :: (session: Session, viewport: Rectangle) {
     #if #defined(SURFACE_SMOKE_WAKE) {
         wake_draws += 1
     }
-    session: Session = .{frame.slot, frame.epoch}
     #if #defined(SURFACE_SMOKE_CLOCK) {
         timing := CaptureFrameInput(session)
         elapsed := ifx clock_tick == 3 then 17 else (clock_tick - 1) * 17
         delta := ifx clock_tick == 1 || clock_tick == 3 then 0 else ifx clock_tick == 4 then 34 else 17
         clock_ok = clock_ok && timing.elapsed_ms == elapsed && timing.delta_ms == delta
     }
-    viewport := TreeRootBounds(session)
-    width := viewport.width - 24.0
     if cast(s32)viewport.width != last_width || cast(s32)viewport.height != last_height {
         last_width = cast(s32)viewport.width
         last_height = cast(s32)viewport.height
         print("surface % x %\n", last_width, last_height)
     }
-    if Button.Draw(session, .{.bounds = .{12.0, 36.0, width, 38.0},
-        .label = "Count click"}) != 0 {
-        clicks += 1
-        print("click %\n", clicks)
-    }
-    digits: [24]u8
-    Text.Draw(session, .{.bounds = .{12.0, 8.0, width, 24.0},
-        .text = FormatInteger(cast(s64)clicks, digits[:]), .size = 18})
-    typed: [128]u8
-    input := TextFieldInputFor(KeyboardTake(session), KeyboardModifiers(session), TypedTextTake(session, typed[:]))
-    field := TextField.StateProps(value, .{.bounds = .{12.0, 82.0, width, 38.0},
-        .placeholder = "Type here", .input = input})
-    changed := TextField.Draw(session, field)
-    if TextField.StateApplyResult(*value, changed) && changed.edit.changed {
-        print("text %\n", TextView(value.bytes[:value.length]))
-    }
 }
 
-#program_export
-main :: () -> s32 {
+CountClick :: () {
+    clicks += 1
+    print("click %\n", clicks)
+}
+
+CountText :: () -> string {
+    return FormatInteger(cast(s64)clicks, count_bytes[:])
+}
+count_bytes: [24]u8;
+
+FieldChanged :: (changed: bool) {
+    if changed { print("text %\n", TextView(value.bytes[:value.length])) }
+}
+
+Run :: (draw: Surface.Draw) -> s32 {
     defer {
         #if #defined(SURFACE_SMOKE_PIXELS) {
             VecFree(packed_bytes)
@@ -117,26 +107,26 @@ main :: () -> s32 {
     #if #defined(SURFACE_SMOKE_WAKE) {
         result: s32
         #if #defined(SURFACE_SMOKE_PIXELS) {
-            result = Surface.RunRetainedPixels(window, Draw, SendPixels,
+            result = Surface.RunRetainedPixels(window, draw, SendPixels,
                 clock = WakeClock, wake = Wake)
         } else #if #defined(SURFACE_SMOKE_ROWS) {
-            result = Surface.RunRetainedRows(window, Draw, SendRows, clock = WakeClock, wake = Wake)
+            result = Surface.RunRetainedRows(window, draw, SendRows, clock = WakeClock, wake = Wake)
         } else {
-            result = Surface.Run(window, Draw, clock = WakeClock, wake = Wake)
+            result = Surface.Run(window, draw, clock = WakeClock, wake = Wake)
         }
         return ifx wake_clock_valid && wake_calls == 60 && wake_draws == 37 then result else 2
     } else #if #defined(SURFACE_SMOKE_PIXELS) {
-        return Surface.RunRetainedPixels(window, Draw, SendPixels, 250)
+        return Surface.RunRetainedPixels(window, draw, SendPixels, 250)
     } else #if #defined(SURFACE_SMOKE_ROWS) {
-        return Surface.RunRetainedRows(window, Draw, SendRows, 250)
+        return Surface.RunRetainedRows(window, draw, SendRows, 250)
     } else #if #defined(SURFACE_SMOKE_CLOCK) {
-        result := Surface.RunRetained(window, Draw, 250, clock = SmokeClock)
+        result := Surface.RunRetained(window, draw, 250, clock = SmokeClock)
         return ifx clock_ok && clock_tick == 60 then result else 2
     } else {
         #if #defined(SURFACE_SMOKE_TIMED) {
-            return Surface.RunRetained(window, Draw, 250)
+            return Surface.RunRetained(window, draw, 250)
         } else {
-            return Surface.Run(window, Draw)
+            return Surface.Run(window, draw)
         }
     }
 }

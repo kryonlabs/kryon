@@ -12,7 +12,8 @@
 #import "tree_input"
 #import "widget_kind"
 #import "std/byte_text_linux"
-#import "time_picker_demo"
+Demo :: #import "time_picker_demo";
+#import "time_picker_state"
 Timer :: #import "std/timer_linux";
 Dates :: #import "std/date_time_linux";
 Clock :: #import "frame_clock";
@@ -36,10 +37,7 @@ Draw :: (session: Session, pointer: PointerFrame, wheel: float32,
     if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
         return false
     }
-    if Frame(session, viewport) != 0 {
-        TreeCancel(session)
-        return false
-    }
+    Demo.Frame(.{.slot = session.slot, .epoch = session.epoch, .viewport = viewport})
     moving: bool = active || ScrollDeviceMoving(session)
     finished: FrameEndResult = EndFrameRetained(session, DesktopFrameReusable(),
         Clock.Observe(*activity, moving))
