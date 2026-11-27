@@ -39,7 +39,12 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
-- Pin the native TSX frontend to the published 4596187a compiler in the CLI,
+- Forward repeatable `--module-path` folders through the ordinary build, check
+  and run workflow, including Android C99. Preserve quoted paths and remove
+  fixed command-line storage limits.
+- Release hosted text-input scratch borrows before a run returns so callers
+  can reuse their input buffers.
+- Pin the native TSX frontend to the published fac8a396 compiler in the CLI,
   templates and maintained examples, with normally regenerated package locks.
 - End host argument and renderer-buffer borrows before publishing results or
   presenting pixels; consume owned document replies before replacing storage.

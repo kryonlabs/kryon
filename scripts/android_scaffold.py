@@ -51,10 +51,13 @@ upgraded = []
 stock_upgrades = {
     "droid/app/build.gradle": (
         ("17dd534c81ba962446610198ce872cf3e62cdfb9b5b1715a1773536bd792a49e",
-         "0f59566c9ed530ec6ebf84a6bef521651744426d49296eaa4c16c46023feb6c7"),
+         "0f59566c9ed530ec6ebf84a6bef521651744426d49296eaa4c16c46023feb6c7",
+         "89adcf27f25f9579889e32cf53b7f468430da858ad61ae337bb1be6b5e7996c5"),
         ["    namespace '__PACKAGE__'", "        applicationId '__PACKAGE__'"]),
     "droid/app/src/main/cpp/CMakeLists.txt": (
-        ("ae3d4b1624cb05f4143dfb9add7ce3a8a68d5e55136ae83de7b6056468824222",),
+        ("ae3d4b1624cb05f4143dfb9add7ce3a8a68d5e55136ae83de7b6056468824222",
+         "e1d1140e687db638647850b26f5d8b9f70c38d32c426fe414089991c92476a13",
+         "2fc47ddd2e38ea5a0fc8f2e6a3723f7b013452be6270949506ae86f1b3921181"),
         ["project(__CMAKE_NAME__ C)"]),
     "droid/app/src/main/java/__PACKAGE_PATH__/__ACTIVITY__.java": (
         ("381a7e855806af3cd7af31f3f1e421a60cf5e2129c8a05bb802ef3dc3c8c6981",),
@@ -73,6 +76,9 @@ for template in sorted(templates.rglob("*")):
     if template.is_dir() or template.name == "README.md":
         continue
     relative = template.relative_to(templates)
+    # Local Gradle/CMake output is never part of an application scaffold.
+    if any(part in {".gradle", ".cxx", "build"} for part in relative.parts):
+        continue
     # Play Billing stays in Kryon; only the Google Play build applies it
     # (templates/android-gplay.gradle), so apps hold no Google code.
     if relative.parts[:4] == ("droid", "app", "src", "gplay"):

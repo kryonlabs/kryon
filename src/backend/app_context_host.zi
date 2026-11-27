@@ -71,6 +71,8 @@ AppContext :: struct {
     bindings: []HostBinding
     session_codec: WidgetSessionCodec
     bounds_codec: WidgetRectangleCodec
+    // Scratch encodings borrow the caller's input text only during a run.
+    // Each run clears them before the caller can reuse its input storage.
     input_codec: WidgetTextFieldInputCodec
     area_codec: WidgetTextAreaInputCodec
 }
@@ -352,8 +354,11 @@ AppContextIdentify :: (context: *void) -> bool {
     app.identified = false
     app.described = false
     answer: s64
-    return HostedAppRun(AppContextRuntime(app), *answer) && answer == APP_PROTOCOL &&
+    identified := HostedAppRun(AppContextRuntime(app), *answer) && answer == APP_PROTOCOL &&
     app.identified && app.described
+    app.input_codec = .{}
+    app.area_codec = .{}
+    return identified
 }
 
 AppContextOpen :: (app: *AppContext, bytes: string) -> bool {
@@ -391,7 +396,10 @@ AppContextRun :: (app: *AppContext, mode: s32) -> bool {
     app.keyboard = false
     AppContextDropReply(app)
     answer: s64
-    return app.identified && app.described && HostedAppRun(AppContextRuntime(app), *answer) && answer == 0
+    ran := app.identified && app.described && HostedAppRun(AppContextRuntime(app), *answer) && answer == 0
+    app.input_codec = .{}
+    app.area_codec = .{}
+    return ran
 }
 
 // A frame that, when quiet says nothing reached the app since its last
@@ -404,6 +412,9 @@ AppContextRunFrame :: (app: *AppContext, quiet: bool) -> bool {
     app.keyboard = false
     AppContextDropReply(app)
     answer: s64
-    return app.identified && app.described &&
+    ran := app.identified && app.described &&
     HostedAppRunFrame(AppContextRuntime(app), *answer, quiet) && answer == 0
+    app.input_codec = .{}
+    app.area_codec = .{}
+    return ran
 }

@@ -1,6 +1,7 @@
 #import "options"
 #import "toolchain_pin"
 #import "watch"
+using Vectors :: #import "std/vec";
 
 // Linux command-line host for Kryon projects. Configuration and command
 // selection are Ziran; libc supplies only file, stdout, and process effects.
@@ -37,17 +38,13 @@ PointerSlot :: struct {
     value: *u8
 }
 
-ArgumentBytes :: struct {
-    data: [4096]u8
-}
-
 FileContents :: struct {
     text: string
     ok: bool
 }
 
 TextFromBuffer :: (bytes: []u8, length: s32) -> string {
-    if length < 0 || length > cast(s32)bytes.count { return "" }
+    if length <= 0 || length > cast(s32)bytes.count { return "" }
     descriptor: TextDescriptor
     descriptor.data = *bytes[0]
     descriptor.length = cast(u64)length
@@ -213,8 +210,9 @@ PinProjectToolchain :: () -> bool {
 
 SetEnvironment :: (name: string, value: string) -> bool {
     name_bytes: [128]u8
-    value_bytes: [4096]u8
-    if !CString(name, name_bytes[:]) || !CString(value, value_bytes[:]) { return false }
+    value_bytes: Vec(u8)
+    if !CString(name, name_bytes[:]) || !BuilderAppend(value_bytes, value) { return false }
+    VecPush(value_bytes, cast(u8)0)
     return RawSetenv(*name_bytes[0], *value_bytes[0], 1) == 0
 }
 
@@ -228,18 +226,21 @@ Exists :: (path: string) -> bool {
 }
 
 Execute :: (arguments: []string) -> s32 {
-    storage: [24]ArgumentBytes
-    pointers: [25]PointerSlot
-    if arguments.count > storage.count { return Error("too many project command arguments") }
     if arguments.count == 0 { return 127 }
-    at: s32 = 0
-    while at < cast(s32)arguments.count {
-        if !CString(arguments[at], storage[at].data[:]) { return 127 }
-        pointers[at].value = *storage[at].data[0]
-        at += 1
+    storage: Vec(u8)
+    offsets: Vec(s64)
+    pointers: Vec(PointerSlot)
+    for argument: arguments {
+        VecPush(offsets, storage.count)
+        if !BuilderAppend(storage, argument) { return 127 }
+        VecPush(storage, cast(u8)0)
     }
-    pointers[at].value = null
-    RawExec(*storage[0].data[0], *pointers[0])
+    // Finish byte storage before taking addresses into it.
+    for offset: offsets {
+        VecPush(pointers, PointerSlot.{value = *storage[offset]})
+    }
+    VecPush(pointers, PointerSlot.{value = null})
+    RawExec(*storage[0], *pointers[0])
     return 127
 }
 
@@ -279,6 +280,41 @@ ArgumentCount :: (command_line: string) -> s32 {
         at += 1
     }
     return count
+}
+
+// Remove repeatable compiler search paths before the profile/capture parsers
+// see their arguments. Make receives shell-quoted tokens through the environment,
+// never through make variable expansion. This also preserves spaces, quotes,
+// dollar signs and newlines in a path across recursive make invocations.
+ReadModulePaths :: (command_line: string, output: *Vec(u8), paths: *Vec(u8)) -> string {
+    count := ArgumentCount(command_line)
+    index: s32 = 0
+    while index < count {
+        argument := ArgumentAt(command_line, index)
+        path: string = ""
+        module_path := index >= 2 && (argument == "--module-path" ||
+            ProjectStarts(argument, "--module-path="))
+        if module_path {
+            if argument == "--module-path" {
+                index += 1
+                path = ArgumentAt(command_line, index)
+                if ProjectStarts(path, "--") { return "--module-path needs a directory" }
+            } else { path = argument[14:cast(s32)argument.count] }
+            if path == "" { return "--module-path needs a directory" }
+            if !BuilderAppend(paths.*, " --module-path '") { return "cannot store module paths" }
+            for byte: path {
+                if byte == #char "'" {
+                    if !BuilderAppend(paths.*, "'\"'\"'") { return "cannot store module paths" }
+                } else { VecPush(paths.*, byte) }
+            }
+            VecPush(paths.*, #char "'")
+        } else {
+            if !BuilderAppend(output.*, argument) { return "cannot store project arguments" }
+            VecPush(output.*, cast(u8)0)
+        }
+        index += 1
+    }
+    return ""
 }
 
 BackendDescription :: (profile: ProjectProfile) -> string {
@@ -344,7 +380,7 @@ ListProfiles :: (config: ProjectConfig) -> s32 {
 Usage :: () -> s32 {
     PrintFd(1, "usage: kryon new DIR [--template NAME|SOURCE[:NAME]] [--name NAME] [--overrides FILE]\n")
     PrintFd(1, "       kryon init [--template NAME|SOURCE[:NAME]] [--overrides FILE]\n")
-    PrintFd(1, "       kryon run|build|check [PROFILE | --profile NAME]\n")
+    PrintFd(1, "       kryon run|build|check [PROFILE | --profile NAME] [--module-path DIR ...]\n")
     PrintFd(1, "       kryon run [PROFILE] --png FILE.png [--width PX] [--height PX] [--theme light|dark]\n")
     PrintFd(1, "       kryon run [PROFILE] --watch\n")
     PrintFd(1, "       kryon run FILE.zx\n")
@@ -678,8 +714,8 @@ FrontDoor :: (command_line: string, verb: string) -> s32 {
     }
     if !SetEnvironment("KRYON_FRONT_DOOR", "1") { return Error("cannot set the environment") }
     count: s32 = ArgumentCount(command_line)
-    if count > 14 { return Error("too many arguments") }
-    args: [16]string
+    args: Vec(string)
+    if !VecResize(args, cast(s64)count + 4) { return Error("cannot store project arguments") }
     used: s32 = 0
     args[used] = "ziran"
     used += 1
@@ -755,28 +791,19 @@ FrontDoor :: (command_line: string, verb: string) -> s32 {
 main :: (argc: s32, argv: **u8) -> s32 {
     // Rebuild the NUL-separated command line from argv: restricted
     // sandboxes deny /proc, and the kernel already provides the arguments.
-    command_bytes: [8192]u8
-    used: s32 = 0
+    command_bytes: Vec(u8)
     index: s32 = 0
     while index < argc {
         argument: *u8 = argv[index]
         at: s32 = 0
         while argument[at] != cast(u8)0 {
-            if used >= cast(s32)command_bytes.count {
-                return Error("command line too long")
-            }
-            command_bytes[used] = argument[at]
-            used += 1
+            VecPush(command_bytes, argument[at])
             at += 1
         }
-        if used >= cast(s32)command_bytes.count {
-            return Error("command line too long")
-        }
-        command_bytes[used] = cast(u8)0
-        used += 1
+        VecPush(command_bytes, cast(u8)0)
         index += 1
     }
-    command_line: string = TextFromBuffer(command_bytes[:], used)
+    command_line: string = TextFromBuffer(command_bytes[:], cast(s32)command_bytes.count)
     verb: string = ArgumentAt(command_line, 1)
     if verb == "artifact" { return RendererArtifact(command_line) }
     if verb == "help" || verb == "--help" || verb == "-h" || verb == "" {
@@ -809,6 +836,17 @@ main :: (argc: s32, argv: **u8) -> s32 {
     options_path_bytes: [4096]u8
     options_path: string = Environment("ZIRAN_TOOL_OPTIONS", options_path_bytes[:])
     if options_path == "" { return FrontDoor(command_line, verb) }
+    project_arguments: Vec(u8)
+    module_paths: Vec(u8)
+    if verb == "run" || verb == "build" || verb == "check" {
+        path_error := ReadModulePaths(command_line, *project_arguments, *module_paths)
+        if path_error != "" { return Error(path_error) }
+        command_line = TextFromBuffer(project_arguments[:], cast(s32)project_arguments.count)
+        if !SetEnvironment("KRYON_MODULE_PATH_ARGS",
+            TextFromBuffer(module_paths[:], cast(s32)module_paths.count)) {
+            return Error("cannot pass module paths")
+        }
+    }
     if verb == "new" || verb == "init" {
         return Error("kryon new and init start projects; run them outside ziran tool")
     }

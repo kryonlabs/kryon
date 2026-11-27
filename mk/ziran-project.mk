@@ -66,6 +66,9 @@ PROJECT_CONFIG_FILES := ziran.toml ziran.lock
 TEST_DRIVER_STATE := $(if $(KRYON_TEST_DRIVER),on,off)
 # A zx bundle's runtime pictures (kryon/bitmap_image) belong to its player.
 ZIRAN_MODULE_ARGS := --project $(if $(KRYON_TEST_DRIVER),--define KRYON_TEST_DRIVER) $(if $(filter zx,$(PROJECT_CODEGEN)),--define KRYON_ZX)
+# The CLI quotes each --module-path token in this environment value. Expand it
+# only in the shell, keeping make and recursive make from interpreting paths.
+ZIRAN_MODULE_PATHS = eval "set -- $$KRYON_MODULE_PATH_ARGS";
 ifeq ($(PROJECT_BACKEND),terminal)
 ZIRAN_MODULE_ARGS += --define KRYON_TERMINAL
 endif
@@ -130,7 +133,7 @@ HOST_ROOT_SOURCES += $(KRYON_DIR)/src/backend/canvas_raster.zi
 endif
 # Browser hosts resolve the app's packages like native ones. The checked
 # closed link retains the entry and the page's exported runtime callbacks.
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(WEB_TARGET) --define PLATFORM_WEB \
+IR_COMMAND := $(ZIRAN_MODULE_PATHS) $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) "$$@" $(WEB_TARGET) --define PLATFORM_WEB \
 	--entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
 C_COMMAND := $(ZIRAN_BUILD_DIR)/bin/zi2c --define PLATFORM_WEB --target-os web --target-cpu wasm32 \
 	--emit-main --entry $(HOST_ID):main \
@@ -139,7 +142,7 @@ C_COMMAND := $(ZIRAN_BUILD_DIR)/bin/zi2c --define PLATFORM_WEB --target-os web -
 else
 # A program selects its kryon/app host by compiled target, so a C program's
 # IR names the native C target; a ZX program's and frame IR stay portable.
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(if $(filter c99,$(PROJECT_CODEGEN)),--target=c --define POSIX_THREADS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
+IR_COMMAND := $(ZIRAN_MODULE_PATHS) $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) "$$@" $(if $(filter c99,$(PROJECT_CODEGEN)),--target=c --define POSIX_THREADS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
 C_COMMAND := $(ZIRAN) build --target=c --emit-main --entry $(HOST_ID):main \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
 endif
@@ -307,15 +310,17 @@ $(GEN_DIR)/test-driver.$(TEST_DRIVER_STATE):
 	@rm -f $(GEN_DIR)/test-driver.on $(GEN_DIR)/test-driver.off
 	@: > $@
 
-# Switching a configured toolchain invalidates output even when its binaries
-# have older mtimes than the previous build's files.
+# Fingerprint external module contents as well as their paths. These files can
+# contain spaces and make metacharacters, so keep them out of prerequisite lists.
+# Additions, removals and edits with preserved mtimes must invalidate saved IR.
 .PHONY: project-toolchain-config
 $(GEN_DIR)/toolchain: project-toolchain-config
 	@mkdir -p $(GEN_DIR)
-	@printf '%s\n' "$(ZIRAN_BUILD_DIR)" > $@.new
+	@module_inputs=$$(python3 "$(KRYON_DIR)/scripts/module_path_inputs.py") || exit $$?; \
+		printf '%s\n' "$(ZIRAN_BUILD_DIR)" "$$KRYON_MODULE_PATH_ARGS" "$$module_inputs" > $@.new
 	@cmp -s $@.new $@ && rm -f $@.new || mv -f $@.new $@
 
-$(IR_STAMP): $(GEN_DIR)/toolchain $(GEN_DIR)/test-driver.$(TEST_DRIVER_STATE) $(PROJECT_SOURCE_DEPS) $(ZIRAN_BUILD_DIR)/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
+$(IR_STAMP): $(GEN_DIR)/toolchain $(GEN_DIR)/test-driver.$(TEST_DRIVER_STATE) $(PROJECT_SOURCE_DEPS) $(ZIRAN_BUILD_DIR)/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk $(KRYON_DIR)/scripts/module_path_inputs.py
 	mkdir -p $(IR_DIR)
 	rm -f $(IR_DIR)/*.zir $(IR_STAMP)
 	$(IR_COMMAND)
@@ -399,7 +404,7 @@ endif
 
 # Check the complete bound graph through the same IR route as a build.
 check: toolchain
-	$(ZIRAN) ir $(ZIRAN_MODULE_ARGS) -o $(GEN_DIR)/check-ir --entry $(HOST_ID):main $(if $(filter c99,$(PROJECT_CODEGEN)),$(if $(BROWSER_BACKEND),$(WEB_TARGET) --define PLATFORM_WEB,--target=c)) $(HOST_ROOT_SOURCES)
+	$(ZIRAN_MODULE_PATHS) $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) "$$@" -o $(GEN_DIR)/check-ir --entry $(HOST_ID):main $(if $(filter c99,$(PROJECT_CODEGEN)),$(if $(BROWSER_BACKEND),$(WEB_TARGET) --define PLATFORM_WEB,--target=c)) $(HOST_ROOT_SOURCES)
 
 # `ziran install` copies the built program to PREFIX/bin and describes it to
 # the desktop. The KRYON_INSTALL_* values come from [tool.kryon.install] and

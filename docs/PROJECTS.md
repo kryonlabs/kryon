@@ -108,6 +108,13 @@ kryon run desktop --png build/shot.png --width 390 --height 844 --theme dark
 kryon run --watch            # rebuild and relaunch after every saved change
 ```
 
+`build`, `check`, and `run` accept repeatable `--module-path DIR` options
+alongside the profile, for example `kryon build --profile android --module-path
+../shared --module-path "../shared models"`. Quote paths containing spaces.
+The paths supplement the project's import graph for native, browser, portable,
+and Android builds; saved IR retains the resolved modules. Incremental builds
+track edits, additions and removals in these extra module folders too.
+
 `kryon run [PROFILE] --watch` builds a desktop or terminal C99 profile into
 `build/watch/PROFILE`, runs it, and polls the project's files (all but
 `build/` and hidden entries) four times a second. A change stops the app,

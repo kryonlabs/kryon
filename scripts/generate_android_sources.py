@@ -12,13 +12,14 @@ import json
 import os
 from pathlib import Path
 import shutil
+import shlex
 import subprocess
 import tomllib
+from module_path_inputs import SOURCE_SUFFIXES, module_path_roots, module_path_sources
 
 
 def android_native_recipes(root, modules, native_modules, ziran):
     """Resolve recipes for native-bearing modules that emitted code."""
-    retained = {path.stem for path in modules}
     emitted = {path.stem for path in native_modules}
     package_roots = {}
     reached = {}
@@ -35,13 +36,14 @@ def android_native_recipes(root, modules, native_modules, ziran):
                 module, source = fields
                 stem = (module if identity == "root" else f"std_{module}"
                         if identity == "std" else f"{identity}__{module}")
-                if stem in retained:
-                    path = Path(source)
-                    inputs.add(path)
-                    # Generated roots can be outside a dependency's module roots.
-                    if stem in emitted and path.is_relative_to(package_roots[identity]):
-                        reached.setdefault(identity, set()).add(
-                            path.relative_to(package_roots[identity]).as_posix())
+                # Folded/inlined modules still affect the emitted program even
+                # when they have no remaining IR or C output of their own.
+                path = Path(source)
+                inputs.add(path)
+                # Generated roots can be outside a dependency's module roots.
+                if stem in emitted and path.is_relative_to(package_roots[identity]):
+                    reached.setdefault(identity, set()).add(
+                        path.relative_to(package_roots[identity]).as_posix())
 
     lock = json.loads((root / "ziran.lock").read_text())
     # Resolve exact lock identities through the package command. A direct
@@ -114,8 +116,29 @@ parser.add_argument("--entry", type=Path, default=os.environ.get("KRYON_PROJECT_
                     help="Selected application source (or KRYON_PROJECT_ENTRY)")
 parser.add_argument("--define", action="append", default=[])
 parser.add_argument("--codegen", choices=("c99", "zx"), default="c99")
+parser.add_argument("--module-path-args-json",
+                    help="JSON-encoded search arguments from Gradle/CMake; otherwise read KRYON_MODULE_PATH_ARGS")
 args = parser.parse_args()
+# Direct checks inherit the CLI's quoted environment value. Gradle carries the
+# same text as one JSON-encoded CMake argument, so changed paths invalidate a
+# cached configure and embedded newlines remain intact in CMakeCache.txt.
+module_path_text = os.environ.get("KRYON_MODULE_PATH_ARGS", "")
+if args.module_path_args_json:
+    try:
+        module_path_text = json.loads(args.module_path_args_json)
+    except json.JSONDecodeError as error:
+        parser.error(f"invalid module-path arguments: {error}")
+    if not isinstance(module_path_text, str):
+        parser.error("module-path arguments must encode a string")
+try:
+    module_path_args = shlex.split(module_path_text)
+except ValueError as error:
+    parser.error(f"invalid module-path arguments: {error}")
 root = args.root.resolve()
+try:
+    module_roots = module_path_roots(module_path_args, root)
+except ValueError as error:
+    parser.error(str(error))
 kryon = args.kryon.resolve()
 entry = (root / args.entry).resolve()
 source_suffixes = {".zi", ".ts", ".tsx"}
@@ -216,7 +239,7 @@ lock_path.parent.mkdir(parents=True, exist_ok=True)
 with lock_path.open("w") as lock:
     fcntl.flock(lock, fcntl.LOCK_EX)
     subprocess.run(
-        [str(args.ziran), "ir", "--project", "--target=c",
+        [str(args.ziran), "ir", "--project", *module_path_args, "--target=c",
          "--entry", "main:main",
          *(word for name in retained for word in ("--retain", name)),
          *target, "--root", str(entry.parent),
@@ -247,8 +270,22 @@ lines.extend(f'    "{path}"' for path in headers)
 lines.extend([")", "set(APP_ZIRAN_INCLUDE_DIRS"])
 lines.extend(f'    "{path}"' for path in include_dirs)
 lines.extend([")", "set(APP_ZIRAN_CONFIGURE_INPUTS"])
-lines.extend(f"    {cmake_path(path)}" for path in configure_inputs)
+configure_inputs = sorted({*configure_inputs, *module_path_sources(module_roots),
+                          kryon / "scripts/module_path_inputs.py"})
+# Keep semicolons escaped while these arguments travel through a CMake list.
+for path in configure_inputs:
+    escaped = str(path).replace(";", "\\;")
+    lines.append(f"    {cmake_path(escaped)}")
 lines.append(")")
+if module_roots:
+    # CONFIGURE_DEPENDS also notices newly added and removed source files.
+    lines.append("file(GLOB APP_ZIRAN_MODULE_PATH_SOURCES CONFIGURE_DEPENDS")
+    for directory in module_roots:
+        prefix = "".join({"[": "[[]", "]": "[]]", "*": "[*]", "?": "[?]"}.get(c, c)
+                         for c in str(directory))
+        lines.extend(f"    {cmake_path(prefix + '/' + pattern + suffix)}"
+                     for pattern in ("*", "*/*") for suffix in SOURCE_SUFFIXES)
+    lines.append(")")
 if any(module.stem == "std_bundle_host" for module in modules):
     lines.append("set(APP_ZIRAN_BUNDLE_RUNTIME ON)")
 for identity, recipe, dependencies in native_recipes:

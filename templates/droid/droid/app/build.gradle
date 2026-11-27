@@ -17,6 +17,10 @@ def androidAbis = (project.findProperty('app.abis') ?:
     System.getenv('KRYON_ANDROID_ABIS') ?: 'arm64-v8a').split(',').toList()
 def appCodegen = envOrProp('KRYON_PROJECT_CODEGEN', 'app.codegen') ?: 'c99'
 def appAssets = envOrProp('KRYON_PROJECT_ASSETS', 'app.assets')
+// Keep search paths in the CMake configuration key, including an empty value
+// when they are removed. JSON preserves whitespace and quotes as one argument.
+def appModulePathArgsJson = groovy.json.JsonOutput.toJson(
+    providers.environmentVariable('KRYON_MODULE_PATH_ARGS').getOrElse(''))
 def syncAppAssets = tasks.register('syncKryonAssets', Sync) {
     if (appAssets) {
         def source = new File(appAssets)
@@ -61,7 +65,8 @@ android {
                 arguments '-DKRYON_DIR=' + kryonDir,
                     '-DZIRAN_DIR=' + ziranDir,
                     '-DAPP_CODEGEN=' + appCodegen,
-                    '-DAPP_EDITION=' + appEdition
+                    '-DAPP_EDITION=' + appEdition,
+                    '-DAPP_MODULE_PATH_ARGS_JSON=' + appModulePathArgsJson
             }
         }
     }

@@ -142,8 +142,8 @@
     "name": "toast"
   },
   "toolchain": {
-    "commit": "4596187a757f0810c80e607d6c1c96f08ba8a934",
-    "ref": "4596187a757f0810c80e607d6c1c96f08ba8a934",
+    "commit": "fac8a39688135feb38671553fb288887170575ab",
+    "ref": "fac8a39688135feb38671553fb288887170575ab",
     "url": "https://git.waozi.xyz/ziranlang/ziran.git"
   }
 }
