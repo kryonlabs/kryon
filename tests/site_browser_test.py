@@ -376,7 +376,9 @@ def check_files(site):
         assert source.count('<canvas ') == 1 and '<iframe' not in source
         assert 'current.js' in source and 'id="kryon-ime"' in source
         assert '<button' not in source and '<select' not in source, 'Website controls must be Ziran'
-        assert 'href="/favicon-32.png"' in source and 'href="/apple-touch-icon.png"' in source
+        for filename in ('favicon.ico', 'favicon-32.png', 'apple-touch-icon.png'):
+            revision = hashlib.sha256((site / filename).read_bytes()).hexdigest()[:12]
+            assert f'href="/{filename}?v={revision}"' in source, 'Missing or stale mascot favicon'
         assert 'property="og:image" content="https://kryonlabs.com/og.png"' in source
     assert (site / 'runtime/simd128.js').stat().st_size > 10000
     assert (site / 'runtime/baseline.js').stat().st_size > 10000

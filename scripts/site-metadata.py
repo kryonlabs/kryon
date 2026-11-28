@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Keep social cards and canonical URLs complete on the maintained site pages."""
 import html
+import hashlib
 from html.parser import HTMLParser
 from pathlib import Path
 import re
@@ -30,6 +31,16 @@ class Head(HTMLParser):
 
 
 def update():
+    # Version each mascot icon so browsers replace the retired letter favicon.
+    icons = [
+        ('icon', 'image/x-icon', '16x16 32x32 48x48', 'favicon.ico'),
+        ('icon', 'image/png', '32x32', 'favicon-32.png'),
+        ('apple-touch-icon', 'image/png', '180x180', 'apple-touch-icon.png'),
+    ]
+    icon_tags = []
+    for rel, mime, sizes, filename in icons:
+        revision = hashlib.sha256((SITE / filename).read_bytes()).hexdigest()[:12]
+        icon_tags.append(f'<link rel="{rel}" type="{mime}" sizes="{sizes}" href="/{filename}?v={revision}">')
     for name in PAGES:
         path = SITE / (name + '.html')
         source = path.read_text()
@@ -48,7 +59,8 @@ def update():
         }
         source = re.sub(r'<meta\b[^>]*(?:property|name)=["\'](?:og:|twitter:)[^>]*>', '', source)
         source = re.sub(r'<link\b[^>]*rel=["\']canonical["\'][^>]*>', '', source)
-        tags = [f'<link rel="canonical" href="{url}">']
+        source = re.sub(r'<link\b[^>]*rel=[\"\'](?:icon|shortcut icon|apple-touch-icon)[\"\'][^>]*>', '', source)
+        tags = icon_tags + [f'<link rel="canonical" href="{url}">']
         tags += [f'<meta {"property" if key.startswith("og:") else "name"}="{key}" content="{html.escape(value, quote=True)}">' for key, value in fields.items()]
         before, after = source.split('</head>', 1)
         before = '\n'.join(line.rstrip() for line in before.splitlines()).rstrip()
