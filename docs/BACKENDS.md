@@ -203,6 +203,43 @@ engine with a typed host. It verifies the RGBA bytes, rendered count changing
 after a click, UTF-8 editing, resize, close and opt-in timeout redraw. An
 emulator can launch the same bundle by registering the four capabilities.
 
+## Hosted ZX GPU surface
+
+`kryon/host/surface_gpu.Run(window, draw, idle_ms, clock, wake)` uses the same
+TSX composition, retained tree, input snapshots, layout and damage tracking as
+the software surface. It records the existing renderer's clipped triangles and
+text/image texture updates. The host draws them into a retained GPU target;
+the application does not allocate or upload a CPU framebuffer. Unsupported GPU
+initialization or a failed paint operation ends the surface with status 1.
+
+Bind the ordinary surface `Open`, `Event` and `Close` capabilities together with
+these capabilities from `zx_surface_gpu` (using their exact package-qualified
+module name from the bundle metadata):
+
+| Function | Signature | Host behavior |
+| --- | --- | --- |
+| `PaintOpen` | `(atlas_side: s32) -> s32` | Open a target for this window and return the maximum texture side, or zero on failure. The result must accommodate `atlas_side`. |
+| `PaintTexture` | `(slot, width, height, x, y, columns, rows: s32, pixels: []u32) -> bool` | Create or resize the slot to `width` by `height`, then upload the indicated rectangle. Slot -1 is the shared glyph/shape atlas; nonnegative slots identify images. |
+| `PaintDraw` | `(width, height, slot: s32, smooth, atlas: bool, vertices: []PixmapGpuVertex) -> bool` | Draw complete triangles into the pending target at the requested viewport size, sampling the indicated texture. Preserve the previously committed content outside damage. |
+| `PaintPresent` | `(width, height: s32) -> bool` | Commit the pending frame for presentation. Drawing must not expose an incomplete frame. |
+| `PaintClose` | `()` | Release this window's target and textures. Closing is idempotent. |
+
+All slices are synchronous borrows: consume them before returning and do not
+reenter guest code from a paint callback. Uploads contain straight-alpha
+`0xAARRGGBB` words. `PixmapGpuVertex` has device-coordinate `x`, `y`, `u`, `v`
+floating-point fields and `r`, `g`, `b`, `a` byte fields. A typed host receives
+record elements; it must decode their declared fields rather than assuming
+the host-value slice is a packed native vertex array. The host owns texture
+storage and the committed target until `PaintClose` or window teardown.
+
+Define `KRYON_PIXMAP_EXTERNAL_BUFFER` to omit the unused software framebuffer.
+Glyph rasterization and image decoding still produce texture data; frame
+rasterization and presentation happen on the GPU. Unchanged retained frames
+submit no paint operations. Resizing uses the same window identity and retains
+its texture ownership; the host must keep the last committed frame valid until
+the replacement frame commits. These capabilities do not establish hardware
+acceleration by themselves: inspect the host's actual renderer identity.
+
 ## Shared ZX libraries
 
 A program that imports Kryon's widgets compiles the pixel, session, tree and

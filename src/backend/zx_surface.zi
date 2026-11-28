@@ -72,9 +72,12 @@ SurfaceWakeNone :: (now_ms: s64) -> SurfaceSchedule { unused now_ms; return .{} 
 SURFACE_PIXEL_LIMIT :: 4194304
 SURFACE_STRIP_ROWS :: 32
 
+SurfaceDimensionsValid :: (width: s32, height: s32) -> bool {
+    return width > 0 && height > 0 && width <= 16384 && height <= 16384
+}
+
 SurfaceSizeValid :: (width: s32, height: s32) -> bool {
-    return width > 0 && height > 0 && width <= 16384 && height <= 16384 &&
-        cast(s64)width * cast(s64)height <= SURFACE_PIXEL_LIMIT
+    return SurfaceDimensionsValid(width, height) && cast(s64)width * cast(s64)height <= SURFACE_PIXEL_LIMIT
 }
 
 SurfaceInput :: (input: *FrameInputSnapshot, queue: *InputDelivery, event: SurfaceEvent) {
@@ -130,7 +133,7 @@ SurfacePaint :: struct {
 // this limit affects snapshot storage, never how much paint the app can submit.
 SurfaceSnapshotFits :: (slot: s32) -> bool {
     return pending_paint[slot].items.count <= 2048 && pending_short_text[slot].count <= 256 &&
-        pending_medium_text[slot].count <= 32 && pending_text[slot].count <= 4 && pending_mesh[slot].count <= 8
+    pending_medium_text[slot].count <= 32 && pending_text[slot].count <= 4 && pending_mesh[slot].count <= 8
 }
 
 SurfaceCommit :: (session: Session, width: s32, height: s32, pixels: []u32,
@@ -142,8 +145,8 @@ SurfaceCommit :: (session: Session, width: s32, height: s32, pixels: []u32,
     viewport := Pixels.PixmapLogicalBounds()
     images := Pixels.PixmapImageRevision()
     same_surface := paint.width == width && paint.height == height && paint.images == images &&
-        paint.viewport.x == viewport.x && paint.viewport.y == viewport.y &&
-        paint.viewport.width == viewport.width && paint.viewport.height == viewport.height
+    paint.viewport.x == viewport.x && paint.viewport.y == viewport.y &&
+    paint.viewport.width == viewport.width && paint.viewport.height == viewport.height
     paint.width = width
     paint.height = height
     paint.viewport = viewport
@@ -180,7 +183,7 @@ SurfaceCommit :: (session: Session, width: s32, height: s32, pixels: []u32,
 
     area := viewport
     whole := refresh || !change.partial || !Finite32(change.area.x) || !Finite32(change.area.y) ||
-        !Finite32(change.area.x + change.area.width) || !Finite32(change.area.y + change.area.height)
+    !Finite32(change.area.x + change.area.width) || !Finite32(change.area.y + change.area.height)
     if !whole {
         area = RectangleIntersection(change.area, viewport)
     }
@@ -240,7 +243,7 @@ SurfaceReplayStrips :: (session: Session, width: s32, height: s32, area: Rectang
             scale_x := Pixels.pixmap_scale_x
             scale_y := Pixels.pixmap_scale_y
             SurfaceReplayArea(session, .{(clipped.x - Pixels.pixmap_offset_x) / scale_x,
-                (clipped.y - Pixels.pixmap_offset_y) / scale_y, clipped.width / scale_x, clipped.height / scale_y})
+                    (clipped.y - Pixels.pixmap_offset_y) / scale_y, clipped.width / scale_x, clipped.height / scale_y})
         }
         Pixels.PixmapDamageEnd()
         if output.present != null {
@@ -300,9 +303,9 @@ SurfaceFrameRetained :: (session: Session, draw: Draw, width: s32, height: s32,
     rows := ifx height < SURFACE_STRIP_ROWS then height else SURFACE_STRIP_ROWS
     rgba_rows := ifx present == null then height else rows
     if paint == null || ((present != null || output.present != null) && !SurfaceSizeValid(width, height)) ||
-        (present != null && output.present != null) ||
-        (output.present == null && rgba.count < cast(s64)width * cast(s64)rgba_rows * 4) ||
-        !Pixels.PixmapResumeRowsInto(width, height, 0, rows, pixels) { return false }
+    (present != null && output.present != null) ||
+    (output.present == null && rgba.count < cast(s64)width * cast(s64)rgba_rows * 4) ||
+    !Pixels.PixmapResumeRowsInto(width, height, 0, rows, pixels) { return false }
     defer Pixels.PixmapEndInto()
     if !SurfaceBeginInput(session, input) { return false }
     defer FrameInputEnd(session)
@@ -384,7 +387,7 @@ SurfaceRenderFull :: (composition: *SurfaceComposition, width: s32, height: s32,
     unused paint
     unused refresh
     return SurfaceFrame(composition.session, composition.draw, width, height, input, pixels) &&
-        SurfacePresent(width, height, pixels, rgba)
+    SurfacePresent(width, height, pixels, rgba)
 }
 
 SurfaceRenderRetained :: (composition: *SurfaceComposition, width: s32, height: s32,
@@ -403,6 +406,8 @@ SurfaceRenderRows :: (composition: *SurfaceComposition, width: s32, height: s32,
 // A positive idle interval composes on timeout, in addition to input frames.
 SurfaceClock :: #type () -> s64;
 SurfaceClockNone :: () -> s64 { return -1 }
+SurfaceDispose :: #type () -> ();
+SurfaceDisposeNone :: () {}
 
 Run :: (window: Window, draw: Draw, idle_ms: s32 = 0, clock: SurfaceClock = SurfaceClockNone,
     wake: SurfaceWake = SurfaceWakeNone) -> s32 {
@@ -445,11 +450,14 @@ SurfaceRun :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRender
 
 SurfaceLoop :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRenderer, strip_rows: s32,
     clock: SurfaceClock, present: SurfaceRowsPresenter, wake: SurfaceWake = SurfaceWakeNone,
-    output: SurfacePixelsOutput = .{}) -> s32 {
+    output: SurfacePixelsOutput = .{}, allocate_surface: bool = true,
+    dispose: SurfaceDispose = SurfaceDisposeNone) -> s32 {
     width := ifx window.width > 0 then window.width else 960
     height := ifx window.height > 0 then window.height else 600
-    if !SurfaceSizeValid(width, height) || !Open(window.title, width, height) { return 1 }
+    if !SurfaceDimensionsValid(width, height) || (allocate_surface && !SurfaceSizeValid(width, height)) ||
+    !Open(window.title, width, height) { return 1 }
     defer Close()
+    defer dispose()
     session := SessionOpen()
     if !SessionValid(session) { return 1 }
     defer { unused CloseSession(session) }
@@ -478,7 +486,8 @@ SurfaceLoop :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRende
             if idle_ms > 0 && wait_ms > 1000 { wait_ms = 1000 }
         }
         if event.kind == Resized {
-            if !SurfaceSizeValid(event.width, event.height) { return 1 }
+            if !SurfaceDimensionsValid(event.width, event.height) ||
+            (allocate_surface && !SurfaceSizeValid(event.width, event.height)) { return 1 }
             width = event.width
             height = event.height
         }
@@ -494,9 +503,11 @@ SurfaceLoop :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRende
             count := cast(s64)width * cast(s64)height
             pixel_count := count
             if strip_rows > 0 && height > strip_rows { pixel_count = cast(s64)width * strip_rows }
+            if !allocate_surface { pixel_count = 0 }
             pixel_limit := ifx pixel_count > pixels.capacity then pixel_count else pixels.capacity
             if pixels.count != pixel_count && !VecResizeBounded(pixels, pixel_count, pixel_limit) { return 1 }
             rgba_count := ifx output.present != null then 0 else (ifx present == null then count else pixel_count) * 4
+            if !allocate_surface { rgba_count = 0 }
             rgba_limit := ifx rgba_count > rgba.capacity then rgba_count else rgba.capacity
             if rgba.count != rgba_count && !VecResizeBounded(rgba, rgba_count, rgba_limit) { return 1 }
             SurfaceInput(*input, *queue, event)
@@ -525,7 +536,7 @@ SurfaceLoop :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRende
             input.tertiary.pressed = false
             input.tertiary.released = false
             if (event.kind == KeyDown || event.kind == KeyUp) &&
-                event.key > 0 && event.key < cast(s32)input.keys.count {
+            event.key > 0 && event.key < cast(s32)input.keys.count {
                 input.keys[event.key] &= cast(u8)FrameKeyHeld
             }
         }

@@ -39,6 +39,14 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
+- Add a portable GPU surface that submits the existing paint triangles, glyph
+  atlas and images through typed host capabilities. Retain the shared widget
+  tree and input path, with synchronous borrows and deterministic target cleanup.
+
+- Share the retained Cairo framebuffer with the native SDL software window
+  surface for RGB/ARGB32 displays, removing a redundant texture and pixel copy.
+  Track desktop runtime changes in projects with custom native hosts.
+
 - Export Group independently through `kryon/tsx/group`, so hosted applications
   compose the same native container without importing unavailable local layout
   operations. Keep the complete `kryon/tsx/layout` surface as ordinary module

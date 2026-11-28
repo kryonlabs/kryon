@@ -405,6 +405,7 @@ play_billing = "src/backend/play_billing.zi"
 # Internal software raster modules shared by desktop, Android and portable hosts.
 pixmap = "src/backend/pixmap.zi"
 "host/surface" = "src/backend/zx_surface.zi"
+"host/surface_gpu" = "src/backend/zx_surface_gpu.zi"
 pixmap_frame = "src/backend/pixmap_frame.zi"
 # The roots of the shared ZX libraries (make zx-libraries): Kryon's portable
 # halves, and the complete frame a program exchanges with them by value.

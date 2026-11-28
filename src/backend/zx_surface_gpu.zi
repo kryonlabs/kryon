@@ -1,0 +1,190 @@
+// GPU drawing for a portable surface. The guest composes the ordinary tree
+// and records the existing pixel backend's clipped triangles; the host owns
+// textures and a retained GPU target. No CPU framebuffer crosses this ABI.
+Surface :: #import "zx_surface";
+Pixels :: #import "pixmap";
+Bitmaps :: #import "bitmap_store";
+#import "pixmap_gpu"
+#import "app_types"
+#import "geometry"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "paint_queue"
+#import "frame_snapshot"
+#import "input_protocol"
+#import "math"
+#import "std/vec"
+
+using FrameStatus;
+host_api :: #system_library "host_api";
+
+// Every slice is borrowed synchronously. The host must consume it before
+// returning and must not call guest code from a paint operation. Pixels are
+// straight-alpha 0xAARRGGBB; vertices are in top-down device coordinates.
+PaintOpen :: (atlas_side: s32) -> s32 #foreign host_api;
+PaintTexture :: (slot: s32, width: s32, height: s32, x: s32, y: s32,
+    columns: s32, rows: s32, pixels: []u32) -> bool #reads #foreign host_api;
+PaintDraw :: (width: s32, height: s32, slot: s32, smooth: bool, atlas: bool,
+    vertices: []PixmapGpuVertex) -> bool #reads #foreign host_api;
+PaintPresent :: (width: s32, height: s32) -> bool #foreign host_api;
+PaintClose :: () #foreign host_api;
+
+opened: bool;
+failed: bool;
+frame_width: s32;
+frame_height: s32;
+image_revisions: [Pixels.PixmapImageLimit]u64;
+image_widths: [Pixels.PixmapImageLimit]s32;
+image_heights: [Pixels.PixmapImageLimit]s32;
+no_flush: PixmapGpuFlushCall;
+
+#scope_module
+ReleaseRecording :: () {
+    PixmapGpuRecordClear()
+    VecFree(pixmap_gpu_vertices); VecFree(pixmap_gpu_batches)
+    VecFree(pixmap_gpu_uploads); VecFree(pixmap_gpu_staged); VecFree(pixmap_gpu_entries)
+    pixmap_gpu_entry_count = 0
+}
+
+Open :: () -> bool {
+    if opened || pixmap_gpu_active { return false }
+    maximum := PaintOpen(PixmapGpuAtlasSide)
+    if maximum < PixmapGpuAtlasSide { if maximum > 0 { PaintClose() }; return false }
+    white: [PixmapGpuWhiteSide * PixmapGpuWhiteSide]u32
+    for index: 0..white.count - 1 { white[index] = cast(u32)0xffffffff }
+    if !PaintTexture(-1, PixmapGpuAtlasSide, PixmapGpuAtlasSide, 0, 0,
+        PixmapGpuWhiteSide, PixmapGpuWhiteSide, white[:]) { PaintClose(); return false }
+    PixmapGpuRecordClear(); PixmapGpuAtlasClear()
+    if pixmap_gpu_entries.count != PixmapGpuEntryLimit {
+        ReleaseRecording(); PaintClose(); return false
+    }
+    pixmap_gpu_max_image = maximum
+    pixmap_gpu_flush = Flush
+    pixmap_gpu_active = true
+    opened = true
+    failed = false
+    return true
+}
+
+Close :: () {
+    if !opened { return }
+    pixmap_gpu_active = false; pixmap_gpu_max_image = 0; pixmap_gpu_flush = no_flush
+    ReleaseRecording()
+    PaintClose()
+    for slot: 0..image_revisions.count - 1 {
+        image_revisions[slot] = 0; image_widths[slot] = 0; image_heights[slot] = 0
+    }
+    opened = false; failed = false; frame_width = 0; frame_height = 0
+}
+
+Image :: (slot: s32) -> bool {
+    if slot < 0 || slot >= Pixels.PixmapImageLimit { return false }
+    width := Pixels.pixmap_image_widths[slot]; height := Pixels.pixmap_image_heights[slot]
+    revision := Pixels.pixmap_image_revisions[slot]
+    if width <= 0 || height <= 0 || width > pixmap_gpu_max_image || height > pixmap_gpu_max_image ||
+    cast(s64)width * height > Pixels.PixmapSourceCount(slot) { return false }
+    if image_revisions[slot] == revision && image_widths[slot] == width && image_heights[slot] == height { return true }
+    ok: bool
+    if slot >= Pixels.PixmapManagedImageStart {
+        item := *Bitmaps.bitmap_images[slot - Pixels.PixmapManagedImageStart]
+        ok = PaintTexture(slot, width, height, 0, 0, width, height, item.pixels[:])
+    } else {
+        ok = PaintTexture(slot, width, height, 0, 0, width, height, Pixels.pixmap_image_pixels[slot].value)
+    }
+    if ok { image_revisions[slot] = revision; image_widths[slot] = width; image_heights[slot] = height }
+    return ok
+}
+
+Submit :: () -> bool {
+    if !opened || failed { return false }
+    for index: 0..pixmap_gpu_uploads.count - 1 {
+        upload := pixmap_gpu_uploads[index]
+        if !PaintTexture(-1, PixmapGpuAtlasSide, PixmapGpuAtlasSide, upload.x, upload.y,
+            upload.width, upload.height,
+            pixmap_gpu_staged[upload.start:upload.start + upload.width * upload.height]) { return false }
+    }
+    Pixels.PixmapSyncBitmaps()
+    for index: 0..pixmap_gpu_batches.count - 1 {
+        batch := pixmap_gpu_batches[index]
+        if batch.slot >= 0 && !Image(batch.slot) { return false }
+        if !PaintDraw(frame_width, frame_height, batch.slot, batch.smooth, batch.slot < 0,
+            pixmap_gpu_vertices[batch.first:batch.first + batch.count]) { return false }
+    }
+    PixmapGpuRecordClear()
+    return true
+}
+
+// Atlas pressure can flush inside an emitter. Preserve a host failure until
+// the frame returns; never continue by rasterizing the frame on the CPU.
+Flush :: () { if !Submit() { failed = true; PixmapGpuRecordClear() } }
+
+Render :: (composition: *Surface.SurfaceComposition, width: s32, height: s32,
+    input: FrameInputSnapshot, pixels: []u32, rgba: []u8, paint: *Surface.SurfacePaint, refresh: bool) -> bool {
+    unused pixels; unused rgba
+    if !opened && !Open() { return false }
+    if width > pixmap_gpu_max_image || height > pixmap_gpu_max_image { return false }
+    frame_width = width; frame_height = height
+    empty: []u32
+    if !Pixels.PixmapResumeInto(width, height, empty, true) { return false }
+    defer Pixels.PixmapEndInto()
+    session := composition.session
+    if !Surface.SurfaceBeginInput(session, input) { return false }
+    defer FrameInputEnd(session)
+    if !Surface.SurfaceCompose(session, composition.draw, width, height) { return false }
+    slot := SessionIndex(session)
+    retained := SessionFlagGet(frame_retained, slot)
+    if CommitFrame(session) != cast(FrameStatus)FrameOk { return false }
+    viewport := Pixels.PixmapLogicalBounds()
+    images := Pixels.PixmapImageRevision()
+    same := paint.width == width && paint.height == height && paint.images == images &&
+    paint.viewport.x == viewport.x && paint.viewport.y == viewport.y &&
+    paint.viewport.width == viewport.width && paint.viewport.height == viewport.height
+    paint.damage = .{}; paint.strips = 0
+    if retained && same && !refresh {
+        frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, slot, true)
+        return true
+    }
+    change: PaintFrameDamage
+    if !retained {
+        if same { change = PaintDamage(session) }
+        if !change.unchanged {
+            if !Surface.SurfaceSnapshotFits(slot) || !PaintSnapshotStore(session) {
+                PaintSnapshotInvalidate(session); change.partial = false
+            }
+        }
+    }
+    if change.unchanged && !refresh {
+        frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, slot, true)
+        PaintClear(session)
+        return true
+    }
+    area := viewport
+    if same && !refresh && change.partial && Finite32(change.area.x) && Finite32(change.area.y) &&
+    Finite32(change.area.x + change.area.width) && Finite32(change.area.y + change.area.height) {
+        area = RectangleIntersection(change.area, viewport)
+    }
+    if area.width > 0.0 && area.height > 0.0 {
+        Pixels.PixmapDamageBegin(area, cast(u32)Pixels.PixmapBackground)
+        paint.damage = Pixels.PixmapDamageBounds()
+        if retained {
+            if !PaintSnapshotEmit(session) { return false }
+        } else { PaintFlush(session) }
+        Pixels.PixmapDamageEnd()
+    }
+    PaintClear(session)
+    if !Submit() || !PaintPresent(width, height) { failed = true; return false }
+    paint.width = width; paint.height = height; paint.images = images; paint.viewport = viewport
+    return true
+}
+
+#scope_export
+Run :: (window: Window, draw: Draw, idle_ms: s32 = 0,
+    clock: Surface.SurfaceClock = Surface.SurfaceClockNone,
+    wake: Surface.SurfaceWake = Surface.SurfaceWakeNone) -> s32 {
+    if opened || pixmap_gpu_active { return 1 }
+    renderer: Surface.SurfaceRenderer = Render
+    composition: Surface.SurfaceComposition
+    return Surface.SurfaceLoop(window, draw, idle_ms, renderer, 0, clock,
+        composition.present_rows, wake, composition.pixel_output, false, Close)
+}
