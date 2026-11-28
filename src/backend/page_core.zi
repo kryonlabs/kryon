@@ -525,10 +525,12 @@ PageResizeMain :: (requested_width: s32, requested_height: s32) {
     page_dpi = ratio
     page_render_width = PageMaxOne(PageRound(cast(float64)page_width * ratio))
     page_render_height = PageMaxOne(PageRound(cast(float64)page_height * ratio))
+    retained: PageGpuSurfaceFrame
     // Assigning the width or height attribute clears the drawing buffer, so
     // only do it when the size really changed.
     if surface_width != page_render_width ||
     surface_height != page_render_height {
+        retained = PageGpuSurfaceRetain()
         page_resized = true
         WebSet(canvas, page_names.width, WebNumber(cast(float64)page_render_width))
         WebSet(canvas, page_names.height, WebNumber(cast(float64)page_render_height))
@@ -540,6 +542,7 @@ PageResizeMain :: (requested_width: s32, requested_height: s32) {
         unused PageGpuAttach(canvas, page_render_width, page_render_height,
             ratio, page_transparent)
     }
+    PageGpuSurfaceRestore(retained)
     WebEnd(scope)
 }
 

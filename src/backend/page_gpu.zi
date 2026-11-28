@@ -55,6 +55,7 @@ PageGpuNames :: struct {
     bind_framebuffer: s32
     bind_texture: s32
     blend_func: s32
+    blit_framebuffer: s32
     buffer_data: s32
     check_framebuffer: s32
     clear: s32
@@ -301,6 +302,7 @@ PageGpuInternNames :: () {
     n.bind_framebuffer = PageGpuName("bindFramebuffer")
     n.bind_texture = PageGpuName("bindTexture")
     n.blend_func = PageGpuName("blendFuncSeparate")
+    n.blit_framebuffer = PageGpuName("blitFramebuffer")
     n.buffer_data = PageGpuName("bufferData")
     n.check_framebuffer = PageGpuName("checkFramebufferStatus")
     n.clear = PageGpuName("clear")
@@ -1105,8 +1107,77 @@ PageGpuFrameReset :: () {
     PageGpuMatrixReset()
 }
 
-// Resizes the drawing surface. The drawing buffer restarts empty, exactly
-// like assigning a canvas element's width or height.
+// A canvas dimension assignment discards its drawing buffer. Keep the last
+// completed surface on the GPU only for that resize, then restore it before
+// returning to the browser. Ordinary frames need no additional surface.
+PageGpuSurfaceFrame :: struct {
+    texture: s32
+    framebuffer: s32
+    width: s32
+    height: s32
+    generation: u64
+}
+
+PageGpuSurfaceBlit :: (read: s32, draw: s32, source_width: s32,
+    source_height: s32, width: s32, height: s32) {
+    scope := WebScope()
+    gl := page_gpu_gl
+    unused WebCall2(gl, page_gpu_names.bind_framebuffer,
+        WebNumber(36008.0), WebObject(read))
+    unused WebCall2(gl, page_gpu_names.bind_framebuffer,
+        WebNumber(36009.0), WebObject(draw))
+    // Blits obey scissoring; the retained frame includes the whole surface.
+    unused WebCall1(gl, page_gpu_names.disable, WebNumber(3089.0))
+    args: [10]WebValue
+    args[0] = WebNumber(0.0)
+    args[1] = WebNumber(0.0)
+    args[2] = WebNumber(cast(float64)source_width)
+    args[3] = WebNumber(cast(float64)source_height)
+    args[4] = WebNumber(0.0)
+    args[5] = WebNumber(0.0)
+    args[6] = WebNumber(cast(float64)width)
+    args[7] = WebNumber(cast(float64)height)
+    args[8] = WebNumber(16384.0)
+    args[9] = WebNumber(9728.0)
+    unused WebCall(gl, page_gpu_names.blit_framebuffer, *args[0], 10)
+    unused WebCall2(gl, page_gpu_names.bind_framebuffer,
+        WebNumber(36160.0), WebObject(page_gpu_bound_framebuffer))
+    PageGpuScissorApply()
+    WebEnd(scope)
+}
+
+PageGpuSurfaceRetain :: () -> PageGpuSurfaceFrame {
+    frame: PageGpuSurfaceFrame
+    if !PageGpuAttached() { return frame }
+    PageGpuFlush()
+    if !PageGpuTargetCreate(page_gpu_surface_width, page_gpu_surface_height,
+        *frame.texture, *frame.framebuffer) { return frame }
+    frame.width = page_gpu_surface_width
+    frame.height = page_gpu_surface_height
+    frame.generation = page_gpu_generation
+    PageGpuSurfaceBlit(0, frame.framebuffer, frame.width, frame.height,
+        frame.width, frame.height)
+    return frame
+}
+
+PageGpuSurfaceRestore :: (frame: PageGpuSurfaceFrame) {
+    if frame.framebuffer == 0 { return }
+    if PageGpuAttached() && frame.generation == page_gpu_generation {
+        PageGpuFlush()
+        PageGpuSurfaceBlit(frame.framebuffer, 0, frame.width, frame.height,
+            page_gpu_surface_width, page_gpu_surface_height)
+    }
+    // Releasing bridge handles is also necessary if the context was lost.
+    if page_gpu_gl != 0 {
+        PageGpuFramebufferFree(frame.framebuffer)
+        PageGpuTextureFree(frame.texture)
+    } else {
+        WebRelease(frame.framebuffer)
+        WebRelease(frame.texture)
+    }
+}
+
+// Updates the presenter's dimensions after the canvas backing store changes.
 PageGpuSurfaceResize :: (width: s32, height: s32, dpi: float64) {
     PageGpuFlush()
     page_gpu_surface_width = width

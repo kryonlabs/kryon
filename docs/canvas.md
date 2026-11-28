@@ -29,7 +29,11 @@ The UI host retains its existing back buffer. It compares checked paint plans,
 keeps unchanged pixels and clears/replays only the damaged region. Session,
 viewport, display-density, background and raster-resource changes repaint as
 needed. Ordinary host paint and custom emitters use complete painting. Text
-measurement leaves retained pixels intact. This adds no extra full-size surface.
+measurement leaves retained pixels intact. Ordinary frames add no extra full-size
+surface. When a canvas dimension actually changes, the host temporarily blits
+the completed drawing buffer into a GPU target and restores it at the new size
+before returning to the browser. That target is immediately freed; resize never
+presents the empty buffer while the application prepares its next frame.
 The dedicated `canvas_raster.zi` provider
 calls the Canvas modules directly, so retained widgets use the same paint
 queue, font selection, and clipping path as the native host. Frame-profile builds retain the selected `_run` host and `canvas_raster.zi`

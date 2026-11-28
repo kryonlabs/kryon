@@ -39,6 +39,9 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
+- Keep the completed WebGL2 drawing buffer visible through canvas dimension
+  changes. A resize-only GPU copy restores it before returning and releases
+  its temporary texture immediately.
 - Keep GPU failure diagnostics in their renderer context without overwriting
   the shared GL trace. Exercise resize rejection against the device limit and
   allow either valid half-intensity UNORM8 rounding in the existing GPU test.
