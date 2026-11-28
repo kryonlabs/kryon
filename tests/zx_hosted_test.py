@@ -3,6 +3,7 @@
 from toolchain import JS_RUNTIME, pinned, kryon_only
 import json
 import os
+import shutil
 import subprocess
 import sys
 
@@ -13,10 +14,13 @@ output = ROOT / 'build/scratch/zx-hosted'
 project = output / 'project'
 (project / 'src').mkdir(parents=True, exist_ok=True)
 (project / 'assets').mkdir(exist_ok=True)
-(project / 'src/app.zi').write_text((ROOT / 'tests/zx/hosted.zi').read_text())
+(project / 'src/app.zi').unlink(missing_ok=True)
+shutil.copyfile(ROOT / 'tests/zx/hosted_app.tsx', project / 'src/app.tsx')
+shutil.copyfile(ROOT / 'tests/zx/hosted_state.zi', project / 'src/hosted_state.zi')
 solid_png(project / 'assets/red.png', 32, 32, (230, 30, 40, 255))
 (project / 'ziran.toml').write_text(pinned('''[package]
 name = "hosted_probe"
+entry = "src/app.tsx"
 module_roots = ["src"]
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
@@ -31,11 +35,12 @@ env = os.environ.copy()
 for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
     env.pop(key, None)
 env['ZIRAN_ROOT'] = str(ZIRAN_ROOT)
+env['HARMONY_DESKTOP_RECOVERY'] = '0'
 subprocess.run([str(ZIRAN), 'lock', '--offline'], cwd=project, env=env, check=True)
 for name, defines in [('hosted', []), ('hosted_other', ['--define', 'HOSTED_OTHER'])]:
     subprocess.run([str(ZIRAN), 'bundle', '--project', '--offline', '--define', 'KRYON_HOSTED_UI',
                     *defines, '--entry', 'app:main', '--asset-dir', 'assets=assets',
-                    '-o', str(output / f'{name}.zx'), 'src/app.zi'],
+                    '-o', str(output / f'{name}.zx'), 'src/app.tsx'],
                    cwd=project, env=env, check=True, timeout=60)
     subprocess.run([str(ROOT / 'build/bin/zx'), '--check', str(output / f'{name}.zx')],
                    env=env, check=True, timeout=30)

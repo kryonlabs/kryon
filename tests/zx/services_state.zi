@@ -1,12 +1,5 @@
-App :: #import "kryon/app";
-Shape :: #import "kryon/shape";
-Text :: #import "kryon/text";
-#import "kryon/drawing_props"
-#import "kryon/geometry"
-#import "kryon/session"
 #import "kryon/Media"
 #import "kryon/Clock"
-#import "kryon/cursor"
 #import "service_urls"
 
 stage: s32;
@@ -23,21 +16,7 @@ Failure :: (code: s32) -> bool {
     return true
 }
 
-Frame :: (frame: App.Frame) {
-    session := Session.{.slot = frame.slot, .epoch = frame.epoch}
-    viewport := frame.viewport
-    if !CursorSet(session, CursorProps.{.shape = cast(s32)CursorShape.CursorCrosshair}) { if Failure(18) { return } }
-    label: Text.Props
-    label.bounds = Rectangle.{20.0, 20.0, 800.0, 50.0}
-    label.text = "Portable audio and asynchronous HTTP"
-    Text.Draw(session, label)
-    if ServiceKeepOpen() {
-        if stage < 0 || stage == 4 {
-            unused Shape.Circle(session, Shape.CircleProps.{.center = Vector2.{160.0, 160.0},
-                .radius = 60.0, .fill = ifx stage == 4 then Color.{20, 180, 80, 255} else Color.{220, 30, 40, 255}})
-            return
-        }
-    }
+Tick :: () {
     if stage == 0 {
         started = Milliseconds()
         if started < 0 { if Failure(1) { return } }
@@ -73,19 +52,17 @@ Frame :: (frame: App.Frame) {
         if FetchTextState() == 2 { if Failure(16) { return } }
         if FetchTextState() == -1 {
             print("ZX media, HTTP and clock passed\n")
-            if ServiceKeepOpen() {
-                stage = 4
-                return
-            }
+            stage = 4
             return
         }
     }
     if Milliseconds() - started > 15000 { if Failure(17) { return } }
-    unused viewport
 }
 
-main :: () -> s32 {
-    code := App.Run(App.Window.{.title = "services"}, Frame)
-    if failed != 0 { return failed }
-    return code
+Finished :: () -> bool {
+    return failed != 0 || (!ServiceKeepOpen() && stage == 4)
+}
+
+Result :: (code: s32) -> s32 {
+    return ifx failed != 0 then failed else code
 }

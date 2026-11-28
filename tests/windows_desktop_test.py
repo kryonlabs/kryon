@@ -20,7 +20,7 @@ for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'WAYLAND_SOCKET', 'XAUTHORITY',
             'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER', 'WINEPREFIX',
             'WINEARCH', 'WINEDLLPATH', 'WINELOADER', 'WINEDLLOVERRIDES'):
     ENV.pop(key, None)
-ENV.update(HARMONY_DESKTOP_RECOVERY='0', YUE_DESKTOP_RECOVERY='0')
+ENV['HARMONY_DESKTOP_RECOVERY'] = '0'
 
 
 def run(command, **kwargs):
@@ -136,7 +136,7 @@ def check_zx_host():
     (registrations / 'kryon-desktop.library').write_text(str(WORK / 'kryon-desktop.dll') + '\n')
     for name in ('window', 'hello'):
         run([ZIRAN, 'bundle', '--project', '--root', ROOT / 'examples', '--entry', name + ':main',
-             '-o', WORK / (name + '.zx'), ROOT / 'examples' / (name + '.zi')])
+             '-o', WORK / (name + '.zx'), ROOT / 'examples' / (name + '.tsx')])
         result = subprocess.run([ZIRAN_ROOT / 'build/bin/zx2native', '--target', 'x86_64',
                                  '--platform', 'windows', '-o', WORK / (name + '-zx.exe'), WORK / (name + '.zx')],
                                 cwd=ROOT, env={**ENV, 'ZIRAN_HOST_PATH': str(registrations)}, capture_output=True, text=True)
@@ -255,13 +255,8 @@ def main():
          '--define', '_WIN32', '--define', 'PLATFORM_DESKTOP', '-o', saved, snapshot])
     compile_source(snapshot, 'frame-snapshot-source')
     compile_source(saved / 'desktop_frame_texture_test.zir', 'frame-snapshot-saved')
-    zx_source = ROOT / 'src/backend/zx_window_host.zi'
-    zx_linked = False
-    if zx_source.is_file():
-        compile_source(zx_source, 'kryon-desktop', library=True)
-        zx_linked = check_zx_host()
-    else:
-        print('Windows ZX host: this revision has no external desktop-player source', flush=True)
+    compile_source(ROOT / 'src/backend/zx_window_host.zi', 'kryon-desktop', library=True)
+    zx_linked = check_zx_host()
     run(['xvfb-run', '-a', '-n', '400', '-s', '-screen 0 1024x768x24',
          sys.executable, __file__, '--private', *(['--zx-linked'] if zx_linked else [])], timeout=240)
 

@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import shlex
+import shutil
 import subprocess
 import time
 import tempfile
@@ -26,7 +27,7 @@ project.mkdir(parents=True, exist_ok=True)
 env = os.environ.copy()
 for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
     env.pop(name, None)
-env['YUE_DESKTOP_RECOVERY'] = '0'
+env['HARMONY_DESKTOP_RECOVERY'] = '0'
 env.setdefault('ANDROID_HOME', str(Path.home() / 'Android/Sdk'))
 
 
@@ -55,13 +56,14 @@ if not a.skip_build:
         (project / relative).unlink(missing_ok=True)
     (project / 'src').mkdir(exist_ok=True)
     (project / 'assets').mkdir(exist_ok=True)
-    (project / 'src/app.zi').write_bytes((ROOT / 'tests/zx/mobile_app.zi').read_bytes())
+    (project / 'src/app.zi').unlink(missing_ok=True)
+    shutil.copyfile(ROOT / 'tests/zx/mobile_app.tsx', project / 'src/app.tsx')
+    shutil.copyfile(ROOT / 'tests/zx/mobile_state.zi', project / 'src/mobile_state.zi')
     solid_png(project / 'assets/red.png', 32, 32, (230, 30, 40, 255))
     (project / 'ziran.toml').write_text(pinned('''[package]
 name = "zx_android_probe"
-entry = "src/app.zi"
+entry = "src/app.tsx"
 module_roots = ["src"]
-bridge_modules = ["app"]
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
 ref = "master"

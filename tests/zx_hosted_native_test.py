@@ -23,7 +23,7 @@ if not args.private:
     env = os.environ.copy()
     for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
         env.pop(key, None)
-    env['YUE_DESKTOP_RECOVERY'] = '0'
+    env['HARMONY_DESKTOP_RECOVERY'] = '0'
     subprocess.run(['xvfb-run', '-a', sys.executable, __file__, *sys.argv[1:], '--private'], env=env, check=True, timeout=120)
     raise SystemExit(0)
 

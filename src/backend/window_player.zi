@@ -1,13 +1,16 @@
 // The desktop player's side of a bundle that only shows a window: it binds
-// the bundle's zx_window capabilities to the desktop window and runs the
-// bundle's entry as native code until the window closes. No frame loop,
-// raster, fonts or input routing run for it, and a bundle native code cannot
-// run stops with its named gap rather than running on the engine.
+// the bundle's zx_window capabilities to the desktop window and its generic
+// guest capabilities to this run's guest host state, then runs the bundle's
+// entry as native code until the window closes. No frame loop, raster, fonts
+// or input routing run for it, and a bundle native code cannot run stops
+// with its named gap rather than running on the engine.
 #import "std/bundle_host"
 #import "std/byte_text_linux"
 #import "std/c_string"
+#import "std/vec"
 using Window :: #import "zx_window_bundle";
 Desktop :: #import "desktop_window";
+Native :: #import "std/guest_host";
 
 using HostValueKind;
 
@@ -44,25 +47,51 @@ WindowCall :: (context: *void, module_name: *u8, function_name: *u8,
     return 0
 }
 
-// Binds the bundle's window capabilities and runs its entry until it
-// returns, with the entry's result as the status. With `check`, it only
-// reports whether every capability binds, running nothing.
-Run :: (bundle: *void, check: bool) -> s32 {
+// Answers one generic guest capability from this run's guest host state.
+GuestCall :: (context: *void, module_name: *u8, function_name: *u8,
+    args: *HostValue, count: s32, result: *HostValue) -> s32 {
+    state := cast(*Native.State)context
+    return Native.Call(state, TextFromCString(module_name), TextFromCString(function_name),
+        args, count, result)
+}
+
+// Binds the bundle's window and generic guest capabilities and runs its
+// entry until it returns, with the entry's result as the status. `path` is
+// the bundle file the guest state resolves its arguments against. With
+// `check`, it only reports whether every capability binds, running nothing.
+Run :: (bundle: *void, check: bool, path: string) -> s32 {
     opened: Desktop.DesktopWindow
-    bindings: [WINDOW_CAPABILITIES]HostBinding
-    count: u64 = 0
+    // The generic guest base: argv[0] is the bundle path in run-owned
+    // storage, and the answer bytes reset with the state.
+    guest: Native.State
+    path_storage: [4096]u8
+    argv_storage: [1]*u8
+    if path.count + 1 > 4096 || !CopyCString(path, path_storage[:]) {
+        CloseBundle(bundle)
+        print("zx: bundle path is too long\n")
+        return 1
+    }
+    argv_storage[0] = *path_storage[0]
+    guest.bundle = bundle
+    guest.argc = 1
+    guest.argv = *argv_storage[0]
+    defer { VecFree(guest.answer) }
+    bindings: Vec(HostBinding)
+    defer { VecFree(bindings) }
     ok := true
     index: u64 = 0
     while index < BundleCapabilities(bundle) {
         module := BundleCapabilityModuleName(bundle, index)
         function := BundleCapabilityFunctionName(bundle, index)
-        if !Capability(module, function) || count >= cast(u64)WINDOW_CAPABILITIES {
+        if Native.Provides(TextFromCString(module), TextFromCString(function)) {
+            if !VecPush(bindings, HostBinding.{.module = module,
+                .function = function, .call = GuestCall, .context = cast(*void)*guest}) { ok = false }
+        } else if !Capability(module, function) {
             print("zx: unsupported host capability %:%\n", TextFromCString(module), TextFromCString(function))
             ok = false
         } else {
-            bindings[count] = HostBinding.{.module = module, .function = function, .call = WindowCall,
-                .context = cast(*void)*opened}
-            count += 1
+            if !VecPush(bindings, HostBinding.{.module = module, .function = function, .call = WindowCall,
+                .context = cast(*void)*opened}) { ok = false }
         }
         index += 1
     }
@@ -77,7 +106,9 @@ Run :: (bundle: *void, check: bool) -> s32 {
         return 1
     }
     options := BundleInstanceOptions.{.backend = .Native}
-    instance := InstantiateBundleWithOptions(bundle, *bindings[0], count, *options)
+    first: *HostBinding
+    if bindings.count > 0 { first = *bindings[0] }
+    instance := InstantiateBundleWithOptions(bundle, first, cast(u64)bindings.count, *options)
     if instance == null {
         print("zx: could not initialize app instance\n")
         CloseBundle(bundle)

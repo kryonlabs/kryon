@@ -60,7 +60,7 @@ The earlier layout changes also apply:
   time-picker demo in TSX. Keep native state, plotting, scheduling and
   capture/input harnesses in Ziran; use the existing behavior checks.
 
-- Align the root, examples and all four starters with Ziran 4ae21503, and the
+- Align the root, examples and all four starters with Ziran 84c42c76, and the
   app generator and upgrade defaults with Kryon f4bda473 and CSS 20b7c95d.
   Check generated TSX entries and the supported desktop screenshot route;
   remove the obsolete shot-profile invocation and redundant starter source check.
@@ -70,6 +70,8 @@ The earlier layout changes also apply:
   keep internal draw and edit-staging operations private.
 - Copy Android billing, push and bundle-file strings into caller-owned storage
   before releasing their JNI UTF bytes, local references and attached session.
+- Bind shared native asset, clock, process and file capabilities in native
+  portable-app hosts, with guest reply storage owned by each running instance.
 
 - Forward repeatable `--module-path` folders through the ordinary build, check
   and run workflow, including Android C99. Preserve quoted paths and remove

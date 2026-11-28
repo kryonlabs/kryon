@@ -19,7 +19,7 @@ kryon run                    # the default profile; kryon run web picks another
 | `app` (default) | task list with controlled input, checkboxes and a theme switch | `desktop`, `portable` (ZX), `web` (canvas) |
 | `tui` | keyboard-driven task list | `tui`, `desktop`, `portable` (ZX) |
 | `pages` | Home, Library, and Settings behind a tab row, sharing state | `desktop`, `portable` (ZX), `tui`, `web` (canvas) |
-| `web` | page: headings, paragraphs, links, a button | `web` (Canvas2D), `desktop`, `portable` (ZX) |
+| `web` | page: headings, paragraphs, links, a button | `web` (WebGL2), `desktop`, `portable` (ZX) |
 
 Each template's `src/app.tsx` uses the same `Frame` across its profiles. The
 frame's viewport measures pixels in a window or browser and character cells on
@@ -322,7 +322,7 @@ The browser player supports ordinary `Frame` bundles and standalone
 `AppContext` apps, drawing, input, fonts, embedded images and the browser
 clipboard. Native, Android and browser players provide packed audio,
 asynchronous HTTP audio/text and a monotonic clock. Requests accept only
-HTTP/HTTPS; guest paths cannot read host files. Android ZX scaffolds include
+HTTP/HTTPS; these requests cannot open local files. Android ZX scaffolds include
 a network manifest overlay; ordinary native builds do not use that overlay.
 
 Standalone `AppContext` apps use the existing lifecycle and hosted widget
@@ -370,6 +370,19 @@ The player needs SDL2, Cairo and FreeType. `kryon run app.zx` forwards to the
 same Ziran runner.
 For a custom install prefix, add its `share/ziran/hosts` directory to
 `ZIRAN_HOST_PATH` or its `share` directory to `XDG_DATA_DIRS`.
+
+Native desktop players also bind the bundle's declared standard guest asset,
+clock, process and file capabilities through Ziran's shared native host.
+`argv[0]` is the bundle path. File and process calls operate on the native
+host; browser and Android support depends on their own declared capabilities.
+An explicit caller binding takes precedence wherever the host accepts one.
+
+Each running instance owns its argument path and temporary text replies.
+Consume or copy a reply before the next host call; embedded asset bytes remain
+valid while their bundle is open. During frame-bundle reload, the candidate
+keeps separate reply storage until initialization succeeds. A rejected
+candidate leaves the current instance intact. Each instance's cleanup runs
+before its reply storage and bundle are released.
 
 `assets` is an optional project-relative directory or file, embedded under that
 same path. Images retain their ordinary `Image.Props.asset_path` values. The

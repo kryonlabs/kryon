@@ -30,6 +30,7 @@ AppPlayer :: #import "app_player";
 WindowPlayer :: #import "window_player";
 WindowBundles :: #import "zx_window_bundle";
 #import "timer_linux"
+Native :: #import "std/guest_host";
 
 PlayerOptions :: struct { check: bool }
 
@@ -67,14 +68,33 @@ Player :: struct {
     reload_due: bool
     reload_at: s64
     watch_path: string
+    // The generic guest host base: per-instance state whose answer bytes
+    // the host borrows between calls, with argv[0] owned by the player.
+    guest: Native.State
+    guest_path: [4096]u8
+    guest_argv: [1]*u8
 }
 
 Names :: #import "bundle_names";
 ModuleName :: (value: string, name: string) -> bool { return Names.ModuleName(value, name) }
 
+// Binds one instance's generic guest host state: argv[0] is the bundle path
+// in player-owned storage, and the answer bytes reset with the state.
+BindGuestHost :: (player: *Player, bundle: *void, path: string) -> bool {
+    if path.count + 1 > player.guest_path.count { return false }
+    if !CopyCString(path, player.guest_path[:]) { return false }
+    player.guest = Native.State.{}
+    player.guest.bundle = bundle
+    player.guest.argc = 1
+    player.guest_argv[0] = *player.guest_path[0]
+    player.guest.argv = *player.guest_argv[0]
+    return true
+}
+
 #load "bundle_player_shared.zi";
 
 Supported :: (module: string, function: string) -> bool {
+    if Native.Provides(module, function) { return true }
     if ModuleName(module, "clock") { return function == "ClockMillisecondsHost" }
     if ModuleName(module, "video") {
         return function == "VideoOpenHost" || function == "VideoPauseHost" || function == "VideoStopHost" ||
@@ -154,6 +174,9 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     function := TextFromCString(function_name)
     if !Supported(module, function) { return 0 }
     result.kind = HostVoid
+    if Native.Provides(module, function) {
+        return Native.Call(*player.guest, module, function, args, count, result)
+    }
     if ModuleName(module, "media") {
         #if OS == .LINUX {
             return DesktopMedia.DesktopMediaCall(*player.media, function, args, count, result)
@@ -558,25 +581,24 @@ CollectBindings :: (bundle: *void, player: *Player, grants: []HostBinding,
         function_name := TextFromCString(function)
         binding := HostBinding.{.module = module, .function = function}
         if ModuleName(module_name, "frames_zx") { player.ui = true }
-        if Supported(module_name, function_name) {
-            binding.call = PlayerCall
-            binding.context = cast(*void)player
-        } else {
-            for grant: grants {
-                if grant.call != null && TextFromCString(grant.module) == module_name &&
-                TextFromCString(grant.function) == function_name {
-                    if binding.call != null {
-                        print("zx: duplicate host capability %:%\n", module_name, function_name)
-                        return false
-                    }
-                    binding.call = grant.call
-                    binding.context = grant.context
+        for grant: grants {
+            if grant.call != null && TextFromCString(grant.module) == module_name &&
+            TextFromCString(grant.function) == function_name {
+                if binding.call != null {
+                    print("zx: duplicate host capability %:%\n", module_name, function_name)
+                    return false
                 }
+                binding.call = grant.call
+                binding.context = grant.context
             }
-            if binding.call == null {
+        }
+        if binding.call == null {
+            if !Supported(module_name, function_name) {
                 print("zx: unsupported host capability %:%\n", module_name, function_name)
                 return false
             }
+            binding.call = PlayerCall
+            binding.context = cast(*void)player
         }
         if !VecPush(bindings.*, binding) { return false }
         index += 1
@@ -628,27 +650,60 @@ Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
             return
         }
     }
+    // The candidate binds an isolated guest state: its own reply bytes and
+    // its own bundle path, so the current instance keeps answering from its
+    // valid state while the candidate initializes.
+    candidate_guest: Native.State
+    candidate_path: [4096]u8
+    candidate_argv: [1]*u8
+    candidate_path_text := TextFromCString(*candidate.path[0])
+    if candidate_path_text.count + 1 > candidate_path.count ||
+    !CopyCString(candidate_path_text, candidate_path[:]) {
+        if replacement_assets != "" { unused RemoveAssetDirectory(replacement_assets) }
+        CloseBundle(replacement)
+        return
+    }
+    candidate_argv[0] = *candidate_path[0]
+    candidate_guest.bundle = replacement
+    candidate_guest.argc = 1
+    candidate_guest.argv = *candidate_argv[0]
     // Initializers resolve resources against the candidate bundle. Keep its
-    // media separate until the candidate can replace the current instance.
+    // media and guest state separate until the candidate replaces the current
+    // instance.
     replacement_media: BundleMedia
     replacement_media.bundle = replacement
     previous_media := player.media
     player.media = replacement_media
+    previous_guest := player.guest
+    player.guest = candidate_guest
     grants: []HostBinding
     prepared, ready := OpenInstance(replacement, player, grants, false)
     replacement_media = player.media
     player.media = previous_media
     defer { BundleMediaClose(*replacement_media) }
     if !ready {
+        // A failed candidate has no instance to close; only its state ends.
+        VecFree(player.guest.answer)
+        player.guest = previous_guest
         if replacement_assets != "" { unused RemoveAssetDirectory(replacement_assets) }
         CloseBundle(replacement)
         return
     }
+    // The prepared instance keeps answering from the candidate state until
+    // its destructor has run; the current state returns only after that.
     directory: [4096]u8
     if replacement_assets != "" {
         if replacement_assets.count >= asset_storage.count ||
             !CopyCString(replacement_assets, directory[:]) || ChangeDirectory(*directory[0]) != 0 {
+            // The candidate destructor runs with its own media and guest
+            // contexts; free its destructor-extended answer in place before
+            // restoring the previous state, exactly once.
+            player.media = replacement_media
             CloseBundleInstance(prepared)
+            replacement_media = player.media
+            VecFree(player.guest.answer)
+            player.media = previous_media
+            player.guest = previous_guest
             CloseBundle(replacement)
             unused RemoveAssetDirectory(replacement_assets)
             return
@@ -658,13 +713,20 @@ Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
         separator := name.count - 1
         while separator >= 0 && name[separator] != cast(u8)47 { separator -= 1 }
         if separator < 0 || !CopyCString(name[:separator + 1], directory[:]) || ChangeDirectory(*directory[0]) != 0 {
+            player.media = replacement_media
             CloseBundleInstance(prepared)
+            replacement_media = player.media
+            VecFree(player.guest.answer)
+            player.media = previous_media
+            player.guest = previous_guest
             CloseBundle(replacement)
             return
         }
     }
     // Swap only at a frame boundary. The window and host stay alive; module
     // memory is reinitialized, while application-owned durable data stays put.
+    candidate_guest = player.guest
+    player.guest = previous_guest
     CloseBundleInstance(instance.*)
     BundleMediaClose(*player.media)
     CloseBundle(bundle.*)
@@ -678,6 +740,11 @@ Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
     player.media = replacement_media
     replacement_media = BundleMedia.{}
     instance.* = prepared
+    VecFree(player.guest.answer)
+    player.guest = candidate_guest
+    unused CopyCString(candidate_path_text, player.guest_path[:])
+    player.guest_argv[0] = *player.guest_path[0]
+    player.guest.argv = *player.guest_argv[0]
     current.* = candidate
     print("zx: reloaded release %\n", candidate.sequence)
 }
@@ -695,7 +762,7 @@ RunPath :: (bundle_path: string, bundle_name: *u8, check: bool, grants: []HostBi
         return 1
     }
     if hosted {
-        if check { return AppPlayer.Run(bundle, true, grants) }
+        if check { return AppPlayer.Run(bundle, true, bundle_path, grants) }
         if watch {
             CloseBundle(bundle)
             print("zx: hosted app release watching is not available yet\n")
@@ -715,7 +782,7 @@ RunPath :: (bundle_path: string, bundle_name: *u8, check: bool, grants: []HostBi
                 return 1
             }
         }
-        status := AppPlayer.Run(bundle, false, grants)
+        status := AppPlayer.Run(bundle, false, bundle_path, grants)
         if resource_root != "" && !RemoveAssetDirectory(resource_root) { return 1 }
         return status
     }
@@ -726,7 +793,7 @@ RunPath :: (bundle_path: string, bundle_name: *u8, check: bool, grants: []HostBi
             print("zx: window release watching is not available yet\n")
             return 1
         }
-        return WindowPlayer.Run(bundle, check)
+        return WindowPlayer.Run(bundle, check, bundle_path)
     }
     return RunFrameBundle(bundle_path, bundle, check, grants, pointer_path, current)
 }
@@ -823,10 +890,18 @@ RunFrameBundle :: (bundle_path: string, opened_bundle: *void, check: bool,
     player: Player
     player.media.bundle = bundle
     player.watch_path = pointer_path
+    if !check && !BindGuestHost(*player, bundle, bundle_path) {
+        VecFree(player.guest.answer)
+        return 1
+    }
     instance, ok := OpenInstance(bundle, *player, grants, check)
-    if check { return ifx ok then 0 else 1 }
+    if check {
+        VecFree(player.guest.answer)
+        return ifx ok then 0 else 1
+    }
     if !ok {
         BundleMediaClose(*player.media)
+        VecFree(player.guest.answer)
         return 1
     }
     temporary: [4096]u8
@@ -848,6 +923,7 @@ RunFrameBundle :: (bundle_path: string, opened_bundle: *void, check: bool,
         ok = RunBundleInstance(instance, *result, *has_result) != 0
         CloseBundleInstance(instance)
         BundleMediaClose(*player.media)
+        VecFree(player.guest.answer)
         if assets_active && !RemoveAssetDirectory(TextFromCString(*temporary[0])) { ok = false }
         if !ok { print("zx: app execution failed\n"); return 1 }
         if has_result != 0 { print("%\n", result) }
@@ -881,6 +957,7 @@ RunFrameBundle :: (bundle_path: string, opened_bundle: *void, check: bool,
         unused SessionClose(player.input)
     }
     BundleMediaClose(*player.media)
+    VecFree(player.guest.answer)
     Video.VideoStopHost()
     #if OS == .LINUX {
         DesktopMedia.DesktopMediaClose()

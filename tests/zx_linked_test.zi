@@ -18,12 +18,14 @@ Scale :: (context: *void, module: *u8, function: *u8, args: *HostValue,
     if state == null || TextFromCString(module) != "zx_linked_guest" ||
         TextFromCString(function) != "ScaleHost" || count != 2 ||
         args[0].kind != HostString || args[1].kind != HostInteger { return 0 }
-    label := TextFromBytes(BytesFromPointer(args[0].data, cast(u64)args[0].length))
-    state.calls += 1
-    if state.calls == 1 {
-        if label != "initialize" || args[1].integer != 20 { return 0 }
-    } else {
-        if label != "frame" || args[1].integer != 42 || state.fail { return 0 }
+    {
+        label := TextFromBytes(BytesFromPointer(args[0].data, cast(u64)args[0].length))
+        state.calls += 1
+        if state.calls == 1 {
+            if label != "initialize" || args[1].integer != 20 { return 0 }
+        } else {
+            if label != "frame" || args[1].integer != 42 || state.fail { return 0 }
+        }
     }
     result.kind = HostInteger
     result.integer = args[1].integer * 2

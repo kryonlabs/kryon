@@ -9,7 +9,11 @@
 // Register decoding for picture cursors requested by hosted widgets.
 #import "cursor_picture"
 #import "app_files"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/vec"
 Components :: #import "component_frame_slot";
+Native :: #import "std/guest_host";
 
 sdl :: #system_library "SDL2";
 SetTitle :: (window: *void, title: *u8) #foreign sdl "SDL_SetWindowTitle";
@@ -29,10 +33,72 @@ Draw :: (host: *BundleApp) -> bool {
     return EndDesktopFrame()
 }
 
+// Answers one generic guest capability from this run's guest host state.
+GuestCall :: (context: *void, module_name: *u8, function_name: *u8,
+    args: *HostValue, count: s32, result: *HostValue) -> s32 {
+    state := cast(*Native.State)context
+    return Native.Call(state, TextFromCString(module_name), TextFromCString(function_name),
+        args, count, result)
+}
+
+// Reports whether a caller grant already binds this capability, so caller
+// grants keep precedence over the generic guest base.
+GrantedBinding :: (bindings: []HostBinding, module: *u8, function: *u8) -> bool {
+    for grant: bindings {
+        if TextFromCString(grant.module) == TextFromCString(module) &&
+            TextFromCString(grant.function) == TextFromCString(function) { return true }
+    }
+    return false
+}
+
 // Takes ownership of the opened bundle. Its caller retains extracted assets.
-Run :: (bundle: *void, check: bool, bindings: []HostBinding) -> s32 {
+// `path` is the bundle file this run resolves generic guest capabilities
+// against; the guest state and its answer bytes live only for this run.
+Run :: (bundle: *void, check: bool, path: string, bindings: []HostBinding) -> s32 {
+    if path.count + 1 > 4096 {
+        CloseBundle(bundle)
+        print("zx: bundle path is too long\n")
+        return 1
+    }
+    // The generic guest base: argv[0] is the bundle path in run-owned
+    // storage, and the answer bytes reset with the state.
+    guest: Native.State
+    path_storage: [4096]u8
+    argv_storage: [1]*u8
+    if !CopyCString(path, path_storage[:]) {
+        CloseBundle(bundle)
+        return 1
+    }
+    argv_storage[0] = *path_storage[0]
+    guest.bundle = bundle
+    guest.argc = 1
+    guest.argv = *argv_storage[0]
+    defer { VecFree(guest.answer) }
+    // Caller grants keep precedence: a declared capability already granted
+    // binds to the caller, and the generic base answers only the rest.
+    granted: Vec(HostBinding)
+    defer { VecFree(granted) }
+    ok := true
+    for grant: bindings {
+        if !VecPush(granted, grant) { ok = false; break }
+    }
+    if ok {
+        for index: 0..cast(s64)BundleCapabilities(bundle) - 1 {
+            module := BundleCapabilityModuleName(bundle, cast(u64)index)
+            function := BundleCapabilityFunctionName(bundle, cast(u64)index)
+            if GrantedBinding(bindings, module, function) { continue }
+            if !Native.Provides(TextFromCString(module), TextFromCString(function)) { continue }
+            if !VecPush(granted, HostBinding.{.module = module, .function = function,
+                .call = GuestCall, .context = cast(*void)*guest}) { ok = false; break }
+        }
+    }
+    if !ok {
+        CloseBundle(bundle)
+        print("zx: could not record host bindings\n")
+        return 1
+    }
     if check {
-        accepted := BundleAppCheck(bundle, bindings)
+        accepted := BundleAppCheck(bundle, granted[:])
         CloseBundle(bundle)
         return ifx accepted then 0 else 1
     }
@@ -41,7 +107,7 @@ Run :: (bundle: *void, check: bool, bindings: []HostBinding) -> s32 {
     locale := "en"
     language := BundleAppEnvironment("LANG")
     if language.count >= 2 { locale = language[:2] }
-    ready := BundleAppOpenBundle(*host, bundle, directory, null, locale, bindings)
+    ready := BundleAppOpenBundle(*host, bundle, directory, null, locale, granted[:])
     AppFileFree(directory)
     if ready {
         ready = OpenDesktop()

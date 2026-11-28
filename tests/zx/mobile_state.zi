@@ -1,0 +1,52 @@
+// Native asset checks and caller-owned editing storage for the mobile fixture.
+TextField :: #import "kryon/text_field";
+#import "kryon/key_input"
+#import "kryon/session"
+#import "kryon/tree_input"
+#import "kryon/image_raster"
+
+startup_width: s32 = AssetWidth("assets/red.png");
+outside_width: s32 = AssetWidth("private.png");
+clicks: s32;
+bytes: [256]u8;
+length: s32;
+cursor: s32;
+anchor: s32;
+scroll: s32;
+failed: s32;
+
+EditorFrame :: struct { current: [256]u8; typed: [256]u8 }
+
+AssetsValid :: () -> bool {
+    if startup_width == 32 && outside_width == 0 { return true }
+    print("zx mobile: asset isolation failed (embedded %, outside %)\n", startup_width, outside_width)
+    failed = 1
+    return false
+}
+
+Click :: () { clicks += 1 }
+
+Snapshot :: () -> EditorFrame {
+    snapshot: EditorFrame
+    for index: 0..length - 1 { snapshot.current[index] = bytes[index] }
+    return snapshot
+}
+
+ReadInput :: (session: Session, typed: []u8) -> TextField.Input {
+    return TextFieldInputFor(KeyboardTake(session), KeyboardModifiers(session),
+        TypedTextTake(session, typed))
+}
+
+Apply :: (field: TextField.Result) {
+    cursor = field.cursor; anchor = field.anchor; scroll = field.scroll_x
+    if field.edit.changed {
+        next: [256]u8
+        count: s32
+        for index: 0..field.edit.start - 1 { next[count] = bytes[index]; count += 1 }
+        for byte: field.edit.replacement { next[count] = byte; count += 1 }
+        for index: field.edit.end..length - 1 { next[count] = bytes[index]; count += 1 }
+        bytes = next; length = count
+    }
+}
+
+Result :: (code: s32) -> s32 { return ifx failed != 0 then failed else code }

@@ -1,0 +1,83 @@
+#import "kryon/app_context"
+Joystick :: #import "kryon/joystick";
+DirectionPad :: #import "kryon/direction_pad";
+Scroll :: #import "kryon/scroll";
+
+loaded: bool;
+clicked: bool;
+swipe_was_down: bool;
+joystick_was_active: bool;
+swipe_leaned: bool;
+scroll_offset: s32;
+scroll_at_end: bool;
+
+Identify :: () {
+    #if #defined(HOSTED_OTHER) {
+        AppIdentity("portable.other")
+    } else {
+        AppIdentity("portable.probe")
+    }
+    AppDescribe("Portable hosted app", "")
+}
+
+Save :: () -> s32 {
+    return ifx DocumentWrite("state.txt", ifx clicked then "clicked" else "new") then 0 else 1
+}
+
+Load :: () -> s32 {
+    if loaded { return 0 }
+    loaded = true
+    clicked = DocumentRead("state.txt") == "clicked"
+    if clicked { print("Hosted document restored\n") }
+    if AppNow() < 1700000000.0 || AppLocalOffset() < -43200 || AppLocalOffset() > 50400 { return 1 }
+    if AppSupports("unavailable.service") { return 2 }
+    if AppService("unavailable.service", "") != "{\"status\":\"unavailable\"}" { return 3 }
+    return 0
+}
+
+Click :: () -> bool {
+    // Several writes in one interaction share the host's document flush.
+    names: [8]string = .["batch/1", "batch/2", "batch/3", "batch/4",
+        "batch/5", "batch/6", "batch/7", "batch/8"]
+    for name: names {
+        if !DocumentWrite(name, "saved") { return false }
+    }
+    clicked = true
+    print("Hosted document clicked\n")
+    return true
+}
+
+ObserveKey :: () {
+    if AppKey() == 263 { print("Hosted key step\n") }
+}
+
+ObserveSwipe :: (swipe: Joystick.SwipeAreaResult) {
+    if swipe.held { print("Hosted swipe step\n") }
+    if swipe.lean == 2 && !swipe_leaned { print("Hosted swipe leans right\n") }
+    swipe_leaned = swipe.lean == 2
+    if swipe_was_down && !swipe.down { print("Hosted swipe released\n") }
+    swipe_was_down = swipe.down
+}
+
+ObserveJoystick :: (stick: Joystick.JoystickResult) {
+    if stick.step { print("Hosted joystick step\n") }
+    if joystick_was_active && stick.direction < 0 { print("Hosted joystick released\n") }
+    joystick_was_active = stick.direction >= 0
+}
+
+ObservePad :: (pad: DirectionPad.DirectionPadResult) {
+    if pad.step {
+        if pad.direction == 0 { print("Hosted pad step left\n") }
+        if pad.direction == 1 { print("Hosted pad step up\n") }
+        if pad.direction == 2 { print("Hosted pad step right\n") }
+        if pad.direction == 3 { print("Hosted pad step down\n") }
+    }
+}
+
+ObserveScroll :: (scroll: Scroll.ScrollResult) {
+    scroll_offset = scroll.scroll_offset
+    at_end := scroll_offset >= 350
+    if at_end && !scroll_at_end { print("Hosted scroll reached end\n") }
+    if !at_end && scroll_at_end { print("Hosted scroll left end\n") }
+    scroll_at_end = at_end
+}

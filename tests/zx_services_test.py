@@ -6,6 +6,7 @@ import argparse
 import json
 import math
 import os
+import shutil
 from pathlib import Path
 import struct
 import subprocess
@@ -29,7 +30,9 @@ output = ROOT / 'build/scratch/zx-services'
 project = output / 'project'
 (project / 'src').mkdir(parents=True, exist_ok=True)
 (project / 'assets').mkdir(exist_ok=True)
-(project / 'src/app.zi').write_text((ROOT / 'tests/zx/services.zi').read_text())
+(project / 'src/app.zi').unlink(missing_ok=True)
+shutil.copyfile(ROOT / 'tests/zx/services_app.tsx', project / 'src/app.tsx')
+shutil.copyfile(ROOT / 'tests/zx/services_state.zi', project / 'src/services_state.zi')
 tone = project / 'assets/tone.wav'
 with wave.open(str(tone), 'wb') as sound:
     sound.setnchannels(1)
@@ -59,9 +62,8 @@ base = f'http://127.0.0.1:{server.server_port}'
     for name, suffix in [('TEXT_URL', '/text'), ('AUDIO_URL', '/tone.wav'), ('MISSING_URL', '/missing')]))
 (project / 'ziran.toml').write_text(pinned('''[package]
 name = "service_probe"
-entry = "src/app.zi"
+entry = "src/app.tsx"
 module_roots = ["src"]
-bridge_modules = ["app"]
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
 ref = "master"
@@ -79,7 +81,7 @@ assets = "assets"
 env = os.environ.copy()
 for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
     env.pop(key, None)
-env.update(YUE_DESKTOP_RECOVERY='0', ZIRAN_ROOT=str(ZIRAN_ROOT))
+env.update(HARMONY_DESKTOP_RECOVERY='0', ZIRAN_ROOT=str(ZIRAN_ROOT))
 env['PATH'] = str(ROOT / 'build/bin') + os.pathsep + env['PATH']
 (output / 'asound.conf').write_text('pcm.!default { type null }\nctl.!default { type hw card 0 }\n')
 env['ALSA_CONFIG_PATH'] = str(output / 'asound.conf')
