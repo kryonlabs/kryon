@@ -42,11 +42,29 @@ for label, selected in [('core-only', {'kryon'}), ('without-plot', {'kryon', 'da
     for name in selected:
         path = core if name == 'kryon' else package(name)
         manifest = tomllib.loads((path / 'ziran.toml').read_text())
-        for source in (path / root for root in manifest['package']['module_roots']):
-            roots.extend([source, name + '_source=' + str(source)])
-        if gallery.export_aliases(name, path):
+        # Alias and plain-stub mounts must precede the bare source mounts so
+        # plain leaf imports resolve through the stubs, mirroring the
+        # gallery.compiler_paths ordering exactly.
+        aliases = gallery.export_aliases(name, path)
+        if aliases:
             for alias in dict.fromkeys((name, manifest['package']['name'])):
                 roots.append(alias + '=' + str(PROJECT / 'build/catalog/exports' / name))
+            # Grouped exports need the same longer scope mounts as
+            # gallery.compiler_paths so alias identities stay distinct.
+            for group in sorted({alias_name.split('/')[0] for alias_name, _ in aliases if '/' in alias_name}):
+                roots.append(name + '_' + group + '=' + str(PROJECT / 'build/catalog/exports' / name / group))
+            plain = PROJECT / 'build/catalog/exports' / name / '_plain'
+            if plain.is_dir():
+                roots.append(str(plain))
+        if (PROJECT / 'build/catalog/exports' / name / '_plain').is_dir():
+            # Same-name stub mount must precede every <name>_source mount,
+            # mirroring gallery.compiler_paths ordering.
+            roots.append(name + '_source=' + str(PROJECT / 'build/catalog/exports' / name / '_plain'))
+        for source in (path / root for root in manifest['package']['module_roots']):
+            roots.extend([source, name + '_source=' + str(source)])
+            for child in sorted(source.iterdir()) if source.is_dir() else []:
+                if (child / 'module.zi').is_file():
+                    roots.append(name + '_source_' + child.name + '=' + str(source / child.name))
     command = [str(ziran / 'build/bin/zi2zir'), '--root', str(PROJECT / 'tests')]
     for root in roots: command.extend(['--module-path', str(root)])
     command.extend(['--entry', 'modules:main', '-o', str(target / 'ir'), str(PROJECT / 'tests/modules.zi')])

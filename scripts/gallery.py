@@ -150,10 +150,29 @@ def compiler_paths(modules):
     for module in modules:
         dependency = module['dependency']
         package = compiler_package(dependency)
-        if export_aliases(dependency, package):
+        aliases = export_aliases(dependency, package)
+        if aliases:
             name = tomllib.loads((package / 'ziran.toml').read_text())['package']['name']
             for alias in dict.fromkeys((dependency, name)):
                 paths.append(alias + '=/exports/' + dependency)
+            # The compiler scopes module identities by the longest named
+            # search mount, so grouped export aliases need their own longer
+            # scope entries: kryon/button and kryon/tsx/button otherwise
+            # collide on the kryon__button identity of their shared file leaf.
+            for group in sorted({alias_name.split('/')[0] for alias_name, _ in aliases if '/' in alias_name}):
+                paths.append(dependency + '_' + group + '=/exports/' + dependency + '/' + group)
+            plain = PROJECT / 'build/catalog/exports' / dependency / '_plain'
+            if plain.is_dir():
+                # Package-scoped plain imports only search mounts named
+                # after the importer's own package, in order, so this stub
+                # mount must be the first <dependency>_source entry: the
+                # stubs bind as <dependency>_source__<Dir> and pull the real
+                # directory modules through their dedicated
+                # <dependency>_source_<Dir> mounts without touching the
+                # export aliases. The bare copy serves non-scoped owners and
+                # must precede every bare source mount below.
+                paths.append(dependency + '_source=/exports/' + dependency + '/_plain')
+                paths.append('/exports/' + dependency + '/_plain')
     roots = tomllib.loads((ROOT / 'ziran.toml').read_text())['package']['module_roots']
     shared_roots = {path.parent.as_posix() for path in shared_example_exports().values()}
     for root in roots:
@@ -164,12 +183,26 @@ def compiler_paths(modules):
         else:
             continue
         paths.extend([virtual, 'kryon_source=' + virtual])
+        # Directory modules all share the file leaf `module`; give each one
+        # a longer scope mount so their identities stay distinct, matching
+        # the per-dependency loop below. These mounts are also the route the
+        # _plain stubs use to reach the real modules.
+        base = ROOT / root
+        for child in sorted(base.iterdir()) if base.is_dir() else []:
+            if (child / 'module.zi').is_file():
+                paths.append('kryon_source_' + child.name + '=' + virtual + '/' + child.name)
     for module in modules:
         if module['dependency'] == 'kryon': continue
         dependency = module['dependency']
-        for _, root in package_roots(dependency, compiler_package(dependency)):
+        for source, root in package_roots(dependency, compiler_package(dependency)):
             paths.extend([root.as_posix(), dependency + '_source=' + root.as_posix()])
-    paths.extend(['gallery=/gallery', '/std'])
+            # See the kryon loop above: distinct scope per directory module.
+            for child in sorted(source.iterdir()) if source.is_dir() else []:
+                if (child / 'module.zi').is_file():
+                    paths.append(dependency + '_source_' + child.name + '=' + (root / child.name).as_posix())
+    # Authored scene sources live under examples/shared; the compiler search
+    # cites that mount so bundled source survives edits at its published path.
+    paths.extend(['examples=/examples', '/std'])
     return list(dict.fromkeys(paths))
 
 
@@ -185,20 +218,31 @@ def compiler_embeds(ziran='ziran', core=ROOT):
     embeds = [str(PROJECT / 'src/palette.zi') + '@/palette.zi', str(ROOT / 'examples/shared/widget_context.zi') + '@/widget_context.zi']
     for module in modules:
         package = compiler_package(module['dependency'], ziran, core)
-        if module['dependency'] != 'kryon':
-            roots = package_roots(module['dependency'], package)
-            for source, virtual in roots:
-                if not any(source != other and source.is_relative_to(other) for other, _ in roots):
-                    embeds.append(str(source) + '@' + virtual.as_posix())
         aliases = export_aliases(module['dependency'], package)
+        if module['dependency'] != 'kryon':
+            # The wasm loader probes plain imports from the importing file's
+            # own directory before the search mounts, so raw package sources
+            # would bind directory modules under a scope the link stage never
+            # sees. Embed the mirrored tree instead: it carries a stub
+            # <Dir>.zi beside every directory module whose import rewrites to
+            # the same identity the plain import expects. Every module root
+            # maps under the same /packages/<dependency> base, so one embed
+            # covers them all and the export aliases stay unchanged.
+            mirror = source_mirror(module['dependency'], package)
+            if any(path.is_file() for path in mirror.rglob('*')):
+                embeds.append(str(mirror) + '@' + '/packages/' + module['dependency'])
+            else:
+                roots = package_roots(module['dependency'], package)
+                for source, virtual in roots:
+                    if not any(source != other and source.is_relative_to(other) for other, _ in roots):
+                        embeds.append(str(source) + '@' + virtual.as_posix())
         if aliases:
             alias_root = PROJECT / 'build/catalog/exports' / module['dependency']
             embeds.append(str(alias_root) + '@/exports/' + module['dependency'])
     shared_roots = sorted({path.parent for path in shared_example_exports(core).values()})
     for root in shared_roots:
         embeds.append(str(core / root) + '@/kryon/' + root.as_posix())
-    scenes = PROJECT / 'src/examples'
-    if scenes.is_dir(): embeds.append(str(scenes) + '@/gallery/examples')
+    embeds.append(str(ROOT / 'examples/shared') + '@/examples/shared')
     return embeds
 
 
@@ -217,10 +261,60 @@ def export_aliases(dependency, package):
         alias = PROJECT / 'build/catalog/exports' / dependency / (name + '.zi')
         write(alias, 'using Export :: #import "' + dependency + '_source/' + local + '";\n')
         aliases.append((name, alias))
-    expected = {path for _, path in aliases}
+    # A plain import loads <dir>/module.zi by file leaf, which would merge
+    # every directory module into one identity; write an importable stub
+    # per directory so each keeps its own name.
+    plain = PROJECT / 'build/catalog/exports' / dependency / '_plain'
+    stubs = []
+    for root in roots:
+        if not root.is_dir(): continue
+        for child in sorted(root.iterdir()):
+            if (child / 'module.zi').is_file():
+                stub = plain / (child.name + '.zi')
+                write(stub, 'using ' + child.name + ' :: #import ' + chr(34) + dependency + '_source_' + child.name + '/module' + chr(34) + ';\n')
+                stubs.append((child.name, stub))
+    expected = {path for _, path in aliases} | {path for _, path in stubs}
     for stale in (PROJECT / 'build/catalog/exports' / dependency).rglob('*.zi'):
         if stale not in expected: stale.unlink()
-    return aliases
+    return aliases + stubs
+
+
+def source_mirror(dependency, package):
+    """Browser embed of a dependency's sources with importable dir stubs.
+
+    The ordinary loader resolves plain imports from the importing file's own
+    directory first, so a package file beside a directory module would load
+    <dir>/module.zi under the directory's own scope while the import is
+    rewritten to <package>__<Name>; the identities disagree and linking
+    fails. Mirroring the sources with a stub <Dir>.zi file beside every
+    directory module lets that first probe bind the expected identity,
+    matching the package map's export boundary on native builds.
+    """
+    manifest = tomllib.loads((package / 'ziran.toml').read_text())
+    roots = [Path(root) for root in manifest['package']['module_roots']]
+    mirror = PROJECT / 'build/catalog/mirrors' / dependency
+    expected = set()
+    for index, root_rel in enumerate(roots):
+        source = package / root_rel
+        if not source.is_dir(): continue
+        suffix = root_rel.relative_to(roots[0]) if root_rel.is_relative_to(roots[0]) else root_rel
+        stubs = {}
+        for child in sorted(source.iterdir()):
+            if child.is_dir() and (child / 'module.zi').is_file() and not (source / (child.name + '.zi')).is_file():
+                stubs[child.name] = 'using ' + child.name + ' :: #import ' + chr(34) + dependency + '_source_' + child.name + '/module' + chr(34) + ';\n'
+        for path in sorted(source.rglob('*')):
+            if not path.is_file(): continue
+            local = path.relative_to(source)
+            target = mirror / (suffix if suffix != Path('.') else Path()) / local
+            write(target, path.read_bytes())
+            expected.add(target)
+        for name, text in stubs.items():
+            target = mirror / (suffix if suffix != Path('.') else Path()) / (name + '.zi')
+            write(target, text)
+            expected.add(target)
+    for stale in mirror.rglob('*'):
+        if stale.is_file() and stale not in expected: stale.unlink()
+    return mirror
 
 
 def example_source(examples_root, slug, shared_exports):
