@@ -17,13 +17,15 @@
 #import "bundle_app"
 Video :: #import "video_linux";
 Bitmaps :: #import "bitmap_image";
-UiTheme :: #import "theme";
 #if OS == .LINUX {
     Service :: #import "service_linux";
     Theme :: #import "system_theme_host_linux";
     Background :: #import "background_window_linux";
     WebView :: #import "webview_linux";
     DesktopMedia :: #import "desktop_media_linux";
+}
+#if OS == .WINDOWS {
+    Theme :: #import "system_theme_host_windows";
 }
 Watch :: #import "bundle_watch";
 AppPlayer :: #import "app_player";
@@ -98,17 +100,20 @@ Supported :: (module: string, function: string) -> bool {
     if ModuleName(module, "clock") { return function == "ClockMillisecondsHost" }
     if ModuleName(module, "video") {
         return function == "VideoOpenHost" || function == "VideoPauseHost" || function == "VideoStopHost" ||
-            function == "VideoStateHost" || function == "VideoPositionHost" || function == "VideoDurationHost" ||
-            function == "VideoSeekHost" || function == "VideoSpeedHost" || function == "VideoVolumeHost" ||
-            function == "VideoLeaseHost" || function == "VideoFrameHost" || function == "VideoMessageHost"
+        function == "VideoStateHost" || function == "VideoPositionHost" || function == "VideoDurationHost" ||
+        function == "VideoSeekHost" || function == "VideoSpeedHost" || function == "VideoVolumeHost" ||
+        function == "VideoLeaseHost" || function == "VideoFrameHost" || function == "VideoMessageHost"
+    }
+    #if OS == .LINUX || OS == .WINDOWS {
+        if ModuleName(module, "system_palette_host") { return function == "SystemThemeColorHost" }
     }
     if ModuleName(module, "frames_zx") {
         return function == "BundleWindowHost" || function == "ReadBundleInput" ||
-            function == "TakeBundleCodepoint" ||
-            function == "BundleTextInputHost" || function == "BundleFrameFinishedHost" ||
-            function == "BundleFrameReusableHost" || function == "BundleFrameCursorHost" ||
-            function == "BundleWakeAtHost" || function == "BundleCloseHost" ||
-            function == "BundleTextEditorHost" || function == "BundleTextRequestHost"
+        function == "TakeBundleCodepoint" ||
+        function == "BundleTextInputHost" || function == "BundleFrameFinishedHost" ||
+        function == "BundleFrameReusableHost" || function == "BundleFrameBackgroundHost" || function == "BundleFrameCursorHost" ||
+        function == "BundleWakeAtHost" || function == "BundleCloseHost" ||
+        function == "BundleTextEditorHost" || function == "BundleTextRequestHost"
     }
     if ModuleName(module, "font_metrics") {
         return function == "MeasureGlyphWidth" || function == "MeasureGlyphLineHeight"
@@ -144,15 +149,15 @@ Supported :: (module: string, function: string) -> bool {
     }
     if ModuleName(module, "media") {
         return function == "MediaOpenHost" || function == "MediaPauseHost" ||
-            function == "MediaStopHost" || function == "MediaStateHost" ||
-            function == "MediaMessageHost" || function == "FetchTextHost" ||
-            function == "FetchTextStateHost" || function == "FetchTextResultHost"
+        function == "MediaStopHost" || function == "MediaStateHost" ||
+        function == "MediaMessageHost" || function == "FetchTextHost" ||
+        function == "FetchTextStateHost" || function == "FetchTextResultHost"
     }
     #if OS == .LINUX {
         if ModuleName(module, "webview") {
             return function == "WebViewOpenHost" || function == "WebViewBoundsHost" ||
-                function == "WebViewSendHost" || function == "WebViewEventHost" ||
-                function == "WebViewCloseHost"
+            function == "WebViewSendHost" || function == "WebViewEventHost" ||
+            function == "WebViewCloseHost"
         }
     }
     if ModuleName(module, "bitmap_image") {
@@ -162,7 +167,6 @@ Supported :: (module: string, function: string) -> bool {
         if ModuleName(module, "service") {
             return function == "ServiceRequestHost" || function == "ServiceStateHost" || function == "ServiceResultHost"
         }
-        if ModuleName(module, "system_theme_host") { return function == "SystemThemeColorHost" }
     }
     return false
 }
@@ -184,31 +188,31 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         return BundleMediaCall(*player.media, module, function, args, count, result)
     }
     #if OS == .LINUX {
-    if ModuleName(module, "webview") {
-        if function == "WebViewOpenHost" && count == 5 && args[0].kind == HostString &&
-        args[1].kind == HostInteger && args[2].kind == HostInteger &&
-        args[3].kind == HostInteger && args[4].kind == HostInteger {
-            result.kind = HostInteger
-            result.integer = cast(s64)WebView.WebViewOpenHost(TextValue(args[0]), cast(s32)args[1].integer, cast(s32)args[2].integer, cast(s32)args[3].integer, cast(s32)args[4].integer)
-            return 1
+        if ModuleName(module, "webview") {
+            if function == "WebViewOpenHost" && count == 5 && args[0].kind == HostString &&
+            args[1].kind == HostInteger && args[2].kind == HostInteger &&
+            args[3].kind == HostInteger && args[4].kind == HostInteger {
+                result.kind = HostInteger
+                result.integer = cast(s64)WebView.WebViewOpenHost(TextValue(args[0]), cast(s32)args[1].integer, cast(s32)args[2].integer, cast(s32)args[3].integer, cast(s32)args[4].integer)
+                return 1
+            }
+            if function == "WebViewBoundsHost" && count == 5 && args[0].kind == HostInteger &&
+            args[1].kind == HostInteger && args[2].kind == HostInteger &&
+            args[3].kind == HostInteger && args[4].kind == HostInteger {
+                WebView.WebViewBoundsHost(cast(s32)args[0].integer, cast(s32)args[1].integer, cast(s32)args[2].integer, cast(s32)args[3].integer, args[4].integer != 0)
+                return 1
+            }
+            if function == "WebViewSendHost" && count == 1 && args[0].kind == HostString {
+                result.kind = HostInteger; result.integer = cast(s64)WebView.WebViewSendHost(TextValue(args[0])); return 1
+            }
+            if function == "WebViewEventHost" && count == 0 {
+                value := WebView.WebViewEventHost()
+                result.kind = HostString; result.length = cast(usize)value.count
+                descriptor := cast(*TextDescriptor)(*value)
+                result.data = descriptor.data; return 1
+            }
+            if function == "WebViewCloseHost" && count == 0 { WebView.WebViewCloseHost(); return 1 }
         }
-        if function == "WebViewBoundsHost" && count == 5 && args[0].kind == HostInteger &&
-        args[1].kind == HostInteger && args[2].kind == HostInteger &&
-        args[3].kind == HostInteger && args[4].kind == HostInteger {
-            WebView.WebViewBoundsHost(cast(s32)args[0].integer, cast(s32)args[1].integer, cast(s32)args[2].integer, cast(s32)args[3].integer, args[4].integer != 0)
-            return 1
-        }
-        if function == "WebViewSendHost" && count == 1 && args[0].kind == HostString {
-            result.kind = HostInteger; result.integer = cast(s64)WebView.WebViewSendHost(TextValue(args[0])); return 1
-        }
-        if function == "WebViewEventHost" && count == 0 {
-            value := WebView.WebViewEventHost()
-            result.kind = HostString; result.length = cast(usize)value.count
-            descriptor := cast(*TextDescriptor)(*value)
-            result.data = descriptor.data; return 1
-        }
-        if function == "WebViewCloseHost" && count == 0 { WebView.WebViewCloseHost(); return 1 }
-    }
     }
     if ModuleName(module, "clock") && function == "ClockMillisecondsHost" && count == 0 {
         result.kind = HostInteger; result.integer = MonotonicMilliseconds(); return 1
@@ -238,10 +242,10 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         }
         return 0
     }
-    #if OS == .LINUX {
-    if function == "SystemThemeColorHost" && count == 1 && args[0].kind == HostInteger {
-        result.kind = HostUnsigned; result.bits = cast(u64)Theme.SystemThemeColorHost(cast(s32)args[0].integer); return 1
-    }
+    #if OS == .LINUX || OS == .WINDOWS {
+        if function == "SystemThemeColorHost" && count == 1 && args[0].kind == HostInteger {
+            result.kind = HostUnsigned; result.bits = cast(u64)Theme.SystemThemeColorHost(cast(s32)args[0].integer); return 1
+        }
     }
     // This desktop player has no native snapshot editor. Its ordinary key
     // and Unicode path remains active; optional editor requests are empty.
@@ -250,7 +254,7 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     args[2].kind == HostInteger && args[3].kind == HostInteger && args[4].kind == HostInteger { return 1 }
     if function == "BundleTextRequestHost" && count == 1 && args[0].kind == HostUnsigned {
         player.editor_fields[0] = HostField.{HostTextData("value"), HostValue.{.kind = HostString,
-            .type_name = HostTextData("string")}}
+                .type_name = HostTextData("string")}}
         player.editor_fields[1] = HostField.{HostTextData("cursor"), HostScalar("s32", 0)}
         player.editor_fields[2] = HostField.{HostTextData("anchor"), HostScalar("s32", 0)}
         player.editor_fields[3] = HostField.{HostTextData("replace"), HostScalar("bool", 0)}
@@ -262,6 +266,10 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     if function == "BundleFrameReusableHost" && count == 0 {
         result.kind = HostInteger
         result.integer = cast(s64)DesktopFrameReusable()
+        return 1
+    }
+    if function == "BundleFrameBackgroundHost" && count == 1 && HostScalarValid(args[0], "u32", HostUnsigned) {
+        SetRasterBackgroundColor(cast(u32)args[0].bits)
         return 1
     }
     if function == "BundleFrameFinishedHost" && count == 1 && args[0].kind == HostInteger {
@@ -313,38 +321,38 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         return 1
     }
     #if OS == .LINUX {
-    if function == "ServiceRequestHost" && count == 2 && args[0].kind == HostString && args[1].kind == HostString {
-        result.kind = HostInteger
-        result.integer = cast(s64)Service.ServiceRequestHost(TextValue(args[0]), TextValue(args[1]))
-        return 1
-    }
-    if function == "ServiceStateHost" && count == 0 {
-        result.kind = HostInteger
-        result.integer = cast(s64)Service.ServiceStateHost()
-        return 1
-    }
-    if function == "ServiceResultHost" && count == 0 {
-        value := Service.ServiceResultHost()
-        result.kind = HostString
-        descriptor := cast(*TextDescriptor)(*value)
-        result.data = descriptor.data
-        result.length = cast(usize)value.count
-        return 1
-    }
-    if count == 0 && function == "WindowCompactHost" {
-        result.kind = HostInteger
-        result.integer = cast(s64)Background.WindowCompactHost()
-        return 1
-    }
-    if function == "WindowBackgroundDragHost" && count == 1 && args[0].kind == HostInteger {
-        Background.WindowBackgroundDragHost(args[0].integer != 0)
-        return 1
-    }
-    if function == "WindowBackgroundHost" && count == 4 && args[0].kind == HostInteger &&
+        if function == "ServiceRequestHost" && count == 2 && args[0].kind == HostString && args[1].kind == HostString {
+            result.kind = HostInteger
+            result.integer = cast(s64)Service.ServiceRequestHost(TextValue(args[0]), TextValue(args[1]))
+            return 1
+        }
+        if function == "ServiceStateHost" && count == 0 {
+            result.kind = HostInteger
+            result.integer = cast(s64)Service.ServiceStateHost()
+            return 1
+        }
+        if function == "ServiceResultHost" && count == 0 {
+            value := Service.ServiceResultHost()
+            result.kind = HostString
+            descriptor := cast(*TextDescriptor)(*value)
+            result.data = descriptor.data
+            result.length = cast(usize)value.count
+            return 1
+        }
+        if count == 0 && function == "WindowCompactHost" {
+            result.kind = HostInteger
+            result.integer = cast(s64)Background.WindowCompactHost()
+            return 1
+        }
+        if function == "WindowBackgroundDragHost" && count == 1 && args[0].kind == HostInteger {
+            Background.WindowBackgroundDragHost(args[0].integer != 0)
+            return 1
+        }
+        if function == "WindowBackgroundHost" && count == 4 && args[0].kind == HostInteger &&
         args[1].kind == HostInteger && args[2].kind == HostInteger && args[3].kind == HostInteger {
-        Background.WindowBackgroundHost(cast(s32)args[0].integer, cast(s32)args[1].integer, cast(s32)args[2].integer, cast(s32)args[3].integer)
-        return 1
-    }
+            Background.WindowBackgroundHost(cast(s32)args[0].integer, cast(s32)args[1].integer, cast(s32)args[2].integer, cast(s32)args[3].integer)
+            return 1
+        }
     }
     if function == "BundleWindowHost" {
         if !WindowRequestValid(args, count) { return 0 }
@@ -389,7 +397,6 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
             WebView.WebViewTickHost()
         }
         BeginDesktopFrame()
-        SetRasterBackground(BundleThemeBackground)
         viewport := DesktopViewport()
         pointer := PollPointer()
         secondary := PollSecondaryPointer()
@@ -554,13 +561,6 @@ RemoveAssetDirectory :: (path: string) -> bool {
     return CopyCString(path, bytes[:]) && RemoveDirectory(*bytes[0]) == 0 && ok
 }
 
-BundleThemeBackground :: (refresh: bool) -> u32 {
-    // The bundle owns its palette. Match its default canvas without applying
-    // a desktop palette to the clear color alone.
-    unused refresh
-    return UiTheme.CurrentBackground()
-}
-
 // Runs the bundle's main once. A UI bundle's main is its whole event loop;
 // it returns when the window closed or a frame failed.
 RunUIBundle :: (instance: *void, player: *Player) -> bool {
@@ -694,7 +694,7 @@ Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
     directory: [4096]u8
     if replacement_assets != "" {
         if replacement_assets.count >= asset_storage.count ||
-            !CopyCString(replacement_assets, directory[:]) || ChangeDirectory(*directory[0]) != 0 {
+        !CopyCString(replacement_assets, directory[:]) || ChangeDirectory(*directory[0]) != 0 {
             // The candidate destructor runs with its own media and guest
             // contexts; free its destructor-extended answer in place before
             // restoring the previous state, exactly once.

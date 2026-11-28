@@ -211,6 +211,8 @@ swipe_props.zi
 swiperow/swiperow.zi
 swiperow/swipe_row_props.zi
 system_clipboard.zi
+system_palette.zi
+system_palette_host.zi
 system_theme.zi
 tabs/tab_bar_behavior.zi
 tabs/tab_bar_props.zi
@@ -243,6 +245,7 @@ text/text_style.zi
 text_theme.zi
 text/text.zi
 theme.zi
+frame_theme.zi
 timepicker/time_picker_behavior.zi
 timepicker/time_picker_props.zi
 timepicker/timepicker.zi

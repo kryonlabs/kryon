@@ -1,0 +1,10 @@
+// Resolve a frame canvas in the same UI instance that builds its widgets.
+// Hosts receive this value; they never substitute their own theme globals.
+Theme :: #import "theme";
+Drawing :: #import "drawing_props";
+
+FrameThemeBackground :: () -> u32 {
+    color := Drawing.StyleTokenColorOr("canvas", Drawing.ColorFromPacked(Theme.CurrentBackground()))
+    return (cast(u32)color.r << cast(u32)24) | (cast(u32)color.g << cast(u32)16) |
+    (cast(u32)color.b << cast(u32)8) | cast(u32)color.a
+}

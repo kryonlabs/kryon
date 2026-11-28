@@ -39,6 +39,9 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
+- Keep native and portable frame backgrounds in sync with system and app themes,
+  including live palette changes, explicit overrides and canvas tokens.
+
 - Keep portable app typing, paste and IME input stable through host callbacks
   using reusable runtime-owned snapshots and deferred, reentry-safe cleanup.
 

@@ -15,6 +15,10 @@ using SessionModule :: #import "session";
 #import "scroll_sampling"
 Clock :: #import "frame_clock";
 Time :: #import "clock";
+Theme :: #import "theme";
+System :: #import "system_palette";
+SystemHost :: #import "system_palette_host";
+FrameTheme :: #import "frame_theme";
 Window :: #import "window";
 Components :: #import "component_frame_slot";
 #import "frame_motion"
@@ -47,6 +51,8 @@ BundleFrameCursorHost :: (shape: s32, asset_path: string, width: s32,
     height: s32, hotspot_x: s32, hotspot_y: s32, hidden: bool) #foreign host_api;
 BundleFrameFinishedHost :: (unchanged: bool) #foreign host_api;
 BundleFrameReusableHost :: () -> bool #foreign host_api;
+// The guest resolves its canvas after drawing, before paint reaches the host.
+BundleFrameBackgroundHost :: (color: u32) #foreign host_api;
 // Absolute seconds in the same monotonic clock as ClockMillisecondsHost.
 // -1 cancels the previous frame's timer deadline.
 BundleWakeAtHost :: (seconds: float64) #foreign host_api;
@@ -114,6 +120,9 @@ Run :: (window: App.Window, draw: App.Draw) -> s32 {
     running := true
     frame_input: FrameInputProvider
     started_at: s64 = -1
+    next_theme_read: s64
+    last_background: u32
+    background_ready: bool
     while running {
         TextHostFrameBegin(bundle_session)
         input := ReadBundleInput()
@@ -121,16 +130,20 @@ Run :: (window: App.Window, draw: App.Draw) -> s32 {
         now := Time.Milliseconds()
         if now < 0 { return 1 }
         if started_at < 0 { started_at = now }
+        if Theme.FollowsSystemTheme() && now >= next_theme_read {
+            unused System.SystemPaletteUpdateDefault(SystemHost.SystemPaletteRead())
+            next_theme_read = now + 500
+        }
         seconds := cast(float64)now / 1000.0
         // The structural probe and the presented frame observe the same time.
         SetFrameMotionTime(bundle_session, seconds)
         FrameMotionHoldNext(bundle_session)
         active := input.down || input.pressed || input.released ||
-            input.secondary_down || input.secondary_pressed || input.secondary_released ||
-            input.key != 0 || input.wheel != 0.0 ||
-            input.x != bundle_last_x || input.y != bundle_last_y ||
-            input.width != bundle_last_width || input.height != bundle_last_height ||
-            input.modifiers != bundle_last_modifiers
+        input.secondary_down || input.secondary_pressed || input.secondary_released ||
+        input.key != 0 || input.wheel != 0.0 ||
+        input.x != bundle_last_x || input.y != bundle_last_y ||
+        input.width != bundle_last_width || input.height != bundle_last_height ||
+        input.modifiers != bundle_last_modifiers
         bundle_last_x = input.x; bundle_last_y = input.y
         bundle_last_width = input.width; bundle_last_height = input.height
         bundle_last_modifiers = input.modifiers
@@ -169,7 +182,12 @@ Run :: (window: App.Window, draw: App.Draw) -> s32 {
             return 1
         }
         App.CallDraw(active_draw, bundle_session.slot, bundle_session.epoch, viewport)
-        finished := EndFrameRetained(bundle_session, BundleFrameReusableHost(), Clock.Observe(*bundle_activity, active))
+        background := FrameTheme.FrameThemeBackground()
+        changed := !background_ready || background != last_background
+        last_background = background; background_ready = true
+        BundleFrameBackgroundHost(background)
+        finished := EndFrameRetained(bundle_session, BundleFrameReusableHost() && !changed,
+            Clock.Observe(*bundle_activity, active || changed))
         if finished.status != cast(FrameStatus)FrameOk { return 1 }
         TextHostFrameEnd(bundle_session, input.x, input.y, input.pressed)
         BundleFrameFinishedHost(finished.paint_unchanged)

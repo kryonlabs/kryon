@@ -289,21 +289,23 @@ AndroidBundleMediaCall :: (media: *AndroidBundleMedia, module: string,
     if !ModuleName(module, "media") { return 0 }
     if count == 1 && (function == "MediaOpenHost" || function == "FetchTextHost") &&
     HostScalarValid(args[0], "string", cast(s32)HostString) {
-        source := TextFromBytes(BytesFromPointer(args[0].data, cast(u64)args[0].length))
         ready: bool
-        if function == "MediaOpenHost" {
-            ready = AndroidBundleMediaOpen(media, source, slot)
-        } else {
-            HttpTransferCancel(*media.fetch)
-            media.fetch_state = -1
-            media.fetch_length = 0
-            if media.fetch_bytes == null { media.fetch_bytes = MediaAllocate(MEDIA_TEXT_LIMIT, 1) }
-            if media.fetch_bytes != null {
-                ready = HttpTransferStart(*media.fetch,
-                    HttpRequest.{.method = "GET", .url = source},
-                    BytesFromPointer(media.fetch_bytes, MEDIA_TEXT_LIMIT), 20000)
+        {
+            source := TextFromBytes(BytesFromPointer(args[0].data, cast(u64)args[0].length))
+            if function == "MediaOpenHost" {
+                ready = AndroidBundleMediaOpen(media, source, slot)
+            } else {
+                HttpTransferCancel(*media.fetch)
+                media.fetch_state = -1
+                media.fetch_length = 0
+                if media.fetch_bytes == null { media.fetch_bytes = MediaAllocate(MEDIA_TEXT_LIMIT, 1) }
+                if media.fetch_bytes != null {
+                    ready = HttpTransferStart(*media.fetch,
+                        HttpRequest.{.method = "GET", .url = source},
+                        BytesFromPointer(media.fetch_bytes, MEDIA_TEXT_LIMIT), 20000)
+                }
+                if ready { media.fetch_state = 1 }
             }
-            if ready { media.fetch_state = 1 }
         }
         result.* = HostScalar("bool", ifx ready then 1 else 0)
         return 1

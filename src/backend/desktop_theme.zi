@@ -1,12 +1,16 @@
 // The frame hosts opt in. A program that only opens a window never imports
 // the system palette reader or a widget stylesheet.
 Theme :: #import "theme";
-Drawing :: #import "drawing_props";
+Frame :: #import "frame_theme";
 
-#if OS == .LINUX || #defined(KRYON_LINUX_DESKTOP) {
+#if OS == .LINUX || OS == .WINDOWS || #defined(KRYON_LINUX_DESKTOP) {
     Timer :: #import "std/timer_linux";
-    Linux :: #import "system_theme_linux";
-    System :: #import "system_theme";
+    #if OS == .WINDOWS {
+        Host :: #import "system_theme_host_windows";
+    } else {
+        Host :: #import "system_theme_linux";
+    }
+    System :: #import "system_palette";
 
     next_theme_read: s64;
 
@@ -16,15 +20,13 @@ Drawing :: #import "drawing_props";
         if now < next_theme_read { return }
         // Read at a frame boundary. The existing frame loop owns all pacing.
         next_theme_read = now + 500
-        unused System.SystemPaletteUpdateDefault(Linux.SystemPaletteRead())
+        unused System.SystemPaletteUpdateDefault(Host.SystemPaletteRead())
     }
 }
 
 DesktopThemeBackground :: (refresh: bool) -> u32 {
-    #if OS == .LINUX || #defined(KRYON_LINUX_DESKTOP) {
+    #if OS == .LINUX || OS == .WINDOWS || #defined(KRYON_LINUX_DESKTOP) {
         if refresh { RefreshSystemTheme() }
     }
-    color := Drawing.StyleTokenColorOr("canvas", Drawing.ColorFromPacked(Theme.CurrentBackground()))
-    return (cast(u32)color.r << cast(u32)24) | (cast(u32)color.g << cast(u32)16) |
-        (cast(u32)color.b << cast(u32)8) | cast(u32)color.a
+    return Frame.FrameThemeBackground()
 }

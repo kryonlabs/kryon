@@ -21,21 +21,21 @@ using Vectors :: #import "vec";
 // fonts, pictures, video, threads, the test driver, asset paths and title
 // files.
 not_in_a_window: [48]string = .["frames_desktop", "desktop_loop", "desktop_runtime",
-    "cairo_raster", "raster_picture", "accessibility_linux", "atspi_protocol", "session",
-    "frame_clock", "frame_driver", "frame_input_provider", "frame_snapshot",
-    "input_protocol", "input_delivery", "secondary_pointer", "desktop_keys", "std_utf8",
-    "std_timer_linux", "std_byte_text_linux", "app_types",
-    "tree", "tree_draw", "tree_input", "tree_frame", "paint_queue", "font_metrics",
-    "text_layout", "text_request", "text_input_platform", "cursor", "scroll_device",
-    "gamepad_navigation", "input_take", "test_driver", "test_driver_frame",
-    "bitmap_store", "image_decode_desktop", "avif_decode", "lanczos_cache",
-    "ziran_image_decode", "riff", "bmff", "video_linux", "std_thread_linux",
-    "std_parallel_linux", "program_title", "app_asset_path", "accessibility_tree_linux"];
+"cairo_raster", "raster_picture", "accessibility_linux", "atspi_protocol", "session",
+"frame_clock", "frame_driver", "frame_input_provider", "frame_snapshot",
+"input_protocol", "input_delivery", "secondary_pointer", "desktop_keys", "std_utf8",
+"std_timer_linux", "std_byte_text_linux", "app_types",
+"tree", "tree_draw", "tree_input", "tree_frame", "paint_queue", "font_metrics",
+"text_layout", "text_request", "text_input_platform", "cursor", "scroll_device",
+"gamepad_navigation", "input_take", "test_driver", "test_driver_frame",
+"bitmap_store", "image_decode_desktop", "avif_decode", "lanczos_cache",
+"ziran_image_decode", "riff", "bmff", "video_linux", "std_thread_linux",
+"std_parallel_linux", "program_title", "app_asset_path", "accessibility_tree_linux"];
 
 // The checked program of an empty window on Linux: the window, kryon/app,
 // its types, the SDL window and presenter, and C strings.
 window_checked: [8]string = .["window", "app", "app_types", "desktop_window",
-    "desktop_process_linux", "sdl_event", "pixmap_sdl", "std_c_string"];
+"desktop_process_linux", "sdl_event", "pixmap_sdl", "std_c_string"];
 
 // The checked program of an empty window as a portable bundle: the window,
 // kryon/app, its types and the bundle's window.
@@ -47,34 +47,34 @@ zx_window_checked: [4]string = .["window", "app", "app_types", "zx_window"];
 // frame module or capability can come with them.
 zx_window_modules: [3]string = .["window", "app", "zx_window"];
 zx_window_capabilities: [5]string = .["ZxWindowOpenHost", "ZxWindowEventHost", "ZxWindowClearHost",
-    "ZxWindowPresentHost", "ZxWindowCloseHost"];
+"ZxWindowPresentHost", "ZxWindowCloseHost"];
 
 // The checked program of an empty window on the web: the window, kryon/app,
 // its types, the page window and the page it opens.
 web_window_checked: [10]string = .["window", "app", "app_types", "page_window", "page_core",
-    "page_geometry", "std_web", "std_text_buffer", "std_number_text", "std_byte_text_linux"];
+"page_geometry", "std_web", "std_text_buffer", "std_number_text", "std_byte_text_linux"];
 
 // What a web program that warps or smooths no picture carries none of.
 not_in_a_plain_page: [5]string = .["image", "lanczos_cache", "std_resample", "page_mesh",
-    "test_driver"];
+"test_driver"];
 
 // What a web frame example with no picture, text field or scroll carries none of.
 not_in_a_plain_web_frame: [11]string = .["image", "lanczos_cache", "std_resample", "page_mesh",
-    "test_driver", "text_request", "text_input_platform", "scroll_device",
-    "style_motion", "layout_motion", "motion_history"];
+"test_driver", "text_request", "text_input_platform", "scroll_device",
+"style_motion", "layout_motion", "motion_history"];
 
 // What no example that shows no picture or video carries.
 not_without_pictures: [10]string = .["image_decode_desktop", "avif_decode", "lanczos_cache",
-    "ziran_image_decode", "riff", "bmff", "video_linux", "std_thread_linux",
-    "std_parallel_linux", "app_asset_path"];
+"ziran_image_decode", "riff", "bmff", "video_linux", "std_thread_linux",
+"std_parallel_linux", "app_asset_path"];
 
 // What a frame example carries none of when it shows no picture, edits no
 // text and has no scroll, tabs, text area or grid: the picture chain, text
 // input and the scroll device.
 not_in_a_plain_frame: [17]string = .["image_decode_desktop", "avif_decode", "lanczos_cache",
-    "ziran_image_decode", "riff", "bmff", "native_api", "video_linux", "std_thread_linux",
-    "std_parallel_linux", "app_asset_path", "text_request", "text_input_platform",
-    "scroll_device", "style_motion", "layout_motion", "motion_history"];
+"ziran_image_decode", "riff", "bmff", "native_api", "video_linux", "std_thread_linux",
+"std_parallel_linux", "app_asset_path", "text_request", "text_input_platform",
+"scroll_device", "style_motion", "layout_motion", "motion_history"];
 
 failures: s32;
 
@@ -93,7 +93,7 @@ NamedFor :: (file: string, module: string) -> bool {
     stem := file[:file.count - 2]
     if stem == module { return true }
     return stem.count > module.count && EndsWith(stem, module) &&
-        stem[stem.count - module.count - 1] == #char "_"
+    stem[stem.count - module.count - 1] == #char "_"
 }
 
 // TEXT says MODULE.zi went into it: "generated by zi2c from MODULE.zi" when
@@ -110,7 +110,7 @@ MarkedFor :: (text: string, module: string) -> bool {
                 start -= 18
             }
             if (start >= 5 && text[start - 5:start] == "from ") ||
-                (start >= 6 && text[start - 6:start] == "unit: ") { return true }
+            (start >= 6 && text[start - 6:start] == "unit: ") { return true }
         }
         at = TextFind(text, module, at + 1)
     }
@@ -155,7 +155,7 @@ Run :: (arguments: []string, directory: string) -> bool {
 // A program entry, built as `ziran build` builds an application's main.
 BuildProgram :: (ziran: string, entry: string, source: string, output: string) -> bool {
     arguments: [12]string = .[ziran, "build", "--target=c", "--project", "--root",
-        "examples", "--exe", "--entry", entry, "-o", output, source]
+    "examples", "--exe", "--entry", entry, "-o", output, source]
     return Run(arguments[:], "")
 }
 
@@ -163,21 +163,21 @@ BuildProgram :: (ziran: string, entry: string, source: string, output: string) -
 // per module: the modules an editor shows for it.
 CheckProgram :: (ziran: string, entry: string, source: string, output: string) -> bool {
     arguments: [11]string = .[ziran, "ir", "--target=c", "--project", "--root",
-        "examples", "--entry", entry, "-o", output, source]
+    "examples", "--entry", entry, "-o", output, source]
     return Run(arguments[:], "")
 }
 
 // The same checked program for the web page, as the web profile builds it.
 CheckWebProgram :: (ziran: string, entry: string, source: string, output: string) -> bool {
     arguments: [15]string = .[ziran, "ir", "--target=c", "--target-os", "web", "--target-cpu",
-        "wasm32", "--project", "--root", "examples", "--entry", entry, "-o", output, source]
+    "wasm32", "--project", "--root", "examples", "--entry", entry, "-o", output, source]
     return Run(arguments[:], "")
 }
 
 // The same checked program as a portable bundle checks it.
 CheckZxProgram :: (ziran: string, entry: string, source: string, output: string) -> bool {
     arguments: [11]string = .[ziran, "ir", "--target=zx", "--project", "--root",
-        "examples", "--entry", entry, "-o", output, source]
+    "examples", "--entry", entry, "-o", output, source]
     return Run(arguments[:], "")
 }
 
@@ -185,14 +185,14 @@ CheckZxProgram :: (ziran: string, entry: string, source: string, output: string)
 // instruction listing beside it (zi2zx --emit lir, from ziran's own folder).
 BundleProgram :: (ziran: string, entry: string, source: string, bundle: string, listing: string) -> bool {
     arguments: [10]string = .[ziran, "bundle", "--project", "--root", "examples", "--entry", entry,
-        "-o", bundle, source]
+    "-o", bundle, source]
     return Run(arguments[:], "") && ListBundle(ziran, bundle, listing)
 }
 
 // The same for a hosted-UI program in tests/, whose host draws its widgets.
 BundleHostedProgram :: (ziran: string, entry: string, source: string, bundle: string, listing: string) -> bool {
     arguments: [12]string = .[ziran, "bundle", "--project", "--root", "tests", "--define",
-        "KRYON_HOSTED_UI", "--entry", entry, "-o", bundle, source]
+    "KRYON_HOSTED_UI", "--entry", entry, "-o", bundle, source]
     return Run(arguments[:], "") && ListBundle(ziran, bundle, listing)
 }
 
@@ -327,7 +327,7 @@ PrepareFrame :: (ziran: string, name: string) -> string {
     BuilderPrint(*overrides, "[overrides]\nkryon = \"%\"\n", WorkingDirectory())
     lock: [2]string = .[ziran, "lock"]
     if !copied || !WriteEntireFile(JoinPath(copy, "ziran.local.toml"), BuilderFinish(overrides)) ||
-        !Run(lock[:], copy) { return "" }
+    !Run(lock[:], copy) { return "" }
     return copy
 }
 
@@ -402,7 +402,7 @@ main :: () -> s32 {
 
     // kryon/app's frame loop arrives with App.Run.
     hello_present: [7]string = .["app", "frames_desktop", "desktop_loop", "tree", "tree_frame",
-        "text", "paint_queue"]
+    "text", "paint_queue"]
     if !BuildProgram(ziran, "hello:main", "examples/hello.tsx", "build/test/pay-per-import/hello") {
         Fail("hello", "does not build", "examples/hello.tsx")
     } else {
@@ -411,12 +411,13 @@ main :: () -> s32 {
 
     // A label asks its parent for width and the frame for paint operations.
     // It does not build containers, own pictures or edit text.
-    zx_hello_present: [3]string = .["text", "tree", "paint_queue"]
-    zx_hello_absent: [24]string = .["layout", "layout_props", "layout_behavior",
-        "grid", "grid_props", "layout_paint", "layout_paint_slot", "bitmap_store",
-        "text_request", "text_input_platform", "text_editor_zx", "style_sheet",
-        "surface", "image", "style", "style_facts", "style_tree", "style_motion_slot",
-        "elevation", "theme", "clock", "motion_clock", "style_motion", "layout_motion"]
+    zx_hello_present: [8]string = .["text", "tree", "paint_queue", "theme",
+    "frame_theme", "system_palette", "system_palette_host", "clock"]
+    zx_hello_absent: [22]string = .["layout", "layout_props", "layout_behavior",
+    "grid", "grid_props", "layout_paint", "layout_paint_slot", "bitmap_store",
+    "text_request", "text_input_platform", "text_editor_zx", "style_sheet",
+    "surface", "image", "style", "style_facts", "style_tree", "style_motion_slot",
+    "elevation", "motion_clock", "style_motion", "layout_motion"]
     if !CheckZxProgram(ziran, "hello:main", "examples/hello.tsx", "build/test/pay-per-import/hello-zx-ir") {
         Fail("hello (zx)", "does not check", "examples/hello.tsx")
     } else {
@@ -445,8 +446,8 @@ main :: () -> s32 {
     }
 
     image_present: [11]string = .["image", "image_decode_desktop", "avif_decode",
-        "ziran_image_decode", "lanczos_cache", "riff", "bmff", "native_api",
-        "std_thread_linux", "std_parallel_linux", "app_asset_path"]
+    "ziran_image_decode", "lanczos_cache", "riff", "bmff", "native_api",
+    "std_thread_linux", "std_parallel_linux", "app_asset_path"]
     image_absent: [3]string = .["video_linux", "text_request", "text_input_platform"]
     if !BuildFrame(ziran, image) {
         Fail("image", "does not build", "examples/image")
@@ -455,7 +456,7 @@ main :: () -> s32 {
     }
 
     textfield_present: [5]string = .["textfield", "text_request", "text_input_platform",
-        "text_boundary", "scroll_device"]
+    "text_boundary", "scroll_device"]
     textfield_absent: [1]string = .["video_linux"]
     if !BuildFrame(ziran, textfield) {
         Fail("textfield", "does not build", "examples/textfield")

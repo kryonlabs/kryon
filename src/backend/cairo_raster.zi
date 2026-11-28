@@ -240,8 +240,8 @@ ShapedLayout :: (value: string, font: s32, typeface: string) -> bool {
     for index: cast(s32)0..SHAPED_LAYOUT_LIMIT - 1 {
         entry := *shaped_entries[index]
         if entry.layout == null || entry.font != font || entry.length != value.count ||
-            entry.family != family.id || entry.weight != weight || entry.slant != style.style ||
-            entry.spacing != spacing { continue }
+        entry.family != family.id || entry.weight != weight || entry.slant != style.style ||
+        entry.spacing != spacing { continue }
         stored := LayoutTextPointer(entry.layout)
         same := true
         for byte: cast(s64)0..value.count - 1 {
@@ -467,7 +467,7 @@ RasterReadbackGpuSurface :: () -> bool {
     if !RasterGpuOn() || raster_gpu.readback == null { return true }
     if raster_gpu_width <= 0 || raster_gpu_height <= 0 { return false }
     if surface == null || ImageSurfaceWidth(surface) != raster_gpu_width ||
-        ImageSurfaceHeight(surface) != raster_gpu_height {
+    ImageSurfaceHeight(surface) != raster_gpu_height {
         if raster_text_close != null { raster_text_close() }
         if paint != null { Destroy(paint); paint = null }
         if surface != null { SurfaceDestroy(surface); surface = null }
@@ -571,15 +571,15 @@ RasterSnapRectangle :: (bounds: Rectangle) -> Rectangle {
 // it covers, or null to draw the picture with Cairo's filter.
 ScaledImageFor :: (image: *void, source: Rectangle, destination: Rectangle, snapped: *Rectangle) -> *Lanczos.LanczosEntry {
     if !Finite32(destination.x) || !Finite32(destination.y) || !Finite32(destination.width) ||
-        !Finite32(destination.height) || destination.width > 4096.0 || destination.height > 4096.0 ||
-        destination.x < -1048576.0 || destination.x > 1048576.0 ||
-        destination.y < -1048576.0 || destination.y > 1048576.0 || image == picture_surface { return null }
+    !Finite32(destination.height) || destination.width > 4096.0 || destination.height > 4096.0 ||
+    destination.x < -1048576.0 || destination.x > 1048576.0 ||
+    destination.y < -1048576.0 || destination.y > 1048576.0 || image == picture_surface { return null }
     format := ImageSurfaceFormat(image)
     serial := CairoImageSerial(image)
     if serial == 0 || (format != 0 && format != 1) { return null }
     matrix: CairoMatrix; GetMatrix(paint, *matrix)
     if matrix.xx != 1.0 || matrix.yy != 1.0 || matrix.xy != 0.0 || matrix.yx != 0.0 ||
-        matrix.x0 != 0.0 || matrix.y0 != 0.0 { return null }
+    matrix.x0 != 0.0 || matrix.y0 != 0.0 { return null }
     width := ImageSurfaceWidth(image); height := ImageSurfaceHeight(image)
     snapped.* = RasterSnapRectangle(destination)
     if !Lanczos.LanczosEligible(source, width, height, snapped.*) { return null }
@@ -815,6 +815,18 @@ raster_appearance: FrameAppearance;
 #program_export
 SetRasterBackground :: (background: FrameBackground) { raster_appearance.background = background }
 
+raster_background_color: u32;
+RasterBackgroundColor :: (refresh: bool) -> u32 {
+    unused refresh
+    return raster_background_color
+}
+
+#program_export
+SetRasterBackgroundColor :: (color: u32) {
+    raster_background_color = color
+    SetRasterBackground(RasterBackgroundColor)
+}
+
 #program_export
 BeginRasterFrame :: (retain: bool = false) {
     if raster_smooth_pump != null { unused raster_smooth_pump() }
@@ -922,7 +934,7 @@ CaptureConfigured :: () -> bool {
 #program_export
 RasterTextPixels :: (value: string, font: s32, color: Color, width: s32, height: s32, pixels: []u8) -> bool {
     if paint == null || width <= 0 || height <= 0 || width > 4096 || height > 4096 ||
-        pixels.count < cast(s64)width * cast(s64)height * 4 { return false }
+    pixels.count < cast(s64)width * cast(s64)height * 4 { return false }
     if !ShapedLayout(value, font, "") { return false }
     target := ImageSurfaceCreate(0, width, height)
     if target == null { return false }
@@ -1262,7 +1274,7 @@ CairoFrameOwn :: (original: *void) -> Texture2D {
     width := ImageSurfaceWidth(original); height := ImageSurfaceHeight(original)
     bytes := cast(s64)width * cast(s64)height * 4
     if width <= 0 || height <= 0 || bytes > 268435456 - frame_texture_bytes ||
-        frame_texture_next >= cast(u32)2147483648 { return .{} }
+    frame_texture_next >= cast(u32)2147483648 { return .{} }
     index: s32 = -1
     for at: cast(s32)0..15 { if frame_textures[at].image == null { index = at; break } }
     if index < 0 { return .{} }
@@ -1319,7 +1331,7 @@ RetainedPreviousFrameTexture :: () -> Texture2D {
     // First use can copy an intact presented frame. Otherwise begin tracking
     // at the next successful presentation, leaving the snapshot invalid.
     if frame_previous.id == cast(u32)0 && surface != null &&
-        raster_presented_surface == surface {
+    raster_presented_surface == surface {
         frame_previous = CairoFrameOwn(surface)
     }
     return frame_previous
@@ -1337,7 +1349,7 @@ CopyFrameTexture :: (texture: Texture2D) -> Texture2D {
     if index < 0 { return .{} }
     item := frame_textures[index]
     if item.texture.width != texture.width || item.texture.height != texture.height ||
-        texture.mipmaps != 1 || texture.format != 7 { return .{} }
+    texture.mipmaps != 1 || texture.format != 7 { return .{} }
     return CairoFrameOwn(item.image)
 }
 
@@ -1347,7 +1359,7 @@ DisposeFrameTexture :: (texture: Texture2D) {
     if index < 0 || texture.id == frame_previous.id { return }
     stored := frame_textures[index].texture
     if stored.width == texture.width && stored.height == texture.height &&
-        texture.mipmaps == 1 && texture.format == 7 { CairoFrameDrop(index) }
+    texture.mipmaps == 1 && texture.format == 7 { CairoFrameDrop(index) }
 }
 
 #if OS != .WEB && !#defined(ANDROID_BUILD) {
@@ -1389,7 +1401,7 @@ CairoImageInFolder :: (path: string, folder: string) -> bool {
         folder[length - 1] == cast(u8)92) { length -= 1 }
     if length == 0 || path.count < length || path[:length] != folder[:length] { return false }
     return path.count == length || folder[length - 1] == cast(u8)47 ||
-        folder[length - 1] == cast(u8)92 || path[length] == cast(u8)47 || path[length] == cast(u8)92
+    folder[length - 1] == cast(u8)92 || path[length] == cast(u8)47 || path[length] == cast(u8)92
 }
 
 #program_export
@@ -1474,7 +1486,7 @@ LoadPNG :: (original_path: string) -> *void {
     if webp.pixels != null {
         image = ImageSurfaceCreate(0, webp.width, webp.height)
         if image == null || SurfaceStatus(image) != 0 ||
-            !Decode.CopyWebP(webp, ImageSurfaceData(image), ImageSurfaceStride(image)) {
+        !Decode.CopyWebP(webp, ImageSurfaceData(image), ImageSurfaceStride(image)) {
             if image != null { SurfaceDestroy(image) }
             image = null
         }
@@ -1485,7 +1497,7 @@ LoadPNG :: (original_path: string) -> *void {
         if decoded != null {
             image = ImageSurfaceCreate(0, Decode.Width(decoded), Decode.Height(decoded))
             if image == null || SurfaceStatus(image) != 0 ||
-                !Decode.CopyPixels(decoded, ImageSurfaceData(image), ImageSurfaceStride(image)) {
+            !Decode.CopyPixels(decoded, ImageSurfaceData(image), ImageSurfaceStride(image)) {
                 if image != null { SurfaceDestroy(image) }
                 image = null
             }
@@ -1575,13 +1587,13 @@ RasterImage :: (asset_path: string, texture_id: u32,
     origin: Vector2, rotation: float32, radius: float32, tint: Color) {
     PrepareRasterPaint()
     if (texture_id == cast(u32)0 && asset_path.count == 0) ||
-        !Finite32(source.x) || !Finite32(source.y) || !Finite32(source.width) || !Finite32(source.height) ||
-        !Finite32(destination.x) || !Finite32(destination.y) || !Finite32(destination.width) || !Finite32(destination.height) ||
-        !Finite32(clip.x) || !Finite32(clip.y) || !Finite32(clip.width) || !Finite32(clip.height) ||
-        !Finite32(origin.x) || !Finite32(origin.y) || !Finite32(rotation) || !Finite32(radius) ||
-        source.width == 0.0 || source.height == 0.0 ||
-        destination.width <= 0.0 || destination.height <= 0.0 ||
-        clip.width <= 0.0 || clip.height <= 0.0 {
+    !Finite32(source.x) || !Finite32(source.y) || !Finite32(source.width) || !Finite32(source.height) ||
+    !Finite32(destination.x) || !Finite32(destination.y) || !Finite32(destination.width) || !Finite32(destination.height) ||
+    !Finite32(clip.x) || !Finite32(clip.y) || !Finite32(clip.width) || !Finite32(clip.height) ||
+    !Finite32(origin.x) || !Finite32(origin.y) || !Finite32(rotation) || !Finite32(radius) ||
+    source.width == 0.0 || source.height == 0.0 ||
+    destination.width <= 0.0 || destination.height <= 0.0 ||
+    clip.width <= 0.0 || clip.height <= 0.0 {
         print("Kryon: skipped image: invalid or unavailable picture\n")
         return
     }
@@ -1657,7 +1669,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
     snapped: Rectangle
     // Mirrored sources keep Cairo's filter; cached copies have positive axes.
     if !mirror_x && !mirror_y && texture_id == cast(u32)0 && raster_picture_smooth != null && rotation == 0.0 &&
-        origin.x == 0.0 && origin.y == 0.0 && CurrentPaintSmooth() {
+    origin.x == 0.0 && origin.y == 0.0 && CurrentPaintSmooth() {
         sampled = raster_picture_smooth(image, source, destination, *snapped)
     }
     Save(paint)
@@ -1670,7 +1682,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
     if rectangular { SetAntialias(paint, 1) }
     matrix: CairoMatrix; GetMatrix(paint, *matrix)
     device_pixels := rectangular && matrix.xx > 0.0 && matrix.yy > 0.0 &&
-        matrix.xy == 0.0 && matrix.yx == 0.0
+    matrix.xy == 0.0 && matrix.yx == 0.0
     // Cairo's aliased clip and the cached copy disagree at exact half
     // pixels. Round both to the copy's device edges, also while it loads.
     image_clip := ifx device_pixels then RasterSnapRectangle(clip) else clip
@@ -1757,9 +1769,9 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) {
     PrepareRasterPaint()
     if columns < 2 || rows < 2 || !Finite32(clip.x) || !Finite32(clip.y) ||
-        !Finite32(clip.width) || !Finite32(clip.height) || clip.width <= 0.0 || clip.height <= 0.0 ||
-        !Finite32(source.x) || !Finite32(source.y) || !Finite32(source.width) || !Finite32(source.height) ||
-        source.width == 0.0 || source.height == 0.0 {
+    !Finite32(clip.width) || !Finite32(clip.height) || clip.width <= 0.0 || clip.height <= 0.0 ||
+    !Finite32(source.x) || !Finite32(source.y) || !Finite32(source.width) || !Finite32(source.height) ||
+    source.width == 0.0 || source.height == 0.0 {
         print("Kryon: skipped image mesh: invalid geometry\n"); return
     }
     count: s64 = cast(s64)columns * cast(s64)rows

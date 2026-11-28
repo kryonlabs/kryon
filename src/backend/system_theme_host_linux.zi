@@ -1,28 +1,20 @@
 // Read the palette supplied by a supervising parent, or the desktop palette
 // for a standalone window. This reads properties and sends no window actions.
 Theme :: #import "system_theme_linux";
-#import "parent_theme_linux"
 using Palette :: #import "system_theme";
 #scope_file
 palette: SystemPalette;
 ready: bool;
-// The desktop palette is read once; a parent's palette on every refresh, so
-// a theme change in the host reaches the app.
+// Refresh the desktop or containing host palette at the frame boundary.
 Refresh :: () {
-    if !ready {
-        palette = Theme.SystemPaletteRead()
-        ready = true
-        return
-    }
-    unused ParentPaletteRead(*palette)
+    palette = Theme.SystemPaletteRead()
+    ready = true
 }
 #scope_export
 #program_export
 SystemThemeColorHost :: (role: s32) -> u32 {
     if role==0 || !ready { Refresh() }
-    if role==1 { return palette.background }; if role==2 { return palette.base }; if role==3 { return palette.text }
-    if role==4 { return palette.selected }; if role==5 { return palette.selected_text }; if role==6 { return palette.border }
-    if role==7 { return palette.danger }; if role==8 { return palette.warning }; if role==9 { return palette.success }; return 0
+    return SystemPaletteHostColor(palette, role)
 }
 SystemPaletteRead :: () -> SystemPalette { Refresh(); return palette }
 // Applies the current palette, the host's while embedded, as style rules and

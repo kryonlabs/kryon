@@ -1,73 +1,79 @@
 #if OS == .WEB && !#defined(KRYON_HOSTED_UI) {
-// The web page's frame loop App.Run runs: the Canvas host,
-// sessions and the widget tree.
-App :: #import "app_types";
-#import "secondary_pointer"
-using Host :: #import "Canvas";
-#import "frame_snapshot"
-using Geometry :: #import "geometry";
-using SessionModule :: #import "session";
-#import "tree"
-#import "tree_draw"
-#import "tree_input"
-Title :: #import "program_title";
+    // The web page's frame loop App.Run runs: the Canvas host,
+    // sessions and the widget tree.
+    App :: #import "app_types";
+    #import "secondary_pointer"
+    using Host :: #import "Canvas";
+    #import "frame_snapshot"
+    using Geometry :: #import "geometry";
+    using SessionModule :: #import "session";
+    #import "tree"
+    #import "tree_draw"
+    #import "tree_input"
+    Title :: #import "program_title";
+    System :: #import "system_palette";
+    ThemeHost :: #import "system_theme_host_canvas";
+    FrameTheme :: #import "frame_theme";
+    Frame :: #import "canvas_frame";
 
-using FrameStatus;
+    using FrameStatus;
 
-web_probe_draw: App.Draw;
+    web_probe_draw: App.Draw;
 
-// The structural probe's draw: the app's own draw into the probe frame.
-WebProbeDraw :: (session: Session, bounds: Rectangle) -> s32 {
-    App.CallDraw(web_probe_draw, session.slot, session.epoch, bounds)
-    return 0
-}
-
-DrawCanvasFrame :: (session: Session, viewport: Rectangle, draw: App.Draw) -> bool {
-    web_probe_draw = draw
-    if !CanvasFrameInputBegin(session) { return false }
-    defer { FrameInputEnd(session) }
-    BeginCanvasFrame()
-    pointer := PollPointer()
-    TreePointerUpdate(session, pointer)
-    TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
-    PointerWheelSend(session, pointer.x, pointer.y, CanvasWheelMove())
-    CanvasSampleScroll(session, pointer, CanvasWheelMove())
-    unused StyleStructuralProbeFrame(session, cast(u64)1, viewport, WebProbeDraw)
-    if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
-        EndCanvasFrame()
-        return false
+    // The structural probe's draw: the app's own draw into the probe frame.
+    WebProbeDraw :: (session: Session, bounds: Rectangle) -> s32 {
+        App.CallDraw(web_probe_draw, session.slot, session.epoch, bounds)
+        return 0
     }
-    App.CallDraw(draw, session.slot, session.epoch, viewport)
-    if EndCanvasUiFrame(session) != cast(FrameStatus)FrameOk {
-        EndCanvasFrame()
-        return false
-    }
-    CanvasCursor(session)
-    return EndCanvasFrame()
-}
 
-// Runs the program's frames in the page until it closes.
-Run :: (window: App.Window, draw: App.Draw) -> s32 {
-    if window.title.count > 0 { unused Title.SetProgramTitle(window.title) }
-    if !OpenCanvas() {
+    DrawCanvasFrame :: (session: Session, viewport: Rectangle, draw: App.Draw) -> bool {
+        web_probe_draw = draw
+        if !CanvasFrameInputBegin(session) { return false }
+        defer { FrameInputEnd(session) }
+        unused System.SystemPaletteUpdateDefault(ThemeHost.SystemPaletteRead())
+        BeginCanvasFrame()
+        pointer := PollPointer()
+        TreePointerUpdate(session, pointer)
+        TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
+        PointerWheelSend(session, pointer.x, pointer.y, CanvasWheelMove())
+        CanvasSampleScroll(session, pointer, CanvasWheelMove())
+        unused StyleStructuralProbeFrame(session, cast(u64)1, viewport, WebProbeDraw)
+        if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
+            EndCanvasFrame()
+            return false
+        }
+        App.CallDraw(draw, session.slot, session.epoch, viewport)
+        Frame.CanvasFrameBackground(ColorFromPacked(FrameTheme.FrameThemeBackground()))
+        if EndCanvasUiFrame(session) != cast(FrameStatus)FrameOk {
+            EndCanvasFrame()
+            return false
+        }
+        CanvasCursor(session)
+        return EndCanvasFrame()
+    }
+
+    // Runs the program's frames in the page until it closes.
+    Run :: (window: App.Window, draw: App.Draw) -> s32 {
+        if window.title.count > 0 { unused Title.SetProgramTitle(window.title) }
+        if !OpenCanvas() {
+            CloseCanvas()
+            return 1
+        }
+        session := SessionOpen()
+        if !SessionValid(session) {
+            CloseCanvas()
+            return 1
+        }
+        ok := true
+        while ok && PollCanvas() {
+            key, modifiers := CanvasInputTake(session)
+            KeyboardModifiersSend(session, modifiers)
+            if key != 0 { KeyboardSend(session, key) }
+            ok = DrawCanvasFrame(session, CanvasViewport(), draw)
+        }
+        CloseSession(session)
         CloseCanvas()
+        if ok { return 0 }
         return 1
     }
-    session := SessionOpen()
-    if !SessionValid(session) {
-        CloseCanvas()
-        return 1
-    }
-    ok := true
-    while ok && PollCanvas() {
-        key, modifiers := CanvasInputTake(session)
-        KeyboardModifiersSend(session, modifiers)
-        if key != 0 { KeyboardSend(session, key) }
-        ok = DrawCanvasFrame(session, CanvasViewport(), draw)
-    }
-    CloseSession(session)
-    CloseCanvas()
-    if ok { return 0 }
-    return 1
-}
 }

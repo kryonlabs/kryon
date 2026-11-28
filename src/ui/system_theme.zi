@@ -1,4 +1,5 @@
 Theme :: #import "theme";
+using Palette :: #import "system_palette";
 // Reads a desktop theme's colors from its GTK CSS, so an application can follow
 // the system theme. This file only parses text; system_theme_linux finds the
 // theme and reads its files.
@@ -6,21 +7,6 @@ Theme :: #import "theme";
 // GTK themes name their palette with `@define-color theme_bg_color #161925;`.
 // Values are hex, rgb(), rgba(), a reference to another name (@name), or one
 // of shade(), alpha() and mix() around those. Packed colors are 0xRRGGBBAA.
-
-SystemPalette :: struct {
-    // The colors came from a theme's CSS; otherwise they are the fallback.
-    found: bool
-    dark: bool
-    background: u32
-    base: u32
-    text: u32
-    selected: u32
-    selected_text: u32
-    border: u32
-    danger: u32
-    warning: u32
-    success: u32
-}
 
 CssColor :: struct {
     found: bool
@@ -34,21 +20,6 @@ css_arg_end: [4]s32;
 
 CssNone :: () -> CssColor {
     return CssColor.{false, cast(u32)0}
-}
-
-CssPack :: (red: s32, green: s32, blue: s32, alpha: s32) -> u32 {
-    return (cast(u32)CssClamp(red) << cast(u32)24) | (cast(u32)CssClamp(green) << cast(u32)16) |
-    (cast(u32)CssClamp(blue) << cast(u32)8) | cast(u32)CssClamp(alpha)
-}
-
-CssClamp :: (value: s32) -> s32 {
-    if value < 0 { return 0 }
-    if value > 255 { return 255 }
-    return value
-}
-
-CssChannel :: (color: u32, shift: u32) -> s32 {
-    return cast(s32)((color >> shift) & cast(u32)255)
 }
 
 CssIsSpace :: (byte: u8) -> bool {
@@ -155,15 +126,6 @@ CssScale :: (color: u32, factor: float32) -> u32 {
         CssChannel(color, cast(u32)0))
 }
 
-CssMix :: (first: u32, second: u32, amount: float32) -> u32 {
-    keep: float32 = 1.0 - amount
-    return CssPack(
-        cast(s32)(cast(float32)CssChannel(first, cast(u32)24) * keep + cast(float32)CssChannel(second, cast(u32)24) * amount + 0.5),
-        cast(s32)(cast(float32)CssChannel(first, cast(u32)16) * keep + cast(float32)CssChannel(second, cast(u32)16) * amount + 0.5),
-        cast(s32)(cast(float32)CssChannel(first, cast(u32)8) * keep + cast(float32)CssChannel(second, cast(u32)8) * amount + 0.5),
-        cast(s32)(cast(float32)CssChannel(first, cast(u32)0) * keep + cast(float32)CssChannel(second, cast(u32)0) * amount + 0.5))
-}
-
 // The color a CSS value stands for, looking @names up in css.
 CssValue :: (css: string, value: string, depth: s32) -> CssColor {
     text: string = CssTrim(value)
@@ -237,11 +199,6 @@ CssDefined :: (css: string, name: string, depth: s32) -> CssColor {
     return found
 }
 
-CssLuminance :: (color: u32) -> s32 {
-    return (CssChannel(color, cast(u32)24) * 299 + CssChannel(color, cast(u32)16) * 587 +
-        CssChannel(color, cast(u32)8) * 114) / 1000
-}
-
 CssFirst :: (css: string, first: string, second: string, fallback: u32) -> u32 {
     color: CssColor = CssDefined(css, first, 0)
     if color.found { return color.color }
@@ -251,19 +208,6 @@ CssFirst :: (css: string, first: string, second: string, fallback: u32) -> u32 {
 }
 
 // The palette a light or dark desktop uses when no theme can be read.
-#program_export
-SystemPaletteFallback :: (dark: bool) -> SystemPalette {
-    palette: SystemPalette
-    palette.dark = dark
-    colors := Theme.DefaultPalette(dark)
-    palette.background = colors.background; palette.base = colors.surface
-    palette.text = colors.foreground; palette.border = colors.border
-    palette.selected = colors.accent; palette.selected_text = colors.on_accent
-    palette.danger = colors.danger; palette.warning = colors.warning
-    palette.success = colors.success
-    return palette
-}
-
 // The palette a theme's GTK CSS defines. Names a theme leaves out fall back to
 // the light or dark palette; whether it is dark follows the theme's own
 // background when it has one, and dark_hint otherwise.
@@ -306,7 +250,7 @@ PaletteRole :: (rules: *Sheet.StyleRules, kind: s32, role: s32,
     item := *rules.items[rules.count]; item.selector = Sheet.StyleDefaultSelector()
     item.selector.kind = kind; item.selector.role = role; rules.count += 1
     item.style.fields = cast(u32)Controls.StyleField.StyleBackground |
-        cast(u32)Controls.StyleField.StyleForeground | cast(u32)Controls.StyleField.StyleBorder
+    cast(u32)Controls.StyleField.StyleForeground | cast(u32)Controls.StyleField.StyleBorder
     item.style.background = background; item.style.foreground = foreground; item.style.border = border
 }
 PaletteAccent :: (rules: *Sheet.StyleRules, kind: s32, background: u32, foreground: u32) {
@@ -411,12 +355,12 @@ SystemPaletteRules :: (palette: SystemPalette) -> Sheet.StyleRules {
         kind := rules.items[i].selector.kind
         if kind == Sheet.StyleKindButton() || kind == Sheet.StyleKindTextField() || kind == Sheet.StyleKindTextArea() || kind == Sheet.StyleKindSpinbox() || kind == Sheet.StyleKindSpinboxValue() || kind == Sheet.StyleKindDropdown() {
             rules.items[i].style.fields |= cast(u32)Controls.StyleField.StyleFontSize |
-                cast(u32)Controls.StyleField.StyleRadius | cast(u32)Controls.StyleField.StyleBorderWidth |
-                cast(u32)Controls.StyleField.StyleFocus | cast(u32)Controls.StyleField.StyleMaterial |
-                cast(u32)Controls.StyleField.StyleMinHeight | cast(u32)Controls.StyleField.StyleLineHeight |
-                cast(u32)Controls.StyleField.StyleFontRole | cast(u32)Controls.StyleField.StyleMotionDuration |
-                cast(u32)Controls.StyleField.StyleMotionMultiplier |
-                cast(u32)Controls.StyleField.StyleMotionEasing
+            cast(u32)Controls.StyleField.StyleRadius | cast(u32)Controls.StyleField.StyleBorderWidth |
+            cast(u32)Controls.StyleField.StyleFocus | cast(u32)Controls.StyleField.StyleMaterial |
+            cast(u32)Controls.StyleField.StyleMinHeight | cast(u32)Controls.StyleField.StyleLineHeight |
+            cast(u32)Controls.StyleField.StyleFontRole | cast(u32)Controls.StyleField.StyleMotionDuration |
+            cast(u32)Controls.StyleField.StyleMotionMultiplier |
+            cast(u32)Controls.StyleField.StyleMotionEasing
             rules.items[i].style.font_size = Theme.TypeLabel()
             rules.items[i].style.radius = Theme.ShapeMedium()
             rules.items[i].style.border_width = 1.0
@@ -496,7 +440,7 @@ SystemPaletteRules :: (palette: SystemPalette) -> Sheet.StyleRules {
         card.selector.kind = Sheet.StyleKindCard()
         card.selector.emphasis = variant
         card.style.fields = cast(u32)Controls.StyleField.StyleBackground |
-            cast(u32)Controls.StyleField.StyleBorder
+        cast(u32)Controls.StyleField.StyleBorder
         card.style.background = palette.base
         if variant == cast(s32)Controls.ButtonEmphasis.ButtonEmphasisSoft {
             card.style.background = CssMix(palette.base, palette.selected, 0.08)
@@ -532,28 +476,6 @@ SystemPaletteTokens :: (palette: SystemPalette) {
 // embedded app: the colours it names, the others mixed from them, and the
 // default palette of its mode for the rest. An app that draws from a theme
 // palette uses it to match its host completely.
-SystemPaletteColors :: (palette: SystemPalette) -> Theme.Palette {
-    colors := Theme.DefaultPalette(palette.dark)
-    bg := palette.background; fg := palette.text; accent := palette.selected
-    colors.background = bg; colors.surface = palette.base
-    colors.surface_raised = CssMix(palette.base, fg, 0.05); colors.surface_muted = CssMix(bg, fg, 0.05)
-    colors.surface_sunken = CssMix(bg, cast(u32)0x000000ff, 0.15)
-    colors.foreground = fg; colors.text_secondary = CssMix(fg, bg, 0.25)
-    colors.text_muted = CssMix(fg, bg, 0.4); colors.text_disabled = CssMix(fg, bg, 0.6)
-    colors.icon = fg; colors.icon_muted = colors.text_muted
-    colors.border = palette.border; colors.subtle_border = CssMix(palette.border, bg, 0.5)
-    colors.strong_border = CssMix(palette.border, fg, 0.35)
-    colors.focus = accent; colors.selection = CssMix(bg, accent, 0.3); colors.selection_text = fg
-    colors.accent = accent; colors.accent_strong = CssMix(accent, fg, 0.2)
-    colors.accent_subtle = CssMix(bg, accent, 0.18); colors.on_accent = Theme.OnColor(accent)
-    colors.link = accent; colors.control_on = accent
-    colors.control_track = CssMix(bg, fg, 0.18); colors.control_track_hover = CssMix(bg, fg, 0.24)
-    if (palette.danger & 255) != 0 { colors.danger = palette.danger; colors.on_danger = Theme.OnColor(palette.danger) }
-    if (palette.warning & 255) != 0 { colors.warning = palette.warning; colors.on_warning = Theme.OnColor(palette.warning) }
-    if (palette.success & 255) != 0 { colors.success = palette.success; colors.on_success = Theme.OnColor(palette.success) }
-    return colors
-}
-
 // Installs a system palette as style rules and as the active theme's colours,
 // so widgets and code that draws from CurrentPalette() both match it.
 SystemPaletteApply :: (palette: SystemPalette) -> bool {
@@ -565,23 +487,6 @@ SystemPaletteApply :: (palette: SystemPalette) -> bool {
 
 applied: SystemPalette;
 applied_once: bool;
-default_applied: SystemPalette;
-default_applied_once: bool;
-
-SamePalette :: (left: SystemPalette, right: SystemPalette) -> bool {
-    return left.dark == right.dark && left.background == right.background && left.base == right.base &&
-        left.text == right.text && left.selected == right.selected && left.selected_text == right.selected_text &&
-        left.border == right.border && left.danger == right.danger && left.warning == right.warning && left.success == right.success
-}
-
-// The default palette sits below app stylesheet rules and custom tokens.
-SystemPaletteUpdateDefault :: (fresh: SystemPalette) -> bool {
-    if !Theme.FollowsSystemTheme() || (default_applied_once && SamePalette(fresh, default_applied)) { return false }
-    colors := ifx fresh.found then SystemPaletteColors(fresh) else Theme.DefaultPalette(fresh.dark)
-    if !Theme.ApplySystemTheme(fresh.dark, colors) { return false }
-    default_applied = fresh; default_applied_once = true
-    return true
-}
 
 // Applies fresh the first time and again whenever it differs from the palette
 // applied last; true when it applied. SystemPaletteFollow feeds it each frame.

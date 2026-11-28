@@ -14,10 +14,11 @@ Desktop :: #import "desktop_window";
 #import "frame_driver"
 #import "program_title"
 Timer :: #import "std/timer_linux";
-UiTheme :: #import "theme";
 #if OS == .LINUX {
     Service :: #import "service_linux";
     Theme :: #import "system_theme_host_linux";
+} else #if OS == .WINDOWS {
+    Theme :: #import "system_theme_host_windows";
 }
 
 // --- Bare App.Show window capabilities (zx_window.zi) ---
@@ -76,10 +77,8 @@ bundle_open: bool;
 bundle_frames: s32;
 bundle_input: Session;
 
-BundleHostBackground :: (refresh: bool) -> u32 {
-    unused refresh
-    return UiTheme.CurrentBackground()
-}
+#program_export
+BundleFrameBackgroundHost :: (color: u32) { SetRasterBackgroundColor(color) }
 
 #program_export
 BundleCloseHost :: () {
@@ -131,7 +130,6 @@ ReadBundleInput :: () -> BundleInput {
     }
     key, modifiers := DesktopInputTake(bundle_input)
     BeginDesktopFrame()
-    SetRasterBackground(BundleHostBackground)
     viewport := DesktopViewport()
     pointer := PollPointer()
     secondary := PollSecondaryPointer()

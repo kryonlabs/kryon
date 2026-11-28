@@ -1,0 +1,111 @@
+// Palette values and default theme updates require no stylesheet or widget rules.
+Theme :: #import "theme";
+
+SystemPalette :: struct {
+    // The colors came from the platform palette; otherwise they are built-in.
+    found: bool
+    dark: bool
+    background: u32
+    base: u32
+    text: u32
+    selected: u32
+    selected_text: u32
+    border: u32
+    danger: u32
+    warning: u32
+    success: u32
+}
+
+// Role zero carries found/dark flags (bits 0/1); roles 1..9 carry RGBA colors.
+SystemPaletteHostColor :: (palette: SystemPalette, role: s32) -> u32 {
+    if role == 0 { return cast(u32)palette.found | (cast(u32)palette.dark << cast(u32)1) }
+    if role == 1 { return palette.background }; if role == 2 { return palette.base }
+    if role == 3 { return palette.text }; if role == 4 { return palette.selected }
+    if role == 5 { return palette.selected_text }; if role == 6 { return palette.border }
+    if role == 7 { return palette.danger }; if role == 8 { return palette.warning }
+    if role == 9 { return palette.success }; return 0
+}
+
+CssPack :: (red: s32, green: s32, blue: s32, alpha: s32) -> u32 {
+    return (cast(u32)CssClamp(red) << cast(u32)24) | (cast(u32)CssClamp(green) << cast(u32)16) |
+    (cast(u32)CssClamp(blue) << cast(u32)8) | cast(u32)CssClamp(alpha)
+}
+
+CssClamp :: (value: s32) -> s32 {
+    if value < 0 { return 0 }
+    if value > 255 { return 255 }
+    return value
+}
+
+CssChannel :: (color: u32, shift: u32) -> s32 {
+    return cast(s32)((color >> shift) & cast(u32)255)
+}
+
+CssLuminance :: (color: u32) -> s32 {
+    return (CssChannel(color, cast(u32)24) * 299 + CssChannel(color, cast(u32)16) * 587 +
+        CssChannel(color, cast(u32)8) * 114) / 1000
+}
+
+CssMix :: (first: u32, second: u32, amount: float32) -> u32 {
+    keep: float32 = 1.0 - amount
+    return CssPack(
+        cast(s32)(cast(float32)CssChannel(first, cast(u32)24) * keep + cast(float32)CssChannel(second, cast(u32)24) * amount + 0.5),
+        cast(s32)(cast(float32)CssChannel(first, cast(u32)16) * keep + cast(float32)CssChannel(second, cast(u32)16) * amount + 0.5),
+        cast(s32)(cast(float32)CssChannel(first, cast(u32)8) * keep + cast(float32)CssChannel(second, cast(u32)8) * amount + 0.5),
+        cast(s32)(cast(float32)CssChannel(first, cast(u32)0) * keep + cast(float32)CssChannel(second, cast(u32)0) * amount + 0.5))
+}
+
+#program_export
+SystemPaletteFallback :: (dark: bool) -> SystemPalette {
+    palette: SystemPalette
+    palette.dark = dark
+    colors := Theme.DefaultPalette(dark)
+    palette.background = colors.background; palette.base = colors.surface
+    palette.text = colors.foreground; palette.border = colors.border
+    palette.selected = colors.accent; palette.selected_text = colors.on_accent
+    palette.danger = colors.danger; palette.warning = colors.warning
+    palette.success = colors.success
+    return palette
+}
+
+SystemPaletteColors :: (palette: SystemPalette) -> Theme.Palette {
+    colors := Theme.DefaultPalette(palette.dark)
+    bg := palette.background; fg := palette.text; accent := palette.selected
+    colors.background = bg; colors.surface = palette.base
+    colors.surface_raised = CssMix(palette.base, fg, 0.05); colors.surface_muted = CssMix(bg, fg, 0.05)
+    colors.surface_sunken = CssMix(bg, cast(u32)0x000000ff, 0.15)
+    colors.foreground = fg; colors.text_secondary = CssMix(fg, bg, 0.25)
+    colors.text_muted = CssMix(fg, bg, 0.4); colors.text_disabled = CssMix(fg, bg, 0.6)
+    colors.icon = fg; colors.icon_muted = colors.text_muted
+    colors.border = palette.border; colors.subtle_border = CssMix(palette.border, bg, 0.5)
+    colors.strong_border = CssMix(palette.border, fg, 0.35)
+    colors.focus = accent; colors.selection = CssMix(bg, accent, 0.3); colors.selection_text = fg
+    colors.accent = accent; colors.accent_strong = CssMix(accent, fg, 0.2)
+    colors.accent_subtle = CssMix(bg, accent, 0.18); colors.on_accent = Theme.OnColor(accent)
+    colors.link = accent; colors.control_on = accent
+    colors.control_track = CssMix(bg, fg, 0.18); colors.control_track_hover = CssMix(bg, fg, 0.24)
+    if (palette.danger & 255) != 0 { colors.danger = palette.danger; colors.on_danger = Theme.OnColor(palette.danger) }
+    if (palette.warning & 255) != 0 { colors.warning = palette.warning; colors.on_warning = Theme.OnColor(palette.warning) }
+    if (palette.success & 255) != 0 { colors.success = palette.success; colors.on_success = Theme.OnColor(palette.success) }
+    return colors
+}
+
+SamePalette :: (left: SystemPalette, right: SystemPalette) -> bool {
+    return left.found == right.found && left.dark == right.dark && left.background == right.background && left.base == right.base &&
+    left.text == right.text && left.selected == right.selected && left.selected_text == right.selected_text &&
+    left.border == right.border && left.danger == right.danger && left.warning == right.warning && left.success == right.success
+}
+
+#scope_file
+default_applied: SystemPalette;
+default_applied_once: bool;
+#scope_export
+
+// The system default stays below application palettes and stylesheet tokens.
+SystemPaletteUpdateDefault :: (fresh: SystemPalette) -> bool {
+    if !Theme.FollowsSystemTheme() || (default_applied_once && SamePalette(fresh, default_applied)) { return false }
+    colors := ifx fresh.found then SystemPaletteColors(fresh) else Theme.DefaultPalette(fresh.dark)
+    if !Theme.ApplySystemTheme(fresh.dark, colors) { return false }
+    default_applied = fresh; default_applied_once = true
+    return true
+}

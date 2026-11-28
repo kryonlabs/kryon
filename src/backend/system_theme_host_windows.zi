@@ -1,0 +1,26 @@
+// Read the operating system's actual window, text and selection colors.
+using Palette :: #import "system_palette"
+#scope_file
+user :: #system_library "user32";
+SystemColor :: (index: s32) -> u32 #foreign user "GetSysColor";
+
+Color :: (index: s32) -> u32 {
+    value := SystemColor(index)
+    return ((value & cast(u32)255) << cast(u32)24) |
+    ((value & cast(u32)65280) << cast(u32)8) |
+    ((value & cast(u32)16711680) >> cast(u32)8) | cast(u32)255
+}
+#scope_export
+SystemPaletteRead :: () -> SystemPalette {
+    background := Color(15)
+    palette := SystemPaletteFallback(CssLuminance(background) < 128)
+    palette.found = true
+    palette.background = background; palette.base = Color(5); palette.text = Color(8)
+    palette.selected = Color(13); palette.selected_text = Color(14); palette.border = Color(16)
+    return palette
+}
+
+#program_export
+SystemThemeColorHost :: (role: s32) -> u32 {
+    return SystemPaletteHostColor(SystemPaletteRead(), role)
+}

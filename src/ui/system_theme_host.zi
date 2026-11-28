@@ -1,19 +1,8 @@
-// Portable applications read their supervising host's palette through the
-// same capability as native applications. Reading role zero refreshes it.
-using Theme :: #import "system_theme"
-host_api :: #system_library "host_api";
-SystemThemeColorHost :: (role: s32) -> u32 #foreign host_api;
-SystemPaletteRead :: () -> SystemPalette {
-    unused SystemThemeColorHost(0)
-    palette: SystemPalette
-    palette.found = true
-    palette.background = SystemThemeColorHost(1); palette.base = SystemThemeColorHost(2)
-    palette.text = SystemThemeColorHost(3); palette.selected = SystemThemeColorHost(4)
-    palette.selected_text = SystemThemeColorHost(5); palette.border = SystemThemeColorHost(6)
-    palette.danger = SystemThemeColorHost(7); palette.warning = SystemThemeColorHost(8); palette.success = SystemThemeColorHost(9)
-    palette.dark = CssLuminance(palette.background) < 128
-    return palette
-}
+// Explicit system styling remains opt-in; automatic frame defaults read only
+// the small palette capability and never import stylesheet installation.
+using Host :: #import "system_palette_host"
+System :: #import "system_theme";
+
 // Applies the host's palette as style rules and theme colours the first time
 // and again whenever it changes; true when it applied. Call it once per frame.
-SystemPaletteFollow :: () -> bool { return SystemPaletteUpdate(SystemPaletteRead()) }
+SystemPaletteFollow :: () -> bool { return System.SystemPaletteUpdate(SystemPaletteRead()) }

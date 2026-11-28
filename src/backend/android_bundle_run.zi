@@ -35,6 +35,7 @@
 App :: #import "bundle_app";
 Player :: #import "bundle_player";
 Clock :: #import "std/timer_linux";
+ThemeHost :: #import "system_theme_host_android";
 Components :: #import "component_frame_slot";
 
 AndroidBundleHost :: struct {
@@ -76,6 +77,18 @@ AndroidBundlePlatform :: (context: *void, module: *u8, function: *u8,
     host := cast(*AndroidBundleHost)context
     if AndroidBundleMediaCall(*host.media, TextFromCString(module), name,
         arguments, count, result, host.media_slot) == 1 { return 1 }
+    if Player.ModuleName(TextFromCString(module), "system_palette_host") && name == "SystemThemeColorHost" && count == 1 {
+        result.kind = cast(s32)HostValueKind.HostUnsigned
+        result.bits = cast(u64)ThemeHost.SystemThemeColorHost(cast(s32)arguments[0].integer)
+        return 1
+    }
+    if Player.ModuleName(TextFromCString(module), "frames_zx") && name == "BundleFrameBackgroundHost" && count == 1 {
+        viewport: AndroidViewport
+        SyncAndroidViewport(*viewport)
+        color := cast(u32)arguments[0].bits
+        ClearAndroidFrame(viewport, (color >> cast(u32)8) | (color << cast(u32)24))
+        return 1
+    }
     if Player.ModuleName(TextFromCString(module), "clock") &&
     name == "ClockMillisecondsHost" && count == 0 {
         result.* = HostScalar("s64", Clock.MonotonicMilliseconds())
@@ -293,7 +306,7 @@ AndroidBundleWait :: (context: *void, input: *Player.Input) -> bool {
         host.quiet_frames = ifx host.frame_reuse then host.quiet_frames + 1 else 0
         host.reuse = true
         host.next_frame_ms = Clock.MonotonicMilliseconds() +
-            ifx host.quiet_frames >= 2 then cast(s64)100 else cast(s64)16
+        ifx host.quiet_frames >= 2 then cast(s64)100 else cast(s64)16
         if !AndroidBundleFrameEnd(host, session) { return false }
     }
     width: s32
@@ -347,12 +360,11 @@ AndroidBundleWait :: (context: *void, input: *Player.Input) -> bool {
         cast(float32)viewport.y / zoom, cast(float32)viewport.width / zoom,
         cast(float32)viewport.height / zoom}
     if !AndroidNativeEnsurePixels(viewport.x + viewport.width,
-    viewport.y + viewport.height) || !PixmapScale(zoom, zoom) ||
+        viewport.y + viewport.height) || !PixmapScale(zoom, zoom) ||
     !PixmapResumeInto(viewport.x + viewport.width, viewport.y + viewport.height,
-    AndroidNativePixels(), true) { AndroidNativeLog("Android pixmap surface failed"); return false }
-    // These VM frames replay their paint; the caller clears their canvas.
+        AndroidNativePixels(), true) { AndroidNativeLog("Android pixmap surface failed"); return false }
+    // The guest sends its resolved canvas before its queued paint is replayed.
     AndroidNativeFill(cast(u32)0xff000000)
-    ClearAndroidFrame(viewport, cast(u32)0xfff8fafc)
     AndroidBundleMediaTick(*host.media, host.media_slot)
     AndroidTextInputBeginFrame(session)
     if !AndroidTouchFrameInputBegin(session, zoom) {
@@ -446,7 +458,7 @@ AndroidBundleRunHosted :: (input_session: Session) -> s32 {
         active := *android_bundle_hosts[android_bundle_active]
         session := active.app.app.session
         paused := AndroidNativePaused() || !AndroidNativeWindowReady() ||
-            !AndroidNativeSurfaceSize(*width, *height)
+        !AndroidNativeSurfaceSize(*width, *height)
         if paused {
             if !was_paused && active.media.state == 2 {
                 AndroidBundleMediaPausePlayback(*active.media)
@@ -487,7 +499,7 @@ AndroidBundleRunHosted :: (input_session: Session) -> s32 {
         if reuse { quiet_frames += 1 } else { quiet_frames = 0 }
         reuse = true
         next_frame_ms = Clock.MonotonicMilliseconds() +
-            ifx quiet_frames >= 2 then cast(s64)100 else cast(s64)16
+        ifx quiet_frames >= 2 then cast(s64)100 else cast(s64)16
     }
     active := *android_bundle_hosts[android_bundle_active]
     return ifx ok && !active.player.failed then 0 else 1

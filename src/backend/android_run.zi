@@ -42,6 +42,10 @@
     using FrameStatus;
 
     App :: #import "app_types";
+    System :: #import "system_palette";
+    ThemeHost :: #import "system_theme_host_android";
+    FrameTheme :: #import "frame_theme";
+    android_last_canvas: u32;
 
     android_log :: #system_library "log";
     AndroidLogWrite :: (priority: s32, tag: *u8, text: *u8) -> s32 #foreign android_log "__android_log_write";
@@ -80,9 +84,8 @@
     }
 
     AndroidCanvas :: () -> u32 {
-        canvas := StyleTokenColorOr("canvas", Color.{248, 250, 252, 255})
-        return (cast(u32)canvas.a << 24) | (cast(u32)canvas.r << 16) |
-        (cast(u32)canvas.g << 8) | cast(u32)canvas.b
+        color := FrameTheme.FrameThemeBackground()
+        return (color >> cast(u32)8) | (color << cast(u32)24)
     }
 
     AndroidFrameFailure :: (session: Session, step: string) {
@@ -123,6 +126,7 @@
     DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
         bounds: Rectangle, zoom: float32, reuse: bool, paint_unchanged: *bool = null,
         surface_presented: *bool = null) -> bool {
+        unused System.SystemPaletteUpdateDefault(ThemeHost.SystemPaletteRead())
         width := viewport.x + viewport.width
         height := viewport.y + viewport.height
         if !AndroidNativeSurfaceSize(*width, *height) { return false }
@@ -142,7 +146,7 @@
         }
         if !window {
             if !PixmapScale(zoom, zoom) ||
-                !PixmapResumeInto(width, height, pixels, true) { return false }
+            !PixmapResumeInto(width, height, pixels, true) { return false }
         }
 
         ok: bool = true
@@ -178,6 +182,9 @@
                 unused StyleStructuralProbeFrame(session, cast(u64)1, bounds,
                     AndroidProbeDraw)
                 App.CallDraw(active_draw, session.slot, session.epoch, bounds)
+                canvas := AndroidCanvas()
+                reuse = reuse && canvas == android_last_canvas
+                android_last_canvas = canvas
                 // Compose against the last presented pixels; route changes
                 // may capture them before the queued paint replaces them.
                 if !reuse {

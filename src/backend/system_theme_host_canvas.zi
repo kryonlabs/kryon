@@ -1,0 +1,16 @@
+// Browser system preference is read by the host, never guessed by the guest.
+using Palette :: #import "system_palette"
+#import "std/web"
+
+SystemPaletteRead :: () -> SystemPalette {
+    scope := WebScope()
+    media := WebAsObject(WebCall1(WebGlobal, WebName("matchMedia"),
+        WebText("(prefers-color-scheme: dark)")))
+    dark := media != 0 && WebAsBool(WebGet(media, WebName("matches")))
+    WebEnd(scope)
+    return SystemPaletteFallback(dark)
+}
+
+SystemThemeColorHost :: (role: s32) -> u32 {
+    return SystemPaletteHostColor(SystemPaletteRead(), role)
+}

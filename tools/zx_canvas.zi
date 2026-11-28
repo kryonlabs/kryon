@@ -2,6 +2,8 @@
 using Host :: #import "Canvas";
 using Render :: #import "canvas_raster";
 CanvasWindow :: #import "canvas_window";
+Frame :: #import "canvas_frame";
+ThemeHost :: #import "system_theme_host_canvas";
 Player :: #import "bundle_player";
 WindowBundles :: #import "zx_window_bundle";
 WindowPage :: #import "window_page_player";
@@ -173,6 +175,15 @@ ClosePicker :: () {
 PlatformCall :: (context: *void, module: *u8, function: *u8,
     arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
     name := TextFromCString(function)
+    if Player.ModuleName(TextFromCString(module), "system_palette_host") && name == "SystemThemeColorHost" && count == 1 {
+        result.kind = HostUnsigned
+        result.bits = cast(u64)ThemeHost.SystemThemeColorHost(cast(s32)arguments[0].integer)
+        return 1
+    }
+    if Player.ModuleName(TextFromCString(module), "frames_zx") && name == "BundleFrameBackgroundHost" && count == 1 {
+        Frame.CanvasFrameBackground(ColorFromPacked(cast(u32)arguments[0].bits))
+        return 1
+    }
     if name == "BundleFrameCursorHost" && count == 7 {
         props := Cursor.CursorProps.{TextFromBytes(BytesFromPointer(arguments[1].data, cast(u64)arguments[1].length)),
             cast(s32)arguments[2].integer, cast(s32)arguments[3].integer,

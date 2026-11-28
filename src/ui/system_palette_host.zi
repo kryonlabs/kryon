@@ -1,0 +1,16 @@
+// Portable applications read their supervising host's palette through the
+// same capability as native applications. Reading role zero refreshes it.
+using Palette :: #import "system_palette"
+host_api :: #system_library "host_api";
+SystemThemeColorHost :: (role: s32) -> u32 #foreign host_api;
+SystemPaletteRead :: () -> SystemPalette {
+    flags := SystemThemeColorHost(0)
+    palette: SystemPalette
+    palette.found = (flags & cast(u32)1) != 0
+    palette.background = SystemThemeColorHost(1); palette.base = SystemThemeColorHost(2)
+    palette.text = SystemThemeColorHost(3); palette.selected = SystemThemeColorHost(4)
+    palette.selected_text = SystemThemeColorHost(5); palette.border = SystemThemeColorHost(6)
+    palette.danger = SystemThemeColorHost(7); palette.warning = SystemThemeColorHost(8); palette.success = SystemThemeColorHost(9)
+    palette.dark = (flags & cast(u32)2) != 0
+    return palette
+}

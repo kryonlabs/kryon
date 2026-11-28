@@ -54,11 +54,11 @@ Player :: struct {
 Supported :: (module: string, function: string) -> bool {
     if ModuleName(module, "frames_zx") {
         return function == "BundleWindowHost" || function == "ReadBundleInput" ||
-            function == "TakeBundleCodepoint" || function == "BundleTextInputHost" ||
-            function == "BundleFrameFinishedHost" || function == "BundleFrameCursorHost" ||
-            function == "BundleFrameReusableHost" || function == "BundleTextEditorHost" ||
-            function == "BundleTextRequestHost"
-            || function == "BundleWakeAtHost" || function == "BundleCloseHost"
+        function == "TakeBundleCodepoint" || function == "BundleTextInputHost" ||
+        function == "BundleFrameFinishedHost" || function == "BundleFrameCursorHost" ||
+        function == "BundleFrameReusableHost" || function == "BundleFrameBackgroundHost" || function == "BundleTextEditorHost" ||
+        function == "BundleTextRequestHost"
+        || function == "BundleWakeAtHost" || function == "BundleCloseHost"
     }
     if ModuleName(module,"font_metrics") { return function=="MeasureGlyphWidth" || function=="MeasureGlyphLineHeight" }
     if ModuleName(module,"raster_text") { return function=="RasterText" || function=="RasterTextClipped" || function=="RasterTextRotated" }
@@ -70,10 +70,11 @@ Supported :: (module: string, function: string) -> bool {
     if ModuleName(module,"cursor_picture") { return function=="CursorPictureHost" }
     if ModuleName(module,"system_clipboard") {
         return function=="SystemClipboardOpenHost" || function=="SystemClipboardByteHost" || function=="SystemClipboardWriteHost" ||
-            function=="SystemPrimaryOpenHost" || function=="SystemPrimaryByteHost" || function=="SystemPrimaryWriteHost"
+        function=="SystemPrimaryOpenHost" || function=="SystemPrimaryByteHost" || function=="SystemPrimaryWriteHost"
     }
     if ModuleName(module,"window") { return function=="WindowSetVisibleHost" || function=="WindowVisibleHost" || function=="WindowFocusedHost" || function=="WindowInterceptCloseHost" || function=="WindowTakeCloseRequestHost" || function=="WindowQuitHost" || function=="WindowCompactHost" || function=="WindowBackgroundHost" || function=="WindowBackgroundDragHost" }
     if ModuleName(module,"media") { return function=="MediaOpenHost" || function=="MediaPauseHost" || function=="MediaStopHost" || function=="MediaStateHost" || function=="MediaMessageHost" || function=="FetchTextHost" || function=="FetchTextStateHost" || function=="FetchTextResultHost" }
+    if ModuleName(module,"system_palette_host") { return function == "SystemThemeColorHost" }
     if ModuleName(module,"clock") { return function == "ClockMillisecondsHost" }
     return false
 }
@@ -86,6 +87,16 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     args: *HostValue, count: s32, result: *HostValue) -> s32 {
     player:=cast(*Player)context; module:=TextFromCString(module_name); function:=TextFromCString(function_name)
     if !Supported(module,function) { return 0 }; result.kind = HostVoid
+    if function == "SystemThemeColorHost" {
+        if count != 1 || !HostScalarValid(args[0], "s32", HostInteger) ||
+        args[0].integer < 0 || args[0].integer > 9 { return 0 }
+        if player.platform == null { return 0 }
+        return player.platform(player.context, module_name, function_name, args, count, result)
+    }
+    if function == "BundleFrameBackgroundHost" {
+        if count != 1 || !HostScalarValid(args[0], "u32", HostUnsigned) || player.platform == null { return 0 }
+        return player.platform(player.context, module_name, function_name, args, count, result)
+    }
     if function == "CursorPictureHost" {
         if count != 5 { return 0 }
         result.kind = HostInteger
@@ -123,11 +134,11 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
             request = player.editor_request(player.editor_context, args[0].bits, player.editor_request_bytes[:])
         }
         if request.pending && (!request.replace || request.value.count > 65536 || !Utf8.Valid(request.value) ||
-        request.cursor < 0 || request.anchor < 0 || request.cursor > request.value.count || request.anchor > request.value.count ||
-        Grapheme.Boundary(request.value, request.cursor) != request.cursor ||
-        Grapheme.Boundary(request.value, request.anchor) != request.anchor) { return 0 }
+            request.cursor < 0 || request.anchor < 0 || request.cursor > request.value.count || request.anchor > request.value.count ||
+            Grapheme.Boundary(request.value, request.cursor) != request.cursor ||
+            Grapheme.Boundary(request.value, request.anchor) != request.anchor) { return 0 }
         player.editor_fields[0] = HostField.{HostTextData("value"), HostValue.{.kind = HostString,
-            .type_name = HostTextData("string"), .data = HostTextData(request.value), .length = cast(usize)request.value.count}}
+                .type_name = HostTextData("string"), .data = HostTextData(request.value), .length = cast(usize)request.value.count}}
         player.editor_fields[1] = HostField.{HostTextData("cursor"), HostScalar("s32", cast(s64)request.cursor)}
         player.editor_fields[2] = HostField.{HostTextData("anchor"), HostScalar("s32", cast(s64)request.anchor)}
         player.editor_fields[3] = HostField.{HostTextData("replace"), HostScalar("bool", cast(s64)request.replace)}

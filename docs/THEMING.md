@@ -1,15 +1,23 @@
 # Theme customization
 
-Linux desktop frame applications follow the system palette by default. The
-host reads the palette before the first frame and refreshes it while the app
-is open. It uses the containing host's palette when embedded, or the configured
-GTK palette on a standalone window. When the palette cannot be read, Kryon
-uses its built-in colors for the detected light or dark mode.
+Native and portable frame applications follow the system palette by default.
+They read it before drawing and refresh it while the app is open. Linux reads
+the containing host's palette when embedded, or the configured GTK palette in
+a standalone window. Windows reads system window colors. Canvas reads the
+browser's color-scheme preference, and Android reads the current night mode.
+When platform colors are unavailable, Kryon uses its built-in colors for the
+detected light or dark mode.
+
+The application resolves the frame's background from its current palette and
+optional `canvas` style token after composing the frame. Portable hosts use
+that application-resolved color when clearing the canvas. Palette changes
+invalidate a retained frame, so live theme changes also update empty areas.
 
 Import `kryon/Theme` for theme tokens. `InstallDefaultTheme(dark)` installs
 the default palette, metrics, fonts, shadows and motion. `SetThemeMode(dark)`
 changes the palette and keeps installed metrics, fonts and motion settings.
-Both calls select an explicit mode for the app. `SetThemeMode` resets palette
+Both calls select an explicit mode for the app and stop automatic system
+palette updates. `SetThemeMode` resets palette
 colors when changing modes, so reapply custom accents afterward.
 
 Use `WithAccent(theme, accent, on_accent, accent_strong, accent_subtle)` and
@@ -28,5 +36,7 @@ remaining browser-only features are listed in [HTML_TO_KRYON.md](HTML_TO_KRYON.m
 Plain `Text.Draw` uses the built-in foreground and accent without importing the
 full theme. Installing a theme through `kryon/Theme` connects its current
 colors automatically; subsequent theme changes apply to labels and links.
-Stylesheets install their text resolver and tree selector matcher when used;
+The frame loop imports palette values and host capabilities without importing
+stylesheet rules. Stylesheets install their text resolver and tree selector
+matcher when used;
 motion installs its sampler independently. The public `Text.Draw` call stays the same in each case.

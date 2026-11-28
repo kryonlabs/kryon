@@ -1,0 +1,15 @@
+// NativeActivity's configuration follows the device's current light/dark mode.
+using Palette :: #import "system_palette"
+Native :: #import "android_native";
+android :: #system_library "android";
+ConfigurationNight :: (configuration: *void) -> s32 #foreign android "AConfiguration_getUiModeNight";
+
+SystemPaletteRead :: () -> SystemPalette {
+    app := Native.AndroidNativeApp()
+    dark := app != null && app.configuration != null && ConfigurationNight(app.configuration) == 2
+    return SystemPaletteFallback(dark)
+}
+
+SystemThemeColorHost :: (role: s32) -> u32 {
+    return SystemPaletteHostColor(SystemPaletteRead(), role)
+}
