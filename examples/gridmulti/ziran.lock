@@ -65,12 +65,12 @@
       "url": "https://github.com/xiph/opus.git"
     },
     {
-      "commit": "e2b0fbd89167f9bf599efed1865f198ba715786e",
+      "commit": "0724d828113af5fba018c66103e6566ed733750e",
       "dependencies": {"audio": "waozi_xyz_ziranlang_audio_b5c6b56b7117", "avif": "waozi_xyz_ziranlang_avif_6ff696d436b6", "image_codec": "waozi_xyz_ziranlang_image_codec_3017f0d1cc56", "libaom": "src_aomedia_googlesource_com_aom_b141d9c45db2", "libavif": "src_github_com_AOMediaCodec_libavif_1aadfad932c9", "libwebp": "src_github_com_webmproject_libwebp_1844042d1ca7", "sdl3": "src_github_com_libsdl_org_SDL_829a65d769d9", "webp": "waozi_xyz_ziranlang_webp_4b9a61d32460"},
       "dependency_refs": {"audio": "b5c6b56b71172c4361ae01e3afdd2118bdac0975", "avif": "6ff696d436b6b4f142eb1e3ecf210de7adfa048f", "image_codec": "3017f0d1cc56975aa29c600a1f55a62e1193cf7b", "libaom": "b141d9c45db236335351c8a4b2a14b3ade27c937", "libavif": "1aadfad932c98c069a1204261b1856f81f3bc199", "libwebp": "1844042d1ca751e62e61df7617dba19c98588339", "sdl3": "829a65d769d935c4852f8159e964312c0957260a", "webp": "4b9a61d32460d481624fe0f83996a7de50327dfe"},
-      "id": "waozi_xyz_kryonlabs_kryon_e2b0fbd89167",
+      "id": "waozi_xyz_kryonlabs_kryon_0724d828113a",
       "name": "kryon",
-      "ref": "master",
+      "ref": "0724d828113af5fba018c66103e6566ed733750e",
       "url": "https://git.waozi.xyz/kryonlabs/kryon.git"
     },
     {
@@ -119,13 +119,13 @@
     }
   ],
   "root": {
-    "dependencies": {"kryon": "waozi_xyz_kryonlabs_kryon_e2b0fbd89167"},
-    "dependency_refs": {"kryon": "master"},
+    "dependencies": {"kryon": "waozi_xyz_kryonlabs_kryon_0724d828113a"},
+    "dependency_refs": {"kryon": "0724d828113af5fba018c66103e6566ed733750e"},
     "name": "gridmulti"
   },
   "toolchain": {
-    "commit": "84c42c76a63b022fa9355148c4213d9032b7eeff",
-    "ref": "84c42c76a63b022fa9355148c4213d9032b7eeff",
+    "commit": "fe57aa00fe91541afd347d3be0aad7fcf8d3044f",
+    "ref": "fe57aa00fe91541afd347d3be0aad7fcf8d3044f",
     "url": "https://git.waozi.xyz/ziranlang/ziran.git"
   }
 }

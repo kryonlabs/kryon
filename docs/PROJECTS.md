@@ -50,11 +50,11 @@ tool = "kryon"
 
 [toolchain]
 git = "https://git.waozi.xyz/ziranlang/ziran.git"
-ref = "84c42c76a63b022fa9355148c4213d9032b7eeff"
+ref = "fe57aa00fe91541afd347d3be0aad7fcf8d3044f"
 
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
-ref = "628b8846cb6e9fbbb99d08a72f421ca880b75f2d"
+ref = "0724d828113af5fba018c66103e6566ed733750e"
 
 [tool.kryon]
 default_profile = "desktop"

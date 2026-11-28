@@ -3,15 +3,15 @@
 // [toolchain] floats on a branch (`ziran new` writes "master") this pin,
 // and keeps a project's own exact commit.
 KryonZiranGit :: "https://git.waozi.xyz/ziranlang/ziran.git";
-KryonZiranRef :: "84c42c76a63b022fa9355148c4213d9032b7eeff";
+KryonZiranRef :: "fe57aa00fe91541afd347d3be0aad7fcf8d3044f";
 
 // The Kryon and CSS the app template pins with that Ziran. A CSS package is
 // built on one Kryon, so an app pins the same one; `kryon upgrade` moves an
 // app to this set.
 KryonGit :: "https://git.waozi.xyz/kryonlabs/kryon.git";
-KryonRef :: "628b8846cb6e9fbbb99d08a72f421ca880b75f2d";
+KryonRef :: "0724d828113af5fba018c66103e6566ed733750e";
 KryonCssGit :: "https://git.waozi.xyz/kryonlabs/css.git";
-KryonCssRef :: "5d62effb43736195e2787a2fea9958e1201140f6";
+KryonCssRef :: "f5ee1580d78fe4453d5b8202396a3e0132fcdda3";
 
 // A manifest table's git and ref, as `kryon init` and `kryon upgrade` set them.
 TablePin :: struct {

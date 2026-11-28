@@ -3,12 +3,7 @@ import { Session } from "kryon/session";
 import { StyleData } from "kryon/style";
 import { End } from "kryon/tree";
 import { Scoped } from "std/callable";
-
-export interface LayoutProps {
-    session: Session;
-    props: NativeLayout.Props;
-    children: Scoped<() => void>;
-}
+import { LayoutProps } from "kryon/tsx/group";
 
 export interface MeasuredLayoutProps {
     session: Session;
@@ -76,26 +71,8 @@ export function Stack(layout: LayoutProps): NativeLayout.LayoutContainer {
     return result;
 }
 
-export function Group(layout: LayoutProps): NativeLayout.LayoutContainer {
-    const result = NativeLayout.Group(layout.session, layout.props);
-    if (result.opened) {
-        layout.children();
-        End(layout.session);
-    }
-    return result;
-}
-
 export function ResolvedStack(layout: ResolvedLayoutProps): NativeLayout.LayoutContainer {
     const result = NativeLayout.Stack(layout.session, layout.props);
-    if (result.opened) {
-        layout.children(result);
-        End(layout.session);
-    }
-    return result;
-}
-
-export function ResolvedGroup(layout: ResolvedLayoutProps): NativeLayout.LayoutContainer {
-    const result = NativeLayout.Group(layout.session, layout.props);
     if (result.opened) {
         layout.children(result);
         End(layout.session);

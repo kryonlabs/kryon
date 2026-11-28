@@ -39,6 +39,11 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
+- Export Group independently through `kryon/tsx/group`, so hosted applications
+  compose the same native container without importing unavailable local layout
+  operations. Keep the complete `kryon/tsx/layout` surface as ordinary module
+  exports of the same component implementations.
+
 - Retain tiled-atlas filtering working sets without cycling between sharp and
   fallback samples; expand entry and pixmap-copy slots while preserving the
   existing global and per-session memory budgets.
@@ -76,8 +81,8 @@ The earlier layout changes also apply:
   time-picker demo in TSX. Keep native state, plotting, scheduling and
   capture/input harnesses in Ziran; use the existing behavior checks.
 
-- Align the root, examples and all four starters with Ziran 84c42c76, and the
-  app generator and upgrade defaults with Kryon 628b8846 and CSS 5d62effb.
+- Align the root, examples and all four starters with Ziran fe57aa00, and the
+  app generator and upgrade defaults with Kryon 0724d828 and CSS f5ee1580.
   Check generated TSX entries and the supported desktop screenshot route;
   remove the obsolete shot-profile invocation and redundant starter source check.
 - Run byte-identical source/saved portable bundles once in the scene and
