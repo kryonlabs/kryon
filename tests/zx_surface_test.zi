@@ -172,7 +172,7 @@ Call :: (context: *void, module: *u8, function: *u8, args: *HostValue, count: s3
         host.cursor += 1
         return 1
     }
-    if name == "Close" && count == 0 {
+    if name == "CloseHost" && count == 0 {
         host.closed = true
         reply.kind = HostVoid
         return 1
@@ -209,7 +209,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
             if !Names.ModuleName(source, "hosted_surface_state") { return 4 }
         } else if !Names.ModuleName(source, "zx_surface") { return 4 }
         if function == "Event" { host.event_type = abi.return_type }
-        else if function != "Open" && function != "Close" &&
+        else if function != "Open" && function != "CloseHost" &&
             function != (ifx rows then "PresentRows" else "Present") { return 5 }
         bindings[index] = .{abi.module, abi.function, Call, cast(*void)*host}
     }

@@ -50,7 +50,18 @@ Open :: (title: string, width: s32, height: s32) -> bool #reads #foreign host_ap
 Event :: (wait_ms: s32) -> SurfaceEvent #foreign host_api;
 // RGBA8, top down, tightly packed. The host consumes the bytes during the call.
 Present :: (width: s32, height: s32, rgba: string) -> bool #reads #foreign host_api;
-Close :: () #foreign host_api;
+// Close is a request, not a bare host call: setting the flag lets the loop
+// finish the frame, skip the commit/present of a dying surface, and clean up
+// exactly once. The host capability symbol is the declared CloseHost name;
+// host capability symbols cannot carry an ABI rename.
+close_requested: bool;
+CloseHost :: () #foreign host_api;
+Close :: () {
+    if !close_requested {
+        close_requested = true
+        CloseHost()
+    }
+}
 
 // Consume full-width, tightly packed opaque RGBA8 rows synchronously. The
 // buffer is borrowed for the call. first is the zero-based row in the surface.
@@ -310,6 +321,7 @@ SurfaceFrameRetained :: (session: Session, draw: Draw, width: s32, height: s32,
     if !SurfaceBeginInput(session, input) { return false }
     defer FrameInputEnd(session)
     if !SurfaceCompose(session, draw, width, height) { return false }
+    if close_requested { return true }
     if SurfaceCommit(session, width, height, pixels, rgba, paint, present, refresh, output) { return true }
     // A rejected strip can leave the host with a partially updated surface.
     // Force complete reconstruction if a direct caller tries another frame.
@@ -386,13 +398,15 @@ SurfaceRenderFull :: (composition: *SurfaceComposition, width: s32, height: s32,
     input: FrameInputSnapshot, pixels: []u32, rgba: []u8, paint: *SurfacePaint, refresh: bool) -> bool {
     unused paint
     unused refresh
-    return SurfaceFrame(composition.session, composition.draw, width, height, input, pixels) &&
-    SurfacePresent(width, height, pixels, rgba)
+    if !SurfaceFrame(composition.session, composition.draw, width, height, input, pixels) { return false }
+    if close_requested { return true }
+    return SurfacePresent(width, height, pixels, rgba)
 }
 
 SurfaceRenderRetained :: (composition: *SurfaceComposition, width: s32, height: s32,
     input: FrameInputSnapshot, pixels: []u32, rgba: []u8, paint: *SurfacePaint, refresh: bool) -> bool {
     if !SurfaceFrameInto(composition.session, composition.draw, width, height, input, pixels, rgba, paint) { return false }
+    if close_requested { return true }
     if !refresh && (paint.damage.width <= 0.0 || paint.damage.height <= 0.0) { return true }
     return Present(width, height, TextView(rgba))
 }
@@ -454,6 +468,7 @@ SurfaceLoop :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRende
     dispose: SurfaceDispose = SurfaceDisposeNone) -> s32 {
     width := ifx window.width > 0 then window.width else 960
     height := ifx window.height > 0 then window.height else 600
+    close_requested = false
     if !SurfaceDimensionsValid(width, height) || (allocate_surface && !SurfaceSizeValid(width, height)) ||
     !Open(window.title, width, height) { return 1 }
     defer Close()
@@ -529,6 +544,7 @@ SurfaceLoop :: (window: Window, draw: Draw, idle_ms: s32, renderer: SurfaceRende
             input.sequence += cast(u64)1
             if !renderer(*composition, width, height, input, pixels[:], rgba[:], *paint,
                 event.kind == Redraw || event.kind == Resized) { return 1 }
+            if close_requested { return 0 }
             input.pointer.pressed = false
             input.pointer.released = false
             input.secondary.pressed = false

@@ -132,6 +132,7 @@ Render :: (composition: *Surface.SurfaceComposition, width: s32, height: s32,
     if !Surface.SurfaceBeginInput(session, input) { return false }
     defer FrameInputEnd(session)
     if !Surface.SurfaceCompose(session, composition.draw, width, height) { return false }
+    if Surface.close_requested { return true }
     slot := SessionIndex(session)
     retained := SessionFlagGet(frame_retained, slot)
     if CommitFrame(session) != cast(FrameStatus)FrameOk { return false }
