@@ -60,31 +60,35 @@ main :: () -> s32 {
     app.window = cast(*void)cast(usize)1
     Native.android_native_app = *app
     if !Native.AndroidNativeEnsurePixels(48, 36) { return 1 }
-    pixels := Native.AndroidNativePixels()
+    Native.AndroidNativeSetSafeBounds(48, 36, 2, 3, 45, 32)
     session := SessionOpen()
     if !SessionValid(session) { return 2 }
     for at: 0..1799 { window[at] = cast(u32)0xdeadbeef }
     for frame: 0..1 {
-        if !PixmapScale(1.5, 1.5) || !PixmapResumeInto(48, 36, pixels, true) { return 3 }
+        if !PixmapScale(1.5, 1.5) || !PixmapResumeInto(48, 36, Native.AndroidNativePixels(), true) { return 3 }
         Compose(session, frame == 1)
         result := EndPixmapFrame(session, frame != 0, cast(u32)0xff102030, true)
         PixmapEndInto()
         if result.status != cast(FrameStatus)FrameOk || result.paint_unchanged { return 4 }
         if frame == 1 && (result.damage.x < 1.0 || result.damage.width >= 48.0) { return 5 }
+        before: [1728]u32
+        for at: 0..1727 { before[at] = Native.AndroidNativePixels()[at] }
         if !Host.AndroidPresentPixmap(result.damage, 48, 36, 1.5) { return 6 }
         if frame == 1 && (requested.left != cast(s32)result.damage.x || requested.top != cast(s32)result.damage.y ||
             requested.right != cast(s32)(result.damage.x + result.damage.width) ||
             requested.bottom != cast(s32)(result.damage.y + result.damage.height)) { return 7 }
         for y: 0..35 {
             for x: 0..47 {
-                pixel := pixels[y * 48 + x]
+                pixel := Native.AndroidNativePixels()[y * 48 + x]
+                if pixel != before[y * 48 + x] { return 11 }
                 rgba := (pixel & cast(u32)0xff00ff00) | ((pixel & cast(u32)255) << 16) | ((pixel >> 16) & cast(u32)255)
+                if x < 2 || x >= 45 || y < 3 || y >= 32 { rgba = cast(u32)0xff000000 }
                 if window[y * 50 + x] != rgba { return 8 }
             }
             if window[y * 50 + 48] != cast(u32)0xdeadbeef || window[y * 50 + 49] != cast(u32)0xdeadbeef { return 9 }
         }
     }
     if posts != 2 { return 10 }
-    print("Android presentation: density 1.5 retained-frame damage copied once in device pixels with intact stride padding\n")
+    print("Android presentation: density 1.5 retained-frame damage with black system insets, intact backing pixels and stride padding\n")
     return 0
 }

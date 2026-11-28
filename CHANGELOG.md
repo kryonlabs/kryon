@@ -42,6 +42,9 @@ The earlier layout changes also apply:
 - Keep native and portable frame backgrounds in sync with system and app themes,
   including live palette changes, explicit overrides and canvas tokens.
 
+- Keep Android status, navigation and cutout margins black after final GPU or
+  software frame composition, with white system-bar icons from startup.
+
 - Keep portable app typing, paste and IME input stable through host callbacks
   using reusable runtime-owned snapshots and deferred, reentry-safe cleanup.
 

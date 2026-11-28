@@ -319,6 +319,14 @@ AndroidNativeLock :: (left: s32 = 0, top: s32 = 0, right: s32 = -1, bottom: s32 
     return true
 }
 
+// The render thread supplies physical safe bounds independently of app layout.
+// Apply them after drawing: retained-frame background fills can cover the
+// initial clear, and Android's transparent bars reveal those final pixels.
+android_native_safe_bounds: [6]s32;
+AndroidNativeSetSafeBounds :: (width: s32, height: s32, left: s32, top: s32, right: s32, bottom: s32) {
+    android_native_safe_bounds = .{width, height, left, top, right, bottom}
+}
+
 AndroidNativePresentDamage :: (left: s32, top: s32, right: s32, bottom: s32) -> bool {
     if !android_native_locked || android_native_buffer.bits == null { return false }
     // The window system may expand the requested damage. Every pixel it asks
@@ -356,6 +364,22 @@ AndroidNativePresentDamage :: (left: s32, top: s32, right: s32, bottom: s32) -> 
                 ((input & cast(u32)0x000000ff) << 16) |
                 ((input & cast(u32)0x00ff0000) >> 16)
             column += 1
+        }
+        // Color only the posted buffer, preserving the app's borrowed backing
+        // pixels and the native window's expanded damage/stride contract.
+        if android_native_safe_bounds[0] == android_pixel_width &&
+            android_native_safe_bounds[1] == android_pixel_height {
+            pixels := cast(*u32)dst
+            safe_left := android_native_safe_bounds[2]; safe_top := android_native_safe_bounds[3]
+            safe_right := android_native_safe_bounds[4]; safe_bottom := android_native_safe_bounds[5]
+            if row < safe_top || row >= safe_bottom {
+                for x: cast(s32)0..columns - 1 { pixels[x] = cast(u32)0xff000000 }
+            } else {
+                before := safe_left - left; if before > columns { before = columns }
+                after := safe_right - left; if after < 0 { after = 0 }
+                for x: cast(s32)0..before - 1 { pixels[x] = cast(u32)0xff000000 }
+                for x: after..columns - 1 { pixels[x] = cast(u32)0xff000000 }
+            }
         }
     }
     return true

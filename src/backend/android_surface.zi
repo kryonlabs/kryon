@@ -343,6 +343,12 @@ SyncAndroidViewport :: (output: *AndroidViewport) -> s32 {
     width: s32
     height: s32
     SyncAndroidSurfaceSize(*width, *height)
+    #if ANDROID_SURFACE {
+        safe: AndroidViewport
+        unused ResolveAndroidViewport(width, height, AndroidViewportPolicySafeArea(), *safe)
+        AndroidNativeSetSafeBounds(width, height, safe.x, safe.y,
+            safe.x + safe.width, safe.y + safe.height)
+    }
     return ResolveAndroidViewport(width, height, GetAndroidViewportPolicy(), output)
 }
 

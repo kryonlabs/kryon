@@ -139,6 +139,16 @@ Disable :: () {
 
 Present :: () -> bool {
     if !frame_open { return false }
+    // Paint last, in native pixels, so app canvas/background replay cannot
+    // recolor status, navigation or cutout margins in the retained texture.
+    safe: Surface.AndroidViewport
+    unused Surface.ResolveAndroidViewport(window_width, window_height,
+        Surface.AndroidViewportPolicySafeArea(), *safe)
+    black := P.PixmapOpaqueColor(cast(u32)0xff000000)
+    PixmapGpuRect(0, 0, window_width, safe.y, black)
+    PixmapGpuRect(0, safe.y + safe.height, window_width, window_height, black)
+    PixmapGpuRect(0, safe.y, safe.x, safe.y + safe.height, black)
+    PixmapGpuRect(safe.x + safe.width, safe.y, window_width, safe.y + safe.height, black)
     first := !android_composition_presented
     if !Paint.PresentToWindow(window_width, window_height) || SwapBuffers(display, surface) == 0 { Disable(); return false }
     android_composition_presented = true

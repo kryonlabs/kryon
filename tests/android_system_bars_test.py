@@ -5,22 +5,24 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 source = (ROOT / 'templates/droid/droid/app/src/main/java/__PACKAGE_PATH__/__ACTIVITY__.java').read_text()
-start = re.search(r'    private void configureSystemBars\(\) \{', source).start()
+start = re.search(r'    private void configureSystemBarColors\(\) \{', source).start()
 end = source.index('\n    private void pushDeviceConfiguration', start)
 method = source[start:end]
 start = source.index('    private void updateInsets(WindowInsets insets) {')
 end = source.index('\n    private int inferImeBottom', start)
 method += '\n' + source[start:end]
 fixture = r'''
+class android { static class graphics { static class Color { static final int BLACK=0xff000000; } } }
 class Build {
     static class VERSION { static int SDK_INT; }
-    static class VERSION_CODES { static final int P = 28, R = 30; }
+    static class VERSION_CODES { static final int P = 28, Q = 29, R = 30; }
 }
 class View {
     static final int SYSTEM_UI_FLAG_LAYOUT_STABLE=1, SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION=2,
         SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN=4, SYSTEM_UI_FLAG_FULLSCREEN=8,
-        SYSTEM_UI_FLAG_IMMERSIVE_STICKY=16, SYSTEM_UI_FLAG_HIDE_NAVIGATION=32;
-    int flags = SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+        SYSTEM_UI_FLAG_IMMERSIVE_STICKY=16, SYSTEM_UI_FLAG_HIDE_NAVIGATION=32,
+        SYSTEM_UI_FLAG_LIGHT_STATUS_BAR=64, SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR=128;
+    int flags = SYSTEM_UI_FLAG_HIDE_NAVIGATION | SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
     int getSystemUiVisibility() { return flags; }
     void setSystemUiVisibility(int value) { flags=value; }
 }
@@ -57,12 +59,20 @@ class Display { void getMetrics(DisplayMetrics metrics) {} }
 class WindowManager { Display getDefaultDisplay() { return new Display(); } }
 class Log { static void e(String tag,String message) { throw new AssertionError(message); } }
 class WindowInsetsController {
-    int hidden, shown;
+    static final int APPEARANCE_LIGHT_STATUS_BARS=1, APPEARANCE_LIGHT_NAVIGATION_BARS=2;
+    int hidden, shown, appearance=3;
+    void setSystemBarsAppearance(int value,int mask) { appearance=(appearance & ~mask) | (value & mask); }
     void hide(int value) { hidden |= value; }
     void show(int value) { shown |= value; }
 }
 class Window {
-    boolean fits=true;
+    boolean fits=true, statusContrast=true, navigationContrast=true;
+    int statusColor=-1, navigationColor=-1, dividerColor=-1;
+    void setStatusBarColor(int value) { statusColor=value; }
+    void setNavigationBarColor(int value) { navigationColor=value; }
+    void setNavigationBarDividerColor(int value) { dividerColor=value; }
+    void setStatusBarContrastEnforced(boolean value) { statusContrast=value; }
+    void setNavigationBarContrastEnforced(boolean value) { navigationContrast=value; }
     View decor=new View();
     WindowInsetsController controller=new WindowInsetsController();
     void setDecorFitsSystemWindows(boolean value) { fits=value; }
@@ -86,13 +96,19 @@ __METHOD__
             Build.VERSION.SDK_INT=api;
             SystemBarsPolicy policy=new SystemBarsPolicy();
             policy.configureSystemBars();
+            require(policy.window.statusColor==android.graphics.Color.BLACK);
+            require(policy.window.navigationColor==android.graphics.Color.BLACK);
+            if (api>=28) require(policy.window.dividerColor==android.graphics.Color.BLACK);
+            if (api>=29) require(!policy.window.statusContrast && !policy.window.navigationContrast);
             if (api<30) {
                 int flags=policy.window.decor.flags;
                 require((flags & View.SYSTEM_UI_FLAG_FULLSCREEN)!=0);
                 require((flags & View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN)!=0);
                 require((flags & View.SYSTEM_UI_FLAG_HIDE_NAVIGATION)==0);
+                require((flags & (View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR))==0);
             } else {
                 require(!policy.window.fits);
+                require(policy.window.controller.appearance==0);
                 require(policy.window.controller.hidden==WindowInsets.Type.statusBars());
                 require(policy.window.controller.shown==WindowInsets.Type.navigationBars());
             }
@@ -117,7 +133,7 @@ __METHOD__
                 require(policy.delivered[1]==52);
             }
         }
-        System.out.println("Android API 27/28/29/30/36: hidden status inset removed; navigation, keyboard and cutout retained");
+        System.out.println("Android API 27/28/29/30/36: black system bars with white icons; hidden status inset removed; navigation, keyboard and cutout retained");
     }
 }
 '''
