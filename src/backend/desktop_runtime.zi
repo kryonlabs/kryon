@@ -779,7 +779,15 @@ DesktopApplyResize :: () -> bool {
     SetWindowSize(window, width, height)
     desktop_width = width
     desktop_height = height
-    if desktop_software_surface { return DesktopBorrowWindowSurface() }
+    if desktop_software_surface {
+        // Borrowing the live surface here would push every frame through
+        // EndDesktopFrame's borrowed shortcut, past the owned first-frame
+        // path that validates the hidden frame and reveals the window, so
+        // an explicitly resized window never maps. The initial frame stays
+        // owned; it borrows again right after being shown.
+        if desktop_first_frame { return true }
+        return DesktopBorrowWindowSurface()
+    }
     return true
 }
 
