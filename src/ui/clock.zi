@@ -2,17 +2,21 @@
 // A failed clock returns -1. Wall time and sleeps are intentionally absent.
 host_api :: #system_library "host_api";
 ClockMillisecondsHost :: () -> s64 #foreign host_api;
+#if TARGET == .ZX {
+    #import "frame_motion"
+}
+
 #program_export
-Milliseconds :: () -> s64 { return ClockMillisecondsHost() }
+Milliseconds :: () -> s64 {
+    // Reading the portable clock opts its frame host into time sampling.
+    // Merely importing an unused frame loop must not require this capability.
+    #if TARGET == .ZX {
+        unused FrameMotionUseClock(Seconds)
+    }
+    return ClockMillisecondsHost()
+}
 
 Seconds :: () -> float64 {
     milliseconds := Milliseconds()
     return ifx milliseconds < 0 then -1.0 else cast(float64)milliseconds / 1000.0
-}
-
-// Importing the portable UI clock opts its frame host into time sampling.
-// Low-level lifecycle programs with explicit Tick need no clock capability.
-#if TARGET == .ZX {
-    #import "frame_motion"
-    frame_time_registered: bool = FrameMotionUseClock(Seconds);
 }

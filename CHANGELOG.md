@@ -39,6 +39,8 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
+- Register the portable motion clock when it is read, so a window-only
+  program does not acquire the unused frame loop's clock capability.
 - Revoke the portable native editor when its owning session closes. Keep
   selection and snapshots isolated between players, including re-entry and
   closing a peer while another editor remains active. Author the existing
