@@ -4,7 +4,7 @@
 //
 //   kryon run          the desktop window
 //   kryon run tui      the same pages in a terminal
-//   kryon run web      a Canvas2D browser page (needs Emscripten)
+//   kryon run web      a WebGL2 browser page (needs Emscripten)
 import * as App from "kryon/app";
 import { ButtonEmphasis, ButtonTone } from "kryon/control_props";
 import { Rectangle } from "kryon/geometry";

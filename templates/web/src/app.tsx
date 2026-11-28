@@ -1,4 +1,4 @@
-// {{name}}: a web page written with Kryon, drawn on a Canvas2D element:
+// {{name}}: a web page written with Kryon, drawn on a WebGL2 canvas:
 // headings, paragraphs, links, and buttons composed from your state in
 // src/counter.zi.
 //

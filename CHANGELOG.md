@@ -39,6 +39,9 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
+- Render filled GPU triangles with positive interior coverage for either
+  winding, restoring diagonal flag details and triangle-shaped controls.
+
 - Keep the completed WebGL2 drawing buffer visible through canvas dimension
   changes. A resize-only GPU copy restores it before returning and releases
   its temporary texture immediately.
@@ -61,7 +64,7 @@ The earlier layout changes also apply:
   capture/input harnesses in Ziran; use the existing behavior checks.
 
 - Align the root, examples and all four starters with Ziran 84c42c76, and the
-  app generator and upgrade defaults with Kryon f4bda473 and CSS 20b7c95d.
+  app generator and upgrade defaults with Kryon 628b8846 and CSS 5d62effb.
   Check generated TSX entries and the supported desktop screenshot route;
   remove the obsolete shot-profile invocation and redundant starter source check.
 - Run byte-identical source/saved portable bundles once in the scene and

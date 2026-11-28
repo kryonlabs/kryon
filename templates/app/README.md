@@ -5,7 +5,7 @@ A [Kryon](https://git.waozi.xyz/kryonlabs/kryon) application: TSX screens over a
 ```sh
 kryon run            # desktop window (SDL2 + Cairo)
 kryon run tui        # the same interface in a terminal
-kryon run web        # Canvas2D browser page (Emscripten)
+kryon run web        # WebGL2 browser page (Emscripten)
 kryon profiles       # list profiles; ziran.toml defines them
 kryon install        # ~/.local/bin/{{name}} and a menu entry
 ```

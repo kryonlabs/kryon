@@ -320,7 +320,7 @@ ReadModulePaths :: (command_line: string, output: *Vec(u8), paths: *Vec(u8)) -> 
 BackendDescription :: (profile: ProjectProfile) -> string {
     backend := profile.backend
     if backend == "desktop" { return "SDL2/Cairo window" }
-    if backend == "canvas" { return "Canvas2D browser page" }
+    if backend == "canvas" { return "WebGL2 browser page" }
     if backend == "terminal" { return "terminal" }
     if backend == "android" { return "Android package (NativeActivity)" }
     return backend

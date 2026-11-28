@@ -2,7 +2,7 @@
 
 A [Kryon](https://github.com/kryonlabs/kryon) web page: headings, wrapped
 paragraphs, links and a like button composed in TSX over a Ziran model,
-drawn on a Canvas2D element.
+drawn on a WebGL2 canvas.
 
 ```sh
 kryon build          # build/{{name}}-web.html (needs Emscripten)

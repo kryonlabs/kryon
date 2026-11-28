@@ -11,7 +11,7 @@ ref = "84c42c76a63b022fa9355148c4213d9032b7eeff"
 
 [dependencies.kryon]
 git = "https://git.waozi.xyz/kryonlabs/kryon.git"
-ref = "f4bda4733366bea32e64fa632906410242230122"
+ref = "628b8846cb6e9fbbb99d08a72f421ca880b75f2d"
 
 [install]
 bin = "{{name}}"

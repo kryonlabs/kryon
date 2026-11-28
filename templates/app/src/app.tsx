@@ -5,7 +5,7 @@
 //
 //   kryon run                     the desktop window (ziran run does the same)
 //   kryon run portable            the same interface through the ZX player
-//   kryon run web                 a Canvas2D browser page (needs Emscripten)
+//   kryon run web                 a WebGL2 browser page (needs Emscripten)
 import * as App from "kryon/app";
 import { ButtonEmphasis, ButtonTone, ControlSize } from "kryon/control_props";
 import { Props as ButtonProps, ButtonMeasure } from "kryon/button";

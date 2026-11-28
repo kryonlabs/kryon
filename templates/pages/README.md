@@ -8,7 +8,7 @@ share state.
 ```sh
 kryon run            # desktop window
 kryon run tui        # the same pages in a terminal
-kryon run web        # Canvas2D browser page (Emscripten)
+kryon run web        # WebGL2 browser page (Emscripten)
 ```
 
 `src/app.tsx` composes the interface: a `Frame` that starts the page

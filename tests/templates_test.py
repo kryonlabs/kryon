@@ -86,7 +86,7 @@ def main():
 
         profiles = run([KRYON, "profiles"], work / "demo-app", env)
         assert profiles.splitlines() == ["* desktop  SDL2/Cairo window", "  portable  SDL2/Cairo window",
-                                         "  web  Canvas2D browser page"], profiles
+                                         "  web  WebGL2 browser page"], profiles
 
         # The starter's screen, offscreen at phone size in both themes.
         shots = ROOT / "build/test/templates"

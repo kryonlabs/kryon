@@ -49,12 +49,12 @@ module_roots = ["src"]
 tool = "kryon"
 
 [toolchain]
-git = "https://github.com/ziranlang/ziran.git"
-ref = "master"
+git = "https://git.waozi.xyz/ziranlang/ziran.git"
+ref = "84c42c76a63b022fa9355148c4213d9032b7eeff"
 
 [dependencies.kryon]
-git = "https://github.com/kryonlabs/kryon.git"
-ref = "master"
+git = "https://git.waozi.xyz/kryonlabs/kryon.git"
+ref = "628b8846cb6e9fbbb99d08a72f421ca880b75f2d"
 
 [tool.kryon]
 default_profile = "desktop"
@@ -186,7 +186,7 @@ terminal; otherwise it uses the default.
 | --- | --- | --- |
 | `terminal` | 80 × 24 terminal cells | TTY for interactive input; redirected output renders once |
 | `desktop` | SDL2 window with Cairo raster | SDL2, Cairo, and FreeType development libraries |
-| `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
+| `canvas` | WebGL2 browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
 | `android` | installable APK through a generated `droid/` Gradle project and direct NativeActivity host | a JDK, the Android SDK with NDK `28.2.13676358` and CMake `3.22.1`, the locked codec source packages, and `[tool.kryon.android] package`; see [Android host](BACKENDS.md#android-host) |
 
 The SDL desktop host presents its already rasterized pixels through the
@@ -300,7 +300,7 @@ assets = "assets"
 Use `backend = "canvas"` with `codegen = "zx"` for the same portable app
 and a browser player. The build writes both `.zx` and `.html` files; serve
 the HTML with its generated JavaScript and WebAssembly files. The browser
-shell interprets the bundle and uses Canvas2D for rendering. It includes a
+shell interprets the bundle and uses WebGL2 for rendering. It includes a
 file picker for opening another downloaded ZX without recompiling its UI.
 Unsupported required services are reported before replacing the running app.
 
@@ -519,7 +519,7 @@ them to PNG, and lays out such grids.
 
 Kryon's `make desktop-project-test` exercises the graphical host on private Xvfb
 displays, including keyboard and Unicode text input. `make canvas-project-test`
-builds a real Canvas2D project and loads it in private headless Chromium. Do
+builds a real WebGL2 project and loads it in private headless Chromium. Do
 not run graphical tests on the developer's live display.
 
 ### Application-owned hosts

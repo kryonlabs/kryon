@@ -996,7 +996,7 @@ PageGpuEdgeDistance :: (ax: float64, ay: float64, bx: float64, by: float64,
     dy := by - ay
     length := PageGpuSquareRoot(dx * dx + dy * dy)
     if length <= 0.0 { return 0.0 }
-    return sign * ((px - ax) * dy - (py - ay) * dx) / length
+    return sign * (dx * (py - ay) - dy * (px - ax)) / length
 }
 
 // One textured triangle in logical coordinates with the current transform:
