@@ -39,6 +39,9 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
+- Keep portable app typing, paste and IME input stable through host callbacks
+  using reusable runtime-owned snapshots and deferred, reentry-safe cleanup.
+
 - Render filled GPU triangles with positive interior coverage for either
   winding, restoring diagonal flag details and triangle-shaped controls.
 

@@ -703,6 +703,22 @@ The host calls `BeginFrame` and
 `EndFrame` around application composition, then presents the resulting
 paint operations. Widget behavior stays in `src/ui/`.
 
+A native harness supplies portable app text with `AppContextSetInput` or
+`AppContextSetAreaInput` before `AppContextRun`/`AppContextRunFrame`. These
+operations copy typing, paste and IME text into the runtime's own reusable
+storage before publishing any view; flags, composition phase, cursor and
+selection offsets are preserved. Allocation or size failure returns false
+without changing the previous sample. Submit the previous sample again if
+needed: alternating buffers make that safe. Views expire at the next successful
+replacement of the same input kind, run completion or runtime close, including
+replacements through another context borrowing the same runtime.
+
+The active runtime rejects input replacement, nested context runs and lifecycle
+replacement. A close requested by a provider or guest callback is deferred until
+input views and scratch encodings are cleared; a close during audio polling
+prevents the guest run. Teardown rejects recursive close and input replacement.
+`HostedAppClose` releases both buffer banks, while restart retains their capacity.
+
 The terminal host renders one frame when input or output is redirected. With
 a TTY, it submits ASCII and UTF-8 text to the same session input API as the
 window hosts and ignores terminal escape sequences. The project test drives

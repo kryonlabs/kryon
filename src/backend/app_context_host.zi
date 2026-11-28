@@ -71,8 +71,8 @@ AppContext :: struct {
     bindings: []HostBinding
     session_codec: WidgetSessionCodec
     bounds_codec: WidgetRectangleCodec
-    // Scratch encodings borrow the caller's input text only during a run.
-    // Each run clears them before the caller can reuse its input storage.
+    // Scratch encodings borrow the runtime's stable input snapshot during
+    // a run; completion clears both encodings and the exposed input views.
     input_codec: WidgetTextFieldInputCodec
     area_codec: WidgetTextAreaInputCodec
 }
@@ -81,6 +81,57 @@ AppContextRuntime :: (app: *AppContext) -> *HostedApp {
     return ifx app.borrowed != null then app.borrowed else *app.app
 }
 
+// A sample may borrow a platform clipboard or IME buffer. Copy all three
+// ranges before publishing it to callbacks, preserving flags and IME offsets.
+// A running context rejects replacement, so callbacks cannot invalidate it.
+// A failed replacement leaves the previous sample unchanged. Views expire
+// on the next successful replacement of that kind, run completion or close.
+AppContextSetInput :: (app: *AppContext, input: TextField.Input) -> bool {
+    runtime := AppContextRuntime(app)
+    if runtime.input_active || runtime.closing {
+        return false
+    }
+    slot := 1 - runtime.field_input_slot
+    buffer := *runtime.field_input[slot]
+    if !HostedInputWrite(buffer, input.text, input.paste_text, input.composition_event.text) {
+        return false
+    }
+    input.text = HostedInputRead(buffer, 0)
+    input.paste_text = HostedInputRead(buffer, 1)
+    input.composition_event.text = HostedInputRead(buffer, 2)
+    app.input = input
+    runtime.field_input_slot = slot
+    return true
+}
+
+AppContextSetAreaInput :: (app: *AppContext, input: TextArea.Input) -> bool {
+    runtime := AppContextRuntime(app)
+    if runtime.input_active || runtime.closing {
+        return false
+    }
+    slot := 1 - runtime.area_input_slot
+    buffer := *runtime.area_input[slot]
+    if !HostedInputWrite(buffer, input.text, input.paste_text, input.composition_event.text) {
+        return false
+    }
+    input.text = HostedInputRead(buffer, 0)
+    input.paste_text = HostedInputRead(buffer, 1)
+    input.composition_event.text = HostedInputRead(buffer, 2)
+    app.area_input = input
+    runtime.area_input_slot = slot
+    return true
+}
+
+#scope_package
+AppContextInputEnd :: (app: *AppContext) {
+    app.input = .{}
+    app.area_input = .{}
+    app.input_codec = .{}
+    app.area_codec = .{}
+    HostedAppInputEnd(AppContextRuntime(app))
+}
+
+#scope_export
 AppModule :: (module: string) -> bool {
     return ModuleName(module, "app_context")
 }
@@ -350,18 +401,27 @@ AppContextCall :: (context: *void, module: *u8, function: *u8,
 
 AppContextIdentify :: (context: *void) -> bool {
     app := cast(*AppContext)context
+    if !HostedAppInputBegin(AppContextRuntime(app)) {
+        return false
+    }
+    defer { AppContextInputEnd(app) }
     app.mode = APP_IDENTIFY
     app.identified = false
     app.described = false
     answer: s64
     identified := HostedAppRun(AppContextRuntime(app), *answer) && answer == APP_PROTOCOL &&
     app.identified && app.described
-    app.input_codec = .{}
-    app.area_codec = .{}
     return identified
 }
 
 AppContextOpen :: (app: *AppContext, bytes: string) -> bool {
+    if AppContextRuntime(app).input_active || AppContextRuntime(app).closing {
+        return false
+    }
+    app.input = .{}
+    app.area_input = .{}
+    app.input_codec = .{}
+    app.area_codec = .{}
     ready := HostedAppOpen(AppContextRuntime(app), bytes) &&
     HostedAppStart(AppContextRuntime(app), AppContextAllows, AppContextCall, cast(*void)app) &&
     AppContextIdentify(cast(*void)app)
@@ -370,6 +430,13 @@ AppContextOpen :: (app: *AppContext, bytes: string) -> bool {
 }
 
 AppContextRestart :: (app: *AppContext) -> bool {
+    if AppContextRuntime(app).input_active || AppContextRuntime(app).closing {
+        return false
+    }
+    app.input = .{}
+    app.area_input = .{}
+    app.input_codec = .{}
+    app.area_codec = .{}
     id := app.id
     name := app.name
     icon := app.icon
@@ -391,14 +458,19 @@ AppContextRestart :: (app: *AppContext) -> bool {
 
 // The supervising harness brackets this call with WidgetHostBegin/End.
 AppContextRun :: (app: *AppContext, mode: s32) -> bool {
+    if !HostedAppInputBegin(AppContextRuntime(app)) {
+        return false
+    }
+    defer { AppContextInputEnd(app) }
     MediaAudioOwnerTick(*AppContextRuntime(app).audio)
+    if AppContextRuntime(app).close_after_input {
+        return false
+    }
     app.mode = mode
     app.keyboard = false
     AppContextDropReply(app)
     answer: s64
     ran := app.identified && app.described && HostedAppRun(AppContextRuntime(app), *answer) && answer == 0
-    app.input_codec = .{}
-    app.area_codec = .{}
     return ran
 }
 
@@ -407,14 +479,19 @@ AppContextRun :: (app: *AppContext, mode: s32) -> bool {
 // running the app, as long as its reads answer as before; see
 // HostedAppRunFrame. The harness brackets it with WidgetHostBegin/End.
 AppContextRunFrame :: (app: *AppContext, quiet: bool) -> bool {
+    if !HostedAppInputBegin(AppContextRuntime(app)) {
+        return false
+    }
+    defer { AppContextInputEnd(app) }
     MediaAudioOwnerTick(*AppContextRuntime(app).audio)
+    if AppContextRuntime(app).close_after_input {
+        return false
+    }
     app.mode = APP_FRAME
     app.keyboard = false
     AppContextDropReply(app)
     answer: s64
     ran := app.identified && app.described &&
     HostedAppRunFrame(AppContextRuntime(app), *answer, quiet) && answer == 0
-    app.input_codec = .{}
-    app.area_codec = .{}
     return ran
 }

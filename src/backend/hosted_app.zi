@@ -15,6 +15,14 @@ HOSTED_APP_CAPABILITY_LIMIT :: 256
 // Instructions a single run may execute before it traps.
 HOSTED_APP_STEP_LIMIT :: 10000000
 
+// A runtime owns these buffers even when AppContext borrows that runtime.
+// Alternating buffers allow the next sample to include the previous sample.
+HostedInputBuffer :: struct {
+    bytes: *u8
+    capacity: s64
+    lengths: [3]s64
+}
+
 HostedApp :: struct {
     bundle: *void
     instance: *void
@@ -23,6 +31,13 @@ HostedApp :: struct {
     failed: bool
     // The host's call, and a quiet frame to show again; see HostedAppRunFrame.
     replay: *FrameReplay
+    field_input: [2]HostedInputBuffer
+    area_input: [2]HostedInputBuffer
+    field_input_slot: s32
+    area_input_slot: s32
+    input_active: bool
+    close_after_input: bool
+    closing: bool
 }
 
 // Whether the bundle may call module.function. context is the one given to
@@ -38,6 +53,9 @@ HostedAsset :: struct {
 }
 
 HostedAppOpen :: (app: *HostedApp, bytes: string) -> bool {
+    if app.input_active || app.closing {
+        return false
+    }
     HostedAppClose(app)
     descriptor := cast(*TextDescriptor)(*bytes)
     app.bundle = OpenBundleBytes(descriptor.data, cast(u64)bytes.count)
@@ -47,6 +65,9 @@ HostedAppOpen :: (app: *HostedApp, bytes: string) -> bool {
 // Takes the bundle BundlePreloadStart opened from bytes, waiting for it if
 // it is still opening. Without a preload, or when it failed, opens bytes.
 HostedAppOpenPreloaded :: (app: *HostedApp, bytes: string, preload: s32) -> bool {
+    if app.input_active || app.closing {
+        return false
+    }
     if preload < 0 {
         return HostedAppOpen(app, bytes)
     }
@@ -61,6 +82,9 @@ HostedAppOpenPreloaded :: (app: *HostedApp, bytes: string, preload: s32) -> bool
 // Checks every capability with allows, binds them all to call and creates an
 // instance; it does not run it.
 HostedAppStart :: (app: *HostedApp, allows: HostedAppAllows, call: HostCall, context: *void) -> bool {
+    if app.input_active || app.closing {
+        return false
+    }
     app.failed = false
     if app.bundle == null {
         return false
@@ -155,6 +179,9 @@ HostedAppRunFrame :: (app: *HostedApp, answer: *s64, quiet: bool) -> bool {
 // only once the new one passes accepts; otherwise the app keeps running it.
 HostedAppRestart :: (app: *HostedApp, allows: HostedAppAllows, call: HostCall,
     context: *void, accepts: HostedAppAccepts) -> bool {
+    if app.input_active || app.closing {
+        return false
+    }
     previous := app.instance
     previous_failed := app.failed
     app.instance = null
@@ -171,10 +198,22 @@ HostedAppRestart :: (app: *HostedApp, allows: HostedAppAllows, call: HostCall,
 }
 
 HostedAppClose :: (app: *HostedApp) {
+    if app.closing {
+        return
+    }
+    if app.input_active {
+        app.close_after_input = true
+        return
+    }
+    app.closing = true
     MediaAudioOwnerClose(*app.audio)
     if app.replay != null {
         FrameReplayClose(app.replay)
         HostedRelease(cast(*void)app.replay)
+    }
+    for index: cast(s32)0..1 {
+        HostedRelease(cast(*void)app.field_input[index].bytes)
+        HostedRelease(cast(*void)app.area_input[index].bytes)
     }
     HostedAssetIndexDrop(app.bundle)
     CloseBundleInstance(app.instance)
@@ -186,6 +225,84 @@ hosted_c :: #system_library "c";
 HostedAllocateZeroed :: (count: usize, size: usize) -> *void #foreign hosted_c "calloc";
 HostedRelease :: (memory: *void) #foreign hosted_c "free";
 
+// The three input text ranges share one allocation; offsets are published
+// only after every byte has been copied. Empty frames retain capacity.
+#scope_package
+HostedInputWrite :: (buffer: *HostedInputBuffer, text: string, paste: string,
+    composition: string) -> bool {
+    maximum: s64 = 2147483647
+    if text.count < 0 || paste.count < 0 || composition.count < 0 ||
+        text.count > maximum || paste.count > maximum - text.count ||
+        composition.count > maximum - text.count - paste.count {
+        return false
+    }
+    required := text.count + paste.count + composition.count
+    if required > buffer.capacity {
+        capacity: s64 = ifx buffer.capacity > 0 then buffer.capacity else 256
+        while capacity < required {
+            if capacity > maximum / 2 {
+                capacity = required
+                break
+            }
+            capacity *= 2
+        }
+        bytes := cast(*u8)HostedAllocateZeroed(cast(usize)capacity, cast(usize)1)
+        if bytes == null {
+            return false
+        }
+        HostedRelease(cast(*void)buffer.bytes)
+        buffer.bytes = bytes
+        buffer.capacity = capacity
+    }
+    offset: s64 = 0
+    for byte: text {
+        buffer.bytes[offset] = byte
+        offset += 1
+    }
+    for byte: paste {
+        buffer.bytes[offset] = byte
+        offset += 1
+    }
+    for byte: composition {
+        buffer.bytes[offset] = byte
+        offset += 1
+    }
+    buffer.lengths[0] = text.count
+    buffer.lengths[1] = paste.count
+    buffer.lengths[2] = composition.count
+    return true
+}
+
+#scope_package
+HostedInputRead :: (buffer: *HostedInputBuffer, part: s32) -> string {
+    if part < 0 || part > 2 || buffer.lengths[part] <= 0 {
+        return ""
+    }
+    offset: s64 = 0
+    for index: cast(s32)0..part - 1 {
+        offset += buffer.lengths[index]
+    }
+    return TextFromBytes(BytesFromPointer(*buffer.bytes[offset], cast(u64)buffer.lengths[part]))
+}
+
+#scope_package
+HostedAppInputBegin :: (app: *HostedApp) -> bool {
+    if app.input_active || app.closing {
+        return false
+    }
+    app.input_active = true
+    return true
+}
+
+#scope_package
+HostedAppInputEnd :: (app: *HostedApp) {
+    app.input_active = false
+    if app.close_after_input {
+        HostedAppClose(app)
+    }
+}
+
+#scope_export
 // A game draws each tile of its board as an image, and each image named its
 // asset by scanning every asset of the bundle: tens of thousands of name
 // comparisons a frame. Each open bundle gets a table that finds an asset by
