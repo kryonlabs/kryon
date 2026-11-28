@@ -39,6 +39,10 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
+- Keep GPU failure diagnostics in their renderer context without overwriting
+  the shared GL trace. Exercise resize rejection against the device limit and
+  allow either valid half-intensity UNORM8 rounding in the existing GPU test.
+
 - Register the portable motion clock when it is read, so a window-only
   program does not acquire the unused frame loop's clock capability.
 - Revoke the portable native editor when its owning session closes. Keep

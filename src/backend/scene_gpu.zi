@@ -193,6 +193,8 @@ SceneGpuContext :: struct {
  snapshot_frozen: bool
  snapshot_counts: [7]s64
  log: [2048]u8
+ // Failure notes belong to this context; the process GL trace stays intact.
+ diagnostic_buffer: [192]u8
 }
 
 // Profiling a synchronous read waits explicitly to separate completion from
@@ -880,7 +882,7 @@ SceneGpuRenderWindow :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera
  G.BlitFramebuffer(0,0,gpu.width,gpu.height,0,0,width,height,0x4000,0x2600)
  G.BindFramebuffer(0x8ca8,0)
  code:=G.GetError()
- if code!=0 {return .{diagnostic=Note("GLES window present failed",width,height,0,0,code)}}
+ if code!=0 {Note(gpu,"GLES window present failed",width,height,0,0,code);return .{diagnostic=gpu.capabilities.diagnostic}}
  #if OS != .WEB {
  if gpu.timer_end!=0&&gpu.timer_start!=0 {query_counter(gpu.timer_end,0x8e28);gpu.timer_pending=true;frame.gpu_ms=gpu.last_gpu_ms}
  else if gpu.finish_at>0.0 {G.Finish();frame.gpu_ms=Now()-gpu.finish_at;gpu.finish_at=0.0}
@@ -1192,14 +1194,20 @@ TraceError :: (label: string,code: u32) {
   if trace_used<note_buffer.count {note_buffer[trace_used]=text[at];trace_used+=1}
  }
 }
-Note :: (label: string,width: s32,height: s32,stale: u32,status: u32,code: u32)->string {
+Note :: (gpu: *SceneGpuContext,label: string,width: s32,height: s32,stale: u32,status: u32,code: u32) {
+ gpu.capabilities.diagnostic=""
+ count:=CopyNote(gpu.diagnostic_buffer[:],label,width,height,stale,status,code)
+ gpu.capabilities.diagnostic=TextView(gpu.diagnostic_buffer[0:count])
+}
+CopyNote :: (output: []u8,label: string,width: s32,height: s32,stale: u32,status: u32,code: u32)->s64 {
  b: Vec(u8)
  BuilderPrint(*b,"% %x% status=% error=% stale=% %",label,width,height,status,code,stale,TextView(note_buffer[0:cast(s64)trace_used]))
- text:=BuilderFinish(b)
+ owned: Text=BuilderFinish(b)
+ text:=TextView(owned)
  count:=text.count
- if count>note_buffer.count {count=note_buffer.count}
- for at: 0..count-1 {note_buffer[at]=text[at]}
- return TextView(note_buffer[0:count])
+ if count>output.count {count=output.count}
+ for at: 0..count-1 {output[at]=text[at]}
+ return count
 }
 DropTargets :: (gpu: *SceneGpuContext) {
  DropTransfers(gpu)
@@ -1229,17 +1237,17 @@ Resize :: (gpu: *SceneGpuContext,width: s32,height: s32,samples: s32)->bool {
  G.GenFramebuffers(1,*gpu.framebuffer);G.BindFramebuffer(0x8d40,gpu.framebuffer)
  G.GenRenderbuffers(1,*gpu.color);G.BindRenderbuffer(0x8d41,gpu.color)
  RenderbufferCoverage(samples,0x8058,width,height)
- if !RenderbufferHasCoverage(samples) {gpu.capabilities.diagnostic=Note("color coverage unavailable",width,height,cast(u32)samples,0,G.GetError());DropTargets(gpu);return false}
+ if !RenderbufferHasCoverage(samples) {Note(gpu,"color coverage unavailable",width,height,cast(u32)samples,0,G.GetError());DropTargets(gpu);return false}
  G.FramebufferRenderbuffer(0x8d40,0x8ce0,0x8d41,gpu.color)
  G.GenRenderbuffers(1,*gpu.depth);G.BindRenderbuffer(0x8d41,gpu.depth)
  RenderbufferCoverage(samples,0x81a6,width,height)
- if !RenderbufferHasCoverage(samples) {gpu.capabilities.diagnostic=Note("depth coverage unavailable",width,height,cast(u32)samples,0,G.GetError());DropTargets(gpu);return false}
+ if !RenderbufferHasCoverage(samples) {Note(gpu,"depth coverage unavailable",width,height,cast(u32)samples,0,G.GetError());DropTargets(gpu);return false}
  G.FramebufferRenderbuffer(0x8d40,0x8d00,0x8d41,gpu.depth)
- if G.CheckFramebuffer(0x8d40)!=0x8cd5 {gpu.capabilities.diagnostic=Note("framebuffer incomplete",width,height,stale,G.CheckFramebuffer(0x8d40),G.GetError());DropTargets(gpu);return false}
+ if G.CheckFramebuffer(0x8d40)!=0x8cd5 {Note(gpu,"framebuffer incomplete",width,height,stale,G.CheckFramebuffer(0x8d40),G.GetError());DropTargets(gpu);return false}
  G.GenFramebuffers(1,*gpu.resolve);G.BindFramebuffer(0x8d40,gpu.resolve)
  gpu.resolved=G.Texture(width,height,0x8058,0x1908,0x1401,null)
  G.FramebufferTexture(0x8d40,0x8ce0,0x0de1,gpu.resolved,0)
- if G.CheckFramebuffer(0x8d40)!=0x8cd5||G.GetError()!=0 {gpu.capabilities.diagnostic=Note("resolve framebuffer incomplete",width,height,stale,G.CheckFramebuffer(0x8d40),G.GetError());DropTargets(gpu);return false}
+ if G.CheckFramebuffer(0x8d40)!=0x8cd5||G.GetError()!=0 {Note(gpu,"resolve framebuffer incomplete",width,height,stale,G.CheckFramebuffer(0x8d40),G.GetError());DropTargets(gpu);return false}
  if cast(s64)width*height*4<gpu.readback.count {VecFree(gpu.readback)}
  gpu.width=width;gpu.height=height;gpu.samples=samples;gpu.capabilities.samples=samples
  return true

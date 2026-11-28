@@ -299,7 +299,8 @@ HostCheck :: (h: Host)->bool {
  framebuffer: s32;G.GetInteger(0x8ca6,*framebuffer)
  if framebuffer!=cast(s32)h.framebuffer {return false}
  pixel: [4]u8;G.ReadPixels(0,0,1,1,0x1908,0x1401,cast(*void)*pixel[0])
- return G.GetError()==0&&pixel[0]==64&&pixel[1]==128&&pixel[2]==191&&pixel[3]==255
+ // Half intensity can round to either adjacent UNORM8 value.
+ return G.GetError()==0&&pixel[0]==64&&(pixel[1]==127||pixel[1]==128)&&pixel[2]==191&&pixel[3]==255
 }
 HostClose :: (h: *Host) {
  if h.context==null {return}
@@ -485,7 +486,7 @@ main :: ()->s32 {
  if !SceneGpuRender(*gpu,*scene,camera,*image).ok {return 8}
  small_target:=SceneGpuMemoryUsage(*gpu)
  if small_target.cpu_bytes>=large_target.cpu_bytes||small_target.gpu_bytes>=large_target.gpu_bytes {return 45}
- if SceneGpuResize(*gpu,20000,1) {return 14}
+ if SceneGpuResize(*gpu,caps.max_texture_size+1,1) {return 14}
  if !SceneGpuRender(*gpu,*scene,camera,*image).ok {return 15}
  if !HostCheck(host) {return 33}
  // Releasing one renderer must preserve another renderer and an unrelated
