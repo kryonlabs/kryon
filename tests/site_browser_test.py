@@ -433,6 +433,10 @@ def replace_source(browser, text):
     browser.key('a', 65, modifiers=2)
     browser.key('v', 86, modifiers=2)
     browser.until('Module.editorRevision > ' + str(revision), 'trusted source edit')
+    # The edit revision is published before the committed review tree. Wait
+    # for the exact authored bytes, including an asynchronous clipboard read.
+    browser.until('Module.siteTree?.some(n => n.key === 10102 && n.value === '
+                  + json.dumps(text) + ')', 'pasted source committed exactly')
 
 
 def start_compiler(browser, base, worker='compiler-worker.js'):
@@ -861,6 +865,10 @@ def check_live(browser, base, scenes, shots):
             browser.until('Module.gallerySceneRendered === ' + str(index), 'source selection')
         print('Compiling source ' + str(position + 1) + '/' + str(len(scenes)) + ': ' + scene['name'], flush=True)
         compile_ready(browser)
+    check_source_editing(browser, base, shots)
+
+
+def check_source_editing(browser, base, shots):
     ready(browser, base)
     mouse(browser, node_for(browser, label='Source'))
     compile_ready(browser)
