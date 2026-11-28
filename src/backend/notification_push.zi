@@ -132,13 +132,9 @@ PushCancel :: (scope: string) -> bool {
     PText :: (env: *JniEnv, value: *void, output: []u8) -> string {
         if output.count > 0 { output[0] = 0 }
         if value == null || env.functions.ExceptionCheck(env) != 0 { return "" }
-        bytes := env.functions.GetStringUTFChars(env, value, null)
-        if bytes == null { return "" }
-        text := TextFromCString(bytes)
-        ok := CopyCString(text, output)
-        env.functions.ReleaseStringUTFChars(env, value, bytes)
-        if !ok { return "" }
-        return TextView(output[:text.count])
+        length := AndroidJniCopyString(env, value, output)
+        if length < 0 { return "" }
+        return TextView(output[:length])
     }
     // Attached native threads need the application's class loader for classes
     // outside the Android boot class path. No Java reflection implementation.

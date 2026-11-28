@@ -90,36 +90,9 @@ PlayBillingAsk :: (verb: string, value: string, output: []u8) -> string {
 
 PlayBillingCall :: (request: string, output: []u8) -> string {
     #if #defined(ANDROID_BUILD) {
-        text: [1200]u8
-        if !CopyCString(request, text[:]) { return "" }
-        session: AndroidJniSession
-        if AndroidJniAttachCurrent(*session) == 0 { return "" }
-        defer { AndroidJniDetachCurrent(*session) }
-        env := session.env
-        // The activity's class loader finds the Play-only class, so apps need
-        // no bridge code: an edition without it simply answers "".
-        billing := PlayBillingClass(env, session.activity)
-        if billing == null { return "" }
-        defer { env.functions.DeleteLocalRef(env, billing) }
-        name_1: [8]u8
-        name_2: [80]u8
-        method := env.functions.GetStaticMethodID(env, billing, PlayBillingName("call", name_1[:]),
-            PlayBillingName("(Landroid/app/Activity;Ljava/lang/String;)Ljava/lang/String;", name_2[:]))
-        if method == null { PlayBillingClear(env); return "" }
-        arguments: [2]JniValue
-        arguments[0].reference = session.activity
-        arguments[1].reference = AndroidJniString(env, *text[0])
-        if arguments[1].reference == null { return "" }
-        defer { env.functions.DeleteLocalRef(env, arguments[1].reference) }
-        value := env.functions.CallStaticObjectMethodA(env, billing, method, *arguments[0])
-        if PlayBillingClear(env) || value == null { return "" }
-        defer { env.functions.DeleteLocalRef(env, value) }
-        bytes := env.functions.GetStringUTFChars(env, value, null)
-        if bytes == null { return "" }
-        defer { env.functions.ReleaseStringUTFChars(env, value, bytes) }
-        answer := TextFromCString(bytes)
-        if !CopyCString(answer, output) { return "" }
-        return TextView(output[:answer.count])
+        length := PlayBillingCopy(request, output)
+        if length < 0 { return "" }
+        return TextView(output[:length])
     }
     unused request
     unused output
@@ -127,6 +100,35 @@ PlayBillingCall :: (request: string, output: []u8) -> string {
 }
 
 #if #defined(ANDROID_BUILD) {
+    // Finish JNI cleanup before lending the caller a view of its output.
+    PlayBillingCopy :: (request: string, output: []u8) -> s64 {
+        text: [1200]u8
+        if !CopyCString(request, text[:]) { return -1 }
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 { return -1 }
+        defer { AndroidJniDetachCurrent(*session) }
+        env := session.env
+        // The activity's class loader finds the Play-only class, so apps need
+        // no bridge code: an edition without it simply answers "".
+        billing := PlayBillingClass(env, session.activity)
+        if billing == null { return -1 }
+        defer { env.functions.DeleteLocalRef(env, billing) }
+        name_1: [8]u8
+        name_2: [80]u8
+        method := env.functions.GetStaticMethodID(env, billing, PlayBillingName("call", name_1[:]),
+            PlayBillingName("(Landroid/app/Activity;Ljava/lang/String;)Ljava/lang/String;", name_2[:]))
+        if method == null { PlayBillingClear(env); return -1 }
+        arguments: [2]JniValue
+        arguments[0].reference = session.activity
+        arguments[1].reference = AndroidJniString(env, *text[0])
+        if arguments[1].reference == null { return -1 }
+        defer { env.functions.DeleteLocalRef(env, arguments[1].reference) }
+        value := env.functions.CallStaticObjectMethodA(env, billing, method, *arguments[0])
+        if PlayBillingClear(env) || value == null { return -1 }
+        defer { env.functions.DeleteLocalRef(env, value) }
+        return AndroidJniCopyString(env, value, output)
+    }
+
     // A NUL-terminated copy for JNI names and signatures.
     PlayBillingName :: (text: string, output: []u8) -> *u8 {
         if !CopyCString(text, output) { return null }

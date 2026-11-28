@@ -425,6 +425,22 @@ AndroidJniString :: (env: *JniEnv, value: *u8) -> *void {
     return env.functions.NewStringUTF(env, value)
 }
 
+// Copy a Java string into caller-owned NUL-terminated storage. The borrowed
+// UTF bytes are released before this returns; -1 means copying failed.
+AndroidJniCopyString :: (env: *JniEnv, value: *void, output: []u8) -> s64 {
+    if env == null || value == null { return -1 }
+    bytes := env.functions.GetStringUTFChars(env, value, null)
+    if bytes == null { return -1 }
+    defer { env.functions.ReleaseStringUTFChars(env, value, bytes) }
+    return AndroidJniCopyStringBytes(bytes, output)
+}
+
+AndroidJniCopyStringBytes :: (bytes: *u8, output: []u8) -> s64 {
+    text := TextFromCString(bytes)
+    if !CopyCString(text, output) { return -1 }
+    return text.count
+}
+
 AndroidJniCallVoid :: (session: *AndroidJniSession, name: string,
     text: *u8) -> bool {
     signature := "()V"

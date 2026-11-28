@@ -5,21 +5,22 @@
 #import "std/byte_text_linux"
 
 AndroidBundleTakeFile :: (output: []u8) -> string {
+    length := AndroidBundleCopyFile(output)
+    if length < 0 { return "" }
+    return TextView(output[:length])
+}
+
+AndroidBundleCopyFile :: (output: []u8) -> s64 {
     session: AndroidJniSession
-    if AndroidJniAttachCurrent(*session) == 0 { return "" }
+    if AndroidJniAttachCurrent(*session) == 0 { return -1 }
     defer { AndroidJniDetachCurrent(*session) }
     method := AndroidJniMethod(*session, "takeBundleFile", "()Ljava/lang/String;")
-    if method == null { return "" }
+    if method == null { return -1 }
     env := session.env
     value := env.functions.CallObjectMethodA(env, session.activity, method, null)
-    if env.functions.ExceptionCheck(env) != 0 || value == null { return "" }
+    if env.functions.ExceptionCheck(env) != 0 || value == null { return -1 }
     defer { env.functions.DeleteLocalRef(env, value) }
-    bytes := env.functions.GetStringUTFChars(env, value, null)
-    if bytes == null { return "" }
-    defer { env.functions.ReleaseStringUTFChars(env, value, bytes) }
-    path := TextFromCString(bytes)
-    if !CopyCString(path, output) { return "" }
-    return TextView(output[:path.count])
+    return AndroidJniCopyString(env, value, output)
 }
 
 AndroidBundleResult :: (accepted: bool) {

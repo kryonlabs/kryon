@@ -61,6 +61,8 @@ The earlier layout changes also apply:
   gamepad checks; retain both native builds and all input assertions.
 - Restore public visibility for text-field state reads, edits and clearing;
   keep internal draw and edit-staging operations private.
+- Copy Android billing, push and bundle-file strings into caller-owned storage
+  before releasing their JNI UTF bytes, local references and attached session.
 
 - Forward repeatable `--module-path` folders through the ordinary build, check
   and run workflow, including Android C99. Preserve quoted paths and remove
