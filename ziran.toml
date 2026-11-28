@@ -118,6 +118,7 @@ source = true
 "examples/row" = "examples/shared/screens/row_scene.tsx"
 "examples/column" = "examples/shared/screens/column_scene.tsx"
 "examples/gallery_clicks" = "examples/shared/screens/gallery_clicks.ts"
+"examples/systempalette" = "examples/shared/screens/systempalette_scene.tsx"
 "examples/alert" = "examples/shared/screens/alert_scene.tsx"
 "examples/banner" = "examples/shared/screens/banner_scene.tsx"
 "examples/chip" = "examples/shared/screens/chip_scene.tsx"

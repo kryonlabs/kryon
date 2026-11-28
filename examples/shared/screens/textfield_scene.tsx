@@ -1,5 +1,6 @@
 import * as App from "kryon/app";
 import { StyleTokenColor } from "kryon/drawing_props";
+import { Input } from "kryon/text_field";
 import { Gap } from "kryon/layout";
 import { Session } from "kryon/session";
 import { ThemeMetricRole } from "kryon/theme";
@@ -11,12 +12,15 @@ import * as Model from "textfield_model";
 
 let exampleDisabled: boolean = false;
 
+function DrawControlledField(session: Session, isEmpty: boolean, input: Input): void {
+    const field = ControlledTextField({session: session, props: Model.ControlledProps(isEmpty, input, exampleDisabled)});
+    Model.ApplyControlledResult(isEmpty, field);
+}
+
 function DrawControlledFields(session: Session): void {
     const input = Model.BeginControlledFields(session);
-    const filled = ControlledTextField({session: session, props: Model.ControlledProps(false, input, exampleDisabled)});
-    Model.ApplyControlledResult(false, filled);
-    const empty = ControlledTextField({session: session, props: Model.ControlledProps(true, input, exampleDisabled)});
-    Model.ApplyControlledResult(true, empty);
+    DrawControlledField(session, false, input);
+    DrawControlledField(session, true, input);
 }
 
 export function SetExampleOptions(disabled: boolean, _reducedMotion: boolean): void {

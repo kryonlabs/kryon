@@ -87,7 +87,7 @@ jobs:
           paths = {Path(p) for p in subprocess.check_output(['git', 'ls-files', '-z', '--', str(site)]).decode().split('\0') if p}
           paths.add(site / 'gallery-data.js')
           paths.add(site / 'assets/brand/mascot-dragon.png')
-          paths.update((site / 'gallery-sources').rglob('*.zi'))
+          paths.update((site / 'gallery-sources').rglob('*.tsx'))
           # The build numbers runtime assets; stage every one it lists, since
           # a newly bundled asset is not tracked yet.
           paths.update(site / name for _, name in json.loads((site / 'runtime/assets.json').read_text()))
@@ -164,7 +164,7 @@ jobs:
           test -f docs/site/assets/brand/mascot-dragon.png
           test -f docs/site/widgets.html
           test -f docs/site/gallery-data.js
-          test -f docs/site/gallery-sources/kryon/0.zi
+          test -f docs/site/gallery-sources/kryon/0.tsx
 
       - name: Test the Canvas website
         timeout-minutes: 45

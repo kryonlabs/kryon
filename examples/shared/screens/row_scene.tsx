@@ -27,10 +27,13 @@ function DrawItems(session: Session, disabled: boolean, width: float32, recordCl
         bounds: {width: width, height: 44}, tone: ButtonTone.ButtonToneAccent}}));
 }
 
-function DrawGalleryItems(session: Session, disabled: boolean): void {
+function GalleryContentWidth(session: Session): float32 {
     const row = TreeSubmittedNodeAt(session, TreeCurrentParent(session));
-    const content = LayoutMetricsFor(row.bounds, row.layout_gap, row.layout_padding).content;
-    DrawItems(session, disabled, content.width * float32(0.4), RecordGalleryClick);
+    return LayoutMetricsFor(row.bounds, row.layout_gap, row.layout_padding).content.width * float32(0.4);
+}
+
+function DrawGalleryItems(session: Session, disabled: boolean): void {
+    DrawItems(session, disabled, GalleryContentWidth(session), RecordGalleryClick);
 }
 
 export function SetExampleOptions(disabled: boolean, _reducedMotion: boolean): void {
