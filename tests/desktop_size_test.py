@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
 
 APP = '''Desktop :: #import "desktop_runtime";
+Raster :: #import "kryon/Cairo";
 #import "geometry"
 #import "byte_text_linux"
 #import "c_string"
@@ -38,9 +39,8 @@ SendDrop :: (window: u32, path: *u8, kind: u32 = 0x1000) -> bool {
 #program_export
 main :: () -> s32 {
     if !Desktop.OpenDesktopSized(320, 200) { return 2 }
-    // These checks used to live in the hello example's capture branch. Keep
-    // desktop event and synthetic-pointer coverage in this dedicated host test.
-    if !Desktop.CheckPointerEvents() { return 18 }
+    // Exercise raw synthetic input before PollDesktop installs the focus-aware
+    // frame snapshot; afterward PollPointer intentionally reads that snapshot.
     Desktop.SetPointerFrame(80.0, 70.0, true, true, false)
     pointer := Desktop.PollPointer()
     if pointer.x != 80.0 || pointer.y != 70.0 || !pointer.down ||
@@ -48,6 +48,9 @@ main :: () -> s32 {
     Desktop.SetPointerFrame(80.0, 70.0, false, false, true)
     pointer = Desktop.PollPointer()
     if pointer.down || pointer.pressed || !pointer.released { return 20 }
+    Desktop.BeginDesktopFrame()
+    if !Desktop.EndDesktopFrame() || !Desktop.PollDesktop() { return 2 }
+    if !Desktop.CheckPointerEvents() { return 18 }
     if !Desktop.DesktopSetTitle("Time Sheet.gnumeric") { return 10 }
     if TextFromCString(NativeTitle(Desktop.DesktopWindow())) != "Time Sheet.gnumeric" { return 11 }
     own := WindowId(Desktop.DesktopWindow())
@@ -74,7 +77,7 @@ main :: () -> s32 {
     viewport = Desktop.DesktopViewport()
     if viewport.width != 200.0 || viewport.height != 120.0 { return 6 }
     if !Desktop.EndDesktopFrame() { return 7 }
-    if !Desktop.CaptureConfigured() { return 8 }
+    if !Raster.RasterWritePNG("capture.png") { return 8 }
     if Desktop.ResizeDesktop(0, 120) { return 9 }
     Desktop.CloseDesktop()
     return 0

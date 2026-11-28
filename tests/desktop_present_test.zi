@@ -47,18 +47,18 @@ main :: () -> s32 {
     Probe.Reset()
     // The first successful present reveals already-painted pixels, including
     // when the application marked its initial frame unchanged.
-    if !Frame(true) || !Counts(0, 1) || !Desktop.WindowVisibleHost() ||
+    if !Frame(true) || !Counts(2, 2) || !Desktop.WindowVisibleHost() ||
     !Probe.Pixel(Desktop.DesktopWindow(), cast(u32)0xffdc283c) ||
     !Probe.WindowPixel(Desktop.DesktopWindow(), cast(u32)0xffdc283c) { return 2 }
     Probe.Reset()
     for i: 0..29 { if !Frame(true) { return 3 } }
     if !Counts(0, 0) { return 4 }
-    if !Frame(false) || !Counts(1, 1) { return 5 }
+    if !Frame(false) || !Counts(0, 1) { return 5 }
     Quiet(); Probe.Reset()
     id := WindowID(Desktop.DesktopWindow())
     // A foreign window event cannot cause an upload or a present.
     if !Event(cast(u32)0x200, id+1, cast(u32)3) || !Frame(true) || !Counts(0, 0) { return 6 }
-    // Expose, show and restore reuse the uploaded texture exactly once.
+    // Expose, show and restore present retained pixels exactly once.
     details: [3]u32 = .{1, 3, 9}
     for i: 0..2 {
         Probe.Reset()
@@ -66,22 +66,22 @@ main :: () -> s32 {
         if !Probe.Pixel(Desktop.DesktopWindow(), cast(u32)0xffdc283c) { return 17 }
         if !Frame(true) || !Counts(0, 1) { return 8 }
     }
-    // Resize creates a texture that must receive pixels before reuse.
+    // Resize rebinds Cairo to the replacement SDL pixels before reuse.
     Probe.Reset()
-    if !Desktop.ResizeDesktop(180, 140) || !Frame(true) || !Counts(1, 1) { return 9 }
+    if !Desktop.ResizeDesktop(180, 140) || !Frame(true) || !Counts(0, 1) { return 9 }
     Quiet(); Probe.Reset()
     if !Frame(true) || !Counts(0, 0) { return 10 }
-    // SDL reset events invalidate texture contents even without new app paint.
+    // SDL reset events require presentation even without new app paint.
     for kind: 0x2000..0x2001 {
         Probe.Reset()
-        if !Event(cast(u32)kind, 0, 0) || !Frame(true) || !Counts(1, 1) { return 11 }
-        if !Frame(true) || !Counts(1, 1) { return 12 }
+        if !Event(cast(u32)kind, 0, 0) || !Frame(true) || !Counts(0, 1) { return 11 }
+        if !Frame(true) || !Counts(0, 1) { return 12 }
     }
-    // Failed upload/copy leaves the pending presentation available to retry.
-    Probe.Reset(); Probe.RejectUpdate(true)
-    if !Event(cast(u32)0x2000, 0, 0) || Frame(true) || !Counts(1, 0) { return 13 }
-    Probe.RejectUpdate(false)
-    if !Frame(true) || !Counts(2, 1) { return 14 }
+    // A failed native update leaves the pending presentation available to retry.
+    Probe.Reset(); Probe.RejectCopy(true)
+    if !Event(cast(u32)0x2000, 0, 0) || Frame(true) || !Probe.Counts(0, 1, 0) { return 13 }
+    Probe.RejectCopy(false)
+    if !Frame(true) || !Probe.Counts(0, 2, 1) { return 14 }
     Probe.Reset(); Probe.RejectCopy(true)
     if !Event(cast(u32)0x200, id, cast(u32)3) || Frame(true) { return 15 }
     Probe.RejectCopy(false)
@@ -90,7 +90,7 @@ main :: () -> s32 {
     Hide(Desktop.DesktopWindow()); Quiet()
     if Desktop.WindowVisibleHost() || !Frame(false) || !Counts(0, 0) { return 18 }
     Show(Desktop.DesktopWindow()); Delay(cast(u32)30)
-    if !Desktop.PollDesktop() || !Desktop.WindowVisibleHost() || !Frame(true) || !Counts(1, 1) { return 19 }
+    if !Desktop.PollDesktop() || !Desktop.WindowVisibleHost() || !Frame(true) || !Counts(0, 1) { return 19 }
     if !Probe.Pixel(Desktop.DesktopWindow(), cast(u32)0xffdc283c) { return 20 }
     // Apps may request an initially hidden window and show it later. Their
     // first frame must be ready without overriding that visibility choice.

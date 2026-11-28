@@ -86,6 +86,7 @@ ZIRAN_MODULE_ARGS += --define KRYON_NO_DESKTOP_HOST
 endif
 APP_SOURCES := $(shell find . -type d \( -name build -o -name .git -o -name vendor \) -prune -o -type f \( -name '*.zi' -o -name '*.ts' -o -name '*.tsx' \) -print)
 UI_SOURCES := $(shell find $(KRYON_DIR)/src/ui $(KRYON_DIR)/src/tsx $(KRYON_DIR)/examples/shared/screens -type f \( -name '*.zi' -o -name '*.ts' -o -name '*.tsx' \) -print)
+HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi $(KRYON_DIR)/src/backend/avif*.zi)
 ifneq ($(PROJECT_HOST),)
 PROJECT_HOST_PATH := $(realpath $(PROJECT_HOST))
 ifeq ($(filter $(CURDIR)/%,$(PROJECT_HOST_PATH)),)
@@ -98,7 +99,6 @@ HOST_ROOT_SOURCES := $(HOST)
 # spelling warning does not apply to that generated entry signature.
 HOST_CFLAGS := -Wno-main
 else
-HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi $(KRYON_DIR)/src/backend/avif*.zi)
 ifneq ($(filter $(PROJECT_BACKEND),desktop),)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/app_asset_path.zi $(KRYON_DIR)/src/backend/app_asset.zi $(KRYON_DIR)/src/backend/program_title.zi
 HOST_SOURCES += $(KRYON_DIR)/src/backend/system_theme_linux.zi $(KRYON_DIR)/src/backend/parent_theme_linux.zi

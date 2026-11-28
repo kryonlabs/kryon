@@ -731,6 +731,26 @@ OpenRaster :: (width: s32, height: s32) -> bool {
     return paint != null && Status(paint) == 0
 }
 
+// A software desktop can lend its window surface instead of keeping a second
+// full-frame pixel allocation. The host must rebind after SDL replaces it.
+OpenRasterInto :: (width: s32, height: s32, pixels: *u8, stride: s32) -> bool {
+    if pixels == null || width <= 0 || height <= 0 || stride < width * 4 { return false }
+    if raster_text_close != null { raster_text_close() }
+    if paint != null { Destroy(paint); paint = null }
+    if surface != null { SurfaceDestroy(surface); surface = null }
+    surface = ImageSurfaceBorrow(pixels, 0, width, height, stride)
+    if surface == null || SurfaceStatus(surface) != 0 { return false }
+    paint = Create(surface)
+    if paint != null {
+        Translate(paint, raster_offset_x, raster_offset_y)
+        Scale(paint, raster_scale, raster_scale)
+    }
+    raster_gpu_width = width; raster_gpu_height = height
+    raster_main_surface = surface
+    raster_target_swapped = false
+    return paint != null && Status(paint) == 0
+}
+
 // Kryon's font and the shaped layouts open with the first text the window
 // measures or draws. Every text entry opens them before saving paint state,
 // so the font options stay on the window's paint.

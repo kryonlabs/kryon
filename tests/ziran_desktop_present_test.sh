@@ -29,8 +29,14 @@ bool desktop_test_pixel(SDL_Window *window, Uint32 expected) {
     SDL_Rect rect = {50, 50, 1, 1};
     Uint32 actual = 0;
     SDL_Renderer *renderer = SDL_GetRenderer(window);
-    return renderer != NULL && SDL_RenderReadPixels(renderer, &rect,
+    if (renderer != NULL) return SDL_RenderReadPixels(renderer, &rect,
         SDL_PIXELFORMAT_ARGB8888, &actual, sizeof(actual)) == 0 && actual == expected;
+    SDL_Surface *surface = SDL_GetWindowSurface(window);
+    if (surface == NULL) return false;
+    Uint8 r, g, b;
+    Uint32 pixel = *(Uint32 *)((Uint8 *)surface->pixels + 50 * surface->pitch + 50 * 4);
+    SDL_GetRGB(pixel, surface->format, &r, &g, &b);
+    return (0xff000000u | r << 16 | g << 8 | b) == expected;
 }
 bool desktop_test_window_pixel(SDL_Window *window, Uint32 expected) {
     SDL_SysWMinfo info;
@@ -60,6 +66,23 @@ int SDL_RenderCopy(SDL_Renderer *renderer, SDL_Texture *texture,
     assert(next != NULL);
     copies++;
     return reject_copy ? -1 : next(renderer, texture, source, destination);
+}
+int SDL_UpperBlit(SDL_Surface *source, const SDL_Rect *rect, SDL_Surface *target, SDL_Rect *dest) {
+    int (*next)(SDL_Surface *, const SDL_Rect *, SDL_Surface *, SDL_Rect *);
+    *(void **)(&next) = dlsym(RTLD_NEXT, "SDL_UpperBlit");
+    assert(next != NULL);
+    updates++;
+    return reject_update ? -1 : next(source, rect, target, dest);
+}
+int SDL_UpdateWindowSurface(SDL_Window *window) {
+    int (*next)(SDL_Window *);
+    *(void **)(&next) = dlsym(RTLD_NEXT, "SDL_UpdateWindowSurface");
+    assert(next != NULL);
+    copies++;
+    if (reject_copy) return -1;
+    int result = next(window);
+    if (result == 0) presents++;
+    return result;
 }
 void SDL_RenderPresent(SDL_Renderer *renderer) {
     void (*next)(SDL_Renderer *);

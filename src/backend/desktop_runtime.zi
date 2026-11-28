@@ -64,6 +64,10 @@ UpdateTexture :: (texture: *void, rect: *void, pixels: *u8,
 RenderCopy :: (renderer: *void, texture: *void, source: *void,
     destination: *void) -> s32 #foreign sdl_library "SDL_RenderCopy";
 RenderPresent :: (renderer: *void) #foreign sdl_library "SDL_RenderPresent";
+GetWindowSurface :: (window: *void) -> *void #foreign sdl_library "SDL_GetWindowSurface";
+UpdateWindowSurface :: (window: *void) -> s32 #foreign sdl_library "SDL_UpdateWindowSurface";
+BlitSurface :: (source: *void, source_rect: *void, destination: *void,
+    destination_rect: *void) -> s32 #foreign sdl_library "SDL_UpperBlit";
 EventFilter :: #type (argument: *void, event: *Event) -> s32 #c_call;
 FilterEvents :: (filter: EventFilter, argument: *void) #foreign sdl_library "SDL_FilterEvents";
 PumpEvents :: () #foreign sdl_library "SDL_PumpEvents";
@@ -172,6 +176,32 @@ DesktopOrigin :: () -> Vector2 {
     return .{cast(float32)x, cast(float32)y}
 }
 renderer: *void;
+// Software presentation needs only the retained Cairo pixels and SDL's window
+// surface. A streaming texture adds another full-size copy on this path.
+desktop_software_surface: bool;
+desktop_borrowed_surface: bool;
+// SDL_Surface's public prefix; SDL owns both this object and its pixels.
+DesktopSurfaceFormat :: struct { kind: u32; palette: *void; bits: u8; bytes: u8; }
+DesktopWindowSurface :: struct {
+    flags: u32
+    format: *DesktopSurfaceFormat
+    width: s32
+    height: s32
+    pitch: s32
+    pixels: *u8
+}
+DesktopBorrowWindowSurface :: () -> bool {
+    target := cast(*DesktopWindowSurface)GetWindowSurface(window)
+    if target == null || target.width != desktop_width || target.height != desktop_height { return false }
+    // Cairo ARGB32 and SDL's native 32-bit RGB/ARGB formats share byte order.
+    // Other window formats keep the owned Cairo surface and SDL's conversion.
+    if target.format == null || (target.format.kind != cast(u32)0x16161804 &&
+        target.format.kind != cast(u32)0x16362004) { return true }
+    if !OpenRasterInto(target.width, target.height, target.pixels, target.pitch) { return false }
+    desktop_borrowed_surface = true
+    desktop_pixels_valid = false
+    return true
+}
 texture: *void;
 pointer: PointerFrame;
 desktop_physical_buttons: u32;
@@ -567,8 +597,16 @@ OpenDesktopWindow :: (width: s32, height: s32, title_text: string, options: u32)
         texture = null
     } else {
         RasterGpuClearHooks()
-        texture = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width, height)
-        if texture == null { return DesktopOpenFailed("create its SDL texture", true) }
+        info: Gpu.RendererInfo
+        desktop_software_surface = Gpu.GetRendererInfo(renderer, *info) == 0 &&
+            (info.flags & cast(u32)1) != cast(u32)0
+        if desktop_software_surface {
+            DestroyRenderer(renderer)
+            renderer = null
+        } else {
+            texture = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width, height)
+            if texture == null { return DesktopOpenFailed("create its SDL texture", true) }
+        }
     }
     // Select an explicit native arrow before the first frame is drawn. This
     // also covers hosts that own their loop and have no retained tree yet.
@@ -721,23 +759,27 @@ DesktopApplyResize :: () -> bool {
         desktop_height = height
         return true
     }
-    next := CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width, height)
-    if next == null { return false }
+    next: *void
+    if !desktop_software_surface {
+        next = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width, height)
+        if next == null { return false }
+    }
     CloseRaster()
     desktop_pixels_valid = false
     desktop_texture_dirty = true
     desktop_present_pending = true
     if !OpenRaster(width, height) {
-        DestroyTexture(next)
+        if next != null { DestroyTexture(next) }
         CloseRaster()
         unused OpenRaster(desktop_width, desktop_height)
         return false
     }
-    DestroyTexture(texture)
+    if texture != null { DestroyTexture(texture) }
     texture = next
     SetWindowSize(window, width, height)
     desktop_width = width
     desktop_height = height
+    if desktop_software_surface { return DesktopBorrowWindowSurface() }
     return true
 }
 
@@ -777,6 +819,8 @@ CloseDesktop :: () {
     CloseRaster()
     if texture != null { DestroyTexture(texture); texture = null }
     if renderer != null { DestroyRenderer(renderer); renderer = null }
+    desktop_software_surface = false
+    desktop_borrowed_surface = false
     if window != null { DestroyWindow(window) }
     Quit()
     window = null
@@ -1254,6 +1298,13 @@ BeginDesktopFrame :: () {
     desktop_frame_unchanged = false
     desktop_frame_requested = false
     unused DesktopApplyResize()
+    if desktop_borrowed_surface {
+        // SDL may rotate or replace pixels after an update or visibility change.
+        target := cast(*DesktopWindowSurface)GetWindowSurface(window)
+        if target != null && target.pixels != RasterSurfaceData() {
+            unused DesktopBorrowWindowSurface()
+        }
+    }
     BeginRasterFrame(true)
 }
 
@@ -1314,6 +1365,48 @@ EndDesktopFrame :: () -> bool {
     // A hidden window keeps running the app's frames without presenting.
     if !WindowVisibleHost() && !desktop_first_frame { return true }
     if !desktop_texture_dirty && !desktop_present_pending { return true }
+    if desktop_software_surface {
+        // Reacquire after show/resize: SDL owns this surface and may replace it.
+        target := GetWindowSurface(window)
+        if target == null { return false }
+        if desktop_borrowed_surface {
+            if UpdateWindowSurface(window) != 0 { return false }
+            desktop_texture_dirty = false
+            desktop_texture_reset = false
+            desktop_present_pending = false
+            RasterFramePresented()
+            return true
+        }
+        // This wrapper borrows Cairo's pixels; freeing it never frees them.
+        source := CursorSurface(RasterSurfaceData(), desktop_width, desktop_height,
+            32, RasterSurfaceStride(), cast(u32)0x00ff0000,
+            cast(u32)0x0000ff00, cast(u32)0x000000ff, cast(u32)0)
+        if source == null { return false }
+        copied := BlitSurface(source, null, target, null) == 0
+        if !copied || UpdateWindowSurface(window) != 0 { FreeSurface(source); return false }
+        if desktop_first_frame && desktop_first_frame_show {
+            // Validate presentation while hidden before revealing the window.
+            // Showing can replace SDL's pixels, so copy the owned first frame again.
+            ShowWindow(window)
+            target = GetWindowSurface(window)
+            if target == null || BlitSurface(source, null, target, null) != 0 ||
+                UpdateWindowSurface(window) != 0 {
+                HideWindow(window)
+                FreeSurface(source)
+                return false
+            }
+        }
+        FreeSurface(source)
+        desktop_first_frame = false
+        desktop_texture_dirty = false
+        desktop_texture_reset = false
+        desktop_present_pending = false
+        RasterFramePresented()
+        if WindowVisibleHost() && !DesktopBorrowWindowSurface() { return false }
+        // The blit populated the borrowed target with this complete frame.
+        desktop_pixels_valid = true
+        return true
+    }
     if Gpu.DesktopGpuActive() {
         Gpu.DesktopGpuFlush()
         desktop_texture_dirty = false
