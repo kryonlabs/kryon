@@ -14,6 +14,7 @@
     System :: #import "system_palette";
     ThemeHost :: #import "system_theme_host_canvas";
     FrameTheme :: #import "frame_theme";
+    Drawing :: #import "drawing_props";
     Frame :: #import "canvas_frame";
 
     using FrameStatus;
@@ -43,7 +44,7 @@
             return false
         }
         App.CallDraw(draw, session.slot, session.epoch, viewport)
-        Frame.CanvasFrameBackground(ColorFromPacked(FrameTheme.FrameThemeBackground()))
+        Frame.CanvasFrameBackground(Drawing.ColorFromPacked(FrameTheme.FrameThemeBackground()))
         if EndCanvasUiFrame(session) != cast(FrameStatus)FrameOk {
             EndCanvasFrame()
             return false
