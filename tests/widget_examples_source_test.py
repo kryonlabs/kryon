@@ -7,7 +7,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from gallery import example_location, prepare, shared_example_exports
+from gallery import SCENE_CAPTURES, example_location, prepare, shared_example_exports
 
 
 def main():
@@ -92,7 +92,8 @@ def main():
             else:
                 module = 'gallery/' + Path(entry['sourcePath']).relative_to('examples/gallery/src').with_suffix('').as_posix()
             assert f'{match[1]} :: #import "{module}";' in registry
-        assert len({frames[entry['id']] for entry in variants}) == 2, 'Distinct button compositions dispatched the same frame'
+        # Static compositions stay distinct per variant; live draws share the interactive frame.
+        assert len({SCENE_CAPTURES.get(entry['id'], frames[entry['id']]) for entry in variants}) == 2, 'Distinct button compositions dispatched the same frame'
         prepare(catalog=catalog, site=site, examples=examples)
         assert all(path.read_bytes() == source for path, source in originals.items()), 'Repeated preparation overwrote authored source'
     print('Local example source test passed: edits preserved and shared by catalog variants/site snippets')

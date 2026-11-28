@@ -12,7 +12,6 @@ SITE = ROOT / 'docs/site'
 
 # These scenes share a source module while keeping their distinct composition.
 SCENE_FRAMES = {
-    'kryon/0': 'GalleryCoreFrame',
     'kryon/1': 'GalleryFrame',
     'kryon/2': 'GalleryFrame',
     'kryon/4': 'GalleryFrame',
@@ -39,7 +38,6 @@ SCENE_FRAMES = {
     'kryon/38': 'GalleryFrame',
     'kryon/39': 'GalleryFrame',
     'kryon/40': 'GalleryFrame',
-    'kryon/46': 'GalleryEmphasisFrame',
     'kryon/49': 'GalleryFrame',
     'kryon/50': 'GallerySelectionFrame',
     'kryon/52': 'GalleryFrame',
@@ -93,6 +91,8 @@ SCENE_FRAMES = {
 # Static catalog captures keep each authored scene's fixed preview geometry;
 # live previews use its ordinary interactive frame callback.
 SCENE_CAPTURES = {
+    'kryon/0': 'GalleryCoreFrame',
+    'kryon/46': 'GalleryEmphasisFrame',
     'kryon/43': 'GalleryCaptureFrame',
     'kryon/47': 'GalleryStaticOpenFrame',
     'overlays/1': 'GalleryCaptureFrame',

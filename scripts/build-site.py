@@ -14,10 +14,10 @@ NAV = [
     ('widgets.html', 'Components'), ('apps.html', 'Apps'), ('docs.html', 'Docs'),
 ]
 MAINTAINED = [
-    ('index.html', 'Kryon — UI modules for Ziran', 'Build desktop and web interfaces with Kryon UI modules. Explore the controls behind Terminal, Explorer, and Workbook.'),
-    ('getting-started.html', 'Getting started — Kryon', 'Add Kryon to a Ziran project, import widgets, and run the maintained local tests.'),
+    ('index.html', 'Kryon — native TSX screens with Ziran logic', 'Build desktop and web interfaces from native TSX screens with Ziran logic. Explore the controls behind Terminal, Explorer, and Workbook.'),
+    ('getting-started.html', 'Getting started — Kryon', 'Author native TSX screens in a Ziran project, import widgets, and run the maintained local tests.'),
     ('widgets.html', 'Components — Kryon', 'Browse native TSX component examples with source, APIs, options and status.'),
-    ('modules.html', 'Modules — Kryon', 'The maintained gallery currently builds Kryon widgets, Plot charts, DataViews controls, focused inputs and overlays.'),
+    ('modules.html', 'Modules — Kryon', 'The maintained TSX gallery builds Kryon widgets, Plot charts, DataViews controls, focused inputs and overlays.'),
     ('apps.html', 'Apps — Kryon', 'Explore Terminal, Explorer, Workbook, and other desktop and browser apps built with Kryon modules.'),
     ('docs.html', 'Docs — Kryon', 'Kryon ownership, public surface, local commands and integration boundaries.'),
     ('renderers.html', 'Platforms — Kryon', 'Kryon runs through Ziran desktop and Canvas hosts; support varies by backend and target.'),

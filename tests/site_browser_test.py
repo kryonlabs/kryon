@@ -94,7 +94,11 @@ class Browser:
         self.log = (profile / 'chromium.log').open('wb')
         self.process = subprocess.Popen(
             ['sh', '-c', 'exec 3<&0 4>&1 "$@" </dev/null >/dev/null', 'chromium', chromium,
-             '--headless', '--no-sandbox', '--disable-gpu', '--use-gl=disabled',
+             # Software WebGL (ANGLE/SwiftShader) keeps the real WebGL2 present
+             # route deterministic here: explicit software via the opt-in flag,
+             # never reported as hardware. Hardware runs belong on real GPUs.
+             '--headless', '--no-sandbox', '--use-angle=swiftshader',
+             '--enable-unsafe-swiftshader',
              '--disable-dev-shm-usage', '--no-first-run', '--no-default-browser-check',
              '--hide-scrollbars', '--mute-audio', '--remote-debugging-pipe',
              '--user-data-dir=' + str(runtime_profile), 'about:blank'],
@@ -108,6 +112,13 @@ class Browser:
             self.session = self.command('Target.attachToTarget', targetId=target['targetId'], flatten=True)['sessionId']
             for domain in ('Runtime', 'Page', 'Log'):
                 self.command(domain + '.enable')
+            renderer = self.evaluate('''(() => {
+                const gl = document.createElement('canvas').getContext('webgl2');
+                if (!gl) return 'unavailable';
+                const debug = gl.getExtension('WEBGL_debug_renderer_info');
+                return debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+            })()''')
+            print('WebGL2 present (' + renderer + ')', flush=True)
         except Exception as error:
             self.close()
             with (profile / 'chromium.log').open('rb') as log:
@@ -804,7 +815,7 @@ def check_live(browser, base, scenes, shots):
     browser.until('Module.galleryReady && Module.siteDark', 'persisted theme', 60)
     ready(browser, base)
     assert sum(n['label'] == 'Continue' and n['interactive'] for n in tree(browser)) == 12, 'default web differs from maintained Button'
-    mouse(browser, node_for(browser, label='Continue', key=10))
+    mouse(browser, node_for(browser, label='Continue'))
     browser.until("Module.siteTree.some(n => n.key === 2 && n.label === '1')", 'default maintained Button click')
     select_example(browser, base, scenes, 'Button emphasis', reload=False)
     assert sum(n['label'] == 'Continue' and n['interactive'] for n in tree(browser)) == 12

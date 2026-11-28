@@ -39,7 +39,7 @@ using CompositionPhase;
     CANVAS_QUEUE_LIMIT :: 64
     CANVAS_BUTTON_LIMIT :: 8
     CANVAS_TOUCH_LIMIT :: 8
-    CANVAS_CLIPBOARD_SIZE :: 4096
+    CANVAS_CLIPBOARD_SIZE :: 65536
     CANVAS_COMPOSITION_SIZE :: 4096
 
     CanvasKeyEntry :: struct {

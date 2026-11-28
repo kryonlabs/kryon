@@ -23,16 +23,16 @@ interface ButtonVariantsProps {
 }
 
 function ButtonVariants(variants: ButtonVariantsProps): void {
-    if (Button({session: variants.session, props: {disabled: variants.disabled, bounds: {height: 44},
-        label: "Continue", tone: variants.tone, emphasis: ButtonEmphasis.ButtonEmphasisFilled}})) {
+    if (<Button session={variants.session} props={{disabled: variants.disabled, bounds: {height: 44},
+        label: "Continue", tone: variants.tone, emphasis: ButtonEmphasis.ButtonEmphasisFilled}}/>) {
         clicks += s32(1);
     }
-    if (Button({session: variants.session, props: {disabled: variants.disabled, bounds: {height: 44},
-        label: "Continue", tone: variants.tone, emphasis: ButtonEmphasis.ButtonEmphasisSoft}})) {
+    if (<Button session={variants.session} props={{disabled: variants.disabled, bounds: {height: 44},
+        label: "Continue", tone: variants.tone, emphasis: ButtonEmphasis.ButtonEmphasisSoft}}/>) {
         clicks += s32(1);
     }
-    if (Button({session: variants.session, props: {disabled: variants.disabled, bounds: {height: 44},
-        label: "Continue", tone: variants.tone, emphasis: ButtonEmphasis.ButtonEmphasisOutline}})) {
+    if (<Button session={variants.session} props={{disabled: variants.disabled, bounds: {height: 44},
+        label: "Continue", tone: variants.tone, emphasis: ButtonEmphasis.ButtonEmphasisOutline}}/>) {
         clicks += s32(1);
     }
 }
@@ -42,7 +42,7 @@ function DrawCount(session: Session, disabled: boolean): void {
         return;
     }
     const label = FormatInteger(s64(clicks), VecSlice(digits, s64(0), digits.count));
-    <Text session={session} props={{disabled: disabled, bounds: {height: 36}, text: label}}/>;
+    <Text session={session} props={{key: u64(2n), disabled: disabled, bounds: {height: 36}, text: label}}/>;
 }
 
 function DrawGalleryCount(session: Session, height: float32): void {
@@ -88,14 +88,14 @@ export function GalleryCoreFrame(frame: App.Frame): void {
     <Column session={session} props={{bounds: {x: viewport.x + viewport.width * float32(24) / float32(480),
         y: viewport.y + 64, width: viewport.width * float32(432) / float32(480)}, gap: gap, gap_override: true}}>
         <Row session={session} props={{bounds: {height: height}, gap: gap, gap_override: true}}>
-            {RecordGalleryClick(Button({session: session, props: {label: "Continue", disabled: disabled,
-                tone: ButtonTone.ButtonToneNeutral}}))}
-            {RecordGalleryClick(Button({session: session, props: {label: "Continue", disabled: disabled,
-                tone: ButtonTone.ButtonToneAccent}}))}
-            {RecordGalleryClick(Button({session: session, props: {label: "Continue", disabled: disabled,
-                tone: ButtonTone.ButtonToneDanger}}))}
-            {RecordGalleryClick(Button({session: session, props: {label: "Continue", disabled: disabled,
-                tone: ButtonTone.ButtonToneSuccess}}))}
+            {RecordGalleryClick(<Button session={session} props={{label: "Continue", disabled: disabled,
+                tone: ButtonTone.ButtonToneNeutral}}/>)}
+            {RecordGalleryClick(<Button session={session} props={{label: "Continue", disabled: disabled,
+                tone: ButtonTone.ButtonToneAccent}}/>)}
+            {RecordGalleryClick(<Button session={session} props={{label: "Continue", disabled: disabled,
+                tone: ButtonTone.ButtonToneDanger}}/>)}
+            {RecordGalleryClick(<Button session={session} props={{label: "Continue", disabled: disabled,
+                tone: ButtonTone.ButtonToneSuccess}}/>)}
         </Row>
         {DrawGalleryCount(session, height)}
     </Column>;
@@ -108,10 +108,10 @@ interface GalleryEmphasisPairProps {
 }
 
 function GalleryEmphasisPair(pair: GalleryEmphasisPairProps): void {
-    RecordGalleryClick(Button({session: pair.session, props: {bounds: {height: 40}, label: "Neutral action",
-        disabled: pair.disabled, emphasis: pair.emphasis}}));
-    RecordGalleryClick(Button({session: pair.session, props: {bounds: {height: 40}, label: "Accent action",
-        disabled: pair.disabled, emphasis: pair.emphasis, tone: ButtonTone.ButtonToneAccent}}));
+    RecordGalleryClick(<Button session={pair.session} props={{bounds: {height: 40}, label: "Neutral action",
+        disabled: pair.disabled, emphasis: pair.emphasis}}/>);
+    RecordGalleryClick(<Button session={pair.session} props={{bounds: {height: 40}, label: "Accent action",
+        disabled: pair.disabled, emphasis: pair.emphasis, tone: ButtonTone.ButtonToneAccent}}/>);
 }
 
 export function GalleryEmphasisFrame(frame: App.Frame): void {

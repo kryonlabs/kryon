@@ -89,7 +89,7 @@ export function SiteOverview(session: Session, view: Rectangle): void {
             large ? "Native interfaces.\nOne expressive language." : "Native interfaces.\nWritten in Ziran.", large ? s32(56) : s32(36));
         y += large ? float32(160.0) : float32(126.0);
         SiteCenter(session, u64(10032n), {x: x, y: y, width: width, height: 64},
-            "Ziran UI modules for desktop and the web.\nUsed in Terminal, Explorer, and Workbook.", large ? s32(18) : s32(16));
+            "Native TSX screens with Ziran logic.\nUsed in Terminal, Explorer, and Workbook.", large ? s32(18) : s32(16));
         y += 88.0;
         const actions: float32 = width > 360.0 ? 360.0 : width;
         const ax = (view.width - actions) * 0.5;
@@ -214,13 +214,13 @@ export function SiteReading(session: Session, view: Rectangle): void {
     let title = "Documentation";
     let body = "";
     if (State.site_page === s32(4)) {
-        body = "Kryon owns widget composition, behavior, accessibility and UI policy.\n\nZiran owns the language, compiler and runtime.\n\nApplications own their screens, workflows and state.\n\nPublic APIs: src/ui/*.zi\nBuild inventory: src/ui/modules.txt\nProject integration: docs/PROJECTS.md\nBackend integration: docs/BACKENDS.md\n\nStart a project\nkryon new hello\ncd hello\nkryon run";
+        body = "Kryon owns widget composition, behavior, accessibility and UI policy.\n\nZiran owns the language, compiler and runtime.\n\nApplications own their screens, workflows and state.\n\nScreen authoring: TSX components in examples/shared/screens/*.tsx\nPublic policy APIs: src/ui/*.zi\nBuild inventory: src/ui/modules.txt\nProject integration: docs/PROJECTS.md\nBackend integration: docs/BACKENDS.md\n\nStart a project\nkryon new hello\ncd hello\nkryon run";
     } else if (State.site_page === s32(5)) {
         title = "Platforms";
-        body = "Desktop\nThe native gallery uses the canonical desktop host.\n\nBrowser\nThis page runs compiled Ziran through the Canvas host. Its controls use the same Kryon widget implementations.\n\nPortable\nKryon can host .zx applications through explicit capabilities.\n\nAndroid\nDevice validation is tracked separately.";
+        body = "Desktop\nThe native gallery uses the canonical desktop host.\n\nBrowser\nThis page runs compiled TSX/Ziran through the Canvas host. Its controls use the same Kryon widget implementations.\n\nPortable\nKryon can host .zx applications through explicit capabilities.\n\nAndroid\nDevice validation is tracked separately.";
     } else if (State.site_page === s32(6)) {
         title = "Modules";
-        body = "Kryon\n80 controls, text, layout and navigation examples.\n\nPlot\n6 chart examples.\n\nDataViews\n3 tree, board and table examples.\n\nInputs\n6 focused editing examples.\n\nOverlays\n6 overlay examples.\n\nAll 101 examples are available from Components.";
+        body = "Kryon\n82 controls, text, layout and navigation examples.\n\nPlot\n6 chart examples.\n\nDataViews\n3 tree, board and table examples.\n\nInputs\n6 focused editing examples.\n\nOverlays\n6 overlay examples.\n\nAll 103 examples are available from Components.";
     }
     let width: float32 = view.width - 40.0;
     if (width > 840.0) { width = 840.0; }
