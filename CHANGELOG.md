@@ -39,6 +39,10 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
+- Retain tiled-atlas filtering working sets without cycling between sharp and
+  fallback samples; expand entry and pixmap-copy slots while preserving the
+  existing global and per-session memory budgets.
+
 - Keep native and portable frame backgrounds in sync with system and app themes,
   including live palette changes, explicit overrides and canvas tokens.
 

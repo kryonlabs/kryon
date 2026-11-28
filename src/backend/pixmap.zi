@@ -1,4 +1,5 @@
 TypefaceSlots :: #import "pixmap_typeface_slots";
+Lanczos :: #import "lanczos_cache";
 #import "drawing_props"
 #import "control_props"
 #import "geometry"
@@ -168,8 +169,8 @@ PixmapDeviceFont :: (font: s32) -> s32 { return PixmapRound(cast(float32)font * 
 // shared cache owns, and then the managed bitmaps.
 PixmapAssetImageLimit :: 1024;
 PixmapCopyImageStart :: 1024;
-PixmapManagedImageStart :: 1088;
-PixmapImageLimit :: 1152;
+PixmapManagedImageStart :: PixmapCopyImageStart + Lanczos.LANCZOS_SLOTS;
+PixmapImageLimit :: PixmapManagedImageStart + 64;
 pixmap_image_paths: [PixmapImageLimit][256]u8;
 pixmap_image_lengths: [PixmapImageLimit]s32;
 pixmap_image_widths: [PixmapImageLimit]s32;
@@ -381,7 +382,6 @@ PixmapPrepareImage :: (slot: s32, source: *Rectangle, width: float32, height: fl
 // same bytes. Until it is made the image keeps its bilinear sampling. Other
 // targets have no worker and keep that sampling, so their bytes still agree.
 #if PIXMAP_LANCZOS {
-    Lanczos :: #import "lanczos_cache";
     #import "paint_queue"
 
     // The pixmap's copies are their own session, keyed by slot.
@@ -408,8 +408,8 @@ PixmapPrepareImage :: (slot: s32, source: *Rectangle, width: float32, height: fl
         entry.texture = 0
     }
 
-    // Publishes ENTRY's copy in a free copy slot. There are more copy slots
-    // than cache entries, and each entry's release frees its slot.
+    // Publishes ENTRY's copy in a free copy slot. Every cache entry has room
+    // for a published copy, and each entry's release frees its slot.
     PixmapPublishCopy :: (entry: *Lanczos.LanczosEntry) -> bool {
         for slot: PixmapCopyImageStart..PixmapManagedImageStart - 1 {
             if pixmap_image_widths[slot] != 0 { continue }

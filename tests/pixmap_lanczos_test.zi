@@ -160,6 +160,20 @@ main :: (argc: s32, argv: **u8) -> s32 {
         if !AdjacentTiles() { return 26 }
     }
     if !AdjacentTiles() || Pixels.PixmapLanczosPending() { return 27 }
+    // A visible tiled atlas and its palette can need more than 48 small
+    // regions. Once warmed, a complete sweep must reuse every exact copy.
+    for region: cast(s32)0..95 {
+        box := Rectangle.{cast(float32)(region % 12 * 40), cast(float32)(region / 12 * 40), 40.0, 40.0}
+        if !Draw(sources[0], box, .{0.0, 0.0, 32.0, 32.0}, tints[0], true) { return 29 }
+        unused Pixels.PixmapLanczosWait()
+        if !Draw(sources[0], box, .{0.0, 0.0, 32.0, 32.0}, tints[0], true) { return 30 }
+    }
+    for region: cast(s32)0..95 {
+        box := Rectangle.{cast(float32)(region % 12 * 40), cast(float32)(region / 12 * 40), 40.0, 40.0}
+        if !Draw(sources[0], box, .{0.0, 0.0, 32.0, 32.0}, tints[0], true) || Pixels.PixmapLanczosPending() {
+            print("tiled atlas copy was evicted: %\n", region); return 31
+        }
+    }
     // A sharp image never makes a copy.
     if !Draw(sources[0], boxes[1], targets[1], tints[0], false) || Pixels.PixmapLanczosPending() { return 9 }
     // Replacing or clearing a picture frees its copies and their slots.

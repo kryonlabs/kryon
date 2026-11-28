@@ -22,7 +22,9 @@ LANCZOS_BYTE_LIMIT :: 67108864
 LANCZOS_SESSION_BYTE_LIMIT :: 33554432
 // The largest source region one copy reads.
 LANCZOS_SOURCE_PIXEL_LIMIT :: 16777216
-LANCZOS_SLOTS :: 48
+// A tiled atlas can use many small regions at several device-pixel sizes.
+// Keep those working sets resident; the byte budgets still bound memory.
+LANCZOS_SLOTS :: 256
 
 // Byte layouts of sources and copies: straight or premultiplied alpha. The
 // four channels may be in any order; alpha is the last byte of each pixel
