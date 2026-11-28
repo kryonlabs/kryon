@@ -96,13 +96,15 @@ NormalMatrix :: (a: GpuMatrix) -> GpuMatrix {
     return result
 }
 
-Point :: (a: GpuMatrix, p: Vector3) -> Vector3 {
+// Each vertex upload uses the same matrix. Borrow it rather than copying
+// all 128 bytes for every position and normal in the mesh.
+Point :: (a: *GpuMatrix, p: Vector3) -> Vector3 {
     return .{a.m[0] * p.x + a.m[1] * p.y + a.m[2] * p.z + a.m[3],
         a.m[4] * p.x + a.m[5] * p.y + a.m[6] * p.z + a.m[7],
         a.m[8] * p.x + a.m[9] * p.y + a.m[10] * p.z + a.m[11]}
 }
 
-Direction :: (a: GpuMatrix, p: Vector3) -> Vector3 {
+Direction :: (a: *GpuMatrix, p: Vector3) -> Vector3 {
     return .{a.m[0] * p.x + a.m[1] * p.y + a.m[2] * p.z,
         a.m[4] * p.x + a.m[5] * p.y + a.m[6] * p.z,
         a.m[8] * p.x + a.m[9] * p.y + a.m[10] * p.z}

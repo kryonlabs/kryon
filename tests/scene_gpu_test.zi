@@ -8,6 +8,7 @@
 #import "kryon/shader"
 G :: #import, file "../src/backend/scene_gpu_gl.zi";
 #import, file "scene_gpu_padding.zi";
+#import, file "scene_gpu_upload_check.zi";
 libc :: #system_library "c";
 Flush :: (stream: *void)->s32 #foreign libc "fflush";
 Pause :: (microseconds: u32)->s32 #foreign libc "usleep";
@@ -411,6 +412,9 @@ Quality :: (kind: s32)->bool {
 main :: ()->s32 {
  host:=HostStart();defer HostClose(*host)
  if !HostCheck(host) {return 30}
+ if !IndexedUploadReuse() || !HostCheck(host) {
+     return 91
+ }
  gpu: SceneGpuContext
  caps:=SceneGpuProbe(*gpu)
  if !HostCheck(host) {return 31}

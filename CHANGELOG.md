@@ -103,6 +103,9 @@ The earlier layout changes also apply:
 - Remove duplicate widget-test executions of byte-identical portable bundles;
   preserve source/saved IR comparisons and native and Go behavior checks.
 
+- Borrow scene vertex transform matrices during native uploads instead of copying
+  128 bytes for every position and normal; retain existing GPU buffers.
+
 - Replace the web host's Canvas2D presenter with a WebGL2 GPU presenter: one
   context whose drawing buffer survives composites, batched shape vertices
   with analytic coverage, text and images as textured quads from retained

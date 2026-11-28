@@ -1,0 +1,78 @@
+// A changing CPU mesh shares retained buffers with an untouched indexed mesh.
+// Compare every result with a fresh renderer to cover transform upload math.
+#import, file "../src/backend/scene_gpu.zi";
+#import "kryon/scene"
+#import "kryon/scene_skin"
+#import "kryon/scene_render"
+#import "std/image"
+#import "std/vec"
+
+IndexedUploadReuse :: () -> bool {
+    scene: Scene
+    SceneInit(*scene)
+    defer SceneFree(*scene)
+    positions: [4]Vector3 = .[.{-0.4, -0.4, 0.0}, .{0.4, -0.4, 0.0},
+    .{0.4, 0.4, 0.0}, .{-0.4, 0.4, 0.0}]
+    normals: [4]Vector3
+    for at: 0..3 {
+        normals[at] = .{0.0, 0.0, 1.0}
+    }
+    uvs: [4]ShapePoint = .[.{0.0, 0.0}, .{1.0, 0.0}, .{1.0, 1.0}, .{0.0, 1.0}]
+    indices: [6]s32 = .[0, 1, 2, 0, 2, 3]
+    material := LitMaterial(.{180, 90, 45, 255}, 0.6)
+    material.double_sided = true
+    material.vertex_colors = true
+    AddHemisphereLight(*scene, .{255, 245, 225, 255}, .{90, 95, 110, 255}, 1.0)
+    left := SceneIndexedMesh(*scene, positions[:], normals[:], uvs[:], indices[:], material)
+    right := SceneIndexedMesh(*scene, positions[:], normals[:], uvs[:], indices[:], material)
+    if left < 0 || right < 0 {
+        return false
+    }
+    unused SetPosition(*scene, left, -0.5, 0.0, 0.0)
+    unused SetPosition(*scene, right, 0.5, 0.0, 0.0)
+    camera := PerspectiveCamera(45.0, 1.0, 0.1, 20.0)
+    camera.position = .{0.0, 0.0, 3.0}
+    image := NewImage(96, 96)
+    reference := NewImage(96, 96)
+    defer VecFree(image.pixels)
+    defer VecFree(reference.pixels)
+    gpu: SceneGpuContext
+    defer SceneGpuRelease(*gpu)
+    if !SceneGpuRender(*gpu, *scene, camera, *image).ok {
+        return false
+    }
+    attributes := gpu.indexed.attributes
+    elements := gpu.indexed.elements
+    scratch := *gpu.indexed.scratch[0]
+    first := scene.meshes[scene.nodes[right].mesh].first_vertex
+    for frame: 0..15 {
+        unused SetRotation(*scene, right, 0.1, cast(float64)frame * 0.03, 0.2)
+        unused SetScale(*scene, right, 0.8, 1.1, 0.9)
+        scene.positions[first].z = cast(float64)frame * 0.005
+        scene.normals[first] = .{0.1, 0.0, 0.99498743710662}
+        scene.colors[first].x = 0.5 + cast(float64)frame * 0.01
+        if !SceneGpuRender(*gpu, *scene, camera, *image).ok ||
+        gpu.indexed.attributes != attributes || gpu.indexed.elements != elements ||
+        *gpu.indexed.scratch[0] != scratch {
+            return false
+        }
+        fresh: SceneGpuContext
+        result := SceneGpuRender(*fresh, *scene, camera, *reference)
+        SceneGpuRelease(*fresh)
+        if !result.ok {
+            return false
+        }
+        for byte: 0..image.pixels.count - 1 {
+            if image.pixels[byte] != reference.pixels[byte] {
+                return false
+            }
+        }
+        uploads := gpu.resources.geometry_uploads
+        if !SceneGpuRender(*gpu, *scene, camera, *image).ok ||
+        gpu.resources.geometry_uploads != uploads {
+            return false
+        }
+    }
+    print("Indexed upload transforms match fresh frames and reuse vertex, element and scratch buffers\n")
+    return true
+}

@@ -480,7 +480,7 @@ RenderTarget :: (gpu: *SceneGpuContext,scene: *Scene,camera: SceneCamera)->Scene
   draw_calls+=1
   m:=scene.meshes[d.mesh].material
   if m.transparent {
-   origin:=M.Point(view,d.origin);clip:=M.Point(projection,origin);w:=M.ProjectW(projection,origin)
+   origin:=M.Point(*view,d.origin);clip:=M.Point(*projection,origin);w:=M.ProjectW(projection,origin)
    if !VecPush(gpu.order,cast(s32)at)||!VecPush(gpu.keys,ifx w!=0.0 then clip.z/w else clip.z) { return .{diagnostic="sort allocation failure"} }
   } else if !Draw(gpu,scene,d,view,vp,*grade,camera.perspective,shadow_features) { return .{diagnostic="material texture unavailable"} }
  }
@@ -1333,7 +1333,7 @@ BakeNode :: (gpu: *SceneGpuContext,scene: *Scene,node: SceneNode,matrix: M.GpuMa
    index:=mesh.first_vertex+corner+cast(s32)lane
    if mesh.index_count>0 {index=mesh.first_vertex+scene.indices[mesh.first_index+corner+lane]}
    if index<mesh.first_vertex||index>=mesh.first_vertex+mesh.vertex_count {return -1}
-   p[lane]=M.Point(matrix,scene.positions[index]);n[lane]=M.Normalize(M.Direction(normal,scene.normals[index]))
+   p[lane]=M.Point(*matrix,scene.positions[index]);n[lane]=M.Normalize(M.Direction(*normal,scene.normals[index]))
    c[lane]=scene.colors[index]
    uv[lane]=SceneTextureCoordinate(mesh.material,scene.positions[index],scene.normals[index],scene.uvs[index])
   }
@@ -1388,7 +1388,7 @@ WriteIndexedAttribute :: (gpu: *SceneGpuContext,scene: *Scene,mesh: SceneMesh,ma
    destination[target]=cast(float32)uv.x
    destination[target+1]=cast(float32)uv.y
   } else {
-   value:=ifx channel==0 then M.Point(matrix,positions[source]) else ifx channel==1 then M.Normalize(M.Direction(normal,normals[source])) else colors[source]
+   value:=ifx channel==0 then M.Point(*matrix,positions[source]) else ifx channel==1 then M.Normalize(M.Direction(*normal,normals[source])) else colors[source]
    destination[target]=cast(float32)value.x
    destination[target+1]=cast(float32)value.y
    destination[target+2]=cast(float32)value.z
@@ -1457,7 +1457,7 @@ UpdateIndexed :: (gpu: *SceneGpuContext,scene: *Scene,parts: [7]GpuScenePart,cha
   moved:=!MatrixSame(matrix,previous)
   gpu.node_world[at]=matrix
   if moved {
-   for d: 0..gpu.draws.count-1 {if gpu.draws[d].node==cast(s32)at {gpu.draws[d].origin=M.Point(matrix,.{})}}
+   for d: 0..gpu.draws.count-1 {if gpu.draws[d].node==cast(s32)at {gpu.draws[d].origin=M.Point(*matrix,.{})}}
   }
   if node.mesh<0 {continue}
   mesh:=scene.meshes[node.mesh]
@@ -1650,7 +1650,7 @@ UpdateMoved :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
    }
   }
   // A blended mesh is sorted by where its node stands.
-  for d: 0..gpu.draws.count-1 {if gpu.draws[d].node==cast(s32)at {gpu.draws[d].origin=M.Point(matrix,.{})}}
+  for d: 0..gpu.draws.count-1 {if gpu.draws[d].node==cast(s32)at {gpu.draws[d].origin=M.Point(*matrix,.{})}}
  }
  if G.GetError()!=0 {return false}
  if scene.nodes.count>0 {unused G.CopyMemory(cast(*void)*gpu.snapshot[0],cast(*void)*scene.nodes[0],cast(usize)(scene.nodes.count*cast(s64)size_of(SceneNode)))}
@@ -1699,7 +1699,7 @@ PrepareGeometry :: (gpu: *SceneGpuContext,scene: *Scene)->bool {
   } else {count=BakeNode(gpu,scene,node,matrix,first)}
   if count<0 {return false}
   gpu.node_count[at]=count
-  draw: GpuDraw=.{first,count,node.mesh,cast(s32)at,node.receive_shadow,node.cast_shadow,visible,M.Point(matrix,.{}),skin}
+  draw: GpuDraw=.{first,count,node.mesh,cast(s32)at,node.receive_shadow,node.cast_shadow,visible,M.Point(*matrix,.{}),skin}
   merged:=false
   if gpu.draws.count>0&&!mesh.material.transparent {
    last:=*gpu.draws[gpu.draws.count-1];other_mesh:=scene.meshes[last.mesh];other:=other_mesh.material
@@ -2012,7 +2012,7 @@ FrameUniforms :: (gpu: *SceneGpuContext,scene: *Scene,locations: *GpuLocations,v
  G.Uniform1i(locations.albedo,0)
  BindTexture(1,gpu.dfg);G.Uniform1i(locations.dfg,1)
  VectorAt(locations.sky,M.Times(LinearColor(scene.sky),scene.hemisphere));VectorAt(locations.ground,M.Times(LinearColor(scene.ground),scene.hemisphere))
- VectorAt(locations.up,M.Normalize(M.Direction(view,.{0,1,0})))
+ VectorAt(locations.up,M.Normalize(M.Direction(*view,.{0,1,0})))
  count:=ifx scene.lights.count<4 then cast(s32)scene.lights.count else 4
  G.Uniform1i(locations.light_count,count)
  for at: 0..3 {
@@ -2022,7 +2022,7 @@ FrameUniforms :: (gpu: *SceneGpuContext,scene: *Scene,locations: *GpuLocations,v
   if at>=count {continue}
   l:=scene.lights[at]
   VectorAt(locations.light_color[at],M.Times(LinearColor(l.color),l.intensity))
-  VectorAt(locations.light_direction[at],M.Normalize(M.Direction(view,M.Sub(l.position,l.target))))
+  VectorAt(locations.light_direction[at],M.Normalize(M.Direction(*view,M.Sub(l.position,l.target))))
   if l.shadow&&l.shadow_size>0 {
    bias:=M.Identity()
    bias.m[0]=0.5;bias.m[3]=0.5;bias.m[5]=0.5;bias.m[7]=0.5;bias.m[10]=0.5;bias.m[11]=0.5
