@@ -119,7 +119,7 @@ export function SiteOverview(session: Session, view: Rectangle): void {
         SiteMuted(session, u64(10206n), {x: x, y: y, width: width, height: 76},
             "Controls, text, navigation, overlays, charts and data views.\nEvery example runs the real library, with the TSX source beside it.", s32(16));
         y += 110.0;
-        const facts: [string, string, string] = ["101 components", "Easy theming", "Live TSX source"];
+        const facts: [string, string, string] = ["Native components", "Easy theming", "Live TSX source"];
         const details: [string, string, string] = ["One maintained collection.", "Your colors, type and motion.", "Edit, compile, and interact."];
         const factWidth = width / 3.0;
         const fw: float32 = large ? factWidth - 20.0 : width;
@@ -192,7 +192,7 @@ function SiteGuide(session: Session, view: Rectangle): void {
             "Import the widgets. Keep state in your app.\nA stable key preserves input and focus\nwhen you submit the next frame.", s32(15));
         GuideCode(session, u64(10618n), {x: ax, y: y + 150.0, width: aw, height: 244}, GUIDE_WIDGETS);
         if (Button({session: session, props: {key: u64(10620n), bounds: {x: ax, y: y + 410.0, width: aw, height: 42},
-            label: "Explore 101 editable examples  →", class_name: s32(11012)}})) { State.SiteNavigate(s32(2)); }
+            label: "Explore editable examples  →", class_name: s32(11012)}})) { State.SiteNavigate(s32(2)); }
         y += 496.0;
         <Box session={session} props={{key: u64(10621n), bounds: {x: ax, y: y, width: aw, height: 1}, fill: State.SiteBorder()}}/>;
         y += 36.0;

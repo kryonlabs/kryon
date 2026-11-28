@@ -24,7 +24,7 @@ def main():
     env.setdefault('EM_CACHE', str(ziran / 'build/emscripten-cache'))
     command = [str(ziran / 'build/bin/ziran'), 'run', '--target=c', str(ziran / 'scripts/build_playground.zi'), '--emcc', emcc, '--output-dir', str(output)]
     embeds = [str(ROOT / 'src') + '@/kryon']
-    for name in ('preview_entry', 'preview_style', 'preview_protocol'):
+    for name in ('preview_entry', 'preview_protocol'):
         embeds.append(str(Path(__file__).parent / ('src/' + name + '.zi')) + '@/' + name + '.zi')
     embeds.extend(compiler_embeds(core=ROOT))
     for mount in embeds: command += ['--embed-file', mount]

@@ -20,7 +20,10 @@ those maintained TSX scenes, plus the website's module data and editable
 sources. Use the Make targets below so registration is prepared before either
 host compiles. The website integrates each example's TSX source with the
 existing live editor: edits compile in the browser and run in the same Canvas
-preview host.
+preview host. Each published scene exports `Frame(frame: App.Frame)` and
+`SetExampleOptions(disabled: boolean, reducedMotion: boolean)`. The preview binds
+both checked exports and applies the options before each frame. Keep those
+exports when editing an example; a missing export produces a compiler diagnostic.
 
 From the Kryon root:
 
@@ -47,7 +50,7 @@ for player and platform build commands. The website runs every example live
 on its Components page instead of publishing these bundles.
 
 The site's Apps page lists each Kryon Labs app from
-`examples/gallery/src/site_apps.zi`: a web app opens its published browser
+`examples/gallery/src/site_apps.tsx`: a web app opens its published browser
 build, a desktop app carries a `desktop_reason`. When an app gains a browser
 build, add its `SiteWebApp` entry and card image in
 `examples/gallery/assets/apps/`, then move it from `DESKTOP_APPS` to

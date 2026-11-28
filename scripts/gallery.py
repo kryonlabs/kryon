@@ -409,10 +409,10 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None, inventory=Fals
                             'keyboard': module.get('keyboard', {}).get(str(local), 'Keyboard behavior is not documented by this scene.'),
                             'summary': module.get('summaries', {}).get(str(local),
                                         f'A maintained {name} example from the {module["label"]} module.'),
-                            'alt': f'Ziran-rendered {name} example using the {{theme}} palette.',
+                            'alt': f'Native TSX {name} example using the {{theme}} palette.',
                             'images': {'light': f'assets/components/{module["id"]}-{local}-light.webp',
                                        'dark': f'assets/components/{module["id"]}-{local}-dark.webp'},
-                            'note': module.get('notes', {}).get(str(local), 'Static catalog capture rendered from the Ziran gallery source.')})
+                            'note': module.get('notes', {}).get(str(local), 'Catalog capture rendered from the maintained TSX scene.')})
     # Standalone public components are maintained directly in examples/.
     additional = {
         'alert': 'Alert', 'avatar': 'Avatar', 'badge': 'Badge', 'banner': 'Banner',

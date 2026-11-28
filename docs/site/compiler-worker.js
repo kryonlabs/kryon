@@ -34,9 +34,11 @@ async function compile(data) {
     }
     wroteSource = true;
     compiler.FS.writeFile(sourcePath, data.source);
-    const binding = 'preview_entry:PreviewFrame=' + authored.slice(0, -4) + ':Frame';
+    const scene = authored.slice(0, -4);
+    const bindings = 'preview_entry:PreviewFrame=' + scene + ':Frame\n' +
+      'preview_entry:PreviewOptions=' + scene + ':SetExampleOptions';
     const status = compiler.ccall('BuildBundle', 'number', Array(7).fill('string'),
-      ['/', data.search, '/preview_entry.zi\n' + sourcePath, 'preview_entry', 'Tick', binding, '/preview.zx']);
+      ['/', data.search, '/preview_entry.zi\n' + sourcePath, 'preview_entry', 'Tick', bindings, '/preview.zx']);
     if (status) { self.postMessage({id:data.id, status, diagnostics}); return; }
     const bytes = compiler.FS.readFile('/preview.zx');
     self.postMessage({id:data.id, status:0, diagnostics:'', bytes:bytes.buffer}, [bytes.buffer]);

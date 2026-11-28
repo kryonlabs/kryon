@@ -39,6 +39,11 @@ The earlier layout changes also apply:
 
 ## Unreleased
 
+- Apply each editable TSX scene's checked disabled and reduced-motion options
+  in the portable browser preview before drawing. Publish the complete maintained
+  example inventory, remove unused Ziran screen/style scaffolds, and select the
+  verified compiler f1521147 through the normal root and gallery package locks.
+
 - Add a portable GPU surface that submits the existing paint triangles, glyph
   atlas and images through typed host capabilities. Retain the shared widget
   tree and input path, with synchronous borrows and deterministic target cleanup.

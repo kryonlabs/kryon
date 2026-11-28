@@ -103,9 +103,9 @@ export function SiteApps(session: Session, view: Rectangle): void {
         y += float32(webRows) * (webHeight + gap) + 28.0;
         SiteText(session, u64(10705n), {x: x, y: y, width: width, height: 36}, "Examples", s32(26));
         SiteMuted(session, u64(10706n), {x: x, y: y + 48.0, width: width, height: 52},
-            "Each of the 101 component examples runs live on the Components page,\nwith its TSX source ready to edit and run again.", s32(15));
+            "The component examples run live on the Components page,\nwith their TSX source ready to edit and run again.", s32(15));
         if (Button({session: session, props: {key: u64(10707n), bounds: {x: x, y: y + 118.0, width: 260, height: 40},
-            label: "Open the 101 examples  →", class_name: s32(11012)}})) { State.SiteNavigate(s32(2)); }
+            label: "Open the examples  →", class_name: s32(11012)}})) { State.SiteNavigate(s32(2)); }
         y += 198.0;
         if (Button({session: session, props: {key: u64(10790n), bounds: {x: x, y: y, width: 232, height: 40},
             label: "Kryon Labs repositories  ↗", class_name: s32(11012)}})) { OpenUri("https://git.waozi.xyz/kryonlabs"); }

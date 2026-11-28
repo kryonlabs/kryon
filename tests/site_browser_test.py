@@ -452,16 +452,18 @@ def start_compiler(browser, base, worker='compiler-worker.js'):
 def check_native_tsx_compiler(browser, base):
     search = start_compiler(browser, base, 'compiler-worker-fixture.js')
     source = ('import * as App from "kryon/app";\n'
-              'import * as Text from "kryon/text";\n'
+              'import { Text } from "kryon/tsx/text";\n'
               'interface Props { text: string; }\n'
               'function Label(props: Props): string { return props.text; }\n'
               'export function Frame(frame: App.Frame): void {\n'
-              '    Text.Draw(frame, {key: u64(60001n), bounds: frame.viewport,\n'
-              '        text: <Label text={"Native TSX"}/>});\n'
-              '}\n')
+              '    <Text session={{slot: frame.slot, epoch: frame.epoch}} props={{key: u64(60001n), bounds: frame.viewport,\n'
+              '        text: <Label text={"Native TSX"}/>}}/>;\n'
+              '}\n'
+              'export function SetExampleOptions(disabled: boolean, reducedMotion: boolean): void {}\n')
     path = 'gallery/examples/native.tsx'
     requests = [source, source.replace('text={"Native TSX"}', 'misspelled={"Native TSX"}'),
-                'export function Frame(frame: s32): void {}\n', source]
+                'export function Frame(frame: s32): void {}\n'
+                'export function SetExampleOptions(disabled: boolean, reducedMotion: boolean): void {}\n', source]
     try:
         browser.evaluate('compilerWorker.postMessage(' + json.dumps({
             'id': 0, 'source': source, 'sourcePath': 'gallery/examples/warmup.tsx', 'search': search}) + ');')
@@ -960,7 +962,7 @@ def check_visual_polish(browser, base, scenes, shots):
 def check_followup(browser, base, scenes, shots):
     groups = {(s['moduleId'], s['category']) for s in scenes}
     assert ('plot', 'Plotting') in groups and ('data_views', 'Data views') in groups
-    assert len({s['id'] for s in scenes}) == 101
+    assert len({s['id'] for s in scenes}) == len(scenes)
     for portable in (False, True):
         select_example(browser, base, scenes, 'Onboarding checklist')
         if portable:
@@ -1078,12 +1080,12 @@ def main():
             run_step('preview containment', check_preview_containment, browser, base, args.shots, seconds=300)
             run_step('scroll dragging', check_scroll_drag, browser, base)
             run_step('application cards', check_apps, browser, base, args.shots)
-            # GitHub runners compile each of the 101 sources in about 14s, so
+            # GitHub runners compile each maintained source in about 14s, so
             # this phase takes about 24 minutes there (under 15 locally).
             # compile_ready still bounds each compile to 120s.
             run_step('live examples and source editing', check_live, browser, base, scenes, args.shots, seconds=2400)
         run_step('example options', check_example_options, browser, base, scenes, args.shots, seconds=600)
-        print('Local website options tests: disabled flags, motion and contrast passed' if args.options_only else 'Local website browser tests: routes, 101 live scenes/sources, mobile, theme, editing, diagnostics, portable preview, disabled flags, motion and contrast passed')
+        print('Local website options tests: disabled flags, motion and contrast passed' if args.options_only else f'Local website browser tests: routes, {len(scenes)} live scenes/sources, mobile, theme, editing, diagnostics, portable preview, disabled flags, motion and contrast passed')
     except Exception:
         print('Browser runtime errors:', browser.errors[-6:])
         print('Browser console diagnostics:', browser.console_messages)

@@ -13,6 +13,7 @@ GuestTheme :: #import "kryon/Theme";
 
 program_provider :: #system_library "host_api";
 PreviewFrame :: (frame: App.Frame) #foreign program_provider;
+PreviewOptions :: (disabled: bool, reduced_motion: bool) #foreign program_provider;
 
 DrawPreview :: (frame: App.Frame) { PreviewFrame(frame) }
 
@@ -32,6 +33,7 @@ Tick :: () -> s32 {
     if !SessionValid(preview_session) { return 1 }
     InstallCatalogPalette(input.theme == 2)
     unused GuestTheme.SetReducedMotion(input.reduced_motion)
+    PreviewOptions(input.disabled, input.reduced_motion)
     viewport := Rectangle.{input.origin_x, input.origin_y, input.width, input.height}
     pointer := PointerFrame.{input.x, input.y, input.down, input.pressed, input.released}
     snapshot: FrameInputSnapshot

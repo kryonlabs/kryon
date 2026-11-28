@@ -142,8 +142,8 @@
     "name": "gallery"
   },
   "toolchain": {
-    "commit": "fe57aa00fe91541afd347d3be0aad7fcf8d3044f",
-    "ref": "fe57aa00fe91541afd347d3be0aad7fcf8d3044f",
+    "commit": "f15211470c1f0e256be93112780233904da3226a",
+    "ref": "f15211470c1f0e256be93112780233904da3226a",
     "url": "https://git.waozi.xyz/ziranlang/ziran.git"
   }
 }

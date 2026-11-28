@@ -136,7 +136,7 @@ export function SiteComponents(session: Session, view: Rectangle): void {
             fill: State.SiteBackground()}}/>;
         <Box session={session} props={{key: u64(10311n), bounds: {x: 263, y: view.y, width: 1, height: view.height},
             fill: State.SiteBorder()}}/>;
-        SiteMuted(session, u64(10312n), {x: 24, y: view.y + 24.0, width: 220, height: 24}, "COMPONENTS  /  101", s32(12));
+        SiteMuted(session, u64(10312n), {x: 24, y: view.y + 24.0, width: 220, height: 24}, "COMPONENT EXAMPLES", s32(12));
         WidgetNavigation(session, {x: 12, y: view.y + 64.0, width: 240, height: view.height - 80.0});
     } else if (Button({session: session, props: {key: u64(10103n),
         bounds: {x: 20, y: view.y + 10.0, width: view.width - 40.0, height: 34}, label: "All widgets"}})) {
