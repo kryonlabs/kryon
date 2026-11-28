@@ -31,6 +31,6 @@ for target in c go; do
 done
 "$ziran" bundle --project --root "$repo/tests" --entry pixmap_text_scale_test:main "$@" -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" --entry pixmap_text_scale_test:main "$@" -o "$work/saved.zx" "$work/ir/pixmap_text_scale_test.zir"
+cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx" | tail -1)" = 0
-test "$("$ziran" run "$work/saved.zx" | tail -1)" = 0
 printf '%s on every target and in bundles.\n' "$passed"

@@ -26,5 +26,5 @@ for target in c go; do
 done
 "$ziran" bundle --project --root "$repo/tests" --entry pixmap_image_test:main -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" --entry pixmap_image_test:main -o "$work/saved.zx" "$work/ir/pixmap_image_test.zir"
+cmp "$work/source.zx" "$work/saved.zx"
 test "$(env -u DISPLAY -u WAYLAND_DISPLAY "$ziran" run "$work/source.zx" | tail -1)" = 0
-test "$(env -u DISPLAY -u WAYLAND_DISPLAY "$ziran" run "$work/saved.zx" | tail -1)" = 0

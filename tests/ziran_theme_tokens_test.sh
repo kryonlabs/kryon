@@ -14,9 +14,7 @@ cmp "$work/source.zx" "$work/saved.zx"
 "$ziran" run --target=c --entry export_theme_tokens:main \
     --root "$repo/scripts" "$source" > "$work/native.css"
 "$ziran" run "$work/source.zx" | sed '$d' > "$work/source-zx.css"
-"$ziran" run "$work/saved.zx" | sed '$d' > "$work/saved-zx.css"
 cmp "$work/native.css" "$work/source-zx.css"
-cmp "$work/source-zx.css" "$work/saved-zx.css"
 
 output=$work/native.css
 for token in \

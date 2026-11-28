@@ -28,8 +28,7 @@ for target in ${PIXMAP_CELL_RUN_TARGETS:-c go}; do
 done
 "$ziran" bundle --project --offline --root "$repo/tests" --entry "$entry" -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" --entry "$entry" -o "$work/saved.zx" "$work/ir/pixmap_cell_run_test.zir"
-for mode in source saved; do
-    env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-        "$ziran" run "$work/$mode.zx" > "$work/$mode-vm.log"
-    test "$(tail -1 "$work/$mode-vm.log")" = 0
-done
+cmp "$work/source.zx" "$work/saved.zx"
+env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+    "$ziran" run "$work/source.zx" > "$work/source-vm.log"
+test "$(tail -1 "$work/source-vm.log")" = 0
