@@ -1,0 +1,37 @@
+// Internal native reference for templates/web/src/page/web_starter.tsx. The benchmark
+// calls that maintained Frame directly on the TSX side.
+#import "session"
+#import "geometry"
+Model :: #import "bench_model";
+Counter :: #import "counter";
+Page :: #import "kryon/PageLayout";
+Buttons :: #import "kryon/button";
+Links :: #import "kryon/link";
+Texts :: #import "kryon/text";
+
+Heading :: (session: Session, text: string, bounds: Rectangle, size: s32, level: s32) {
+    Texts.Draw(session, .{bounds = bounds, text = text, size = size,
+        semantic_kind = .SemanticHeading, heading_level = level})
+}
+
+Paragraph :: (session: Session, text: string, bounds: Rectangle, size: s32) {
+    Texts.Draw(session, .{bounds = bounds, text = text, size = size,
+        semantic_kind = .SemanticParagraph, wrap = .TextWrapAuto})
+}
+
+Frame :: (session: Session) {
+    cursor := Counter.Page()
+    Counter.StartPage(Model.Viewport)
+    Heading(session, "{{name}}", Page.NextRow(cursor, 44.0), 34, 1)
+    Paragraph(session, "This page is a Kryon application. The same Ziran source runs on a canvas and in a desktop window.",
+        Page.NextRow(cursor, 48.0), 17)
+    Heading(session, "Why Kryon", Page.NextRow(cursor, 30.0), 22, 2)
+    Paragraph(session, "One interface, declared every frame from your state. No HTML templates and no JavaScript.",
+        Page.NextRow(cursor, 48.0), 17)
+    unused Links.Draw(session, .{bounds = Page.NextRow(cursor, 24.0), text = "Kryon on GitHub", link = "https://github.com/kryonlabs/kryon"})
+    unused Links.Draw(session, .{bounds = Page.NextRow(cursor, 24.0), text = "The Ziran language", link = "https://github.com/ziranlang/ziran"})
+    like: Buttons.Props = .{id = 7, bounds = Page.RowPart(cursor, Page.NextRow(cursor, 40.0), 0, 3),
+        label = "Like", tone = .ButtonToneAccent, emphasis = .ButtonEmphasisFilled}
+    if Buttons.Draw(session, like) == 1 { Counter.Like() }
+    Paragraph(session, Counter.LikesText(), Page.NextRow(cursor, 24.0), 16)
+}

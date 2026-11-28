@@ -1,0 +1,68 @@
+// Native comparison lane. This fixture calls internal widgets in-package.
+#import "session"
+#import "tree"
+Model :: #import "bench_model";
+Layout :: #import "kryon/layout";
+Buttons :: #import "kryon/button";
+Texts :: #import "kryon/text";
+Editor :: #import "kryon/text_field";
+List :: #import "kryon/list_box";
+Runtime :: #import "component_runtime";
+Starter :: #import "bench_web_direct";
+
+Toolbar :: (session: Session) {
+    row := Layout.Row(session, Model.LayoutProps(1, 8))
+    if !row.opened { return }
+    unused Buttons.Draw(session, Model.ButtonProps(2, "App icon"))
+    unused Buttons.Draw(session, Model.ButtonProps(3, "Harness selector"))
+    Texts.Draw(session, Model.TextProps(4, "Harmony"))
+    unused Buttons.Draw(session, Model.ButtonProps(5, "New task"))
+    unused End(session)
+}
+
+Counter :: (session: Session, scenario: s32, frame: s32) {
+    row := Layout.Row(session, Model.LayoutProps(1, 8))
+    if !row.opened { return }
+    Model.CounterClick(scenario, Buttons.Draw(session, Model.ButtonProps(2, "Add")) == 1)
+    Texts.Draw(session, Model.TextProps(3, "Count:"))
+    Texts.Draw(session, Model.NumberProps(4, Model.CounterValue(scenario, frame), 0))
+    unused End(session)
+}
+
+Rows :: (session: Session, scenario: s32) {
+    column := Layout.Draw(session, Model.LayoutProps(1, 2))
+    if !column.opened { return }
+    for index: cast(s32)0..Model.RowCount(scenario) - 1 {
+        row := Layout.Row(session, Model.LayoutProps(Model.RowKey(index), 6))
+        if !row.opened { continue }
+        Texts.Draw(session, Model.TextProps(3, "Row"))
+        Texts.Draw(session, Model.NumberProps(4, index + 1, index))
+        unused Buttons.Draw(session, Model.ButtonProps(5, "Open"))
+        unused End(session)
+    }
+    unused End(session)
+}
+
+Instances :: (session: Session, scenario: s32, frame: s32) {
+    count := Model.InstanceCount(scenario, frame)
+    for slot: cast(s32)0..count - 1 {
+        id := Model.InstanceId(slot, count, scenario, frame)
+        owner, fresh := Runtime.Begin(session, "StatefulCounter", .{"bench_direct.zi", 1, 1}, Model.InstanceKey(id))
+        unused fresh
+        if owner.identity == 0 { continue }
+        clicked := Buttons.Draw(session, Model.InstanceButton(id, slot)) == 1
+        value := Model.InstanceState(session, id, frame, clicked)
+        Texts.Draw(session, Model.InstanceLabel(id, slot, value))
+        unused Runtime.End(owner)
+    }
+}
+
+Compose :: (session: Session, scenario: s32, frame: s32) {
+    if scenario == Model.Toolbar { Toolbar(session) }
+    else if scenario == Model.ChangingCounter || scenario == Model.EventCounter { Counter(session, scenario, frame) }
+    else if scenario == Model.List128 || scenario == Model.LargeList { Rows(session, scenario) }
+    else if scenario == Model.ControlledText { Model.Edit(Editor.Draw(session, Model.EditorProps(session))) }
+    else if scenario == Model.Independent || scenario == Model.KeyedChurn { Instances(session, scenario, frame) }
+    else if scenario == Model.VirtualList { unused List.Draw(session, Model.ListProps(frame), Model.Items()) }
+    else { Starter.Frame(session) }
+}

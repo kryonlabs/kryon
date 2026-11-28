@@ -94,6 +94,15 @@ EndPixmapFrame :: (session: Session, reuse: bool,
     opaque_background: bool = false) -> PixmapFrameResult {
     result: PixmapFrameResult; result.status = CommitFrame(session)
     if result.status != cast(FrameStatus)FrameOk { PaintSnapshotInvalidate(session); return result }
+    return RasterCommittedPixmap(session, reuse, background, opaque_background)
+}
+
+// The caller has committed the tree and owns the active pixmap surface.
+#scope_package
+RasterCommittedPixmap :: (session: Session, reuse: bool,
+    background: u32 = cast(u32)PixmapBackground,
+    opaque_background: bool = false) -> PixmapFrameResult {
+    result: PixmapFrameResult; result.status = cast(FrameStatus)FrameOk
     slot := SessionIndex(session)
     viewport := PixmapLogicalBounds()
     if frame_widths[slot] != pixmap_width || frame_heights[slot] != pixmap_height ||
@@ -156,3 +165,4 @@ EndPixmapFrame :: (session: Session, reuse: bool,
     }
     PaintClear(session); return result
 }
+#scope_export

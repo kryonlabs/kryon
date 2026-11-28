@@ -17,7 +17,7 @@ leaves come from the `kryon/tsx/...` modules. The button reports what the
 user did in its result (`pressed`), so the like event wires straight into
 the model.
 
-`src/counter.zi` holds the like count and its text, so tests can call it
+`src/page/counter.zi` holds the like count and its text, so tests can call it
 without any widget. The layout helpers from `kryon/PageLayout` size the
 rows for the page column, and the text rows carry semantic kinds, so the
 published page keeps its accessibility tree.

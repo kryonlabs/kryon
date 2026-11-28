@@ -1,0 +1,168 @@
+#import "geometry"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "paint_queue"
+#import "pixmap"
+#import "pixmap_frame"
+#import "std/file"
+#import "std/byte_text_linux"
+Clock :: #import "std/timer_linux";
+Model :: #import "bench_model";
+Window :: #import "bench_present";
+#if #defined(TSX_BENCH) {
+    Scene :: #import "bench_scenes";
+} else {
+    Scene :: #import "bench_direct";
+}
+using FrameStatus;
+
+Warmup :: 60;
+Frames :: 300;
+PixelCount :: 960 * 600;
+pixels: [PixelCount]u32;
+rows: [Warmup + Frames]Row;
+libc :: #system_library "c";
+Stamp :: struct { seconds: s64; nanoseconds: s64; }
+TraceAllocations :: () #foreign libc "mtrace";
+StopTracingAllocations :: () #foreign libc "muntrace";
+ReadClock :: (kind: s32, stamp: *Stamp) -> s32 #foreign libc "clock_gettime";
+CopyBytes :: (destination: *void, source: *void, count: usize) -> *void #foreign libc "memcpy";
+
+Row :: struct {
+    input_ns: s64; compose_ns: s64; commit_ns: s64; raster_ns: s64; present_ns: s64;
+    total_ns: s64; cpu_ns: s64;
+    nodes: s32; paint: s32; emitted: s32;
+    pixels: u64; tree: u64; behavior: u64;
+}
+
+CpuNow :: () -> s64 {
+    stamp: Stamp
+    unused ReadClock(2, *stamp)
+    return stamp.seconds * 1000000000 + stamp.nanoseconds
+}
+
+ResidentKib :: (field: string) -> s64 {
+    status, ok := ReadEntireFile("/proc/self/status")
+    if !ok { return -1 }
+    for at: cast(s64)0..status.count - 7 {
+        if (at == 0 || status[at - 1] == 10) && status[at:at + 6] == field {
+            value: s64
+            index := at + 6
+            while index < status.count && status[index] != 10 {
+                digit := status[index]
+                if digit >= 48 && digit <= 57 { value = value * 10 + cast(s64)digit - 48 }
+                index += 1
+            }
+            return value
+        }
+    }
+    return -1
+}
+
+HashMix :: (hash: u64, value: u64) -> u64 { return (hash ^ value) * cast(u64)1099511628211 }
+
+PixelHash :: () -> u64 {
+    hash: u64 = 1469598103934665603
+    for pixel: pixels { hash = HashMix(hash, cast(u64)pixel) }
+    return hash
+}
+
+HashFloat :: (hash: u64, value: float32) -> u64 {
+    bits: u32
+    unused CopyBytes(cast(*void)*bits, cast(*void)*value, 4)
+    return HashMix(hash, cast(u64)bits)
+}
+
+HashRect :: (hash: u64, bounds: Rectangle) -> u64 {
+    return HashFloat(HashFloat(HashFloat(HashFloat(hash, bounds.x), bounds.y), bounds.width), bounds.height)
+}
+
+HashText :: (start: u64, value: string) -> u64 {
+    hash := HashMix(start, cast(u64)value.count)
+    for byte: value { hash = HashMix(hash, cast(u64)byte) }
+    return hash
+}
+
+TreeHash :: (session: Session) -> u64 {
+    hash: u64 = 1469598103934665603
+    for index: 0..TreeCount(session) - 1 {
+        node := TreeNodeAt(session, index)
+        hash = HashRect(HashRect(HashRect(hash, node.bounds), node.clip), node.child_clip)
+        hash = HashMix(hash, cast(u64)node.kind)
+        hash = HashMix(hash, cast(u64)node.parent)
+        hash = HashMix(hash, node.identity_generation)
+        hash = HashMix(hash, cast(u64)node.semantic_kind)
+        hash = HashText(HashText(hash, node.semantic_label), node.semantic_detail)
+        hash = HashMix(hash, cast(u64)node.heading_level)
+        hash = HashMix(hash, cast(u64)node.text_bytes)
+        hash = HashMix(hash, cast(u64)node.text_cursor)
+        hash = HashMix(hash, cast(u64)node.text_anchor)
+        hash = HashMix(hash, cast(u64)node.interactive + cast(u64)node.disabled * 2 + cast(u64)node.selected * 4 +
+            cast(u64)node.has_text * 8 + cast(u64)node.read_only * 16 + cast(u64)node.secure * 32 +
+            cast(u64)node.loading * 64 + cast(u64)node.clipped * 128 + cast(u64)node.clips_children * 256)
+    }
+    return hash
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    started := Clock.MonotonicNanoseconds()
+    if argc != 4 { return 20 }
+    scenario_text := TextFromCString(argv[1])
+    if scenario_text.count != 1 || scenario_text[0] < 48 || scenario_text[0] > 57 { return 20 }
+    scenario := cast(s32)scenario_text[0] - 48
+    force := TextFromCString(argv[2]) == "forced"
+    phase := TextFromCString(argv[3])
+    profile := phase == "alloc"
+    oracle := phase == "parity"
+    Model.Init(scenario)
+    defer { Window.Close() }
+    if !Window.Open() { return 21 }
+    session := SessionOpen()
+    if !SessionValid(session) { return 22 }
+    defer { unused CloseSession(session); PixmapCloseWorkers() }
+    first_present: s64
+    for frame: cast(s32)0..Warmup + Frames - 1 {
+        if profile && frame == Warmup { TraceAllocations() }
+        cpu_start := CpuNow()
+        start := Clock.MonotonicNanoseconds()
+        Model.Input(session, scenario, frame)
+        input := Clock.MonotonicNanoseconds()
+        if !PixmapResumeInto(960, 600, pixels[:]) { return 23 }
+        if force { PaintSnapshotInvalidate(session) }
+        if BeginFrame(session, 1, Model.Viewport) != cast(FrameStatus)FrameOk { return 24 }
+        Scene.Compose(session, scenario, frame)
+        submitted := Clock.MonotonicNanoseconds()
+        if CommitFrame(session) != cast(FrameStatus)FrameOk { return 25 }
+        committed := Clock.MonotonicNanoseconds()
+        result := RasterCommittedPixmap(session, true)
+        PixmapEndInto()
+        rasterized := Clock.MonotonicNanoseconds()
+        if !Window.Submit(pixels[:], result.damage) { return 26 }
+        ended := Clock.MonotonicNanoseconds()
+        cpu_end := CpuNow()
+        if frame == 0 { first_present = ended }
+        behavior := Model.Behavior(scenario, frame)
+        if !Model.Valid() { print("Behavior failed for scenario % frame %\n", scenario, frame); return 27 }
+        if oracle || frame >= Warmup {
+            row := *rows[frame]
+            row.* = .{input - start, submitted - input, committed - submitted, rasterized - committed,
+                ended - rasterized, ended - start, cpu_end - cpu_start,
+                TreeCount(session), result.paint_count, result.emitted_count, 0, 0, behavior}
+            if oracle { row.pixels = PixelHash(); row.tree = TreeHash(session) }
+        }
+    }
+    if profile { StopTracingAllocations() }
+    peak := ResidentKib("VmHWM:"); resident := ResidentKib("VmRSS:")
+    print("frame,input_ns,compose_ns,commit_ns,raster_ns,present_ns,total_ns,cpu_ns,nodes,paint,emitted,pixel_hash,tree_hash,behavior\n")
+    first := ifx oracle then 0 else Warmup
+    for frame: first..Warmup + Frames - 1 {
+        row := rows[frame]
+        print("%,%,%,%,%,%,%,%,%,%,%,%,%,%\n", frame - Warmup, row.input_ns, row.compose_ns, row.commit_ns,
+            row.raster_ns, row.present_ns, row.total_ns, row.cpu_ns, row.nodes, row.paint, row.emitted,
+            row.pixels, row.tree, row.behavior)
+    }
+    print("# peak_rss_kib,%\n# steady_rss_kib,%\n# startup_ns,%\n# presented_at_ns,%\n", peak, resident, first_present - started, first_present)
+    return 0
+}

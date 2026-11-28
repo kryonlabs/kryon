@@ -1,0 +1,226 @@
+// Shared native fixture state and widget props used by both render paths.
+#import "geometry"
+#import "session"
+#import "tree"
+#import "tree_input"
+#import "key_input"
+#import "input_protocol"
+#import "std/number_text"
+Layout :: #import "kryon/layout";
+Buttons :: #import "kryon/button";
+Texts :: #import "kryon/text";
+Editor :: #import "kryon/text_field";
+List :: #import "kryon/list_box";
+Starter :: #import "counter";
+Runtime :: #import "component_runtime";
+State :: #import "component_state";
+Life :: #import "component_lifecycle";
+Types :: #import "component_types";
+
+Viewport :: Rectangle.{0.0, 0.0, 960.0, 600.0};
+Toolbar :: 0;
+ChangingCounter :: 1;
+List128 :: 2;
+EventCounter :: 3;
+ControlledText :: 4;
+Independent :: 5;
+KeyedChurn :: 6;
+LargeList :: 7;
+VirtualList :: 8;
+WebStarter :: 9;
+Instances :: 96;
+CounterCopy :: #type (value: *s32) -> s32;
+
+#scope_file
+counter: s32;
+editor: [64]u8;
+editor_frame: [64]u8;
+editor_length: s32;
+editor_cursor: s32;
+editor_anchor: s32;
+typed: [64]u8;
+digits: [1024][24]u8;
+items: [10000]List.ListBoxItem;
+values: State.Store(s32);
+retired: s32;
+updates: s32;
+failed: bool;
+observed: u64;
+instance_at: [Instances]u64;
+handles: [Instances]State.Handle(s32);
+actions: [Instances]Types.Token;
+last_seen: [Instances]s32;
+expected: [Instances]s32;
+#scope_export
+
+Init :: (scenario: s32) {
+    if scenario == VirtualList {
+        for index: 0..9999 { items[index] = .{key = cast(u64)(index + 1), label = "List row: café Ω"} }
+    }
+    if scenario == Independent || scenario == KeyedChurn {
+        for index: cast(s32)0..Instances - 1 { last_seen[index] = -2; expected[index] = index }
+    }
+}
+
+LayoutProps :: (key: u64, gap: s32) -> Layout.Props { return .{key = key, gap = gap, gap_override = true} }
+TextProps :: (key: u64, value: string) -> Texts.Props {
+    return .{key = key, text = value, bounds = .{width = 96.0, height = 28.0}}
+}
+ButtonProps :: (key: u64, label: string) -> Buttons.Props {
+    return .{key = key, label = label, bounds = .{width = 120.0, height = 28.0}}
+}
+NumberProps :: (key: u64, value: s32, slot: s32) -> Texts.Props {
+    return TextProps(key, FormatInteger(cast(s64)value, digits[slot][:]))
+}
+RowKey :: (index: s32) -> u64 { return cast(u64)(100 + index) }
+RowCount :: (scenario: s32) -> s32 { if scenario == LargeList { return 1024 }; return 128 }
+CounterValue :: (scenario: s32, frame: s32) -> s32 {
+    if scenario == EventCounter { return counter }
+    return frame
+}
+CounterClick :: (scenario: s32, clicked: bool) {
+    if scenario == EventCounter && clicked { counter += 1 }
+}
+
+EditorProps :: (session: Session) -> Editor.Props {
+    return .{key = 1, bounds = .{20.0, 20.0, 280.0, 44.0}, label = "Editor",
+        value = TextView(editor_frame[0:editor_length]), cursor = editor_cursor, anchor = editor_anchor,
+        max_bytes = 64, input = TextFieldInputFor(KeyboardTake(session), KeyboardModifiers(session),
+            TypedTextTake(session, typed[:]))}
+}
+Edit :: (field: Editor.Result) {
+    editor_cursor = field.cursor; editor_anchor = field.anchor
+    if !field.edit.changed { return }
+    if field.edit.start < 0 || field.edit.end < field.edit.start || field.edit.end > editor_length ||
+        cast(s64)(editor_length - field.edit.end + field.edit.start) + field.edit.replacement.count > editor.count {
+        failed = true
+        return
+    }
+    next: [64]u8
+    count: s32
+    for at: 0..field.edit.start - 1 { next[count] = editor[at]; count += 1 }
+    for byte: field.edit.replacement { next[count] = byte; count += 1 }
+    for at: field.edit.end..editor_length - 1 { next[count] = editor[at]; count += 1 }
+    editor = next; editor_length = count; updates += 1
+}
+
+ListProps :: (frame: s32) -> List.Props {
+    offset := frame * 37 % 9900
+    return .{key = 1, bounds = .{20.0, 20.0, 700.0, 540.0}, row_height = 24,
+        scroll_offset = offset, selected_index = offset + 2}
+}
+Items :: () -> []List.ListBoxItem { return items[:] }
+
+InstanceCount :: (scenario: s32, frame: s32) -> s32 {
+    if scenario == KeyedChurn && frame % 12 >= 4 && frame % 12 < 8 { return Instances / 2 }
+    return Instances
+}
+InstanceId :: (index: s32, count: s32, scenario: s32, frame: s32) -> s32 {
+    if scenario == KeyedChurn && frame % 12 >= 4 { return count - 1 - index }
+    return index
+}
+InstanceKey :: (id: s32) -> Types.Key { return .{true, cast(u64)(id + 1)} }
+InstanceButton :: (id: s32, slot: s32) -> Buttons.Props {
+    return .{key = cast(u64)(id + 1), label = "Increment",
+        bounds = .{cast(float32)(slot % 8 * 120), cast(float32)(slot / 8 * 48), 82.0, 40.0}}
+}
+InstanceLabel :: (id: s32, slot: s32, count: s32) -> Texts.Props {
+    props := NumberProps(cast(u64)(id + 1001), count, slot)
+    props.bounds = .{cast(float32)(slot % 8 * 120 + 82), cast(float32)(slot / 8 * 48), 38.0, 40.0}
+    return props
+}
+Retire :: (token: Types.Token) {
+    if State.Release(*values, token) { retired += 1 } else { failed = true }
+}
+CopyCounter :: (value: *s32) -> s32 { return value.* }
+Increment :: (owner: Types.Instance) {
+    for id: cast(s32)0..Instances - 1 {
+        if instance_at[id] != owner.identity { continue }
+        clone: CounterCopy = CopyCounter
+        read := State.Read(*values, handles[id], clone)
+        if !read.has_value || !State.Set(*values, handles[id], read.value.value + 1) { failed = true; return }
+        expected[id] += 1; updates += 1
+        return
+    }
+    failed = true
+}
+InstanceState :: (session: Session, id: s32, frame: s32, clicked: bool) -> s32 {
+    owner := Runtime.Current(session)
+    if last_seen[id] != frame - 1 {
+        expected[id] = id
+        if owner.identity == instance_at[id] { failed = true }
+        handles[id] = State.Mount(*values, owner, cast(u64)1, id, Retire)
+        actions[id] = Life.Callback(owner, Increment)
+    } else if owner.identity != instance_at[id] { failed = true }
+    instance_at[id] = owner.identity; last_seen[id] = frame
+    clone: CounterCopy = CopyCounter
+    snapshot := State.Read(*values, handles[id], clone)
+    if !snapshot.has_value { failed = true; return -1 }
+    value := snapshot.value.value
+    if value != expected[id] || (clicked && !Life.Queue(actions[id])) { failed = true }
+    observed = (observed ^ cast(u64)(value + 131 * id)) * cast(u64)1099511628211
+    return value
+}
+
+// Input goes through the same retained-tree host hooks as real UI hosts.
+Click :: (session: Session, x: float32, y: float32) {
+    unused TreePointerUpdate(session, .{x, y, true, true, false})
+    unused TreePointerUpdate(session, .{x, y, false, false, true})
+}
+ClickLabel :: (session: Session, label: string) {
+    for index: 1..TreeCount(session) - 1 {
+        node := TreeNodeAt(session, index)
+        if node.interactive && node.semantic_label == label {
+            Click(session, node.bounds.x + node.bounds.width / 2.0, node.bounds.y + node.bounds.height / 2.0)
+            return
+        }
+    }
+    failed = true
+}
+Input :: (session: Session, scenario: s32, frame: s32) {
+    observed = 0
+    if scenario == ControlledText {
+        for index: 0..editor_length - 1 { editor_frame[index] = editor[index] }
+    }
+    if frame == 0 { return }
+    if scenario == EventCounter {
+        if frame % 3 == 1 { ClickLabel(session, "Add") }
+    } else if scenario == ControlledText {
+        if frame == 1 { Click(session, 40.0, 40.0) }
+        if frame % 2 == 0 { unused TypedCodepointSend(session, 27700) }
+        else if frame > 1 { unused KeyboardSend(session, KeyBackspace) }
+    } else if scenario == Independent || scenario == KeyedChurn {
+        slot := (frame * 13) % InstanceCount(scenario, frame - 1)
+        Click(session, cast(float32)(slot % 8 * 120 + 20), cast(float32)(slot / 8 * 48 + 12))
+    } else if scenario == WebStarter {
+        if frame % 3 == 1 { ClickLabel(session, "Like") }
+    }
+}
+
+Behavior :: (scenario: s32, frame: s32) -> u64 {
+    if scenario == EventCounter && counter != (frame + 2) / 3 { failed = true }
+    if scenario == ControlledText && frame >= 2 {
+        expected_text := ifx frame % 2 == 0 then "水" else ""
+        if updates != frame - 1 || TextView(editor[0:editor_length]) != expected_text ||
+            editor_cursor != editor_length || editor_anchor != editor_length { failed = true }
+    }
+    if scenario == Independent && frame > 0 && updates != frame - 1 { failed = true }
+    if scenario == KeyedChurn {
+        if retired != ((frame + 8) / 12) * (Instances / 2) { failed = true }
+        if frame % 12 == 4 {
+            for id: cast(s32)(Instances / 2)..Instances - 1 {
+                if Life.ResourceIndex(actions[id]) >= 0 { failed = true }
+            }
+        }
+    }
+    if scenario == WebStarter {
+        like_count := (frame + 2) / 3
+        expected_text: [48]u8
+        count := Starter.Append(expected_text[:], 0, FormatInteger(cast(s64)like_count, digits[0][:]))
+        count = Starter.Append(expected_text[:], count, " likes so far")
+        if Starter.LikesText() != TextView(expected_text[0:count]) { failed = true }
+        return cast(u64)like_count
+    }
+    return observed ^ cast(u64)(counter + updates * 257 + retired * 65536 + editor_length * 17)
+}
+Valid :: () -> bool { return !failed }

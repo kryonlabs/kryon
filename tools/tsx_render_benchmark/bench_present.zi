@@ -1,0 +1,50 @@
+// SDL's software renderer, reached only under the collector's private Xvfb.
+#import "geometry"
+#import "std/c_string"
+sdl :: #system_library "SDL2";
+Init :: (flags: u32) -> s32 #foreign sdl "SDL_Init";
+Quit :: () #foreign sdl "SDL_Quit";
+CreateWindow :: (title: *u8, x: s32, y: s32, width: s32, height: s32, flags: u32) -> *void #foreign sdl "SDL_CreateWindow";
+CreateRenderer :: (window: *void, index: s32, flags: u32) -> *void #foreign sdl "SDL_CreateRenderer";
+CreateTexture :: (renderer: *void, format: u32, access: s32, width: s32, height: s32) -> *void #foreign sdl "SDL_CreateTexture";
+DestroyWindow :: (window: *void) #foreign sdl "SDL_DestroyWindow";
+DestroyRenderer :: (renderer: *void) #foreign sdl "SDL_DestroyRenderer";
+DestroyTexture :: (texture: *void) #foreign sdl "SDL_DestroyTexture";
+PixelRectangle :: struct { x: s32; y: s32; w: s32; h: s32; }
+Update :: (texture: *void, rectangle: *PixelRectangle, pixels: *u32, pitch: s32) -> s32 #foreign sdl "SDL_UpdateTexture";
+Copy :: (renderer: *void, texture: *void, source: *void, destination: *void) -> s32 #foreign sdl "SDL_RenderCopy";
+Present :: (renderer: *void) #foreign sdl "SDL_RenderPresent";
+
+#scope_file
+window: *void;
+renderer: *void;
+texture: *void;
+#scope_export
+
+Open :: () -> bool {
+    if Init(32) != 0 { return false }
+    title: [32]u8
+    unused CopyCString("Kryon matched renderer", title[:])
+    window = CreateWindow(*title[0], 0, 0, 960, 600, 0)
+    if window == null { return false }
+    renderer = CreateRenderer(window, -1, 1) // SDL_RENDERER_SOFTWARE, no vsync.
+    if renderer == null { return false }
+    texture = CreateTexture(renderer, 0x16362004, 1, 960, 600)
+    return texture != null
+}
+
+Submit :: (pixels: []u32, damage: Rectangle) -> bool {
+    if damage.width <= 0.0 || damage.height <= 0.0 { return true }
+    rect: PixelRectangle = .{cast(s32)damage.x, cast(s32)damage.y, cast(s32)damage.width, cast(s32)damage.height}
+    if Update(texture, *rect, *pixels[rect.y * 960 + rect.x], 960 * 4) != 0 ||
+        Copy(renderer, texture, null, null) != 0 { return false }
+    Present(renderer)
+    return true
+}
+
+Close :: () {
+    if texture != null { DestroyTexture(texture) }
+    if renderer != null { DestroyRenderer(renderer) }
+    if window != null { DestroyWindow(window) }
+    Quit()
+}
