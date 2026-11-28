@@ -163,12 +163,15 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if Runtime.AndroidFrameReusable() { return 10 }
     if FrameSurfaceValid(Runtime.AndroidFramePreviousViewportSnapshot(2, 2, 8, 4)) { return 52 }
     Raster.RasterRoundedRectangle(.{0.0, 0.0, 6.0, 5.0}, 0.0, 0, .{100, 110, 120, 255})
-    if !Runtime.EndAndroidFrame() || posts != 2 || buffer[9 * 40 + 11] != cast(u32)0xff786e64 { return 11 }
+    // Content keeps its density-scaled pixels; transparent system/IME bars
+    // receive the native host's black safe-area matte.
+    if !Runtime.EndAndroidFrame() || posts != 2 || buffer[5 * 40 + 9] != cast(u32)0xff786e64 ||
+        buffer[9 * 40 + 11] != cast(u32)0xff000000 { return 11 }
     Runtime.BeginAndroidFrame()
-    Raster.PixmapDamageBegin(.{4.0, 3.0, 1.0, 1.0}, cast(u32)0xff010203)
+    Raster.PixmapDamageBegin(.{4.0, 2.0, 1.0, 1.0}, cast(u32)0xff010203)
     Raster.PixmapDamageEnd()
-    if !Runtime.EndAndroidFrame() || posts != 3 || buffer[6 * 40 + 8] != cast(u32)0xff030201 ||
-        buffer[6 * 40 + 7] != cast(u32)0xff786e64 { return 12 }
+    if !Runtime.EndAndroidFrame() || posts != 3 || buffer[4 * 40 + 8] != cast(u32)0xff030201 ||
+        buffer[4 * 40 + 7] != cast(u32)0xff786e64 { return 12 }
     Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandLostFocus)
     if Runtime.AndroidHostFocused() { return 13 }
     Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandPause)
@@ -178,7 +181,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
     Runtime.BeginAndroidFrame()
     Raster.RasterRoundedRectangle(.{0.0, 0.0, 6.0, 5.0}, 0.0, 0, .{10, 20, 30, 255})
     if !Runtime.EndAndroidFrame() || posts != 4 || !Runtime.AndroidHostPaused() ||
-        Runtime.AndroidHostFocused() || buffer[0] != cast(u32)0xff1e140a { return 18 }
+        Runtime.AndroidHostFocused() || buffer[2 * 40 + 2] != cast(u32)0xff1e140a ||
+        buffer[0] != cast(u32)0xff000000 { return 18 }
     if !Runtime.PollAndroidHost(0) || !Runtime.AndroidFrameReusable() { return 19 }
     Runtime.BeginAndroidFrame()
     Runtime.AndroidFrameUnchanged(true)
@@ -211,7 +215,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
     Runtime.BeginAndroidFrame()
     Raster.RasterRoundedRectangle(.{0.0, 0.0, 6.0, 5.0}, 0.0, 0, .{80, 90, 100, 255})
     if !Runtime.EndAndroidFrame() || !Runtime.AndroidFrameReusable() ||
-        posts != 5 || buffer[0] != cast(u32)0xff645a50 { return 24 }
+        posts != 5 || buffer[2 * 40 + 2] != cast(u32)0xff645a50 ||
+        buffer[0] != cast(u32)0xff000000 { return 24 }
     Native.AndroidNativeOnCommand(*app, Native.AndroidNativeCommandTermWindow)
     if composition_releases != 1 || Runtime.AndroidFrameReusable() { return 25 }
     queued_destroy = true

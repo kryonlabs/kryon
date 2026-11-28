@@ -26,6 +26,8 @@ ANativeWindow_getWidth :: (window: *void) -> s32 { unused window; return 320 }
 #program_export
 ANativeWindow_getHeight :: (window: *void) -> s32 { unused window; return 200 }
 #program_export
+AConfiguration_getUiModeNight :: (configuration: *void) -> s32 { unused configuration; return 1 }
+#program_export
 ANativeWindow_setBuffersGeometry :: (window: *void, width: s32, height: s32, format: s32) -> s32 {
     unused window; unused width; unused height; unused format; return 0
 }

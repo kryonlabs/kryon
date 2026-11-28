@@ -33,7 +33,7 @@ def compile_source(source, name, *, library=False, options=(), sources=(), libra
     generated = WORK / name
     run([ZIRAN, 'build', '--project', '--target=c', '--target-os', 'windows',
          '--target-cpu', 'x64', '--define', '_WIN32', '--define', 'PLATFORM_DESKTOP',
-         '--prune-stale', '--root', Path(source).parent, *(['--no-main'] if library else ['--entry', Path(source).stem + ':main']),
+         '--prune-stale', '--root', Path(source).parent, *(['--no-main'] if library else ['--emit-main', '--entry', Path(source).stem + ':main']),
          *options, '-o', generated, source, *sources])
     binary = WORK / (name + ('.dll' if library else '.exe'))
     run([CC, *mingw_library_flags(CC), '-std=c11', '-O2', '-static-libgcc',
@@ -184,18 +184,21 @@ def private(zx_linked):
     server = next(Path(p) for p in servers if p and Path(p).is_file())
     try:
         run(['wine', 'wineboot.exe', '--init'], timeout=90)
+        # Give App.Run a known system canvas in this private Wine prefix.
+        run(['wine', 'reg.exe', 'add', r'HKCU\Control Panel\Colors', '/v',
+             'ButtonFace', '/t', 'REG_SZ', '/d', '246 245 244', '/f'])
         test_window(WORK / 'window.exe', 'Window')
-        # App.Run uses the widget theme's white canvas; bare windows retain
-        # the desktop host's neutral clear colour.
+        # App.Run follows the system canvas; bare windows retain the desktop
+        # host's neutral clear colour.
         test_window(WORK / 'widgets.exe', 'Kryon Windows Text Button', widgets=True,
-                    background=(255, 255, 255))
+                    background=(246, 245, 244))
         test_window(WORK / 'frame.exe', 'windows_desktop_frame', size=(960, 600),
-                    text=True, background=(255, 255, 255))
+                    text=True, background=(246, 245, 244))
         test_window(WORK / 'services.exe', 'Kryon Windows Services', services=True)
         if zx_linked:
             test_window(WORK / 'window-zx.exe', 'Window')
             test_window(WORK / 'hello-zx.exe', 'Hello', text=True,
-                        background=(255, 255, 255))
+                        background=(246, 245, 244))
         for form in ('source', 'saved'):
             run(['wine', WORK / ('frame-snapshot-' + form + '.exe')], timeout=25)
         print('PASS Wine source/saved owned frame snapshots and camera fade', flush=True)
