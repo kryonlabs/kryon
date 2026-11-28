@@ -874,7 +874,10 @@ def check_live(browser, base, scenes, shots):
     browser.until('Module.editorRevision > ' + str(revision), 'trusted keyboard source edit')
     assert browser.evaluate('sourceKeys') == [{'type': kind, 'trusted': True} for kind in ('keydown', 'keypress', 'keyup')]
     browser.evaluate("for(const kind of ['keydown','keypress','keyup'])document.removeEventListener(kind,sourceKeyListener,true)")
-    replace_source(browser, text.replace('Continue', 'Edited live'))
+    edited_source = text.replace('Continue', 'Edited live') + '\n// UTF-8: café 😀\n'
+    assert len(edited_source.encode()) > 4095, 'paste payload must exceed the old 4 KiB transport'
+    replace_source(browser, edited_source)
+    assert node_for(browser, key=10102)['value'] == edited_source, 'clipboard transport truncated the pasted source'
     compile_ready(browser)
     browser.until("Module.previewTree?.some(n => n.label === 'Edited live')", 'edited label in guest widget tree')
     edited = browser.evaluate("Module.previewTree.find(n => n.label === 'Edited live' && n.interactive)")
@@ -886,6 +889,7 @@ def check_live(browser, base, scenes, shots):
     assert browser.evaluate('Module.previewReady'), 'last valid preview discarded'
     replace_source(browser, text)
     compile_ready(browser)
+    assert node_for(browser, key=10102)['value'] == text, 'clipboard transport truncated the restored source'
     assert not browser.errors, browser.errors
 
 
